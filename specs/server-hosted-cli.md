@@ -42,10 +42,12 @@ on the operator's workstation with the operator's own credentials.
 
 ## 2. Enablement
 
-1. Hosted CLI actions MUST be disabled by default.
-2. `serve-hosted` MUST admit CLI actions only when started with
-   `--hosted-cli-actions`. Without the flag, the server MUST NOT register the
-   `/__cli_commands` routes.
+1. Hosted CLI actions MUST be disabled by default and MUST be treated as an
+   experimental server feature.
+2. `serve-hosted` MUST admit CLI actions only when started with both
+   `--experimental` and `--hosted-cli-actions`. Without either flag, the server
+   MUST NOT register the `/__cli_commands` routes. The local SQLite debugging
+   mode is subject to the same experimental gate.
 3. Enablement MUST fail at startup unless GitHub OAuth and the PostgreSQL
    operational store are configured. The mode MUST NOT fall back to the
    memory or Redis operational backends.
@@ -53,11 +55,13 @@ on the operator's workstation with the operator's own credentials.
    `--cli-actions-catalog`. A request MUST NOT name an arbitrary command.
 5. A separate `execute-cli` process MUST drain the queue. The web server
    process MUST NOT hold the App private key.
-6. For local debugging only, `serve-hosted --hosted-cli-sqlite PATH` and
-   `execute-cli --sqlite PATH` MAY replace the PostgreSQL queue and audit
+6. For local debugging only, `serve-hosted --experimental
+   --hosted-cli-actions --hosted-cli-sqlite PATH` and `execute-cli --sqlite
+   PATH` MAY replace the PostgreSQL queue and audit
    table with one SQLite file shared by both processes on one host.
-   `--hosted-cli-sqlite` MUST be rejected without `--hosted-cli-actions` and
-   MUST fail at startup unless `--listen` is a loopback address. The file
+   `--hosted-cli-sqlite` MUST be rejected unless both `--experimental` and
+   `--hosted-cli-actions` are present and MUST fail at startup unless `--listen`
+   is a loopback address. The file
    MUST be created with mode `0600`, and the path MUST NOT carry URI
    parameters. The SQLite store MUST implement the same queue and audit
    contracts (§7 items 1–2), with these differences: one global namespace,
@@ -164,8 +168,20 @@ a subprocess starts.
 
 ## 6. Execution
 
-1. The executor MUST hold the single queue lease. Additional replicas stand by.
-2. Before running, the executor MUST re-plan the command, require a matching
+1. In production, all web and executor replicas MUST use the same durable
+   PostgreSQL operational namespace. Admission and queue state MUST survive process
+   restart. Web replicas MAY admit requests concurrently; executor replicas
+   MUST coordinate through one durable queue lease, and only its current holder
+   may claim work. SQLite is limited to the single-host debugging profile.
+2. The queue MUST serialize lease acquisition, renewal, release, and command
+   claims transactionally. Each claim MUST atomically persist its running state
+   and execution claim before the command starts. The execution claim MUST
+   prevent another replica from running the same command, and active claims
+   MUST count against the configured concurrency limit.
+3. The executor MUST hold the single queue lease. Additional replicas stand by.
+   Lease ownership MUST be fenced so a stale executor cannot write output,
+   finish, or settle work after another replica acquires a newer lease.
+4. Before running, the executor MUST re-plan the command, require a matching
    `Actor` and `Repository`, and recheck that the actor still has `admin` or
    `write` collaborator permission on the target repository. The recheck MUST
    use a separate installation token scoped to the target repository with
@@ -173,27 +189,37 @@ a subprocess starts.
    work-scoped token may be minted, taken from the pool, or pre-minted for a
    command until its requester passes this check. If the recheck fails, the
    command MUST fail without running and without a work token.
-3. The executor does not recheck administrator step-up at run time. Admission
+5. The executor does not recheck administrator step-up at run time. Admission
    is the authorization point. The live permission recheck and the command
-   deadline (default 15 minutes) bound execution.
-4. Each command MUST run in a new workspace with mode `0700`, which is removed
+   deadline (default 15 minutes) bound execution. The deadline MUST be stored
+   durably with the claim and MUST apply across executor restarts.
+6. Each command MUST run in a new workspace with mode `0700`, which is removed
    afterwards. The subprocess environment MUST be minimal: `GH_TOKEN`, an
    empty system git configuration, the `gh` credential helper, and the App bot
    identity. It MUST NOT inherit server secrets.
-5. Control-checkout commands (`./cao.sh`) MUST run only at the
+7. Control-checkout commands (`./cao.sh`) MUST run only at the
    operator-reviewed commit SHA configured by
    `CAO_HOSTED_CLI_CONTROL_REVISION`. The executor MUST clone without
    checking out and MUST then check out that detached revision. The live
    default branch MUST NOT be executed. Without a configured revision, these
    commands MUST fail before a token is acquired. A value that is not a full
    commit SHA MUST fail startup.
-6. Each command MUST receive a private copy of the operator's gh extensions
+8. Each command MUST receive a private copy of the operator's gh extensions
    inside its workspace (`XDG_DATA_HOME`). Symbolic links are resolved and
    copied as content. A command MUST NOT be able to modify the extensions
    that later commands run.
-7. The subprocess MUST run in its own process group and MUST be killed on
+9. The subprocess MUST run in its own process group and MUST be killed on
    cancellation, deadline, or loss of the lease.
-8. Command output MUST redact the token. Logs MUST NOT contain tokens,
+10. A terminal result MUST NOT release its concurrency claim until subprocess
+    exit has been confirmed and settlement is durably stored. If a lease expires
+    while a command is still claimed or running, the replacement executor MUST
+    mark the outcome interrupted, block further claims, and require explicit
+    operator recovery acknowledgement after confirming the old subprocess has
+    stopped. It MUST NOT automatically retry the interrupted command: external
+    side effects may have completed before the crash, so the system guarantees
+    at-most-once dispatch, not exactly-once external effects. A retry MUST use a
+    new command ID and explicit admission.
+11. Command output MUST redact the token. Logs MUST NOT contain tokens,
    private keys, or OAuth credentials.
 
 ## 7. Audit trail

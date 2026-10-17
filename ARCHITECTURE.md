@@ -243,13 +243,20 @@ state and available history, not every missed event or expired artifact. There
 is no memory disk journal, automatic failover, or dual-write path.
 `specs/server-operational-storage.md` specifies these guarantees.
 
-Hosted CLI actions are an opt-in `serve-hosted --hosted-cli-actions` mode.
-Step-up administrators enqueue catalog-declared actions into the PostgreSQL
-CLI command queue after the server checks their own repository permission. A
-separate `execute-cli` process drains the queue under one lease. It rechecks
-the actor's live write permission and runs each command in an isolated
-workspace with a single-use, repository-scoped GitHub App installation token
-that is revoked on completion. A bounded broker pre-mints tokens for backlog.
+Hosted CLI actions are an experimental opt-in
+`serve-hosted --experimental --hosted-cli-actions` mode. Step-up administrators
+enqueue catalog-declared actions into the PostgreSQL CLI command queue after the
+server checks their own repository permission. Web replicas share durable
+queue state; executor replicas coordinate through one fenced lease and durable
+execution claims, so a command is not dispatched twice. A crash with uncertain
+subprocess state blocks further claims until an operator confirms termination
+and acknowledges recovery; interrupted commands are never automatically
+replayed, so external effects are not exactly-once. Command deadlines and queue
+state survive process restarts. A separate `execute-cli` process drains the
+queue, rechecks the actor's live write permission, and runs each command in an
+isolated workspace with a single-use, repository-scoped GitHub App installation
+token that is revoked on completion. A bounded broker pre-mints tokens for
+backlog.
 Control-repository `./cao.sh` actions run only at an operator-reviewed commit
 (`CAO_HOSTED_CLI_CONTROL_REVISION`), and each command gets a private copy of
 the gh extensions. The broker revokes and rejects any token whose granted

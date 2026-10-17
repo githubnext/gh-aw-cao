@@ -565,13 +565,17 @@ func newServeHostedCommand() *cobra.Command {
 	agentCatalog := cmd.Flags().String("agent-catalog", "../dashboard/site/src/agent/catalog.generated.json", "materialized read-only agent catalog")
 	mcpContract := cmd.Flags().String("mcp-contract", "../dashboard/site/src/agent/mcp-contract.json", "shared MCP tool contract")
 	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
+	experimental := cmd.Flags().Bool("experimental", false, "enable experimental server features")
 	hostedCLIActions := cmd.Flags().Bool("hosted-cli-actions", false,
 		"accept CLI action commands from authorized administrators into the hosted queue drained by execute-cli")
 	cliActionsCatalog := cmd.Flags().String("cli-actions-catalog", "../dashboard/site/dashboard.json",
 		"dashboard document declaring the CLI actions accepted by --hosted-cli-actions")
 	hostedCLISQLite := cmd.Flags().String("hosted-cli-sqlite", "",
-		"local debugging only: SQLite file holding the hosted CLI queue and audit table, shared with execute-cli --sqlite; requires --hosted-cli-actions and a loopback --listen")
+		"local debugging only: SQLite file holding the hosted CLI queue and audit table, shared with execute-cli --sqlite; requires --experimental, --hosted-cli-actions, and a loopback --listen")
 	cmd.RunE = func(*cobra.Command, []string) error {
+		if *hostedCLIActions && !*experimental {
+			return errors.New("--hosted-cli-actions requires --experimental")
+		}
 		if *hostedCLISQLite != "" && !*hostedCLIActions {
 			return errors.New("--hosted-cli-sqlite requires --hosted-cli-actions")
 		}

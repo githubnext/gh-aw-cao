@@ -598,16 +598,31 @@ with a `CAO-Step-Up` challenge. Everyone else receives `403`. See
 
 ### Hosted CLI actions
 
-Hosted CLI actions are off by default. To enable them, run the web server
-with `--hosted-cli-actions` (and optionally `--cli-actions-catalog`), plus the
+Hosted CLI actions are an experimental feature and are off by default. To
+enable them, run the web server with both `--experimental` and
+`--hosted-cli-actions` (and optionally `--cli-actions-catalog`), plus the
 PostgreSQL operational store and OAuth. Then run a separate executor:
 
 ```bash
 ./cao.sh setup-auth hosted-cli --repo OWNER/CONTROL \
   --target-repository OWNER/TARGET --private-key-out ./hosted-cli.pem
-cao-dashboard serve-hosted --hosted-cli-actions ...
+cao-dashboard serve-hosted --experimental --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
 ```
+
+In production, all web and executor replicas must share the same PostgreSQL
+operational namespace. Web replicas can admit work concurrently; executor
+replicas coordinate through the durable, fenced queue lease, and a persisted execution
+claim prevents another replica from claiming an already-running command. The
+configured concurrency limit applies across executor replicas. Command
+deadlines and queue state survive process restarts.
+
+If an executor crashes or loses its lease while a subprocess may still be
+running, the replacement marks the outcome interrupted and blocks new claims.
+It will not replay the command automatically because external side effects may
+already have occurred. After confirming that the old subprocess has stopped,
+an operator must explicitly acknowledge recovery before queue processing
+resumes. This provides at-most-once dispatch, not exactly-once external effects.
 
 `setup-auth hosted-cli` writes the downloaded key to a temporary local
 bootstrap file; that file is not a vault. Import it directly into the secret
@@ -655,12 +670,12 @@ Never put either key in logs, command output, or checked-in configuration.
 
 For local debugging without PostgreSQL, both processes can share one SQLite
 file holding the queue and the audit table. `--hosted-cli-sqlite` requires
-`--hosted-cli-actions` and a loopback `--listen`, and the file is created with
-mode `0600`. The SQLite triggers can be dropped by anyone who can write the
-file, so never use it in production:
+`--experimental`, `--hosted-cli-actions`, and a loopback `--listen`, and the
+file is created with mode `0600`. Anyone who can write the SQLite file can
+drop its triggers, so never use this in production:
 
 ```bash
-cao-dashboard serve-hosted --listen 127.0.0.1:8443 --hosted-cli-actions \
+cao-dashboard serve-hosted --listen 127.0.0.1:8443 --experimental --hosted-cli-actions \
   --hosted-cli-sqlite ./.tmp/hosted-cli.sqlite ...
 cao-dashboard execute-cli --sqlite ./.tmp/hosted-cli.sqlite
 ```

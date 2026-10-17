@@ -116,7 +116,7 @@ The single campaign selected for historical operational-value reconstruction in 
 
 ## Hosted CLI actions
 
-An optional hosted-server mode, enabled with `serve-hosted --hosted-cli-actions`, in which step-up administrators queue declared `cao` actions. A separate `execute-cli` process runs each queued action with a single-use, repository-scoped GitHub App installation token that is revoked when the command finishes. Create the App with `./cao.sh setup-auth hosted-cli`. See the [hosted CLI actions specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md).
+An experimental hosted-server mode, enabled with `serve-hosted --experimental --hosted-cli-actions`, in which step-up administrators queue declared `cao` actions. A separate `execute-cli` process runs each queued action with a single-use, repository-scoped GitHub App installation token that is revoked when the command finishes. Executor replicas coordinate through a durable, fenced PostgreSQL queue lease. See the [hosted CLI actions specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md).
 
 ## Live authority
 

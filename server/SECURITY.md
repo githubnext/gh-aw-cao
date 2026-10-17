@@ -21,8 +21,8 @@ limits fail closed and do not evict active limiter buckets or protected work.
 The normative exception is [server operational storage](../specs/server-operational-storage.md).
 
 Every administrator operation in the hosted profiles requires a fresh, assured
-interactive GitHub OAuth authentication (administrator step-up). The optional
-`serve-hosted --hosted-cli-actions` mode, which is off by default, lets
+interactive GitHub OAuth authentication (administrator step-up). The experimental
+`serve-hosted --experimental --hosted-cli-actions` mode, which is off by default, lets
 step-up administrators queue dashboard-declared CLI actions. A separate
 `execute-cli` process runs them with single-use, repository-scoped GitHub App
 installation tokens. See [Hosted CLI actions](#hosted-cli-actions) and the
@@ -618,10 +618,12 @@ local dashboard dataset. There is no per-source or per-row authorization.
 
 ## Hosted CLI actions
 
-`serve-hosted --hosted-cli-actions` is disabled by default. Without the flag,
-the `/__cli_commands` routes are not registered. Enabling it requires GitHub
-OAuth, the PostgreSQL operational store, `CAO_HOSTED_CLI_CONTROL_REPOSITORY`,
-and the action catalog named by `--cli-actions-catalog`. The normative
+Hosted CLI actions are an experimental feature and are disabled by default.
+`serve-hosted` requires both `--experimental` and `--hosted-cli-actions`;
+without either flag, the `/__cli_commands` routes are not registered. Enabling
+them requires GitHub OAuth, the PostgreSQL operational store,
+`CAO_HOSTED_CLI_CONTROL_REPOSITORY`, and the action catalog named by
+`--cli-actions-catalog`. The normative
 contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
 
 - **Admission** happens in the web process. It requires administrator step-up,
@@ -638,6 +640,15 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   the command's repository. Step-up is not rechecked at run time: admission is the
   authorization point, and the recheck and command deadline (default 15
   minutes) bound execution.
+- **Durability and replica coordination** use one shared PostgreSQL operational
+  namespace. The transactionally acquired, fenced queue lease elects one
+  executor replica; persisted execution claims and the configured concurrency
+  limit prevent another replica from claiming running commands. If a lease
+  expires while a subprocess may still be running, the queue enters blocked
+  recovery rather than automatically replaying it. An operator must confirm
+  that the old process stopped before acknowledging recovery. This avoids
+  duplicate dispatch but cannot guarantee exactly-once external side effects
+  across a process crash.
 - **Tokens** are installation tokens minted for exactly one repository with
   the plan's narrowest permissions. A token serves one command and is revoked
   when that command reaches a terminal state. It never returns to the pool.

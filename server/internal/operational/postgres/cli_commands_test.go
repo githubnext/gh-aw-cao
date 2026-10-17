@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -123,6 +124,43 @@ func TestCLICommandsAtomicFIFOAndCancellation(t *testing.T) {
 	cancel()
 	if _, err := queue.List(canceledContext, operational.CLICommandFilter{Limit: 10}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("ignored context: %v", err)
+	}
+}
+
+func TestCLICommandExecutorLeaseSerializesConcurrentReplicas(t *testing.T) {
+	s, dsn := testStore(t, Config{})
+	ctx := t.Context()
+	options := operational.CLICommandQueueOptions{MaxConcurrency: 1}
+	first := commandQueue(t, s, options)
+	peerStore, err := Open(ctx, dsn, s.namespace, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = peerStore.Close() }()
+	second := commandQueue(t, peerStore, options)
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	for index, queue := range []operational.CLICommandQueue{first, second} {
+		owner := fmt.Sprintf("replica-%d", index)
+		go func() {
+			<-start
+			_, err := queue.Acquire(ctx, owner, time.Minute)
+			results <- err
+		}()
+	}
+	close(start)
+	acquired := 0
+	for range 2 {
+		err := <-results
+		if err == nil {
+			acquired++
+		} else if !errors.Is(err, operational.ErrConflict) {
+			t.Fatalf("replica acquisition error = %v, want lease conflict", err)
+		}
+	}
+	if acquired != 1 {
+		t.Fatalf("concurrent replicas acquired %d leases, want exactly one", acquired)
 	}
 }
 

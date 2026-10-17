@@ -21,7 +21,7 @@ import (
 )
 
 // HostedCLIConfigFromEnv builds the admission configuration enabled by
-// `serve-hosted --hosted-cli-actions`.
+// `serve-hosted --experimental --hosted-cli-actions`.
 func HostedCLIConfigFromEnv(catalogPath string) (HostedCLIConfig, error) {
 	catalog, err := hostedcli.LoadCatalog(catalogPath)
 	if err != nil {

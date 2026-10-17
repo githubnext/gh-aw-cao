@@ -133,6 +133,18 @@ func TestServeHostedRejectsUnsupportedOperationalBackend(t *testing.T) {
 	}
 }
 
+func TestServeHostedCLIRequiresExperimentalFlag(t *testing.T) {
+	cmd := newServeHostedCommand()
+	cmd.SetArgs([]string{"--hosted-cli-actions"})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "--hosted-cli-actions requires --experimental") {
+		t.Fatalf("error = %v, want experimental feature gate", err)
+	}
+	if cmd.Flags().Lookup("experimental") == nil {
+		t.Fatal("serve-hosted does not expose --experimental")
+	}
+}
+
 func TestOperationalBackendSelectionUsesComposedReviewedPolicy(t *testing.T) {
 	directory := t.TempDir()
 	base := `{"version":1,"control-plane":{"web":{"host":{"target":{"module":"container","replicas":1},"operational-store":{"backend":"memory","single-process":true,"allow-volatile":true}}}}}`

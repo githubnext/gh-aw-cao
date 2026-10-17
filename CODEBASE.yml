@@ -256,7 +256,7 @@ components:
     responsibility: expose CLICommands through operational composition using namespace-isolated cao_operational_cli tables, database-time leases, monotonic fences, protected byte and entry budgets and bounded terminal-only maintenance; never enable hosted execution by themselves or replace the local SQLite executor
   hosted_cli:
     path: server/internal/hostedcli/
-    responsibility: opt-in (--hosted-cli-actions) admission of catalog-declared actions by step-up administrators and an execute-cli drain that rechecks live write permission and runs each command isolated with a single-use, repository-scoped, revoked-on-completion GitHub App installation token from a bounded broker pool; reject and revoke over-broad grants
+    responsibility: experimental opt-in (--experimental --hosted-cli-actions) admission of catalog-declared actions by step-up administrators and an execute-cli drain that rechecks live write permission and runs each command isolated with a single-use, repository-scoped, revoked-on-completion GitHub App installation token from a bounded broker pool; reject and revoke over-broad grants
   security_audit:
     path: server/internal/audit/
     responsibility: credential-free audit events for admin denials, hosted CLI admission and execution, and token lifecycle, stored in the hash-chained append-only cao_operational_audit_events table and mirrored as JSON lines (or, for local debugging only, a loopback-only SQLite file via --hosted-cli-sqlite and execute-cli --sqlite); privileged steps fail closed when storage fails; identify tokens only by GitHub's hashed_token digest; `cao-dashboard audit verify` checks the chain against external head anchors, `audit export` writes JSON Lines, and events are also OTLP logs correlated by trace ID
@@ -397,7 +397,7 @@ boundaries:
       - postgres_entity_store
 
 invariants:
-  - "Hosted CLI actions MUST stay disabled without --hosted-cli-actions; admission MUST require administrator step-up and requester repository permission; each command MUST use one repository-scoped installation token that is revoked after use and never re-pooled. See specs/server-hosted-cli.md."
+  - "Hosted CLI actions MUST stay disabled unless serve-hosted receives both --experimental and --hosted-cli-actions; admission MUST require administrator step-up and requester repository permission; shared PostgreSQL queue state, a fenced single-executor lease, durable claims, deadlines, and blocked crash recovery MUST prevent automatic redispatch of uncertain commands across replicas. See specs/server-hosted-cli.md."
   - "Every hosted administrator operation MUST require a fresh (CAO_ADMIN_REAUTH_MAX_AGE), assured (explicit 2FA or attested SSO) interactive OAuth authentication; refresh MUST NOT extend it."
   - "Local CLI commands MUST use one server-owned operational SQLite queue and the existing executor, never browser IndexedDB or the disposable dashboard projection. Browser detachment MUST NOT cancel approved work; active work MUST NOT expire."
   - "Unclean CLI queue recovery MUST pause starts while subprocess termination is unverified. Interrupted entries MUST fail without automatic retry; only explicit local operator acknowledgement after reconciliation may resume queued work."

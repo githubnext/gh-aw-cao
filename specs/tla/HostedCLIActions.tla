@@ -24,7 +24,7 @@ CONSTANTS
     MaxPool,      \* --max-pooled-tokens
     MaxAge,       \* CAO_ADMIN_REAUTH_MAX_AGE, in clock ticks
     MaxTime,      \* clock bound for model checking
-    Enabled       \* serve-hosted --hosted-cli-actions
+    Enabled       \* serve-hosted --experimental --hosted-cli-actions
 
 ASSUME
     /\ Admins \subseteq Users

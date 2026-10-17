@@ -83,18 +83,18 @@ durability, not admission atomicity, authorization, capacity, or ownership.
 # Hosted CLI actions model
 
 [`HostedCLIActions.tla`](HostedCLIActions.tla) models the optional
-`serve-hosted --hosted-cli-actions` mode specified in
+`serve-hosted --experimental --hosted-cli-actions` mode specified in
 [`../server-hosted-cli.md`](../server-hosted-cli.md): admin step-up admission,
 the queued executor, and the bounded single-use installation-token broker.
 `HostedCLIActions.enabled.cfg` checks the enabled mode with two users (one
 listed admin), one repository, two commands, two tokens, pool size one, a
 step-up maximum age of two ticks, and three clock values.
-`HostedCLIActions.disabled.cfg` checks that the mode without the flag admits
-nothing.
+`HostedCLIActions.disabled.cfg` checks that the mode without both required
+server flags admits nothing.
 
 | Property | Implementation boundary |
 | --- | --- |
-| `DisabledAdmitsNothing` | `--hosted-cli-actions` gate; `/__cli_commands` routes are not registered without the flag |
+| `DisabledAdmitsNothing` | `--experimental` and `--hosted-cli-actions` gates; `/__cli_commands` routes are not registered unless both flags are present |
 | `AdmissionAuthorized` | `adminAuthorizedContext` step-up (`oauth.adminAssured`) and the requester's live repository permission in `hosted_cli.go` |
 | `ExecutionRechecked` | Executor collaborator-permission recheck before running in `hostedcli/executor.go` |
 | `WorkTokenOnlyAfterVerification` | `Executor.verifyRequester` checks write access with a revoked `metadata:read` token before `Acquire` or `Prefetch` issues any work-scoped token |

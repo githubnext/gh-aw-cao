@@ -179,6 +179,41 @@ func TestCLICommandRecoveryAfterInterruptedExecutor(t *testing.T) {
 	}
 }
 
+func TestCLICommandExecutorLeaseSerializesConcurrentHandles(t *testing.T) {
+	ctx := t.Context()
+	path := filepath.Join(t.TempDir(), "cao.sqlite")
+	firstStore, secondStore := openTest(t, path), openTest(t, path)
+	options := operational.CLICommandQueueOptions{MaxConcurrency: 1}
+	first, second := testQueue(t, firstStore, options), testQueue(t, secondStore, options)
+
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	for index, queue := range []operational.CLICommandQueue{first, second} {
+		owner := []string{"replica-1", "replica-2"}[index]
+		go func() {
+			<-start
+			_, err := queue.Acquire(ctx, owner, time.Minute)
+			errs <- err
+		}()
+	}
+	close(start)
+	acquired, conflicted := 0, 0
+	for range 2 {
+		err := <-errs
+		switch {
+		case err == nil:
+			acquired++
+		case errors.Is(err, operational.ErrConflict):
+			conflicted++
+		default:
+			t.Fatalf("replica acquisition error = %v", err)
+		}
+	}
+	if acquired != 1 || conflicted != 1 {
+		t.Fatalf("concurrent replica results: acquired=%d conflicted=%d", acquired, conflicted)
+	}
+}
+
 func TestAuditTableChainsAndRejectsEdits(t *testing.T) {
 	ctx := t.Context()
 	path := filepath.Join(t.TempDir(), "cao.sqlite")
