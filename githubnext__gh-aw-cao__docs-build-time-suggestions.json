@@ -3,34 +3,6 @@
   "next_category": "reusable dashboard generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-17T09:23:00Z",
-      "worker_run_id": 39020859316,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39020868386,
-        39019546432,
-        39018733048,
-        39018718063,
-        39018141339,
-        39017379499,
-        39017223028,
-        39015843426,
-        39014860602,
-        39014114830,
-        39013971286,
-        39013428151,
-        39012230962,
-        39011796811,
-        39011704428,
-        39010353731,
-        39010197711,
-        39008430574,
-        39007481438,
-        39007275819
-      ],
-      "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T05:42:59Z through 2026-10-17T09:22:30Z, 16 runs concluded success, 3 concluded skipped, and 1 concluded action_required; none failed or were cancelled. All 20 runs shared the same head SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9, but only 3 successful runs executed both docs build and deploy (39007481438, 39011796811, and 39018733048); the other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The paired current-source cao-dashboard.yml completions within the latest 20 dashboard runs comprised 2 successful builds (39011430967 and 39018510177) and 3 skipped callbacks (39007272703, 39010193996, and 39017219772). Bounded logs from docs run 39018733048 and dashboard run 39018510177 verified warm central-agentic-ops-dashboard and cao-activity cache hits on the current source, but the mission requires at least 5 comparable successful runs before evaluating a build-time improvement. No actionable reusable-dashboard-generation recommendation was assessed in this window, and next_category remains unchanged."
-    },
-    {
       "evaluated_at": "2026-10-17T05:38:26Z",
       "worker_run_id": 39006807753,
       "category": "reusable dashboard generation",
@@ -813,6 +785,34 @@
         39006015140
       ],
       "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T05:22:19Z through 2026-10-17T08:48:13Z, 16 runs concluded success, 3 concluded skipped, and 1 concluded action_required; none failed, were cancelled, or timed out. The two observed head SHAs (4df4baeeea76296e0c9426fe9afc2ddca7870dc9 and 8332050ca00104805d3a7539f1e46b39418d1426) resolved to the same .github/workflows/docs.yml blob 9a4834bb3d54ed40376fab886e8e1effff0951d5 and the same .github/workflows/cao-dashboard.yml blob 415481b74f6b56b4d012c9a23e076b13bcaca2bd, so the window remained comparable on workflow sources. However, only 3 successful docs runs executed both build and deploy (39018733048, 39011796811, and 39007481438); the other successful runs were schedule freshness checks that skipped build and deploy, workflow_run runs 39017223028, 39010197711, and 39007275819 were skipped, and workflow_run 39013971286 ended action_required before jobs ran. The mission requires at least 5 comparable successful docs publishes before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
+    },
+    {
+      "evaluated_at": "2026-10-17T09:39:25Z",
+      "worker_run_id": 39021697602,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        39021573078,
+        39020868386,
+        39019546432,
+        39018733048,
+        39018718063,
+        39018141339,
+        39017379499,
+        39017223028,
+        39015843426,
+        39014860602,
+        39014114830,
+        39013971286,
+        39013428151,
+        39012230962,
+        39011796811,
+        39011704428,
+        39010353731,
+        39010197711,
+        39008430574,
+        39007481438
+      ],
+      "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T05:46:22Z through 2026-10-17T09:33:27Z, 17 runs concluded success, 2 concluded skipped, and 1 concluded action_required; none failed or were cancelled. All 20 runs shared the same head SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9, but only 3 successful runs executed both docs build and deploy (39007481438, 39011796811, and 39018733048); the other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The paired current-source cao-dashboard.yml completions within the latest 20 dashboard runs comprised 2 successful builds (39011430967 and 39018510177) and 3 skipped callbacks (39007272703, 39010193996, and 39017219772). Trusted job metadata for the three docs publishes showed successful Restore node_modules and Restore cached CAO Dashboard steps, with Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact all skipped, confirming the warm cache-hit path instead of a fallback dashboard artifact fetch. The mission still requires at least 5 comparable successful runs before evaluating a reusable-dashboard-generation improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged. Existing open issue #16825 already covers the same snapshot-reuse subject when enough evidence is available."
     }
   ]
 }
