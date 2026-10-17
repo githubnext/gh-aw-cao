@@ -1,4 +1,7 @@
+import { createDebug } from '../../debug.js';
 import { routingMetadata } from './model-routing.js';
+
+const debugSessionTelemetry = createDebug('unified-session-telemetry');
 
 /** @param {unknown} value */
 function object(value) {
@@ -314,5 +317,9 @@ export function sessionRunMetadata(records, context) {
     if (measured !== undefined) totals.total_aic = (totals.total_aic ?? 0) + measured;
   }
   if (Object.keys(totals).length) run.token_usage_summary = totals;
+  debugSessionTelemetry({
+    event: 'run-metadata', records: records.length, phases: phases.size,
+    safeOutputs: safeOutputs.length, hasUsage: 'token_usage_summary' in run
+  });
   return run;
 }
