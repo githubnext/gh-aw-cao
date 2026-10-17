@@ -86,11 +86,55 @@ func TestAdminStepUpAcceptsAttestedSSOOrganization(t *testing.T) {
 	}
 }
 
+func TestAdminStepUpOAuthProviderPermissionContract(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		clientID  string
+		scopes    []string
+		appFactor bool
+		sso       bool
+		assurance []string
+	}{
+		{name: "fresh classic grant", clientID: "Ov23liOAuthClient", assurance: []string{assuranceTwoFactor}},
+		{name: "classic declined read user", clientID: "client", scopes: []string{"read:org"}},
+		{name: "classic broader user grant", clientID: "client", scopes: []string{"read:org", "user"}, assurance: []string{assuranceTwoFactor}},
+		{name: "GitHub App undisclosed factor", clientID: "Iv23liGitHubApp"},
+		{name: "GitHub App disclosed factor", clientID: "Iv23liGitHubApp", appFactor: true, assurance: []string{assuranceTwoFactor}},
+		{name: "GitHub App attested SSO", clientID: "Iv23liGitHubApp", sso: true, assurance: []string{"sso:example"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			github := fakeGitHub(t, fakeGitHubOptions{
+				membershipState: "active", accessExpiresIn: 3600,
+				grantedScopes: test.scopes, appDisclosesTwoFactor: test.appFactor,
+			})
+			app := newAzureTestApp(t, github.URL)
+			app.config.AdminUsers = []string{"octocat"}
+			app.oauth.config.ClientID = test.clientID
+			if test.sso {
+				app.oauth.config.SSOOrganizations = []string{"example"}
+			}
+			cookie, _ := callbackSession(t, app)
+			session := storedSession(t, app, cookie)
+			if !slices.Equal(session.Assurance, test.assurance) {
+				t.Fatalf("assurance = %v, want %v", session.Assurance, test.assurance)
+			}
+			request := azureRequest(t, http.MethodGet, "/api/v1/ingestion/health")
+			request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
+			if app.adminAuthorized(request) != (len(test.assurance) > 0) {
+				t.Fatal("administrator authorization did not match provider evidence")
+			}
+		})
+	}
+}
+
 func TestAdminStepUpIsNotExtendedByTokenRefresh(t *testing.T) {
-	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: -60, refreshSucceeds: true})
+	github := fakeGitHub(t, fakeGitHubOptions{
+		membershipState: "active", accessExpiresIn: -60, refreshSucceeds: true,
+		appDisclosesTwoFactor: true,
+	})
 	app := newAzureTestApp(t, github.URL)
-	app.database = integrationDatabase(t)
-	sessionCookie, csrfCookie := callbackSession(t, app)
+	app.oauth.config.ClientID = "Iv23liGitHubApp"
+	sessionCookie, _ := callbackSession(t, app)
 	// Read raw records: storedSession would itself refresh the expired token.
 	original, err := app.oauth.loadSession(t.Context(), sessionCookie.Value)
 	if err != nil || original.AccessToken != "access-old" {
@@ -98,10 +142,8 @@ func TestAdminStepUpIsNotExtendedByTokenRefresh(t *testing.T) {
 	}
 
 	refreshed := httptest.NewRecorder()
-	request := azureRequest(t, http.MethodPost, "/api/v1/refresh")
+	request := azureRequest(t, http.MethodGet, "/api/auth/session")
 	request.AddCookie(sessionCookie)
-	request.AddCookie(csrfCookie)
-	request.Header.Set("X-CSRF-Token", csrfCookie.Value)
 	app.Handler().ServeHTTP(refreshed, request)
 	if refreshed.Code != http.StatusOK {
 		t.Fatalf("refresh returned %d: %s", refreshed.Code, refreshed.Body.String())

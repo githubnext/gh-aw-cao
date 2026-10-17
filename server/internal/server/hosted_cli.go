@@ -103,6 +103,7 @@ func (a *App) EnableHostedCLIActions(ctx context.Context, config HostedCLIConfig
 		queue: queue, catalog: config.Catalog, context: templateContext, control: config.ControlRepository,
 		reposURL: strings.TrimSuffix(a.oauth.config.UserURL, "user") + "repos/",
 	}
+	a.oauth.requestRepositoryAccess = true
 	a.config.Logger.Printf("hosted CLI actions enabled control_repository=%s", config.ControlRepository)
 	return nil
 }

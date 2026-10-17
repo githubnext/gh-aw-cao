@@ -137,6 +137,9 @@ type githubOAuth struct {
 	key         []byte
 	keys        map[string][]byte
 	log         func(string)
+	// Enabled only with hosted CLI actions, whose live requester permission
+	// probe must be able to read private repository metadata.
+	requestRepositoryAccess bool
 }
 
 type oauthSession struct {
@@ -152,8 +155,8 @@ type oauthSession struct {
 	// AuthenticatedAt is set only by an interactive authorization-code
 	// callback and is the step-up time for administrator operations.
 	AuthenticatedAt time.Time `json:"authenticatedAt,omitempty"`
-	// Assurance records the factors verified at AuthenticatedAt: "2fa" and/or
-	// "sso:ORG".
+	// Assurance records 2FA enrollment or attested SSO access disclosed at
+	// AuthenticatedAt: "2fa" and/or "sso:ORG".
 	Assurance []string `json:"assurance,omitempty"`
 }
 
@@ -303,9 +306,15 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	values.Set("client_id", oauth.config.ClientID)
 	values.Set("redirect_uri", oauth.config.RedirectURL)
 	values.Set("state", state)
-	values.Set("scope", "read:org")
 	if strings.HasPrefix(oauth.config.ClientID, "Iv") {
 		values.Set("scope", "offline_access")
+	} else {
+		// GitHub omits two_factor_authentication without read:user (or user).
+		scope := "read:org read:user"
+		if oauth.requestRepositoryAccess {
+			scope += " repo"
+		}
+		values.Set("scope", scope)
 	}
 	values.Set("prompt", "select_account")
 	oauth.logBranch("login.account_selection_requested")
@@ -509,8 +518,9 @@ func (oauth *githubOAuth) currentAccount(response http.ResponseWriter, request *
 	writeJSON(response, http.StatusOK, payload)
 }
 
-// verifiedAssurance records the authentication factors GitHub proves for a
-// freshly authorized token. It never infers a factor from absent data.
+// verifiedAssurance records disclosed 2FA enrollment or attested SSO access
+// for a freshly authorized token, not proof of a new MFA ceremony.
+// It never infers assurance from absent data.
 func (oauth *githubOAuth) verifiedAssurance(ctx context.Context, accessToken string, account githubAccount) []string {
 	var assurance []string
 	if account.TwoFactorAuthentication != nil && *account.TwoFactorAuthentication {

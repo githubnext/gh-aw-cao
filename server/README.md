@@ -596,6 +596,28 @@ authentication for the user. A stale or unassured administrator receives `401`
 with a `CAO-Step-Up` challenge. Everyone else receives `403`. See
 [`SECURITY.md`](SECURITY.md#administrator-step-up).
 
+#### OAuth permissions and onboarding
+
+Classic OAuth Apps request `read:org read:user`: membership access plus the
+least user scope that lets `/user` disclose `two_factor_authentication`.
+GitHub omits that private field from a `read:org`-only token. After upgrading
+from that grant, sign out and complete `/auth/login` again, consenting to the
+new scope. Refreshing an existing token or revalidating membership cannot add
+scopes or establish new step-up evidence. If consent omits `read:user`, or
+GitHub reports 2FA disabled, non-SSO administrator access still fails closed.
+
+GitHub App clients (`Iv...`) instead request only `offline_access`; configure
+organization **Members: read** and approved installations in each allowed
+organization. OAuth scopes do not grant App permissions. Do not assume a
+GitHub App user token discloses 2FA: if the field is absent, administrator
+access requires a successfully verified membership in an operator-attested
+`CAO_GITHUB_SSO_ORGANIZATIONS` organization. Otherwise that configuration
+cannot satisfy administrator step-up.
+
+Neither `read:user` nor `prompt=select_account` forces an MFA challenge.
+Step-up records recent OAuth completion with 2FA enabled or attested SSO
+access, not proof that the user just performed MFA.
+
 ### Hosted CLI actions
 
 Hosted CLI actions are an experimental feature and are off by default. To
@@ -609,6 +631,30 @@ PostgreSQL operational store and OAuth. Then run a separate executor:
 cao-dashboard serve-hosted --experimental --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
 ```
+
+Enabling hosted CLI actions also requests `repo` for **classic OAuth App**
+browser sign-ins, so the live requester-token probe can read private target
+repositories. Disabled deployments keep `read:org read:user` and request no
+repository scope. Existing sessions must sign out and authorize again after
+enablement; declining `repo` leaves private targets unavailable. GitHub's
+classic `repo` scope is broad read/write access to the user's accessible
+public and private repositories, not a metadata-only or selected-repository
+grant. This applies to every browser sign-in on the enabled deployment, not
+just administrators. Prefer a separate **GitHub App for browser sign-in** to
+avoid that broad grant: retain **Members: read**, approve its installation
+for the selected private targets with **Metadata: read**, and ensure its
+user token's live repository response reports the requester's `admin`,
+`maintain`, or `push` permission. An App installation alone never establishes
+the user's write authority. OAuth App access restrictions and SSO approval
+must also permit the token to access the organization.
+
+The server only reads repository permissions with the browser user's token;
+execution still uses the separately scoped hosted CLI App installation token.
+Missing repository access or permission fields fail closed without falling
+back to that executor token. `offline_access` remains unchanged for GitHub
+App sign-ins and grants no repository permissions. Disabling the feature
+stops requesting `repo` but does not revoke previously granted GitHub scopes;
+revoke the OAuth App authorization in GitHub when removing that access.
 
 In production, all web and executor replicas must share the same PostgreSQL
 operational namespace. Web replicas can admit work concurrently; executor
@@ -1730,7 +1776,8 @@ and local HTTP. Without that setting, Azure mode continues to require
 Azure mode does not accept the local bearer capability and does not support
 PATs. Login alone does not grant access: after exchanging the OAuth code, the
 server verifies active organization or team membership. OAuth App clients
-request `read:org`; GitHub App clients (`Iv...`) request `offline_access` for
+request `read:org read:user` for membership and disclosed 2FA-enabled evidence;
+GitHub App clients (`Iv...`) request `offline_access` for
 expiring user tokens and server-side refresh even if the App's global
 expiration setting is disabled. For a GitHub App, configure organization
 **Members: read** on the registration; scopes do not grant App permissions.

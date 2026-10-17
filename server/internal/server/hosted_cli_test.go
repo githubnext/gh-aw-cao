@@ -163,12 +163,28 @@ type hostedCLIFixture struct {
 	probes  []string
 }
 
+type hostedCLITestOAuth struct {
+	clientID            string
+	grantedScopes       []string
+	privateRepository   bool
+	appRepositoryAccess bool
+	omitPermissions     bool
+	sso                 bool
+}
+
 // newHostedCLIFixture serves the OAuth fake and answers repository
 // permission lookups made with the requester's OAuth token.
 func newHostedCLIFixture(t *testing.T, admins []string) *hostedCLIFixture {
 	t.Helper()
+	return newHostedCLIFixtureWithOAuth(t, admins, hostedCLITestOAuth{})
+}
+
+func newHostedCLIFixtureWithOAuth(t *testing.T, admins []string, options hostedCLITestOAuth) *hostedCLIFixture {
+	t.Helper()
 	fixture := &hostedCLIFixture{queue: newHostedCLITestQueue(), push: true}
-	oauthServer := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	oauthServer := fakeGitHub(t, fakeGitHubOptions{
+		membershipState: "active", accessExpiresIn: 3600, grantedScopes: options.grantedScopes,
+	})
 	target, err := url.Parse(oauthServer.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +196,17 @@ func newHostedCLIFixture(t *testing.T, admins []string) *hostedCLIFixture {
 			fixture.probes = append(fixture.probes, request.URL.Path+" "+request.Header.Get("Authorization"))
 			push := fixture.push
 			fixture.mutex.Unlock()
+			grant := oauthServer.tokenGrant(request.Header.Get("Authorization"))
+			if (grant.isGitHubApp() && !options.appRepositoryAccess) ||
+				(!grant.isGitHubApp() && options.privateRepository && !grant.hasScope("repo")) {
+				response.WriteHeader(http.StatusNotFound)
+				return
+			}
 			response.Header().Set("Content-Type", "application/json")
+			if options.omitPermissions {
+				_, _ = response.Write([]byte(`{}`))
+				return
+			}
 			_ = json.NewEncoder(response).Encode(map[string]any{"permissions": map[string]bool{"push": push}})
 			return
 		}
@@ -189,6 +215,12 @@ func newHostedCLIFixture(t *testing.T, admins []string) *hostedCLIFixture {
 	t.Cleanup(github.Close)
 	fixture.app = memoryOAuthApp(t, github.URL)
 	fixture.app.config.AdminUsers = admins
+	if options.clientID != "" {
+		fixture.app.oauth.config.ClientID = options.clientID
+	}
+	if options.sso {
+		fixture.app.oauth.config.SSOOrganizations = []string{"example"}
+	}
 	fixture.audit = &memoryAuditLog{}
 	fixture.app.config.Audit = fixture.app.config.Audit.WithStore(fixture.audit)
 	catalog, err := hostedcli.LoadCatalog(filepath.Join("..", "..", "..", "dashboard", "site", "dashboard.json"))
@@ -256,6 +288,9 @@ func TestHostedCLIEnableRequiresOAuthAndControlRepository(t *testing.T) {
 	if err := app.EnableHostedCLIActions(t.Context(), HostedCLIConfig{Catalog: catalog, ControlRepository: "../x", Queue: newHostedCLITestQueue()}); err == nil {
 		t.Fatal("hosted CLI actions accepted an invalid control repository")
 	}
+	if app.oauth.requestRepositoryAccess {
+		t.Fatal("failed hosted CLI enablement broadened requested OAuth scopes")
+	}
 }
 
 func TestHostedCLIEnqueueRecordsActorAndRepository(t *testing.T) {
@@ -277,6 +312,47 @@ func TestHostedCLIEnqueueRecordsActorAndRepository(t *testing.T) {
 	}
 	if strings.Contains(response.Body.String(), "access-token") {
 		t.Fatal("response exposed an OAuth token")
+	}
+}
+
+func TestHostedCLIRepositoryAccessOAuthContract(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		oauth   hostedCLITestOAuth
+		noWrite bool
+		status  int
+	}{
+		{name: "classic private repository", oauth: hostedCLITestOAuth{privateRepository: true}, status: http.StatusAccepted},
+		{name: "classic declined repo scope", oauth: hostedCLITestOAuth{privateRepository: true, grantedScopes: []string{"read:org", "read:user"}}, status: http.StatusForbidden},
+		{name: "classic public repository without repo scope", oauth: hostedCLITestOAuth{grantedScopes: []string{"read:org", "read:user"}}, status: http.StatusAccepted},
+		{name: "classic private reader", oauth: hostedCLITestOAuth{privateRepository: true}, noWrite: true, status: http.StatusForbidden},
+		{name: "GitHub App private writer with SSO", oauth: hostedCLITestOAuth{clientID: "Iv23liGitHubApp", privateRepository: true, appRepositoryAccess: true, sso: true}, status: http.StatusAccepted},
+		{name: "GitHub App private reader with SSO", oauth: hostedCLITestOAuth{clientID: "Iv23liGitHubApp", privateRepository: true, appRepositoryAccess: true, sso: true}, noWrite: true, status: http.StatusForbidden},
+		{name: "GitHub App missing installation access", oauth: hostedCLITestOAuth{clientID: "Iv23liGitHubApp", privateRepository: true, sso: true}, status: http.StatusForbidden},
+		{name: "GitHub App missing writer evidence", oauth: hostedCLITestOAuth{clientID: "Iv23liGitHubApp", privateRepository: true, appRepositoryAccess: true, omitPermissions: true, sso: true}, status: http.StatusForbidden},
+		{name: "GitHub App missing assurance", oauth: hostedCLITestOAuth{clientID: "Iv23liGitHubApp", privateRepository: true, appRepositoryAccess: true}, status: http.StatusUnauthorized},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newHostedCLIFixtureWithOAuth(t, []string{"octocat"}, test.oauth)
+			fixture.mutex.Lock()
+			fixture.push = !test.noWrite
+			fixture.mutex.Unlock()
+			response := fixture.do(t, http.MethodPost, "/__cli_commands", hostedUpgradeRequest, true)
+			if response.Code != test.status {
+				t.Fatalf("enqueue = %d, want %d: %s", response.Code, test.status, response.Body.String())
+			}
+			page, err := fixture.queue.List(t.Context(), operational.CLICommandFilter{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantCommands := 0
+			if test.status == http.StatusAccepted {
+				wantCommands = 1
+			}
+			if len(page.Commands) != wantCommands {
+				t.Fatalf("queued %d commands, want %d", len(page.Commands), wantCommands)
+			}
+		})
 	}
 }
 
