@@ -35,8 +35,9 @@ func doctorCommand(version func(context.Context) (string, error), gh ghExecutor)
 		Long: `Run read-only installation checks from the control repository root.
 
 Checks GitHub CLI, gh-aw, GitHub authentication, and basic local cao.json
-structure and compiler pin. Authentication may contact GitHub. Each external
-check has a 15-second timeout. No files, secrets, or repository settings are changed.
+structure and compiler pin. Authentication may contact GitHub. External checks
+have at most 15 seconds each; the GitHub CLI version probe has five seconds.
+No files, secrets, or repository settings are changed.
 
 This does not repair SQLite snapshots or replace the full policy and workflow
 validation performed by gh cao validate. No Node.js runtime is required.`,
