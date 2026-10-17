@@ -260,7 +260,8 @@ backlog.
 The Go planner translates the hosted CAO package-update action into a native
 `gh-aw update`; it never invokes `cao.sh` or executes control-repository scripts.
 The executor runs only `gh` or the Go `gh-aw` CLI in the official digest-pinned
-gh-aw container by default, mounting only the per-command workspace and passing the
+gh-aw container by default, mounting only command-owned workspace and egress
+relay/socket resources and passing the
 single-use token through a temporary protected environment file. The broker
 revokes and rejects any token whose granted scope exceeds the request. Both
 processes append credential-free audit events (`server/internal/audit`) to the
@@ -273,7 +274,18 @@ provides the same queue and audit table without PostgreSQL.
 That SQLite development profile may explicitly select an alternative
 `ContainerLifecycle` adapter without changing admission or token authority.
 Docker remains the production default and keeps its local-default-context
-restriction. Apple Silicon development uses Apple's `container` CLI with the
+restriction. Production workloads use `--network none`; a private read-only
+Unix socket and SHA-256-verified, architecture-matched relay built from reviewed
+server source carry HTTPS CONNECT to an executor-owned exact-host proxy.
+Every DNS address is validated before numeric dialing, private GHES needs
+exact host/IP approval, and metadata/loopback/link-local reach stays denied.
+Policy and verified relay bytes are immutable for the executor lifetime.
+Missing production egress configuration fails startup; only SQLite Docker
+development with no egress settings retains the previous bridge mode.
+The proxy is bounded and canceled with its command; losing egress never proves
+workload termination or releases retained claims. No shared host-network
+configuration changes or new runtime providers are introduced.
+Apple Silicon development uses Apple's `container` CLI with the
 same pinned Linux image, a private VM, dropped capabilities, and an in-guest
 no-new-privileges bootstrap. Windows development uses Windows Sandbox and a
 separately SHA-256-pinned archive of Windows `gh`, `gh-aw`, and Git tools, not a

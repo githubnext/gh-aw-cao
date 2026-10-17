@@ -74,6 +74,24 @@ test("Coolify image is multi-stage, non-root, versioned, and health checked", as
   assert.match(dockerfile, /FROM dashboard-runtime AS final/);
 });
 
+test("Hosted CLI relay exports a separate source-bound static artifact", async () => {
+  const dockerfile = await text("server/Dockerfile");
+  const build = dockerfile.split("FROM server-build AS hosted-cli-relay-build\n")[1]
+    ?.split("FROM scratch AS hosted-cli-relay-artifact\n")[0];
+  assert.ok(build, "relay must reuse the pinned server build stage");
+  assert.match(build, /ARG REVISION/);
+  assert.ok(build.includes("grep -Eq '^[0-9a-f]{40}$'"));
+  assert.match(build, /CGO_ENABLED=0 GOOS=linux GOARCH="\$\{TARGETARCH\}"/);
+  assert.match(build, /\.\/cmd\/cao-cli-relay/);
+  assert.match(build, /sha256sum cao-cli-relay > cao-cli-relay\.sha256/);
+  assert.match(build, /"revision":"%s","platform":"linux\/%s","sha256":"%s"/);
+  for (const file of ["cao-cli-relay", "cao-cli-relay.sha256", "cao-cli-relay.json"]) {
+    assert.ok(dockerfile.includes(`COPY --from=hosted-cli-relay-build /out/${file} /${file}`));
+  }
+  assert.ok(dockerfile.trimEnd().endsWith("FROM dashboard-runtime AS final"),
+    "the relay export must not change the default dashboard image");
+});
+
 test("Coolify Compose builds the checked-out source with admission-only public service", async () => {
   const source = await text("server/coolify/compose.yml");
   const compose = parse(source);

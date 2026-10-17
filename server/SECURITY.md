@@ -765,6 +765,19 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   a stop request is not confirmation of termination. Recovery must confirm termination on
   the original daemon after the old executor and its requests have stopped.
   Output redaction applies before persistence.
+- **Production Docker egress**: startup requires an exact-host policy and the
+  reviewed, SHA-256-verified static Linux relay. Workloads use `--network none`;
+  clearing proxy variables cannot restore IP, UDP, or DNS reach. A private
+  per-command Unix socket and read-only relay (with no writable workspace alias)
+  expose only a bounded HTTPS CONNECT proxy. Every resolved address is validated
+  before numeric dialing; private GHES needs exact host/IP approval, never a
+  subnet, metadata, loopback, or link-local exception. This is destination
+  control, not TLS SNI or content inspection. Cancellation closes tunnels but
+  cannot settle an unconfirmed workload. Native development profiles are
+  unchanged; SQLite Docker alone retains its previous bridge mode when no
+  egress settings are supplied. See the
+  [production rollout contract](README.md#production-docker-egress-rollout)
+  for provenance, limits, compatibility, and real-runtime evidence requirements.
 - **Native development profiles**: only `execute-cli --sqlite` may explicitly
   select Apple container on Apple Silicon or Windows Sandbox on Windows.
   Apple uses the pinned Linux image, a private VM, resource limits, and a fixed
@@ -861,8 +874,9 @@ trail emitted no telemetry or trace correlation. Audit verification, anchors,
 export, OTLP audit logs, and hosted CLI telemetry address those findings.
 Recommended next steps, in priority order:
 
-1. Add a stronger gVisor or microVM boundary and restricted network egress
-   around the command container.
+1. Evaluate a stronger gVisor or microVM boundary against the deployment's
+   threat model; it is not a universal SOC 2 mandate. Production Docker egress
+   restriction is now required, with live boundary evidence collected during rollout.
 2. Keep the App private key in a KMS or HSM that signs the App JWT, and rotate
    it on a schedule.
 3. Use separate database roles: `INSERT` and `SELECT` on the audit table for

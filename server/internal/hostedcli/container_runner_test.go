@@ -115,7 +115,11 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 			if slices.Contains(p.Args, "--rm") {
 				t.Fatal("auto-removal would lose workload exit evidence")
 			}
-			if p.Args[slices.Index(p.Args, "--mount")+1] != "type=bind,src="+process.Workspace+",dst=/workspace,rw" {
+			resolvedWorkspace, err := filepath.EvalSymlinks(process.Workspace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if p.Args[slices.Index(p.Args, "--mount")+1] != "type=bind,src="+resolvedWorkspace+",dst=/workspace,rw" {
 				t.Fatal("unexpected host mount")
 			}
 			expected := append([]string{"--entrypoint", "/bin/sh", DefaultContainerImage, "-c", containerBootstrap, "cao-hosted-cli", process.Program}, process.Args...)
