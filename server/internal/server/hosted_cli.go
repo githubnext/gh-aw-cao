@@ -246,6 +246,20 @@ func (a *App) admit(ctx context.Context, session oauthSession, request hostedcli
 	return invocation, nil
 }
 
+// requireRepositoryWrite authorizes a mutation of an existing command: the
+// requester must have write access to its target repository.
+func (a *App) requireRepositoryWrite(request *http.Request, session oauthSession, id int64) error {
+	command, err := a.hostedCLI.queue.Detail(request.Context(), id)
+	if err != nil {
+		return err
+	}
+	if !a.requesterCanWrite(request.Context(), session.AccessToken, command.Repository) {
+		a.auditCLIRejected(request, session, command.ActionID, cliFailure(http.StatusForbidden, ""))
+		return cliFailure(http.StatusForbidden, "Write access to the target repository is required.")
+	}
+	return nil
+}
+
 func (a *App) requesterCanWrite(ctx context.Context, token, repository string) bool {
 	owner, name, _ := strings.Cut(repository, "/")
 	var payload struct {
@@ -380,6 +394,9 @@ func (a *App) hostedCLICancel(response http.ResponseWriter, request *http.Reques
 	id, err := commandID(request)
 	if err == nil {
 		err = readHostedCLIJSON(request, &payload)
+	}
+	if err == nil {
+		err = a.requireRepositoryWrite(request, session, id)
 	}
 	if err == nil {
 		var command operational.CLICommand

@@ -337,6 +337,11 @@ func TestHostedCLIListDetailCancelAndOutput(t *testing.T) {
 	if response := fixture.do(t, http.MethodPost, "/__cli_commands/1/retry", `{}`, true); response.Code != http.StatusConflict {
 		t.Fatalf("retry of queued command = %d", response.Code)
 	}
+	fixture.push = false
+	if response := fixture.do(t, http.MethodPost, "/__cli_commands/1/cancel", `{}`, true); response.Code != http.StatusForbidden {
+		t.Fatalf("cancel without write access = %d", response.Code)
+	}
+	fixture.push = true
 	cancel := fixture.do(t, http.MethodPost, "/__cli_commands/1/cancel", `{}`, true)
 	if cancel.Code != http.StatusOK || !strings.Contains(cancel.Body.String(), `"status":"canceled"`) {
 		t.Fatalf("cancel = %d: %s", cancel.Code, cancel.Body.String())

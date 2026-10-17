@@ -274,10 +274,34 @@ func (e *Executor) prefetch(ctx context.Context) {
 		if err != nil {
 			continue
 		}
+		// Never pre-mint a work token for a requester who cannot write.
+		if permission, err := e.verifyRequester(ctx, installationID, plan, command.Actor); err != nil || !canWrite(permission) {
+			continue
+		}
 		if err := e.broker.Prefetch(ctx, installationID, scopeFor(plan), needUntil); err != nil {
 			executorLog.Printf("token prefetch failed: %v", err)
 		}
 	}
+}
+
+// verifyRequester reads the requester's live collaborator permission with a
+// separate metadata:read token that is revoked before it returns, so no
+// work-scoped token exists until the requester is authorized.
+func (e *Executor) verifyRequester(ctx context.Context, installationID int64, plan Plan, actor string) (string, error) {
+	if actor == "" {
+		return "", errors.New("hosted CLI command has no requester")
+	}
+	scope := githubapp.TokenScope{Repositories: []string{plan.Name()}, Permissions: map[string]string{"metadata": "read"}}
+	token, err := e.broker.Acquire(ctx, installationID, scope, e.now().Add(time.Minute))
+	if err != nil {
+		return "", err
+	}
+	defer e.broker.Release(context.WithoutCancel(ctx), token)
+	return e.github.CollaboratorPermission(ctx, token, plan.Repository, actor)
+}
+
+func canWrite(permission string) bool {
+	return permission == "admin" || permission == "write"
 }
 
 func scopeFor(plan Plan) githubapp.TokenScope {
@@ -374,6 +398,18 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 	if err != nil {
 		return nil, operational.CLICommandFailed, "The GitHub App is not installed on the target repository."
 	}
+	// Authorize before issuing any work: the requester's live permission is
+	// checked before a work-scoped token is minted or taken from the pool.
+	permission, err := e.verifyRequester(runCtx, installationID, plan, command.Actor)
+	if err != nil {
+		return nil, operational.CLICommandFailed, "The requester's repository permission could not be verified."
+	}
+	if !canWrite(permission) {
+		_ = e.options.Audit.Record(ctx, "cli_command.permission_denied", audit.Denied,
+			slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
+			slog.String("repository", plan.Repository), slog.String("permission", permission))
+		return nil, operational.CLICommandFailed, "The requester no longer has write access to the target repository."
+	}
 	token, err := e.broker.Acquire(runCtx, installationID, scopeFor(plan), deadline.Add(time.Minute))
 	if err != nil {
 		return nil, operational.CLICommandFailed, "A scoped GitHub App token could not be created for the target repository."
@@ -381,17 +417,6 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 	// The credential is single-use: revoke it as soon as the work ends.
 	defer e.broker.Release(ctx, token)
 	sink.secret(token.Secret())
-
-	permission, err := e.github.CollaboratorPermission(runCtx, token, plan.Repository, command.Actor)
-	if err != nil {
-		return nil, operational.CLICommandFailed, "The requester's repository permission could not be verified."
-	}
-	if permission != "admin" && permission != "write" {
-		_ = e.options.Audit.Record(ctx, "cli_command.permission_denied", audit.Denied,
-			slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
-			slog.String("repository", plan.Repository), slog.String("permission", permission))
-		return nil, operational.CLICommandFailed, "The requester no longer has write access to the target repository."
-	}
 	identity, err := e.github.BotIdentity(runCtx)
 	if err != nil {
 		return nil, operational.CLICommandFailed, "The GitHub App identity could not be resolved."

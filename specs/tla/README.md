@@ -97,6 +97,8 @@ nothing.
 | `DisabledAdmitsNothing` | `--hosted-cli-actions` gate; `/__cli_commands` routes are not registered without the flag |
 | `AdmissionAuthorized` | `adminAuthorizedContext` step-up (`oauth.adminAssured`) and the requester's live repository permission in `hosted_cli.go` |
 | `ExecutionRechecked` | Executor collaborator-permission recheck before running in `hostedcli/executor.go` |
+| `WorkTokenOnlyAfterVerification` | `Executor.verifyRequester` checks write access with a revoked `metadata:read` token before `Acquire` or `Prefetch` issues any work-scoped token |
+| `CancelAuthorized` | `requireRepositoryWrite` in `hosted_cli.go` before cancel |
 | `TokenSingleUse`; `ReleasedNeverReused` | `hostedcli/broker.go` `Acquire`/`Release`: a token leaves the pool once and is revoked on release |
 | `TokenScopedToRepository` | Repository-scoped installation token minting in `githubapp/scoped_token.go` |
 | `HeldOnlyByActiveCommand`; `PoolBoundedAndUnused` | Broker pool bounds (`MaxPooled`, `MaxPooledPerScope`) and prefetch |

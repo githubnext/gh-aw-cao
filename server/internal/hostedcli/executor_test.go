@@ -27,6 +27,7 @@ type fakeMinter struct {
 	revoked    []string
 	ttl        time.Duration
 	failRevoke bool
+	scopes     []map[string]string
 }
 
 func newFakeMinter() *fakeMinter {
@@ -40,6 +41,7 @@ func (m *fakeMinter) MintScopedToken(_ context.Context, installationID int64, sc
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.next++
+	m.scopes = append(m.scopes, scope.Permissions)
 	value := fmt.Sprintf("ghs_fake%04d", m.next)
 	m.live[value] = true
 	return githubapp.NewScopedToken(value, installationID, time.Now().Add(m.ttl)), nil
@@ -681,6 +683,49 @@ func TestExecutorAuditsRevokedRequesterPermission(t *testing.T) {
 	}
 	if !strings.Contains(buffer.String(), `"event":"cli_command.permission_denied","outcome":"denied"`) {
 		t.Fatalf("permission denial must be audited: %s", buffer.String())
+	}
+}
+
+func (m *fakeMinter) workTokensMinted() int {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	count := 0
+	for _, permissions := range m.scopes {
+		if len(permissions) != 1 || permissions["metadata"] != "read" {
+			count++
+		}
+	}
+	return count
+}
+
+func TestExecutorVerifiesRequesterBeforeIssuingWorkTokens(t *testing.T) {
+	queue, minter := newFakeQueue(), newFakeMinter()
+	runner := &fakeRunner{}
+	startExecutorWith(t, queue, minter, fakeGitHub{permission: "read"}, runner, func(options *Options) {
+		options.Prefetch = 4
+	})
+	for range 3 {
+		command := queue.waitSettled(t, enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona"))
+		if command.Status != operational.CLICommandFailed {
+			t.Fatalf("read-only requester ran a command: %+v", command)
+		}
+	}
+	if minted := minter.workTokensMinted(); minted != 0 {
+		t.Fatalf("minted %d work-scoped tokens for a requester without write access", minted)
+	}
+	if len(runner.processes) != 0 || minter.liveCount() != 0 {
+		t.Fatal("verification tokens must be revoked and no process may start")
+	}
+}
+
+func TestExecutorVerifiesWithMetadataTokenBeforeWorkToken(t *testing.T) {
+	queue, minter := newFakeQueue(), newFakeMinter()
+	startExecutor(t, queue, minter, fakeGitHub{permission: "write"}, &fakeRunner{})
+	queue.waitSettled(t, enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona"))
+	minter.mutex.Lock()
+	defer minter.mutex.Unlock()
+	if len(minter.scopes) < 2 || minter.scopes[0]["metadata"] != "read" || len(minter.scopes[0]) != 1 {
+		t.Fatalf("first token must be the metadata:read verification token: %v", minter.scopes)
 	}
 }
 

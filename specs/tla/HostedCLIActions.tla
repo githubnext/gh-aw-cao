@@ -6,10 +6,12 @@
 (* operator enabled the mode, the requester is a configured administrator  *)
 (* whose interactive OAuth authorization is fresh and carries a verified   *)
 (* 2FA or SSO factor, and the requester's own token can write the single   *)
-(* target repository. execute-cli later rechecks write access with a       *)
-(* single-use installation token scoped to that repository, then revokes  *)
-(* the token as soon as the command ends. Pre-minted tokens are bounded,   *)
-(* scoped, and handed out at most once.                                    *)
+(* target repository. execute-cli rechecks write access with a separate  *)
+(* metadata-only token before it issues any work token, then uses a       *)
+(* single-use installation token scoped to that repository and revokes    *)
+(* it as soon as the command ends. Pre-minted tokens are bounded, scoped, *)
+(* minted only for verified writers, and handed out at most once.         *)
+(* Cancellation also requires write access to the command's repository.   *)
 (***************************************************************************)
 EXTENDS Integers, FiniteSets
 
@@ -60,10 +62,13 @@ TypeOK ==
                              token : Tokens \cup {NoToken},
                              admittedFresh : BOOLEAN,
                              writeAtAdmission : BOOLEAN,
-                             writeAtStart : BOOLEAN]]
+                             writeAtStart : BOOLEAN,
+                             verified : BOOLEAN,
+                             cancelWrite : BOOLEAN]]
     /\ tok \in [Tokens -> [state : TokenStates,
                            repo : Repos \cup {NoRepo},
-                           holder : Commands \cup {NoCommand}]]
+                           holder : Commands \cup {NoCommand},
+                           vetted : BOOLEAN]]
     /\ usedBy \in [Tokens -> SUBSET Commands]
 
 Init ==
@@ -72,8 +77,10 @@ Init ==
     /\ canWrite \in [Users -> [Repos -> BOOLEAN]]
     /\ cmd = [c \in Commands |-> [state |-> "absent", actor |-> NoUser, repo |-> NoRepo,
                                   token |-> NoToken, admittedFresh |-> FALSE,
-                                  writeAtAdmission |-> FALSE, writeAtStart |-> FALSE]]
-    /\ tok = [t \in Tokens |-> [state |-> "unminted", repo |-> NoRepo, holder |-> NoCommand]]
+                                  writeAtAdmission |-> FALSE, writeAtStart |-> FALSE,
+                                  verified |-> FALSE, cancelWrite |-> FALSE]]
+    /\ tok = [t \in Tokens |-> [state |-> "unminted", repo |-> NoRepo, holder |-> NoCommand,
+                                vetted |-> FALSE]]
     /\ usedBy = [t \in Tokens |-> {}]
 
 \* Administrator authority requires a configured login plus a fresh,
@@ -128,45 +135,67 @@ Admit(u, c, r) ==
     /\ cmd' = [cmd EXCEPT ![c] = [state |-> "queued", actor |-> u, repo |-> r,
                                   token |-> NoToken, admittedFresh |-> AdminAssured(u),
                                   writeAtAdmission |-> canWrite[u][r],
-                                  writeAtStart |-> FALSE]]
+                                  writeAtStart |-> FALSE, verified |-> FALSE,
+                                  cancelWrite |-> FALSE]]
     /\ UNCHANGED <<now, session, canWrite, tok, usedBy>>
 
-\* Cancellation is an administrator mutation and also requires step-up.
+\* Cancellation is an administrator mutation: it requires step-up and the
+\* requester's write access to the command's repository.
 Cancel(u, c) ==
     /\ Enabled
     /\ AdminAssured(u)
     /\ cmd[c].state \in {"queued", "running"}
-    /\ cmd' = [cmd EXCEPT ![c].state = "canceled"]
+    /\ canWrite[u][cmd[c].repo]
+    /\ cmd' = [cmd EXCEPT ![c].state = "canceled", ![c].cancelWrite = canWrite[u][cmd[c].repo]]
     /\ UNCHANGED <<now, session, canWrite, tok, usedBy>>
 
 -----------------------------------------------------------------------------
 (* execute-cli token broker and executor *)
 
-Prefetch(t, r) ==
+\* Prefetch pre-mints a work token only for a queued command whose requester
+\* currently has write access, checked with a metadata-only token that is
+\* revoked within the step and therefore not modeled as a work token.
+Prefetch(t, c) ==
     /\ tok[t].state = "unminted"
     /\ Cardinality(Pooled) < MaxPool
-    /\ \E c \in Commands : cmd[c].state = "queued" /\ cmd[c].repo = r
-    /\ tok' = [tok EXCEPT ![t] = [state |-> "pooled", repo |-> r, holder |-> NoCommand]]
+    /\ cmd[c].state = "queued"
+    /\ canWrite[cmd[c].actor][cmd[c].repo]
+    /\ tok' = [tok EXCEPT ![t] = [state |-> "pooled", repo |-> cmd[c].repo, holder |-> NoCommand,
+                                  vetted |-> canWrite[cmd[c].actor][cmd[c].repo]]]
     /\ UNCHANGED <<now, session, canWrite, cmd, usedBy>>
 
-\* Acquire takes a pooled token for the same scope or mints one on demand.
+\* Before issuing any work, the executor rechecks the requester's live write
+\* permission with a metadata-only token. A command that fails the check never
+\* receives a work token.
+Verify(c) ==
+    /\ cmd[c].state = "queued"
+    /\ ~cmd[c].verified
+    /\ cmd' = [cmd EXCEPT ![c].state = IF canWrite[cmd[c].actor][cmd[c].repo]
+                                       THEN "queued" ELSE "failed",
+                          ![c].verified = canWrite[cmd[c].actor][cmd[c].repo],
+                          ![c].writeAtStart = canWrite[cmd[c].actor][cmd[c].repo]]
+    /\ UNCHANGED <<now, session, canWrite, tok, usedBy>>
+
+\* Acquire takes a pooled token for the same scope or mints one on demand,
+\* only after Verify succeeded.
 Acquire(c, t) ==
     /\ cmd[c].state = "queued"
+    /\ cmd[c].verified
     /\ cmd[c].token = NoToken
     /\ \/ tok[t].state = "pooled" /\ tok[t].repo = cmd[c].repo
        \/ tok[t].state = "unminted"
-    /\ tok' = [tok EXCEPT ![t] = [state |-> "held", repo |-> cmd[c].repo, holder |-> c]]
+    /\ tok' = [tok EXCEPT ![t] = [state |-> "held", repo |-> cmd[c].repo, holder |-> c,
+                                  vetted |-> IF tok[t].state = "pooled" THEN tok[t].vetted
+                                             ELSE cmd[c].verified]]
     /\ cmd' = [cmd EXCEPT ![c].token = t]
     /\ usedBy' = [usedBy EXCEPT ![t] = @ \cup {c}]
     /\ UNCHANGED <<now, session, canWrite>>
 
-\* The executor rechecks the requester's live write permission.
 Start(c) ==
     /\ cmd[c].state = "queued"
+    /\ cmd[c].verified
     /\ cmd[c].token # NoToken
-    /\ cmd' = [cmd EXCEPT ![c].state = IF canWrite[cmd[c].actor][cmd[c].repo]
-                                       THEN "running" ELSE "failed",
-                          ![c].writeAtStart = canWrite[cmd[c].actor][cmd[c].repo]]
+    /\ cmd' = [cmd EXCEPT ![c].state = "running"]
     /\ UNCHANGED <<now, session, canWrite, tok, usedBy>>
 
 Finish(c, outcome) ==
@@ -202,9 +231,10 @@ Next ==
                         \/ \E r \in Repos : LoseWrite(u, r)
     \/ \E u \in Users, c \in Commands, r \in Repos : Admit(u, c, r)
     \/ \E u \in Users, c \in Commands : Cancel(u, c)
-    \/ \E t \in Tokens, r \in Repos : Prefetch(t, r)
+    \/ \E t \in Tokens, c \in Commands : Prefetch(t, c)
     \/ \E c \in Commands, t \in Tokens : Acquire(c, t)
-    \/ \E c \in Commands : \/ Start(c)
+    \/ \E c \in Commands : \/ Verify(c)
+                           \/ Start(c)
                            \/ \E o \in {"succeeded", "failed"} : Finish(c, o)
                            \/ \E ok \in BOOLEAN : Release(c, ok)
     \/ \E t \in Tokens : RetryRevoke(t) \/ RevokeIdle(t)
@@ -233,6 +263,16 @@ AdmissionAuthorized ==
 \* Nothing runs or succeeds without the executor's live write recheck.
 ExecutionRechecked ==
     \A c \in Commands : cmd[c].state \in {"running", "succeeded"} => cmd[c].writeAtStart
+
+\* No work token reaches a command before its requester's write access was
+\* verified, and every minted work token was vetted for a verified writer.
+WorkTokenOnlyAfterVerification ==
+    /\ \A c \in Commands : cmd[c].token # NoToken => cmd[c].verified /\ cmd[c].writeAtStart
+    /\ \A t \in Tokens : tok[t].state # "unminted" => tok[t].vetted
+
+\* Only a requester with write access to the repository can cancel.
+CancelAuthorized ==
+    \A c \in Commands : cmd[c].state = "canceled" => cmd[c].cancelWrite
 
 \* A token is handed to at most one command, ever.
 TokenSingleUse ==
@@ -263,6 +303,8 @@ Safety ==
     /\ DisabledAdmitsNothing
     /\ AdmissionAuthorized
     /\ ExecutionRechecked
+    /\ WorkTokenOnlyAfterVerification
+    /\ CancelAuthorized
     /\ TokenSingleUse
     /\ TokenScopedToRepository
     /\ HeldOnlyByActiveCommand

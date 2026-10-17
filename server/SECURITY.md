@@ -630,9 +630,12 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   `admin`, `maintain`, or `push` permission with their OAuth token. The web
   process never holds the App private key.
 - **Execution** happens in the `execute-cli` process, which holds the single
-  queue lease. Other replicas stand by. Before running, it re-plans the
-  command and rechecks the actor's live `admin` or `write` collaborator
-  permission. Step-up is not rechecked at run time: admission is the
+  queue lease. Other replicas stand by. Before issuing any work, it re-plans
+  the command and rechecks the actor's live `admin` or `write` collaborator
+  permission with a separate `metadata: read` token that is revoked at once.
+  No work-scoped token is minted, pooled, or pre-minted for a requester who
+  fails that check, and cancel also requires the requester's write access to
+  the command's repository. Step-up is not rechecked at run time: admission is the
   authorization point, and the recheck and command deadline (default 15
   minutes) bound execution.
 - **Tokens** are installation tokens minted for exactly one repository with

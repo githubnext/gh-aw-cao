@@ -115,6 +115,13 @@ request on the first failure:
 
 List, detail, output, cancel, and retry routes MUST require the same
 step-up. Retry MUST create a new admission subject to the same checks.
+Cancel MUST confirm, with the requester's own OAuth token, write access to
+the command's target repository before changing the command.
+
+The backend MUST validate the requester's write permission on the target
+repository before it issues any work: before a command is queued, retried,
+or canceled, before a work-scoped token is pre-minted or acquired, and before
+a subprocess starts.
 
 ## 5. Token broker
 
@@ -146,8 +153,12 @@ step-up. Retry MUST create a new admission subject to the same checks.
 1. The executor MUST hold the single queue lease. Additional replicas stand by.
 2. Before running, the executor MUST re-plan the command, require a matching
    `Actor` and `Repository`, and recheck that the actor still has `admin` or
-   `write` collaborator permission on the target repository. If the recheck
-   fails, the command MUST fail without running.
+   `write` collaborator permission on the target repository. The recheck MUST
+   use a separate installation token scoped to the target repository with
+   only `metadata: read`, which is revoked as soon as the check returns. No
+   work-scoped token may be minted, taken from the pool, or pre-minted for a
+   command until its requester passes this check. If the recheck fails, the
+   command MUST fail without running and without a work token.
 3. The executor does not recheck administrator step-up at run time. Admission
    is the authorization point. The live permission recheck and the command
    deadline (default 15 minutes) bound execution.
@@ -280,6 +291,11 @@ this specification or the corresponding implementation changes.
 - `server/internal/hostedcli`: broker single use, revocation and retry, pool
   bounds, executor recheck, isolation, redaction, and audit events without
   secrets.
+- `server/internal/hostedcli/executor_test.go`
+  (`TestExecutorVerifiesRequesterBeforeIssuingWorkTokens`,
+  `TestExecutorVerifiesWithMetadataTokenBeforeWorkToken`) and
+  `server/internal/server/hosted_cli_test.go`: requesters without write access
+  never receive a work-scoped or pre-minted token, and cannot cancel.
 - `server/internal/githubapp/scoped_token_test.go`: over-broad grants are
   revoked and rejected, and `hashed_token` matches GitHub's format.
 - `server/internal/audit`: event shape, store mapping, failure mirroring, and
@@ -352,5 +368,7 @@ priority order:
   contract.
 - Added granted-scope verification and the audit trail.
 - Added the loopback-only SQLite store for local debugging.
+- Validate requester write permission before issuing any work, including
+  prefetch and cancel, with a metadata-only verification token.
 - Added audit verification with external anchors, audit export, OTLP audit
   logs, trace correlation, and hosted CLI telemetry.
