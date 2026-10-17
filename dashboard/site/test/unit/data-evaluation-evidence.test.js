@@ -1,14 +1,19 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { parseUnifiedSessionDocument } from '../../src/data/adapters/unified-session.js';
 import { parseExperimentAssignments, experimentAssignmentArtifact } from '../../src/data/adapters/experiment-evidence.js';
 import { adaptCachedGhAwJsonl, adaptGhAwLogs } from '../../src/data/adapters/gh-aw-logs.js';
 import { normalize } from '../../src/data/normalize/index.js';
 import { relationshipErrors } from '../../src/data/model/schema.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../../src/data/ingest/coordinator.js';
-import { readCollections } from '../../src/data/storage/indexeddb.js';
+import { readCollections, readCanonicalBatch } from '../../src/data/storage/indexeddb.js';
+import { createSqliteIndexedDB, SqliteIDBKeyRange } from '../../src/data/storage/sqlite-indexeddb.js';
+import { renderDashboard, disposeDashboard } from '../../src/presenter.js';
+import { resetSourceStore } from '../../src/source-store.js';
+import { DataRequestWorker } from '../data-request-worker.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/evaluation-evidence-contract.json' with { type: 'json' };
@@ -30,6 +35,22 @@ const cached = () => `${JSON.stringify({
     cao_unified_session: projection()
   }
 })}\n`;
+/** @param {{ path: string, content: string }[]} files */
+const artifactInput = (files) => ({
+  observedAt: '2026-10-15T10:01:00Z',
+  repository: { githubId: 1, owner: 'octo', name: 'api' },
+  workflow: { githubId: 2, name: 'Worker', path: '.github/workflows/worker.lock.yml' },
+  run: { githubRunId: 303, attempt: 1, createdAt: '2026-10-15T10:00:00Z', url: 'https://github.com/octo/api/actions/runs/303' },
+  files
+});
+const evalArtifact = {
+  path: 'usage/evals.jsonl',
+  content: [
+    { id: 'quality', answer: 'YES', runid: '303', timestamp: '2026-10-15T10:00:30Z', prompt: 'PRIVATE_PROMPT' },
+    { id: 'correctness', answer: 'NO', runId: '303', runAttempt: 1 },
+    { id: 'uncertain', answer: 'UNKNOWN' }
+  ].map((row) => JSON.stringify(row)).join('\n')
+};
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -44,6 +65,119 @@ describe('unified evaluation evidence', () => {
       { path: 'experiment/assignments.json', content: '{}' }
     ])).toThrow('Multiple experiment assignment artifacts found for one run');
     expect(parseExperimentAssignments('{}', 'experiment/assignments.json')).toEqual({ assignments: {} });
+  });
+
+  it.each([false, true])('ingests standalone eval artifacts with a session lacking evals: %s', (withSession) => {
+    const files = [evalArtifact];
+    if (withSession) files.push({
+      path: 'usage/aw_session.jsonl', content: '{"type":"session.format","data":{"version":1}}\n'
+    });
+    const batch = normalize(adaptGhAwLogs(artifactInput(files)).observations);
+    expect(batch.evalObservations?.map((row) => row.evalResult).sort()).toEqual(['NO', 'UNKNOWN', 'YES']);
+    expect(batch.graders).toEqual([]);
+    expect(batch.graderObservations).toEqual([]);
+    expect(batch.audits.filter((row) => row.type === 'eval.result')).toHaveLength(3);
+    expect(batch.audits.find((row) => row.type === 'eval.result' && row.evalId === 'quality')?.payloadRef)
+      .toBe('usage/evals.jsonl#L1');
+    expect(relationshipErrors(batch)).toEqual([]);
+    expect(JSON.stringify(batch)).not.toContain('PRIVATE_PROMPT');
+  });
+
+  it.each([false, true])('ingests standalone experiments and evals together with an optional session: %s', (withSession) => {
+    const files = [
+      evalArtifact,
+      { path: 'usage/experiment/assignments.json', content: '{"prompt":"candidate"}' }
+    ];
+    if (withSession) files.push({
+      path: 'usage/aw_session.jsonl', content: '{"type":"session.format","data":{"version":1}}\n'
+    });
+    const batch = normalize(adaptGhAwLogs(artifactInput(files)).observations);
+    expect(batch.experiments?.map((row) => row.name)).toEqual(['prompt']);
+    expect(batch.experimentAssignments).toMatchObject([{ variant: 'candidate', runId: batch.runs[0].id }]);
+    expect(batch.evalObservations?.map((row) => row.evalResult).sort()).toEqual(['NO', 'UNKNOWN', 'YES']);
+    expect(relationshipErrors(batch)).toEqual([]);
+  });
+
+  it('prefers session evals without parsing a conflicting standalone artifact', () => {
+    const batch = normalize(adaptGhAwLogs(artifactInput([
+      { path: 'usage/aw_session.jsonl', content },
+      { path: 'usage/evals.jsonl', content: 'PRIVATE_INVALID_JSON' }
+    ])).observations);
+    expect(batch.evals?.map((row) => row.name)).toEqual(['quality', 'uncertain']);
+    expect(batch.evalObservations).toHaveLength(2);
+    expect(relationshipErrors(batch)).toEqual([]);
+  });
+
+  it('rejects conflicting run identities and attempts without inferring eval answers', () => {
+    const batch = normalize(adaptGhAwLogs(artifactInput([{
+      path: 'evals/evals.jsonl',
+      content: [
+        { id: 'other-run', answer: 'YES', runid: '404' },
+        { id: 'conflict', answer: 'NO', runId: '303', run_id: '404' },
+        { id: 'other-attempt', answer: 'YES', run_attempt: 2 },
+        { id: 'invalid', answer: 'MAYBE' }
+      ].map((row) => JSON.stringify(row)).join('\n')
+    }])).observations);
+    expect(batch.evals).toEqual([]);
+    expect(batch.evalObservations).toEqual([]);
+    expect(batch.audits.filter((row) => row.type === 'workflow_run_eval_unclassified')).toHaveLength(4);
+    expect(relationshipErrors(batch)).toEqual([]);
+    expect(() => adaptGhAwLogs(artifactInput([evalArtifact, {
+      ...evalArtifact, path: 'evals/evals.jsonl'
+    }]))).toThrow('Multiple eval artifacts');
+  });
+
+  it.each(['browser', 'sqlite'])('persists artifact evals idempotently and renders its worker payload: %s', async (backend) => {
+    const directory = backend === 'sqlite' ? mkdtempSync(join(tmpdir(), 'cao-evals-')) : null;
+    if (directory) onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
+    const filename = directory ? join(directory, 'evals.sqlite') : null;
+    const indexedDB = filename ? createSqliteIndexedDB(filename) : new IDBFactory();
+    vi.stubGlobal('indexedDB', indexedDB);
+    vi.stubGlobal('IDBKeyRange', filename ? SqliteIDBKeyRange : IDBKeyRange);
+    vi.stubGlobal('Worker', DataRequestWorker);
+    const input = artifactInput([evalArtifact]);
+    const options = { now: Date.parse('2026-10-16T00:00:00Z') };
+    await ingestGhAwLogs(indexedDB, input, options);
+    await ingestGhAwLogs(indexedDB, input, options);
+    const persisted = filename ? createSqliteIndexedDB(filename) : indexedDB;
+    vi.stubGlobal('indexedDB', persisted);
+    const batch = await readCanonicalBatch(persisted);
+    expect(batch.evals).toHaveLength(3);
+    expect(batch.evalObservations).toHaveLength(3);
+    expect(batch.evalObservations?.every((row) => batch.audits.some((audit) => audit.id === row.auditId))).toBe(true);
+    expect(relationshipErrors(batch)).toEqual([]);
+    const dashboard = authoritativeDashboard.dashboard;
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      await processDataRequest({
+        operation: 'query-canonical-dashboard', sourceNames: [contract.evals.query],
+        pageId: 'evals', viewId: contract.evals.view,
+        context: { queries: dashboard.queries, pages: dashboard.pages }
+      })
+    );
+    expect(Object.values(sources).some((source) => source.rows.length === 3)).toBe(true);
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'evals');
+    const rendered = renderDashboard({
+      document: { ...authoritativeDashboard, dashboard: {
+        ...dashboard, pages: [page], navigation: [{ label: 'Evidence', pages: ['evals'] }]
+      } },
+      sources
+    });
+    document.body.append(rendered);
+    try {
+      const view = rendered.querySelector(`[data-view-id="${contract.evals.view}"]`);
+      expect(view).not.toBeNull();
+      expect(view?.textContent).toContain('quality');
+      expect(view?.textContent).toContain('correctness');
+      expect(view?.textContent).toContain('uncertain');
+      expect(view?.textContent).toContain('UNKNOWN');
+      expect(view?.textContent).toContain('.github/workflows/worker.md');
+      expect(view?.textContent).toContain('api');
+      expect(view?.querySelector('a[href="https://github.com/octo/api/actions/runs/303"]')).not.toBeNull();
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+      resetSourceStore();
+    }
   });
 
   it('retains untimed typed evidence, enriches grader metadata and never stores private bodies', () => {
@@ -205,7 +339,9 @@ describe('unified evaluation evidence', () => {
     expect(sources[contract.graders.scatter.query].rows).toMatchObject([
       { grader: 'quality', value: 0.93, 'max-grader-value': 0.93, 'normalized-value': 1 }
     ]);
-    expect(sources[contract.evals.query].rows).toMatchObject([{ eval: 'quality', 'eval-result': 'YES' }]);
+    expect(sources[contract.evals.query].rows).toMatchObject([
+      { eval: 'quality', 'eval-result': 'YES' }, { eval: 'uncertain', 'eval-result': 'UNKNOWN' }
+    ]);
     expect(sources['eval-observations'].rows).toHaveLength(2);
     expect(sources['eval-observations'].rows.every((row) => typeof row['audit-id'] === 'string')).toBe(true);
     expect(sources['experiment-assignment-coverage'].rows).toMatchObject([{ experiment: 'prompt', assignments: 1 }]);

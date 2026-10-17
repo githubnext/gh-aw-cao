@@ -1599,6 +1599,11 @@ Eval audit identities MUST survive browser, SQLite and hosted PostgreSQL
 projection and be exposed as `audit-id` by the eval-observations query.
 Grader values and units MUST remain distinct from YES/NO eval answers in
 dashboard views; a grader score or pass/fail status does not create an Eval.
+Direct artifact ingestion SHALL apply the same classification and identity
+checks to supplied `evals.jsonl` records when session eval evidence is absent.
+The Evals observation ledger SHALL display retained `YES`, `NO`, and `UNKNOWN`
+answers distinctly, preserving run evidence links and observation times rather
+than hiding unknown answers behind a binary-only filter.
 
 The unified session is also the preferred source for every supported telemetry
 family: agent lifecycle and diagnostics, MCP calls/RPC/configuration, firewall

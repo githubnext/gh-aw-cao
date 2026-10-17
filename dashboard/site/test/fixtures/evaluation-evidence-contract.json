@@ -26,8 +26,9 @@
     }
   },
   "evals": {
-    "query": "eval-yes-no-status",
+    "query": "eval-status-ledger",
     "view": "evals-statuses",
+    "runDisplay": "run-link",
     "fields": ["workflow", "eval", "repository", "eval-result", "observed-at", "run"]
   }
 }
