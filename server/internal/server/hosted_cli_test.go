@@ -139,7 +139,7 @@ func (m *memoryAuditLog) ListAudit(context.Context, operational.AuditFilter) ([]
 	return append([]operational.AuditEvent(nil), m.events...), nil
 }
 
-func (m *memoryAuditLog) VerifyAudit(context.Context) (operational.AuditVerification, error) {
+func (m *memoryAuditLog) VerifyAudit(context.Context, ...operational.AuditAnchor) (operational.AuditVerification, error) {
 	return operational.AuditVerification{}, nil
 }
 

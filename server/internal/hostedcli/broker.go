@@ -7,6 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -86,16 +89,20 @@ type Broker struct {
 	pending []githubapp.ScopedToken
 	closed  bool
 	stats   BrokerStats
+
+	unobserve func()
 }
 
 // NewBroker constructs a token broker.
 func NewBroker(minter Minter, options BrokerOptions) *Broker {
 	options = options.resolve()
-	return &Broker{
+	broker := &Broker{
 		minter: minter, options: options,
 		mints: make(chan struct{}, options.MaxConcurrentMints),
 		pool:  map[string][]pooledToken{},
 	}
+	broker.unobserve = observeBroker(broker)
+	return broker
 }
 
 // ErrBrokerClosed reports use after Close.
@@ -119,6 +126,7 @@ func (b *Broker) Acquire(ctx context.Context, installationID int64, scope github
 			b.dropEmpty(key)
 			b.stats.Reused++
 			b.mutex.Unlock()
+			countToken(ctx, tokenReuse, nil)
 			b.revokeAll(ctx, stale)
 			brokerLog.Printf("handed out pooled scoped token")
 			return entry.token, nil
@@ -159,6 +167,7 @@ func (b *Broker) Prefetch(ctx context.Context, installationID int64, scope githu
 		!token.ExpiresAt.After(needUntil) {
 		b.stats.Discards++
 		b.mutex.Unlock()
+		countToken(ctx, tokenDiscard, nil)
 		b.Release(ctx, token)
 		return nil
 	}
@@ -213,6 +222,10 @@ func (b *Broker) Maintain(ctx context.Context) {
 // Close revokes every pooled and pending token and rejects further use.
 func (b *Broker) Close(ctx context.Context) {
 	b.mutex.Lock()
+	if b.closed {
+		b.mutex.Unlock()
+		return
+	}
 	b.closed = true
 	var revoke []githubapp.ScopedToken
 	for _, entries := range b.pool {
@@ -225,6 +238,9 @@ func (b *Broker) Close(ctx context.Context) {
 	b.pending = nil
 	b.mutex.Unlock()
 	b.revokeAll(ctx, revoke)
+	if b.unobserve != nil {
+		b.unobserve()
+	}
 }
 
 // Stats returns broker counters.
@@ -237,14 +253,23 @@ func (b *Broker) Stats() BrokerStats {
 	return stats
 }
 
-func (b *Broker) mint(ctx context.Context, installationID int64, scope githubapp.TokenScope) (githubapp.ScopedToken, error) {
+func (b *Broker) mint(ctx context.Context, installationID int64, scope githubapp.TokenScope) (token githubapp.ScopedToken, err error) {
+	ctx, span := tracer().Start(ctx, spanTokenMint, trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attribute.Int64(attributeInstall, installationID), attribute.StringSlice(attributeRepository, scope.Repositories)))
+	defer func() {
+		if err == nil {
+			span.SetAttributes(attribute.String(attributeHashed, token.Hashed()))
+		}
+		countToken(ctx, tokenMint, err)
+		endSpan(span, err)
+	}()
 	select {
 	case b.mints <- struct{}{}:
 	case <-ctx.Done():
 		return githubapp.ScopedToken{}, ctx.Err()
 	}
 	defer func() { <-b.mints }()
-	token, err := b.minter.MintScopedToken(ctx, installationID, scope)
+	token, err = b.minter.MintScopedToken(ctx, installationID, scope)
 	if err != nil {
 		return githubapp.ScopedToken{}, err
 	}
@@ -268,7 +293,11 @@ func (b *Broker) revoke(ctx context.Context, token githubapp.ScopedToken) error 
 	// Revocation must outlive a canceled command context.
 	revokeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), b.options.RevokeTimeout)
 	defer cancel()
+	revokeCtx, span := tracer().Start(revokeCtx, spanTokenRevoke, trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attribute.String(attributeHashed, token.Hashed())))
 	err := b.minter.RevokeToken(revokeCtx, token)
+	countToken(revokeCtx, tokenRevoke, err)
+	endSpan(span, err)
 	b.mutex.Lock()
 	if err != nil {
 		b.stats.RevocationFailures++

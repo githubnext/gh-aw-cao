@@ -1,8 +1,9 @@
 // Package audit records append-only, structured security audit events for
 // administrator and hosted CLI operations. The authoritative trail is the
 // operational store's tamper-evident audit table; every event is also mirrored
-// as a JSON line carrying a stable "audit" marker so log pipelines can route it
-// to a SIEM. Events never contain credentials; installation tokens appear only
+// as a JSON line carrying a stable "audit" marker and exported as an
+// OpenTelemetry log record named cao.audit.<event>, so log pipelines can route
+// it to a SIEM. Events carry the active trace_id and span_id. Events never contain credentials; installation tokens appear only
 // as GitHub's hashed_token form so they correlate with the GitHub audit log.
 package audit
 
@@ -79,11 +80,14 @@ func (l *Logger) Record(ctx context.Context, event, outcome string, attrs ...slo
 	if l == nil {
 		return nil
 	}
+	attrs = append(attrs, traceAttrs(ctx)...)
+	started := time.Now()
 	var stored operational.AuditEvent
 	var storeErr error
 	if l.store != nil {
 		stored, storeErr = l.store.AppendAudit(context.WithoutCancel(ctx), toEvent(event, outcome, attrs))
 	}
+	observe(context.WithoutCancel(ctx), event, outcome, l.store != nil && storeErr == nil, stored.Sequence, started, l.store != nil, attrs)
 	if l.logger != nil {
 		fields := make([]slog.Attr, 0, len(attrs)+5)
 		fields = append(fields, slog.String("audit", "cao"), slog.String("event", event), slog.String("outcome", outcome))

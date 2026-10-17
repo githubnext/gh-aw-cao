@@ -684,6 +684,22 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   format, so CAO events join GitHub's record of the App's actions. Forward
   the mirror to write-once SIEM storage when you need protection against a
   database superuser rewriting the whole chain.
+- **Audit verification**: run `cao-dashboard audit verify` on a schedule. It
+  recomputes the chain, prints the head `lastSequence` and `lastHash`, and
+  records `audit.verified` or `audit.verify_failed` with that head, so heads
+  also reach the mirror and OTLP. Keep recent heads in write-once storage and
+  pass them back with `--anchor SEQUENCE:HASH`. Anchors detect a consistent
+  rewrite of the whole chain and a rollback to an earlier head, which the
+  chain alone cannot detect. `cao-dashboard audit export` writes rows as JSON
+  Lines for evidence requests.
+- **Telemetry**: audit events are also OTLP log records (`cao.audit.<event>`)
+  with the active `trace_id` and `span_id`, which are also stored in the row.
+  Command and token spans and metrics carry repository, command ID, and
+  `hashed_token`, never tokens, output, or actor logins. Subprocesses receive
+  only `TRACEPARENT`, never exporter headers. Alert on sustained
+  `cao_hostedcli.token.pending_revocations`, on
+  `cao_audit.event.count{stored="false"}`, on `audit.verify_failed`, and on
+  spikes in `admin.denied`.
 - **SQLite debug store**: `--hosted-cli-sqlite` and `execute-cli --sqlite`
   replace PostgreSQL with one local SQLite file (mode `0600`) for debugging.
   The server refuses it unless it listens on loopback. Its append-only
@@ -692,6 +708,32 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
 
 The executor's authorization and token lifecycle are model-checked in
 [`specs/tla/HostedCLIActions.tla`](../specs/tla/README.md#hosted-cli-actions-model).
+
+### Operational security review
+
+A SecOps, DevOps, and ServerOps review of hosted CLI actions found that the
+hash chain was never verified in operation, that no external anchor protected
+against a whole-chain rewrite, and that the executor, token broker, and audit
+trail emitted no telemetry or trace correlation. Audit verification, anchors,
+export, OTLP audit logs, and hosted CLI telemetry address those findings.
+Recommended next steps, in priority order:
+
+1. Run each command in a disposable sandbox (container or gVisor) as a
+   separate OS user without access to the App key or database credentials.
+2. Keep the App private key in a KMS or HSM that signs the App JWT, and rotate
+   it on a schedule.
+3. Use separate database roles: `INSERT` and `SELECT` on the audit table for
+   the web and executor processes, retention only for a maintenance role.
+4. Forward audit records to write-once storage or a SIEM, and schedule
+   `audit verify` with external anchors.
+5. Propagate the admission trace context into the queued command.
+6. Expose executor liveness and readiness that reflect store, App, and
+   revocation health.
+
+For SOC 2 and ISO 27001 evidence, the audit table and its verification
+results cover logical access (CC6.1, A.5.15), privileged access (CC6.3,
+A.8.2), change control for reviewed control code (CC8.1, A.8.32), and
+monitoring (CC7.2, A.8.15, A.8.16).
 
 ## Secrets and logging
 

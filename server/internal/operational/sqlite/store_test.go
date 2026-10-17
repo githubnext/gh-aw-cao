@@ -260,3 +260,42 @@ func TestAuditRetentionKeepsVerifiableSuffix(t *testing.T) {
 		t.Fatalf("retention marker left behind: %d, %v", markers, err)
 	}
 }
+
+func TestAuditAnchorsDetectRewriteAndRollback(t *testing.T) {
+	ctx := t.Context()
+	store := openTest(t, filepath.Join(t.TempDir(), "cao.sqlite"))
+	for range 3 {
+		if _, err := store.AppendAudit(ctx, operational.AuditEvent{Event: "token.minted", Outcome: "success"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	head, err := store.VerifyAudit(ctx)
+	if err != nil || head.LastSequence != 3 || len(head.LastHash) != 64 {
+		t.Fatalf("head = %+v, %v", head, err)
+	}
+	anchor := operational.AuditAnchor{Sequence: head.LastSequence, Hash: head.LastHash}
+	if result, err := store.VerifyAudit(ctx, anchor); err != nil || result.AnchorsChecked != 1 {
+		t.Fatalf("anchored verify = %+v, %v", result, err)
+	}
+	wrong := operational.AuditAnchor{Sequence: 2, Hash: head.LastHash}
+	if _, err := store.VerifyAudit(ctx, wrong); !errors.Is(err, operational.ErrAuditTampered) {
+		t.Fatalf("mismatched anchor accepted: %v", err)
+	}
+	if _, err := store.VerifyAudit(ctx, operational.AuditAnchor{Sequence: 2, Hash: "zz"}); !errors.Is(err, operational.ErrAuditInput) {
+		t.Fatalf("malformed anchor accepted: %v", err)
+	}
+	// A file owner can drop the triggers and roll back the newest event; the
+	// chain alone still verifies, but the external anchor does not.
+	if _, err := store.db.ExecContext(ctx, `DROP TRIGGER cao_operational_audit_no_delete`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `DELETE FROM cao_operational_audit_events WHERE sequence=3`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.VerifyAudit(ctx); err != nil {
+		t.Fatalf("truncated chain should verify without anchors: %v", err)
+	}
+	if _, err := store.VerifyAudit(ctx, anchor); !errors.Is(err, operational.ErrAuditTampered) {
+		t.Fatalf("rollback past the anchor was not detected: %v", err)
+	}
+}

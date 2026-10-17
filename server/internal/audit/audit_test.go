@@ -30,7 +30,7 @@ func (r *recordingStore) AppendAudit(_ context.Context, event operational.AuditE
 func (r *recordingStore) ListAudit(context.Context, operational.AuditFilter) ([]operational.AuditEvent, error) {
 	return r.events, nil
 }
-func (r *recordingStore) VerifyAudit(context.Context) (operational.AuditVerification, error) {
+func (r *recordingStore) VerifyAudit(context.Context, ...operational.AuditAnchor) (operational.AuditVerification, error) {
 	return operational.AuditVerification{}, nil
 }
 

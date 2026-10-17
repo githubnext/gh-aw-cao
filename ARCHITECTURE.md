@@ -261,6 +261,10 @@ For local debugging only, `--hosted-cli-sqlite` and `execute-cli --sqlite`
 share a loopback-only SQLite file (`server/internal/operational/sqlite`) that
 provides the same queue and audit table without PostgreSQL.
 Tokens appear in those events only as GitHub's `hashed_token` digest.
+`cao-dashboard audit verify` checks the chain against external head anchors
+and `audit export` writes rows as JSON Lines. Audit events are also OTLP log
+records carrying the active trace ID, and the executor and broker emit
+command and token spans and metrics without tokens or actors.
 Every hosted administrator operation requires a fresh, assured interactive
 OAuth authentication (2FA or attested SSO) within a bounded maximum age.
 `specs/server-hosted-cli.md` and `specs/tla/HostedCLIActions.tla` specify and

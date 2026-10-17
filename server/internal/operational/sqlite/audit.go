@@ -83,9 +83,12 @@ func (s *Store) ListAudit(ctx context.Context, filter operational.AuditFilter) (
 
 // VerifyAudit recomputes the hash chain over every retained event inside one
 // transaction.
-func (s *Store) VerifyAudit(ctx context.Context) (operational.AuditVerification, error) {
-	var verifier operational.AuditChainVerifier
-	err := s.transact(ctx, func(t *transaction) error {
+func (s *Store) VerifyAudit(ctx context.Context, anchors ...operational.AuditAnchor) (operational.AuditVerification, error) {
+	verifier, err := operational.NewAuditChainVerifier(anchors)
+	if err != nil {
+		return operational.AuditVerification{}, err
+	}
+	err = s.transact(ctx, func(t *transaction) error {
 		rows, err := t.tx.QueryContext(ctx, `SELECT sequence,occurred_at,event,outcome,actor,record,prev_hash,hash FROM cao_operational_audit_events ORDER BY sequence`)
 		if err != nil {
 			return err
@@ -105,7 +108,10 @@ func (s *Store) VerifyAudit(ctx context.Context) (operational.AuditVerification,
 		}
 		return rows.Err()
 	})
-	return verifier.Result(), err
+	if err != nil {
+		return verifier.Result(), err
+	}
+	return verifier.Finish()
 }
 
 // maintainAudit removes events past retention in a bounded batch. Only a

@@ -216,6 +216,52 @@ step-up. Retry MUST create a new admission subject to the same checks.
    MUST identify the token by `hashed_token`, the Base64 SHA-256 digest that
    GitHub uses in its audit log. Operators can then join CAO events to
    GitHub's audit-log entries for the App's actions.
+8. `cao-dashboard audit verify` MUST recompute the chain and print the
+   verification as JSON, including `lastSequence` and the head `lastHash`. It
+   MUST record `audit.verified` or `audit.verify_failed` with that head, so the
+   head also reaches the mirror and OTLP. Each `--anchor SEQUENCE:HASH` MUST
+   match the retained row at that sequence. An anchor beyond the chain head
+   MUST fail as tampering (rollback), and an anchor older than the retained
+   prefix is reported in `anchorsExpired`. Because a database superuser can
+   rewrite the whole chain consistently, operators SHOULD run `audit verify`
+   on a schedule and keep recent heads in write-once storage outside the
+   database, passing them back as anchors.
+9. `cao-dashboard audit export` MUST write retained rows as JSON Lines in
+   sequence order, optionally filtered by `--after`, `--event`, and `--actor`,
+   for evidence requests and SIEM backfill.
+10. When OpenTelemetry is configured, every audit event MUST also be emitted as
+    an OTLP log record named `cao.audit.<event>`, with severity `ERROR` for
+    `failure`, `WARN` for `denied`, and `INFO` otherwise. Audit events recorded
+    inside a span MUST carry `trace_id` and `span_id` in the stored record.
+
+## 7a. Telemetry
+
+Hosted CLI telemetry uses the server's OpenTelemetry setup and MUST NOT
+contain tokens, keys, OAuth credentials, command output, or actor logins.
+Actors are joined from the audit trail by command ID.
+
+| Signal | Name | Attributes |
+|--------|------|------------|
+| Span (consumer) | `cao_hostedcli.command.execute` | command ID, repository, status, exit code |
+| Span | `cao_hostedcli.token.mint` | installation ID, repository, `hashed_token` |
+| Span | `cao_hostedcli.token.revoke` | `hashed_token` |
+| Counter | `cao_hostedcli.command.count` | status |
+| Histogram (s) | `cao_hostedcli.command.duration` | status |
+| Counter | `cao_hostedcli.token.operation.count` | operation (`mint`, `reuse`, `revoke`, `discard`), outcome |
+| Gauge | `cao_hostedcli.token.pooled` | none |
+| Gauge | `cao_hostedcli.token.pending_revocations` | none |
+| UpDownCounter | `cao_hostedcli.lease.held` | none |
+| Counter | `cao_audit.event.count` | event, outcome, stored |
+| Histogram (s) | `cao_audit.append.duration` | stored |
+
+Span status descriptions MUST be generic. The executor MUST pass only a W3C
+`TRACEPARENT` for the command span to the subprocess and MUST NOT forward
+baggage, trace state, or exporter configuration.
+
+Operators SHOULD alert when `pending_revocations` stays above zero, when
+`cao_audit.event.count{stored="false"}` increases, on any
+`audit.verify_failed` event, on spikes in `admin.denied`, and when
+`lease.held` is zero while commands are queued.
 
 ## 8. Formal model
 
@@ -247,6 +293,14 @@ this specification or the corresponding implementation changes.
   shares one file between two handles for queue leases, idempotent admission,
   recovery, the audit chain, rejected `UPDATE`/`DELETE`, tamper detection, and
   retention; `hosted_cli_test.go` rejects it on a non-loopback listener.
+- `server/internal/operational/sqlite/store_test.go`
+  (`TestAuditAnchorsDetectRewriteAndRollback`) and
+  `server/cmd/cao-dashboard/audit_test.go`: anchors detect a consistent
+  rewrite and a rollback, malformed anchors are rejected, verification is
+  itself audited, and export filters and pages rows.
+- `server/internal/hostedcli/telemetry_test.go`: command and token spans and
+  metrics exist, the subprocess receives a valid `TRACEPARENT`, and no span
+  carries a token or actor.
 - `tests/unit/setup-hosted-cli-app.test.mjs`: least-privilege App manifest and
   helper safety.
 
@@ -266,6 +320,23 @@ and SHOULD advance `CAO_HOSTED_CLI_CONTROL_REVISION` only after reviewing the
 control repository at that commit. Code at the reviewed revision is trusted
 to the same degree as the executor itself.
 
+Operational hardening that this specification does not yet require, in
+priority order:
+
+1. Run each command in a disposable sandbox (container or gVisor) as a
+   separate OS user without access to the App key or database credentials.
+2. Keep the App private key in a KMS or HSM that signs the App JWT, and
+   rotate it on a schedule; GitHub allows two active keys during rotation.
+3. Use separate database roles: the web and executor roles get `INSERT` and
+   `SELECT` on the audit table only, and only a maintenance role can run
+   retention.
+4. Forward the audit mirror or OTLP audit logs to write-once storage or a SIEM,
+   and schedule `audit verify` with external anchors.
+5. Propagate the admission trace context into the queued command so
+   admission and execution share one trace.
+6. Expose executor liveness and readiness that reflect store, App, and
+   revocation health.
+
 ## 11. References
 
 - `server/SECURITY.md`
@@ -281,3 +352,5 @@ to the same degree as the executor itself.
   contract.
 - Added granted-scope verification and the audit trail.
 - Added the loopback-only SQLite store for local debugging.
+- Added audit verification with external anchors, audit export, OTLP audit
+  logs, trace correlation, and hosted CLI telemetry.

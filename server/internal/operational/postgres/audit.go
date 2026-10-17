@@ -84,9 +84,13 @@ func (s *Store) ListAudit(ctx context.Context, filter operational.AuditFilter) (
 
 // VerifyAudit recomputes the hash chain over every retained event. Retention
 // removes the oldest prefix, so the oldest retained prev_hash is the anchor.
-func (s *Store) VerifyAudit(ctx context.Context) (operational.AuditVerification, error) {
+func (s *Store) VerifyAudit(ctx context.Context, anchors ...operational.AuditAnchor) (operational.AuditVerification, error) {
 	if ctx == nil {
 		return operational.AuditVerification{}, invalid("nil context")
+	}
+	verifier, err := operational.NewAuditChainVerifier(anchors)
+	if err != nil {
+		return operational.AuditVerification{}, err
 	}
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
 	if err != nil {
@@ -98,7 +102,6 @@ func (s *Store) VerifyAudit(ctx context.Context) (operational.AuditVerification,
 		return operational.AuditVerification{}, err
 	}
 	defer func() { _ = rows.Close() }()
-	var verifier operational.AuditChainVerifier
 	for rows.Next() {
 		var row operational.AuditRow
 		if err := rows.Scan(&row.Indexed.Sequence, &row.Indexed.OccurredAt, &row.Indexed.Event, &row.Indexed.Outcome,
@@ -109,7 +112,10 @@ func (s *Store) VerifyAudit(ctx context.Context) (operational.AuditVerification,
 			return verifier.Result(), err
 		}
 	}
-	return verifier.Result(), rows.Err()
+	if err := rows.Err(); err != nil {
+		return verifier.Result(), err
+	}
+	return verifier.Finish()
 }
 
 // maintainAudit removes events past retention in bounded batches. Only a

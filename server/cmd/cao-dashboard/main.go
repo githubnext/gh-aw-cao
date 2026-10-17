@@ -355,6 +355,7 @@ func newRootCommand() *cobra.Command {
 		newIngestCommand(),
 		newCollectCommand(),
 		newExecuteCLICommand(),
+		newAuditCommand(),
 		newBackfillCommand(),
 		newDoctorCommand(),
 		newTelemetrySmokeCommand(),

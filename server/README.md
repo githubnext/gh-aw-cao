@@ -638,6 +638,20 @@ pool is bounded: `--max-pooled-tokens` sets the total, `0` disables pooling,
 and pooled tokens are capped at two per scope with a two-minute idle lifetime.
 `--prefetch` (default 2) sets how many queued commands get tokens minted
 ahead of execution.
+
+Verify and export the audit trail with the same store settings (PostgreSQL
+from the environment, or `--sqlite PATH`):
+
+```bash
+cao-dashboard audit verify                          # prints lastSequence and lastHash
+cao-dashboard audit verify --anchor 4182:<lastHash> # fails on rewrite or rollback
+cao-dashboard audit export --event cli_command.admitted --actor octocat > audit.jsonl
+```
+
+Schedule `audit verify` and keep the printed heads in write-once storage, so
+later runs can pass them as anchors. Hosted CLI spans, metrics, and OTLP
+audit logs are listed in
+[`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md#7a-telemetry).
 The normative contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
 
 ### Upstash Redis provider

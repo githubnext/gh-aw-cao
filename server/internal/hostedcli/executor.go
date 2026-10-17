@@ -14,6 +14,10 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
@@ -172,6 +176,8 @@ func (e *Executor) Run(ctx context.Context) error {
 func (e *Executor) drain(ctx context.Context, lease operational.CLICommandLease) {
 	leaseCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	leaseHeld(ctx, 1)
+	defer leaseHeld(ctx, -1)
 	var workers sync.WaitGroup
 	defer func() {
 		cancel()
@@ -300,8 +306,22 @@ func (e *Executor) installation(ctx context.Context, repository string) (int64, 
 type failure string
 
 func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLease, command operational.CLICommand) {
+	started := time.Now()
+	// Each command is a root span: its lifetime is unrelated to the lease loop.
+	// Actors stay out of telemetry; the audit trail joins them by command ID.
+	ctx, span := tracer().Start(ctx, spanCommand, trace.WithNewRoot(), trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(attribute.Int64(attributeCommandID, command.ID), attribute.String(attributeRepository, command.Repository)))
+	defer span.End()
 	sink := newOutputSink(ctx, e.queue, lease, command.ID)
 	exitCode, status, reason := e.run(ctx, command, sink)
+	span.SetAttributes(attribute.String(attributeStatus, string(status)))
+	if exitCode != nil {
+		span.SetAttributes(attribute.Int(attributeExitCode, *exitCode))
+	}
+	if status != operational.CLICommandCompleted {
+		span.SetStatus(codes.Error, string(status))
+	}
+	recordCommand(ctx, string(status), started)
 	sink.close() //nolint:contextcheck // the sink carries the command context; OutputFunc callbacks have no context parameter.
 	result := operational.CLICommandResult{Status: status, Error: storableError(string(reason))}
 	if exitCode != nil {
@@ -405,7 +425,7 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 		executorLog.Printf("gh extensions copy failed id=%d: %v", command.ID, err)
 		return nil, operational.CLICommandFailed, "The gh extensions could not be prepared for the command."
 	}
-	environment := e.environment(home, data, token, identity)
+	environment := append(e.environment(home, data, token, identity), traceEnvironment(runCtx)...)
 	directory := work
 	program, args := e.options.GitHubBinary, plan.Args
 	if plan.ControlCheckout {

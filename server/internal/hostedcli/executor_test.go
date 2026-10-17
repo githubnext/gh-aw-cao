@@ -696,7 +696,7 @@ func (f failingAuditStore) AppendAudit(_ context.Context, event operational.Audi
 func (failingAuditStore) ListAudit(context.Context, operational.AuditFilter) ([]operational.AuditEvent, error) {
 	return nil, nil
 }
-func (failingAuditStore) VerifyAudit(context.Context) (operational.AuditVerification, error) {
+func (failingAuditStore) VerifyAudit(context.Context, ...operational.AuditAnchor) (operational.AuditVerification, error) {
 	return operational.AuditVerification{}, nil
 }
 

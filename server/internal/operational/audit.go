@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,10 +36,24 @@ type AuditFilter struct {
 }
 
 // AuditVerification summarizes one integrity check over retained events.
+// LastHash is the hex chain head; recording (LastSequence, LastHash) outside
+// the database yields an AuditAnchor for later verifications.
 type AuditVerification struct {
-	Events        int64
-	FirstSequence int64
-	LastSequence  int64
+	Events         int64  `json:"events"`
+	FirstSequence  int64  `json:"first_sequence"`
+	LastSequence   int64  `json:"last_sequence"`
+	LastHash       string `json:"last_hash,omitempty"`
+	AnchorsChecked int    `json:"anchors_checked"`
+	AnchorsExpired int    `json:"anchors_expired"`
+}
+
+// AuditAnchor is a previously reported chain position kept outside the
+// database. A retained event at Sequence must still hash to Hash, and an
+// anchor past the chain head means newer events were removed. Anchors before
+// the retained window are counted as expired.
+type AuditAnchor struct {
+	Sequence int64  `json:"sequence"`
+	Hash     string `json:"hash"`
 }
 
 // AuditLog is an append-only, tamper-evident audit table. Appends assign a
@@ -46,7 +61,7 @@ type AuditVerification struct {
 type AuditLog interface {
 	AppendAudit(context.Context, AuditEvent) (AuditEvent, error)
 	ListAudit(context.Context, AuditFilter) ([]AuditEvent, error)
-	VerifyAudit(context.Context) (AuditVerification, error)
+	VerifyAudit(context.Context, ...AuditAnchor) (AuditVerification, error)
 }
 
 const (
@@ -132,6 +147,24 @@ type AuditRow struct {
 type AuditChainVerifier struct {
 	result       AuditVerification
 	expectedPrev []byte
+	anchors      map[int64]string
+}
+
+// NewAuditChainVerifier returns a verifier that also checks anchors.
+func NewAuditChainVerifier(anchors []AuditAnchor) (*AuditChainVerifier, error) {
+	verifier := &AuditChainVerifier{anchors: make(map[int64]string, len(anchors))}
+	for _, anchor := range anchors {
+		hash := strings.ToLower(strings.TrimSpace(anchor.Hash))
+		decoded, err := hex.DecodeString(hash)
+		if anchor.Sequence <= 0 || err != nil || len(decoded) != sha256.Size {
+			return nil, fmt.Errorf("%w: audit anchor requires a positive sequence and a 64-character hex SHA-256 hash", ErrAuditInput)
+		}
+		if previous, ok := verifier.anchors[anchor.Sequence]; ok && previous != hash {
+			return nil, fmt.Errorf("%w: conflicting audit anchors for sequence %d", ErrAuditInput, anchor.Sequence)
+		}
+		verifier.anchors[anchor.Sequence] = hash
+	}
+	return verifier, nil
 }
 
 // Check verifies the next row. Indexed carries the separately stored
@@ -159,14 +192,35 @@ func (v *AuditChainVerifier) Check(row AuditRow) error {
 		stored.Outcome != indexed.Outcome || stored.Actor != indexed.Actor {
 		return tampered("indexed columns differ from the hashed record")
 	}
+	if anchor, ok := v.anchors[sequence]; ok {
+		if anchor != hex.EncodeToString(row.Hash) {
+			return tampered("hash differs from the external anchor")
+		}
+		v.result.AnchorsChecked++
+	}
 	if v.result.Events == 0 {
 		v.result.FirstSequence = sequence
 	}
 	v.result.Events++
 	v.result.LastSequence = sequence
+	v.result.LastHash = hex.EncodeToString(row.Hash)
 	v.expectedPrev = row.Hash
 	return nil
 }
 
 // Result returns the verification summary so far.
 func (v *AuditChainVerifier) Result() AuditVerification { return v.result }
+
+// Finish reports anchors that the retained chain cannot account for. An
+// anchor beyond the head means events were removed from the newest end.
+func (v *AuditChainVerifier) Finish() (AuditVerification, error) {
+	for sequence := range v.anchors {
+		switch {
+		case v.result.Events == 0 || sequence > v.result.LastSequence:
+			return v.result, fmt.Errorf("%w: anchored sequence %d is beyond the retained chain head", ErrAuditTampered, sequence)
+		case sequence < v.result.FirstSequence:
+			v.result.AnchorsExpired++
+		}
+	}
+	return v.result, nil
+}
