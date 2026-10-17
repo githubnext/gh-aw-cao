@@ -105,7 +105,8 @@ GitHub discloses or on the operator's SSO attestation.
 
 ### 3.1. Provider permission contract
 
-1. Classic OAuth App authorization MUST request `read:org read:user`.
+1. Ordinary hosted classic OAuth App authorization MUST request `read:org read:user`
+   (the explicitly local exception is defined in section 3.2).
    GitHub's [authenticated-user endpoint](https://docs.github.com/en/rest/users/users#get-the-authenticated-user)
    requires `read:user` or the broader `user` scope to disclose private user
    fields, including `two_factor_authentication`. The server MUST NOT
@@ -115,15 +116,46 @@ GitHub discloses or on the operator's SSO attestation.
 2. GitHub App clients (`Iv...`) MUST retain `offline_access`, without adding
    classic OAuth user or repository scopes. This opts into expiring user
    tokens and refresh tokens on GitHub.com or GHES 3.23 and later; it does
-   not grant user, organization, or repository permissions. Operators MUST
-   configure organization **Members: read** and approved installations for
-   membership checks. If GitHub does not disclose 2FA, administrators MUST
+   not grant user, organization, or repository permissions. For ordinary hosted
+   membership checks, operators MUST configure organization **Members: read**
+   and approved installations. If GitHub does not disclose 2FA, administrators MUST
    satisfy the attested SSO path in section 3 or be denied.
 3. Operators MUST require existing users to complete a new authorization
    and consent when required permissions change. Refresh and revalidation
    MUST NOT be treated as scope upgrades or new authentication assurance.
    Adding `read:user` or using `prompt=select_account` MUST NOT be described
    as proof of a freshly performed MFA challenge.
+
+### 3.2. Single-user local development
+
+For local OAuth development without organization access, the operator MAY
+set `CAO_GITHUB_LOCAL_USER` to one exact GitHub login. This option MUST NOT
+be inferred from missing organization policy or enabled by request data.
+When set, classic OAuth login MUST request `read:user` without `read:org`,
+and the provider's authenticated user MUST match the configured login and
+include a valid numeric account ID. Login, refresh, and revalidation MUST
+NOT query organization or team membership. GitHub App clients MUST retain
+`offline_access`.
+
+Startup MUST reject the mode unless the server owns a process listener on
+`localhost` or IPv4 loopback with direct TLS, one matching allowed host,
+and an exact `https://<listen-address>/auth/callback` redirect without
+credentials, query, or fragment. Proxy trust, external/platform listeners,
+CORS, non-loopback listeners, and simultaneous organization/team/SSO
+authorization MUST be rejected. Requests MUST have a loopback peer,
+actual TLS, and the configured origin authority. Operators MUST NOT expose
+this development listener through a tunnel or proxy.
+
+Development sessions MUST be bound to their local authorization mode and
+configured developer, and MUST NOT be reusable in ordinary hosted mode or
+for another developer. Switching modes requires new authentication. Secure
+session cookies, CSRF, administrator allowlisting, fresh OAuth authentication
+with 2FA-enabled evidence, and live target writer probes MUST remain
+unchanged. This exception grants no SSO assurance. Missing factor disclosure
+MUST still deny administrator operations. Explicit classic administrator
+consent MAY add `repo`, but MUST NOT add `read:org`. Disabling the option
+MUST restore ordinary hosted organization/team authorization without reusing
+local sessions.
 
 ## 4. Admission
 
@@ -151,10 +183,11 @@ a subprocess starts.
 
 ### 4.1. Requester repository access
 
-Ordinary classic OAuth App login MUST request only `read:org read:user`,
+Ordinary hosted classic OAuth App login MUST request only `read:org read:user`,
 including on hosted-CLI-enabled deployments and for administrators. Only
 the explicit `/auth/login?hosted_cli=1` administrator reauthentication and
 consent flow MAY additionally request `repo` for private-target metadata.
+The local exception in section 3.2 MUST omit `read:org` from both flows.
 The server MUST require hosted CLI enablement and an existing authenticated
 server-side session whose login is currently in `CAO_GITHUB_ADMIN_USERS`
 and whose numeric GitHub account ID is known before initiating that flow.
@@ -166,8 +199,9 @@ Consent state MUST bind the initiating session, numeric GitHub account ID,
 login, and ten-minute expiry in a signed, HttpOnly cookie. Only opaque
 random state MAY be sent to GitHub. At callback the server MUST require the
 original session, matching account ID and login, current administrator
-allowlisting, enabled hosted CLI, authorized membership, and fresh factor
-evidence. A different account, including another allowlisted administrator,
+allowlisting, enabled hosted CLI, authorized membership (or the exact local
+developer in section 3.2), and fresh factor evidence. A different account,
+including another allowlisted administrator,
 MUST be rejected. Altering or stripping the binding, replaying it after
 expiry, or treating the bound payload as ordinary provider state MUST NOT
 bypass these checks. Credentials issued to rejected callbacks MUST be

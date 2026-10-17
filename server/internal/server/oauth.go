@@ -102,14 +102,17 @@ type GitHubOAuthConfig struct {
 	PreviousSessionSecret string
 	AllowedOrganizations  []string
 	AllowedTeams          []string
-	AuthURL               string
-	TokenURL              string
-	UserURL               string
-	OrgMembershipURL      string
-	TeamMembershipURL     string
-	RevokeURL             string
-	HTTPClient            *http.Client
-	RevocationKeyPrefix   string
+	// LocalDevelopmentUser replaces membership authorization for one
+	// explicitly configured login, only on a validated loopback TLS server.
+	LocalDevelopmentUser string
+	AuthURL              string
+	TokenURL             string
+	UserURL              string
+	OrgMembershipURL     string
+	TeamMembershipURL    string
+	RevokeURL            string
+	HTTPClient           *http.Client
+	RevocationKeyPrefix  string
 	// AdminReauthenticationMaxAge bounds how long after an interactive OAuth
 	// authorization an administrator may act. Token refresh and periodic
 	// revalidation never extend it.
@@ -143,16 +146,17 @@ type githubOAuth struct {
 }
 
 type oauthSession struct {
-	ID             string    `json:"id"`
-	Login          string    `json:"login"`
-	GitHubID       int64     `json:"githubId,omitempty"`
-	AvatarURL      string    `json:"avatarUrl,omitempty"`
-	AccessToken    string    `json:"accessToken"`
-	RefreshToken   string    `json:"refreshToken"`
-	AccessExpires  time.Time `json:"accessExpires"`
-	RefreshExpires time.Time `json:"refreshExpires"`
-	AuthorizedAt   time.Time `json:"authorizedAt"`
-	CSRFToken      string    `json:"csrfToken"`
+	ID                   string    `json:"id"`
+	Login                string    `json:"login"`
+	GitHubID             int64     `json:"githubId,omitempty"`
+	LocalDevelopmentUser string    `json:"localDevelopmentUser,omitempty"`
+	AvatarURL            string    `json:"avatarUrl,omitempty"`
+	AccessToken          string    `json:"accessToken"`
+	RefreshToken         string    `json:"refreshToken"`
+	AccessExpires        time.Time `json:"accessExpires"`
+	RefreshExpires       time.Time `json:"refreshExpires"`
+	AuthorizedAt         time.Time `json:"authorizedAt"`
+	CSRFToken            string    `json:"csrfToken"`
 	// AuthenticatedAt is set only by an interactive authorization-code
 	// callback and is the step-up time for administrator operations.
 	AuthenticatedAt time.Time `json:"authenticatedAt,omitempty"`
@@ -208,7 +212,15 @@ func (config *GitHubOAuthConfig) validate() error {
 	if config.PreviousSessionSecret != "" && len(config.PreviousSessionSecret) < 32 {
 		return errors.New("previous session secret must contain at least 32 characters")
 	}
-	if len(config.AllowedOrganizations) == 0 && len(config.AllowedTeams) == 0 {
+	if config.LocalDevelopmentUser != "" {
+		if strings.TrimSpace(config.LocalDevelopmentUser) != config.LocalDevelopmentUser ||
+			strings.ContainsAny(config.LocalDevelopmentUser, "/ ,\t\r\n*") {
+			return errors.New("CAO_GITHUB_LOCAL_USER must be one exact GitHub login")
+		}
+		if len(config.AllowedOrganizations) != 0 || len(config.AllowedTeams) != 0 || len(config.SSOOrganizations) != 0 {
+			return errors.New("CAO_GITHUB_LOCAL_USER cannot be combined with organization, team, or SSO authorization")
+		}
+	} else if len(config.AllowedOrganizations) == 0 && len(config.AllowedTeams) == 0 {
 		return errors.New("GitHub OAuth authorization requires at least one allowed organization or team")
 	}
 	if config.AdminReauthenticationMaxAge == 0 {
@@ -368,6 +380,9 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	} else {
 		// GitHub omits two_factor_authentication without read:user (or user).
 		scope := "read:org read:user"
+		if oauth.config.LocalDevelopmentUser != "" {
+			scope = "read:user"
+		}
 		if consent != nil {
 			scope += " repo"
 		}
@@ -508,6 +523,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	}
 	session.Login = account.Login
 	session.GitHubID = account.ID
+	session.LocalDevelopmentUser = oauth.config.LocalDevelopmentUser
 	session.AuthenticatedAt = now
 	session.Assurance = oauth.verifiedAssurance(ctx, tokens.AccessToken, account)
 	if consent != nil {
@@ -941,6 +957,14 @@ func (oauth *githubOAuth) authorizedAccount(ctx context.Context, accessToken str
 		oauth.logBranch("authorization.identity_failed")
 		return githubAccount{}, err
 	}
+	if oauth.config.LocalDevelopmentUser != "" {
+		if account.ID <= 0 || !strings.EqualFold(account.Login, oauth.config.LocalDevelopmentUser) {
+			oauth.logBranch("authorization.local_user_rejected")
+			return githubAccount{}, errors.New("GitHub account is not the configured local developer")
+		}
+		oauth.logBranch("authorization.local_user_allowed")
+		return account, nil
+	}
 	for _, org := range oauth.config.AllowedOrganizations {
 		if oauth.orgAuthorized(ctx, accessToken, org) {
 			oauth.logBranch("authorization.organization_allowed")
@@ -1217,6 +1241,10 @@ func (oauth *githubOAuth) loadSessionRecord(ctx context.Context, sessionID strin
 	var session oauthSession
 	if err := json.Unmarshal(plain, &session); err != nil {
 		return oauthSession{}, "", err
+	}
+	if !strings.EqualFold(session.LocalDevelopmentUser, oauth.config.LocalDevelopmentUser) {
+		oauth.logBranch("session.authorization_mode_rejected")
+		return oauthSession{}, "", errors.New("session does not match the configured OAuth authorization mode")
 	}
 	return session, sealed, nil
 }

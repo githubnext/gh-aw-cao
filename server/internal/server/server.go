@@ -222,6 +222,9 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 			}
 		}
 		oauth = newGitHubOAuth(oauthConfig, services.Sessions, services.SessionInvalidator, services.Revocations)
+		if oauthConfig.LocalDevelopmentUser != "" {
+			config.Logger.Printf("single-user local OAuth development mode enabled; organization membership authorization is disabled")
+		}
 	} else {
 		accessToken = strings.TrimSpace(config.AccessToken)
 		if accessToken == "" {
@@ -878,6 +881,11 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 		if !validProxyRequest(request, a.proxyPolicy()) {
 			a.logAuthBranch("access.proxy_rejected")
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
+			return
+		}
+		if !a.oauth.validLocalDevelopmentRequest(request) {
+			a.logAuthBranch("access.local_development_boundary_rejected")
+			writeError(response, http.StatusForbidden, "Local development OAuth requires a direct loopback HTTPS request")
 			return
 		}
 		if publicServiceEndpoint(request.URL.Path) ||

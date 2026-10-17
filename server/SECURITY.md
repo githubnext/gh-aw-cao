@@ -112,6 +112,10 @@ secret-management SDK.
 
 ## Dashboard access capability
 
+For the distinct, opt-in OAuth development exception, see
+[Single-user local OAuth](#single-user-local-oauth). It does not relax remote
+hosted authorization.
+
 The server protects every data API except the minimal health probe with a
 bearer capability. Static application assets contain no dashboard records and
 may be loaded without the capability.
@@ -185,6 +189,38 @@ include tokens or upstream error bodies.
 
 The capability mechanism is local access control, not a replacement for
 identity-aware authentication in a remote service.
+
+## Single-user local OAuth
+
+`CAO_GITHUB_LOCAL_USER` explicitly authorizes one GitHub login for OAuth
+development without organization access. Only this development mode replaces
+membership checks: classic login requests `read:user` without `read:org`,
+and GitHub App login keeps `offline_access`. The authenticated account must
+match the configured login and disclose a valid numeric ID. No membership
+read or SSO attestation is used.
+
+Startup requires a process-owned listener on `localhost` or IPv4 loopback,
+direct TLS, one matching loopback allowed host, and a callback exactly at
+`https://<listen-address>/auth/callback`. It rejects proxy trust, external or
+platform listeners, public/private-network binds, CORS, and simultaneous
+organization/team/SSO policy. Each request must also have a loopback peer,
+actual TLS, and the configured origin authority. Operators must not expose
+the listener through tunnels or proxies.
+
+Local sessions record their authorization mode and configured developer;
+they cannot authenticate an ordinary hosted server or a different local
+developer, even if the same session store and encryption secret are reused.
+Switching modes requires new sign-in. Use separate development namespaces
+and secrets anyway, and revoke old GitHub grants when removing access.
+
+This mode does not bypass GitHub authentication, Secure/HttpOnly cookies,
+CSRF, administrator allowlisting, fresh assurance, or live target writer
+probes. Explicit administrator consent adds classic `repo` only after the
+existing server-verified consent checks. Missing 2FA evidence still denies
+administrator operations; SSO configuration is rejected rather than silently
+ignored. The ordinary bearer-based `serve` mode remains OAuth-free, and
+remote hosted profiles still require organization or team authorization.
+See the [local setup instructions](README.md#local-oauth-without-organization-access).
 
 ## Hosted transport boundary
 

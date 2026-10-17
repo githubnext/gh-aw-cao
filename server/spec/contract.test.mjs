@@ -146,6 +146,17 @@ test('hosted repository consent is explicit and server-authorized', () => {
   assert.match(openapi.paths['/auth/callback'].get.description, /matching GitHub account ID and login/)
 })
 
+test('local OAuth is an explicit single-user exception rather than a hosted policy bypass', () => {
+  const login = openapi.paths['/auth/login'].get
+  assert.match(login.description, /CAO_GITHUB_LOCAL_USER/)
+  assert.match(login.description, /read:user without read:org/)
+  assert.match(login.description, /loopback HTTPS/)
+  assert.equal(login.parameters.some(parameter => parameter.name === 'local_user'), false)
+  const callback = openapi.paths['/auth/callback'].get
+  assert.match(callback.description, /exact configured developer/)
+  assert.match(callback.description, /cannot be reused in ordinary hosted mode/)
+})
+
 test('structured payload fields stay in sync with Go JSON tags', () => {
   const pairs = [
     ['../internal/server/server.go', 'queryRequest', 'QueryRequest'],

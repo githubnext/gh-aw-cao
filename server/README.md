@@ -568,6 +568,7 @@ settings:
 | `CAO_SESSION_SECRET` | Current session encryption/signing secret of at least 32 characters. |
 | `CAO_SESSION_SECRET_PREVIOUS` | Optional previous session secret retained only during controlled rotation. |
 | `CAO_GITHUB_ALLOWED_ORGS`, `CAO_GITHUB_ALLOWED_TEAMS` | Explicit authorization policy. |
+| `CAO_GITHUB_LOCAL_USER` | Optional exact developer login for [single-user local OAuth](#local-oauth-without-organization-access); removes organization scopes/checks only on a direct loopback HTTPS listener. Cannot be combined with organization/team/SSO policy. |
 | `CAO_GITHUB_ADMIN_USERS` | Required comma-separated GitHub logins allowed to trigger rebuilds. |
 | `CAO_GITHUB_WEBHOOK_SECRET` | Required GitHub webhook signature secret of at least 32 characters. |
 | `CAO_SOURCE_DIRECTORY` | Required authoritative deployed gh-aw artifact directory used by rebuild/reconciliation. |
@@ -618,6 +619,55 @@ Neither `read:user` nor `prompt=select_account` forces an MFA challenge.
 Step-up records recent OAuth completion with 2FA enabled or attested SSO
 access, not proof that the user just performed MFA.
 
+### Local OAuth without organization access
+
+For dashboard-only development, `cao-dashboard serve` already uses a local
+bearer capability and does not require GitHub OAuth or organization access.
+To exercise the OAuth and hosted CLI paths locally with a personal GitHub
+account, opt into **single-user development OAuth** with
+`CAO_GITHUB_LOCAL_USER`. Classic OAuth requests only `read:user`, and login,
+refresh, and revalidation check that exact GitHub login instead of reading
+organization or team membership. GitHub App clients retain `offline_access`.
+
+From `server/`, with the ordinary database, reviewed host policy, OAuth App
+credentials, session secret, webhook secret, source/site, and trusted local
+TLS certificate already configured:
+
+```bash
+export CAO_GITHUB_LOCAL_USER=YOUR_GITHUB_LOGIN
+export CAO_GITHUB_ADMIN_USERS="$CAO_GITHUB_LOCAL_USER"
+export CAO_ALLOWED_HOSTS=127.0.0.1
+export CAO_GITHUB_REDIRECT_URL=https://127.0.0.1:8443/auth/callback
+unset CAO_GITHUB_ALLOWED_ORGS CAO_GITHUB_ALLOWED_TEAMS
+unset CAO_GITHUB_SSO_ORGANIZATIONS CAO_TRUSTED_PROXY_CIDRS
+go run ./cmd/cao-dashboard serve-hosted --listen 127.0.0.1:8443 \
+  --cert ./localhost.pem --key ./localhost-key.pem
+```
+
+Register that exact callback on a development OAuth App and use a certificate
+trusted by your browser for the chosen loopback host. `localhost` is also
+supported when the listener, allowed host, and callback all use it. Startup
+rejects public/private-network listeners, nonmatching callbacks, reverse
+proxies, CORS, external/platform listeners, and mixed organization/team/SSO
+authorization. Requests must arrive directly from loopback over TLS. Do not
+expose this development server through a tunnel or reverse proxy. Production
+hosted authorization is unchanged when `CAO_GITHUB_LOCAL_USER` is unset.
+
+Only the configured developer can sign in; this is not anonymous access.
+Secure cookies, CSRF, administrator allowlisting, 2FA evidence, and live
+target-repository writer checks remain required for their respective
+operations. To test hosted CLI, keep both `--experimental` and
+`--hosted-cli-actions`, then use `/auth/login?hosted_cli=1` for explicit
+classic `read:user repo` consent. No `read:org` is requested. A GitHub App
+that does not disclose 2FA cannot satisfy administrator assurance in this
+no-SSO development mode; use a classic development OAuth App for that path.
+
+Changing between development and ordinary hosted mode, or changing the
+configured developer, requires a new sign-in: existing sessions cannot cross
+those authorization boundaries. Use a separate development operational
+namespace and secrets. Removing a mode or scope does not revoke previously
+issued GitHub grants; revoke the development App authorization when finished.
+
 ### Hosted CLI actions
 
 Hosted CLI actions are an experimental feature and are off by default. To
@@ -632,9 +682,10 @@ cao-dashboard serve-hosted --experimental --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
 ```
 
-Ordinary **classic OAuth App** sign-in always requests only
+Ordinary hosted **classic OAuth App** sign-in requests only
 `read:org read:user`, even when hosted CLI is enabled and even for
-administrators. To authorize private-target probes, first sign in normally,
+administrators; the single-user local mode above omits `read:org`.
+To authorize private-target probes, first sign in normally,
 then open `/auth/login?hosted_cli=1` while signed in as a configured
 `CAO_GITHUB_ADMIN_USERS` administrator and consent to the additional `repo`
 scope. This explicit flow is unavailable to anonymous users and viewers,

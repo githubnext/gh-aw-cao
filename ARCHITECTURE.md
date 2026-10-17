@@ -189,7 +189,7 @@ protected. Unreclaimable operational pressure fails startup or is reported by
 running maintenance; cache writes decline admission rather than widening the
 budget or changing Redis configuration. The budget is not a process-RSS or
 persistence-disk cap and cannot bound protected-state growth by cache eviction.
-Its local mode remains loopback-only. Its host-neutral mode uses
+Its local mode remains loopback-only. Its ordinary host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres
 sources and state. `server/spec/storage.tsp` owns the fresh-only physical
@@ -753,6 +753,17 @@ all public; that does not authorize non-public targets or other campaigns.
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
+- Explicit `CAO_GITHUB_LOCAL_USER` development OAuth replaces membership
+  authorization with one configured GitHub login and a valid numeric account
+  ID. Classic login requests `read:user` without `read:org`; GitHub App clients
+  retain `offline_access`. It requires a process-owned loopback TLS listener,
+  one matching allowed host and exact callback authority/path, and loopback
+  request peers. Proxy trust, external/platform hosting, CORS, and simultaneous
+  organization/team/SSO policy are rejected. Sessions are bound to the mode and
+  developer and cannot cross into ordinary hosted authorization. Administrator
+  allowlisting, recent OAuth assurance, CSRF, explicit classic `repo` consent,
+  and live target writer checks are unchanged. Operators must not expose this
+  development listener through tunnels or proxies.
 - In the durable PostgreSQL or Redis server-collection profiles, delivery deduplication, repository debounce,
   and task append are one atomic admission. Memory provides the same
   atomic admission within one process lifetime, not restart durability. Queue transitions append

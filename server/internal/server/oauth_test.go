@@ -894,14 +894,15 @@ type fakeGitHubServer struct {
 	onUserRequest    func()
 	// twoFactor controls the /user two_factor_authentication field: nil
 	// omits it, matching tokens GitHub does not disclose it to.
-	twoFactor    *bool
-	grantMu      sync.Mutex
-	grant        fakeOAuthGrant
-	tokens       map[string]fakeOAuthGrant
-	login        string
-	accountID    int64
-	accessToken  string
-	refreshToken string
+	twoFactor          *bool
+	grantMu            sync.Mutex
+	grant              fakeOAuthGrant
+	tokens             map[string]fakeOAuthGrant
+	login              string
+	accountID          int64
+	accessToken        string
+	refreshToken       string
+	membershipRequests int
 }
 
 // assuredSession models recent OAuth completion with disclosed 2FA enabled,
@@ -977,6 +978,9 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		_ = json.NewEncoder(response).Encode(payload)
 	})
 	mux.HandleFunc("/user/memberships/orgs/example", func(response http.ResponseWriter, request *http.Request) {
+		server.grantMu.Lock()
+		server.membershipRequests++
+		server.grantMu.Unlock()
 		state := server.membershipState
 		if options.refreshedMembershipState != "" && request.Header.Get("Authorization") == "Bearer "+"access-new" {
 			state = options.refreshedMembershipState
