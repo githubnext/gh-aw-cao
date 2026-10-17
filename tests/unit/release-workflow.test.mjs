@@ -31,7 +31,7 @@ test("release attaches an exact-SHA attested runtime before publishing", () => {
   const attach = stepBlock(source, "Attach verified runtime assets to draft release");
   const jobs = generatedJobs(workflow("release.lock.yml"));
 
-  assert.match(source, /attach-runtime-assets:[\s\S]*needs: prepare-release/);
+  assert.match(source, /attach-runtime-assets:[\s\S]*needs: \[prepare-release, build-extension\]/);
   assert.match(source, /permissions:[\s\S]*actions: read[\s\S]*attestations: read[\s\S]*contents: write/);
   assert.match(attach, /cao-runtime\.yml\/runs\?head_sha=\$\{REVISION\}&event=push/);
   assert.match(attach, /conclusion == \\"success\\"/);
@@ -44,9 +44,38 @@ test("release attaches an exact-SHA attested runtime before publishing", () => {
   assert.match(attach, /\.draft == true[\s\S]*\.prerelease == false/);
   assert.match(attach, /target_commitish == \$revision/);
   assert.match(attach, /gh release upload/);
-  assert.match(attach, /length == 2/);
-  assert.deepEqual(jobs.get("attach-runtime-assets")?.needs, ["prepare-release"]);
+  assert.match(attach, /length == 9/);
+  assert.match(attach, /sha256sum --check --strict checksums\.txt/);
+  assert.match(attach, /actual_checksums.*expected_checksums/);
+  assert.match(attach, /"\$\{archive\}" "\$\{checksum\}" "\$\{binary_dir\}\/"\*/);
+  for (const asset of ["darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64", "windows-amd64.exe", "windows-arm64.exe", "checksums.txt"]) {
+    assert.ok(attach.includes(`"${asset}"`), `release must require ${asset}`);
+  }
+  assert.deepEqual(jobs.get("attach-runtime-assets")?.needs, ["build-extension", "prepare-release"]);
   assert.ok(jobs.get("publish-release")?.needs.includes("attach-runtime-assets"));
+});
+
+test("release builds versioned binaries read-only from the exact authorized source without caches", () => {
+  const source = workflow("release.md");
+  const jobs = generatedJobs(workflow("release.lock.yml"));
+  const build = jobs.get("build-extension");
+
+  assert.deepEqual(build?.needs, ["resolve-version"]);
+  assert.match(build.block, /permissions:\n\s+contents: read/);
+  assert.doesNotMatch(build.block, /contents: write|GH_TOKEN|cache: true/);
+  assert.match(build.block, /ref: \$\{\{ github.sha \}\}/);
+  assert.match(build.block, /persist-credentials: false/);
+  assert.match(build.block, /go-version-file: go.mod/);
+  assert.match(build.block, /cache: false/);
+  assert.match(stepBlock(source, "Check extension"), /make lint test/);
+  assert.match(stepBlock(source, "Build extension release binaries"), /RELEASE_TAG: \$\{\{ needs.resolve-version.outputs.release_tag \}\}/);
+  assert.match(stepBlock(source, "Build extension release binaries"), /bash scripts\/build-release\.sh "\$RELEASE_TAG" "\$RUNNER_TEMP\/release-binaries"/);
+  assert.match(stepBlock(source, "Verify embedded release version"), /linux-amd64" --version\)" = "gh cao version \$\{RELEASE_TAG\}"/);
+  const upload = stepBlock(source, "Upload extension release binaries");
+  const download = stepBlock(source, "Download extension release binaries");
+  assert.match(upload, /name: release-binaries-\$\{\{ github.run_id \}\}/);
+  assert.match(download, /name: release-binaries-\$\{\{ github.run_id \}\}/);
+  assert.match(upload, /if-no-files-found: error/);
 });
 
 test("release publishes the completed draft under the exact version tag", () => {
@@ -65,6 +94,9 @@ test("release publishes the completed draft under the exact version tag", () => 
   assert.match(publish, /github\.rest\.git\.getRef/);
   assert.match(publish, /releaseRef\.object\.sha !== revision/);
   assert.match(publish, /listReleaseAssets/);
+  for (const asset of ["darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64", "windows-amd64.exe", "windows-arm64.exe", "checksums.txt"]) {
+    assert.ok(publish.includes(`'${asset}'`), `publication must require ${asset}`);
+  }
   assert.match(publish, /github\.rest\.repos\.updateRelease/);
   assert.match(publish, /tag_name: releaseTag/);
   assert.match(publish, /draft: false/);

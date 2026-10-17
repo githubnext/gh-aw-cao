@@ -26,6 +26,9 @@ structure:
   catalog_manifest: aw.yml
   operations: <operation>/aw.yml
   activity: activity/
+  go_extension_entrypoint: cmd/gh-cao/
+  go_extension_commands: internal/cli/
+  go_extension_github_helper: internal/ghcli/
   dashboard: dashboard/
   dashboard_data: dashboard/site/src/data/
   dashboard_go_server: server/
@@ -263,8 +266,19 @@ components:
   cao_cli:
     path: activity/cao.mjs, activity/cli/, activity/commands/
     responsibility: preserve executable and public exports in cao.mjs, separate dispatch and implementation concerns in cli/, provide one handler per command in commands/, and query Activity SQLite projections and execute extensible computation commands for local tooling and agents; implementation modules depend on shared helpers, not the entry point
+  go_extension_entrypoint:
+    path: cmd/gh-cao/
+    responsibility: own process lifecycle and version for the native gh cao extension in the independent root Go module
+  go_extension_commands:
+    path: internal/cli/
+    responsibility: provide scaffold-only help, version, and a bounded local GitHub CLI diagnostic using Cobra and github.com/github/gh-aw/pkg/logger
+  go_extension_github_helper:
+    path: internal/ghcli/
+    responsibility: execute a bounded local gh version check using github.com/cli/go-gh/v2, the same helper used by gh-aw
 
 dependencies:
+  - go_extension_entrypoint -> go_extension_commands
+  - go_extension_commands -> go_extension_github_helper
   - catalog -> control_repository
   - control_repository -> policy_resolution
   - policy_resolution -> orchestrator
@@ -391,6 +405,8 @@ boundaries:
       - postgres_entity_store
 
 invariants:
+  - "The root Go extension module MUST remain independent of server/go.mod; extension Go checks MUST scope cmd/ and internal/ to exclude npm dependency sources and the server. Its scaffold MUST NOT migrate or delegate shell/Node commands, access GitHub APIs, read policy, or alter authority, installation, or runtime ownership. Existing operations remain in cao.sh and the Node CLI; command parity is future work."
+  - "Extension releases MUST build Linux, macOS, and Windows amd64/arm64 binaries at the exact release SHA in a read-only job with Go caching disabled, embed the stable release tag in main.version, verify its output, and seal SHA-256 checksums. Source-free attachment MUST verify the complete checksum manifest; publication MUST require exactly those six binaries, checksums.txt, the attested runtime archive, and its checksum before immutable prerelease publication."
   - "Local CLI commands MUST use one server-owned operational SQLite queue and the existing executor, never browser IndexedDB or the disposable dashboard projection. Browser detachment MUST NOT cancel approved work; active work MUST NOT expire."
   - "Unclean CLI queue recovery MUST pause starts while subprocess termination is unverified. Interrupted entries MUST fail without automatic retry; only explicit local operator acknowledgement after reconciliation may resume queued work."
   - "CLI queue admission MUST preserve declared-action validation, trusted approval and credential-scoped authoritative GitHub quota checks. Published dashboards MUST initialize no queue, issue no queue requests and gain no execution authority."
@@ -473,7 +489,7 @@ invariants:
   - "Activity and Dashboard artifacts MUST use producer-side npm pack with lifecycle scripts disabled and runtime/package.json files selection, bundle compatible libraries with esbuild and license notices, retain filesystem-relative CLI, worker and build paths, and exclude development resources; packing MUST NOT publish, install dependencies or replace consumer-owned root package metadata."
   - "Quickstart MUST recompile installed workflow sources with --schedule-seed githubnext/gh-aw-cao before committing, matching deterministic lock validation. Validation MUST report a manually paused orchestrator with active workers as a pause note rather than recommending scheduled re-enablement."
   - "Normal root, Activity and Dashboard materialization MUST consume an exact-SHA prebuilt archive from stable release assets or successful unexpired Actions artifacts, wait at most five minutes for an already queued or running exact-SHA build, verify catalog and signer identity plus source and signer SHA through GitHub signed provenance on GitHub-hosted runners before extraction, then validate the inventory, checksums, ownership and required resources before any replacement; failed, missing, expired, timed-out or unverifiable artifacts MUST fail without latest-release or source/npm fallback."
-  - "The runtime pipeline MUST build/test with read-only permission on main pushes and attest in a source-free job. The Release workflow MUST create a draft stable tag at an exact main SHA, wait for that SHA's successful cao-runtime.yml push run, verify its checksum and GitHub-hosted signed provenance, attach exactly the runtime archive and checksum to the draft, and fail closed without publication for missing, failed, mismatched, self-hosted, incomplete, or unverifiable evidence. A maintainer publishes only the reviewed, successful draft; immutable release tags and assets MUST NOT be mutated or overwritten after publication. Main artifacts have 90-day retention. Normal installation requires Node.js and authenticated GitHub CLI artifact and attestation access, not npm; explicit developer source materialization may use npm, and dashboard builds retain production dependency installation."
+  - "The runtime pipeline MUST build/test with read-only permission on main pushes and attest in a source-free job. The Release workflow MUST create a draft stable tag at an exact main SHA, wait for that SHA's successful cao-runtime.yml push run, verify its checksum and GitHub-hosted signed provenance, attach the runtime archive and checksum together with versioned extension assets to the draft, and fail closed without publication for missing, failed, mismatched, self-hosted, incomplete, or unverifiable evidence. Publication creates an immutable prerelease before the highlights agent updates notes; a maintainer reviews and promotes it to stable. Immutable release tags and assets MUST NOT be mutated or overwritten after publication. Main artifacts have 90-day retention. Normal installation requires Node.js and authenticated GitHub CLI artifact and attestation access, not npm; explicit developer source materialization may use npm, and dashboard builds retain production dependency installation."
   - "The setup prompt adapter MUST use Node terminal primitives without third-party UI dependencies; producer and explicit developer source packing MUST preserve it as portable source without consumer node_modules."
   - "Onboarding MUST check tools, Node.js 24+, sign-in and checkout-root readiness before installation; private repository creation requires explicit --create-repo OWNER/NAME and MUST NOT overwrite existing clone directories. After those checks and before repository creation or file installation, implicit --quickstart MUST resolve and pin the latest stable CAO vX.Y.Z release, install or refresh owned CAO resources at that release, fail without mutation or main fallback when release resolution is unavailable or non-stable, and preserve any explicit @main, tag, SHA, or local source; bare installation and setup retain their existing unversioned source behavior. Bare installation prints the setup next step without a handoff prompt; streamed children use null stdin except explicitly requested --setup and interactive --quickstart on the controlling terminal. ACCESSIBLE, NO_COLOR, and terminals without styling support disable animated presentation. Without a terminal or when CI is set, installation with --setup MUST apply only the exact public-repository workflow-token profile with plain output; explicit --quickstart MAY instead use a clean current default-branch checkout with plain progress. Incompatible prerequisites MUST still fail."
   - "Setup presentation MUST remain separate from authority decisions, show Repositories, Connections and Review/apply with default-No confirmation, verify Pages source without changing visibility, require separate default-No public-dashboard consent before credentials, and save policy atomically only after both succeed. Declining/cancelling public consent removes only a newly created site where possible; existing sites remain with restriction/unpublication guidance. Failures MUST disclose partial external changes. Setup MUST NOT install campaigns, dispatch, commit or push; --json retains structured stdout. Non-interactive setup, including CI, MUST require a public control repository with empty campaigns and absent or exact self-only scope, verify public Actions-backed Pages, select repository workflow-token authentication, set self-only Activity scope, preserve unrelated policy fields, and write policy last; private/internal repositories or incompatible policy MUST fail before external mutation."
@@ -609,6 +625,12 @@ generation:
     workflow: .github/workflows/cao-runtime.yml
     output: cao-runtime-<resolvedCommit>.tgz
     command: npm run runtime:pack -- DESTINATION REVISION
+  go_extension_release:
+    source: cmd/gh-cao/, internal/, go.mod, go.sum
+    builder: scripts/build-release.sh
+    workflow: .github/workflows/release.md
+    output: dist/gh-cao/{darwin,linux,windows}-{amd64,arm64}[.exe] and checksums.txt
+    command: make release VERSION=vX.Y.Z
   dashboard_postgres_schema:
     source: server/spec/storage.tsp
     emitter: server/spec/postgres-emitter.mjs
@@ -638,6 +660,8 @@ commands:
     working_directory: .
     entries:
       full_validation: npm run check
+      go_extension_build: make build
+      go_extension_check: make check
       control_typecheck: npm run typecheck:cao
       tests: npm test
       unit_tests: npm run test:unit
@@ -676,6 +700,8 @@ commands:
       coolify_image_build: docker build -f Dockerfile ..
 
 validation:
+  go_extension_command_refs:
+    - commands.repository_root.entries.go_extension_check
   default_command_refs:
     - commands.repository_root.entries.full_validation
   dashboard_site_command_refs:
