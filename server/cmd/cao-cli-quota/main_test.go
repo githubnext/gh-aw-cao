@@ -596,3 +596,29 @@ func TestParseUserID(t *testing.T) {
 		})
 	}
 }
+
+func TestAdmissionOutcome(t *testing.T) {
+	cases := []struct {
+		name                                string
+		operation                           string
+		concurrency, active, running, avail int
+		wantCapacity                        int
+		wantReason                          string
+	}{
+		{"exhausted", "admit", 4, 0, 0, 0, 0, "exhausted"},
+		{"negative headroom is exhausted", "status", 4, 1, 0, -1, 0, "exhausted"},
+		{"available", "admit", 4, 1, 0, 2, 3, "available"},
+		{"capacity capped by concurrency", "admit", 2, 0, 0, 10, 2, "available"},
+		{"active at capacity", "admit", 2, 2, 0, 5, 2, "concurrency"},
+		{"external running at capacity", "admit", 3, 0, 3, 5, 3, "concurrency"},
+		{"status ignores concurrency bound", "status", 2, 2, 5, 5, 2, "available"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			capacity, reason := admissionOutcome(tc.operation, tc.concurrency, tc.active, tc.running, tc.avail)
+			if capacity != tc.wantCapacity || reason != tc.wantReason {
+				t.Fatalf("got (%d, %q), want (%d, %q)", capacity, reason, tc.wantCapacity, tc.wantReason)
+			}
+		})
+	}
+}

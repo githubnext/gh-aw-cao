@@ -169,17 +169,15 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 		available = min(available, max(0, (state.Available-floor)/cost))
 		retry = maxTime(retry, state.ResetAt)
 	}
-	if available == 0 {
-		quotaLog.Printf("admission exhausted: resources=%d", len(resources))
-		return decision{ID: req.ID, Reason: "exhausted", RetryAt: retry.UTC().Format(time.RFC3339)}
+	capacity, reason := admissionOutcome(req.Operation, concurrency, active, req.Running, available)
+	switch reason {
+	case "exhausted":
+		return decision{ID: req.ID, Reason: reason, RetryAt: retry.UTC().Format(time.RFC3339)}
+	case "concurrency":
+		return decision{ID: req.ID, Capacity: capacity, Reason: reason}
 	}
-	result := decision{ID: req.ID, Capacity: min(concurrency, active+available), Reason: "available"}
+	result := decision{ID: req.ID, Capacity: capacity, Reason: reason}
 	if req.Operation != "admit" {
-		return result
-	}
-	if max(active, req.Running) >= result.Capacity {
-		result.Reason = "concurrency"
-		quotaLog.Printf("admission at concurrency bound: active=%d running=%d capacity=%d", active, req.Running, result.Capacity)
 		return result
 	}
 	held, err := b.reserveAll(ctx, current.identity, resources, cost, floor)
@@ -190,6 +188,23 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 	b.reservations[result.ReservationID] = &reservation{buckets: held}
 	quotaLog.Printf("admitted reservation: buckets=%d active=%d capacity=%d", len(held), active, result.Capacity)
 	return result
+}
+
+// admissionOutcome classifies an admission attempt from the quota-limited
+// headroom: "exhausted" when no quota remains, "concurrency" when an admit
+// request finds the active or externally running count at capacity, and
+// "available" otherwise.
+func admissionOutcome(operation string, concurrency, active, running, available int) (capacity int, reason string) {
+	if available <= 0 {
+		quotaLog.Printf("admission exhausted: concurrency=%d", concurrency)
+		return 0, "exhausted"
+	}
+	capacity = min(concurrency, active+available)
+	if operation == "admit" && max(active, running) >= capacity {
+		quotaLog.Printf("admission at concurrency bound: active=%d running=%d capacity=%d", active, running, capacity)
+		return capacity, "concurrency"
+	}
+	return capacity, "available"
 }
 
 // parkAfterRateLimit extends the bridge-wide park and parks every held bucket:
