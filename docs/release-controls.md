@@ -1,112 +1,136 @@
 ---
-title: Release change controls
-description: Configure independent review and applicable CI gates without claiming certification or operating evidence.
+title: Release promotion controls
+description: Gate the immutable prerelease-to-latest transition with independent approval and exact-source evidence.
 ---
 
-These repository-supported controls address release evidence and change review
-(SOC 2 CC7.1 and CC8.1). They are control design, not SOC 2 certification or proof
-that a control operated over an audit period. They do not enable hosted CLI
-execution, change CAO rollout policy, or grant authority over enrolled targets.
+**The approval boundary is prerelease to latest, not PR merge or prerelease
+creation.** The automated Release workflow still prepares assets, publishes an
+immutable prerelease, and adds highlights without an environment approval.
+Existing PR path filters and branch rulesets are unchanged.
 
-## GitHub-native configuration
+These controls support release evidence and change authorization (SOC 2 CC7.1
+and CC8.1). They are control design, not certification or proof of operation
+over an audit period. They do not enable hosted CLI execution, widen CAO policy,
+or change authority over enrolled targets.
 
-`.github/rulesets/release-controls.json` is a native GitHub REST ruleset payload,
-not a new CAO policy schema. It proposes protection of the default branch with:
+## Promotion flow
 
-- one approving review, CODEOWNERS review, stale-review dismissal, approval of
-  the latest push by someone other than its pusher, and resolved review threads;
-- the three required GitHub Actions checks below, against the latest base branch;
-- CodeQL merge protection for error alerts and high-or-higher security alerts;
-- no bypass actors, deletion, or force pushes.
-
-The existing `.github/CODEOWNERS` assigns `@github/next`. An administrator must
-verify that this team has suitable write access and independent reviewers.
-An automated review or an author's self-review does not supply independent approval.
-
-| Required check context | Applicable producers |
-| --- | --- |
-| `Contracts gate` | `Unit contracts (activity/dashboard/workflows/tooling/documentation)`, `test` (lint, typechecks, seeded compile), and `Install agent plugin with Copilot CLI` |
-| `Dashboard gate` | `Lint and unit tests` (dashboard types, lint, unit tests, build) |
-| `Server gate` | `Go format, lint, and tests` and `TypeSpec API contract and generated artifacts` |
-
-These are exact job check names, not workflow display names. The payload pins
-their producer to the GitHub Actions integration ID `15368`, verified against
-this repository's check-run API. Revalidate that ID before adapting to another host.
-Do **not** require path-filtered producers or main-only browser, performance,
-integration, campaign, or reporting jobs directly.
-
-The three workflows now start on every pull request. A shared selector moves
-their existing PR path rules to the job boundary. It reads the complete,
-NUL-delimited synthetic merge diff, including both sides of renames, rather
-than GitHub's capped path-filter file list. Changes to the shared selector run
-all three scopes. Each summary runs with `always()` and fails if selection
-fails, an applicable producer fails/cancels/skips, or a required result is absent.
-Only a successful selector proving no applicable changes permits skipped
-producers. Main-push coverage and main-only expensive jobs retain their triggers.
-
-CodeQL uses the native `code_scanning` rule, not an `Analyze (go)` status:
-successful analysis alone does not mean no high-severity findings. CodeQL must
-remain configured and results must be available for the relevant revision.
-GitHub's native applicability rules avoid inventing a required analysis-job
-context for documentation-only changes. Native merge protection has
-[documented exceptions](https://docs.github.com/en/code-security/concepts/code-scanning/merge-protection)
-for merge queues and Dependabot PRs analyzed by default setup; those release
-paths need a separate reviewed scanner disposition, not an assumed pass.
-This change does not enable merge queues.
-
-## Administrator rollout (not performed by the code change)
-
-1. Land the CI gate implementation through an independently reviewed PR. Before
-   activating required checks, confirm that all three exact check contexts are
-   emitted for representative dashboard-only, server-only, docs-only, and mixed
-   PRs on the current SHA. Rerun or update older open PRs that predate the gates.
-2. Confirm CodeQL default setup is configured, inspect its current findings, and
-   retain the scanner result links and dispositions. Test native scanner
-   applicability on the documentation-only PR as well.
-3. Export the live `main` ruleset (`20054276`) and any inherited rules. In
-   Settings > Rules > Rulesets, strengthen that ruleset using the reviewed
-   payload as the field-level reference. Preserve its existing deletion and
-   force-push prohibitions and any stronger rules; do not replace inherited
-   policy or add bypass actors. Activate the review, three status-check, and
-   CodeQL rules only after step 1. Native REST create/update is an admin action,
-   not a capability of the verifier.
-4. Run the read-only verification below with a credential permitted to see
-   bypass actors. Inspect effective branch rules as well: the verifier checks
-   the specified ruleset, not all inherited rules or historical review activity.
-   Unknown additional required checks fail verification for manual inspection
-   rather than being assumed safe from path-filter deadlocks.
+After the complete Release workflow succeeds, dispatch **Promote prerelease to
+latest** (`release-promote.yml`) from the current default branch with its
+existing `vX.Y.Z` tag:
 
 ```sh
-node scripts/verify-release-ruleset.mjs githubnext/gh-aw-cao 20054276
-gh api --method GET repos/githubnext/gh-aw-cao/rules/branches/main
+gh workflow run release-promote.yml --ref main -f tag=vX.Y.Z
 ```
 
-The app's supported `.github/github-app.yml` exposes the same verification as a
-manual script, with no automatic triggers or settings writes. It uses only GET,
-prints timestamped findings, and exits nonzero on missing, inaccessible, or
-weakened protection. If administrators instead create a separate additive
-ruleset, pass its actual ID and update the manual script in a reviewed change.
-Retain before/after exports, approving identities, exact SHAs, CI links,
-scanner dispositions, and deployment authorization in the approved evidence
-system. Never commit credentials or raw secret-bearing logs.
+The workflow does not create a release, rebuild its assets, or move its tag.
+It requires an existing immutable, published prerelease whose tag and
+`target_commitish` identify the same full commit SHA reachable from the default
+branch. All nine runtime/binary assets must have immutable SHA-256 digests,
+and the exact-SHA prerelease preparation/highlights workflow must have succeeded.
+The candidate must advance the current stable semantic version; rollback,
+repromotion, and first-stable bootstrapping are not supported by this workflow.
 
-## Hosted CLI finding disposition
+Before requesting approval, it verifies the live `release-latest` environment,
+binds the candidate, notes digest, asset digests, previous latest release, and
+exact-SHA CodeQL analysis identities, then runs fresh validation:
 
-At parent PR [#18462](https://github.com/githubnext/gh-aw-cao/pull/18462), revision
+| Promotion job | Required evidence |
+| --- | --- |
+| `Validate release contracts` | `npm run check`: root lint, typechecks, unit/integration/load contracts, SVG checks, TypeSpec artifacts, seeded workflow compilation, and docs |
+| `Validate release dashboard` | Dashboard typecheck, lint, unit tests, production build |
+| `Validate release server` | Go formatting, lint, and server tests |
+
+These are jobs in the promotion run, not required PR status checks. Every job
+runs against the exact candidate SHA, without path filters or skip-as-success
+fallbacks. Skipped, cancelled, failed, or missing validation prevents promotion.
+Candidate validation has only read permissions; the privileged job checks out
+the trusted workflow SHA, never the candidate source.
+
+CodeQL evidence must cover Actions, Go, JavaScript/TypeScript, and Python on
+the exact candidate SHA from default-branch analysis. The verifier searches
+the most recent 1,000 default-branch analyses and retrieves each selected
+analysis's SARIF, checking result completeness and linked alert identities.
+High/critical security findings or error-level results block promotion even
+if an alert was dismissed; no automatic waiver or scanner suppression is
+provided. Missing, inaccessible, failed, or mismatched evidence blocks.
+Low/medium non-error findings remain available for reviewer assessment.
+An analysis on a PR head or another commit is not release evidence.
+
+The workflow records candidate/evidence JSON in a 90-day Actions artifact and
+the job summary before the protected job becomes eligible. An independent
+human reviewer examines the release notes, SHA, validation jobs, and scanner
+evidence, then approves the `release-latest` environment. GitHub approval
+history must identify a human other than both the original and rerun actor.
+
+After approval, the workflow rereads the environment, candidate, latest,
+preparation result, and scanner evidence. Changed evidence or a newer default
+branch head requires a new dispatch and approval. Reruns are rejected to avoid
+reusing approval history from an earlier attempt. Promotion runs share one
+non-cancelling concurrency group.
+
+Only then does the privileged job update the existing release with
+`prerelease: false` and `make_latest: true`, verifying the stable/latest result.
+Failure before the update leaves the candidate a prerelease. A failed readback
+after the update is reported as failure, not silently rolled back or declared
+successful; an operator must inspect the actual release state.
+
+## Administrator setup (not performed by this change)
+
+1. Independently review and land the promotion workflow. Keep the existing
+   prerelease automation, branch rulesets, deletion protections, and force-push
+   prohibitions unchanged.
+2. Create the GitHub environment **`release-latest`** in repository Settings >
+   Environments. Configure at least one suitable required reviewer or reviewer
+   team, enable **Prevent self-review**, and disable **Allow administrators to
+   bypass configured protection rules**.
+3. Select deployment branches/tags and allow exactly the default **branch**
+   (`main` here), with no wildcard or tag policy. Keep existing CodeQL default
+   setup configured for the four required language categories.
+4. Run the read-only check below before any promotion. A missing environment
+   or insufficient protection must be fixed by an administrator, not created
+   implicitly by starting a job that references its name.
+
+```sh
+node scripts/verify-release-environment.mjs githubnext/gh-aw-cao
+```
+
+The supported `.github/github-app.yml` exposes this as a manual verification
+script. It only performs GET requests. No credentials, environment mutations,
+branch-policy mutations, or release writes occur in the verifier.
+
+5. Dispatch a candidate promotion, inspect the bound evidence and validation,
+   and obtain independent environment approval. Retain environment
+   configuration, approval history, exact SHAs, workflow/job links, scanner
+   analysis IDs, and the promotion receipt in the approved evidence system
+   beyond Actions retention when required.
+
+**Administrative boundary:** GitHub environment protection gates this workflow
+job, not every possible release edit. A user or App with repository
+`contents: write` can still edit releases directly through GitHub's UI/API.
+Administrators must restrict that authority and require this promotion path
+operationally; this repository change cannot impose a release-specific UI/API
+permission boundary. The workflow uses `GITHUB_TOKEN`, whose release updates
+do not automatically trigger other Actions workflows. It promotes the release
+to latest only; downstream publication must use its separately authorized path.
+Repository releases have no conditional update primitive here, so concurrent
+out-of-band administrator edits remain an operational risk despite immediate
+revalidation and postcondition checks.
+
+## Hosted CLI scanner disposition
+
+Parent PR [#18462](https://github.com/githubnext/gh-aw-cao/pull/18462), revision
 `81b7333a7cbb4cc5064ccb3f2c7d9dd22196d132`,
 [CodeQL check 117485353748](https://github.com/githubnext/gh-aw-cao/runs/117485353748)
-reported a high-severity potential allocation overflow in
+reported a high-severity potential allocation overflow at
 `server/internal/hostedcli/apple_container.go`: `42 + len(spec.Args)`.
 This is scanner evidence, not independently established exploitation.
-The fix constructs the fixed argument prefix as a slice literal and appends
-the variable arguments, removing the arithmetic from allocation sizing without
-suppressing the query or changing runtime authority. Regression coverage checks
-empty, single, and many arguments, preserving order and literal boundaries.
-Closure requires a fresh CodeQL result on the fix/integrated SHA; a local Go
-test is not scanner clearance.
+The fix removes arithmetic from allocation sizing by appending variable
+arguments to a fixed slice literal. Tests preserve empty/single/many argument
+ordering and boundaries, without a CodeQL suppression.
 
-The same parent revision's dashboard failures were stale contract tests: native
-`gh aw update` and explicit `cao-repository` context are intentional. Updated
-tests require the exact upstream package/control-repository command prefix,
-fail closed when host context is missing, and preserve explicit PR creation and
-opt-in auto-merge. No production dashboard command or rollout scope changed.
+Dashboard test fixes preserve the intentional native `gh aw update` commands,
+explicit control-repository context, PR publication, and opt-in auto-merge.
+Neither local tests nor the prior merge-gate implementation prove promotion
+readiness: release promotion requires its own exact-SHA validation and scanner
+evidence plus independent approval.

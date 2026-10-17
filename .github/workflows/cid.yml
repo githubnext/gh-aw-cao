@@ -2,6 +2,13 @@ name: Dashboard CI
 
 on:
   pull_request:
+    paths:
+      - .github/workflows/cid.yml
+      - dashboard/site/**
+      - docs/assets/logo-day.svg
+      - docs/assets/logo-night.svg
+      - public/favicon.svg
+      - "!dashboard/site/**/*.md"
   push:
     branches: [main]
     paths:
@@ -31,38 +38,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  scope:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      applicable: ${{ steps.scope.outputs.applicable }}
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/ci-scope # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
-        id: scope
-        with:
-          scope: dashboard
-
-  gate:
-    name: Dashboard gate
-    if: always()
-    needs: [scope, lint-unit]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-      - name: Require applicable CI
-        env:
-          CI_NEEDS: ${{ toJSON(needs) }}
-        run: node scripts/ci-release-gates.mjs gate
-
   lint-unit:
-    needs: scope
-    if: needs.scope.outputs.applicable == 'true'
     name: Lint and unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -162,8 +138,6 @@ jobs:
         run: npm run test:e2e:dashboard-ingestion
 
   dead-views:
-    needs: scope
-    if: needs.scope.outputs.applicable == 'true'
     name: Dashboard dead views
     runs-on: ubuntu-latest
     timeout-minutes: 5

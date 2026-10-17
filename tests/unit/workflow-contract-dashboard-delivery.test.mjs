@@ -6,7 +6,6 @@ import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
 import { generatedJobs, root, script, workflow } from "./workflow-contract.helpers.mjs";
-import { scopeApplies } from "../../scripts/ci-release-gates.mjs";
 
 // Dashboard, activity, and documentation delivery workflow contracts.
 
@@ -100,18 +99,19 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(source, /dashboard\/site\/\*\*/);
   // Changes to the shared favicon or docs logos must run the branding scaffold gate.
   const triggers = parse(source).on;
-  assert.equal(triggers.pull_request, null);
-  for (const path of ["docs/assets/logo-day.svg", "docs/assets/logo-night.svg", "public/favicon.svg"]) {
-    assert.ok(triggers.push.paths.includes(path), `push.paths must include ${path}`);
-    assert.ok(scopeApplies("dashboard", [path]), `PR scope must include ${path}`);
+  for (const event of ["pull_request", "push"]) {
+    for (const path of ["docs/assets/logo-day.svg", "docs/assets/logo-night.svg", "public/favicon.svg"]) {
+      assert.ok(
+        triggers[event].paths.includes(path),
+        `${event}.paths must include ${path} so the branding scaffold gate runs on logo changes`
+      );
+    }
   }
   assert.match(source, /working-directory: dashboard\/site/);
   assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
   assert.deepEqual(
     [...jobs.keys()],
     [
-      "scope",
-      "gate",
       "lint-unit",
       "playwright-integration",
       "ingestion-scale",
@@ -123,14 +123,14 @@ test("dashboard CI runs the campaign quality gates", () => {
       "lighthouse-comment"
     ]
   );
-  assert.deepEqual(lintUnit.needs, ["scope"]);
+  assert.deepEqual(lintUnit.needs, []);
   assert.deepEqual(playwrightIntegration.needs, []);
   assert.match(playwrightIntegration.block, /if: github\.event_name != 'pull_request'/);
   assert.deepEqual(ingestionScale.needs, []);
   // The synthetic ingestion payload is slow, so the gate stays on main.
   assert.match(ingestionScale.block, /if: github\.ref == 'refs\/heads\/main'/);
   assert.match(ingestionScale.block, /run: npm run test:e2e:dashboard-ingestion/);
-  assert.deepEqual(deadViews.needs, ["scope"]);
+  assert.deepEqual(deadViews.needs, []);
   assert.match(deadViews.block, /npm run --silent analyze:dead-views > dead-views\.md/);
   assert.match(deadViews.block, /cat dead-views\.md >> "\$GITHUB_STEP_SUMMARY"/);
   assert.match(deadViews.block, /name: dashboard-dead-views/);
