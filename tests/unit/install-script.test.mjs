@@ -135,6 +135,17 @@ if [[ "$*" == "auth status" ]]; then
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
   exit 0
 fi
+if [[ "\${1:-} \${2:-}" == "extension install" ]]; then
+  echo "$*" >> "$FAKE_COMMAND_LOG"
+  [[ -z "\${FAKE_EXTENSION_FAILURE:-}" ]] || exit 1
+  exit 0
+fi
+if [[ "$*" == "cao version" ]]; then
+  echo "$*" >> "$FAKE_COMMAND_LOG"
+  [[ -z "\${FAKE_EXTENSION_VERIFY_FAILURE:-}" ]] || exit 1
+  echo "gh-cao v1.2.3"
+  exit 0
+fi
 if [[ "$*" == "api --hostname github.com --paginate repos/githubnext/gh-aw-cao/releases?per_page=100 --jq .[] | [.draft, .prerelease, .tag_name] | @tsv" ]]; then
   [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 1; }
   printf '%b\\n' "\${FAKE_CAO_RELEASE_LIST:-false\\\\tfalse\\\\t\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}}"
@@ -415,6 +426,48 @@ async function assertCompleteInstall(consumer, env, ghAwVersion, repository, { a
 async function assertNothingInstalled(consumer) {
   assert.equal(await exists(path.join(consumer, policyPath)), false);
   assert.equal(await exists(path.join(consumer, "cao.sh")), false);
+}
+
+for (const version of ["", "v1.2.3"]) {
+  test(`streamed extension-only installation ${version || "latest"} works outside a checkout`, async (t) => {
+    const fixture = await createConsumer(t, supportedGhAw);
+    const args = ["--extension", ...(version ? ["--version", version] : [])];
+    const result = await streamInstaller(fixture.root, fixture.env, args);
+    assert.match(result.stdout, /GitHub CLI extension installed/);
+    assert.equal(await fixture.log(),
+      `extension install githubnext/gh-aw-cao --force${version ? ` --pin ${version}` : ""}\ncao version\n`);
+    await assertNothingInstalled(fixture.root);
+    await assertNothingInstalled(fixture.consumer);
+  });
+}
+
+for (const failure of ["FAKE_EXTENSION_FAILURE", "FAKE_EXTENSION_VERIFY_FAILURE"]) {
+  test(`extension-only installation fails closed on ${failure}`, async (t) => {
+    const fixture = await createConsumer(t, supportedGhAw);
+    const result = await runStreamed(fixture.root, { ...fixture.env, [failure]: "1" }, ["--extension"]);
+    assert.notEqual(result.code, 0);
+    assert.doesNotMatch(result.stdout, /GitHub CLI extension installed/);
+    await assertNothingInstalled(fixture.root);
+  });
+}
+
+for (const args of [
+  ["--version", "v1.2.3"],
+  ["--extension", "--version"],
+  ["--extension", "--version", "../main"],
+  ["--extension", "--setup"],
+  ["--extension", "--quickstart"],
+  ["--extension", "--create-repo", "alpha-org/control"],
+  ["--extension", "--target", "alpha-org/target"],
+  ["--extension", "githubnext/gh-aw-cao@main"],
+]) {
+  test(`extension installer rejects invalid arguments: ${args.join(" ")}`, async (t) => {
+    const fixture = await createConsumer(t, supportedGhAw);
+    const result = await runStreamed(fixture.root, fixture.env, args);
+    assert.notEqual(result.code, 0);
+    assert.equal(await fixture.log(), "");
+    await assertNothingInstalled(fixture.root);
+  });
 }
 
 const githubApi = "https://api.example.invalid";

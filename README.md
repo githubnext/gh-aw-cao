@@ -129,6 +129,21 @@ work and planned improvements.
 
 The `gh cao` Go extension exposes the operator commands for setup,
 authentication, campaigns, validation, and read-only evidence analysis.
+Install or upgrade the latest released extension with
+[GitHub CLI](https://cli.github.com/) installed and signed in (`gh auth login`):
+
+```bash
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash -s -- --extension
+```
+
+Add `--version vMAJOR.MINOR.PATCH` to pin a specific stable release.
+Extension-only installation uses `gh extension install` to select the release
+binary for your platform; it needs no checkout or Node.js and does not install
+workflows, change policy, or create a control repository.
+The existing installer options above still install the control-plane runtime.
+
 Run `make build` to produce `./gh-cao`, then try `./gh-cao --help`.
 `campaigns add`, `init`, `campaigns mode`, `campaigns enable`, and
 `campaigns disable` execute natively in Go; repository enrollment

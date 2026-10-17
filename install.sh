@@ -96,7 +96,10 @@ run_quiet_command() {
 usage() {
   printf '%s\n' \
     'Usage: install.sh [CATALOG_SOURCE] [--setup | --quickstart] [--create-repo [OWNER/NAME]] [--target OWNER/REPO]' \
+    '       install.sh --extension [--version vMAJOR.MINOR.PATCH]' \
     '' \
+    '--extension installs or upgrades only the gh cao GitHub CLI extension; no checkout or Node.js is required.' \
+    '--version pins the extension to a stable release; omitted, it installs the latest release.' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo requires typing an eligible OWNER and NAME with no defaults; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
@@ -464,10 +467,21 @@ main() {
   local authentication_status
   local quickstart_status
   local quickstart_release
+  local extension=false
+  local extension_version=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --help|-h) usage; return ;;
+      --extension) extension=true; shift ;;
+      --version)
+        if [[ $# -lt 2 || ! "$2" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+          printf '%s\n' 'Provide a stable vMAJOR.MINOR.PATCH release after --version.' >&2
+          return 1
+        fi
+        extension_version="$2"
+        shift 2
+        ;;
       --setup) setup=true; shift ;;
       --quickstart) quickstart=true; shift ;;
       --target)
@@ -508,6 +522,30 @@ main() {
         ;;
     esac
   done
+  if [[ "$extension" == true ]]; then
+    if [[ "$explicit_source" == true || "$setup" == true || "$quickstart" == true ||
+      "$create_repository_requested" == true || -n "$target_repository" ]]; then
+      printf '%s\n' '--extension cannot be combined with control-plane installation options or a catalog source.' >&2
+      return 1
+    fi
+    if ! command -v gh >/dev/null 2>&1; then
+      printf '%s\n' 'Install GitHub CLI from https://cli.github.com, then rerun --extension.' >&2
+      return 1
+    fi
+    local -a extension_arguments=(extension install githubnext/gh-aw-cao --force)
+    if [[ -n "$extension_version" ]]; then
+      extension_arguments+=(--pin "$extension_version")
+    fi
+    info "Installing gh cao (${extension_version:-latest})..."
+    gh "${extension_arguments[@]}"
+    gh cao version
+    success 'GitHub CLI extension installed. Run gh cao --help to get started.'
+    return
+  fi
+  if [[ -n "$extension_version" ]]; then
+    printf '%s\n' '--version requires --extension.' >&2
+    return 1
+  fi
   if [[ "$setup" == true && "$quickstart" == true ]]; then
     printf '%s\n' '--setup and --quickstart cannot be used together.' >&2
     return 1
