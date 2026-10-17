@@ -138,6 +138,25 @@ func TestFreshSchemaReopen(t *testing.T) {
 	}
 }
 
+func TestNumericSessionStatusUsesNativeTextStorage(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	nativeSeed(t.Context(), t, store, map[string][]model.Row{"$audits": {
+		{"id": "firewall", "runId": "run", "source": "session", "type": "firewall.event", "status": json.Number("200")},
+		{"id": "unknown", "runId": "run", "source": "session", "type": "firewall.event", "status": nil},
+		{"id": "absent", "runId": "run", "source": "session", "type": "firewall.event"},
+	}})
+	result, _, err := store.ExecuteSQLPlan(t.Context(), []query.Definition{{
+		Name: "statuses", From: "$audits", Select: []query.SelectedField{{Field: "id"}, {Field: "status"}},
+	}}, []string{"statuses"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []model.Row{{"id": "firewall", "status": "200"}, {"id": "unknown", "status": nil}, {"id": "absent"}}
+	if !reflect.DeepEqual(result["statuses"].Rows, want) {
+		t.Fatalf("numeric status or unknown presence changed: %#v", result["statuses"].Rows)
+	}
+}
+
 func TestNativeStorageAndSQLPresence(t *testing.T) {
 	store, _ := nativeTestStore(t)
 	nativeSeed(t.Context(), t, store, map[string][]model.Row{"$domains": {

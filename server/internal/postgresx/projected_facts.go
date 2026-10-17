@@ -1,8 +1,10 @@
 package postgresx
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
+	"math"
 	"reflect"
 	"regexp"
 	"strings"
@@ -128,6 +130,16 @@ func normalizeProjectedFacts(source string, input model.Row) (model.Row, error) 
 	}
 	switch source {
 	case "$domains", "$tools", "$skills", "$audits", "$issues":
+		switch status := row["status"].(type) {
+		case json.Number:
+			if number, err := status.Float64(); err == nil && !math.IsInf(number, 0) && !math.IsNaN(number) {
+				set("status", string(status))
+			}
+		case float64:
+			if !math.IsInf(status, 0) && !math.IsNaN(status) {
+				set("status", fmt.Sprint(status))
+			}
+		}
 		legacy, _ := row["type"].(string)
 		if native, exists := legacySessionEventTypes[legacy]; exists {
 			set("type", native)
