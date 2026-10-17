@@ -51,7 +51,11 @@ const args = process.argv.slice(2);
 fs.appendFileSync(process.env.CALLS, JSON.stringify(args) + "\\n");
 const calls = fs.readFileSync(process.env.CALLS, "utf8").trim().split("\\n").map(JSON.parse);
 if (args[0] === "api") {
-  const count = calls.filter((call) => call[0] === "api").length;
+  if (args[1] !== "rate_limit") {
+    console.log(JSON.stringify([{ workflows: [{ path: ".github/workflows/example.lock.yml" }] }]));
+    process.exit(0);
+  }
+  const count = calls.filter((call) => call[0] === "api" && call[1] === "rate_limit").length;
   const limited = process.env.MODE === "reserve-first" || process.env.MODE === "reserve-second" && count > 1;
   console.log(JSON.stringify({ resources: { core: { limit: 5000, remaining: limited ? 2000 : 5000, reset: 1791406800 } } }));
   process.exit(0);

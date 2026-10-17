@@ -426,7 +426,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.match(activityCollector, /--max-storage "\$max_storage"/);
   assert.match(activityCollector, /--repo "\$target_repository"/);
   assert.match(activityCollector, /--prune-older-runs/);
-  assert.equal((activityCollector.match(/gh aw logs/g) || []).length, 1);
+  assert.equal((activityCollector.match(/node activity\/collect-workflow-logs\.mjs gh/g) || []).length, 1);
   assert.doesNotMatch(activityCollector, /gh api|token-efficiency/);
   assert.doesNotMatch(activityWorkflow, /(?:\.github\/aw\/)?optimization\/collect-token-efficiency\.sh/);
   assert.doesNotMatch(activityLogs, /gh aw logs --audit|runGhAw/);
@@ -524,7 +524,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /Collect owner-scoped dashboard inventory[\s\S]*?discover-workflows/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download owner-scoped agentic workflow logs[\s\S]*?Upload owner-scoped activity fragment[\s\S]*?index:[\s\S]*?Merge owner-scoped activity fragments[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
   assert.match(workflow, /bash activity\/collect-logs\.sh/);
-  assert.match(activityCollector, /gh aw logs --audit/);
+  assert.match(activityCollector, /node activity\/collect-workflow-logs\.mjs gh --audit/);
   assert.match(activityCollector, /REPORT_DEFER_ISSUE_STATUS/);
   assert.match(workflow, /Download owner-scoped agentic workflow logs[\s\S]*?REPORT_DEFER_ISSUE_STATUS: "1"[\s\S]*?Enrich owner-scoped issue statuses[\s\S]*?cao\.mjs issue-status[\s\S]*?Generate phased activity shards/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);

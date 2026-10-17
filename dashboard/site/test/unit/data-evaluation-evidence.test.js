@@ -61,10 +61,24 @@ describe('unified evaluation evidence', () => {
         .toThrow(/^experiment\/assignments.json must contain/);
     }
     expect(() => experimentAssignmentArtifact([
-      { path: 'usage/experiment/assignments.json', content: '{}' },
-      { path: 'experiment/assignments.json', content: '{}' }
+      { path: 'usage/experiment/assignments.json', content: '{"prompt":"candidate"}' },
+      { path: 'experiment/assignments.json', content: '{"prompt":"control"}' }
     ])).toThrow('Multiple experiment assignment artifacts found for one run');
+    expect(() => experimentAssignmentArtifact([
+      { path: 'usage/experiment/assignments.json', content: '{"prompt":"candidate"}' },
+      { path: 'worker-experiment/assignments.json', content: 'PRIVATE_INVALID_JSON' }
+    ])).toThrow('worker-experiment/assignments.json must contain valid experiment assignment JSON');
     expect(parseExperimentAssignments('{}', 'experiment/assignments.json')).toEqual({ assignments: {} });
+  });
+
+  it('deduplicates identical current-run assignments in compact and named experiment artifacts', () => {
+    const batch = normalize(adaptGhAwLogs(artifactInput([
+      { path: 'usage/experiment/assignments.json', content: '{"prompt":"candidate","style":"concise"}' },
+      { path: 'worker-experiment/assignments.json', content: '{"style":"concise","prompt":"candidate"}' }
+    ])).observations);
+    expect(batch.experiments?.map((row) => row.name)).toEqual(['prompt', 'style']);
+    expect(batch.experimentAssignments?.map((row) => row.variant)).toEqual(['candidate', 'concise']);
+    expect(relationshipErrors(batch)).toEqual([]);
   });
 
   it.each([false, true])('ingests standalone eval artifacts with a session lacking evals: %s', (withSession) => {
@@ -226,19 +240,35 @@ describe('unified evaluation evidence', () => {
     expect(relationshipErrors(batch)).toEqual([]);
   });
 
-  it('persists standalone experiment assignments and resolves every Experiments view source through the worker', async () => {
-    const indexedDB = new IDBFactory();
+  it.each(['browser', 'sqlite'].flatMap((backend) =>
+    ['experiment.assignment', 'experiment.state', 'artifact'].map((source) => ({ backend, source }))
+  ))('persists $source experiments and resolves every Experiments view source through the $backend worker', async ({ backend, source }) => {
+    const directory = backend === 'sqlite' ? mkdtempSync(join(tmpdir(), 'cao-experiments-')) : null;
+    if (directory) onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
+    const filename = directory ? join(directory, 'experiments.sqlite') : null;
+    const indexedDB = filename ? createSqliteIndexedDB(filename) : new IDBFactory();
     vi.stubGlobal('indexedDB', indexedDB);
-    vi.stubGlobal('IDBKeyRange', IDBKeyRange);
+    vi.stubGlobal('IDBKeyRange', filename ? SqliteIDBKeyRange : IDBKeyRange);
     const input = {
       observedAt: '2026-10-15T10:01:00Z',
       repository: { githubId: 1, owner: 'octo', name: 'api' },
       workflow: { githubId: 2, name: 'Worker', path: '.github/workflows/worker.lock.yml' },
       run: { githubRunId: 303, attempt: 1, createdAt: '2026-10-15T10:00:00Z',
         url: 'https://github.com/octo/api/actions/runs/303' },
-      files: [{ path: 'usage/experiment/assignments.json', content: '{"prompt":"candidate","style":"concise"}' }]
+      files: source === 'artifact' ? [
+        { path: 'usage/experiment/assignments.json', content: '{"prompt":"candidate","style":"concise"}' },
+        { path: 'worker-experiment/assignments.json', content: '{"style":"concise","prompt":"candidate"}' }
+      ] : [
+        { path: 'usage/aw_session.jsonl', content: [
+          { type: 'session.format', data: { version: 1 } },
+          { type: source, data: { runId: '303', runAttempt: 1,
+            assignments: { prompt: 'candidate', style: 'concise' } } }
+        ].map((record) => JSON.stringify(record)).join('\n') },
+        { path: 'usage/experiment/assignments.json', content: 'PRIVATE_INVALID_FALLBACK' }
+      ]
     };
     await ingestGhAwLogs(indexedDB, input, { now: Date.parse('2026-10-16T00:00:00Z') });
+    if (filename) vi.stubGlobal('indexedDB', createSqliteIndexedDB(filename));
     const stored = await readCollections(indexedDB, ['experiments', 'experimentAssignments']);
     expect(stored.experiments).toHaveLength(2);
     expect(stored.experimentAssignments).toHaveLength(2);
@@ -260,6 +290,24 @@ describe('unified evaluation evidence', () => {
     ]);
     expect(sources[contract.experiments.definitions.query].rows.map((row) => row['experiment-name']))
       .toEqual(['prompt', 'style']);
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');
+    const rendered = renderDashboard({
+      document: { ...authoritativeDashboard, dashboard: {
+        ...dashboard, pages: [page], navigation: [{ label: 'Evidence', pages: ['experiments'] }]
+      } },
+      sources
+    });
+    document.body.append(rendered);
+    try {
+      const view = rendered.querySelector(`[data-view-id="${contract.experiments.view}"]`);
+      expect(view?.textContent).toContain('candidate');
+      expect(view?.textContent).toContain('concise');
+      expect(view?.querySelector('a[href="https://github.com/octo/api/actions/runs/303"]')).not.toBeNull();
+    } finally {
+      disposeDashboard(rendered);
+      rendered.remove();
+      resetSourceStore();
+    }
     await ingestGhAwLogs(indexedDB, input, { now: Date.parse('2026-10-16T00:00:00Z') });
     expect((await readCollections(indexedDB, ['experimentAssignments'])).experimentAssignments).toHaveLength(2);
   });

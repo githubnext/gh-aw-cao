@@ -131,7 +131,7 @@ for index in "${!repositories[@]}"; do
   started_at="$SECONDS"
   collection_log="$(mktemp "$output_directory/collection-errors.XXXXXX")"
   set +e
-  gh aw logs --audit \
+  node activity/collect-workflow-logs.mjs gh --audit \
     --repo "$target_repository" \
     --output "$output_directory/$cache_name" \
     --summary-file "" \
