@@ -56,7 +56,10 @@ describe('CLI actions', () => {
         arguments: action.arguments?.map((argument) => ({ ...argument, type: /** @type {const} */ ('boolean') }))
       }], {
         templateValues: { repository: 'octo/example', campaign: 'activity' },
-        context: { 'cao-url': 'https://ops.example.com/central/', 'cao-repository-url': 'https://github.com/acme/control' }
+        context: {
+          'cao-url': 'https://ops.example.com/central/', 'cao-repository': 'acme/control',
+          'cao-repository-url': 'https://github.com/acme/control'
+        }
       });
       if (!root) throw new Error(`Missing action control ${id}`);
       document.body.append(root);
@@ -68,6 +71,10 @@ describe('CLI actions', () => {
       trigger.click();
       expect(autoMerge.checked).toBe(false);
       expect(root.querySelector('.cli-action-command')?.textContent).not.toContain('--auto-merge');
+      const expectedPrefix = id.startsWith('update')
+        ? 'gh aw update https://github.com/githubnext/gh-aw-cao/activity --repo acme/control'
+        : 'gh aw upgrade --repo octo/example';
+      expect(root.querySelector('.cli-action-command')?.textContent?.startsWith(`${expectedPrefix} --pr-message `)).toBe(true);
       expect(root.querySelector('.cli-action-command')?.textContent).toContain(
         "--pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]"
       );
@@ -86,6 +93,7 @@ describe('CLI actions', () => {
       const createPr = /** @type {HTMLInputElement} */ (root.querySelector('.cli-action-argument input'));
       if (!createPr.checked) createPr.click();
       autoMerge.click();
+      expect(root.querySelector('.cli-action-command')?.textContent).toContain('--create-pull-request');
       /** @type {HTMLButtonElement} */ (root.querySelector('.cli-action-confirm')).click();
       await vi.waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(1));
       expect(queue.enqueue.mock.calls[0][0].arguments).toMatchObject({
@@ -104,6 +112,23 @@ describe('CLI actions', () => {
     expect(root?.querySelector('.cli-action-confirm')).toHaveProperty('disabled', true);
     expect(queue.enqueue).not.toHaveBeenCalled();
   });
+
+  it.each(['update-repository', 'update-campaign'])(
+    'fails closed for %s without control-repository context instead of targeting the row repository',
+    (id) => {
+      const action = dashboardDocument.dashboard['cli-actions'].find((candidate) => candidate.id === id);
+      if (!action) throw new Error(`Missing action ${id}`);
+      const root = renderCliActions([{
+        id: action.id, label: action.label, icon: action.icon, command: action.command
+      }], {
+        templateValues: { repository: 'octo/example', campaign: 'activity' },
+        context: { 'cao-url': 'https://ops.example.com/central/', 'cao-repository-url': 'https://github.com/acme/control' }
+      });
+      expect(root?.querySelector('.cli-action-command')?.textContent).toContain('"cao-repository" is unavailable');
+      expect(root?.querySelector('.cli-action-confirm')).toHaveProperty('disabled', true);
+      expect(queue.enqueue).not.toHaveBeenCalled();
+    }
+  );
 
   it('shares the command summary context across shell replacements with independent lifetimes', async () => {
     const styles = document.createElement('style');

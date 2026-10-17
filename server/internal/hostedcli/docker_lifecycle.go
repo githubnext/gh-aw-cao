@@ -43,6 +43,9 @@ func (r *DockerContainerLifecycle) capture(ctx context.Context, args []string) (
 }
 
 func (r *DockerContainerLifecycle) Stop(ctx context.Context, execution operational.CLICommandExecution) error {
+	// Cutting egress is safe even when workload removal is unconfirmed. It
+	// does not prove termination or permit releasing the durable claim.
+	r.stopEgress(execution.Name)
 	code, err := r.Commands.Run(ctx, Process{
 		Program: r.DockerBinary, Args: []string{"--context", "default", "rm", "--force", execution.Name}, Env: r.HostEnv,
 	}, nil)

@@ -1,7 +1,6 @@
 package hostedcli
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -557,95 +556,48 @@ func TestOutputSinkSplitsLongLinesWithinChunkLimit(t *testing.T) {
 	}
 }
 
-type syncBuffer struct {
-	mutex  sync.Mutex
-	buffer bytes.Buffer
-}
-
-func (b *syncBuffer) Write(p []byte) (int, error) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	return b.buffer.Write(p)
-}
-
-func (b *syncBuffer) events() []map[string]any {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	var events []map[string]any
-	for _, line := range strings.Split(strings.TrimSpace(b.buffer.String()), "\n") {
-		var event map[string]any
-		if line != "" && json.Unmarshal([]byte(line), &event) == nil {
-			events = append(events, event)
-		}
-	}
-	return events
-}
-
-func (b *syncBuffer) String() string {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	return b.buffer.String()
-}
-
 func TestExecutorAuditsCommandAndTokenLifecycleWithoutSecrets(t *testing.T) {
-	queue, minter := newFakeQueue(), newFakeMinter()
-	runner := &fakeRunner{minter: minter}
-	var buffer syncBuffer
-	startExecutorWith(t, queue, minter, fakeGitHub{permission: "write"}, runner, func(options *Options) {
-		options.Audit = audit.New(&buffer)
-	})
-	allowed := enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona")
-	queue.waitSettled(t, allowed)
-	deadline := time.Now().Add(5 * time.Second)
-	want := []string{"token.minted", "cli_command.started", "token.revoked", "cli_command.finished"}
-	for {
-		seen := map[string]map[string]any{}
-		for _, event := range buffer.events() {
-			seen[event["event"].(string)] = event
-		}
-		missing := false
-		for _, name := range want {
-			if seen[name] == nil {
-				missing = true
-			}
-		}
-		if !missing {
-			started := seen["cli_command.started"]
-			if started["actor"] != "mona" || started["repository"] != "octo/app" || started["hashed_token"] == "" ||
-				started["hashed_token"] != seen["token.revoked"]["hashed_token"] {
-				t.Fatalf("unexpected started event %v", started)
-			}
-			if seen["cli_command.finished"]["status"] != string(operational.CLICommandCompleted) {
-				t.Fatalf("unexpected finished event %v", seen["cli_command.finished"])
-			}
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("missing audit events in %s", buffer.String())
-		}
-		time.Sleep(10 * time.Millisecond)
+	fixture := newLifecycleExecutor(t, "write", "")
+	fixture.execute(t)
+	events, err := fixture.store.ListAudit(t.Context(), operational.AuditFilter{})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(buffer.String(), "ghs_") {
+	seen := map[string]operational.AuditEvent{}
+	for _, event := range events {
+		seen[event.Event] = event
+	}
+	for _, name := range []string{"token.minted", "cli_command.started", "token.revoked", "cli_command.result", "cli_command.finished"} {
+		if seen[name].Sequence == 0 {
+			t.Fatalf("missing durable lifecycle event %s", name)
+		}
+	}
+	started := seen["cli_command.started"]
+	var revoked operational.AuditEvent
+	for _, event := range events {
+		if event.Event == "token.revoked" && event.Attributes["hashed_token"] == started.Attributes["hashed_token"] {
+			revoked = event
+		}
+	}
+	if started.Actor != "mona" || revoked.Actor != "mona" || revoked.Attributes["repository"] != "octo/app" ||
+		started.Attributes["hashed_token"] == "" || started.Attributes["hashed_token"] != revoked.Attributes["hashed_token"] {
+		t.Fatal("durable token events lost command or token identity")
+	}
+	if seen["cli_command.finished"].Attributes["status"] != string(operational.CLICommandCompleted) {
+		t.Fatal("completion event does not reflect the committed command")
+	}
+	data, _ := json.Marshal(events)
+	if strings.Contains(string(data), "ghs_") {
 		t.Fatal("audit events must never contain token values")
 	}
 }
 
 func TestExecutorAuditsRevokedRequesterPermission(t *testing.T) {
-	queue, minter := newFakeQueue(), newFakeMinter()
-	var buffer syncBuffer
-	startExecutorWith(t, queue, minter, fakeGitHub{permission: "read"}, &fakeRunner{}, func(options *Options) {
-		options.Audit = audit.New(&buffer)
-	})
-	queue.waitSettled(t, enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona"))
-	deadline := time.Now().Add(5 * time.Second)
-	for !strings.Contains(buffer.String(), `"cli_command.finished"`) {
-		if time.Now().After(deadline) {
-			t.Fatalf("missing finished event in %s", buffer.String())
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if !strings.Contains(buffer.String(), `"event":"cli_command.permission_denied","outcome":"denied"`) {
-		t.Fatalf("permission denial must be audited: %s", buffer.String())
+	fixture := newLifecycleExecutor(t, "read", "")
+	fixture.execute(t)
+	events, err := fixture.store.ListAudit(t.Context(), operational.AuditFilter{Event: "cli_command.permission_denied"})
+	if err != nil || len(events) != 1 || events[0].Outcome != audit.Denied {
+		t.Fatal("permission denial must be audited")
 	}
 }
 
@@ -817,16 +769,12 @@ func TestBrokerWithholdsTokensThatCannotBeAudited(t *testing.T) {
 }
 
 func TestExecutorDoesNotRunCommandsThatCannotBeAudited(t *testing.T) {
-	queue, minter := newFakeQueue(), newFakeMinter()
-	runner := &fakeRunner{minter: minter}
-	startExecutorWith(t, queue, minter, fakeGitHub{permission: "write"}, runner, func(options *Options) {
-		options.Audit = audit.New(io.Discard).WithStore(failingAuditStore{event: "cli_command.started"})
-	})
-	command := queue.waitSettled(t, enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona"))
+	fixture := newLifecycleExecutor(t, "write", "cli_command.started")
+	command := fixture.execute(t)
 	if command.Status != operational.CLICommandFailed || !strings.Contains(command.Error, "audit trail is unavailable") {
 		t.Fatalf("unaudited command = %+v", command)
 	}
-	if len(runner.processes) != 0 || minter.liveCount() != 0 {
-		t.Fatalf("unaudited command ran (%d) or left tokens live (%d)", len(runner.processes), minter.liveCount())
+	if len(fixture.runner.processes) != 0 || fixture.minter.liveCount() != 0 {
+		t.Fatal("unaudited command ran or left tokens live")
 	}
 }

@@ -117,6 +117,9 @@ CREATE INDEX IF NOT EXISTS cao_operational_audit_time
     ON cao_operational_audit_events(namespace, occurred_at);
 CREATE INDEX IF NOT EXISTS cao_operational_audit_actor
     ON cao_operational_audit_events(namespace, actor, sequence);
+CREATE INDEX IF NOT EXISTS cao_operational_audit_token_lifecycle
+    ON cao_operational_audit_events(namespace, event, ((record::jsonb)->'attributes'->>'hashed_token'))
+    WHERE event IN ('token.revoked','token.expired','token.revoke_failed');
 
 CREATE OR REPLACE FUNCTION cao_operational_audit_append_only() RETURNS trigger
 LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS $$

@@ -67,6 +67,15 @@ on the operator's workstation with the operator's own credentials.
    contracts (§7 items 1–2), with these differences: one global namespace,
    timestamps from the host clock, and triggers that anyone with write access
    to the file can drop. It MUST NOT be used in production.
+   `database bootstrap --store operational --sqlite PATH` MUST explicitly
+   provision that file before runtime use. Runtime and evidence readers MUST
+   NOT create missing state, execute schema DDL, or implicitly retain audit
+   history. `database retain-audit --store operational --sqlite PATH` MUST
+   perform only a bounded expired-prefix audit retention batch. SQLite
+   `audit deliver` MUST use a read-only connection and deferred verification
+   transaction; `audit verify` MUST remain writable to record its outcome.
+   SQLite MUST NOT be presented as enforcing PostgreSQL role separation or
+   as an alternative canonical dashboard store.
 
 ## 3. Administrator step-up
 
@@ -328,7 +337,8 @@ to the executor's App-only credential for requester authorization.
    capabilities, enable `no-new-privileges`, and apply process and memory
    limits. The per-command workspace MUST be its only writable host bind mount;
    `/tmp` MAY be a bounded tmpfs. The executor MUST NOT mount the host home,
-   Docker socket, App key, database credentials, or other server files.
+   Docker socket, App key, database credentials, or other server files, except
+   the reviewed relay and private proxy socket defined in section 6b.
 9. The subprocess environment MUST be minimal: the single-use `GH_TOKEN`, an
    empty system git configuration, the `gh` credential helper, and the App bot
    identity. For Linux-image profiles, the executor MUST pass it through a temporary mode-`0600`
@@ -454,6 +464,54 @@ to the executor's App-only credential for requester authorization.
    operator-managed; the executor MUST NOT install OS features or change
    global runtime configuration automatically.
 
+## 6b. Production Docker egress boundary
+
+1. Production Docker execution MUST require an explicit exact-host policy,
+   a static Linux relay built from reviewed server source, and its independently
+   approved SHA-256 digest. Missing, malformed, unavailable or mismatched
+   configuration MUST fail startup. The verified relay bytes and parsed policy
+   MUST be snapshotted; later host-path replacement MUST NOT change a command.
+   The relay architecture MUST match the local Linux daemon before creation.
+2. Workloads MUST use Docker `--network none`, with no host networking, added
+   interface, Docker socket, network-administration capabilities or unrestricted
+   bridge fallback. Proxy environment variables alone MUST NOT constitute the
+   boundary. Direct IPv4/IPv6, TCP/UDP and DNS bypasses MUST remain unavailable
+   even if the workload ignores the proxy.
+3. The only egress channel MUST be a per-command private Unix socket exposing
+   an HTTPS CONNECT proxy. Its directory MUST be `0700`, its socket `0600`,
+   and its relay and socket mount read-only. Any writable workspace alias of
+   that directory MUST be hidden from the workload. No host administration API,
+   policy mutation interface, App key or database credential may be exposed.
+4. The proxy MUST admit only exact approved DNS hosts and TCP port 443. It MUST
+   reject non-CONNECT methods, IP authorities, wildcards, alternate ports,
+   invalid or unavailable DNS, and any resolution containing an unapproved
+   address. It MUST normalize IPv4-mapped IPv6, validate every address, and dial
+   a validated numeric address rather than resolving again. Public destinations
+   MUST exclude private and special-use addresses. Private GHES exceptions MUST
+   bind exact DNS names to exact RFC1918/ULA addresses; metadata, loopback and
+   link-local addresses MUST remain denied. Policy MUST NOT broaden repository
+   authority. CONNECT destination control MUST NOT be represented as TLS SNI
+   inspection, application-content filtering or prevention of exfiltration to
+   an approved endpoint.
+5. Each proxy MUST bound concurrent connections (32), configured header bytes
+   (8 KiB), header timeout (5 seconds), resolution and dialing (10 seconds each),
+   tunnel I/O idle periods (30 seconds) and total lifetime (15 minutes or earlier
+   command cancellation). Cancellation, stop and executor death MUST close
+   existing tunnels and prevent new ones. Proxy loss MUST NOT imply workload
+   termination, settle claims, revoke the requirement to reconcile, or delete an
+   unconfirmed workload's workspace. Runtime identity, bounded cleanup, token
+   lifetime, and original-daemon recovery MUST remain as defined in section 6.
+6. Deployment MUST bind relay digest, architecture and source/build provenance
+   to the reviewed executor release. Before admitting production work, operators
+   MUST validate the real kernel boundary and allowed gh/Git traffic on their
+   intended Linux executor. Mock command tests or missing-Docker skips MUST NOT
+   count as real-boundary evidence. No global Docker or shared host-network
+   modification is required or authorized by this mechanism.
+7. SQLite-only Docker development MAY retain its previous bridge behavior only
+   when every egress setting is absent. Any supplied setting MUST require the
+   complete boundary with no silent fallback. The explicitly selected native
+   profiles in section 6a remain development-only.
+
 ## 7. Audit trail
 
 1. The authoritative audit trail is the PostgreSQL operational table
@@ -471,9 +529,9 @@ to the executor's App-only credential for requester authorization.
    report a gap, broken link, hash mismatch, or column that differs from the
    hashed record as `ErrAuditTampered`. The chain detects tampering by anyone
    who cannot also rewrite every later hash; operators who need protection
-   against a database superuser MUST also forward the mirror (item 3) to
+   against a database superuser MUST also forward committed audit evidence (item 3) to
    write-once storage.
-3. Every event MUST also be mirrored as one JSON line with `"audit":"cao"`,
+3. Events produced through the audit logger MUST also be mirrored as one JSON line with `"audit":"cao"`,
    `event`, `outcome`, `stored`, and, when stored, `sequence`. The mirror goes
    to standard error, or to the file named by `CAO_AUDIT_LOG`, opened for
    append with mode `0600`, for SIEM forwarding. Waiting for and writing the
@@ -489,6 +547,9 @@ to the executor's App-only credential for requester authorization.
    append failures or trigger compensation. A hosted mutation whose durable
    commit succeeded MUST report its committed command ID and state even when
    mirror confirmation fails; same-key replay MUST NOT duplicate or cancel it.
+   Storage-owned lifecycle events in section 7.1 commit directly to the audit
+   stream, not through this best-effort inline mirror. Forwarders MUST consume
+   committed audit rows to include these events and recover missed mirror writes.
 4. Enabling hosted CLI actions, in either process, MUST fail unless the
    operational store provides the audit table. Privileged steps MUST fail
    closed when their event cannot be stored: a minted token is revoked and not
@@ -505,8 +566,8 @@ to the executor's App-only credential for requester authorization.
    a nonempty key with the same invocation and retry ancestry MUST return the
    same retained command, and MUST atomically audit the repeated request; a different
    invocation or retry ancestor MUST conflict. Audit failure on a replay MUST
-   NOT cancel a previously committed command. Denials and completion events
-   are best-effort, and a storage failure still appears in the mirror with
+   NOT cancel a previously committed command. Denial events remain
+   best-effort, and a storage failure still appears in the mirror with
    `stored:false` (unconfirmed, not proof that no durable event exists).
 5. The web process MUST record `admin.denied` with the reason
    (`step_up_required` or `not_admin`), the method, and the path for every
@@ -514,9 +575,9 @@ to the executor's App-only credential for requester authorization.
    `cli_command.rejected`, `cli_command.cancel_requested`, and
    `cli_command.retried`. Each admitted event carries the actor, action,
    repository, assurance factors, and step-up time.
-6. The executor MUST record `token.minted`, `token.revoked`, and
-   `token.revoke_failed`. It MUST also record `cli_command.started`,
-   `cli_command.permission_denied`, and `cli_command.finished`, with the
+6. The executor MUST record `token.minted`, `token.revoked`, `token.expired`, and
+   `token.revoke_failed` as applicable. It MUST also record `cli_command.started`,
+   `cli_command.permission_denied`, `cli_command.result`, and `cli_command.finished`, with the
    actor, repository, installation, granted permissions, container image,
    status, and exit code.
 7. Events MUST NOT contain tokens, keys, or OAuth credentials. Token events
@@ -536,7 +597,7 @@ to the executor's App-only credential for requester authorization.
 9. `cao-dashboard audit export` MUST write retained rows as JSON Lines in
    sequence order, optionally filtered by `--after`, `--event`, and `--actor`,
    for evidence requests and SIEM backfill.
-10. When OpenTelemetry is configured, every audit event MUST also be emitted as
+10. When OpenTelemetry is configured, audit-logger events MUST also be emitted as
     an OTLP log record named `cao.audit.<event>`, with severity `ERROR` for
     `failure`, `WARN` for `denied`, and `INFO` otherwise. Audit events recorded
     inside a span MUST carry `trace_id` and `span_id` in the stored record.
@@ -552,6 +613,114 @@ to the executor's App-only credential for requester authorization.
     PostgreSQL MUST preserve any stricter nonzero session timeout rather than
     replacing an operator's ceiling with a longer caller budget; limits MUST
     be transaction-local and MUST NOT change subsequent session defaults.
+
+### 7.1. Durable completion and token cleanup
+
+PostgreSQL and SQLite MUST commit a command's result transition with
+`cli_command.result`, and its claim settlement with `cli_command.finished`,
+in the same transaction as the corresponding audit append. Events MUST use
+the stored actor, repository, queue, command ID, authoritative status and exit
+code, not a late executor's requested status. A cancellation remains canceled
+even if a later subprocess reports success. A result event with
+`execution_claimed:true` is not evidence of workload termination.
+Repeated transitions MUST NOT duplicate semantic lifecycle events.
+
+An audit failure MUST roll back the associated result/settlement transition,
+including the queue revision, and MUST NOT clear an execution claim. A crash
+before result commit leaves the original claim, not permission to rerun work.
+Lease recovery MUST atomically record interrupted running commands as failed
+results with `recovered:true`; the original exit result is unknown. Recovery
+MUST keep claims until explicit operator acknowledgement and the existing
+runtime-specific reconciliation succeed. Acknowledgement MUST append the
+corresponding finished events atomically with clearing claims. A crash after
+result commit but before settlement preserves that known result. Failure to
+record acknowledgement MUST leave recovery blocked, including interruptions
+before container registration. Production execution MUST require
+`AuditedCLICommandLifecycle` and `RevocationTransitions`.
+
+Token cleanup MUST attempt GitHub revocation without waiting for audit
+availability. On confirmed API success or observed expiry, the broker MUST
+discard its plaintext credential and replace the encrypted journal value with
+a credential-free terminal receipt, independently of the audit table. The
+receipt MUST preserve the hashed token, installation, expiry, original
+observation time, and known actor/repository/command identity. Pooled handout
+MUST durably bind its actual requester before use. Terminal receipts and
+unresolved encrypted ownership MUST have no automatic expiry; protected
+capacity exhaustion MUST backpressure new issuance rather than evict receipts.
+
+The broker MUST attempt to persist the first observed revocation failure per
+token in the encrypted journal independently of audit availability. A journal
+failure remains explicit and MUST NOT suppress remote cleanup retries.
+`token.revoke_failed` denotes
+that first observation, not an exact count of network attempts. Its audit row
+is deferred until cleanup reaches revocation or expiry (normally within the
+token's one-hour lifetime, plus any audit outage); broker failure telemetry and
+errors remain immediate. Terminal receipt acknowledgement MUST append that failure and the
+terminal event while deleting the receipt in one transaction. A changed or
+missing expected version MUST NOT append an event or recreate a journal entry.
+Initial ownership writes MUST be insert-only, never overwrite a more advanced
+journal version. Retained audit history MUST also deduplicate terminal and
+first-failure events by hashed token if an ambiguous initial insert is retried
+after another process already completed cleanup. This lookup uses a nonunique
+index so pre-existing history is not rewritten; its protection is bounded by
+the audit retention horizon, not an infinite exactly-once guarantee.
+Restart reconciliation MUST process receipts without minting, handing out, or
+revoking tokens again. Audit outages MUST NOT prevent subsequent revocation
+attempts for still-live credentials.
+Maintenance and shutdown flush journal events outside the broker's cleanup
+lock; a stalled append for one receipt MUST NOT delay another token's
+revocation. Release hands off a saved terminal receipt without waiting for its
+audit append.
+
+`token.expired` denotes observed expiry, not a successful revoke request.
+`token.revoked` carries
+`confirmation:revoke_api_accepted_or_already_invalid`: GitHub may accept
+revocation of an already-invalid credential. Recovery of encrypted ownership
+sets `recovered:true`; `observed_at` describes the reconciliation observation,
+not an invented historical result. Receipt replay preserves its original
+observation rather than manufacturing a new external effect.
+
+GitHub and local storage are not one transaction. Abrupt termination between
+remote issuance and initial ownership persistence still relies on token expiry.
+A crash or complete storage outage after revocation but before receipt
+persistence may require a repeat revoke or expiry observation after restart.
+A failed result commit similarly cannot preserve an exit result that never
+became durable, and a crash before a failed revoke observation reaches the
+journal cannot reconstruct that historical failure. These are explicit uncertainty windows, not exactly-once
+external-effect guarantees. If a received token could neither be journaled nor
+its terminal receipt persisted, shutdown reports incomplete evidence even when
+the credential is no longer usable. No operating-effectiveness or SOC 2
+certification claim follows from these implementation guarantees.
+
+### Independent audit delivery
+
+`cao-dashboard audit deliver` MUST remain opt-in and consume only committed
+`AuditLog.ListAudit`/`VerifyAudit` results, without a second producer outbox or
+application-store writes. Every bounded page MUST be verified against an
+independent prior head and its reconstructed ending hash before delivery.
+The delivery cursor MUST distinguish the last acknowledged event from the
+independently verified high-water mark. Missing/stale/expired anchors, sequence
+gaps, rollback, interrupted verification, failed acknowledgements and checkpoint
+conflicts MUST fail closed and remain observable through a nonzero exit and
+credential-free structured status.
+
+Stream identities MUST be unique per deployment/namespace. Event objects MUST
+bind that identity to the sequence and chain hashes, use create-only writes,
+and require exact read-back before acknowledgement. A checkpoint MUST advance
+only after event and verification evidence delivery, using destination-side
+compare-and-swap with a strong version. Retries MUST reload and validate the
+independent checkpoint, accept only identical existing objects, and never
+overwrite another writer's progress. First enrollment MUST require an explicitly
+approved independent anchor and retained history beginning at sequence 1; a
+normal missing-checkpoint failure MUST NOT automatically rebaseline.
+
+The [deployment and adapter contract](../server/audit-delivery/README.md) defines
+bounded requests, restart behavior, conformance testing and scheduling.
+Administrators MUST independently establish destination durability, conditional
+write/read consistency, protected checkpoint versions, write-once retention,
+least-privilege credentials and alert routing. A local file, SIEM label, or OTLP
+emission MUST NOT be represented as a durable independent acknowledgement or
+evidence of organizational monitoring/incident-response control operation.
 
 ## 7a. Telemetry
 
@@ -662,7 +831,7 @@ session is limited to the step-up window and to catalog-declared actions on
 repositories the administrator can already write.
 
 The command container runs as the executor's OS user, but receives only its
-workspace and scoped token. The executor process and local Docker daemon remain
+workspace, scoped token and the private egress relay/socket. The executor process and local Docker daemon remain
 trusted: the executor can read the App private key and database credentials,
 and a Docker administrator can inspect container configuration and its scoped
 token. Operators SHOULD run `execute-cli` under a dedicated, unprivileged user
@@ -673,8 +842,9 @@ compromised host kernel or Docker daemon.
 Operational hardening that this specification does not yet require, in
 priority order:
 
-1. Add a gVisor or microVM boundary and restricted network egress around the
-   command container.
+1. Evaluate a gVisor or microVM boundary against the deployment's threat model;
+   it is not a universal SOC 2 requirement. Production Docker egress restriction
+   is required by section 6b.
 2. Keep the App private key in a KMS or HSM that signs the App JWT, and
    rotate it on a schedule; GitHub allows two active keys during rotation.
 3. Use separate database roles: the web and executor roles get `INSERT` and

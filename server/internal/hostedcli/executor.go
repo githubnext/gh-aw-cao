@@ -137,6 +137,11 @@ func NewExecutor(queue operational.CLICommandQueue, broker *Broker, github GitHu
 	if !ok {
 		return nil, errors.New("hosted CLI executor requires durable container identity storage")
 	}
+	if options.Audit.Durable() {
+		if _, ok := queue.(operational.AuditedCLICommandLifecycle); !ok || !broker.options.Revocations.durableAudit() {
+			return nil, errors.New("hosted CLI executor requires atomic lifecycle audit storage")
+		}
+	}
 	resolved, err := options.resolve()
 	if err != nil {
 		return nil, err
@@ -282,10 +287,11 @@ func (e *Executor) prefetch(ctx context.Context) {
 			continue
 		}
 		// Never pre-mint a work token for a requester who cannot write.
-		if permission, err := e.verifyRequester(ctx, installationID, plan, command.Actor); err != nil || !canWrite(permission) {
+		commandCtx := withTokenActor(ctx, command)
+		if permission, err := e.verifyRequester(commandCtx, installationID, plan, command.Actor); err != nil || !canWrite(permission) {
 			continue
 		}
-		if err := e.broker.Prefetch(ctx, installationID, scope, needUntil); err != nil {
+		if err := e.broker.Prefetch(commandCtx, installationID, scope, needUntil); err != nil {
 			executorLog.Printf("token prefetch failed: %v", err)
 		}
 	}
@@ -337,6 +343,7 @@ func (e *Executor) installation(ctx context.Context, repository string) (int64, 
 type failure string
 
 func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLease, command operational.CLICommand) {
+	ctx = withTokenActor(ctx, command)
 	started := time.Now()
 	// Each command is a root span: its lifetime is unrelated to the lease loop.
 	// Actors stay out of telemetry; the audit trail joins them by command ID.
@@ -373,18 +380,6 @@ func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLeas
 		return
 	}
 	executorLog.Printf("command settled id=%d status=%s", command.ID, status)
-	outcome := audit.Success
-	if status != operational.CLICommandCompleted {
-		outcome = audit.Failure
-	}
-	attrs := []slog.Attr{slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
-		slog.String("repository", command.Repository), slog.String("status", string(status))}
-	if exitCode != nil {
-		attrs = append(attrs, slog.Int("exit_code", *exitCode))
-	}
-	if err := e.options.Audit.Record(ctx, "cli_command.finished", outcome, attrs...); err != nil {
-		e.options.Logger.Printf("hosted CLI command %d finish could not be audited: %v", command.ID, err)
-	}
 }
 
 func (e *Executor) run(ctx context.Context, lease operational.CLICommandLease, command operational.CLICommand, sink *outputSink) (*int, operational.CLICommandStatus, failure, bool) {

@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -16,6 +18,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/sqlite"
 )
 
@@ -178,6 +181,7 @@ func TestBrokerCanceledAcquireDoesNotConsumePooledToken(t *testing.T) {
 type faultRevocations struct {
 	operational.RevocationQueue
 	failWrite, failComplete bool
+	loseCommit              bool
 }
 
 func (q *faultRevocations) QueueRevocation(ctx context.Context, id, value, namespace string) error {
@@ -194,13 +198,52 @@ func (q *faultRevocations) CompleteRevocation(ctx context.Context, id, expected,
 	return q.RevocationQueue.CompleteRevocation(ctx, id, expected, namespace)
 }
 
+func (q *faultRevocations) TransitionRevocation(ctx context.Context, id, expected, replacement, namespace string, events []operational.AuditEvent) (bool, error) {
+	if q.failWrite || (q.failComplete && len(events) > 0) {
+		return false, operational.ErrUnavailable
+	}
+	changed, err := q.RevocationQueue.(operational.RevocationTransitions).TransitionRevocation(ctx, id, expected, replacement, namespace, events)
+	if err == nil && changed && q.loseCommit {
+		q.loseCommit = false
+		return false, operational.ErrUnavailable
+	}
+	return changed, err
+}
+
 func testTokenJournal(t *testing.T) (*Revocations, *faultRevocations) {
 	t.Helper()
-	store, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "tokens.sqlite"))
-	if err != nil {
-		t.Fatal(err)
+	return testTokenJournalDialect(t, "sqlite")
+}
+
+func testTokenJournalDialect(t *testing.T, dialect string) (*Revocations, *faultRevocations) {
+	t.Helper()
+	var store operational.RevocationQueue
+	if dialect == "postgres" {
+		dsn := os.Getenv("POSTGRES_URL")
+		if dsn == "" {
+			t.Skip("POSTGRES_URL is required for real PostgreSQL token lifecycle tests")
+		}
+		pg, err := postgres.New(t.Context(), dsn, "token_lifecycle_"+strings.ToLower(rand.Text()), postgres.Config{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := pg.DeleteNamespace(ctx); err != nil {
+				t.Error(err)
+			}
+			_ = pg.Close()
+		})
+		store = pg
+	} else {
+		local, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "tokens.sqlite"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = local.Close() })
+		store = local
 	}
-	t.Cleanup(func() { _ = store.Close() })
 	queue := &faultRevocations{RevocationQueue: store}
 	block, err := aes.NewCipher([]byte(strings.Repeat("k", 32)))
 	if err != nil {
@@ -262,7 +305,7 @@ func TestBrokerExceptionalMintsRetainCleanupUntilRetrySucceeds(t *testing.T) {
 				if minter.liveCount() != 0 || broker.Stats().PendingRevocations != 0 {
 					t.Fatal("recovered revoker did not retire cleanup")
 				}
-				if token, _, err := journal.next(t.Context()); err != nil || token.Secret() != "" {
+				if entry, err := journal.pending(t.Context()); err != nil || entry != nil {
 					t.Fatal("confirmed revocation did not remove journal debt")
 				}
 			})
@@ -297,7 +340,7 @@ func TestBrokerJournalWriteFailureStopsIssuanceAndCanRecover(t *testing.T) {
 	if err := broker.Close(t.Context()); err == nil {
 		t.Fatal("durable but unrevoked shutdown debt must remain visible")
 	}
-	if token, _, err := journal.next(t.Context()); err != nil || token.Secret() == "" {
+	if entry, err := journal.pending(t.Context()); err != nil || entry == nil || entry.token.Secret() == "" {
 		t.Fatal("shutdown did not hand cleanup to durable storage")
 	}
 	minter.failRevoke = false
@@ -379,11 +422,15 @@ func TestBrokerShutdownDuringDualOutageEndsAtExpiry(t *testing.T) {
 	started := time.Now()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	if err := broker.Close(ctx); err != nil {
-		t.Fatal("shutdown did not finish when the token expired")
+	if err := broker.Close(ctx); err == nil {
+		t.Fatal("shutdown must report evidence that cannot yet be persisted")
 	}
-	if broker.Stats().PendingRevocations != 0 || time.Now().Before(expiry) || time.Since(started) > 4*time.Second {
+	if broker.Stats().PendingRevocations != 1 || time.Now().Before(expiry) || time.Since(started) > 4*time.Second {
 		t.Fatal("shutdown exceeded expiry plus its one-second retry interval")
+	}
+	queue.failWrite = false
+	if err := broker.Close(ctx); err != nil || broker.Stats().PendingRevocations != 0 {
+		t.Fatal("expiry evidence did not recover after the journal became available")
 	}
 }
 
@@ -431,7 +478,7 @@ func TestBrokerRecoveryAndExpiryKeepActiveTokensOwned(t *testing.T) {
 			if err := restarted.Maintain(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			if token, _, err := journal.next(t.Context()); err != nil || token.Secret() != "" {
+			if entry, err := journal.pending(t.Context()); err != nil || entry != nil {
 				t.Fatal("recovery did not retire confirmed revocation or expiry")
 			}
 			if (expired && len(minter.revoked) != 0) || (!expired && minter.liveCount() != 0) {
@@ -454,8 +501,8 @@ func TestBrokerCompletionFailureRetriesWithoutRevokingAgain(t *testing.T) {
 	}
 	queue.failComplete = true
 	broker.Release(t.Context(), token)
-	if minter.liveCount() != 0 || broker.Stats().PendingRevocations != 1 {
-		t.Fatal("completion failure must retain journal debt")
+	if entry, err := journal.pending(t.Context()); err != nil || entry == nil || !entry.revoked || minter.liveCount() != 0 {
+		t.Fatal("completion must retain a credential-free journal receipt")
 	}
 	if err := broker.Maintain(t.Context()); err == nil {
 		t.Fatal("completion failure must remain visible")

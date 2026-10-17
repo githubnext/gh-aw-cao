@@ -39,10 +39,34 @@ type Store struct {
 var _ operational.CLICommandQueues = (*Store)(nil)
 var _ operational.AuditLog = (*Store)(nil)
 
-// Open creates or opens the database file at path with mode 0600. Every
-// transaction takes the write lock up front (BEGIN IMMEDIATE), so processes
-// sharing the file serialize their queue and audit transitions.
+// Open preserves the original local-debug bootstrap API. Runtime processes
+// should use OpenExisting so startup cannot provision or repair the schema.
 func Open(ctx context.Context, path string) (*Store, error) {
+	return New(ctx, path)
+}
+
+// New explicitly provisions the local debug database, creating its file with
+// mode 0600 if necessary. It never removes audit history.
+func New(ctx context.Context, path string) (*Store, error) {
+	return open(ctx, path, "rwc")
+}
+
+// OpenExisting opens provisioned state without creating a file, executing DDL,
+// or retaining audit history. Writers serialize using BEGIN IMMEDIATE.
+func OpenExisting(ctx context.Context, path string) (*Store, error) {
+	return open(ctx, path, "rw")
+}
+
+// OpenReadOnly opens provisioned state using SQLite's read-only connection mode.
+// Verification uses a deferred transaction and cannot acquire a write lock.
+func OpenReadOnly(ctx context.Context, path string) (*Store, error) {
+	return open(ctx, path, "ro")
+}
+
+func open(ctx context.Context, path, mode string) (*Store, error) {
+	if ctx == nil {
+		return nil, invalid("nil context")
+	}
 	path = strings.TrimSpace(path)
 	if path == "" || strings.ContainsAny(path, "?#\x00") {
 		return nil, invalid("SQLite path must be a file path without '?' or '#'")
@@ -51,19 +75,29 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	// #nosec G304 -- the operator explicitly configures the local debugging database path.
-	file, err := os.OpenFile(absolute, os.O_RDWR|os.O_CREATE, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("open SQLite database: %w", err)
-	}
-	if err := file.Close(); err != nil {
-		return nil, err
+	if mode == "rwc" {
+		// #nosec G304 -- the operator explicitly configures the local debugging database path.
+		file, err := os.OpenFile(absolute, os.O_RDWR|os.O_CREATE, 0o600)
+		if err != nil {
+			return nil, fmt.Errorf("open SQLite database: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return nil, err
+		}
 	}
 	query := url.Values{}
-	for _, pragma := range []string{"busy_timeout(1000)", "journal_mode(WAL)", "foreign_keys(1)", "synchronous(FULL)"} {
+	query.Set("mode", mode)
+	for _, pragma := range []string{"busy_timeout(1000)", "foreign_keys(1)", "synchronous(FULL)"} {
 		query.Add("_pragma", pragma)
 	}
+	if mode == "rwc" {
+		query.Add("_pragma", "journal_mode(WAL)")
+	}
 	query.Set("_txlock", "immediate")
+	if mode == "ro" {
+		query.Set("_txlock", "deferred")
+		query.Add("_pragma", "query_only(1)")
+	}
 	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: absolute, RawQuery: query.Encode()}).String())
 	if err != nil {
 		return nil, err
@@ -72,15 +106,35 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	// for the file lock; cross-process writers wait on busy_timeout.
 	db.SetMaxOpenConns(1)
 	store := &Store{db: db, now: time.Now}
-	if _, err := db.ExecContext(ctx, schema); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("initialize SQLite schema: %w", err)
+	if mode == "rwc" {
+		if err := store.transact(ctx, func(t *transaction) error {
+			_, err := t.tx.ExecContext(ctx, schema)
+			return err
+		}); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("initialize SQLite schema: %w", err)
+		}
 	}
-	if err := store.transact(ctx, func(t *transaction) error { return t.maintainAudit() }); err != nil {
+	if err := store.checkProvisioned(ctx); err != nil {
 		_ = db.Close()
-		return nil, err
+		return nil, fmt.Errorf("open provisioned SQLite storage (run database bootstrap --store operational --sqlite PATH): %w", err)
 	}
 	return store, nil
+}
+
+func (s *Store) checkProvisioned(ctx context.Context) error {
+	var objects int
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_schema WHERE
+		(type='table' AND name IN ('cao_operational_cli_queues','cao_operational_cli_commands',
+			'cao_operational_cli_executions','cao_operational_cli_revocations','cao_operational_cli_output',
+			'cao_operational_audit_events','cao_operational_audit_retention'))
+		OR (type='trigger' AND name IN ('cao_operational_audit_no_update','cao_operational_audit_no_delete'))`).Scan(&objects); err != nil {
+		return err
+	}
+	if objects != 9 {
+		return errors.New("SQLite schema is not provisioned")
+	}
+	return nil
 }
 
 // Close releases the database.

@@ -50,7 +50,9 @@ func TestHostedSQLiteAuditFailureCannotAdmitOrCancel(t *testing.T) {
 	if response := f.do(t, http.MethodPost, "/__cli_commands", hostedUpgradeRequest, true); response.Code != http.StatusAccepted {
 		t.Fatalf("original enqueue = %d: %s", response.Code, response.Body)
 	}
-	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_audit BEFORE INSERT ON cao_operational_audit_events BEGIN SELECT RAISE(ABORT,'injected audit failure'); END`); err != nil {
+	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_audit BEFORE INSERT ON cao_operational_audit_events
+		WHEN NEW.event IN ('cli_command.admitted','cli_command.retried','cli_command.cancel_requested')
+		BEGIN SELECT RAISE(ABORT,'injected audit failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"/__cli_commands", "/__cli_commands/1/cancel"} {
@@ -84,7 +86,8 @@ func TestHostedSQLiteAuditFailureCannotAdmitOrCancel(t *testing.T) {
 		t.Fatalf("audit failures persisted commands: %+v, %v", page, err)
 	}
 	events, err := store.ListAudit(t.Context(), operational.AuditFilter{})
-	if err != nil || len(events) != 1 || events[0].Event != "cli_command.admitted" {
+	if err != nil || len(events) != 3 || events[0].Event != "cli_command.admitted" ||
+		events[1].Event != "cli_command.result" || events[2].Event != "cli_command.finished" {
 		t.Fatalf("audit failure corrupted the chain: %+v, %v", events, err)
 	}
 	if _, err := store.VerifyAudit(t.Context()); err != nil {

@@ -529,8 +529,11 @@ immutable state before adding human-friendly release highlights.
 
 Do not publish the draft manually. After the complete Release workflow succeeds,
 review the generated notes, confirm the tag targets the intended `main` commit,
-and confirm both runtime assets are present. Then remove the prerelease
-designation and mark it as the latest release. The workflow's prerelease
+and confirm the runtime and extension assets are present. Then dispatch
+**Promote prerelease to latest** with the existing version tag and obtain
+independent approval through its protected environment after exact-source
+validation. See [Release promotion controls](release-controls.md) for the
+administrator setup and evidence requirements. The workflow's prerelease
 publication makes the tag and assets immutable; no workflow can add, replace, or
 remove release assets afterward. A failure before publication leaves the draft
 unpublished; a later failure leaves a correctly tagged prerelease for diagnosis,

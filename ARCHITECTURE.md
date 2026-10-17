@@ -264,20 +264,50 @@ backlog.
 The Go planner translates the hosted CAO package-update action into a native
 `gh-aw update`; it never invokes `cao.sh` or executes control-repository scripts.
 The executor runs only `gh` or the Go `gh-aw` CLI in the official digest-pinned
-gh-aw container by default, mounting only the per-command workspace and passing the
+gh-aw container by default, mounting only command-owned workspace and egress
+relay/socket resources and passing the
 single-use token through a temporary protected environment file. The broker
 revokes and rejects any token whose granted scope exceeds the request. Both
 processes append credential-free audit events (`server/internal/audit`) to the
 hash-chained, append-only PostgreSQL table `cao_operational_audit_events` and
-mirror them as JSON lines for SIEM forwarding; privileged steps fail closed
-when the event cannot be stored.
+mirror logger-produced events as JSON lines; privileged steps fail closed
+when the event cannot be stored. Result commits, claim settlement and
+interrupted-command recovery append lifecycle evidence in the same queue
+transaction, using state transitions to deduplicate replay. Unconfirmed VM
+termination and audit failures retain execution claims. Token cleanup replaces
+encrypted ownership with a credential-free terminal receipt independently of
+audit availability, then atomically appends its evidence and deletes the
+receipt. CAS journal transitions preserve pending failure evidence and terminal
+receipts without expiry; capacity exhaustion backpressures issuance rather
+than evicting them. Receipt replay never issues or revokes credentials.
+External revocation before local receipt persistence remains an explicit
+uncertainty window, resolved by a later repeat revoke or expiry observation,
+not an exactly-once claim. Complete forwarding consumes committed audit rows,
+including storage-owned events absent from the inline mirror.
 For local debugging only, `--hosted-cli-sqlite` and `execute-cli --sqlite`
 share a loopback-only SQLite file (`server/internal/operational/sqlite`) that
 provides the same queue and audit table without PostgreSQL.
+Local `database bootstrap --store operational --sqlite PATH` provisions that
+file explicitly; runtime opens only existing state, and audit retention runs
+only through the explicit `database retain-audit` command. `audit deliver`
+uses a read-only SQLite connection and deferred verification transaction, while
+`audit verify` retains append authority to record its result. SQLite does not
+replace the canonical dashboard backend or reproduce PostgreSQL role isolation.
 That SQLite development profile may explicitly select an alternative
 `ContainerLifecycle` adapter without changing admission or token authority.
 Docker remains the production default and keeps its local-default-context
-restriction. Apple Silicon development uses Apple's `container` CLI with the
+restriction. Production workloads use `--network none`; a private read-only
+Unix socket and SHA-256-verified, architecture-matched relay built from reviewed
+server source carry HTTPS CONNECT to an executor-owned exact-host proxy.
+Every DNS address is validated before numeric dialing, private GHES needs
+exact host/IP approval, and metadata/loopback/link-local reach stays denied.
+Policy and verified relay bytes are immutable for the executor lifetime.
+Missing production egress configuration fails startup; only SQLite Docker
+development with no egress settings retains the previous bridge mode.
+The proxy is bounded and canceled with its command; losing egress never proves
+workload termination or releases retained claims. No shared host-network
+configuration changes or new runtime providers are introduced.
+Apple Silicon development uses Apple's `container` CLI with the
 same pinned Linux image, a private VM, dropped capabilities, and an in-guest
 no-new-privileges bootstrap. Windows development uses Windows Sandbox and a
 separately SHA-256-pinned archive of Windows `gh`, `gh-aw`, and Git tools, not a
@@ -292,7 +322,7 @@ These development exceptions do
 not enable a new production runtime or exactly-once external effects.
 Tokens appear in those events only as GitHub's `hashed_token` digest.
 `cao-dashboard audit verify` checks the chain against external head anchors
-and `audit export` writes rows as JSON Lines. Audit events are also OTLP log
+and `audit export` writes rows as JSON Lines. Logger-produced audit events are also OTLP log
 records carrying the active trace ID, and the executor and broker emit
 command and token spans and metrics without tokens or actors.
 Every hosted administrator operation requires a fresh, assured interactive

@@ -683,7 +683,7 @@ func TestHostedCLISQLiteDebugStoreRequiresLoopback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := OpenHostedCLISQLite(t.Context(), filepath.Join(t.TempDir(), "hosted-cli.sqlite"))
+	store, err := newHostedCLISQLiteTestStore(t, filepath.Join(t.TempDir(), "hosted-cli.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

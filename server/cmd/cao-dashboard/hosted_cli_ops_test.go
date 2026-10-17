@@ -17,6 +17,7 @@ func TestHostedCLIQueueOperationsSQLite(t *testing.T) {
 	sqlitePath := filepath.Join(t.TempDir(), "hosted-cli.sqlite")
 	auditPath := filepath.Join(t.TempDir(), "audit.jsonl")
 	t.Setenv("CAO_AUDIT_LOG", auditPath)
+	bootstrapSQLite(t, sqlitePath)
 	store, err := server.OpenHostedCLISQLite(t.Context(), sqlitePath)
 	if err != nil {
 		t.Fatal(err)

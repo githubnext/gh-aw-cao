@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/cliegress"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
@@ -23,11 +25,14 @@ var (
 )
 
 // DockerContainerLifecycle uses only the local default Docker context. Its
-// only host mount is the command's private ephemeral workspace.
+// host mounts contain only the command's workspace and private egress channel.
 type DockerContainerLifecycle struct {
-	DockerBinary string
-	HostEnv      []string
-	Commands     Runner
+	DockerBinary  string
+	HostEnv       []string
+	Commands      Runner
+	Egress        *DockerEgress
+	egressMu      sync.Mutex
+	egressClosers map[string]func()
 }
 
 var _ ContainerLifecycle = (*DockerContainerLifecycle)(nil)
@@ -59,9 +64,18 @@ func (r *DockerContainerLifecycle) Create(ctx context.Context, execution operati
 		return err
 	}
 	defer func() { _ = os.Remove(environmentFile) }()
+	network := "bridge" // SQLite-only development compatibility, selected by the server.
+	var egressDirectory string
+	if r.Egress != nil {
+		network = "none"
+		egressDirectory, err = r.prepareEgress(ctx, execution, workspace)
+		if err != nil {
+			return err
+		}
+	}
 	args := []string{
 		"--context", "default", "create", "--init", "--name", execution.Name,
-		"--network", "bridge",
+		"--network", network,
 		"--read-only",
 		"--cap-drop", "ALL",
 		"--security-opt", "no-new-privileges",
@@ -75,7 +89,15 @@ func (r *DockerContainerLifecycle) Create(ctx context.Context, execution operati
 	if user := containerUser(); user != "" {
 		args = append(args, "--user", user)
 	}
-	args = append(args, "--entrypoint", "/bin/sh", spec.Image, "-c", containerBootstrap, "cao-hosted-cli", spec.Program)
+	if r.Egress != nil {
+		// Hide the writable workspace alias of the same host directory.
+		args = append(args, "--tmpfs", "/workspace/.cao-egress:ro,nosuid,nodev,noexec,size=4k",
+			"--mount", "type=bind,src="+egressDirectory+",dst=/cao-egress,readonly",
+			"--entrypoint", cliegress.RelayPath, spec.Image, "/bin/sh")
+	} else {
+		args = append(args, "--entrypoint", "/bin/sh", spec.Image)
+	}
+	args = append(args, "-c", containerBootstrap, "cao-hosted-cli", spec.Program)
 	args = append(args, spec.Args...)
 
 	var containerID strings.Builder

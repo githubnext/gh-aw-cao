@@ -735,11 +735,19 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   are encrypted with the current session key and retained in the protected
   operational revocation queue, isolated from OAuth cleanup. The executor
   holding the command queue lease retries interrupted owners' tokens; active
-  local tokens are not revoked by periodic maintenance. Journal debt is removed
-  only after confirmed revocation or expiry. Unpersisted cleanup failures stop
+  local tokens are not revoked by periodic maintenance. After confirmed
+  revocation or expiry, the encrypted credential is replaced by a
+  credential-free receipt without waiting for audit availability. Receipt
+  removal and its audit append are atomic; receipts have no expiry and replay
+  without another GitHub effect. The first observed revoke failure per token
+  is also journaled and acknowledged atomically. A crash between the external
+  effect and receipt persistence remains uncertain: recovery may repeat
+  revocation or observe expiry, explicitly recording the later observation.
+  Unpersisted cleanup failures stop
   further token issuance; graceful shutdown retains ownership while retrying
   until persistence, revocation, or expiry succeeds (at most the last received
-  token's one-hour lifetime, plus bounded in-flight requests). Cancellation of
+  token's one-hour lifetime, plus bounded in-flight requests). Missing receipt
+  persistence remains an explicit evidence error after expiry. Cancellation of
   `Broker.Close` reports unresolved cleanup and keeps its owner; executor
   graceful shutdown ignores command cancellation for this cleanup. An abrupt process kill in
   the non-atomic GitHub-issuance/local-persistence window still relies on
@@ -765,6 +773,19 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   a stop request is not confirmation of termination. Recovery must confirm termination on
   the original daemon after the old executor and its requests have stopped.
   Output redaction applies before persistence.
+- **Production Docker egress**: startup requires an exact-host policy and the
+  reviewed, SHA-256-verified static Linux relay. Workloads use `--network none`;
+  clearing proxy variables cannot restore IP, UDP, or DNS reach. A private
+  per-command Unix socket and read-only relay (with no writable workspace alias)
+  expose only a bounded HTTPS CONNECT proxy. Every resolved address is validated
+  before numeric dialing; private GHES needs exact host/IP approval, never a
+  subnet, metadata, loopback, or link-local exception. This is destination
+  control, not TLS SNI or content inspection. Cancellation closes tunnels but
+  cannot settle an unconfirmed workload. Native development profiles are
+  unchanged; SQLite Docker alone retains its previous bridge mode when no
+  egress settings are supplied. See the
+  [production rollout contract](README.md#production-docker-egress-rollout)
+  for provenance, limits, compatibility, and real-runtime evidence requirements.
 - **Native development profiles**: only `execute-cli --sqlite` may explicitly
   select Apple container on Apple Silicon or Windows Sandbox on Windows.
   Apple uses the pinned Linux image, a private VM, resource limits, and a fixed
@@ -817,15 +838,21 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   (at least 400 days), and `VerifyAudit` detects edits, gaps, and reordering.
   Hosted CLI actions refuse to start without the table, and admission, cancel,
   retry, token minting, and command start fail closed when their event cannot
-  be stored. Every event is mirrored as a JSON line (`"audit":"cao"`) to
+  be stored. Result commits and execution-claim settlement now append their
+  lifecycle events atomically, including interrupted-command recovery. An
+  unavailable audit table cannot release an uncertain claim. Replays do not
+  duplicate semantic completions; stored cancellation wins a late success.
+  Logger-produced events are mirrored as a JSON line (`"audit":"cao"`) to
   standard error or to `CAO_AUDIT_LOG`, opened for append with mode `0600`,
   for SIEM forwarding. The events cover admin denials (with the
   step-up or not-admin reason), admission, rejection, cancel, retry, token
   mint and revocation, the command's start, permission denial, and finish.
   They carry the actor, repository, assurance, and execution image reference,
   but no credentials. Tokens appear only as `hashed_token`, in GitHub's audit-log
-  format, so CAO events join GitHub's record of the App's actions. Forward
-  the mirror to write-once SIEM storage when you need protection against a
+  format, so CAO events join GitHub's record of the App's actions. Storage-owned
+  lifecycle events are in the committed audit stream, not the inline mirror;
+  consume committed rows (including `audit export`) for complete forwarding.
+  Forward committed evidence to write-once SIEM storage when you need protection against a
   database superuser rewriting the whole chain.
 - **Audit verification**: run `cao-dashboard audit verify` on a schedule. It
   recomputes the chain, prints the head `lastSequence` and `lastHash`, and
@@ -835,7 +862,18 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   rewrite of the whole chain and a rollback to an earlier head, which the
   chain alone cannot detect. `cao-dashboard audit export` writes rows as JSON
   Lines for evidence requests.
-- **Telemetry**: audit events are also OTLP log records (`cao.audit.<event>`)
+- **Independent delivery**: the opt-in
+  [`audit deliver` job](audit-delivery/README.md) replays bounded committed rows
+  only after anchored verification, requires exact independent read-back, and
+  advances a destination-resident conditional checkpoint only after delivery.
+  Missing/stale anchors, retention gaps, interrupted verification, delivery
+  failures and checkpoint conflicts fail closed with a nonzero exit and
+  structured operational status. The HTTPS object adapter, its durable
+  conditional-write semantics, independent administration, retained checkpoint
+  versions, write-once retention and alert routing remain explicit deployment
+  dependencies. The bounded JSON mirror has no retry queue; OTLP emissions are
+  not acknowledgements.
+- **Telemetry**: logger-produced audit events are also OTLP log records (`cao.audit.<event>`)
   with the active `trace_id` and `span_id`, which are also stored in the row.
   Command and token spans and metrics carry repository, command ID, and
   `hashed_token`, never tokens, output, or actor logins. Subprocesses receive
@@ -844,10 +882,17 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   `cao_audit.event.count{stored="false"}`, on `audit.verify_failed`, and on
   spikes in `admin.denied`.
 - **SQLite debug store**: `--hosted-cli-sqlite` and `execute-cli --sqlite`
-  replace PostgreSQL with one local SQLite file (mode `0600`) for debugging.
+  replace the hosted-CLI PostgreSQL queue/audit/journal with one local SQLite
+  file for debugging. Explicit `database bootstrap --store operational
+  --sqlite PATH` creates it with mode `0600`; runtime opens only existing state.
+  Bootstrap, runtime, and appends never perform audit retention. Local
+  `database retain-audit --store operational --sqlite PATH` performs a bounded
+  retention batch. `audit deliver --sqlite PATH` uses a read-only connection,
+  unlike `audit verify`, which appends its own verification result.
   The server refuses it unless it listens on loopback. Its append-only
   triggers protect only against accidental edits, because anyone who can
-  write the file can drop them; do not use it in production.
+  write the file can drop them or run retention; SQLite does not model
+  PostgreSQL database-role separation. Do not use it in production.
 
 The executor's authorization and token lifecycle are model-checked in
 [`specs/tla/HostedCLIActions.tla`](../specs/tla/README.md#hosted-cli-actions-model).
@@ -861,8 +906,9 @@ trail emitted no telemetry or trace correlation. Audit verification, anchors,
 export, OTLP audit logs, and hosted CLI telemetry address those findings.
 Recommended next steps, in priority order:
 
-1. Add a stronger gVisor or microVM boundary and restricted network egress
-   around the command container.
+1. Evaluate a stronger gVisor or microVM boundary against the deployment's
+   threat model; it is not a universal SOC 2 mandate. Production Docker egress
+   restriction is now required, with live boundary evidence collected during rollout.
 2. Keep the App private key in a KMS or HSM that signs the App JWT, and rotate
    it on a schedule.
 3. Deploy the [PostgreSQL privilege boundary](POSTGRES.md): owner-only bootstrap
@@ -890,7 +936,8 @@ period. The following mapping is limited to the hosted CLI:
 | Logical access (CC6.1) | GitHub OAuth organization/team authorization, explicit administrator allowlisting, repository permission checks, and least-privilege installation tokens | Effective authorization configuration and retained access/admission audit events | Review membership, administrator lists, App installation scope, and access changes on the organization's approved cadence |
 | Privileged access (CC6.3) | Assured administrator step-up, live execution permission checks, and durable denial/admission events | `admin.denied`, `cli_command.admitted`, and execution permission events correlated with GitHub audit records | Operate identity lifecycle, access reviews, and timely removal of departed or transferred personnel |
 | Change management (CC8.1) | Fixed Go command planning and a digest-pinned execution image recorded at command start; CAO does not enforce an organization's review policy | Pull requests, required review/check results, release/deployment approvals, and image digest records | Enforce branch protection and deployment approval policies; preserve the evidence for each release |
-| Monitoring (CC7.2) | Hash-chained audit rows, `audit verify` with external anchors, audit export, OTLP records, and documented alert signals | Verification results and anchors, exported audit rows, SIEM delivery/alert records, and incident follow-up | Schedule verification, store anchors and forwarded events outside PostgreSQL in write-once storage, and investigate alerts |
+| Monitoring (CC7.2) | Hash-chained audit rows, anchored verification, bounded restart-safe `audit deliver`, audit export, OTLP records, and documented alert signals | Independently preserved verification results, acknowledged event objects and checkpoints, scheduler/heartbeat and alert records | Provision and validate the independent destination and retention, enroll a trusted initial anchor, enable scheduling, and monitor failures plus missing heartbeats |
+| Event evaluation (CC7.3) | Delivery/verification fail-closed status and documented gap, stale-anchor, backlog and failure signals | Alert delivery/acknowledgement, investigation disposition, recovery exercises and incident follow-up | Route and investigate alerts, evaluate effects on the system, and preserve response evidence; the application cannot perform or attest these organizational activities |
 
 The audit chain is tamper-evident only while an attacker cannot rewrite the
 entire chain. A database superuser can rewrite it consistently; anchors kept
@@ -901,11 +948,12 @@ responded to alerts.
 
 Personnel controls, risk assessments, vendor management, incident-response
 execution, business continuity, and independent audit activities are outside
-this application. The recommended hardening items above (especially external
-write-once forwarding, scheduled anchored verification, separate database
-roles, and managed key signing) remain deployment work, not implemented CAO
-controls. Do not represent this mapping as a SOC 2 report, certification, or
-independent assessment.
+this application. The recommended hardening items above (especially independent
+write-once destination configuration, activation of scheduled anchored delivery,
+separate database roles, and managed key signing) still require deployment
+work and real control-operation evidence. Software support and test fixtures do
+not prove those controls operated. Do not represent this mapping as a SOC 2
+report, certification, or independent assessment.
 
 ## Secrets and logging
 

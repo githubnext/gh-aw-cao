@@ -107,7 +107,9 @@ constructing an empty store. See the [normative operational contract](../specs/s
 existing state without DDL. Follow [PostgreSQL privilege separation and rollout](POSTGRES.md)
 to run owner-only `database bootstrap`, apply runtime/evidence/retention grants,
 and schedule separate canonical partition and audit-retention jobs. Do not mount
-owner credentials in runtime processes. SQLite hosted-CLI debugging is unchanged.
+owner credentials in runtime processes. Local SQLite hosted-CLI debugging uses
+the same explicit bootstrap/retention commands with `--sqlite PATH`; see that
+guide for the no-PostgreSQL local test command and the limits of SQLite testing.
 
 PostgreSQL is the default when a reviewed host has no backend selector or legacy
 `redis` configuration. Coolify selects it explicitly. No Redis connection or
@@ -788,6 +790,9 @@ Never put the key in checked-in configuration, command arguments, logs, or the
 | `CAO_HOSTED_CLI_CONTAINER_IMAGE` | Optional digest-pinned gh-aw image or approved mirror; defaults to `ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090`. |
 | `CAO_HOSTED_CLI_DOCKER` | Optional Docker CLI path; defaults to `docker`. |
 | `CAO_HOSTED_CLI_CONTAINER_RUNTIME` | `docker` (default), `apple`, or `windows-sandbox`. Native profiles require `execute-cli --sqlite` and the matching OS; there is no automatic fallback. |
+| `CAO_HOSTED_CLI_EGRESS_POLICY_FILE` | Required production Docker exact-host HTTPS policy file; see the rollout contract below. No implicit allowed hosts. |
+| `CAO_HOSTED_CLI_EGRESS_RELAY` | Required production path to the static Linux relay artifact built from the reviewed server source. |
+| `CAO_HOSTED_CLI_EGRESS_RELAY_SHA256` | Required reviewed SHA-256 of that relay artifact. Startup snapshots and verifies the bytes; each create verifies the Linux daemon architecture. |
 | `CAO_HOSTED_CLI_APPLE_CONTAINER` | Optional Apple container CLI path for the `apple` development profile; defaults to `container`. |
 | `CAO_HOSTED_CLI_WINDOWS_SANDBOX` | Optional Windows Sandbox CLI path for the `windows-sandbox` development profile. |
 | `CAO_HOSTED_CLI_WINDOWS_BUNDLE` | Required path to the approved ZIP archive containing Windows gh, gh-aw, and portable Git, including dependencies. |
@@ -795,6 +800,121 @@ Never put the key in checked-in configuration, command arguments, logs, or the
 | `CAO_HOSTED_CLI_WORK_ROOT` | Executor workspace root. |
 | `CAO_SESSION_SECRET`, `CAO_SESSION_SECRET_PREVIOUS` | Required current encryption secret (at least 32 characters) and optional previous key for the executor's durable token cleanup journal. Keep previous keys until their cleanup debt is cleared or expires. |
 | `CAO_AUDIT_LOG` | Optional append-only file (mode `0600`) for the JSON mirror of audit events from `serve-hosted` and `execute-cli`; defaults to standard error. The authoritative trail is the PostgreSQL `cao_operational_audit_events` table. |
+
+#### Production Docker egress rollout
+
+**Migration gate:** production `execute-cli` now refuses startup without all
+three `CAO_HOSTED_CLI_EGRESS_*` settings above. Before upgrading, stop admission
+or drain the queue, build and approve the relay and policy with the executor
+release, and configure every standby replica. Do not disable isolation to
+recover an interrupted command. Keep the previous executor stopped and use the
+existing original-daemon reconciliation procedure; changing egress configuration
+never releases unsettled claims. No policy, campaign, or global feature enablement
+is implied by deploying these files.
+
+Each production workload uses Docker **`--network none`**: it has only loopback,
+not a bridge interface, default route, or directly usable external DNS. A
+per-command mode-`0600` Unix socket in a mode-`0700` directory is the only egress
+path. The directory contains only the verified relay and socket, is bind-mounted
+read-only at `/cao-egress`, and its writable workspace alias is hidden behind a
+read-only tmpfs. The relay makes that socket available as a loopback HTTP proxy
+for `gh`, `gh-aw`, and HTTPS Git; it holds no policy or host credentials. Clearing
+proxy variables, connecting by IP, using IPv6, UDP, custom DNS, or selecting SSH
+does not bypass Docker's network namespace. The executor does not modify global
+Docker configuration or shared host networks.
+
+The executor-side proxy permits **CONNECT to exact approved DNS names on port
+443 only**, never plaintext HTTP, arbitrary ports, IP-literal authorities, or
+wildcards. It validates every resolved address and dials a validated numeric
+address without a second DNS lookup. Private, loopback, link-local, multicast,
+special-use, transition, and known metadata addresses are denied; IPv4-mapped
+IPv6 is normalized before validation. A private GHES exception must pair an
+exact hostname with exact RFC1918/ULA addresses; every DNS answer must match an
+approved address. This never enables a private subnet or permits known metadata/loopback/link-local
+addresses. The guarantee is **CONNECT destination control, not TLS SNI or
+application-content inspection**. An allowed GitHub endpoint can still receive
+data, and network policy does not grant repository permissions.
+
+Approve only endpoints required by the selected commands. A GitHub.com starting
+policy for API, Git, package contents, and release redirects is:
+
+```json
+{
+  "hosts": [
+    "github.com", "api.github.com", "codeload.github.com",
+    "raw.githubusercontent.com", "objects.githubusercontent.com",
+    "release-assets.githubusercontent.com"
+  ]
+}
+```
+
+For GHES, add its API/web hostname to `hosts` when it resolves publicly, or an
+explicit entry such as `"privateEndpoints": [{"host": "github.corp.example",
+"addresses": ["10.20.30.40"]}]` for a private deployment. Redirected asset hosts
+must be independently approved. HTTPS certificate validation in gh/Git remains
+enabled; custom GHES trust must already be in the approved pinned workload
+image. Artifact registries used by the Docker daemon to pull that image are not
+workload egress. No package-manager or arbitrary HTTP/SSH reach is implied.
+
+Build the authenticated relay artifact **from the reviewed release checkout**
+using the existing pinned build image (repository root, choose the daemon's
+`linux/amd64` or `linux/arm64` platform):
+
+```bash
+docker --context default buildx build --platform linux/amd64 \
+  --file server/Dockerfile --target hosted-cli-relay-artifact \
+  --build-arg REVISION="$(git rev-parse HEAD)" \
+  --output type=local,dest=./.tmp/hosted-cli-relay .
+```
+
+The target requires a 40-character source revision and exports `cao-cli-relay`,
+`cao-cli-relay.sha256`, and `cao-cli-relay.json` (source revision, platform and
+digest). The manifest is build metadata, not an independent attestation.
+Bind the artifact
+digest, platform, source commit and build provenance to the reviewed executor
+release in your deployment artifact store; distribute it through that trusted
+release, not an arbitrary binary download. Set the relay path and the approved
+checksum separately in deployment configuration. Do not compute the expected
+checksum from an untrusted installed file at startup. The loader rejects
+digest mismatch, non-ELF/dynamically linked binaries, and unsupported
+architectures, snapshots verified bytes to prevent later path substitution,
+and refuses a mismatched daemon at command creation. Upgrades require a newly
+reviewed digest. The gh-aw image remains separately OCI-digest-pinned.
+
+Run `execute-cli` on the same Linux host/kernel and filesystem as the local
+default Docker daemon, with a short `CAO_HOSTED_CLI_WORK_ROOT` (for example a
+private directory under `/var/lib/cao`) so Unix socket paths fit the OS limit.
+The host must allow execution of the read-only relay bind mount. Docker Desktop
+socket forwarding or remote filesystems are not production substitutes; failure
+to mount/connect/execute the relay fails the command with no bridge fallback.
+The proxy has 32 connection slots per command, 8 KiB configured HTTP headers,
+a 5-second header timeout, 10-second DNS/dial limits, 30-second tunnel I/O idle
+limits, and a maximum 15-minute lifetime additionally bounded by command
+cancellation. Closing the proxy or losing the executor kills tunnels but does
+not prove workload termination: the retained identity, claim, token-revocation
+obligations, and workspace follow existing bounded stop/recovery rules.
+
+SQLite-only Docker development keeps its previous bridge behavior **only when
+all three egress settings are absent**. Supplying any setting opts into the
+complete boundary and fails closed if anything is unavailable. Apple and Windows
+remain explicit SQLite-only development profiles, not production fallbacks.
+
+Before enabling production admission, run the credential-free real-boundary
+test on the intended dedicated Linux executor:
+
+```bash
+cd server
+CAO_TEST_DOCKER_EGRESS=1 go test ./internal/hostedcli \
+  -run '^TestDockerEgressRealBoundary$' -count=1 -v
+```
+
+It uses only its own named container/workspace, checks loopback-only interfaces
+and direct TCP/UDP/DNS denial, protected relay mounts, approved GitHub HTTPS Git,
+gh reaching GitHub's expected unauthenticated `401`, and denied CONNECT targets.
+It does not write to GitHub or use real credentials. Missing
+`/var/run/docker.sock` is an explicit skip, not successful runtime validation;
+do not switch contexts to avoid it. Deterministic policy, proxy and lifecycle
+tests run without Docker but are not evidence of the kernel boundary.
 
 #### Native runtimes for local development
 
@@ -943,17 +1063,27 @@ running executor. Use a two-key rollover:
 
 Never put either key in logs, command output, or checked-in configuration.
 
-For local debugging without PostgreSQL, both processes can share one SQLite
+For local hosted-CLI storage debugging, both processes can share one SQLite
 file holding the queue, audit table, and encrypted token cleanup journal. `--hosted-cli-sqlite` requires
 `--experimental`, `--hosted-cli-actions`, and a loopback `--listen`, and the
-file is created with mode `0600`. Anyone who can write the SQLite file can
+explicit bootstrap creates the file with mode `0600`. Anyone who can write the SQLite file can
 drop its triggers, so never use this in production:
 
 ```bash
+mkdir -p .tmp
+cao-dashboard database bootstrap --store operational --sqlite ./.tmp/hosted-cli.sqlite
 cao-dashboard serve-hosted --listen 127.0.0.1:8443 --experimental --hosted-cli-actions \
   --hosted-cli-sqlite ./.tmp/hosted-cli.sqlite ...
 cao-dashboard execute-cli --sqlite ./.tmp/hosted-cli.sqlite
 ```
+
+Runtime now requires the provisioned file and never performs audit retention.
+Use `database retain-audit --store operational --sqlite PATH` explicitly.
+`audit deliver --sqlite PATH` reads and verifies existing state through a
+read-only SQLite connection; `audit verify --sqlite PATH` still appends its own
+verification result. This only replaces hosted-CLI storage, not the full
+dashboard's canonical PostgreSQL backend or authentication configuration.
+See [POSTGRES.md](POSTGRES.md#local-sqlite-testing) for local end-to-end tests.
 
 Each command runs with a single-use installation token scoped to its target
 repository, and the token is revoked when the command finishes. The broker
@@ -1018,6 +1148,14 @@ Schedule `audit verify` and keep the printed heads in write-once storage, so
 later runs can pass them as anchors. Hosted CLI spans, metrics, and OTLP
 audit logs are listed in
 [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md#7a-telemetry).
+For bounded, restart-safe replay of committed rows, use the opt-in
+[`audit deliver` job](audit-delivery/README.md). It requires an independently
+administered HTTPS object adapter, reads back events before advancing a
+destination-resident CAS checkpoint, and fails closed on missing/stale anchors
+or retention gaps. The deployment guide includes explicit enrollment, an
+executable adapter conformance test, disabled-by-default scheduling templates,
+and monitoring/evidence requirements. Neither a local JSON mirror nor an OTLP
+emission confirms independent delivery or write-once retention.
 The normative contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
 
 ### Upstash Redis provider
