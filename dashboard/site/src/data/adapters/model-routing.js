@@ -1,5 +1,9 @@
 /** Metadata-only projection of the model-routing analytics session contract. */
 
+import { createDebug } from '../../debug.js';
+
+const debugModelRouting = createDebug('model-routing');
+
 /** @param {unknown} value @returns {Record<string, unknown>} */
 function object(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -174,8 +178,17 @@ export function normalizeLegacyRouting(records) {
     }).at(-1);
   const data = object(selection?.record.data);
   const version = String(data.schema ?? data._schema).match(/^model-routing\/v(\d+)\.(\d+)\.(\d+)$/);
-  if (!version || Number(version[1]) !== 0
-      || Number(version[2]) > 28 || (Number(version[2]) === 28 && Number(version[3]) >= 39)) return records;
+  if (!version) {
+    debugModelRouting({ event: 'legacy-normalization', status: 'skipped', reason: 'no-versioned-selection', records: records.length });
+    return records;
+  }
+  if (Number(version[1]) !== 0
+      || Number(version[2]) > 28 || (Number(version[2]) === 28 && Number(version[3]) >= 39)) {
+    debugModelRouting({ event: 'legacy-normalization', status: 'skipped', reason: 'current-schema', records: records.length });
+    return records;
+  }
+  debugModelRouting({ event: 'legacy-normalization', status: 'applied', records: records.length,
+    schemaMinor: Number(version[2]), schemaPatch: Number(version[3]) });
   return records.map((entry) => {
     const data = object(entry.record.data);
     return entry.record.type === 'firewall.model_routing' && data.stage === 'request'

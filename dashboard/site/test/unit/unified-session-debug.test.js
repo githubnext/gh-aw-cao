@@ -53,7 +53,7 @@ describe('unified-session debug logging', () => {
   });
 
   it('respects exclusions', async () => {
-    const { parseUnifiedSession, output } = await loadWithDebug('?debug=*,-unified-session');
+    const { parseUnifiedSession, output } = await loadWithDebug('?debug=*,-unified-session,-model-routing');
     parseUnifiedSession(content, 'a.jsonl');
     expect(output.debug).not.toHaveBeenCalled();
   });
