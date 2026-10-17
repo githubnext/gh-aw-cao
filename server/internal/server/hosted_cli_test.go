@@ -161,6 +161,7 @@ type hostedCLIFixture struct {
 	push    bool
 	mutex   sync.Mutex
 	probes  []string
+	github  *fakeGitHubServer
 }
 
 type hostedCLITestOAuth struct {
@@ -170,6 +171,7 @@ type hostedCLITestOAuth struct {
 	appRepositoryAccess bool
 	omitPermissions     bool
 	sso                 bool
+	consent             bool
 }
 
 // newHostedCLIFixture serves the OAuth fake and answers repository
@@ -185,6 +187,7 @@ func newHostedCLIFixtureWithOAuth(t *testing.T, admins []string, options hostedC
 	oauthServer := fakeGitHub(t, fakeGitHubOptions{
 		membershipState: "active", accessExpiresIn: 3600, grantedScopes: options.grantedScopes,
 	})
+	fixture.github = oauthServer
 	target, err := url.Parse(oauthServer.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -234,6 +237,15 @@ func newHostedCLIFixtureWithOAuth(t *testing.T, admins []string, options hostedC
 		t.Fatal(err)
 	}
 	fixture.session, fixture.csrf = callbackSession(t, fixture.app)
+	if options.consent {
+		stateCookie, state := hostedConsentState(t, fixture.app, fixture.session)
+		response := oauthCallbackResponse(t, fixture.app, stateCookie, state, fixture.session)
+		if response.Code != http.StatusFound {
+			t.Fatalf("hosted consent callback = %d: %s", response.Code, response.Body.String())
+		}
+		fixture.session = firstCookie(t, response.Result(), sessionCookieName)
+		fixture.csrf = firstCookie(t, response.Result(), csrfCookieName)
+	}
 	return fixture
 }
 
@@ -288,7 +300,7 @@ func TestHostedCLIEnableRequiresOAuthAndControlRepository(t *testing.T) {
 	if err := app.EnableHostedCLIActions(t.Context(), HostedCLIConfig{Catalog: catalog, ControlRepository: "../x", Queue: newHostedCLITestQueue()}); err == nil {
 		t.Fatal("hosted CLI actions accepted an invalid control repository")
 	}
-	if app.oauth.requestRepositoryAccess {
+	if app.oauth.repositoryConsentAllowed != nil {
 		t.Fatal("failed hosted CLI enablement broadened requested OAuth scopes")
 	}
 }
@@ -322,10 +334,11 @@ func TestHostedCLIRepositoryAccessOAuthContract(t *testing.T) {
 		noWrite bool
 		status  int
 	}{
-		{name: "classic private repository", oauth: hostedCLITestOAuth{privateRepository: true}, status: http.StatusAccepted},
-		{name: "classic declined repo scope", oauth: hostedCLITestOAuth{privateRepository: true, grantedScopes: []string{"read:org", "read:user"}}, status: http.StatusForbidden},
+		{name: "classic private repository with consent", oauth: hostedCLITestOAuth{privateRepository: true, consent: true}, status: http.StatusAccepted},
+		{name: "classic private repository before consent", oauth: hostedCLITestOAuth{privateRepository: true}, status: http.StatusForbidden},
+		{name: "classic declined repo scope", oauth: hostedCLITestOAuth{privateRepository: true, consent: true, grantedScopes: []string{"read:org", "read:user"}}, status: http.StatusForbidden},
 		{name: "classic public repository without repo scope", oauth: hostedCLITestOAuth{grantedScopes: []string{"read:org", "read:user"}}, status: http.StatusAccepted},
-		{name: "classic private reader", oauth: hostedCLITestOAuth{privateRepository: true}, noWrite: true, status: http.StatusForbidden},
+		{name: "classic private reader", oauth: hostedCLITestOAuth{privateRepository: true, consent: true}, noWrite: true, status: http.StatusForbidden},
 		{name: "GitHub App private writer with SSO", oauth: hostedCLITestOAuth{clientID: "Iv23liGitHubApp", privateRepository: true, appRepositoryAccess: true, sso: true}, status: http.StatusAccepted},
 		{name: "GitHub App private reader with SSO", oauth: hostedCLITestOAuth{clientID: "Iv23liGitHubApp", privateRepository: true, appRepositoryAccess: true, sso: true}, noWrite: true, status: http.StatusForbidden},
 		{name: "GitHub App missing installation access", oauth: hostedCLITestOAuth{clientID: "Iv23liGitHubApp", privateRepository: true, sso: true}, status: http.StatusForbidden},

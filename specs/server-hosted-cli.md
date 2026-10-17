@@ -151,14 +151,36 @@ a subprocess starts.
 
 ### 4.1. Requester repository access
 
-For classic OAuth Apps, enabling hosted CLI actions MUST add `repo` to the
-requested login scopes so the requester's token can read private target
-repository metadata. Disabled deployments MUST NOT request `repo`.
+Ordinary classic OAuth App login MUST request only `read:org read:user`,
+including on hosted-CLI-enabled deployments and for administrators. Only
+the explicit `/auth/login?hosted_cli=1` administrator reauthentication and
+consent flow MAY additionally request `repo` for private-target metadata.
+The server MUST require hosted CLI enablement and an existing authenticated
+server-side session whose login is currently in `CAO_GITHUB_ADMIN_USERS`
+and whose numeric GitHub account ID is known before initiating that flow.
+Anonymous users, non-administrator viewers, disabled deployments, and
+client query flags without verified session authority MUST NOT obtain a
+repository-scope authorization redirect.
+
+Consent state MUST bind the initiating session, numeric GitHub account ID,
+login, and ten-minute expiry in a signed, HttpOnly cookie. Only opaque
+random state MAY be sent to GitHub. At callback the server MUST require the
+original session, matching account ID and login, current administrator
+allowlisting, enabled hosted CLI, authorized membership, and fresh factor
+evidence. A different account, including another allowlisted administrator,
+MUST be rejected. Altering or stripping the binding, replaying it after
+expiry, or treating the bound payload as ordinary provider state MUST NOT
+bypass these checks. Credentials issued to rejected callbacks MUST be
+revoked or durably queued for revocation.
+
 Operators MUST disclose that GitHub's classic `repo` scope grants broad
 read/write access to accessible public and private repositories, is not
-metadata-only or repository-selective, and is requested for all browser
-sign-ins on the enabled deployment. Existing sessions require new consent;
-disabling the feature does not revoke previously granted GitHub scopes.
+metadata-only or repository-selective, and is requested only for explicitly
+consenting administrators. Existing sessions without stored account IDs
+require ordinary sign-in before consent. Private-target probes MUST still
+fail closed without actual token access; requested consent alone MUST NOT
+establish write authority. Disabling the feature does not revoke previously
+granted GitHub scopes.
 
 A GitHub App used for browser sign-in SHOULD be preferred for
 selected-repository access without a broad classic OAuth grant. Its

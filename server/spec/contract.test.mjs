@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.5.0')
+  assert.equal(openapi.info.version, '2.6.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -130,6 +130,20 @@ test('GitHub resource operations describe authenticated conditional reads and gr
     }
   }
   assert.equal(openapi.components.securitySchemes.LocalGitHubResourceSession.name, 'cao_github_local')
+})
+
+test('hosted repository consent is explicit and server-authorized', () => {
+  const login = openapi.paths['/auth/login'].get
+  const consent = login.parameters.find(parameter => parameter.name === 'hosted_cli')
+  assert.equal(consent.in, 'query')
+  assert.deepEqual(consent.schema.enum, ['1'])
+  assert.equal(consent.required, false)
+  for (const status of ['302', '400', '401', '403']) {
+    assert.ok(login.responses[status])
+  }
+  assert.match(login.description, /existing server-side session/)
+  assert.match(login.description, /configured administrator/)
+  assert.match(openapi.paths['/auth/callback'].get.description, /matching GitHub account ID and login/)
 })
 
 test('structured payload fields stay in sync with Go JSON tags', () => {

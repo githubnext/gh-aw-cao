@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.5.0",
+    "version": "2.6.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -2602,7 +2602,7 @@
     "/auth/callback": {
       "get": {
         "operationId": "Auth_callback",
-        "description": "Hosted profile only. Exchange the GitHub OAuth code and state; sets the HttpOnly session and CSRF cookies, then redirects home. Failure pages are HTML.",
+        "description": "Hosted profile only. Exchange the GitHub OAuth code and signed state; sets the HttpOnly session and CSRF cookies, then redirects home. An administrator-consent callback requires its original active session, matching GitHub account ID and login, current administrator allowlisting, and verified factor evidence. Mismatched or unauthorized callbacks are rejected and issued credentials are revoked or queued for revocation. Failure pages are HTML.",
         "parameters": [
           {
             "name": "code",
@@ -2723,7 +2723,7 @@
     "/auth/login": {
       "get": {
         "operationId": "Auth_login",
-        "description": "Hosted profile only. Start the GitHub OAuth flow; responds with a redirect to GitHub and sets a short-lived state cookie.",
+        "description": "Hosted profile only. Ordinary login requests read:org read:user for classic OAuth Apps, or offline_access for GitHub Apps. hosted_cli=1 explicitly starts repository consent only when hosted CLI is enabled and the existing server-side session belongs to a configured administrator with a known GitHub account ID. Classic OAuth adds repo only for that flow. Its signed state binds the initiating session, account ID, login and ten-minute expiry; the callback must retain that subject and current administrator authorization. The query parameter alone grants no authority.",
         "parameters": [
           {
             "name": "select_account",
@@ -2731,6 +2731,18 @@
             "required": false,
             "schema": {
               "type": "string"
+            },
+            "explode": false
+          },
+          {
+            "name": "hosted_cli",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
             },
             "explode": false
           }
@@ -2748,6 +2760,44 @@
             }
           },
           "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
             "description": "An error response. The message is diagnostic, not a stable error code.",
             "content": {
               "application/json": {

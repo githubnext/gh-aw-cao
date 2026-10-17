@@ -153,19 +153,15 @@ func TestOAuthLoginScopeMatchesApplicationType(t *testing.T) {
 			if location.Query().Get("state") == "" || location.Query().Get("prompt") != "select_account" {
 				t.Fatal("login must retain state and account selection")
 			}
-			oauth.requestRepositoryAccess = true
+			oauth.repositoryConsentAllowed = func(oauthSession) bool { return true }
 			response = httptest.NewRecorder()
 			oauth.login(response, azureRequest(t, http.MethodGet, "/auth/login"))
 			location, err = url.Parse(response.Header().Get("Location"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := test.scope
-			if !strings.HasPrefix(test.clientID, "Iv") {
-				want += " repo"
-			}
-			if response.Code != http.StatusFound || location.Query().Get("scope") != want {
-				t.Fatalf("unexpected hosted CLI authorization scope: %s", location.Query().Get("scope"))
+			if response.Code != http.StatusFound || location.Query().Get("scope") != test.scope {
+				t.Fatalf("enabled hosted CLI widened ordinary login scope: %s", location.Query().Get("scope"))
 			}
 		})
 	}
@@ -898,10 +894,14 @@ type fakeGitHubServer struct {
 	onUserRequest    func()
 	// twoFactor controls the /user two_factor_authentication field: nil
 	// omits it, matching tokens GitHub does not disclose it to.
-	twoFactor *bool
-	grantMu   sync.Mutex
-	grant     fakeOAuthGrant
-	tokens    map[string]fakeOAuthGrant
+	twoFactor    *bool
+	grantMu      sync.Mutex
+	grant        fakeOAuthGrant
+	tokens       map[string]fakeOAuthGrant
+	login        string
+	accountID    int64
+	accessToken  string
+	refreshToken string
 }
 
 // assuredSession models recent OAuth completion with disclosed 2FA enabled,
@@ -913,7 +913,10 @@ func assuredSession(login string) oauthSession {
 func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 	t.Helper()
 	twoFactor := true
-	server := &fakeGitHubServer{twoFactor: &twoFactor, tokens: make(map[string]fakeOAuthGrant)}
+	server := &fakeGitHubServer{
+		twoFactor: &twoFactor, tokens: make(map[string]fakeOAuthGrant),
+		login: "octocat", accountID: 1, accessToken: "access-old", refreshToken: "refresh-old",
+	}
 	server.rejectRevocation = options.rejectRevocation
 	server.membershipState = options.membershipState
 	mux := http.NewServeMux()
@@ -946,19 +949,23 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 			return
 		}
 		server.grantMu.Lock()
-		server.tokens["access-old"] = server.grant
+		accessToken, refreshToken := server.accessToken, server.refreshToken
+		server.tokens[accessToken] = server.grant
 		server.grantMu.Unlock()
 		// #nosec G117 -- test fixture intentionally models GitHub's token endpoint JSON.
-		_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: "access-old", RefreshToken: "refresh-old", ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200})
+		_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: accessToken, RefreshToken: refreshToken, ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200})
 	})
 	mux.HandleFunc("/user", func(response http.ResponseWriter, request *http.Request) {
 		if server.onUserRequest != nil {
 			server.onUserRequest()
 		}
+		server.grantMu.Lock()
 		payload := map[string]any{
-			"login":      "octocat",
+			"id":         server.accountID,
+			"login":      server.login,
 			"avatar_url": server.URL + "/avatars/octocat.png",
 		}
+		server.grantMu.Unlock()
 		grant := server.tokenGrant(request.Header.Get("Authorization"))
 		disclosesPrivateUser := grant.hasScope("read:user") || grant.hasScope("user")
 		if grant.isGitHubApp() {
@@ -1092,14 +1099,25 @@ func authorizeFakeGitHub(t *testing.T, app *App, location string) {
 func callbackSession(t *testing.T, app *App) (*http.Cookie, *http.Cookie) {
 	t.Helper()
 	stateCookie, state := loginState(t, app)
-	response := httptest.NewRecorder()
-	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
-	request.AddCookie(stateCookie)
-	app.Handler().ServeHTTP(response, request)
+	response := oauthCallbackResponse(t, app, stateCookie, state)
 	if response.Code != http.StatusFound {
 		t.Fatalf("callback returned %d: %s", response.Code, response.Body.String())
 	}
 	return firstCookie(t, response.Result(), sessionCookieName), firstCookie(t, response.Result(), csrfCookieName)
+}
+
+func oauthCallbackResponse(t *testing.T, app *App, stateCookie *http.Cookie, state string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+	response := httptest.NewRecorder()
+	request := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(state))
+	request.AddCookie(stateCookie)
+	for _, cookie := range cookies {
+		if cookie != nil {
+			request.AddCookie(cookie)
+		}
+	}
+	app.Handler().ServeHTTP(response, request)
+	return response
 }
 
 func firstCookie(t *testing.T, response *http.Response, name string) *http.Cookie {

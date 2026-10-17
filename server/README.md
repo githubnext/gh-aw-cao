@@ -632,15 +632,27 @@ cao-dashboard serve-hosted --experimental --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
 ```
 
-Enabling hosted CLI actions also requests `repo` for **classic OAuth App**
-browser sign-ins, so the live requester-token probe can read private target
-repositories. Disabled deployments keep `read:org read:user` and request no
-repository scope. Existing sessions must sign out and authorize again after
-enablement; declining `repo` leaves private targets unavailable. GitHub's
-classic `repo` scope is broad read/write access to the user's accessible
-public and private repositories, not a metadata-only or selected-repository
-grant. This applies to every browser sign-in on the enabled deployment, not
-just administrators. Prefer a separate **GitHub App for browser sign-in** to
+Ordinary **classic OAuth App** sign-in always requests only
+`read:org read:user`, even when hosted CLI is enabled and even for
+administrators. To authorize private-target probes, first sign in normally,
+then open `/auth/login?hosted_cli=1` while signed in as a configured
+`CAO_GITHUB_ADMIN_USERS` administrator and consent to the additional `repo`
+scope. This explicit flow is unavailable to anonymous users and viewers,
+and when hosted CLI is disabled. Sessions created before account-ID binding
+was introduced must complete ordinary sign-in again first.
+
+The signed, HttpOnly state cookie binds consent to the initiating session,
+GitHub numeric account ID, login, and a ten-minute expiry. Keep the same
+account selected in GitHub's account chooser. The callback rejects switched
+accounts (including another allowlisted administrator), missing/replaced
+sessions, removed administrator access, disabled hosted CLI, and missing
+factor evidence; rejected issued credentials are revoked or queued for
+revocation. A query flag alone grants no authority. Private-target probes
+remain denied until the user's token actually has the required access.
+
+GitHub's classic `repo` scope is broad read/write access to the consenting
+administrator's accessible public and private repositories, not a metadata-only
+or selected-repository grant. Prefer a separate **GitHub App for browser sign-in** to
 avoid that broad grant: retain **Members: read**, approve its installation
 for the selected private targets with **Metadata: read**, and ensure its
 user token's live repository response reports the requester's `admin`,
@@ -653,7 +665,7 @@ execution still uses the separately scoped hosted CLI App installation token.
 Missing repository access or permission fields fail closed without falling
 back to that executor token. `offline_access` remains unchanged for GitHub
 App sign-ins and grants no repository permissions. Disabling the feature
-stops requesting `repo` but does not revoke previously granted GitHub scopes;
+blocks new administrator consent but does not revoke previously granted GitHub scopes;
 revoke the OAuth App authorization in GitHub when removing that access.
 
 In production, all web and executor replicas must share the same PostgreSQL

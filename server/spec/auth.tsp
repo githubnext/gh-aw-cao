@@ -11,12 +11,12 @@ model Account {
 
 @tag("Hosted authentication")
 namespace Auth {
-  /** Hosted profile only. Start the GitHub OAuth flow; responds with a redirect to GitHub and sets a short-lived state cookie. */
+  /** Hosted profile only. Ordinary login requests read:org read:user for classic OAuth Apps, or offline_access for GitHub Apps. hosted_cli=1 explicitly starts repository consent only when hosted CLI is enabled and the existing server-side session belongs to a configured administrator with a known GitHub account ID. Classic OAuth adds repo only for that flow. Its signed state binds the initiating session, account ID, login and ten-minute expiry; the callback must retain that subject and current administrator authorization. The query parameter alone grants no authority. */
   @route("/auth/login")
-  @get op login(@query select_account?: string):
-    { @statusCode code: 302; @header location: string } | BadRequest | Unavailable;
+  @get op login(@query select_account?: string, @query hosted_cli?: "1"):
+    { @statusCode code: 302; @header location: string } | BadRequest | Unauthorized | Forbidden | Unavailable;
 
-  /** Hosted profile only. Exchange the GitHub OAuth code and state; sets the HttpOnly session and CSRF cookies, then redirects home. Failure pages are HTML. */
+  /** Hosted profile only. Exchange the GitHub OAuth code and signed state; sets the HttpOnly session and CSRF cookies, then redirects home. An administrator-consent callback requires its original active session, matching GitHub account ID and login, current administrator allowlisting, and verified factor evidence. Mismatched or unauthorized callbacks are rejected and issued credentials are revoked or queued for revocation. Failure pages are HTML. */
   @route("/auth/callback")
   @get op callback(@query code?: string, @query state?: string):
     { @statusCode code: 302; @header location: string } | BadRequest | Forbidden | Unavailable;

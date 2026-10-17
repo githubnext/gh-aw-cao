@@ -137,14 +137,15 @@ type githubOAuth struct {
 	key         []byte
 	keys        map[string][]byte
 	log         func(string)
-	// Enabled only with hosted CLI actions, whose live requester permission
-	// probe must be able to read private repository metadata.
-	requestRepositoryAccess bool
+	// Set only when hosted CLI actions are enabled. Rechecked at both ends
+	// of explicit repository consent; ordinary login never consults it.
+	repositoryConsentAllowed func(oauthSession) bool
 }
 
 type oauthSession struct {
 	ID             string    `json:"id"`
 	Login          string    `json:"login"`
+	GitHubID       int64     `json:"githubId,omitempty"`
 	AvatarURL      string    `json:"avatarUrl,omitempty"`
 	AccessToken    string    `json:"accessToken"`
 	RefreshToken   string    `json:"refreshToken"`
@@ -161,11 +162,24 @@ type oauthSession struct {
 }
 
 type githubAccount struct {
+	ID        int64  `json:"id"`
 	Login     string `json:"login"`
 	AvatarURL string `json:"avatar_url"`
 	// TwoFactorAuthentication is present only when GitHub discloses it to the
 	// token; absence is treated as unverified.
 	TwoFactorAuthentication *bool `json:"two_factor_authentication"`
+}
+
+type oauthConsentState struct {
+	SessionBinding string `json:"session"`
+	GitHubID       int64  `json:"githubId"`
+	Login          string `json:"login"`
+	ExpiresAt      int64  `json:"expiresAt"`
+}
+
+func oauthSessionBinding(id string) string {
+	sum := sha256.Sum256([]byte(id))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
 type tokenResponse struct {
@@ -286,15 +300,58 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 		writeError(response, http.StatusUnauthorized, "GitHub sign-in requires a top-level navigation")
 		return
 	}
+	var consent *oauthConsentState
+	if values, requested := request.URL.Query()["hosted_cli"]; requested {
+		if len(values) != 1 || values[0] != "1" {
+			oauth.logBranch("login.consent_request_invalid")
+			writeError(response, http.StatusBadRequest, "Invalid hosted administrator consent request")
+			return
+		}
+		if oauth.repositoryConsentAllowed == nil {
+			oauth.logBranch("login.consent_disabled")
+			writeError(response, http.StatusForbidden, "Hosted administrator consent is not enabled")
+			return
+		}
+		session, ok := oauth.session(response, request)
+		if !ok {
+			oauth.logBranch("login.consent_session_missing")
+			writeError(response, http.StatusUnauthorized, "Sign in before requesting hosted administrator consent")
+			return
+		}
+		if !oauth.repositoryConsentAllowed(session) {
+			oauth.logBranch("login.consent_admin_rejected")
+			writeError(response, http.StatusForbidden, "Administrator access is required for repository consent")
+			return
+		}
+		if session.GitHubID <= 0 {
+			oauth.logBranch("login.consent_subject_missing")
+			writeError(response, http.StatusUnauthorized, "Sign in again before requesting hosted administrator consent")
+			return
+		}
+		consent = &oauthConsentState{
+			SessionBinding: oauthSessionBinding(session.ID), GitHubID: session.GitHubID,
+			Login: session.Login, ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+		}
+	}
 	state, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("login.state_generation_failed")
 		writeError(response, http.StatusInternalServerError, "failed to initialize login")
 		return
 	}
+	cookieState := state
+	if consent != nil {
+		data, err := json.Marshal(consent)
+		if err != nil {
+			oauth.logBranch("login.consent_state_failed")
+			writeError(response, http.StatusInternalServerError, "Failed to initialize hosted administrator consent")
+			return
+		}
+		cookieState += "." + base64.RawURLEncoding.EncodeToString(data)
+	}
 	http.SetCookie(response, &http.Cookie{
 		Name:     "cao_oauth_state",
-		Value:    oauth.sign(state),
+		Value:    oauth.sign(cookieState),
 		Path:     "/auth/",
 		Secure:   true,
 		HttpOnly: true,
@@ -311,7 +368,7 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	} else {
 		// GitHub omits two_factor_authentication without read:user (or user).
 		scope := "read:org read:user"
-		if oauth.requestRepositoryAccess {
+		if consent != nil {
 			scope += " repo"
 		}
 		values.Set("scope", scope)
@@ -370,7 +427,8 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		}
 		writeOAuthFailure(response, status, reason, span.SpanContext().TraceID())
 	}
-	if !oauth.validState(request) {
+	consent, validState := oauth.loginState(request)
+	if !validState {
 		serverLog.Printf("oauth callback rejected invalid state")
 		oauth.logBranch("callback.state_rejected")
 		fail(http.StatusBadRequest, "invalid_state")
@@ -448,6 +506,24 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		fail(http.StatusForbidden, "authorization_failed")
 		return
 	}
+	session.Login = account.Login
+	session.GitHubID = account.ID
+	session.AuthenticatedAt = now
+	session.Assurance = oauth.verifiedAssurance(ctx, tokens.AccessToken, account)
+	if consent != nil {
+		previous, ok := oauth.loadRequestSession(request)
+		if !ok || oauth.repositoryConsentAllowed == nil ||
+			!constantTimeTokenEqual(consent.SessionBinding, oauthSessionBinding(previous.ID)) ||
+			previous.GitHubID != consent.GitHubID || account.ID != consent.GitHubID ||
+			!strings.EqualFold(previous.Login, consent.Login) || !strings.EqualFold(account.Login, consent.Login) ||
+			!oauth.repositoryConsentAllowed(session) || !oauth.adminAssured(session, time.Now().UTC()) ||
+			time.Now().Unix() >= consent.ExpiresAt {
+			oauth.logBranch("callback.consent_rejected")
+			fail(http.StatusForbidden, "authorization_failed")
+			return
+		}
+		oauth.logBranch("callback.consent_authorized")
+	}
 	sessionID, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("callback.session_id_generation_failed")
@@ -461,11 +537,8 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		return
 	}
 	session.ID = sessionID
-	session.Login = account.Login
 	session.AvatarURL = account.AvatarURL
 	session.CSRFToken = csrfToken
-	session.AuthenticatedAt = now
-	session.Assurance = oauth.verifiedAssurance(ctx, tokens.AccessToken, account)
 	if err := oauth.saveSession(ctx, session); err != nil {
 		serverLog.Printf("oauth session save failed")
 		oauth.logBranch("callback.session_save_failed")
@@ -795,9 +868,36 @@ func (oauth *githubOAuth) requestHasSession(request *http.Request) bool {
 }
 
 func (oauth *githubOAuth) validState(request *http.Request) bool {
+	_, ok := oauth.loginState(request)
+	return ok
+}
+
+func (oauth *githubOAuth) loginState(request *http.Request) (*oauthConsentState, bool) {
 	state := request.URL.Query().Get("state")
 	cookie, err := request.Cookie("cao_oauth_state")
-	return err == nil && state != "" && constantTimeTokenEqual(cookie.Value, oauth.sign(state))
+	// A provider state is opaque randomness, never the signed cookie's
+	// consent payload. Accepting dots here would permit a consent downgrade.
+	if err != nil || state == "" || strings.Contains(state, ".") {
+		return nil, false
+	}
+	if constantTimeTokenEqual(cookie.Value, oauth.sign(state)) {
+		return nil, true
+	}
+	parts := strings.Split(cookie.Value, ".")
+	if len(parts) != 3 || parts[0] != state ||
+		!constantTimeTokenEqual(cookie.Value, oauth.sign(state+"."+parts[1])) {
+		return nil, false
+	}
+	data, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, false
+	}
+	var consent oauthConsentState
+	if json.Unmarshal(data, &consent) != nil || consent.SessionBinding == "" ||
+		consent.GitHubID <= 0 || consent.Login == "" || time.Now().Unix() >= consent.ExpiresAt {
+		return nil, false
+	}
+	return &consent, true
 }
 
 func (oauth *githubOAuth) exchange(ctx context.Context, values url.Values) (tokenResponse, error) {

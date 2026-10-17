@@ -332,10 +332,22 @@ session. Do not add PAT handling to Azure mode; PATs bypass the required
 browser login, refresh-token rotation, revocation, and explicit membership
 authorization controls.
 
-Only when hosted CLI actions have been explicitly enabled does a classic
-OAuth App login additionally request `repo`, needed to read private target
-repository metadata with the requester's token. That scope grants broad
-repository read/write access to all signing-in users' accessible repositories;
+Ordinary classic OAuth App login never requests `repo`, including on a
+hosted-CLI-enabled deployment. Only the explicit
+`/auth/login?hosted_cli=1` reauthentication/consent flow may request it:
+hosted CLI must be enabled, and an existing server-side session must identify
+a configured administrator with a known numeric GitHub account ID.
+The signed, HttpOnly state cookie binds the initiating session, account ID,
+login, and ten-minute expiry. The callback rechecks the original session,
+subject, current administrator allowlist, feature enablement, membership, and
+factor evidence. Selecting another account, even another administrator,
+fails closed and revokes or queues issued credentials. Consent metadata
+cannot be stripped or moved into the provider state to downgrade the flow
+to ordinary login. No client query flag grants authority by itself.
+
+`repo` is needed to read private target repository metadata with the
+requester's classic token. It grants broad repository read/write access
+to the consenting administrator's accessible repositories;
 GitHub offers no equivalent classic OAuth scope limited to private metadata
 or selected repositories. Prefer a browser sign-in GitHub App with
 organization **Members: read**, repository **Metadata: read**, and approved
@@ -344,7 +356,9 @@ unacceptable. Its user token remains limited by the user's own access and
 the App's permissions and installations. App-only credentials never substitute
 for the requester's live `admin`, `maintain`, or `push` permission.
 Missing access, withheld permission fields, and failed probes remain denials.
-Existing sessions need new consent after enablement; disabling the feature
+Existing sessions lacking account-ID binding require ordinary sign-in before
+administrator consent. Private-target probes remain denied without actual
+token access. Disabling the feature
 does not revoke prior GitHub grants. See the
 [onboarding instructions](README.md#oauth-permissions-and-onboarding).
 
