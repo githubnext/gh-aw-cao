@@ -553,6 +553,36 @@ to the executor's App-only credential for requester authorization.
     replacing an operator's ceiling with a longer caller budget; limits MUST
     be transaction-local and MUST NOT change subsequent session defaults.
 
+### Independent audit delivery
+
+`cao-dashboard audit deliver` MUST remain opt-in and consume only committed
+`AuditLog.ListAudit`/`VerifyAudit` results, without a second producer outbox or
+application-store writes. Every bounded page MUST be verified against an
+independent prior head and its reconstructed ending hash before delivery.
+The delivery cursor MUST distinguish the last acknowledged event from the
+independently verified high-water mark. Missing/stale/expired anchors, sequence
+gaps, rollback, interrupted verification, failed acknowledgements and checkpoint
+conflicts MUST fail closed and remain observable through a nonzero exit and
+credential-free structured status.
+
+Stream identities MUST be unique per deployment/namespace. Event objects MUST
+bind that identity to the sequence and chain hashes, use create-only writes,
+and require exact read-back before acknowledgement. A checkpoint MUST advance
+only after event and verification evidence delivery, using destination-side
+compare-and-swap with a strong version. Retries MUST reload and validate the
+independent checkpoint, accept only identical existing objects, and never
+overwrite another writer's progress. First enrollment MUST require an explicitly
+approved independent anchor and retained history beginning at sequence 1; a
+normal missing-checkpoint failure MUST NOT automatically rebaseline.
+
+The [deployment and adapter contract](../server/audit-delivery/README.md) defines
+bounded requests, restart behavior, conformance testing and scheduling.
+Administrators MUST independently establish destination durability, conditional
+write/read consistency, protected checkpoint versions, write-once retention,
+least-privilege credentials and alert routing. A local file, SIEM label, or OTLP
+emission MUST NOT be represented as a durable independent acknowledgement or
+evidence of organizational monitoring/incident-response control operation.
+
 ## 7a. Telemetry
 
 Hosted CLI telemetry uses the server's OpenTelemetry setup and MUST NOT

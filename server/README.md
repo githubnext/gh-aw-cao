@@ -1012,6 +1012,14 @@ Schedule `audit verify` and keep the printed heads in write-once storage, so
 later runs can pass them as anchors. Hosted CLI spans, metrics, and OTLP
 audit logs are listed in
 [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md#7a-telemetry).
+For bounded, restart-safe replay of committed rows, use the opt-in
+[`audit deliver` job](audit-delivery/README.md). It requires an independently
+administered HTTPS object adapter, reads back events before advancing a
+destination-resident CAS checkpoint, and fails closed on missing/stale anchors
+or retention gaps. The deployment guide includes explicit enrollment, an
+executable adapter conformance test, disabled-by-default scheduling templates,
+and monitoring/evidence requirements. Neither a local JSON mirror nor an OTLP
+emission confirms independent delivery or write-once retention.
 The normative contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
 
 ### Upstash Redis provider
