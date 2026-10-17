@@ -735,11 +735,19 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   are encrypted with the current session key and retained in the protected
   operational revocation queue, isolated from OAuth cleanup. The executor
   holding the command queue lease retries interrupted owners' tokens; active
-  local tokens are not revoked by periodic maintenance. Journal debt is removed
-  only after confirmed revocation or expiry. Unpersisted cleanup failures stop
+  local tokens are not revoked by periodic maintenance. After confirmed
+  revocation or expiry, the encrypted credential is replaced by a
+  credential-free receipt without waiting for audit availability. Receipt
+  removal and its audit append are atomic; receipts have no expiry and replay
+  without another GitHub effect. The first observed revoke failure per token
+  is also journaled and acknowledged atomically. A crash between the external
+  effect and receipt persistence remains uncertain: recovery may repeat
+  revocation or observe expiry, explicitly recording the later observation.
+  Unpersisted cleanup failures stop
   further token issuance; graceful shutdown retains ownership while retrying
   until persistence, revocation, or expiry succeeds (at most the last received
-  token's one-hour lifetime, plus bounded in-flight requests). Cancellation of
+  token's one-hour lifetime, plus bounded in-flight requests). Missing receipt
+  persistence remains an explicit evidence error after expiry. Cancellation of
   `Broker.Close` reports unresolved cleanup and keeps its owner; executor
   graceful shutdown ignores command cancellation for this cleanup. An abrupt process kill in
   the non-atomic GitHub-issuance/local-persistence window still relies on
@@ -817,15 +825,21 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   (at least 400 days), and `VerifyAudit` detects edits, gaps, and reordering.
   Hosted CLI actions refuse to start without the table, and admission, cancel,
   retry, token minting, and command start fail closed when their event cannot
-  be stored. Every event is mirrored as a JSON line (`"audit":"cao"`) to
+  be stored. Result commits and execution-claim settlement now append their
+  lifecycle events atomically, including interrupted-command recovery. An
+  unavailable audit table cannot release an uncertain claim. Replays do not
+  duplicate semantic completions; stored cancellation wins a late success.
+  Logger-produced events are mirrored as a JSON line (`"audit":"cao"`) to
   standard error or to `CAO_AUDIT_LOG`, opened for append with mode `0600`,
   for SIEM forwarding. The events cover admin denials (with the
   step-up or not-admin reason), admission, rejection, cancel, retry, token
   mint and revocation, the command's start, permission denial, and finish.
   They carry the actor, repository, assurance, and execution image reference,
   but no credentials. Tokens appear only as `hashed_token`, in GitHub's audit-log
-  format, so CAO events join GitHub's record of the App's actions. Forward
-  the mirror to write-once SIEM storage when you need protection against a
+  format, so CAO events join GitHub's record of the App's actions. Storage-owned
+  lifecycle events are in the committed audit stream, not the inline mirror;
+  consume committed rows (including `audit export`) for complete forwarding.
+  Forward committed evidence to write-once SIEM storage when you need protection against a
   database superuser rewriting the whole chain.
 - **Audit verification**: run `cao-dashboard audit verify` on a schedule. It
   recomputes the chain, prints the head `lastSequence` and `lastHash`, and
@@ -835,7 +849,7 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   rewrite of the whole chain and a rollback to an earlier head, which the
   chain alone cannot detect. `cao-dashboard audit export` writes rows as JSON
   Lines for evidence requests.
-- **Telemetry**: audit events are also OTLP log records (`cao.audit.<event>`)
+- **Telemetry**: logger-produced audit events are also OTLP log records (`cao.audit.<event>`)
   with the active `trace_id` and `span_id`, which are also stored in the row.
   Command and token spans and metrics carry repository, command ID, and
   `hashed_token`, never tokens, output, or actor logins. Subprocesses receive

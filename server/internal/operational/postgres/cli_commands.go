@@ -121,6 +121,11 @@ func cliMonday(now time.Time) time.Time {
 }
 
 func (q *cliCommandQueue) Acquire(ctx context.Context, owner string, ttl time.Duration) (operational.CLICommandLease, error) {
+	if ctx == nil {
+		return operational.CLICommandLease{}, invalid("nil context")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	if err := names(owner); err != nil {
 		return operational.CLICommandLease{}, err
 	}
@@ -140,6 +145,9 @@ func (q *cliCommandQueue) Acquire(ctx context.Context, owner string, ttl time.Du
 			return err
 		}
 		if interrupted {
+			if err := q.auditRecovery(t, "cli_command.result"); err != nil {
+				return err
+			}
 			if _, err := t.tx.ExecContext(ctx, `UPDATE cao_operational_cli_commands SET status='failed',completed_at=$3,completion_week=$4,error='CLI action interrupted; subprocess termination is unverified.' WHERE namespace=$1 AND queue=$2 AND status='running'`, t.namespace, q.name, t.now, cliMonday(t.now)); err != nil {
 				return err
 			}
@@ -191,12 +199,20 @@ func (q *cliCommandQueue) Release(ctx context.Context, lease operational.CLIComm
 }
 
 func (q *cliCommandQueue) AcknowledgeRecovery(ctx context.Context, lease operational.CLICommandLease) error {
+	if ctx == nil {
+		return invalid("nil context")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	return q.transact(ctx, true, func(t *transaction, state cliQueueState) error {
 		if err := cliLeaseValid(t, state, lease); err != nil {
 			return err
 		}
 		if !state.blocked {
 			return operational.ErrConflict
+		}
+		if err := q.auditRecovery(t, "cli_command.finished"); err != nil {
+			return err
 		}
 		if _, err := t.tx.ExecContext(ctx, `UPDATE cao_operational_cli_commands SET execution_claimed=FALSE WHERE namespace=$1 AND queue=$2`, t.namespace, q.name); err != nil {
 			return err

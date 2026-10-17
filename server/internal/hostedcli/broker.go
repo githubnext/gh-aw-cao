@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 var brokerLog = logger.New("cao:hostedcli:broker")
@@ -77,6 +79,7 @@ type ownedToken struct {
 	version string
 	pending bool
 	revoked bool
+	record  tokenRevocation
 }
 
 // BrokerStats reports counters without credential material.
@@ -146,6 +149,10 @@ func (b *Broker) Acquire(ctx context.Context, installationID int64, scope github
 			b.mutex.Unlock()
 			countToken(ctx, tokenReuse, nil)
 			b.revokeAll(ctx, stale)
+			if err := b.bindPooled(ctx, entry.token); err != nil {
+				b.Release(ctx, entry.token)
+				return githubapp.ScopedToken{}, err
+			}
 			brokerLog.Printf("handed out pooled scoped token")
 			return entry.token, nil
 		}
@@ -205,17 +212,42 @@ func (b *Broker) Release(ctx context.Context, token githubapp.ScopedToken) {
 	if token.Secret() == "" {
 		return
 	}
+	// Do not wait behind another token's journal transaction (which can itself
+	// be waiting for an audit writer). Revocation is safe to repeat; issuance is
+	// never repeated. Ownership and receipt persistence still serialize below.
+	expired := !token.ExpiresAt.After(b.options.Now())
+	var revokeErr error
+	if !expired {
+		revokeErr = b.revoke(ctx, token)
+	}
+	observed := b.options.Now()
 	b.cleanupMutex.Lock()
 	defer b.cleanupMutex.Unlock()
 	b.mutex.Lock()
 	entry := b.owned[token.Hashed()]
 	if entry == nil {
-		entry = &ownedToken{token: token}
+		entry = &ownedToken{token: token, record: tokenRecord(ctx, token)}
 		b.owned[token.Hashed()] = entry
+	}
+	if command, ok := ctx.Value(tokenAuditContext{}).(operational.CLICommand); ok {
+		entry.record.Actor, entry.record.Repository, entry.record.CommandID = command.Actor, command.Repository, command.ID
 	}
 	entry.pending = true
 	b.mutex.Unlock()
-	if err := b.cleanup(ctx, entry); err != nil {
+	if !entry.revoked {
+		if revokeErr == nil {
+			b.confirmCleanup(entry, expired, observed)
+		} else if entry.record.FailureAt.IsZero() {
+			entry.record.FailureAt = observed
+		}
+	}
+	err := b.persistCleanup(ctx, entry)
+	if err == nil && entry.revoked {
+		b.mutex.Lock()
+		delete(b.owned, entry.record.HashedToken)
+		b.mutex.Unlock()
+	}
+	if err != nil || revokeErr != nil {
 		brokerLog.Printf("scoped token cleanup retained for retry")
 	}
 }
@@ -241,7 +273,12 @@ func (b *Broker) Maintain(ctx context.Context) error {
 	b.mutex.Unlock()
 	b.revokeAll(ctx, revoke)
 	b.cleanupMutex.Lock()
-	defer b.cleanupMutex.Unlock()
+	result := b.maintainOwned(ctx)
+	b.cleanupMutex.Unlock()
+	return errors.Join(result, b.flushJournal(ctx))
+}
+
+func (b *Broker) maintainOwned(ctx context.Context) error {
 	var result error
 	b.mutex.Lock()
 	var pending []*ownedToken
@@ -262,19 +299,24 @@ func (b *Broker) Maintain(ctx context.Context) error {
 	// belong to interrupted executors and are cleanup-only.
 	seen := map[string]bool{}
 	for range 16 {
-		token, version, err := b.options.Revocations.next(ctx)
+		recovered, err := b.options.Revocations.pending(ctx)
 		if err != nil {
 			return errors.Join(result, err)
 		}
-		if token.Secret() == "" || seen[token.Hashed()] {
+		if recovered == nil || seen[recovered.record.HashedToken] {
 			break
 		}
-		seen[token.Hashed()] = true
+		id := recovered.record.HashedToken
+		seen[id] = true
+		if recovered.revoked {
+			continue
+		}
 		b.mutex.Lock()
-		entry := b.owned[token.Hashed()]
+		entry := b.owned[id]
 		if entry == nil {
-			entry = &ownedToken{token: token, version: version, pending: true}
-			b.owned[token.Hashed()] = entry
+			entry = recovered
+			entry.record.Recovered = true
+			b.owned[id] = entry
 		}
 		active := !entry.pending
 		b.mutex.Unlock()
@@ -296,7 +338,6 @@ func (b *Broker) Close(ctx context.Context) error {
 	b.mutex.Unlock()
 	b.minting.Wait()
 	b.cleanupMutex.Lock()
-	defer b.cleanupMutex.Unlock()
 	defer b.unobserveOnce.Do(func() {
 		if b.unobserve != nil {
 			b.unobserve()
@@ -318,9 +359,11 @@ func (b *Broker) Close(ctx context.Context) error {
 			unsafe = unsafe || (err != nil && entry.version == "" && !entry.revoked)
 		}
 		if !unsafe {
-			return result
+			b.cleanupMutex.Unlock()
+			return errors.Join(result, b.flushJournal(ctx))
 		}
 		if b.options.Revocations == nil || !sleep(ctx, time.Second) {
+			b.cleanupMutex.Unlock()
 			return errors.Join(result, ctx.Err())
 		}
 	}
@@ -383,7 +426,8 @@ func (b *Broker) mint(ctx context.Context, installationID int64, scope githubapp
 	// Register ownership before scope/audit failure can discard the result.
 	// Persistence and maintenance serialize so recovery cannot race this mint.
 	b.cleanupMutex.Lock()
-	entry := &ownedToken{token: token}
+	entry := &ownedToken{token: token, record: tokenRecord(ctx, token)}
+	entry.record.Repositories = scope.Repositories
 	b.mutex.Lock()
 	b.owned[token.Hashed()] = entry
 	b.stats.Minted++
@@ -391,8 +435,7 @@ func (b *Broker) mint(ctx context.Context, installationID int64, scope githubapp
 	b.mutex.Unlock()
 	if b.options.Revocations != nil {
 		storeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), b.options.RevokeTimeout)
-		var retainErr error
-		entry.version, retainErr = b.options.Revocations.retain(storeCtx, entry.token)
+		retainErr := b.options.Revocations.retain(storeCtx, entry)
 		err = errors.Join(err, retainErr)
 		cancel()
 	}
@@ -451,26 +494,96 @@ func (b *Broker) issuanceErrorLocked(ctx context.Context) error {
 func (b *Broker) cleanup(ctx context.Context, entry *ownedToken) error {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), b.options.RevokeTimeout)
 	defer cancel()
-	var retainErr error
-	expired := !entry.token.ExpiresAt.After(b.options.Now())
-	if !entry.revoked && !expired && entry.version == "" && b.options.Revocations != nil {
-		entry.version, retainErr = b.options.Revocations.retain(cleanupCtx, entry.token)
-	}
+	expired := !entry.record.ExpiresAt.After(b.options.Now())
 	if !entry.revoked && !expired {
 		if err := b.revoke(cleanupCtx, entry.token); err != nil {
-			return errors.Join(retainErr, err)
+			if entry.record.FailureAt.IsZero() {
+				entry.record.FailureAt = b.options.Now()
+			}
+			return errors.Join(err, b.persistCleanup(ctx, entry))
 		}
 	}
-	entry.revoked = true
-	if entry.version != "" {
-		if err := b.options.Revocations.complete(cleanupCtx, entry.token, entry.version); err != nil {
-			return err
-		}
+	if !entry.revoked {
+		b.confirmCleanup(entry, expired, b.options.Now())
+	}
+	if err := b.persistCleanup(ctx, entry); err != nil {
+		return err
 	}
 	b.mutex.Lock()
-	delete(b.owned, entry.token.Hashed())
+	delete(b.owned, entry.record.HashedToken)
 	b.mutex.Unlock()
 	return nil
+}
+
+func (b *Broker) confirmCleanup(entry *ownedToken, expired bool, observed time.Time) {
+	entry.revoked = true
+	entry.record.Completion = "token.revoked"
+	if expired {
+		entry.record.Completion = "token.expired"
+	}
+	entry.record.CompletedAt = observed
+	// Evidence must not retain plaintext while its durable receipt is pending.
+	entry.token = githubapp.ScopedToken{}
+}
+
+func (b *Broker) persistCleanup(ctx context.Context, entry *ownedToken) error {
+	// Use a fresh budget after the external effect; an exhausted revoke budget
+	// must not suppress the attempt to durably remove its credential.
+	storeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), operational.AuditWriteTimeout)
+	defer cancel()
+	if b.options.Revocations != nil {
+		err := b.options.Revocations.save(storeCtx, entry)
+		if errors.Is(err, operational.ErrConflict) {
+			// A different durable version (or its committed deletion) owns
+			// reconciliation after an uncertain commit; never overwrite it.
+			b.mutex.Lock()
+			delete(b.owned, entry.record.HashedToken)
+			b.mutex.Unlock()
+		}
+		return err
+	}
+	// Process-local brokers have no restart guarantee.
+	name, outcome := "token.revoke_failed", audit.Failure
+	if entry.revoked {
+		name, outcome = entry.record.Completion, audit.Success
+	}
+	return b.options.Audit.Record(storeCtx, name, outcome, slog.String("hashed_token", entry.record.HashedToken))
+}
+
+// Audit delivery never holds cleanupMutex: an unavailable audit append for one
+// receipt must not prevent another Release from revoking its live credential.
+func (b *Broker) flushJournal(ctx context.Context) error {
+	if b.options.Revocations == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), operational.AuditWriteTimeout)
+	defer cancel()
+	seen := map[string]bool{}
+	var result error
+	for range 16 {
+		journal := b.options.Revocations
+		record, err := journal.queue.PendingRevocation(ctx, journal.namespace)
+		if err != nil {
+			return errors.Join(result, errors.New("read scoped token receipt failed"))
+		}
+		if record.ID == "" || seen[record.ID] {
+			break
+		}
+		seen[record.ID] = true
+		if !strings.HasPrefix(record.Value, "{") {
+			continue
+		}
+		entry, err := journal.decode(record)
+		if err != nil {
+			result = errors.Join(result, err)
+			continue
+		}
+		err = journal.flush(ctx, entry)
+		if err != nil && !errors.Is(err, operational.ErrConflict) {
+			result = errors.Join(result, err)
+		}
+	}
+	return result
 }
 
 func (b *Broker) revoke(ctx context.Context, token githubapp.ScopedToken) error {
@@ -491,10 +604,7 @@ func (b *Broker) revoke(ctx context.Context, token githubapp.ScopedToken) error 
 	b.mutex.Unlock()
 	if err != nil {
 		brokerLog.Printf("scoped token revocation failed; will retry")
-		_ = b.options.Audit.Record(ctx, "token.revoke_failed", audit.Failure, slog.String("hashed_token", token.Hashed()))
 		return errors.New("scoped token revocation failed")
-	} else {
-		_ = b.options.Audit.Record(ctx, "token.revoked", audit.Success, slog.String("hashed_token", token.Hashed()))
 	}
 	return nil
 }
