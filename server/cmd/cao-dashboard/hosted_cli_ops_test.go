@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -28,36 +29,55 @@ func TestHostedCLIQueueOperationsSQLite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command, err := queue.Enqueue(t.Context(), operational.CLICommandInvocation{
-		ActionID: "run-workflow", Command: "gh workflow run build.yml",
-		Actor: "octocat", Repository: "acme/widgets",
-	}, "operator-test", 0)
-	if err != nil {
-		t.Fatal(err)
+	var command operational.CLICommand
+	for index := range 3 {
+		command, err = queue.Enqueue(t.Context(), operational.CLICommandInvocation{
+			ActionID: "run-workflow", Command: "gh workflow run build.yml",
+			Actor: "octocat", Repository: "acme/widgets",
+		}, "operator-test-"+strconv.Itoa(index), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
 
-	output, err := runHostedCLIQueueTestCommand(t, sqlitePath, "list", "--status", "queued")
+	output, err := runHostedCLIQueueTestCommand(t, sqlitePath, "list", "--status", "queued", "--limit", "2")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var page struct {
-		Commands []map[string]any `json:"commands"`
-		Total    int              `json:"total"`
-		Running  int              `json:"running"`
+		Commands   []map[string]any `json:"commands"`
+		Total      int              `json:"total"`
+		Running    int              `json:"running"`
+		Offset     int              `json:"offset"`
+		Limit      int              `json:"limit"`
+		HasMore    bool             `json:"hasMore"`
+		NextOffset int              `json:"nextOffset"`
 	}
 	if err := json.Unmarshal([]byte(output), &page); err != nil {
 		t.Fatal(err)
 	}
-	if page.Total != 1 || page.Running != 0 || len(page.Commands) != 1 ||
+	if page.Total != 3 || page.Running != 0 || len(page.Commands) != 2 ||
 		page.Commands[0]["id"] != float64(command.ID) ||
-		page.Commands[0]["actor"] != "octocat" {
+		page.Commands[0]["actor"] != "octocat" ||
+		page.Offset != 0 || page.Limit != 2 || !page.HasMore || page.NextOffset != 2 {
 		t.Fatalf("unexpected queue list: %s", output)
 	}
 	if strings.Contains(output, "gh workflow run") {
 		t.Fatalf("queue summary disclosed command text: %s", output)
+	}
+	output, err = runHostedCLIQueueTestCommand(t, sqlitePath, "list", "--status", "queued", "--limit", "2", "--offset", "2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(output), &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 3 || len(page.Commands) != 1 || page.Offset != 2 ||
+		page.Limit != 2 || page.HasMore || page.NextOffset != 3 {
+		t.Fatalf("unexpected final queue page: %s", output)
 	}
 
 	output, err = runHostedCLIQueueTestCommand(t, sqlitePath, "show", "1")
@@ -84,7 +104,7 @@ func TestHostedCLIQueueOperationsSQLite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	canceled, err := verifyQueue.Detail(t.Context(), command.ID)
+	canceled, err := verifyQueue.Detail(t.Context(), 1)
 	if err != nil || canceled.Status != operational.CLICommandCanceled {
 		t.Fatalf("command after cancel = %q, %v", canceled.Status, err)
 	}

@@ -74,9 +74,12 @@ func newHostedCLIQueueListCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			nextOffset := filter.Offset + len(page.Commands)
 			return writeHostedCLIQueueJSON(cmd, map[string]any{
 				"commands": hostedCLICommandSummaries(page.Commands),
 				"total":    page.Total, "running": page.Running,
+				"offset": filter.Offset, "limit": filter.Limit,
+				"hasMore": nextOffset < page.Total, "nextOffset": nextOffset,
 				"revision": page.Revision, "recoveryBlocked": page.RecoveryBlocked,
 			})
 		})

@@ -222,12 +222,15 @@ store configuration as `execute-cli`:
 
 ```bash
 cao-dashboard hosted-cli queue list --status queued --limit 50
+cao-dashboard hosted-cli queue list --status queued --limit 50 --offset 50
 cao-dashboard hosted-cli queue show COMMAND_ID
 cao-dashboard hosted-cli queue cancel COMMAND_ID --actor OPERATOR_LOGIN
 ```
 
 Queue output contains command summaries, not invocation values or process
-output. Cancellation is an operator override that bypasses the dashboard
+output. List responses include `total`, `offset`, `limit`, `hasMore`, and
+`nextOffset`; request the next page with the returned offset while `hasMore` is
+true. Cancellation is an operator override that bypasses the dashboard
 requester's live repository-permission check; it requires a durable audit store
 and records the supplied operator login as a self-reported identity, not proof
 of the caller's identity. Restrict database and executor environment access
