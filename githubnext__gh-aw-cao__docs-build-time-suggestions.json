@@ -3,6 +3,34 @@
   "next_category": "reusable dashboard generation",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-17T12:31:07Z",
+      "worker_run_id": 39032582368,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        39032690445,
+        39032503078,
+        39030963987,
+        39029947908,
+        39029000403,
+        39028301205,
+        39027109807,
+        39026937320,
+        39026140306,
+        39025253585,
+        39024561244,
+        39024394751,
+        39023322207,
+        39022363324,
+        39021573078,
+        39020868386,
+        39019546432,
+        39018733048,
+        39018718063,
+        39018141339
+      ],
+      "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T08:38:48Z through 2026-10-17T12:28:58Z, 18 runs concluded success and 2 concluded skipped; none failed, were cancelled, timed out, or required action. All 20 runs shared the same head SHA, but only 2 successful runs executed both build and deploy (39018733048 and 39026937320). The other 16 successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current, and the 2 skipped workflow_run callbacks also did not execute the build path. The latest 20 completed cao-dashboard.yml runs in the same 14-day window still showed 10 successful dashboard producer builds and 10 skipped callbacks, but the mission requires at least 5 comparable successful docs workflow executions before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
+    },
+    {
       "evaluated_at": "2026-10-17T11:46:13Z",
       "worker_run_id": 39030152376,
       "category": "reusable dashboard generation",
@@ -813,34 +841,6 @@
         39001019650
       ],
       "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T04:01:48Z through 2026-10-17T07:46:14Z, 17 runs concluded success, 2 concluded skipped, and 1 concluded action_required; none failed, were cancelled, or timed out. The two observed head SHAs (4df4baeeea76296e0c9426fe9afc2ddca7870dc9 and 8332050ca00104805d3a7539f1e46b39418d1426) resolved to the same .github/workflows/docs.yml blob 9a4834bb3d54ed40376fab886e8e1effff0951d5 and the same .github/workflows/cao-dashboard.yml blob 415481b74f6b56b4d012c9a23e076b13bcaca2bd, so the window remained comparable on workflow sources. However, only 3 successful runs executed both docs build and deploy (39011796811, 39007481438, and 39005420152); the other successful runs were schedule freshness checks that skipped build and deploy, and workflow_run 39010197711 was skipped after freshness. The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
-    },
-    {
-      "evaluated_at": "2026-10-17T11:33:52Z",
-      "worker_run_id": 39029116750,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39029000403,
-        39028301205,
-        39027109807,
-        39026937320,
-        39026140306,
-        39025253585,
-        39024561244,
-        39024394751,
-        39023322207,
-        39022363324,
-        39021573078,
-        39020868386,
-        39019546432,
-        39018733048,
-        39018718063,
-        39018141339,
-        39017379499,
-        39017223028,
-        39015843426,
-        39014860602
-      ],
-      "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T07:46:01Z through 2026-10-17T11:31:04Z, 18 runs concluded success and 2 concluded skipped; none failed, were cancelled, timed out, or required action. All 20 runs shared the same head SHA, but only 2 successful runs executed both build and deploy (39018733048 and 39026937320). The other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The paired latest 20 completed cao-dashboard.yml runs in the same 14-day window still showed 11 successful dashboard producer builds and 9 skipped callbacks, but the mission requires at least 5 comparable successful docs workflow executions before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
     }
   ]
 }
