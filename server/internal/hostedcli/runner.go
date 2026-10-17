@@ -8,17 +8,22 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 // Process is one subprocess invocation. Env is the complete environment; the
 // runner never inherits the server's environment.
 type Process struct {
+	CommandID int64
 	Dir       string
 	Workspace string
 	Program   string
 	Args      []string
 	Env       []string
 	Stdin     string
+	// RegisterContainer must durably record identity before Docker create.
+	RegisterContainer func(context.Context, operational.CLICommandExecution) error
 }
 
 // OutputFunc receives subprocess output in arrival order.

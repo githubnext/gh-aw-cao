@@ -10,10 +10,16 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
 
 const DefaultContainerImage = "ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090"
+
+// The pinned gh-aw update/upgrade --repo entrypoints require a Git root
+// before cloning their target. Only this fixed bootstrap is interpreted;
+// the validated program and arguments remain positional parameters.
+const containerBootstrap = `git -c init.defaultBranch=main init --quiet --template= . && exec "$@"`
 
 var (
 	containerImagePattern = regexp.MustCompile(`^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$`)
@@ -65,8 +71,12 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 	if strings.ContainsAny(workspace, ",\r\n") {
 		return -1, errors.New("hosted CLI workspace path cannot be mounted by the container runtime")
 	}
-	if err := r.requireLocalDockerContext(ctx); err != nil {
+	runtimeID, err := r.runtimeID(ctx)
+	if err != nil {
 		return -1, err
+	}
+	if process.RegisterContainer == nil {
+		return -1, errors.New("hosted CLI requires durable container identity registration")
 	}
 	environmentFile, err := writeContainerEnvironment(process.Env)
 	if err != nil {
@@ -77,8 +87,18 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 	if err != nil {
 		return -1, err
 	}
+	execution := operational.CLICommandExecution{CommandID: process.CommandID, Name: name, RuntimeID: runtimeID}
+	if err := execution.Validate(); err != nil {
+		return -1, errors.New("hosted CLI container identity is invalid")
+	}
+	if err := process.RegisterContainer(ctx, execution); err != nil {
+		return -1, errors.New("hosted CLI container identity could not be persisted")
+	}
+	if err := ctx.Err(); err != nil {
+		return -1, err
+	}
 	args := []string{
-		"--context", "default", "create", "--rm", "--init", "--name", name,
+		"--context", "default", "create", "--init", "--name", name,
 		"--network", "bridge",
 		"--read-only",
 		"--cap-drop", "ALL",
@@ -96,7 +116,7 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 	if process.Stdin != "" {
 		args = append(args, "--interactive")
 	}
-	args = append(args, "--entrypoint", process.Program, r.Image)
+	args = append(args, "--entrypoint", "/bin/sh", r.Image, "-c", containerBootstrap, "cao-hosted-cli", process.Program)
 	args = append(args, process.Args...)
 
 	var containerID strings.Builder
@@ -108,13 +128,13 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 		}
 	})
 	if err := os.Remove(environmentFile); err != nil && !errors.Is(err, os.ErrNotExist) {
-		if cleanupErr := r.removeContainer(ctx, name); cleanupErr != nil {
+		if cleanupErr := r.Reconcile(ctx, execution); cleanupErr != nil {
 			return -1, fmt.Errorf("hosted CLI container environment could not be removed; container cleanup failed: %w", cleanupErr)
 		}
 		return -1, errors.New("hosted CLI container environment could not be removed")
 	}
 	if createErr != nil || createCode != 0 || !containerIDPattern.MatchString(strings.TrimSpace(containerID.String())) {
-		cleanupErr := r.removeContainer(ctx, name)
+		cleanupErr := r.Reconcile(ctx, execution)
 		if cleanupErr != nil {
 			return -1, fmt.Errorf("hosted CLI container could not be created or removed: %w", cleanupErr)
 		}
@@ -124,13 +144,7 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 		Program: r.DockerBinary, Args: []string{"--context", "default", "start", "--attach", name},
 		Env: r.HostEnv, Stdin: process.Stdin,
 	}, output)
-	if runErr == nil {
-		return code, nil
-	}
-	if cleanupErr := r.removeContainer(ctx, name); cleanupErr != nil {
-		return -1, fmt.Errorf("hosted CLI container stopped but could not be removed: %w", cleanupErr)
-	}
-	return code, runErr
+	return r.finishContainer(ctx, execution, code, runErr)
 }
 
 func (r *ContainerRunner) requireLocalDockerContext(ctx context.Context) error {
@@ -150,21 +164,6 @@ func (r *ContainerRunner) requireLocalDockerContext(ctx context.Context) error {
 		return errors.New("hosted CLI requires the Docker default context to use a local socket")
 	}
 	return nil
-}
-
-func (r *ContainerRunner) removeContainer(ctx context.Context, name string) error {
-	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-	defer cancel()
-	cleanupCode, cleanupErr := r.Commands.Run(cleanupCtx, Process{
-		Program: r.DockerBinary, Args: []string{"--context", "default", "rm", "--force", name}, Env: r.HostEnv,
-	}, nil)
-	if cleanupErr == nil && cleanupCode == 0 {
-		return nil
-	}
-	if cleanupErr == nil {
-		cleanupErr = fmt.Errorf("docker rm exited with code %d", cleanupCode)
-	}
-	return cleanupErr
 }
 
 func containerPaths(workspace, directory string) (string, string, error) {

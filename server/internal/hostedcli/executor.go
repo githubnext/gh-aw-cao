@@ -59,7 +59,8 @@ type Options struct {
 	Prefetch int
 	// AcknowledgeRecovery clears a recovery block left by an interrupted
 	// executor. Enable only after confirming the previous executor's
-	// subprocesses have terminated.
+	// processes and outstanding Docker requests have terminated. Recorded
+	// containers are reconciled against their original daemon before clearing.
 	AcknowledgeRecovery bool
 	Logger              *log.Logger
 	// Audit records command lifecycle events; nil disables them.
@@ -108,12 +109,13 @@ func (o Options) resolve() (Options, error) {
 
 // Executor drains the hosted CLI command queue.
 type Executor struct {
-	queue   operational.CLICommandQueue
-	broker  *Broker
-	github  GitHub
-	runner  Runner
-	options Options
-	now     func() time.Time
+	queue      operational.CLICommandQueue
+	executions operational.CLICommandExecutionQueue
+	broker     *Broker
+	github     GitHub
+	runner     Runner
+	options    Options
+	now        func() time.Time
 
 	installationsMutex sync.Mutex
 	installations      map[string]cachedInstallation
@@ -129,12 +131,16 @@ func NewExecutor(queue operational.CLICommandQueue, broker *Broker, github GitHu
 	if queue == nil || broker == nil || github == nil || runner == nil {
 		return nil, errors.New("hosted CLI executor requires a queue, token broker, GitHub client, and runner")
 	}
+	executions, ok := queue.(operational.CLICommandExecutionQueue)
+	if !ok {
+		return nil, errors.New("hosted CLI executor requires durable container identity storage")
+	}
 	resolved, err := options.resolve()
 	if err != nil {
 		return nil, err
 	}
 	return &Executor{
-		queue: queue, broker: broker, github: github, runner: runner, options: resolved,
+		queue: queue, executions: executions, broker: broker, github: github, runner: runner, options: resolved,
 		now: time.Now, installations: map[string]cachedInstallation{},
 	}, nil
 }
@@ -183,8 +189,10 @@ func (e *Executor) drain(ctx context.Context, lease operational.CLICommandLease)
 		e.renew(leaseCtx, cancel, lease)
 	}()
 	if e.options.AcknowledgeRecovery {
-		if err := e.queue.AcknowledgeRecovery(leaseCtx, lease); err == nil {
+		if err := e.recover(leaseCtx, lease); err == nil {
 			e.options.Logger.Printf("hosted CLI executor acknowledged queue recovery")
+		} else if !errors.Is(err, operational.ErrConflict) {
+			e.options.Logger.Printf("hosted CLI queue recovery could not be confirmed: %v", err)
 		}
 	}
 	wake := make(chan struct{}, 1)
@@ -326,7 +334,7 @@ func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLeas
 		trace.WithAttributes(attribute.Int64(attributeCommandID, command.ID), attribute.String(attributeRepository, command.Repository)))
 	defer span.End()
 	sink := newOutputSink(ctx, e.queue, lease, command.ID)
-	exitCode, status, reason := e.run(ctx, command, sink)
+	exitCode, status, reason, stopped := e.run(ctx, lease, command, sink)
 	span.SetAttributes(attribute.String(attributeStatus, string(status)))
 	if exitCode != nil {
 		span.SetAttributes(attribute.Int(attributeExitCode, *exitCode))
@@ -344,6 +352,11 @@ func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLeas
 	defer cancel()
 	if err := e.queue.Finish(finishCtx, lease, command.ID, result); err != nil {
 		e.options.Logger.Printf("hosted CLI command %d could not be finished: %v", command.ID, err)
+		return
+	}
+	if !stopped {
+		e.options.Logger.Printf("hosted CLI command %d remains claimed: container termination is unconfirmed; operator recovery is required", command.ID)
+		return
 	}
 	if err := e.queue.Settle(finishCtx, lease, command.ID, exitCode); err != nil {
 		e.options.Logger.Printf("hosted CLI command %d could not be settled: %v", command.ID, err)
@@ -364,13 +377,13 @@ func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLeas
 	}
 }
 
-func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink *outputSink) (*int, operational.CLICommandStatus, failure) {
+func (e *Executor) run(ctx context.Context, lease operational.CLICommandLease, command operational.CLICommand, sink *outputSink) (*int, operational.CLICommandStatus, failure, bool) {
 	plan, err := PlanCommand(command.Command, e.options.ControlRepository)
 	if err != nil {
-		return nil, operational.CLICommandFailed, failure("Hosted execution rejected the command: " + err.Error())
+		return nil, operational.CLICommandFailed, failure("Hosted execution rejected the command: " + err.Error()), true
 	}
 	if command.Actor == "" || !strings.EqualFold(command.Repository, plan.Repository) {
-		return nil, operational.CLICommandFailed, "Hosted execution requires an authenticated requester and a matching target repository."
+		return nil, operational.CLICommandFailed, "Hosted execution requires an authenticated requester and a matching target repository.", true
 	}
 	deadline := e.now().Add(e.options.CommandTimeout)
 	if command.Deadline != nil {
@@ -382,30 +395,30 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 
 	installationID, err := e.installation(runCtx, plan.Repository)
 	if err != nil {
-		return nil, operational.CLICommandFailed, "The GitHub App is not installed on the target repository."
+		return nil, operational.CLICommandFailed, "The GitHub App is not installed on the target repository.", true
 	}
 	// Authorize before issuing any work: the requester's live permission is
 	// checked before a work-scoped token is minted or taken from the pool.
 	permission, err := e.verifyRequester(runCtx, installationID, plan, command.Actor)
 	if err != nil {
-		return nil, operational.CLICommandFailed, "The requester's repository permission could not be verified."
+		return nil, operational.CLICommandFailed, "The requester's repository permission could not be verified.", true
 	}
 	if !canWrite(permission) {
 		_ = e.options.Audit.Record(ctx, "cli_command.permission_denied", audit.Denied,
 			slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
 			slog.String("repository", plan.Repository), slog.String("permission", permission))
-		return nil, operational.CLICommandFailed, "The requester no longer has write access to the target repository."
+		return nil, operational.CLICommandFailed, "The requester no longer has write access to the target repository.", true
 	}
 	token, err := e.broker.Acquire(runCtx, installationID, scopeFor(plan), deadline.Add(time.Minute))
 	if err != nil {
-		return nil, operational.CLICommandFailed, "A scoped GitHub App token could not be created for the target repository."
+		return nil, operational.CLICommandFailed, "A scoped GitHub App token could not be created for the target repository.", true
 	}
 	// The credential is single-use: revoke it as soon as the work ends.
 	defer e.broker.Release(ctx, token)
 	sink.secret(token.Secret())
 	identity, err := e.github.BotIdentity(runCtx)
 	if err != nil {
-		return nil, operational.CLICommandFailed, "The GitHub App identity could not be resolved."
+		return nil, operational.CLICommandFailed, "The GitHub App identity could not be resolved.", true
 	}
 	if err := e.options.Audit.Record(ctx, "cli_command.started", audit.Success,
 		slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
@@ -413,7 +426,7 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 		slog.Int64("installation_id", installationID), slog.Any("permissions", plan.Permissions),
 		slog.String("container_image", e.options.ContainerImage),
 		slog.String("hashed_token", token.Hashed()), slog.Time("token_expires_at", token.ExpiresAt)); err != nil {
-		return nil, operational.CLICommandFailed, "The audit trail is unavailable, so the command was not run."
+		return nil, operational.CLICommandFailed, "The audit trail is unavailable, so the command was not run.", true
 	}
 	//nolint:contextcheck // the sink carries the command context; OutputFunc callbacks have no context parameter.
 	sink.notice(fmt.Sprintf("Running as %s for %s with a single-use token scoped to %s (%s).\n",
@@ -421,21 +434,42 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 
 	workspace, err := os.MkdirTemp(e.options.WorkRoot, "cao-hosted-cli-")
 	if err != nil {
-		return nil, operational.CLICommandFailed, "The ephemeral workspace could not be created."
+		return nil, operational.CLICommandFailed, "The ephemeral workspace could not be created.", true
 	}
-	defer func() { _ = os.RemoveAll(workspace) }()
+	stopped := true
+	defer func() {
+		if stopped {
+			_ = os.RemoveAll(workspace)
+		}
+	}()
 	home := filepath.Join(workspace, "home")
 	work := filepath.Join(workspace, "work")
 	data := filepath.Join(workspace, "data")
 	for _, directory := range []string{home, work, data} {
 		if err := os.MkdirAll(directory, 0o700); err != nil {
-			return nil, operational.CLICommandFailed, "The ephemeral workspace could not be created."
+			return nil, operational.CLICommandFailed, "The ephemeral workspace could not be created.", true
 		}
 	}
 	environment := append(e.environment(token, identity), traceEnvironment(runCtx)...)
-	code, err := e.runner.Run(runCtx, Process{Dir: work, Workspace: workspace, Program: plan.Program, Args: plan.Args, Env: environment}, sink.write)
+	stopped = false
+	code, err := e.runner.Run(runCtx, Process{
+		CommandID: command.ID, Dir: work, Workspace: workspace, Program: plan.Program, Args: plan.Args, Env: environment,
+		RegisterContainer: func(registerCtx context.Context, execution operational.CLICommandExecution) error {
+			if execution.CommandID != command.ID {
+				return operational.ErrConflict
+			}
+			return e.executions.RegisterExecution(registerCtx, lease, execution)
+		},
+	}, sink.write)
 	status, reason, _ := classify(runCtx, ctx, canceled, code, err)
-	return &code, status, reason
+	stopped = !errors.Is(err, ErrContainerTerminationUnconfirmed)
+	if !stopped {
+		return nil, status, "Container termination is unconfirmed; the execution claim is retained for operator recovery.", false
+	}
+	if code < 0 {
+		return nil, status, reason, true
+	}
+	return &code, status, reason, true
 }
 
 // classify maps a subprocess result to a terminal status. done reports that
@@ -449,7 +483,7 @@ func classify(runCtx, leaseCtx context.Context, canceled func() bool, code int, 
 	case leaseCtx.Err() != nil:
 		return operational.CLICommandFailed, "The hosted executor stopped before the CLI action finished.", true
 	case err != nil:
-		return operational.CLICommandFailed, "The CLI action could not be started.", true
+		return operational.CLICommandFailed, "The CLI action could not be completed.", true
 	case code != 0:
 		return operational.CLICommandFailed, failure(fmt.Sprintf("The CLI action exited with code %d.", code)), false
 	}

@@ -76,6 +76,16 @@ CREATE INDEX IF NOT EXISTS cao_operational_cli_retention
     ON cao_operational_cli_commands(namespace, completion_week)
     WHERE NOT execution_claimed AND status NOT IN ('queued','running');
 
+CREATE TABLE IF NOT EXISTS cao_operational_cli_executions (
+    namespace TEXT NOT NULL,
+    queue TEXT NOT NULL,
+    command_id BIGINT NOT NULL,
+    name TEXT NOT NULL,
+    runtime_id TEXT NOT NULL,
+    PRIMARY KEY (namespace, queue, command_id),
+    FOREIGN KEY (namespace, queue, command_id) REFERENCES cao_operational_cli_commands(namespace, queue, id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS cao_operational_cli_output (
     namespace TEXT NOT NULL,
     queue TEXT NOT NULL,

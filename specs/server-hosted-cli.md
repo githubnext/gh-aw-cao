@@ -194,7 +194,8 @@ a subprocess starts.
    deadline (default 15 minutes) bound execution. The deadline MUST be stored
    durably with the claim and MUST apply across executor restarts.
 6. Each command MUST run in a new workspace with mode `0700`, which is removed
-   afterwards. It MUST execute in the official `ghcr.io/github/gh-aw` image
+   only after workload termination is confirmed. An unconfirmed workload's
+   workspace MUST remain intact for operator reconciliation. It MUST execute in the official `ghcr.io/github/gh-aw` image
    pinned by OCI SHA-256 digest (default
    `ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090`),
    or in an operator-approved digest-pinned mirror. An unpinned image reference
@@ -203,7 +204,13 @@ a subprocess starts.
    host-local bind mount.
 7. The Go planner MUST accept only fixed `gh` and `gh-aw` container entrypoints.
    It MUST NOT execute `cao.sh`, arbitrary shell commands, or control-repository
-   scripts. A CAO campaign update MUST be translated to a native `gh-aw update`
+   scripts. A fixed in-container bootstrap MUST initialize an empty private Git
+   repository before invoking the planned entrypoint: the pinned `gh-aw update`
+   and `upgrade --repo` implementations require a Git root before cloning their
+   target. The bootstrap MUST disable Git templates and pass the planned
+   program and arguments as positional parameters to `exec`, never interpolate
+   them into shell source. This bootstrap grants no host execution or
+   repository-discovery authority. A CAO campaign update MUST be translated to a native `gh-aw update`
    command scoped to the configured control repository and the catalog-selected
    CAO package. The container image reference MUST be recorded in the audit
    event for command start.
@@ -217,15 +224,33 @@ a subprocess starts.
    identity. The executor MUST pass it through a temporary mode-`0600`
    environment file outside the mounted workspace, remove that file after
    container creation, and MUST NOT place token values in command arguments.
-10. The executor MUST forcibly remove the container on cancellation, deadline,
-   or loss of the lease. Command output MUST redact the token. Logs MUST NOT
+10. The executor MUST attempt bounded forced container removal on cancellation,
+   deadline, or loss of the lease. Command output MUST redact the token. Logs MUST NOT
    contain tokens, private keys, or OAuth credentials.
-11. A terminal result MUST NOT release its concurrency claim until container
-   exit has been confirmed and settlement is durably stored. If a lease expires
+11. Before Docker creation, the executor MUST durably register an immutable
+   random container name and the originating Docker daemon identity under the
+   current queue lease fence. Missing execution-storage support, failed
+   registration, or a stale lease MUST prevent container creation.
+   Docker CLI exit, including a zero attachment exit code, MUST NOT be treated
+   as workload termination. The executor MUST inspect the retained container
+   state for a confirmed workload exit code; automatic container removal MUST
+   NOT discard that evidence. Successful forced removal or a successful empty
+   exact-name inventory on the original daemon can confirm termination but
+   MUST NOT fabricate a workload exit code. An unavailable daemon, failed
+   inspection, or failed removal is not evidence of absence.
+   A terminal result MUST NOT release its concurrency claim until container
+   exit has been confirmed and settlement is durably stored. Unconfirmed
+   termination MUST retain the claim and container identity, including after
+   startup, attachment, cancellation, or deadline failures. If a lease expires
    while a command is still claimed or running, the replacement executor MUST
    mark the outcome interrupted, block further claims, and require explicit
-   operator recovery acknowledgement after confirming the old container has
-   stopped. It MUST NOT automatically retry the interrupted command: external
+   operator recovery acknowledgement after confirming the old executor and its
+   outstanding Docker requests have stopped. The replacement MUST additionally
+   reconcile every recorded unsettled container against its original daemon
+   before clearing the block; a missing container on a different daemon is not
+   proof. Failed reconciliation MUST leave claims and the block unchanged.
+   Workspaces retained after a crash or unconfirmed exit require operator
+   cleanup after reconciliation. It MUST NOT automatically retry the interrupted command: external
    side effects may have completed before the crash, so the system guarantees
    at-most-once dispatch, not exactly-once external effects. A retry MUST use a
    new command ID and explicit admission.
@@ -330,6 +355,12 @@ pass TLC with no violation of `Safety` or `TerminalTokenInvalidated` before
 this specification or the corresponding implementation changes.
 `specs/tla/README.md` maps each property to its implementation boundary.
 
+`specs/tla/HostedCLIExecution.tla` models durable container identity, lease
+fencing, occupied capacity, and explicit recovery separately from admission.
+Its configuration MUST pass TLC `Safety` after changes to execution or
+settlement. Docker attachment exit MUST remain distinct from confirmed
+workload termination in this model.
+
 ## 9. Conformance tests
 
 - `server/internal/server/admin_step_up_test.go`: freshness, assurance,
@@ -339,6 +370,12 @@ this specification or the corresponding implementation changes.
 - `server/internal/hostedcli`: broker single use, revocation and retry, pool
   bounds, executor recheck, isolation, redaction, and audit events without
   secrets.
+- `server/internal/hostedcli/container_runner_test.go` and `recovery_test.go`:
+  private Git-root initialization, immutable pre-create identity registration,
+  Docker/workload exit distinction, failed cleanup retaining capacity across
+  SQLite restart, crash preservation, and original-daemon recovery.
+- `server/internal/operational/{postgres,sqlite}/cli_execution_test.go`:
+  durable execution identity, immutable registration, and lease-fenced recovery.
 - `server/internal/hostedcli/executor_test.go`
   (`TestExecutorVerifiesRequesterBeforeIssuingWorkTokens`,
   `TestExecutorVerifiesWithMetadataTokenBeforeWorkToken`) and

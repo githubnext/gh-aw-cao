@@ -632,8 +632,17 @@ requires a local Docker daemon using its `default` context. Each container has a
 read-only root filesystem, no added capabilities, and only its per-command
 workspace mounted writable. A temporary mode-`0600` environment file passes the
 scoped token; the executor's home, Docker socket, App key, and database
-credentials are not mounted or passed into the container. Cancellation,
-deadlines, and lease loss forcibly remove the container.
+credentials are not mounted or passed into the container. A fixed in-container
+bootstrap initializes the private Git root required by `gh-aw update/upgrade
+--repo`, then execs the planned CLI with unchanged positional arguments.
+Cancellation, deadlines, and lease loss attempt bounded forced removal.
+The container name and original Docker daemon identity are stored before
+creation. Docker CLI exit is not workload exit evidence: failed confirmation
+retains the execution claim and workspace, preventing reuse of that capacity.
+Recovery acknowledgement requires the old executor and its Docker requests to
+have stopped and successful reconciliation on the original daemon. Remove any
+retained workspace only after reconciliation; never switch Docker contexts to
+bypass recovery.
 
 `setup-auth hosted-cli` writes the downloaded key to a temporary local
 bootstrap file; that file is not a vault. Import it directly into the secret

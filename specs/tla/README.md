@@ -123,3 +123,25 @@ java -Xmx512m -cp "$TLA2TOOLS_JAR" tlc2.TLC -workers 1 \
 ```
 
 The enabled configuration explores about 600,000 distinct states.
+
+## Hosted container execution
+
+[`HostedCLIExecution.tla`](HostedCLIExecution.tla) separately checks durable
+container identity, at-most-once dispatch, lease fencing, and concurrency
+retention across failed Docker attachment and executor restart. It abstracts
+the private in-container Git bootstrap and GitHub effects. Failed Docker
+inspection/removal is a stuttering step, not exit evidence; recovery requires
+confirmation on the original daemon plus an operator's attestation that the
+old executor and its Docker requests stopped.
+
+`RunningClaimed` and `UnconfirmedClaimed` guard `Executor.execute` settlement;
+`StoppedEvidence` distinguishes Docker CLI exit from workload termination.
+`CapacityHeld` and `AtMostOnce` guard the durable queue's claim and recovery
+transitions. The bounded configuration uses two commands, one execution slot,
+and two lease generations.
+
+```bash
+java -Xmx512m -cp "$TLA2TOOLS_JAR" tlc2.TLC -workers 1 \
+  -metadir test-results/tla/hosted-cli-execution \
+  -config specs/tla/HostedCLIExecution.cfg specs/tla/HostedCLIExecution.tla
+```

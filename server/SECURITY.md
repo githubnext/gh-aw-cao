@@ -659,16 +659,22 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   tokens are bounded by `--max-pooled-tokens` (default 8), two per scope, and
   a two-minute idle lifetime. Idle tokens are revoked and are all revoked at
   shutdown.
-- **Isolation**: each command runs in a fresh `0700` workspace that is removed
-  afterwards inside the digest-pinned `ghcr.io/github/gh-aw` image. The container
+- **Isolation**: each command runs in a fresh `0700` workspace inside the
+  digest-pinned `ghcr.io/github/gh-aw` image; the workspace is removed only after
+  confirmed workload termination. The container
   has a read-only root, no added capabilities, resource limits, and only the
   per-command workspace mounted writable. Only the `gh` and `gh-aw` entrypoints
-  are allowed. A temporary mode-`0600` environment file supplies the scoped
+  are allowed, following a fixed in-container Git initialization bootstrap
+  that preserves their positional arguments. A temporary mode-`0600` environment file supplies the scoped
   token and minimal command environment; the App key, database credentials,
   executor home, and Docker socket are not mounted. The root Docker context must
   be local because it bind-mounts a host workspace. On cancellation, timeout, or
-  lease loss, the executor forcibly removes the container. Output redaction
-  applies before persistence.
+  lease loss, the executor attempts bounded forced removal. Durable container
+  name and daemon identity are registered before creation; unconfirmed
+  termination retains the execution claim and workspace. Docker attachment
+  exit alone cannot settle a command. Recovery must confirm termination on
+  the original daemon after the old executor and its requests have stopped.
+  Output redaction applies before persistence.
 - **Native command planning**: Go re-plans every command against the catalog
   allowlist. CAO campaign updates become native `gh-aw update` invocations
   constrained to the configured control repository and selected CAO package.
