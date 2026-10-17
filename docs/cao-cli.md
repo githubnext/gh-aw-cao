@@ -56,7 +56,7 @@ to invoke it as `gh cao`.
 | --- | --- | --- |
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
-| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Unified Go command/argument hierarchy with the installed production CAO Node runtime. |
+| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|hosted-cli\|token` | Unified Go command/argument hierarchy with the installed production CAO Node runtime. |
 | Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Same installed runtime and canonical query engine as the dashboard and existing CLI. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
@@ -75,6 +75,7 @@ gh cao init
 gh cao setup
 gh cao setup auth github-app --help
 gh cao setup auth enterprise-app --help
+gh cao setup auth hosted-cli --help
 gh cao setup auth token --help
 gh cao campaigns add githubnext/gh-aw-cao/dependabot
 gh cao repos add acme/example-service
@@ -96,9 +97,27 @@ root-level `add` command. `./cao.sh add CAMPAIGN` and
 Authentication is grouped under `gh cao setup auth`; there is no root-level
 `gh cao setup-auth` command. Run `gh cao setup` without a subcommand for guided
 control-plane setup, or configure credentials independently with
-`gh cao setup auth github-app`, `gh cao setup auth enterprise-app`, or
+`gh cao setup auth github-app`, `gh cao setup auth enterprise-app`,
+`gh cao setup auth hosted-cli`, or
 `gh cao setup auth token`. Each authentication profile retains its existing
 options, dry-run behavior, credential prompts, and separate read/write scope.
+The `hosted-cli` profile creates a separate least-privilege App for the dashboard
+server's optional `execute-cli` worker; it does not change rollout policy or
+configure the control plane's read/write App pair:
+
+```bash
+gh cao setup auth hosted-cli --repo acme/control \
+  --target-repository acme/service --private-key-out /secure/cao-cli.pem
+```
+
+Repeat `--target-repository` for additional repositories in the control
+organization, set `--app-name` to choose a globally unique App name, or use
+`--no-open` to print browser URLs. `--dry-run` prints the manifest and targets
+without changing GitHub and does not require `--private-key-out`. Live setup
+writes the key with mode 0600, refuses to overwrite existing files, and never
+prints the private key. Import the bootstrap file into the executor deployment's
+secret manager, then securely remove it.
+
 `./cao.sh setup` and `./cao.sh setup-auth PROFILE` retain their existing syntax.
 The runtime JSON result for authentication retains `command: "setup-auth"`.
 `gh cao setup auth token --help` also works offline. `campaigns add` and `update` retain

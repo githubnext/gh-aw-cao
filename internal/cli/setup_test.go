@@ -18,7 +18,7 @@ func TestSetupCommandHierarchy(t *testing.T) {
 		path, want []string
 	}{
 		{[]string{"setup"}, []string{"auth"}},
-		{[]string{"setup", "auth"}, []string{"enterprise-app", "github-app", "token"}},
+		{[]string{"setup", "auth"}, []string{"enterprise-app", "github-app", "hosted-cli", "token"}},
 	} {
 		cmd, remaining, err := root.Find(tt.path)
 		if err != nil || len(remaining) != 0 {
@@ -58,6 +58,7 @@ func TestSetupPreservesRuntimeIOContextAndErrors(t *testing.T) {
 		{"setup", "--json"},
 		{"setup", "auth", "github-app"},
 		{"setup", "auth", "enterprise-app"},
+		{"setup", "auth", "hosted-cli"},
 		{"setup", "auth", "token"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {

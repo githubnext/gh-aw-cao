@@ -24,6 +24,8 @@ resources:
     destination: .github/workflows/shared/policy.mjs
   - source: .github/workflows/shared/setup-github-apps.mjs
     destination: .github/workflows/shared/setup-github-apps.mjs
+  - source: .github/workflows/shared/setup-hosted-cli-app.mjs
+    destination: .github/workflows/shared/setup-hosted-cli-app.mjs
   - source: .github/workflows/shared/materialize-cao.mjs
     destination: .github/workflows/shared/materialize-cao.mjs
   - source: .github/aw/instructions.md

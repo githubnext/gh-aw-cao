@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 
 import {
   HOSTED_CLI_APP_PERMISSIONS,
@@ -18,6 +19,14 @@ import {
 } from "../../.github/workflows/shared/setup-hosted-cli-app.mjs";
 
 const script = path.join(".github", "workflows", "shared", "setup-hosted-cli-app.mjs");
+
+test("root campaign installs the hosted CLI setup script and its dependencies", () => {
+  const manifest = parse(readFileSync(new URL("../../aw.yml", import.meta.url), "utf8"));
+  for (const name of ["setup-hosted-cli-app.mjs", "setup-github-apps.mjs", "policy.mjs"]) {
+    const file = `.github/workflows/shared/${name}`;
+    assert.ok(manifest.resources.some(({ source, destination }) => source === file && destination === file), file);
+  }
+});
 
 test("hosted CLI App requests only the executor's repository permissions", () => {
   const manifest = hostedCliManifest("acme/control", "cao-acme-control-cli");

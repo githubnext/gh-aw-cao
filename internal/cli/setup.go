@@ -16,7 +16,7 @@ Setup uses the installed CAO runtime (Node.js 24 or newer); help works offline.`
 	auth := &cobra.Command{
 		Use: "auth", Short: "Configure read and write authentication", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
-			return fmt.Errorf("setup auth requires github-app, enterprise-app, or token")
+			return fmt.Errorf("setup auth requires github-app, enterprise-app, hosted-cli, or token")
 		},
 	}
 	authenticate := func(cmd *cobra.Command, args []string) error {
@@ -43,7 +43,15 @@ Setup uses the installed CAO runtime (Node.js 24 or newer); help works offline.`
 		boolFlag("replace-existing", "Replace existing token secrets"),
 	), authenticate)
 	token.MarkFlagsMutuallyExclusive("keep-existing", "replace-existing")
-	auth.AddCommand(app, enterprise, token)
+	hosted := operatorCommand("hosted-cli", "Configure the dedicated least-privilege App for the hosted CLI executor", cobra.NoArgs, []operatorFlag{
+		textFlag("repo", "Control repository OWNER/REPO"),
+		textFlag("private-key-out", "Temporary bootstrap private key file (mode 0600, never overwritten; required unless --dry-run)"),
+		{name: "target-repository", description: "Additional repository OWNER/REPO in the control organization (repeatable)", repeat: true},
+		textFlag("app-name", "Globally unique name for the hosted CLI App"),
+		boolFlag("dry-run", "Print the manifest and targets without changing GitHub"),
+		boolFlag("no-open", "Print browser URLs instead of opening them"),
+	}, authenticate)
+	auth.AddCommand(app, enterprise, hosted, token)
 	setup.AddCommand(auth)
 	return setup
 }
