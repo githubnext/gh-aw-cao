@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"reflect"
 	"strings"
@@ -14,7 +15,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestDoctor(t *testing.T) {
+func doctorUnitEnvironment(t *testing.T) {
+	t.Helper()
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("GH_CONFIG_DIR", t.TempDir())
+	for _, name := range []string{"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN"} {
+		t.Setenv(name, "")
+	}
+}
+
+func TestDoctorUnit(t *testing.T) {
+	doctorUnitEnvironment(t)
 	for _, jsonOutput := range []bool{false, true} {
 		t.Run(map[bool]string{false: "text", true: "json"}[jsonOutput], func(t *testing.T) {
 			t.Chdir(t.TempDir())
@@ -89,7 +100,8 @@ func TestDoctor(t *testing.T) {
 	}
 }
 
-func TestDoctorFindings(t *testing.T) {
+func TestDoctorUnitFindings(t *testing.T) {
+	doctorUnitEnvironment(t)
 	tests := []struct {
 		name, policy, ghVersion, awVersion, wantName, wantStatus string
 		ghError, awError, authError                              bool
@@ -168,7 +180,8 @@ func TestDoctorFindings(t *testing.T) {
 	}
 }
 
-func TestDoctorCancellation(t *testing.T) {
+func TestDoctorUnitCancellation(t *testing.T) {
+	doctorUnitEnvironment(t)
 	for _, cancelDuring := range []string{"before", "version", "aw", "auth"} {
 		t.Run(cancelDuring, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -198,6 +211,51 @@ func TestDoctorCancellation(t *testing.T) {
 			}
 			if stdout.Len() != 0 {
 				t.Fatalf("canceled diagnostic must not report success: %q", &stdout)
+			}
+		})
+	}
+}
+
+type doctorErrorWriter struct {
+	remaining int
+}
+
+func (w *doctorErrorWriter) Write(data []byte) (int, error) {
+	if w.remaining == 0 {
+		return 0, io.ErrClosedPipe
+	}
+	w.remaining--
+	return len(data), nil
+}
+
+func TestDoctorUnitOutputErrors(t *testing.T) {
+	doctorUnitEnvironment(t)
+	t.Chdir(t.TempDir())
+	for _, tt := range []struct {
+		name       string
+		jsonOutput bool
+		writes     int
+	}{
+		{name: "text"},
+		{name: "remediation", writes: 1},
+		{name: "json", jsonOutput: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			root := newCommand("test", func(context.Context) (string, error) {
+				return "", errors.New("GitHub CLI is not installed")
+			}, func(context.Context, ...string) (string, string, error) {
+				t.Fatal("external checks require a working GitHub CLI")
+				return "", "", nil
+			}, nil)
+			root.SetOut(&doctorErrorWriter{remaining: tt.writes})
+			root.SetErr(io.Discard)
+			args := []string{"doctor"}
+			if tt.jsonOutput {
+				args = append(args, "--json")
+			}
+			root.SetArgs(args)
+			if err := root.Execute(); !errors.Is(err, io.ErrClosedPipe) {
+				t.Fatalf("error = %v, want output failure", err)
 			}
 		})
 	}

@@ -76,10 +76,13 @@ test("Go extension quality checks cover root-module sources and lint configurati
   for (const event of ["pull_request", "push"]) {
     for (const file of [
       ".github/workflows/go-extension.yml",
+      ".github/workflows/cao.json",
+      ".github/actions/setup-gh-aw/action.yml",
       ".golangci.yml",
       "cmd/gh-cao/main.go",
       "internal/cli/doctor.go",
       "internal/cli/doctor_test.go",
+      "internal/cli/doctor_auth_test.go",
       "internal/ghcli/gh.go",
       "internal/runtimecli/runtime.go",
       "go.mod",
@@ -118,25 +121,39 @@ test("Go extension quality checks cover root-module sources and lint configurati
   assert.ok(steps.some((step) => step.run === "make check"));
 });
 
-test("Go extension smoke tests provision native doctor dependencies", () => {
+test("Go extension keeps authenticated doctor integration separate from unit and smoke tests", () => {
   const { jobs, permissions } = parse(workflow("go-extension.yml"));
-  const job = jobs["extension-quality"];
+  const quality = jobs["extension-quality"];
+  assert.ok(quality.steps.some((step) => step.run === "make check"));
+  assert.equal(quality.steps.some((step) => step.uses === "./.github/actions/setup-gh-aw"), false);
+  assert.equal(quality.env?.GH_TOKEN, undefined);
+  const smoke = quality.steps.find((step) => step.name === "Smoke test extension");
+  assert.equal(smoke.env, undefined);
+  assert.ok(smoke.run.split("\n").includes("./gh-cao doctor --help"));
+  assert.equal(smoke.run.split("\n").includes("./gh-cao doctor"), false);
+
+  const job = jobs["extension-authtests"];
   const steps = job.steps;
+  const go = steps.find((step) => step.uses?.startsWith("actions/setup-go@"));
   const node = steps.find((step) => step.uses?.startsWith("actions/setup-node@"));
   const install = steps.find((step) => step.uses === "./.github/actions/setup-gh-aw");
-  const smoke = steps.find((step) => step.name === "Smoke test extension");
+  const auth = steps.find((step) => step.name === "Run authenticated doctor integration tests");
   assert.ok(install, "doctor requires the policy-pinned gh-aw installation");
+  assert.equal(go.with["go-version-file"], "go.mod");
   assert.ok(steps.indexOf(node) < steps.indexOf(install));
-  assert.ok(steps.indexOf(install) < steps.indexOf(smoke));
-  assert.deepEqual(smoke.env, { GH_TOKEN: "${{ github.token }}" });
+  assert.ok(steps.indexOf(install) < steps.indexOf(auth));
+  assert.deepEqual(auth.env, { GH_TOKEN: "${{ github.token }}" });
   assert.deepEqual(permissions, { contents: "read" });
   assert.equal(job.permissions, undefined);
   assert.equal(job.env?.GH_TOKEN, undefined);
+  assert.equal(job.if, undefined);
+  assert.equal(job.needs, undefined);
+  assert.equal(quality.needs, undefined);
   assert.equal(install.if, undefined);
   assert.equal(install["continue-on-error"], undefined);
-  assert.equal(smoke.if, undefined);
-  assert.equal(smoke["continue-on-error"], undefined);
-  assert.ok(smoke.run.split("\n").includes("./gh-cao doctor"));
+  assert.equal(auth.if, undefined);
+  assert.equal(auth["continue-on-error"], undefined);
+  assert.equal(auth.run, "make authtests");
 });
 
 test("pull request triggers route frontend, control, server, and test changes selectively", () => {

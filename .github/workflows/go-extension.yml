@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - .github/workflows/go-extension.yml
+      - .github/workflows/cao.json
+      - .github/actions/setup-gh-aw/**
       - .golangci.yml
       - cmd/**
       - internal/**
@@ -21,6 +23,8 @@ on:
     branches: [main]
     paths:
       - .github/workflows/go-extension.yml
+      - .github/workflows/cao.json
+      - .github/actions/setup-gh-aw/**
       - .golangci.yml
       - cmd/**
       - internal/**
@@ -67,8 +71,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
-      - name: Install policy-pinned gh-aw
-        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Check extension
         run: make check
       - name: Check foreground terminal inheritance
@@ -81,12 +83,32 @@ jobs:
           { printf 'terminal-input\n'; sleep 1; } | script --quiet --return --command \
             './cao-runtimecli.test -test.run "^TestForegroundTerminal$" -test.count=1 -test.v' /dev/null
       - name: Smoke test extension
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           ./gh-cao --help
           ./gh-cao version
-          ./gh-cao doctor
+          ./gh-cao doctor --help
           ./gh-cao quickstart --help
           ./gh-cao setup-auth token --help
           ./gh-cao pages --json > /dev/null
+
+  extension-authtests:
+    name: Doctor authenticated integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Install policy-pinned gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
+      - name: Run authenticated doctor integration tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: make authtests
