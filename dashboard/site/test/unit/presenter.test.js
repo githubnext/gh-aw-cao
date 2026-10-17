@@ -1899,8 +1899,8 @@ describe('presenter built-in and custom pages', () => {
         'indexing-ingestion-runs': {
           source: 'indexing-ingestion-runs',
           rows: [
-            { createdAt: '2026-09-01T01:00:00Z', 'workflow-runs': 6, 'run-count-status': 'Reported run count' },
-            { createdAt: '2026-09-02T02:00:00Z', 'workflow-runs': 8, 'run-count-status': 'Reported run count' }
+            { 'shard-day': '2026-09-01', 'workflow-runs': 6, 'run-count-status': 'Reported run count' },
+            { 'shard-day': '2026-09-02', 'workflow-runs': 8, 'run-count-status': 'Reported run count' }
           ],
           metadata
         },

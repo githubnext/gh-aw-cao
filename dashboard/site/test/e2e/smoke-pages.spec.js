@@ -118,7 +118,7 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
 
 
 
-test('Ingestion shows retained table counts, run counts, and transactions', async ({ page }) => {
+test('Ingestion shows shard activity dates and retained transactions', async ({ page }) => {
   const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -165,8 +165,8 @@ test('Ingestion shows retained table counts, run counts, and transactions', asyn
         'indexing-ingestion-runs': {
           source: 'indexing-ingestion-runs',
           rows: [
-            { createdAt: '2026-09-11T01:00:00Z', 'workflow-runs': 6050, 'run-count-status': 'Reported run count' },
-            { createdAt: '2026-09-12T02:00:00Z', 'workflow-runs': 6950, 'run-count-status': 'Reported run count' }
+            { 'shard-day': '2026-09-11', 'workflow-runs': 6050, 'run-count-status': 'Reported run count' },
+            { 'shard-day': '2026-09-12', 'workflow-runs': 6950, 'run-count-status': 'Reported run count' }
           ],
           metadata
         },

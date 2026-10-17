@@ -11,6 +11,7 @@ import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePe
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
 import { normalizeSessionMcpEvents, parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
+import { experimentAssignmentArtifact, parseExperimentAssignments } from './experiment-evidence.js';
 import { unifiedSessionEventType } from '../model/session-types.js';
 
 const debug = createDebug('data:ingestion:jsonl');
@@ -838,6 +839,10 @@ export function adaptGhAwLogs(input) {
   const unified = sessions[0];
   const sessionEvidence = unified
     ? parseUnifiedSessionDocument(unified.content, unified.path, { runId: githubRunId, attempt }) : undefined;
+  const assignmentArtifact = sessionEvidence?.experiments === undefined
+    ? experimentAssignmentArtifact(files) : undefined;
+  const experiments = assignmentArtifact
+    ? parseExperimentAssignments(assignmentArtifact.content, assignmentArtifact.path) : undefined;
   const evalFiles = !sessionEvidence || !Object.hasOwn(sessionEvidence, 'evals')
     ? files.filter((file) => /(^|\/)evals\.jsonl$/.test(file.path)) : [];
   if (evalFiles.length > 1) throw new TypeError('Multiple eval artifacts found for one run');
@@ -896,12 +901,12 @@ export function adaptGhAwLogs(input) {
     }
   ];
   observations.push(...events);
-  if (unified || evalFile) {
+  if (unified || experiments || evalFile) {
     const adapted = adaptCachedGhAwJsonl(`${JSON.stringify({
       schema_version: 5, kind: 'run', run: {
         run_id: githubRunId, run_attempt: attempt, organization: repositoryOwner, repository: repositoryName,
         workflow_name: workflow.name, workflow_path: workflowPath, created_at: run.createdAt,
-        updated_at: observedAt,
+        updated_at: observedAt, experiments,
         ...(evals === undefined ? {} : { evals }),
         ...(unified ? { cao_unified_session: { version: 1, path: unified.path, ...sessionEvidence } } : {})
       }

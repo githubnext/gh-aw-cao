@@ -29,6 +29,28 @@ describe('dashboard data operations', () => {
     ]);
   });
 
+  it.each([
+    ['2026-09-23-0000-0123456789abcdef.jsonl', '2026-09-23'],
+    ['gh-aw-logs-runs/2026-09-23-0001-0123456789abcdef.jsonl', '2026-09-23'],
+    ['https://example.test/cao/gh-aw-logs-records/2024-02-29-10000-ABCDEF0123456789.jsonl?download=1#shard', '2024-02-29'],
+    ['gh-aw-logs-runs/0000-00-00-0000-0123456789abcdef.jsonl', null],
+    ['gh-aw-logs-runs/2026-02-29-0000-0123456789abcdef.jsonl', null],
+    ['gh-aw-logs-runs/2026-02-30-0000-0123456789abcdef.jsonl', null],
+    ['gh-aw-logs-runs/2026-13-01-0000-0123456789abcdef.jsonl', null],
+    ['gh-aw-logs-runs/logs-0123456789abcdef.jsonl', null],
+    ['https://example.test/2026-09-23-0000-0123456789abcdef.jsonl/other.jsonl', null],
+    ['https://example.test/other.jsonl?path=2026-09-23-0000-0123456789abcdef.jsonl', null],
+    ['https://example.test/other.jsonl?path=/2026-09-23-0000-0123456789abcdef.jsonl', null],
+    ['not-2026-09-23-0000-0123456789abcdef.jsonl', null],
+    [null, null],
+    [undefined, null],
+    [123, null]
+  ])('extracts only a valid normalized shard activity date from %s', (path, expected) => {
+    expect(tidy([{ path }], [{
+      op: 'compute', values: [{ as: 'day', function: 'activity-shard-day', args: [{ field: 'path' }] }]
+    }])[0].day).toBe(expected);
+  });
+
   it('normalizes suffixes and positive integers through declarative computes', () => {
     expect(tidy([
       { path: '.github/workflows/example.lock.yml', attempt: '2' },

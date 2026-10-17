@@ -575,6 +575,7 @@ Computed fields use only the following typed, deterministic functions with the s
 | `literal` | 1 | scalar value |
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
 | `date-day` | 1 | UTC calendar date text |
+| `activity-shard-day` | 1 | UTC activity date from a normalized shard filename (`YYYY-MM-DD-NNNN-<16 hex digits>.jsonl`), optionally in a path or URL; invalid dates, the structural `0000-00-00` bucket, and undated filenames produce null, never an import-time fallback |
 | `date-bucket` | 2 | UTC bucket-start timestamp text for a timestamp and literal `hour`, `day`, `week` (Monday), or `month` |
 | `calendar-week-point` | 3 | serializable calendar point from timestamp, `time-end`, and an inclusion boolean or run conclusion; `true` includes the run regardless of conclusion, `false` excludes it, and conclusion strings include only `success` |
 | `equals-any` | 2–8 | whether the first argument equals any later argument |

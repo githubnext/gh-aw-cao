@@ -621,6 +621,11 @@ func (c *sqlCompiler) compute(relation SQLRelation, computed ComputedField) (SQL
 			return SQLColumn{}, errors.New("date-day requires a typed timestamp")
 		}
 		out.Expression, out.Kind = "to_char("+args[0].Expression+" AT TIME ZONE 'UTC', 'YYYY-MM-DD')", SQLText
+	case "activity-shard-day":
+		const pattern = `^(?:[^?#]*/)?([0-9]{4}-[0-9]{2}-[0-9]{2})-[0-9]{4,}-[a-fA-F0-9]{16}\.jsonl(?:[?#].*)?$`
+		day := "substring(" + sqlText(args[0]) + " from '" + pattern + "')"
+		out.Expression, out.Kind = "CASE WHEN left("+day+", 4) <> '0000' AND pg_input_is_valid("+day+
+			", 'date') THEN "+day+" ELSE NULL::text END", SQLText
 	case "date-bucket":
 		unit, ok := computed.Args[1].Value.(string)
 		if !ok || (unit != "hour" && unit != "day" && unit != "week" && unit != "month") {

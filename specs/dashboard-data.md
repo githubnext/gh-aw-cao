@@ -1821,6 +1821,17 @@ definition and observation stores; retaining native identifiers does not move
 these entities into one generic event table. CAO-only derived findings MAY
 retain their own explicitly source-specific types.
 
+When a unified session does not contain experiment assignments, ingestion SHALL
+also accept gh-aw's explicit current-run `assignments.json` artifact, including
+the compact `usage/experiment/` layout and prefixed artifact directories.
+Both Activity and hosted collectors SHALL request the `usage,experiment` artifact
+sets without widening repository scope or collection budgets.
+Collection SHALL verify repository, run ID and attempt against `aw_info.json`
+before retaining these assignments. Unified assignments, including an explicitly
+empty assignment map, take precedence. Cumulative experiment state counts SHALL
+NOT be used to infer a run's assigned variant. The Experiments page SHALL expose
+retained assignment variants and run evidence links through canonical queries.
+
 Ingestion SHALL canonicalize historical CAO aliases at the shared record
 boundary, including normalized published shards. For example, `agent_tool_start`
 becomes `tool.execution_start`, `tool.call` becomes `mcp.tool_call`,

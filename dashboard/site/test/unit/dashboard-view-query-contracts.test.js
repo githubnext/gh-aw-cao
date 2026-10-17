@@ -177,8 +177,13 @@ describe('dashboard view query contracts', () => {
     expect(experiments.acceptance).toContain('counts are not completion percentages');
     expect(viewsOf(experiments)).toMatchObject([
       { mark: 'chart', chart: 'horizontal-bar', data: { source: 'experiment-assignment-coverage' } },
+      { mark: 'table', data: { source: 'experiment-assignments' }, 'lazy-list': true, layout: 'full-view' },
       { mark: 'table', data: { source: 'experiments' }, 'lazy-list': true, layout: 'full-view' }
     ]);
+    const assignments = viewsOf(experiments).find((view) => view.id === evaluationContract.experiments.view);
+    const assignmentEncoding = /** @type {{ columns: { field: string }[] }} */ (assignments?.encoding);
+    expect(assignmentEncoding.columns.map((column) => column.field))
+      .toEqual(evaluationContract.experiments.fields);
     expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals'))[0])
       .toMatchObject({
         data: { source: evaluationContract.evals.query },

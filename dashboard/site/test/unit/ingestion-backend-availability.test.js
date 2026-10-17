@@ -128,7 +128,7 @@ describe('Ingestion backend contract', () => {
     });
     roots.push(root);
     document.body.append(root);
-    await vi.waitFor(() => expect(root.textContent).toContain('No ingestion entries have been retained.'));
+    await vi.waitFor(() => expect(root.textContent).toContain('No ingestion entries with a valid shard activity date have been retained.'));
     expect(subscription.signal).toBeInstanceOf(AbortSignal);
     const createdAt = '2026-09-24T01:02:03.456Z';
     for (const entry of [
@@ -136,17 +136,29 @@ describe('Ingestion backend contract', () => {
       { id: 'coincident', kind: 'ingest-jsonl', createdAt, rawRuns: 2 },
       { id: 'zero', kind: 'ingest-normalized-jsonl', createdAt, rawRuns: 0 },
       { id: 'missing', kind: 'ingest-dashboard-sources', createdAt }
-    ]) await recordTransaction(indexedDB, entry);
+    ]) await recordTransaction(indexedDB, {
+      ...entry,
+      createdAt: new Date(Date.parse(createdAt) + entry.id.length * 1000).toISOString(),
+      payloadScope: 'gh-aw-logs-runs/2026-09-20-0000-0123456789abcdef.jsonl'
+    });
     subscription.onUpdate(await read());
     await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(4));
     expect(root.textContent).toContain('Run count unavailable (shown at 0)');
     const positions = [...root.querySelectorAll('.scatter-chart-point')].map((point) => point.getAttribute('cx'));
     expect(new Set(positions).size).toBe(1);
     await recordTransaction(indexedDB, {
-      id: 'later', kind: 'ingest-jsonl', createdAt: '2026-09-24T02:03:04.567Z', rawRuns: 4
+      id: 'later', kind: 'ingest-jsonl', createdAt, rawRuns: 4,
+      payloadScope: 'gh-aw-logs-runs/2026-09-21-0000-0123456789abcdef.jsonl'
     });
     subscription.onUpdate(await read());
     await vi.waitFor(() => expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(5));
+    const updatedPositions = [...root.querySelectorAll('.scatter-chart-point')].map((point) => point.getAttribute('cx'));
+    expect(new Set(updatedPositions).size).toBe(2);
+    await recordTransaction(indexedDB, {
+      id: 'undated', kind: 'ingest-jsonl', createdAt, rawRuns: 4
+    });
+    subscription.onUpdate(await read());
+    expect(root.querySelectorAll('.scatter-chart-point')).toHaveLength(5);
     disposeDashboard(root);
     expect(subscription.signal.aborted).toBe(true);
   });
@@ -154,6 +166,7 @@ describe('Ingestion backend contract', () => {
   it('renders every worker-produced ingestion entry beyond clustering and point-sampling thresholds', async () => {
     const view = page.views.find((/** @type {{ id: string }} */ entry) => entry.id === contract.scatter.view);
     expect(view.scatter).toEqual({ cluster: contract.scatter.cluster });
+    expect(view.encoding.x).toMatchObject({ field: contract.scatter.timeField, title: contract.scatter.timeTitle });
     const count = contract.scatter.regressionEntries;
     expect(count).toBeGreaterThan(2000);
     const start = Date.parse('2026-09-24T01:02:03.000Z');
@@ -168,7 +181,8 @@ describe('Ingestion backend contract', () => {
             id: `entry-${index.toString().padStart(4, '0')}`,
             kind: 'ingest-normalized-jsonl',
             payloadHash: index.toString(16).padStart(64, '0'),
-            createdAt: new Date(start + Math.floor(index / 2)).toISOString(),
+            createdAt: '2026-10-16T00:00:00Z',
+            payloadScope: `gh-aw-logs-runs/${new Date(start + Math.floor(index / 2) * 86400000).toISOString().slice(0, 10)}-0000-0123456789abcdef.jsonl`,
             rawRuns: 1 + Math.floor(index / 2)
           });
         }

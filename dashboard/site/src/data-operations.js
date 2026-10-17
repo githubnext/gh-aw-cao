@@ -52,6 +52,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   'replace-suffix': [3, 3],
   'url-encode': [1, 1],
   'date-day': [1, 1],
+  'activity-shard-day': [1, 1],
   timestamp: [1, 1],
   'date-bucket': [2, 2],
   'calendar-week-point': [3, 3],
@@ -75,7 +76,7 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'date-bucket', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'activity-shard-day', 'date-bucket', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
@@ -416,6 +417,11 @@ export function computeValue(row, definition) {
   }
   if (definition.function === 'url-encode') return encodeURIComponent(textValue(values[0]));
   if (definition.function === 'timestamp') return timestampMilliseconds(values[0]);
+  if (definition.function === 'activity-shard-day') {
+    const day = /^(?:[^?#]*\/)?([0-9]{4}-[0-9]{2}-[0-9]{2})-[0-9]{4,}-[a-fA-F0-9]{16}\.jsonl(?:[?#].*)?$/
+      .exec(textValue(values[0]))?.[1];
+    return day && timestampMilliseconds(`${day}T00:00:00Z`) !== null ? day : null;
+  }
   if (definition.function === 'date-day') {
     const timestamp = parseTimestamp(values[0]);
     return timestamp === null ? null : new Date(timestamp).toISOString().slice(0, 10);

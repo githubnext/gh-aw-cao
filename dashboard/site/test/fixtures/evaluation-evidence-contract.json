@@ -1,4 +1,17 @@
 {
+  "experiments": {
+    "query": "experiment-assignments",
+    "view": "experiments-assignments",
+    "fields": ["experiment", "variant", "workflow", "repository", "run", "assignment-at", "assignment-link"],
+    "coverage": {
+      "query": "experiment-assignment-coverage",
+      "view": "experiments-assignment-chart"
+    },
+    "definitions": {
+      "query": "experiments",
+      "view": "experiments-definitions"
+    }
+  },
   "graders": {
     "query": "grader-status-ledger",
     "view": "graders-statuses",
