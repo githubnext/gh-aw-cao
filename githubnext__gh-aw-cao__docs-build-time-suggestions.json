@@ -1,7 +1,35 @@
 {
   "source_sha": "8332050ca00104805d3a7539f1e46b39418d1426",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-17T04:00:00Z",
+      "worker_run_id": 39000422149,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        39000231517,
+        39000135333,
+        38999486422,
+        38998708389,
+        38997214076,
+        38996457368,
+        38995249093,
+        38995179876,
+        38995006790,
+        38993342825,
+        38992733552,
+        38991200650,
+        38990576500,
+        38990080457,
+        38990062433,
+        38989881859,
+        38989255404,
+        38988933940,
+        38988429472,
+        38987633766
+      ],
+      "outcome": "Evaluated category \"artifact transfer and Pages packaging\" on source SHA 8332050ca00104805d3a7539f1e46b39418d1426. In the latest 20 completed docs.yml runs from 2026-10-17T00:42:52Z through 2026-10-17T03:49:11Z, 16 runs concluded success and 4 concluded skipped; there were no failed, cancelled, action_required, or timed_out docs runs in the inspected window. The current source itself supplied 13 successful docs runs and 3 successful paired cao-dashboard.yml builds, so the latest current-source sample satisfies the minimum comparability requirement even though only 3 current-source docs publishes reached deploy. Trusted metadata across the 16 successful docs runs showed queue time median 0.0s (p90 0.0s), workflow execution 13.0s (p90 83.5s), build 46.0s (p90 55.0s) across 7 successful build jobs, deploy 13.0s (p90 20.0s) across 6 successful deploy jobs, Upload Pages artifact 9.0s (p90 10.4s), and Deploy Pages 9.5s (p90 15.5s). Bounded logs from current-source docs runs 39000135333, 38995249093, and 38990062433 verified warm setup-node npm, node_modules, and central-agentic-ops-dashboard cache restores; Astro building 76 pages in 8.14s, 10.13s, and 12.21s; /llms-full.txt as the slowest single route at about 0.96s to 1.49s; and github-pages artifact uploads of 55.5 MB, 56.5 MB, and 50.1 MB. Current-source schedule runs 39000231517 and 38996457368 logged that deployed docs and dashboard content were current and skipped build. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-16T21:17:33Z through 2026-10-17T03:44:23Z contained 10 successful builds and 10 skipped callbacks. Across those 10 successful dashboard runs, trusted metadata showed queue time median 0.0s (p90 0.0s), workflow execution 176.0s (p90 266.5s), build 156.5s (p90 249.6s), cache 11.0s (p90 12.0s), Upload dashboard artifact 9.0s (p90 9.1s), cache-job Download dashboard artifact 4.0s (p90 5.0s), Delete previous dashboard cache 1.0s, and Save dashboard cache 3.0s (p90 3.0s). Bounded logs from current-source dashboard run 38999928989 verified a cao-activity cache hit, dashboard npm ci adding 10 packages in 1s, validation of a 569.8 MiB activity database, copying 385 activity shards totaling 362.7 MiB, a 52.7 MB dashboard artifact upload, immediate re-download of that same artifact in the cache job, and re-save under the fixed central-agentic-ops-dashboard key. Successful dashboard outlier 38984482860 took 379s overall because Upgrade fallback activity data alone ran 290s; packaging in that run still remained 9s upload plus 3s cache save, so the outlier is not attributable to artifact transfer. No new recommendation in this category is actionable because docs-side Pages packaging and deployment remain secondary roughly 18-22s work after the docs build, dashboard artifact upload plus cache refresh remains roughly 17s median work, and the repeated dominant cost is still Upgrade fallback activity data at 118.0s median rather than artifact transfer or Pages packaging. The current evidence does not materially strengthen a new packaging-focused issue or clear the 60-second or 15-percent threshold without weakening correctness, freshness, or deployment safety; existing open issues #16825, #17171, #18158, and #16054 remain the higher-value non-duplicate queue."
+    },
     {
       "evaluated_at": "2026-10-17T03:00:40Z",
       "worker_run_id": 38996725628,
@@ -743,34 +771,6 @@
         38884484626
       ],
       "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA abeace9b9539407721ba58b6a383aac1d77d5c7a. In the latest 20 completed docs.yml runs from 2026-10-16T10:01:52Z through 2026-10-16T12:35:26Z, 18 runs concluded success and 2 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Comparing like-for-like successful docs runs by source revision, no revision reached the required five comparable runs that executed both build and deploy: 72013c71fc87b2ee155349a296e5750dc41c68e4 had 2 (38895316489, 38893366181), and abeace9b9539407721ba58b6a383aac1d77d5c7a, 475e38bdb18faaa43d8c5092f98a34f4b28eadf9, and 55bb730caca0e609d6074146c25b467b3e839020 each had 1. Trusted metadata and bounded logs from representative current-source runs still showed cache hits for the npm cache, node_modules cache, central-agentic-ops-dashboard cache, and cao-activity-v5 cache, but the sample is too fragmented by rapid source changes to support a non-duplicate reusable-dashboard-generation recommendation. The latest 20 completed cao-dashboard.yml runs in the same window contained 15 successful workflow_run builds and 5 skipped callbacks. This evaluation is incomplete and no actionable suggestion was emitted."
-    },
-    {
-      "evaluated_at": "2026-10-16T11:38:20Z",
-      "worker_run_id": 38894823601,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        38894613490,
-        38893366181,
-        38893093940,
-        38892493560,
-        38892190439,
-        38891087545,
-        38889788704,
-        38889605391,
-        38888227359,
-        38887035432,
-        38884484626,
-        38883148256,
-        38883036953,
-        38881765630,
-        38880420321,
-        38877656235,
-        38876897045,
-        38876510336,
-        38874195614,
-        38871048661
-      ],
-      "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 72013c71fc87b2ee155349a296e5750dc41c68e4. In the latest 20 completed docs.yml runs from 2026-10-16T08:02:31Z through 2026-10-16T11:34:09Z, 19 runs concluded success and 1 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Only four comparable successful docs runs executed both build and deploy (38893366181, 38889788704, 38883148256, 38876897045). Because this investigation requires at least five comparable successful runs before making a build-time recommendation, the evaluation is incomplete and no actionable suggestion was emitted. The latest 20 completed cao-dashboard.yml runs in the same evidence window contained 15 successful workflow_run builds and 5 skipped callbacks, but the docs sample itself did not meet the minimum comparability threshold after the recent source changes on 058f855ccfe6fbe3c97819d87649077b2719cd69 and 72013c71fc87b2ee155349a296e5750dc41c68e4."
     }
   ]
 }
