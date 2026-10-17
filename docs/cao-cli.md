@@ -214,6 +214,27 @@ gh run watch RUN_ID --exit-status
 
 Manual inputs may narrow checked-in policy for one run; they never widen it.
 
+## Operate the Hosted CLI Backend
+
+The server binary includes a privileged operator interface for the hosted CLI
+queue. Run it in the trusted executor environment with the same operational
+store configuration as `execute-cli`:
+
+```bash
+cao-dashboard hosted-cli queue list --status queued --limit 50
+cao-dashboard hosted-cli queue show COMMAND_ID
+cao-dashboard hosted-cli queue cancel COMMAND_ID --actor OPERATOR_LOGIN
+```
+
+Queue output contains command summaries, not invocation values or process
+output. Cancellation is an operator override that bypasses the dashboard
+requester's live repository-permission check; it requires a durable audit store
+and records the supplied operator login as a self-reported identity, not proof
+of the caller's identity. Restrict database and executor environment access
+accordingly. See
+[Hosted CLI actions](../server/README.md#hosted-cli-actions) for the operator
+workflow and SQLite debugging limitation.
+
 For a single-worker development loop without a dispatcher, use
 [Local Worker Debugging](local-debugging.md). Its request-only `debug` mode
 is not a `cao mode` command or a campaign configuration.

@@ -672,6 +672,24 @@ and pooled tokens are capped at two per scope with a two-minute idle lifetime.
 `--prefetch` (default 2) sets how many queued commands get tokens minted
 ahead of execution.
 
+DevOps can inspect or cancel queue entries directly through the backend CLI.
+These commands use the configured operational store, require durable audit
+storage, and intentionally return command summaries without input values or
+output:
+
+```bash
+cao-dashboard hosted-cli queue list --status queued --limit 50
+cao-dashboard hosted-cli queue show 42
+cao-dashboard hosted-cli queue cancel 42 --actor octocat
+```
+
+Cancellation is a privileged backend operation and does not perform the
+dashboard user's repository-permission check. The supplied GitHub login is
+recorded in the append-only audit trail as a self-reported identity, not proof
+of the caller's identity. Only trusted operators should have access to the
+backend database and CLI environment. `--sqlite PATH` is for local debugging
+only.
+
 Verify and export the audit trail with the same store settings (PostgreSQL
 from the environment, or `--sqlite PATH`):
 
