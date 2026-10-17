@@ -87,7 +87,7 @@ SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 ARG VERSION=dev
 ARG REVISION=unknown
 ARG CREATED=unknown
-ARG GH_AW_VERSION=v0.92.4
+ARG GH_AW_VERSION=v0.92.5
 ARG TARGETARCH
 LABEL org.opencontainers.image.title="Central Agentic Ops collector" \
       org.opencontainers.image.description="Hosted CAO collection worker and backfill runtime" \
@@ -104,8 +104,8 @@ RUN apk upgrade --no-cache \
     && adduser -S -D -H -u 65532 -G cao cao \
     && mkdir -p /app/catalog /app/evidence /app/.local/share/gh/extensions/gh-aw \
     && case "${TARGETARCH}" in \
-      amd64) checksum="814a0efbee964ee2acb286bf9b3cbaa133d47699a2a57cbeb3ea4040a7f3b099" ;; \
-      arm64) checksum="9767cbbfcd0f3c6cf68e5aff94a7efcfda911c7e865604434da391181c62e94d" ;; \
+      amd64) checksum="600c41015ce36b09d03a2dad63b589b9642ecbf83cdb2584851892c8dec32f5d" ;; \
+      arm64) checksum="4238430125d3219576e1fcfc3750ae0e1e8173f3a86952e282b69e35a6649416" ;; \
       *) echo "Unsupported collector architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
     && wget -q -O /usr/local/bin/gh-aw \
