@@ -424,3 +424,34 @@ func TestDeliveryReservationLifecycle(t *testing.T) {
 	}
 	invariant(t, s)
 }
+
+func TestSelectDueTasksOrdersFiltersAndLimits(t *testing.T) {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	task := func(order uint64, target string, offset time.Duration) scheduled {
+		return scheduled{task: &queued{order: order}, target: target, due: base.Add(offset)}
+	}
+	tasks := []scheduled{
+		task(4, "tasks", time.Minute),
+		task(2, "tasks", 0),
+		task(1, "tasks", 0),
+		task(3, "other", 0),
+		task(5, "tasks", time.Hour),
+	}
+	got := selectDueTasks(tasks, "tasks", base.Add(time.Minute), 10)
+	var orders []uint64
+	for _, d := range got {
+		orders = append(orders, d.task.order)
+	}
+	if fmt.Sprint(orders) != "[1 2 4]" {
+		t.Fatalf("orders = %v, want [1 2 4]", orders)
+	}
+	if got := selectDueTasks(tasks, "tasks", base.Add(time.Minute), 2); len(got) != 2 || got[1].task.order != 2 {
+		t.Fatalf("limited selection = %v", got)
+	}
+	if got := selectDueTasks(tasks, "tasks", base.Add(-time.Second), 5); len(got) != 0 {
+		t.Fatalf("nothing should be due, got %d", len(got))
+	}
+	if got := selectDueTasks(nil, "tasks", base, 1); len(got) != 0 {
+		t.Fatalf("empty input selected %d", len(got))
+	}
+}

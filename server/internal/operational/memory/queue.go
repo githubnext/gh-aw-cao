@@ -7,8 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
+
+var queueLog = logger.New("cao:operational:memory:queue")
 
 type queued struct {
 	message operational.TaskMessage
@@ -530,21 +533,7 @@ func (s *Store) PromoteTasks(ctx context.Context, delayed, name string, at time.
 	now := s.config.Clock()
 	at = at.Truncate(time.Millisecond)
 	tasks := s.delayed[delayed]
-	due := make([]scheduled, 0, min(count, len(tasks)))
-	for _, task := range tasks {
-		if task.target == name && !task.due.After(at) {
-			due = append(due, task)
-		}
-	}
-	sort.Slice(due, func(i, j int) bool {
-		if due[i].due.Equal(due[j].due) {
-			return due[i].task.order < due[j].task.order
-		}
-		return due[i].due.Before(due[j].due)
-	})
-	if len(due) > count {
-		due = due[:count]
-	}
+	due := selectDueTasks(tasks, name, at, count)
 	if len(due) == 0 {
 		return 0, nil
 	}
@@ -594,8 +583,30 @@ func (s *Store) PromoteTasks(ctx context.Context, delayed, name string, at time.
 		s.appendTask(name, task)
 	}
 	s.seq += uint64(len(ready))
+	queueLog.Printf("promoted delayed tasks promoted=%d remaining=%d", len(ready), len(retained))
 	s.notify()
 	return int64(len(ready)), nil
+}
+
+// selectDueTasks returns up to count delayed tasks targeting name that are
+// due at or before at, ordered by due time and then enqueue order.
+func selectDueTasks(tasks []scheduled, name string, at time.Time, count int) []scheduled {
+	due := make([]scheduled, 0, min(count, len(tasks)))
+	for _, task := range tasks {
+		if task.target == name && !task.due.After(at) {
+			due = append(due, task)
+		}
+	}
+	sort.Slice(due, func(i, j int) bool {
+		if due[i].due.Equal(due[j].due) {
+			return due[i].task.order < due[j].task.order
+		}
+		return due[i].due.Before(due[j].due)
+	})
+	if len(due) > count {
+		due = due[:count]
+	}
+	return due
 }
 
 func (s *Store) DelayedDepth(ctx context.Context, name string) (int64, error) {
