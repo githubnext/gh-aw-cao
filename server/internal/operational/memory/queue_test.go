@@ -438,7 +438,7 @@ func TestSelectDueTasksOrdersFiltersAndLimits(t *testing.T) {
 		task(5, "tasks", time.Hour),
 	}
 	got := selectDueTasks(tasks, "tasks", base.Add(time.Minute), 10)
-	var orders []uint64
+	orders := make([]uint64, 0, len(got))
 	for _, d := range got {
 		orders = append(orders, d.task.order)
 	}
