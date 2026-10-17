@@ -1,5 +1,8 @@
 import { h } from '../dom.js';
 import { usesRemoteDataBackend } from '../backend-mode.js';
+import { createDebug } from '../debug.js';
+
+const debugStorageInfo = createDebug('storage-info');
 
 /** Deployment configuration, not a projection over activity evidence.
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -14,6 +17,11 @@ export function renderStorageInfo(context) {
   ]);
   const [label, description] = descriptions.get(backend)
     ?? ['Storage engine unknown', 'The deployment has not declared a recognized storage engine.'];
+  debugStorageInfo({
+    event: 'backend-resolved',
+    backend: descriptions.has(backend) ? backend : 'unrecognized',
+    declared: configured != null
+  });
   return h('div', { 'aria-label': context.title },
     h('p', null, h('strong', null, label)),
     h('p', { className: 'muted' }, description)
