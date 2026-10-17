@@ -2,10 +2,6 @@ name: Go Dashboard Server CI
 
 on:
   pull_request:
-    paths:
-      - .github/workflows/cgo.yml
-      - server/**
-      - "!server/**/*.md"
   push:
     branches: [main]
     paths:
@@ -28,7 +24,38 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      applicable: ${{ steps.scope.outputs.applicable }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ci-scope
+        id: scope
+        with:
+          scope: server
+
+  gate:
+    name: Server gate
+    if: always()
+    needs: [scope, server-quality, server-spec]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Require applicable CI
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/ci-release-gates.mjs gate
+
   server-quality:
+    needs: scope
+    if: needs.scope.outputs.applicable == 'true'
     name: Go format, lint, and tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -76,6 +103,8 @@ jobs:
           retention-days: 14
 
   server-spec:
+    needs: scope
+    if: needs.scope.outputs.applicable == 'true'
     name: TypeSpec API contract and generated artifacts
     runs-on: ubuntu-latest
     timeout-minutes: 10

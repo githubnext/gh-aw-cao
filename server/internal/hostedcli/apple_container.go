@@ -74,21 +74,19 @@ func (r *AppleContainerLifecycle) Create(ctx context.Context, execution operatio
 		return err
 	}
 	defer func() { _ = os.Remove(environmentFile) }()
-	args := make([]string, 0, 42+len(spec.Args))
-	args = append(args,
+	args := append([]string{
 		"create", "--name", execution.Name, "--init",
 		"--runtime", "container-runtime-linux", "--platform", "linux/amd64", "--rosetta",
 		"--network", "default", "--read-only", "--cap-drop", "ALL",
 		"--user", containerUser(), "--cpus", "2", "--memory", "1g",
 		"--ulimit", "nproc=256:256", "--ulimit", "core=0:0",
-		"--mount", "type=bind,source="+workspace+",target=/workspace",
+		"--mount", "type=bind,source=" + workspace + ",target=/workspace",
 		"--mount", "type=tmpfs,target=/tmp,size=64m,mode=1777",
 		"--workdir", workdir, "--env-file", environmentFile,
 		"--entrypoint", "/bin/setpriv", spec.Image,
 		"--no-new-privs", "/bin/sh", "-c", appleContainerBootstrap,
 		"cao-hosted-cli", execution.Name, spec.Program,
-	)
-	args = append(args, spec.Args...)
+	}, spec.Args...)
 	value, code, createErr := r.capture(ctx, r.Binary, args)
 	if err := os.Remove(environmentFile); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return errors.New("hosted CLI native container environment could not be removed")

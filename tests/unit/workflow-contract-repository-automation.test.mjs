@@ -127,14 +127,14 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
   const operationalValue = jobs.get("dependabot-operational-value")?.block ?? "";
   const campaignLifecycle = jobs.get("campaign-lifecycle")?.block ?? "";
 
-  assert.match(source, /pull_request:\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
+  assert.match(source, /on:\n  pull_request:\n  push:/);
   assert.match(source, /push:\n    branches: \[main\]\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
   assert.match(unit, /area: \[activity, dashboard, workflows, tooling, documentation\]/);
   assert.match(unit, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   assert.match(unit, /npm run test:unit:area -- \$\{\{ matrix\.area \}\}/);
   assert.doesNotMatch(unit, /GH_TOKEN|CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE|test:campaign-lifecycle/);
-  assert.match(contracts, /needs: unit/);
-  assert.match(contracts, /if: \$\{\{ !cancelled\(\) \}\}/);
+  assert.match(contracts, /needs: \[scope, unit\]/);
+  assert.match(contracts, /if: \$\{\{ !cancelled\(\) && needs\.scope\.outputs\.applicable == 'true' \}\}/);
   assert.match(contracts, /UNIT_RESULT: \$\{\{ needs\.unit\.result \}\}/);
   for (const command of ["lint", "typecheck:cao", "typecheck:copilot", "compile"]) {
     assert.ok(contracts.includes(`npm run ${command}\n`), `missing ${command} from contract checks`);

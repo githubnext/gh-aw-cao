@@ -2,9 +2,6 @@ name: Workflow contracts
 
 on:
   pull_request:
-    paths-ignore:
-      - .github/workflows/cid.yml
-      - dashboard/site/**
   push:
     branches: [main]
     paths-ignore:
@@ -20,7 +17,38 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      applicable: ${{ steps.scope.outputs.applicable }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ci-scope
+        id: scope
+        with:
+          scope: contracts
+
+  gate:
+    name: Contracts gate
+    if: always()
+    needs: [scope, unit, test, agent-plugin]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Require applicable CI
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/ci-release-gates.mjs gate
+
   agent-plugin:
+    needs: scope
+    if: needs.scope.outputs.applicable == 'true'
     name: Install agent plugin with Copilot CLI
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -34,6 +62,8 @@ jobs:
         run: copilot plugin install "$(pwd)"
 
   unit:
+    needs: scope
+    if: needs.scope.outputs.applicable == 'true'
     name: Unit contracts (${{ matrix.area }})
     strategy:
       fail-fast: false
@@ -61,8 +91,8 @@ jobs:
         run: npm run test:unit:area -- ${{ matrix.area }}
 
   test:
-    needs: unit
-    if: ${{ !cancelled() }}
+    needs: [scope, unit]
+    if: ${{ !cancelled() && needs.scope.outputs.applicable == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -1,0 +1,3 @@
+scripts:
+  - name: Verify main release controls (read-only)
+    command: node scripts/verify-release-ruleset.mjs githubnext/gh-aw-cao 20054276
