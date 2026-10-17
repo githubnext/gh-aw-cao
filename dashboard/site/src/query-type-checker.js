@@ -585,7 +585,7 @@ function inferComputeType(computed, fields, parameters = new Map()) {
   const functionName = computed.function;
   if (functionName === 'dashboard-link') return 'link';
   if (functionName === 'link') return 'link';
-  if (functionName === 'date-day' || functionName === 'date-bucket') return 'temporal';
+  if (functionName === 'date-day' || functionName === 'date-bucket' || functionName === 'activity-shard-day') return 'temporal';
   if (typeof functionName === 'string' && NUMERIC_COMPUTE_FUNCTIONS.includes(functionName)) return 'numeric';
   if (typeof functionName === 'string' && TEXT_COMPUTE_FUNCTIONS.includes(functionName)) return 'text';
   if (functionName === 'equals-any' || functionName === 'greater-than') return 'boolean';

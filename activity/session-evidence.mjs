@@ -2,6 +2,7 @@ import { readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseUnifiedSessionDocument } from '../dashboard/site/src/data/adapters/unified-session.js';
+import { parseExperimentAssignments } from '../dashboard/site/src/data/adapters/experiment-evidence.js';
 import { classifiedEval, isSupportedGhAwJsonlSchemaVersion } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { runId as canonicalRunId } from '../dashboard/site/src/data/model/ids.js';
 import { readJsonlRecords } from './jsonl.mjs';
@@ -18,6 +19,12 @@ async function artifactFile(directory, filename) {
     if (entry.isFile() && entry.name === filename) return [path.join(directory, entry.name)];
     if (entry.isDirectory() && (/(^|-)usage$/.test(entry.name)
         || (filename === 'evals.jsonl' && /(^|-)evals$/.test(entry.name)))) {
+      if (filename === 'assignments.json') {
+        return [path.join(directory, entry.name, 'experiment', filename)];
+      }
+      return [path.join(directory, entry.name, filename)];
+    }
+    if (filename === 'assignments.json' && entry.isDirectory() && /(^|-)experiments?$/.test(entry.name)) {
       return [path.join(directory, entry.name, filename)];
     }
     return [];
@@ -35,7 +42,13 @@ async function artifactFile(directory, filename) {
 }
 
 async function sessionIdentity(runDirectory, sessionPath) {
-  for (const directory of new Set([path.dirname(sessionPath), runDirectory])) {
+  const artifactDirectory = path.dirname(sessionPath);
+  const directories = [artifactDirectory];
+  if (/(^|-)experiments?$/.test(path.basename(artifactDirectory))) {
+    directories.push(path.dirname(artifactDirectory));
+  }
+  directories.push(runDirectory);
+  for (const directory of new Set(directories)) {
     try {
       return JSON.parse(await readFile(path.join(directory, 'aw_info.json'), 'utf8'));
     } catch (error) {
@@ -43,6 +56,25 @@ async function sessionIdentity(runDirectory, sessionPath) {
     }
   }
   return null;
+}
+
+async function experimentEvidence(runDirectory, runId, attempt, repository) {
+  try {
+    const file = await artifactFile(runDirectory, 'assignments.json');
+    if (!file) return null;
+    const info = await sessionIdentity(runDirectory, file.path);
+    if (!info || String(info.run_id) !== String(runId)
+        || String(info.repository).toLowerCase() !== repository.toLowerCase()
+        || !Number.isInteger(Number(info.run_attempt)) || Number(info.run_attempt) < 1) {
+      throw new TypeError('Experiment artifact identity unavailable or mismatched');
+    }
+    if (Number(info.run_attempt) !== Number(attempt)) return null;
+    return parseExperimentAssignments(file.content, file.path);
+  } catch (error) {
+    if (!(error instanceof SyntaxError) && !(error instanceof TypeError)) throw error;
+    console.warn(`Skipping invalid experiment evidence for run ${runId}`);
+    return null;
+  }
 }
 
 async function evalEvidence(runDirectory, runId, attempt, repository, observedAt) {
@@ -84,6 +116,7 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
   const names = (await readdir(directory)).filter((name) => name.startsWith(prefix) && name.endsWith('.jsonl')).sort();
   const sessions = new Map();
   const evals = new Map();
+  const experiments = new Map();
   let enriched = 0;
   for (const name of names) {
     const filename = path.join(directory, name);
@@ -130,6 +163,11 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
           sessions.set(key, evidence);
         }
         const evidence = sessions.get(key);
+        if (!evidence?.experiments && !experiments.has(key)) {
+          experiments.set(key, await experimentEvidence(
+            path.join(logDirectory, `run-${runId}`), runId, run.run_attempt ?? 1, repository
+          ));
+        }
         const observedAt = run.updated_at ?? run.created_at;
         if (!evidence?.evals && !evals.has(key)) {
           evals.set(key, await evalEvidence(
@@ -137,6 +175,12 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
           ));
         }
         let runChanged = false;
+        const assignments = evidence?.experiments ? null : experiments.get(key);
+        if (assignments && JSON.stringify(assignments) !== JSON.stringify(run.experiments)) {
+          run.experiments = assignments;
+          changed = true;
+          runChanged = true;
+        }
         if (evidence) {
           const previous = JSON.stringify(run.cao_unified_session);
           run.cao_unified_session = evidence;

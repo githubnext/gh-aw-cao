@@ -284,6 +284,8 @@ test('collection prefers unified experiment, grader and eval events over standal
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), evaluationSession);
   // A malformed fallback must not be read when session evals are available.
   await writeFile(path.join(f.usage, 'evals.jsonl'), 'PRIVATE_INVALID_FALLBACK');
+  await mkdir(path.join(f.usage, 'experiment'));
+  await writeFile(path.join(f.usage, 'experiment', 'assignments.json'), 'PRIVATE_INVALID_FALLBACK');
   const warnings = t.mock.method(console, 'warn', () => {});
   f.envelope.run.graders = { results: [{ id: 'legacy', value: 0.1, status: 'fail' }] };
   f.envelope.run.experiments = { assignments: { legacy: 'control' } };
@@ -299,6 +301,79 @@ test('collection prefers unified experiment, grader and eval events over standal
   assert.deepEqual(batch.evals.map((row) => row.name), ['quality', 'uncertain']);
   assert.equal(batch.graderObservations[0].value, 0.93);
   assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+});
+
+test('explicit experiment artifacts populate SQLite and published run shards without a unified session', async (t) => {
+  const f = await fixture(t);
+  await mkdir(path.join(f.usage, 'experiment'));
+  await writeFile(path.join(f.usage, 'experiment', 'assignments.json'), '{"prompt":"candidate","style":"concise"}');
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+  const result = JSON.parse((await execute(process.execPath, ['activity/cao.mjs', 'ingest-jsonl',
+    '--input-dir', path.dirname(f.shard), '--database', path.join(f.root, 'activity.sqlite'),
+    '--retention-days', 'all'])).stdout);
+  assert.equal(result.counts.experiments, 2);
+  assert.equal(result.counts.experimentAssignments, 2);
+  const runsDirectory = path.join(f.root, 'runs');
+  await execute(process.execPath, ['activity/cao.mjs', 'hash-payloads',
+    '--shard-dir', path.dirname(f.shard), '--runs-dir', runsDirectory,
+    '--records-dir', path.join(f.root, 'records')]);
+  const published = (await Promise.all((await readdir(runsDirectory))
+    .filter((name) => name.endsWith('.jsonl'))
+    .map((name) => readFile(path.join(runsDirectory, name), 'utf8')))).join('\n');
+  const rows = published.split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  assert.equal(rows.filter((row) => row.collection === 'experiments').length, 2);
+  assert.deepEqual(rows.filter((row) => row.collection === 'experimentAssignments')
+    .map((row) => row.record.variant).sort(), ['candidate', 'concise']);
+});
+
+test('experiment artifacts verify identity across compact, prefixed and flattened layouts', async (t) => {
+  for (const layout of ['usage/experiment', 'caller-usage/experiment', 'experiment', 'caller-experiment', '.']) {
+    await t.test(layout, async (t) => {
+      const f = await fixture(t);
+      const directory = path.join(f.logs, 'run-303', layout);
+      await mkdir(directory, { recursive: true });
+      await writeFile(path.join(directory, 'assignments.json'), '{"prompt":"candidate"}');
+      if (layout.endsWith('/experiment')) {
+        const identity = await readFile(f.info);
+        await rm(f.info);
+        await writeFile(path.join(path.dirname(directory), 'aw_info.json'), identity);
+      }
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+      const batch = normalize(adaptCachedGhAwJsonl(await readFile(f.shard, 'utf8')).observations);
+      assert.deepEqual(batch.experimentAssignments.map((row) => row.variant), ['candidate']);
+    });
+  }
+  for (const [name, info, content] of [
+    ['wrong run', { run_id: 304, repository: 'octo/api', run_attempt: 1 }],
+    ['wrong repository', { run_id: 303, repository: 'other/repo', run_attempt: 1 }],
+    ['wrong attempt', { run_id: 303, repository: 'octo/api', run_attempt: 2 }],
+    ['missing attempt', { run_id: 303, repository: 'octo/api' }],
+    ['invalid JSON', null, 'PRIVATE_INVALID_JSON'],
+    ['invalid variant', null, '{"prompt":{"PRIVATE_VALUE":1}}'],
+    ['counts instead of assignments', null, '{"counts":{"prompt":{"candidate":100}}}']
+  ]) {
+    await t.test(name, async (t) => {
+      const f = await fixture(t);
+      const original = await readFile(f.shard, 'utf8');
+      const warnings = t.mock.method(console, 'warn', () => {});
+      await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
+      await mkdir(path.join(f.usage, 'experiment'));
+      await writeFile(path.join(f.usage, 'experiment', 'assignments.json'), content ?? '{"prompt":"candidate"}');
+      if (info) await writeFile(f.info, JSON.stringify(info));
+      await enrichSessionEvidence(f.logs, f.prefix, 'octo/api');
+      const cached = await readFile(f.shard, 'utf8');
+      assert.equal(JSON.parse(cached).run.experiments, undefined);
+      assert.doesNotMatch(cached, /PRIVATE_/);
+      assert.doesNotMatch(JSON.stringify(warnings.mock.calls), /PRIVATE_/);
+      if (name.startsWith('wrong') || name === 'missing attempt') {
+        assert.equal(cached, original);
+      } else {
+        assert.ok(JSON.parse(cached).run.cao_unified_session);
+        assert.equal(warnings.mock.callCount(), 1);
+      }
+    });
+  }
 });
 
 test('eval artifact layouts verify repository, run and attempt independently of optional sessions', async (t) => {

@@ -313,11 +313,33 @@
       ]
     },
     {
-      "name": "indexing-ingestion-runs",
-      "subject": "Show every retained ingestion transaction at its precise timestamp.",
-      "objective": "Compare reported run counts across individual ingestion operations.",
-      "acceptance": "Preserve every transaction, including coincident timestamps, all kinds, and zero counts, without grouping, limits, or page filters. Missing counts remain unavailable and use explicitly labeled zero-position placeholders, not measured zeroes.",
+      "name": "indexing-shard-dates",
+      "subject": "Read the activity date encoded in each retained transaction's shard filename.",
+      "objective": "Separate source shard dates from ingestion timestamps.",
+      "acceptance": "Keep every transaction and leave absent, invalid, or structural shard dates unknown; never substitute import time.",
       "from": "transactions",
+      "compute": [
+        {
+          "as": "shard-day",
+          "function": "activity-shard-day",
+          "args": [{ "field": "payloadScope" }]
+        },
+        {
+          "as": "missing-shard-day",
+          "function": "equals-any",
+          "args": [{ "field": "shard-day" }, { "value": null }]
+        }
+      ]
+    },
+    {
+      "name": "indexing-ingestion-runs",
+      "subject": "Show retained ingestion transactions at the activity date encoded in their shard filename.",
+      "objective": "Compare reported run counts by source shard activity date, independently of import time.",
+      "acceptance": "Preserve every dated transaction, including coincident dates, all kinds, and zero counts, without grouping, limits, or page filters. Omit missing or invalid shard dates; never substitute import time. Missing counts use labeled zero-position placeholders, not measured zeroes.",
+      "from": "indexing-shard-dates",
+      "filter": {
+        "predicates": [{ "field": "missing-shard-day", "equals": false }]
+      },
       "compute": [
         {
           "as": "workflow-runs",
@@ -343,13 +365,14 @@
         { "field": "id" },
         { "field": "kind" },
         { "field": "createdAt" },
+        { "field": "shard-day" },
         { "field": "rawRuns" },
         { "field": "workflow-runs" },
         { "field": "run-count-status" }
       ],
       "order-by": [
         {
-          "field": "createdAt",
+          "field": "shard-day",
           "direction": "asc"
         },
         {
@@ -1286,13 +1309,18 @@
       }
     },
     {
-      "name": "eval-yes-no-status",
-      "subject": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
-      "objective": "Expose explicitly answered eval observations for comparison with their underlying run evidence.",
-      "acceptance": "Return only recorded YES and NO answers; excluded unknowns must not be interpreted as NO, absent evals as YES, or an eval answer as a validated operational outcome.",
+      "name": "eval-status-ledger",
+      "subject": "Inspect every explicitly classified eval answer, including UNKNOWN.",
+      "objective": "Expose retained eval observations with their workflow, run evidence and observation time.",
+      "acceptance": "Keep recorded YES, NO and UNKNOWN answers distinct; unknown or absent evidence must not imply success or failure, and historical answers are not current verdicts or validated operational outcomes.",
       "from": "eval-observations",
+      "compute": [
+        { "as": "_recorded-run-href", "function": "link-href", "args": [{ "field": "evidence-link" }] },
+        { "as": "_eval-run-href", "function": "coalesce", "args": [{ "field": "_recorded-run-href" }, { "field": "evidence-link" }] },
+        { "as": "run-link", "function": "link", "args": [{ "field": "_eval-run-href" }, { "field": "run" }] }
+      ],
       "filter": {
-        "predicates": [{ "field": "eval-result", "in": ["YES", "NO"] }]
+        "predicates": [{ "field": "eval-result", "in": ["YES", "NO", "UNKNOWN"] }]
       }
     },
     {
@@ -1762,9 +1790,9 @@
           "id": "indexing-workflow-runs",
           "title": "Runs per ingestion",
           "subject": "Track the reported run count of every retained ingestion entry.",
-          "objective": "Identify changes in run volume at the time of each ingestion operation.",
-          "acceptance": "Every transaction is represented at its precise timestamp; unavailable counts are labeled, not inferred as measured zeroes.",
-          "description": "Every retained ingestion entry, across all kinds. Missing run counts are labeled and shown at 0 as placeholders, not measured zeroes. Reported counts are input runs, not distinct retained runs.",
+          "objective": "Identify changes in run volume by the activity date encoded in each source shard filename, not its import time.",
+          "acceptance": "Every transaction with a valid shard activity date is represented without date bucketing or aggregation; unavailable dates are not replaced by import time and unavailable counts are labeled, not inferred as measured zeroes.",
+          "description": "Entries are positioned by the UTC activity date in the source shard filename, not when imported. Entries without a valid shard date are not plotted. Missing run counts are labeled and shown at 0 as placeholders, not measured zeroes. Reported counts are input runs, not distinct retained runs.",
           "data": {
             "source": "indexing-ingestion-runs",
             "query-context": false
@@ -1773,13 +1801,13 @@
           "chart": "scatter",
           "scatter": { "cluster": false },
           "layout": "full",
-          "empty-message": "No ingestion entries have been retained.",
+          "empty-message": "No ingestion entries with a valid shard activity date have been retained.",
           "encoding": {
             "x": {
-              "field": "createdAt",
+              "field": "shard-day",
               "type": "temporal",
               "format": "human-friendly-timestamp",
-              "title": "Ingested at"
+              "title": "Shard activity date"
             },
             "y": {
               "field": "workflow-runs",
@@ -2612,8 +2640,36 @@
           }
         },
         {
+          "id": "experiments-assignments",
+          "title": "Run assignments",
+          "description": "Explicit observed variants for retained runs. Assignments are not experiment outcomes or treatment effects.",
+          "data": {
+            "source": "experiment-assignments",
+            "order-by": [
+              { "field": "workflow", "direction": "asc" },
+              { "field": "assignment-at", "direction": "desc" }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "layout": "full-view",
+          "empty-message": "No experiment assignments were observed.",
+          "encoding": {
+            "columns": [
+              { "field": "experiment", "type": "nominal", "title": "Experiment" },
+              { "field": "variant", "type": "nominal", "title": "Assigned variant" },
+              { "field": "workflow", "type": "nominal", "title": "Workflow" },
+              { "field": "repository", "type": "nominal", "title": "Repository" },
+              { "field": "run", "type": "nominal", "title": "Run" },
+              { "field": "assignment-at", "type": "temporal", "title": "Observed at", "format": "human-friendly-timestamp" },
+              { "field": "assignment-link", "type": "nominal", "title": "Evidence", "format": "workflow-run-url" }
+            ]
+          }
+        },
+        {
           "id": "experiments-definitions",
-          "title": "Experiments",
+          "disclosure": "supplemental",
           "description": "Experiment definitions discovered in run-level audit evidence. Missing campaign progress targets are not inferred.",
           "data": { "source": "experiments" },
           "mark": "table",
@@ -2648,7 +2704,7 @@
           "id": "evals-statuses",
           "title": "Observed eval answers by workflow",
           "data": {
-            "source": "eval-yes-no-status",
+            "source": "eval-status-ledger",
             "order-by": [
               { "field": "workflow", "direction": "asc" },
               { "field": "observed-at", "direction": "desc" }
@@ -2658,15 +2714,15 @@
           "controls": "interactive",
           "lazy-list": true,
           "layout": "full-view",
-          "empty-message": "No classified YES/NO eval observations were retained.",
+          "empty-message": "No eval observations were retained.",
           "encoding": {
             "columns": [
               { "field": "workflow", "type": "nominal", "title": "Workflow" },
               { "field": "eval", "type": "nominal", "title": "Eval" },
               { "field": "repository", "type": "nominal", "title": "Repository" },
-              { "field": "eval-result", "type": "nominal", "title": "YES / NO" },
+              { "field": "eval-result", "type": "nominal", "title": "Answer" },
               { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
-              { "field": "run", "type": "nominal", "title": "Run", "display": "evidence-link" }
+              { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" }
             ]
           }
         }

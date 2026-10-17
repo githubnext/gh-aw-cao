@@ -140,7 +140,7 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	}
 	arguments := string(recorded)
 	for _, expected := range []string{
-		"aw\nlogs\n--audit", "--repo\nocto/api", "--artifacts\nusage",
+		"aw\nlogs\n--audit", "--repo\nocto/api", "--artifacts\nusage,experiment\n",
 		"--start-date\n-30d", "--cache-before\n-30d", "--count\n10000",
 		"--max-storage\n1200", "--prune-older-runs", "token=installation-token",
 	} {

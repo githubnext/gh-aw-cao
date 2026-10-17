@@ -144,6 +144,10 @@ evals can additionally be projected from an already-downloaded `evals.jsonl`,
 after repository, run, and attempt verification using `aw_info.json`. No extra
 GitHub download is introduced. Only allowlisted metadata is retained, never
 evaluation prompts, error bodies, or native payload copies.
+Direct artifact ingestion uses the same canonical eval classifier for a supplied
+`evals.jsonl` when session evals are absent, preserving run/attempt validation and
+audit references. The Evals ledger displays explicit `YES`, `NO`, and `UNKNOWN`
+answers; unknown evidence is neither dropped nor interpreted as a failed eval.
 The same session projection mines firewall decisions, methods, response bytes
 and latency; MCP calls, outcomes, RPC metadata and configuration; skills and
 model inventories; usage, routing and runtime metadata; execution, detection,
