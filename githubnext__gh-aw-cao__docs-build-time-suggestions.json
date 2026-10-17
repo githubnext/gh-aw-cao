@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-17T18:55:31Z",
-      "worker_run_id": 39059849666,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        39059789614,
-        39059583957,
-        39058762534,
-        39057974019,
-        39056302019,
-        39055756212,
-        39055170426,
-        39055045667,
-        39054650985,
-        39054099144,
-        39053207315,
-        39053051470,
-        39053035254,
-        39053023837,
-        39053016277,
-        39052223516,
-        39052214841,
-        39051947598,
-        39050829823,
-        39049949936
-      ],
-      "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA b80b1447bb0ff11a828574dab1f708b48a13069b. In the latest 20 completed docs.yml runs from 2026-10-17T16:33:44Z through 2026-10-17T18:49:29Z, 14 runs concluded success and 6 concluded skipped; none failed, were cancelled, timed out, or required action. All unique head SHAs across the docs and paired latest-20 cao-dashboard.yml windows resolved to the same .github/workflows/docs.yml blob (9a4834bb3d54ed40376fab886e8e1effff0951d5) and .github/workflows/cao-dashboard.yml blob (415481b74f6b56b4d012c9a23e076b13bcaca2bd), so the sampled runs remain comparable on workflow source even though the docs triggers span schedule, push, and workflow_run events. Trusted metadata showed docs queue time median/p90 0.0s/0.0s, full workflow execution 14.0s/87.0s across successful docs runs, schedule-freshness 7.0s/9.0s across 11 successful jobs, build 48.0s/51.0s across 6 successful build jobs, and deploy 28.0s/41.6s across 3 successful deploy jobs. Trusted metadata for the paired latest 20 completed cao-dashboard.yml runs showed dashboard queue time median/p90 0.0s/0.0s, full workflow execution 250.5s/468.0s, build 229.0s/450.0s, and cache 11.0s/14.5s across 6 successful dashboard producer runs; pages and deploy were not applicable because standalone dashboard deployment remained disabled in every inspected completion. Bounded logs from docs runs 39055170426, 39055045667, 39054650985, and 39053207315 verified cache hits for setup-node npm, node_modules, and central-agentic-ops-dashboard on every sampled build, with push run 39055045667 rebuilding SHA b80b144 for 52s before schedule run 39055170426 rebuilt and deployed the same SHA in 93s, and push run 39053035254 rebuilding SHA 63e1939 for 49s before schedule run 39053207315 rebuilt and deployed the same SHA in 119s. That remains the same stable avoidable-rebuild problem already tracked by open issue #18158 rather than a materially different recommendation. No new scheduling, concurrency, or avoidable-rebuild suggestion was issued, and next_category advanced to \"dependency installation and caching\"."
-    },
-    {
       "evaluated_at": "2026-10-17T18:41:26Z",
       "worker_run_id": 39058951832,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -841,6 +813,13 @@
         38978870225
       ],
       "outcome": "Evaluated category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 8332050ca00104805d3a7539f1e46b39418d1426. In the latest 20 completed docs.yml runs from 2026-10-16T22:58:44Z through 2026-10-17T01:31:03Z, 16 runs concluded success and 4 concluded skipped; there were no failed, cancelled, action_required, or timed_out docs runs in the inspected window. The blob SHAs for .github/workflows/docs.yml and .github/workflows/cao-dashboard.yml were identical across every inspected docs run head SHA, so the latest eight successful docs publishes that executed both build and deploy (38990576500, 38989881859, 38988429472, 38987633766, 38984998455, 38984593958, 38982147570, and 38978870225) were a comparable sample on the same workflow sources. Trusted metadata showed median queue time 0.0s (p90 0.0s), docs workflow execution 74.5s (p90 87.9s), schedule-freshness 7.0s (p90 8.0s), build 42.0s (p90 55.0s), deploy 16.0s (p90 21.3s), Set up Node.js 3.0s (p90 5.6s), Restore node_modules 5.0s (p90 7.0s), Build documentation 12.0s (p90 14.0s), Restore cached CAO Dashboard 2.0s (p90 3.0s), Upload Pages artifact 8.5s (p90 10.0s), and Deploy Pages 13.0s (p90 17.0s). Five successful schedule-triggered runs freshness-skipped in 11.0s median full-workflow time, while three successful push builds completed in 51.0s median without deploy. Bounded logs from docs runs 38990576500 and 38990062433 verified setup-node npm cache restores, node_modules cache restores, central-agentic-ops-dashboard cache hits, Astro building 76 pages in 10.13s to 11.86s, /llms-full.txt as the slowest single docs route at +1.45s to +1.54s, github-pages artifact uploads of 50.07 MB and 48.95 MB, and deploy statuses moving from deployment creation to syncing_files to success in about 14s on 38990576500. The current window still shows the same open duplicate-publication defects already tracked by open issues #18158 and #16054: push build 38990062433 on SHA 8332050ca00104805d3a7539f1e46b39418d1426 was rebuilt and deployed by workflow_run 38990576500 seven minutes later, and SHA 035cf064ad94f3ced3562982359b6c61ad6d0eac was rebuilt by schedule 38984593958 and then rebuilt again by workflow_run runs 38984998455 and 38987633766 after a successful deploy. The paired latest 20 completed cao-dashboard.yml runs from 2026-10-16T20:31:17Z through 2026-10-17T01:20:17Z contained 9 successful builds and 11 skipped callbacks. Across those 9 successful dashboard builds, trusted metadata showed median queue time 0.0s (p90 0.0s), dashboard workflow execution 175.0s (p90 279.0s), build 156.0s (p90 262.2s), cache 12.0s (p90 12.4s), Restore collected activity data 4.0s (p90 5.4s), Install dashboard build dependencies 4.0s (p90 6.0s), Upgrade fallback activity data 117.0s (p90 192.4s), Assess activity database health 11.0s (p90 39.0s), Assemble Dashboard Language site 4.0s (p90 6.2s), Upload dashboard artifact 9.0s (p90 9.0s), and cache-job Download dashboard artifact plus Save dashboard cache totaling 7.0s median. Bounded logs from dashboard build 38990418608 verified a cao-activity-v5-38988221889-1 cache hit, dashboard npm ci adding 10 packages in 2s, validation of restored activity data, copying a 510.7 MiB SQLite file plus 355 activity shards totaling 330.5 MiB, and a 46.6 MB dashboard artifact upload; outlier run 38984482860 took 379s because Upgrade fallback activity data alone took 290s. No new recommendation was emitted because the actionable scheduling improvements remain the already-open duplicate-build issues (#18158 for push builds that should deploy and #16054 for workflow_run rebuilds after an already-current deploy), and the latest evidence does not materially change those subjects or justify another equivalent issue."
+    },
+    {
+      "evaluated_at": "2026-10-17T19:19:07Z",
+      "worker_run_id": 39061756481,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "Incomplete evaluation for category \"dependency installation and caching\" on source SHA b80b1447bb0ff11a828574dab1f708b48a13069b. GitHub Actions read access hit an API rate limit before the latest 20 completed docs.yml runs and their paired cao-dashboard.yml evidence could be collected, so the worker stopped additional GitHub API reads and did not assess a new recommendation. The limiting resource was the GitHub REST API rate limit while reading workflow-run metadata for githubnext/gh-aw-cao; unresolved work includes refreshing the 14-day docs evidence window, recomputing comparable-run counts, and verifying cache hits or misses from trusted metadata/logs."
     }
   ]
 }
