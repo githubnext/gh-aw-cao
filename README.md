@@ -125,6 +125,17 @@ It does not replace repository permissions, branch protections, or human review.
 See the [open issues](https://github.com/githubnext/gh-aw-cao/issues) for current
 work and planned improvements.
 
+### Go extension scaffold
+
+The repository includes a development scaffold for the `gh cao` GitHub CLI
+extension. Run `make build` to produce `./gh-cao`, then try
+`./gh-cao --help`, `./gh-cao version`, or `./gh-cao doctor`.
+Only those scaffold commands are implemented: `cao.sh`, the Node.js CLI, and
+the installer remain unchanged. Releases include version-stamped binaries for
+Linux, macOS, and Windows (amd64 and arm64), plus SHA-256 checksums. Command
+parity remains future work. See [extension development](CONTRIBUTING.md#go-extension-development)
+for local installation, project layout, and checks.
+
 ## Documentation
 
 Ready to explore? [See the docs](https://githubnext.github.io/gh-aw-cao/).

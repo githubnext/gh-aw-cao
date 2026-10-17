@@ -36,6 +36,14 @@ export function experimentAssignmentArtifact(files) {
     /(^|\/)(?:(?:[^/]+-)?usage\/)?(?:[^/]+-)?experiments?\/assignments\.json$/.test(file.path)
       || file.path === 'assignments.json');
   debug({ event: 'artifact-select', files: files.length, candidates: candidates.length });
-  if (candidates.length > 1) throw new TypeError('Multiple experiment assignment artifacts found for one run');
+  if (candidates.length > 1) {
+    const signatures = candidates.map((file) => JSON.stringify(
+      Object.entries(parseExperimentAssignments(file.content, file.path).assignments)
+        .sort(([a], [b]) => a.localeCompare(b))
+    ));
+    if (signatures.some((signature) => signature !== signatures[0])) {
+      throw new TypeError('Multiple experiment assignment artifacts found for one run');
+    }
+  }
   return candidates[0];
 }

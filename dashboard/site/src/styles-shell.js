@@ -302,15 +302,6 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .command-terminal-actions > .cli-action-cancel:hover { background: var(--accent); filter: brightness(1.08); }
 .cli-action-confirm:hover { filter: brightness(1.08); }
 .cli-action-cancel:disabled, .cli-action-confirm:disabled { cursor: default; opacity: .6; }
-.site-callouts { display: grid; margin: 0; padding: 0; }
-.site-callout { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 12px var(--dashboard-page-padding-inline); border: 0; border-bottom: 1px solid var(--attention); border-radius: 0; background: var(--attention-muted); color: var(--fg); }
-.site-callout-icon { display: grid; place-items: center; padding-top: 2px; color: var(--attention); }
-.site-callout-content { min-width: 0; display: grid; gap: 2px; }
-.site-callout-content > span { color: var(--muted); }
-.site-callout-link { min-height: 24px; display: inline-flex; align-items: center; width: fit-content; color: var(--accent); font-weight: 600; text-decoration: none; }
-.site-callout-link:hover { text-decoration: underline; }
-.site-callout-dismiss { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
-.site-callout-dismiss:hover { background: var(--neutral-muted); color: var(--fg); }
 .dashboard-horizon { position: relative; max-width: none; flex: none; display: flex; align-items: center; margin-bottom: 0; padding-right: 6px; border-right: 1px solid var(--border); color: var(--muted); font-size: .75rem; font-weight: 600; }
 .dashboard-horizon.filter-bar-expanded > .filter-tuning-controls { z-index: 30; display: grid; grid-template-columns: minmax(0, 1fr); left: auto; right: 0; top: calc(100% + 8px); width: min(280px, calc(100vw - 28px)); max-height: calc(100dvh - 100px); overflow-y: auto; padding: 12px; border: 1px solid var(--border); border-radius: 6px; }
 .dashboard-horizon.filter-bar-expanded .horizon-details { display: block; font-weight: 400; }

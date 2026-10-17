@@ -2,7 +2,7 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { batch } from './reactive.js';
-import { publishNotification } from './notification-service.js';
+import { publishNotification, resolveNotification } from './notification-service.js';
 import { browserFirstLoad, recordPreparationEvent } from './browser-first-load.js';
 import { createDebug, diagnosticErrorName, withDebugParameter } from './debug.js';
 import {
@@ -380,6 +380,21 @@ export function processDashboardQueries(queries, sources, options = {}) {
     () => Promise.reject(new Error('Declarative dashboard queries require a data worker.')),
     false,
     options.signal
+  ));
+}
+
+/**
+ * @param {import('./components/site-callout.js').SiteCallout[]} callouts
+ * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ * @param {AbortSignal} signal
+ * @returns {Promise<import('./data/queries/callouts.js').CalloutVisibility[]>}
+ */
+export function processDashboardCallouts(callouts, sources, signal) {
+  return /** @type {Promise<import('./data/queries/callouts.js').CalloutVisibility[]>} */ (processRequest(
+    { operation: 'query-dashboard-callouts', callouts, sources },
+    () => Promise.reject(new Error('Dashboard callout queries require a data worker.')),
+    false,
+    signal
   ));
 }
 
@@ -1101,7 +1116,7 @@ function getWorker() {
           }
           if (id) {
             if (!cancelledWorkerNotificationIds.has(id)) {
-              workerNotificationHandles.get(id)?.dismiss();
+              resolveNotification(`worker:${id}`);
             }
             workerNotificationHandles.delete(id);
             cancelledWorkerNotificationIds.delete(id);
@@ -1113,7 +1128,10 @@ function getWorker() {
           const current = workerNotificationHandles.get(id);
           /** @type {ReturnType<typeof publishNotification>} */
           let handle;
-          const interactive = attachWorkerNotificationActions(interactiveNotification, id, () => handle);
+          const interactive = {
+            ...attachWorkerNotificationActions(interactiveNotification, id, () => handle),
+            id: `worker:${id}`
+          };
           if (current) {
             handle = current;
             current.update(interactive);

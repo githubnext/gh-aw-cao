@@ -1,30 +1,30 @@
-import { publishNotification } from './notification-service.js';
+import { publishNotification, resolveNotification } from './notification-service.js';
 import { effect, state } from './reactive.js';
 import { createDebug } from './debug.js';
 
 const debug = createDebug('rate-limit-notification');
 
 const rateLimitedPolicies = state(new Set());
-/** @type {ReturnType<typeof publishNotification> | undefined} */
-let rateLimitNotification;
+let previouslyLimited = false;
 
 export function isDashboardRateLimited() {
   return rateLimitedPolicies.get().size > 0;
 }
 
 effect(() => {
-  if (isDashboardRateLimited()) {
-    if (!rateLimitNotification) {
-      rateLimitNotification = publishNotification({
-        message: 'Dashboard is rate limited. Please try again shortly.',
-        tone: 'error',
-        duration: 0,
-      });
-      debug({ event: 'notification-shown', policyCount: rateLimitedPolicies.get().size });
-    }
-  } else if (rateLimitNotification) {
-    rateLimitNotification.dismiss();
-    rateLimitNotification = undefined;
+  const limited = isDashboardRateLimited();
+  if (limited === previouslyLimited) return;
+  previouslyLimited = limited;
+  if (limited) {
+    publishNotification({
+      id: 'dashboard:rate-limit',
+      message: 'Dashboard is rate limited. Please try again shortly.',
+      tone: 'error',
+      duration: 0,
+    });
+    debug({ event: 'notification-shown', policyCount: rateLimitedPolicies.get().size });
+  } else {
+    resolveNotification('dashboard:rate-limit');
     debug({ event: 'notification-dismissed' });
   }
 });

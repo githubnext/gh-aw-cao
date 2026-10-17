@@ -940,7 +940,7 @@
     {
       "id": "evals",
       "title": "Evals",
-      "description": "Identify retained eval observations that require evidence review.",
+      "description": "Compare recorded YES, NO and UNKNOWN answer percentages for each eval, then inspect the retained evidence.",
       "intent": "Inspect retained eval answers by workflow without mistaking history for current verdicts.",
       "subject": "Timestamped native YES, NO and UNKNOWN eval observations.",
       "objective": "Locate evaluation evidence and gaps for further investigation.",
@@ -948,6 +948,7 @@
       "experimental": true,
       "parameters": [],
       "queries": [
+        "eval-answer-distribution",
         "eval-status-ledger"
       ]
     },
@@ -5030,6 +5031,99 @@
       "parameters": [],
       "sources": [
         "eval-observations"
+      ],
+      "used-by-pages": [
+        "evals"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "eval-observations"
+        ]
+      }
+    },
+    {
+      "id": "eval-answer-counts",
+      "subject": "Count recorded YES, NO and UNKNOWN answers for each workflow-scoped eval.",
+      "objective": "Provide complete answer denominators before expanding each eval into three bars.",
+      "acceptance": "Keep canonical eval identities separate and count only explicitly classified observations. Select at most 33 complete eval groups, never truncate an answer group.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "eval-status-ledger"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "eval-observations"
+        ]
+      }
+    },
+    {
+      "id": "eval-yes-shares",
+      "subject": "Compute the YES share of each eval's recorded answers.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "eval-answer-counts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "eval-observations"
+        ]
+      }
+    },
+    {
+      "id": "eval-no-shares",
+      "subject": "Compute the NO share of each eval's recorded answers.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "eval-answer-counts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "eval-observations"
+        ]
+      }
+    },
+    {
+      "id": "eval-unknown-shares",
+      "subject": "Compute the explicit UNKNOWN share of each eval's recorded answers.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "eval-answer-counts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "eval-observations"
+        ]
+      }
+    },
+    {
+      "id": "eval-answer-distribution",
+      "subject": "Compare YES, NO and UNKNOWN percentages within each eval.",
+      "objective": "Show three horizontal bars per eval that together account for all recorded answers.",
+      "acceptance": "Emit all three answer categories, including zero shares; percentages sum to 100 per canonical eval. Missing observations are not UNKNOWN answers. Preserve workflow and repository attribution.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "eval-no-shares",
+        "eval-unknown-shares",
+        "eval-yes-shares"
       ],
       "used-by-pages": [
         "evals"

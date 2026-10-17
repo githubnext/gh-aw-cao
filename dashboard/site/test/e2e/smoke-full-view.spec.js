@@ -100,7 +100,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   `);
 
   const view = page.locator('[data-view-layout="full-view"]');
-  const siteCallout = page.getByRole('status', { name: 'Inventory warning' });
+  const siteCallout = page.locator('[data-notification-id="site-callout:inventory-warning"]');
   const warningCallout = page.getByRole('note', { name: 'Review inventory warning' });
   const summary = page.locator('[data-view-id="inventory-summary"]');
   const pageTitle = page.locator('#page-title');
@@ -148,7 +148,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-    await expect(siteCallout).toBeHidden();
+    await expect(siteCallout).toBeVisible();
     await expect(warningCallout).toBeHidden();
     await expect(summary).toBeHidden();
     await expect(pageTitle).toBeHidden();

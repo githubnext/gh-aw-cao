@@ -16,7 +16,7 @@ import { configureSourceLoader, refreshSources as refreshBoundSources } from "..
 import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 import { usesRemoteDataBackend } from "../remote-data-backend.js";
 import { createDebug, diagnosticErrorName } from "../debug.js";
-import { publishNotification } from "../notification-service.js";
+import { publishNotification, resolveNotification } from "../notification-service.js";
 import { browserFirstLoad, recordPreparationEvent, recordPreparationStorage, resetPreparationDiagnostics, finishPreparationDiagnostics } from "../browser-first-load.js";
 import { inspectBrowserStorage, TEMPORARY_STORAGE_WARNING } from "../browser-storage.js";
 import { dashboardDataStatus } from "../dashboard-data-status.js";
@@ -169,15 +169,16 @@ export async function startDashboardData(options) {
   const failedSubscriptions = new Set();
   /** @type {ReturnType<typeof publishNotification> | undefined} */
   let updateNotice;
-  const clearUpdateNotice = () => {
+  const clearUpdateNotice = (resolved = true) => {
     if (failedSubscriptions.size) return;
     updateNotice?.dismiss();
+    if (resolved) resolveNotification("dashboard:subscription-error", document);
     updateNotice = undefined;
   };
   cleanup.signal.addEventListener("abort", () => {
     finishPreparationDiagnostics();
     failedSubscriptions.clear();
-    clearUpdateNotice();
+    clearUpdateNotice(false);
   }, { once: true });
   let nextViewSubscriptionId = 0;
   let stopAutomaticDataUpdates = () => {};
@@ -279,6 +280,7 @@ export async function startDashboardData(options) {
             } else {
               failedSubscriptions.add(options.subscriptionId);
               updateNotice ??= publishNotification({
+                id: "dashboard:subscription-error",
                 message: "Some dashboard data could not be updated. Existing data remains visible.",
                 tone: "warning",
                 duration: 0,
@@ -366,7 +368,19 @@ export async function startDashboardData(options) {
   const remoteDataBackend = usesRemoteDataBackend(document);
   const storageInspection = remoteDataBackend ? null : inspectBrowserStorage(browserWindow.navigator?.storage);
   void storageInspection?.then((diagnostics) => {
-    if (!cleanup.signal.aborted) recordPreparationStorage(diagnostics);
+    if (cleanup.signal.aborted) return;
+    recordPreparationStorage(diagnostics);
+    if (diagnostics.persisted === true) {
+      resolveNotification("dashboard:browser-storage", document);
+    } else {
+      const notice = publishNotification({
+        id: "dashboard:browser-storage",
+        message: TEMPORARY_STORAGE_WARNING,
+        tone: "warning",
+        duration: 0
+      }, document);
+      cleanup.signal.addEventListener("abort", () => notice.dismiss(), { once: true });
+    }
   });
   let upgradeStarted = false;
   let overlayMounted = false;
@@ -421,15 +435,6 @@ export async function startDashboardData(options) {
     browserFirstLoad.set({ status: "inactive", dismissed: false });
   };
   if (firstBrowserLoad) {
-    void storageInspection?.then((diagnostics) => {
-      if (cleanup.signal.aborted || diagnostics.persisted === true) return;
-      const notice = publishNotification({
-        message: TEMPORARY_STORAGE_WARNING,
-        tone: "warning",
-        duration: 0
-      }, document);
-      cleanup.signal.addEventListener("abort", () => notice.dismiss(), { once: true });
-    });
     browserFirstLoad.set({
       status: "loading",
       dismissed: upgradeStarted && browserFirstLoad.get().dismissed,

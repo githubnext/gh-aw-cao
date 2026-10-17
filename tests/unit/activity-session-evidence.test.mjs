@@ -307,6 +307,11 @@ test('explicit experiment artifacts populate SQLite and published run shards wit
   const f = await fixture(t);
   await mkdir(path.join(f.usage, 'experiment'));
   await writeFile(path.join(f.usage, 'experiment', 'assignments.json'), '{"prompt":"candidate","style":"concise"}');
+  const standalone = path.join(f.logs, 'run-303', 'worker-experiment');
+  await mkdir(standalone);
+  await writeFile(path.join(standalone, 'assignments.json'), '{"style":"concise","prompt":"candidate"}');
+  await writeFile(path.join(f.usage, 'aw_info.json'), await readFile(f.info));
+  await rm(f.info);
   assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
   assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
   const result = JSON.parse((await execute(process.execPath, ['activity/cao.mjs', 'ingest-jsonl',
@@ -325,6 +330,37 @@ test('explicit experiment artifacts populate SQLite and published run shards wit
   assert.equal(rows.filter((row) => row.collection === 'experiments').length, 2);
   assert.deepEqual(rows.filter((row) => row.collection === 'experimentAssignments')
     .map((row) => row.record.variant).sort(), ['candidate', 'concise']);
+});
+
+test('unified session assignments populate SQLite first, including authoritative empty maps', async (t) => {
+  for (const type of ['experiment.assignment', 'experiment.state']) {
+    for (const assignments of [{ prompt: 'candidate' }, {}]) {
+      await t.test(`${type}: ${Object.keys(assignments).length} assignments`, async (t) => {
+        const f = await fixture(t);
+        await writeFile(path.join(f.usage, 'aw_session.jsonl'), [
+          { type: 'session.format', data: { version: 1 } },
+          { type, data: { runId: '303', runAttempt: 1, assignments } }
+        ].map((record) => JSON.stringify(record)).join('\n'));
+        await mkdir(path.join(f.usage, 'experiment'));
+        await writeFile(path.join(f.usage, 'experiment', 'assignments.json'), 'PRIVATE_INVALID_FALLBACK');
+        f.envelope.run.experiments = { assignments: { legacy: 'control' } };
+        await writeFile(f.shard, `${JSON.stringify(f.envelope)}\n`);
+        const warnings = t.mock.method(console, 'warn', () => {});
+        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+        assert.equal(warnings.mock.callCount(), 0);
+        const content = await readFile(f.shard, 'utf8');
+        assert.deepEqual(JSON.parse(content).run.cao_unified_session.experiments, { assignments });
+        const batch = normalize(adaptCachedGhAwJsonl(content).observations);
+        assert.deepEqual(batch.experimentAssignments.map((row) => row.variant), Object.values(assignments));
+        const result = JSON.parse((await execute(process.execPath, ['activity/cao.mjs', 'ingest-jsonl',
+          '--input-dir', path.dirname(f.shard), '--database', path.join(f.root, 'activity.sqlite'),
+          '--retention-days', 'all'])).stdout);
+        assert.equal(result.counts.experiments ?? 0, Object.keys(assignments).length);
+        assert.equal(result.counts.experimentAssignments ?? 0, Object.keys(assignments).length);
+        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      });
+    }
+  }
 });
 
 test('experiment artifacts verify identity across compact, prefixed and flattened layouts', async (t) => {
@@ -372,6 +408,62 @@ test('experiment artifacts verify identity across compact, prefixed and flattene
         assert.ok(JSON.parse(cached).run.cao_unified_session);
         assert.equal(warnings.mock.callCount(), 1);
       }
+    });
+  }
+});
+
+test('experiment collection accepts matching compact and standalone copies with usage identity', async (t) => {
+  for (const layout of ['standalone', 'matching copies', 'conflicting copies']) {
+    await t.test(layout, async (t) => {
+      const f = await fixture(t);
+      await writeFile(path.join(f.usage, 'aw_info.json'), await readFile(f.info));
+      await rm(f.info);
+      const directory = path.join(f.logs, 'run-303', 'worker-experiment');
+      await mkdir(directory);
+      await writeFile(path.join(directory, 'assignments.json'), '{"prompt":"candidate","style":"concise"}');
+      if (layout !== 'standalone') {
+        await mkdir(path.join(f.usage, 'experiment'));
+        await writeFile(path.join(f.usage, 'experiment', 'assignments.json'),
+          layout === 'matching copies' ? '{"style":"concise","prompt":"candidate"}' : '{"prompt":"control"}');
+      }
+      const warnings = t.mock.method(console, 'warn', () => {});
+      const result = await enrichSessionEvidence(f.logs, f.prefix, 'octo/api');
+      const batch = normalize(adaptCachedGhAwJsonl(await readFile(f.shard, 'utf8')).observations);
+      assert.deepEqual(result, { enriched: layout === 'conflicting copies' ? 0 : 1 });
+      assert.equal(warnings.mock.callCount(), layout === 'conflicting copies' ? 1 : 0);
+      assert.equal(batch.experimentAssignments.length, layout === 'conflicting copies' ? 0 : 2);
+      if (layout !== 'conflicting copies') {
+        assert.deepEqual(batch.experimentAssignments.map((row) => row.variant).sort(), ['candidate', 'concise']);
+        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      }
+    });
+  }
+});
+
+test('standalone experiments reject invalid or ambiguous sibling usage identities', async (t) => {
+  for (const [name, info] of [
+    ['wrong run', { run_id: 304, repository: 'octo/api', run_attempt: 1 }],
+    ['wrong repository', { run_id: 303, repository: 'other/repo', run_attempt: 1 }],
+    ['wrong attempt', { run_id: 303, repository: 'octo/api', run_attempt: 2 }],
+    ['missing attempt', { run_id: 303, repository: 'octo/api' }],
+    ['ambiguous identity', { run_id: 303, repository: 'octo/api', run_attempt: 1 }]
+  ]) {
+    await t.test(name, async (t) => {
+      const f = await fixture(t);
+      const original = await readFile(f.shard, 'utf8');
+      t.mock.method(console, 'warn', () => {});
+      await rm(f.info);
+      await writeFile(path.join(f.usage, 'aw_info.json'), JSON.stringify(info));
+      const standalone = path.join(f.logs, 'run-303', 'worker-experiment');
+      await mkdir(standalone);
+      await writeFile(path.join(standalone, 'assignments.json'), '{"prompt":"candidate"}');
+      if (name === 'ambiguous identity') {
+        const caller = path.join(f.logs, 'run-303', 'caller-usage');
+        await mkdir(caller);
+        await writeFile(path.join(caller, 'aw_info.json'), JSON.stringify(info));
+      }
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      assert.equal(await readFile(f.shard, 'utf8'), original);
     });
   }
 });

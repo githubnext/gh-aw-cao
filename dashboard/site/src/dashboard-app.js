@@ -4,7 +4,8 @@
       import { resetBrowserDashboardData } from "./components/reset-dashboard-control.js";
       import { loadDashboardQuerySources, processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { startDashboardData } from "./data/startup.js";
-      import { renderDashboardCurrentStatus, renderDashboardSnapshotStatus, renderRefreshError } from "./components/refresh-error.js";
+      import { renderDashboardCurrentStatus, notifyRefreshError } from "./components/refresh-error.js";
+      import { resolveNotification } from "./notification-service.js";
       import { startDashboardAppUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { cliActionTemplateContext } from "./cli-action-template.js";
@@ -313,9 +314,6 @@
         } else if (state === "stale") {
           dashboard.classList.add("dashboard-stale");
         }
-        if (snapshot && state === "stale") {
-          dashboard.prepend(renderDashboardSnapshotStatus(snapshot));
-        }
         if (snapshot || usesRemoteDataBackend(document) || dashboardDocument.dashboard["data-status"]) {
           dashboard.querySelector(".dashboard-horizon")?.after(renderDashboardCurrentStatus(snapshot, {
             refreshing: state === "cached",
@@ -326,9 +324,9 @@
           }));
         }
         if (retryRefresh && (state === "stale" || (state === "loading" && !snapshot))) {
-          dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh, {
-            hasCachedSnapshot: snapshot !== null
-          }));
+          notifyRefreshError(retryRefresh, { snapshot });
+        } else {
+          resolveNotification("dashboard:refresh-error");
         }
         attachCliActions(dashboard, dashboardDocument.dashboard["cli-actions"] ?? [], {
           repository: dashboardDocument.dashboard.repository,

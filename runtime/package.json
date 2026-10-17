@@ -20,6 +20,7 @@
     "activity/cao.mjs",
     "activity/cli-usage.mjs",
     "activity/collect-logs.sh",
+    "activity/collect-workflow-logs.mjs",
     "activity/control-settings.mjs",
     "activity/dashboard-complexity.mjs",
     "activity/dashboard-prune.mjs",

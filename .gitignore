@@ -10,6 +10,10 @@ public/cao/
 # Go test binaries written by profiling runs (for example, the stress harness)
 /server/*.test
 
+# Local GitHub CLI extension binary
+/gh-cao
+/gh-cao.exe
+
 # Local dashboard preview
 /_activity/
 /.cao-dashboard-preview-*/

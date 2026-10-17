@@ -408,8 +408,9 @@ test('dashboard status preserves refresh failure and recovery without the Overvi
     body: '{"error":"Temporarily unavailable"}'
   }));
   await page.evaluate(() => window.dispatchEvent(new Event('dashboard-refresh-request')));
-  await expect(page.locator('.dashboard-snapshot-status')).toContainText('last complete snapshot');
-  await expect(page.locator('.source-refresh-error')).toBeVisible();
+  const refreshNotice = page.locator('[data-notification-id="dashboard:refresh-error"]');
+  await expect(refreshNotice).toContainText('last complete snapshot');
+  await expect(refreshNotice).toBeVisible();
   await expect(page.getByRole('button', { name: 'Dashboard refresh failed', exact: true }).locator('.octicon-stop')).toBeVisible();
   await expect(page.locator('.dashboard-current-status')).toHaveAttribute('data-tone', 'danger');
   await expect(page.locator('.dashboard-ingestion-status')).toHaveCount(0);

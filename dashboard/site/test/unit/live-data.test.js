@@ -56,7 +56,7 @@ describe("live Dashboard Language sources", () => {
     expect(startup).not.toContain("initialPageLoaded");
     expect(startup.indexOf('render(shellSources, hasCompleteSnapshot ? "cached"')).toBeLessThan(startup.indexOf("await settleUi()"));
     expect(startup.indexOf("await settleUi()")).toBeLessThan(startup.indexOf("startAutomaticUpdates();", startup.indexOf("await settleUi()")));
-    expect(preview).toContain("renderRefreshError(retryRefresh, {");
+    expect(preview).toContain("notifyRefreshError(retryRefresh, {");
     expect(startup).toContain("refreshSources");
     expect(startup).not.toContain("if (changed) return;");
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");

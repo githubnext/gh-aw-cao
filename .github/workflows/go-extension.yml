@@ -1,0 +1,52 @@
+name: Go Extension CI
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/go-extension.yml
+      - cmd/**
+      - internal/**
+      - go.mod
+      - go.sum
+      - Makefile
+      - scripts/build-release.sh
+      - tests/unit/build-release.test.mjs
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/go-extension.yml
+      - cmd/**
+      - internal/**
+      - go.mod
+      - go.sum
+      - Makefile
+      - scripts/build-release.sh
+      - tests/unit/build-release.test.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-extension-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  extension-quality:
+    name: Format, vet, test, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Check extension
+        run: make check
+      - name: Smoke test extension
+        run: |
+          ./gh-cao --help
+          ./gh-cao version
+          ./gh-cao doctor

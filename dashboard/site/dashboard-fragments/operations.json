@@ -1324,6 +1324,75 @@
       }
     },
     {
+      "name": "eval-answer-counts",
+      "subject": "Count recorded YES, NO and UNKNOWN answers for each workflow-scoped eval.",
+      "objective": "Provide complete answer denominators before expanding each eval into three bars.",
+      "acceptance": "Keep canonical eval identities separate and count only explicitly classified observations. Select at most 33 complete eval groups, never truncate an answer group.",
+      "from": "eval-status-ledger",
+      "aggregate": {
+        "by": ["organization", "repository", "workflow", "eval"],
+        "values": [
+          { "field": "eval-result", "as": "answers", "reducer": "count" },
+          { "field": "eval-result", "as": "yes", "reducer": "count", "filter": { "predicates": [{ "field": "eval-result", "equals": "YES" }] } },
+          { "field": "eval-result", "as": "no", "reducer": "count", "filter": { "predicates": [{ "field": "eval-result", "equals": "NO" }] } },
+          { "field": "eval-result", "as": "unknown", "reducer": "count", "filter": { "predicates": [{ "field": "eval-result", "equals": "UNKNOWN" }] } }
+        ]
+      },
+      "order-by": [
+        { "field": "eval", "direction": "asc" },
+        { "field": "organization", "direction": "asc" },
+        { "field": "repository", "direction": "asc" },
+        { "field": "workflow", "direction": "asc" }
+      ],
+      "limit": 33
+    },
+    {
+      "name": "eval-yes-shares",
+      "subject": "Compute the YES share of each eval's recorded answers.",
+      "from": "eval-answer-counts",
+      "compute": [
+        { "as": "eval-result", "function": "literal", "args": [{ "value": "YES" }] },
+        { "as": "answer-order", "function": "literal", "args": [{ "value": 0 }] },
+        { "as": "answer-share", "function": "quotient", "args": [{ "field": "yes" }, { "field": "answers" }] }
+      ]
+    },
+    {
+      "name": "eval-no-shares",
+      "subject": "Compute the NO share of each eval's recorded answers.",
+      "from": "eval-answer-counts",
+      "compute": [
+        { "as": "eval-result", "function": "literal", "args": [{ "value": "NO" }] },
+        { "as": "answer-order", "function": "literal", "args": [{ "value": 1 }] },
+        { "as": "answer-share", "function": "quotient", "args": [{ "field": "no" }, { "field": "answers" }] }
+      ]
+    },
+    {
+      "name": "eval-unknown-shares",
+      "subject": "Compute the explicit UNKNOWN share of each eval's recorded answers.",
+      "from": "eval-answer-counts",
+      "compute": [
+        { "as": "eval-result", "function": "literal", "args": [{ "value": "UNKNOWN" }] },
+        { "as": "answer-order", "function": "literal", "args": [{ "value": 2 }] },
+        { "as": "answer-share", "function": "quotient", "args": [{ "field": "unknown" }, { "field": "answers" }] }
+      ]
+    },
+    {
+      "name": "eval-answer-distribution",
+      "subject": "Compare YES, NO and UNKNOWN percentages within each eval.",
+      "objective": "Show three horizontal bars per eval that together account for all recorded answers.",
+      "acceptance": "Emit all three answer categories, including zero shares; percentages sum to 100 per canonical eval. Missing observations are not UNKNOWN answers. Preserve workflow and repository attribution.",
+      "from": "eval-yes-shares",
+      "union": ["eval-no-shares", "eval-unknown-shares"],
+      "compute": [
+        { "as": "answer-percent", "function": "product", "args": [{ "field": "answer-share" }, { "value": 100 }] },
+        { "as": "eval-label", "function": "concat", "args": [{ "field": "eval" }, { "value": " | " }, { "field": "organization" }, { "value": "/" }, { "field": "repository" }, { "value": ":" }, { "field": "workflow" }] }
+      ],
+      "order-by": [
+        { "field": "eval-label", "direction": "asc" },
+        { "field": "answer-order", "direction": "asc" }
+      ]
+    },
+    {
       "name": "grader-observed-maxima",
       "subject": "Find each workflow-scoped grader's maximum retained value in the selected data.",
       "objective": "Provide an observed normalization denominator without mixing grader identities or claiming a theoretical maximum.",
@@ -2698,8 +2767,33 @@
       "title": "Evals",
       "icon": "check-circle",
       "experimental": true,
-      "description": "Identify retained eval observations that require evidence review.",
+      "description": "Compare recorded YES, NO and UNKNOWN answer percentages for each eval, then inspect the retained evidence.",
       "views": [
+        {
+          "id": "evals-answer-distribution",
+          "title": "Eval answer distribution",
+          "subject": "Recorded answer percentages for each workflow-scoped eval.",
+          "objective": "Compare the YES, NO and UNKNOWN shares without conflating missing evidence with an unknown answer.",
+          "acceptance": "Show three bars per eval, including zero shares, whose values sum to 100%. Keep workflow identities separate and preserve the evidence ledger.",
+          "description": "Each eval has YES, NO and UNKNOWN bars totaling 100% of its recorded answers. Up to 33 evals are shown, ordered by name; Table view retains all observations. Missing observations are not counted as UNKNOWN.",
+          "data": {
+            "source": "eval-answer-distribution",
+            "order-by": [
+              { "field": "eval-label", "direction": "asc" }
+            ],
+            "limit": 99
+          },
+          "mark": "chart",
+          "chart": "horizontal-bar",
+          "layout": "full",
+          "empty-message": "No eval observations were retained.",
+          "encoding": {
+            "x": { "field": "eval-result", "type": "nominal", "title": "Answer" },
+            "section": { "field": "eval-label", "type": "nominal", "title": "Eval / Repository / Workflow" },
+            "y": { "field": "answer-percent", "type": "quantitative", "title": "Recorded answers", "unit": "percent" },
+            "color": { "field": "eval-result", "type": "nominal", "title": "Answer" }
+          }
+        },
         {
           "id": "evals-statuses",
           "title": "Observed eval answers by workflow",

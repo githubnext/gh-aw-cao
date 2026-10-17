@@ -2,7 +2,7 @@ import { readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseUnifiedSessionDocument } from '../dashboard/site/src/data/adapters/unified-session.js';
-import { parseExperimentAssignments } from '../dashboard/site/src/data/adapters/experiment-evidence.js';
+import { experimentAssignmentArtifact, parseExperimentAssignments } from '../dashboard/site/src/data/adapters/experiment-evidence.js';
 import { classifiedEval, isSupportedGhAwJsonlSchemaVersion } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { runId as canonicalRunId } from '../dashboard/site/src/data/model/ids.js';
 import { readJsonlRecords } from './jsonl.mjs';
@@ -37,6 +37,12 @@ async function artifactFile(directory, filename) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
+  if (filename === 'assignments.json') {
+    const file = experimentAssignmentArtifact(found.map((file) => ({
+      ...file, path: path.relative(directory, file.path).split(path.sep).join('/')
+    })));
+    return file ? { ...file, path: path.join(directory, file.path) } : null;
+  }
   if (found.length > 1) throw new TypeError('Multiple evidence artifacts found for one run');
   return found[0] ?? null;
 }
@@ -54,6 +60,10 @@ async function sessionIdentity(runDirectory, sessionPath) {
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
+  }
+  if (/(^|-)experiments?$/.test(path.basename(artifactDirectory))) {
+    const file = await artifactFile(runDirectory, 'aw_info.json');
+    if (file) return JSON.parse(file.content);
   }
   return null;
 }

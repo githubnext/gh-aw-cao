@@ -72,7 +72,7 @@ test('the footer shows an app download before offering the user a reload', async
     await expect(indicator).toBeEmpty();
     await expect(page.locator('.dashboard-notification-message')).toHaveText('An update to the dashboard has been downloaded. Update now?');
     expect(await page.evaluate(() => sessionStorage.loads)).toBe('1');
-    await page.getByRole('button', { name: 'Update now' }).click();
+    await page.getByRole('button', { name: 'Update now', exact: true }).click();
     await expect.poll(() => page.evaluate(() => sessionStorage.loads)).toBe('2');
   } finally {
     download?.end();

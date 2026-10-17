@@ -1862,14 +1862,28 @@ definition and observation stores; retaining native identifiers does not move
 these entities into one generic event table. CAO-only derived findings MAY
 retain their own explicitly source-specific types.
 
-When a unified session does not contain experiment assignments, ingestion SHALL
+Ingestion SHALL mine experiment assignments from the agent's unified session
+(`aw_session.jsonl`) first, using `experiment.assignment` and run-matching
+`experiment.state` events, including explicitly empty assignment maps.
+Only when the unified session does not contain experiment assignments, ingestion SHALL
 also accept gh-aw's explicit current-run `assignments.json` artifact, including
 the compact `usage/experiment/` layout and prefixed artifact directories.
 Both Activity and hosted collectors SHALL request the `usage,experiment` artifact
 sets without widening repository scope or collection budgets.
+Collectors SHALL enumerate the selected repository's registered `.lock.yml`
+workflow paths and pass explicit repository-qualified targets to `gh aw logs`.
+Bare `--repo` discovery SHALL NOT substitute checkout-local workflow names for
+the selected repository's workflows. Failed discovery SHALL fail closed, and an
+empty remote workflow catalog SHALL NOT fall back to the collector's catalog.
 Collection SHALL verify repository, run ID and attempt against `aw_info.json`
 before retaining these assignments. Unified assignments, including an explicitly
-empty assignment map, take precedence. Cumulative experiment state counts SHALL
+empty assignment map, take precedence. Identical assignment maps duplicated in
+compact usage and named experiment artifacts SHALL be ingested once regardless
+of JSON key order; conflicting or invalid copies SHALL be rejected. A standalone
+experiment artifact MAY use the sibling usage artifact's `aw_info.json` when its
+own and run-directory metadata are absent, subject to the same repository, run ID
+and attempt checks. Ambiguous usage metadata SHALL be rejected.
+Cumulative experiment state counts SHALL
 NOT be used to infer a run's assigned variant. The Experiments page SHALL expose
 retained assignment variants and run evidence links through canonical queries.
 

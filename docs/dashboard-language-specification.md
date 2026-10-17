@@ -313,7 +313,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 - **DLS-DOC-013:** `units`, when present, **MUST** be a non-empty mapping keyed by unique canonical identifiers. Each value **MUST** contain the non-empty string `name`, the non-empty string `symbol`, and the finite positive number `significant`, and **MAY** contain `format`.
 - **DLS-DOC-014:** A tooltip **MUST** contain exactly the non-empty human-readable strings `label` and `description` and **MAY** contain one canonical Octicon `icon`. A presenter **MUST** expose a tooltip as a keyboard-focusable help control named by `label`, associate its explanatory content with the control, and make that content available on both pointer hover and keyboard focus. `horizon`, when present, **MUST** contain exactly a non-empty human-readable `label` and one `tooltip`; the presenter **MUST** expose an icon-only clock control whose accessible name includes the horizon label and resolved duration. Pointer hover and keyboard focus **MUST** disclose the resolved duration. Activating the control **MUST** expose a compact horizon picker and a keyboard-accessible coverage disclosure containing the configured description with the precise resolved start, exclusive end, and duration.
 - **DLS-DOC-014a:** A `mark: list` view **MUST** declare `list.style` as `cards` or `issues`, and **MUST** declare a canonical Octicon `list.icon`. `list.action`, when present, **MUST** reference a view-placed CLI action. `encoding.href`, when present on a list view, **MUST** reference one relation-specific link field and binds the primary card title to that link.
-- **DLS-DOC-015:** `callouts`, when present, **MUST** be a non-empty sequence of mappings with unique canonical `id` values and non-empty `title` and `description` strings. A callout **MAY** contain one canonical Octicon `icon` and one `navigation-page` referencing a declared dashboard page. `visible-when`, when present, **MUST** contain exactly one canonical `source`, one `field` declared by that source, and either one scalar `equals` value or one positive finite `older-than-hours` value, but not both. Equality matches at least one source row. Age visibility matches at least one valid ISO timestamp or finite Unix-millisecond value whose age is at least the declared hours, using the current wall clock independently of page filters. Null, invalid, future, missing, or unavailable evidence **MUST NOT** establish staleness. The presenter **MUST** subscribe to declared callout sources for the dashboard lifetime and reevaluate clock-based visibility at least once per minute, without navigation. Queries own source selection and timestamp aggregation; the shared callout renderer owns clock-based visibility because a stored data revision does not change as time passes.
+- **DLS-DOC-015:** `callouts`, when present, **MUST** be a non-empty sequence of mappings with unique canonical `id` values and non-empty `title` and `description` strings. A callout **MAY** contain one canonical Octicon `icon` and one `navigation-page` referencing a declared dashboard page. `visible-when`, when present, **MUST** contain exactly one canonical `source`, one `field` declared by that source, and either one scalar `equals` value or one positive finite `older-than-hours` value, but not both. Equality matches at least one source row. Age visibility matches at least one valid ISO timestamp or finite Unix-millisecond value whose age is at least the declared hours, using the current wall clock independently of page filters. Null, invalid, future, missing, or unavailable evidence **MUST NOT** establish staleness. The presenter **MUST** subscribe to declared callout sources for the dashboard lifetime and request worker reevaluation of clock-based visibility at least once per minute, without navigation. The data worker **MUST** execute declared visibility conditions in its query layer. The shared callout renderer **MUST** consume only the resulting visibility states; it **MUST NOT** inspect source rows or compare evidence timestamps on the main thread.
 
 The default dashboard warns after 24 hours without new retained workflow activity,
 using the newest upstream update timestamp (or creation timestamp when absent),
@@ -1882,7 +1882,31 @@ Research should compare one through four essential views, record disclosure use,
 - **DLS-SAFE-011:** A presenter's report action toolbar **MUST** expose a descriptive accessible name or description for its refresh control identifying what the control does, and **MUST** expose a non-empty accessible label for its GitHub repository link when `dashboard.repository` is present.
 - **DLS-SAFE-012:** A presenter that renders `outcome-body-html` **MUST** rebuild it through a context-appropriate element and attribute allowlist, discard executable or embedded content, and apply **DLS-SAFE-004** to retained links and images.
 - **DLS-SAFE-013:** A presenter **MUST** render user-controlled list content as sanitized, inert text and **MUST** systematically constrain list item titles with visual ellipsis at every supported viewport size while preserving the complete text for accessible technologies.
-- **DLS-SAFE-014:** A presenter **MUST** expose every visible site-wide callout independently of the active page with its title and description as text and a descriptively named dismiss control. When `navigation-page` is present, the callout content **MUST** link to that dashboard page. Dismissal **MUST** last for the lifetime of the loaded document and **MUST NOT** be persisted across document loads.
+- **DLS-SAFE-014:** A presenter **MUST** expose every visible site-wide callout independently of the active page with its title and description as text and a descriptively named dismiss control. When `navigation-page` is present, the callout content **MUST** link to that dashboard page. Dismissal **MUST** survive navigation and repeated updates for the same active condition, until that condition resolves or the document unloads, and **MUST NOT** be persisted across document loads. A later recurrence after resolution **MAY** notify again.
+
+The CAO presenter uses one document-owned notification manager for declarative
+callouts, browser-storage warnings, worker ingestion progress, refresh failures,
+and transient feedback. Stable notification IDs update existing notices rather
+than adding duplicates. The shared, scrollable notification region owns rendering,
+accessible dismissal, timers, navigation links, actions, and volatile dismissal
+state; resolving a condition removes its notice and resets dismissal for a later
+recurrence. Producers retain responsibility for their abort-scoped subscriptions
+and explicitly release notices when their lifetime ends. Replacing a producer
+cannot let its older cleanup remove a notice already adopted by its replacement.
+
+Browser capability and import lifecycle feedback are interaction state, not
+canonical data queries, so their presentation cannot be described by evidence
+marks. Evidence-based callout conditions and sources remain declared in Dashboard
+Language and subscribed through the worker. The first-import dialog and compact
+status indicators remain contextual progress/status surfaces, not separate
+notification managers.
+
+The notification manager uses reactive state and owned `render` boundaries to
+morph each notice in place, preserving focused actions and expanded progress
+history. Each notice's effects and timers stop when it is removed. Callout
+subscriptions forward browser or hosted query results to the same data-worker
+visibility evaluator, cancel superseded evaluations, and ignore late results
+after their dashboard lifetime ends.
 - **DLS-SAFE-015:** A presenter **MUST** treat table-action context as untrusted data, serialize it without interpretation, and keep it explicitly separated from the author-declared intent. Table actions **MUST NOT** execute document or row content.
 
 ---

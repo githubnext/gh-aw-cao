@@ -73,7 +73,6 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   :root[data-navigation-direction="forward"]::view-transition-new(root) { z-index: 2; animation-name: dashboard-view-slide-in-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="backward"]::view-transition-old(root) { z-index: 2; animation-name: dashboard-view-slide-out-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="backward"]::view-transition-new(root) { z-index: 1; animation-name: dashboard-view-slide-in-left; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
-  .source-refresh-error { align-items: flex-start; flex-direction: column; }
   .timeline-chart-axis span:not(:first-child):not(:last-child):nth-child(even) { display: none; }
   .horizontal-bar-chart-row { grid-template-columns: minmax(0, 1fr) minmax(56px, 32%) auto; gap: 6px; }
   .horizontal-bar-chart-label { direction: ltr; text-align: left; }
