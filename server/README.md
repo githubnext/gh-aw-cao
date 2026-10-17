@@ -678,6 +678,7 @@ Never put the key in checked-in configuration, command arguments, logs, or the
 | `CAO_HOSTED_CLI_WINDOWS_BUNDLE` | Required path to the approved ZIP archive containing Windows gh, gh-aw, and portable Git, including dependencies. |
 | `CAO_HOSTED_CLI_WINDOWS_BUNDLE_SHA256` | Required reviewed SHA-256 digest of the Windows tools archive. The Windows profile rejects `CAO_HOSTED_CLI_CONTAINER_IMAGE` rather than silently replacing an OCI image. |
 | `CAO_HOSTED_CLI_WORK_ROOT` | Executor workspace root. |
+| `CAO_SESSION_SECRET`, `CAO_SESSION_SECRET_PREVIOUS` | Required current encryption secret (at least 32 characters) and optional previous key for the executor's durable token cleanup journal. Keep previous keys until their cleanup debt is cleared or expires. |
 | `CAO_AUDIT_LOG` | Optional append-only file (mode `0600`) for the JSON mirror of audit events from `serve-hosted` and `execute-cli`; defaults to standard error. The authoritative trail is the PostgreSQL `cao_operational_audit_events` table. |
 
 #### Native runtimes for local development
@@ -828,7 +829,7 @@ running executor. Use a two-key rollover:
 Never put either key in logs, command output, or checked-in configuration.
 
 For local debugging without PostgreSQL, both processes can share one SQLite
-file holding the queue and the audit table. `--hosted-cli-sqlite` requires
+file holding the queue, audit table, and encrypted token cleanup journal. `--hosted-cli-sqlite` requires
 `--experimental`, `--hosted-cli-actions`, and a loopback `--listen`, and the
 file is created with mode `0600`. Anyone who can write the SQLite file can
 drop its triggers, so never use this in production:
@@ -845,6 +846,24 @@ pool is bounded: `--max-pooled-tokens` sets the total, `0` disables pooling,
 and pooled tokens are capped at two per scope with a two-minute idle lifetime.
 `--prefetch` (default 2) sets how many queued commands get tokens minted
 ahead of execution.
+
+Every received token, including rejected grants, is journaled in the protected
+revocation store before it can be used. The journal is encrypted with the same
+current/previous-key envelope as sessions, in a separate hosted-token namespace.
+Only the queue-lease holder retries recovered tokens; its own active tokens
+remain owned until release. Failed audit appends never drop cleanup ownership.
+Revocation failures survive executor restarts and remain visible until confirmed
+revocation or expiry. If both journaling and revocation fail, the broker refuses
+further token issuance (including pooled tokens), and graceful shutdown keeps
+retrying until cleanup is durable or the token expires. An explicitly canceled
+`Broker.Close` reports failure and retains
+its in-memory owner. The executor's graceful cleanup ignores command cancellation
+and may wait up to the last token's one-hour lifetime from receipt, plus bounded
+in-flight mint, storage, revocation, and audit requests (storage/revocation use a
+ten-second request timeout). Missing or excessive expiry evidence rejects use
+and retains that conservative one-hour cleanup bound. A forced process kill
+between GitHub issuing a token and local durable persistence cannot be made
+atomic; the token's GitHub-enforced lifetime remains the final bound.
 
 DevOps can inspect or cancel queue entries directly through the backend CLI.
 These commands use the configured operational store, require durable audit

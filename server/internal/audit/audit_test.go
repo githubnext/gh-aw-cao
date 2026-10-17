@@ -17,9 +17,13 @@ import (
 type recordingStore struct {
 	events []operational.AuditEvent
 	err    error
+	append func(context.Context, operational.AuditEvent) (operational.AuditEvent, error)
 }
 
-func (r *recordingStore) AppendAudit(_ context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
+func (r *recordingStore) AppendAudit(ctx context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
+	if r.append != nil {
+		return r.append(ctx, event)
+	}
 	if r.err != nil {
 		return operational.AuditEvent{}, r.err
 	}
@@ -72,6 +76,68 @@ func TestRecordReportsStorageFailureAndStillMirrors(t *testing.T) {
 	var nilLogger *Logger
 	if err := nilLogger.WithStore(&recordingStore{}).Record(context.Background(), "x", Success); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRecordDetachedCleanupHasFiniteBudget(t *testing.T) {
+	caller, cancel := context.WithTimeout(t.Context(), time.Millisecond)
+	cancel()
+	var buffer bytes.Buffer
+	started := time.Now()
+	logger := New(&buffer).WithStore(&recordingStore{
+		append: func(ctx context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
+			deadline, ok := ctx.Deadline()
+			if !ok || ctx.Done() == nil || deadline.After(started.Add(operational.AuditWriteTimeout+time.Second)) {
+				t.Fatal("detached audit persistence has no bounded deadline")
+			}
+			if ctx.Err() != nil {
+				t.Fatal("cleanup inherited caller cancellation")
+			}
+			<-ctx.Done()
+			return operational.AuditEvent{}, ctx.Err()
+		},
+	})
+	err := logger.Record(caller, "token.revoke_failed", Failure)
+	if !errors.Is(err, ErrUnavailable) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("deadline must remain observable: %v", err)
+	}
+	if elapsed := time.Since(started); elapsed > operational.AuditWriteTimeout+time.Second {
+		t.Fatalf("audit exceeded its budget: %v", elapsed)
+	}
+	if !bytes.Contains(buffer.Bytes(), []byte(`"stored":false`)) {
+		t.Fatal("timed-out storage was not mirrored as unconfirmed")
+	}
+}
+
+func TestRecordAtomicHonorsCallerAndMirrorsCommittedEvent(t *testing.T) {
+	var buffer bytes.Buffer
+	store := &recordingStore{}
+	logger := New(&buffer).WithStore(store)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
+	defer cancel()
+	err := logger.RecordAtomic(ctx, "cli_command.admitted", Success,
+		func(ctx context.Context, _ operational.AuditEvent) (operational.AuditEvent, error) {
+			<-ctx.Done()
+			return operational.AuditEvent{}, ctx.Err()
+		})
+	if !errors.Is(err, ErrUnavailable) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("mutation did not honor caller deadline: %v", err)
+	}
+	buffer.Reset()
+	err = logger.RecordAtomic(t.Context(), "cli_command.admitted", Success,
+		func(_ context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
+			event.Sequence = 42
+			event.Attributes = map[string]string{"command_id": "7"}
+			return event, nil
+		})
+	if err != nil || len(store.events) != 0 {
+		t.Fatalf("atomic event must not be appended again: %v", err)
+	}
+	if !bytes.Contains(buffer.Bytes(), []byte(`"sequence":42`)) || !bytes.Contains(buffer.Bytes(), []byte(`"command_id":"7"`)) {
+		t.Fatalf("committed event not mirrored: %s", buffer.String())
+	}
+	if err := New(&buffer).RecordAtomic(t.Context(), "x", Success, nil); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("atomic mutation without durable audit = %v", err)
 	}
 }
 

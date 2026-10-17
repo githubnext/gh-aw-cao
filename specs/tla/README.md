@@ -99,6 +99,7 @@ server flags admits nothing.
 | `ExecutionRechecked` | Executor collaborator-permission recheck before running in `hostedcli/executor.go` |
 | `WorkTokenOnlyAfterVerification` | `Executor.verifyRequester` checks write access with a revoked `metadata:read` token before `Acquire` or `Prefetch` issues any work-scoped token |
 | `CancelAuthorized` | `requireRepositoryWrite` in `hosted_cli.go` before cancel |
+| `QueueMutationsAudited` | `AuditedCLICommandQueue` enqueue/retry/cancel commits its mutation and hash-chain append in one PostgreSQL/SQLite transaction; failed or timed-out transactions stutter, and an uncertain commit never triggers compensating cancellation |
 | `TokenSingleUse`; `ReleasedNeverReused` | `hostedcli/broker.go` `Acquire`/`Release`: a token leaves the pool once and is revoked on release |
 | `TokenScopedToRepository` | Repository-scoped installation token minting in `githubapp/scoped_token.go` |
 | `HeldOnlyByActiveCommand`; `PoolBoundedAndUnused` | Broker pool bounds (`MaxPooled`, `MaxPooledPerScope`) and prefetch |
@@ -107,7 +108,11 @@ server flags admits nothing.
 Time is abstract: step-up freshness and token expiry use bounded ticks rather
 than wall-clock TTLs. The model abstracts away GitHub's 2FA/SSO disclosure,
 OAuth token refresh, subprocess isolation, output redaction, queue leases,
-and network failures other than failed revocation. Mutations that skip the
+and network failures other than failed revocation and aborted audit
+transactions. Admission/cancel failures leave the state unchanged; a lost
+commit response is observationally identical to a committed mutation with its
+audit event. Real-store tests cover idempotency, lock/statement deadlines, and
+rollback; the model does not represent SQL timing or hash bytes. Mutations that skip the
 execution recheck, return a released token to the pool, or skip admission
 step-up each violate `Safety`.
 

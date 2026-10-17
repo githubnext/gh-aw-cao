@@ -147,8 +147,10 @@ func NewExecutor(queue operational.CLICommandQueue, broker *Broker, github GitHu
 
 // Run holds the queue lease and executes commands until ctx ends. Replicas
 // that cannot acquire the lease stand by.
-func (e *Executor) Run(ctx context.Context) error {
-	defer e.broker.Close(context.WithoutCancel(ctx))
+func (e *Executor) Run(ctx context.Context) (err error) {
+	defer func() {
+		err = errors.Join(err, e.broker.Close(context.WithoutCancel(ctx)))
+	}()
 	for {
 		lease, err := e.queue.Acquire(ctx, e.options.Owner, e.options.LeaseTTL)
 		switch {
@@ -223,7 +225,9 @@ func (e *Executor) drain(ctx context.Context, lease operational.CLICommandLease)
 		default:
 			e.prefetch(leaseCtx)
 		}
-		e.broker.Maintain(leaseCtx)
+		if err := e.broker.Maintain(leaseCtx); err != nil {
+			e.options.Logger.Printf("hosted CLI token cleanup requires retry: %v", err)
+		}
 		select {
 		case <-leaseCtx.Done():
 		case <-wake:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -50,7 +51,7 @@ type HostedCLIDebugStore interface {
 }
 
 type hostedCLI struct {
-	queue    operational.CLICommandQueue
+	queue    operational.AuditedCLICommandQueue
 	catalog  *hostedcli.Catalog
 	context  hostedcli.TemplateContext
 	control  string
@@ -99,8 +100,12 @@ func (a *App) EnableHostedCLIActions(ctx context.Context, config HostedCLIConfig
 	if !a.config.Audit.Durable() {
 		return errors.New("hosted CLI actions require the postgres operational audit table or --hosted-cli-sqlite")
 	}
+	audited, ok := queue.(operational.AuditedCLICommandQueue)
+	if !ok {
+		return errors.New("hosted CLI actions require atomic queue and audit persistence")
+	}
 	a.hostedCLI = &hostedCLI{
-		queue: queue, catalog: config.Catalog, context: templateContext, control: config.ControlRepository,
+		queue: audited, catalog: config.Catalog, context: templateContext, control: config.ControlRepository,
 		reposURL: strings.TrimSuffix(a.oauth.config.UserURL, "user") + "repos/",
 	}
 	a.config.Logger.Printf("hosted CLI actions enabled control_repository=%s", config.ControlRepository)
@@ -144,6 +149,9 @@ func writeHostedCLIError(response http.ResponseWriter, err error) {
 		writeError(response, http.StatusBadRequest, "Invalid CLI command request.")
 	case errors.Is(err, operational.ErrConflict):
 		writeError(response, http.StatusConflict, "CLI command request conflicts with an existing command.")
+	case errors.Is(err, audit.ErrUnavailable):
+		hostedCLILog.Printf("hosted CLI mutation could not be confirmed: %v", err)
+		writeError(response, http.StatusServiceUnavailable, "The CLI command mutation could not be confirmed. Check the queue before retrying, and reuse the same idempotency key.")
 	default:
 		hostedCLILog.Printf("hosted CLI request failed: %v", err)
 		writeError(response, http.StatusServiceUnavailable, "The hosted CLI command queue is unavailable.")
@@ -162,32 +170,29 @@ func (a *App) authorizeHostedCLI(response http.ResponseWriter, request *http.Req
 	return session, true
 }
 
-// auditCLICommand records an administrator's queue mutation together with the
-// step-up assurance that authorized it.
-func (a *App) auditCLICommand(request *http.Request, session oauthSession, event string, command operational.CLICommand, extra ...slog.Attr) error {
-	attrs := append([]slog.Attr{
+// mutateCLICommand commits the queue mutation and assurance event together.
+// A timeout can leave the commit outcome unknown, but never split the two.
+func (a *App) mutateCLICommand(request *http.Request, session oauthSession, event string,
+	mutate func(context.Context, operational.AuditEvent) (operational.CLICommand, operational.AuditEvent, error),
+) (operational.CLICommand, error) {
+	var command operational.CLICommand
+	err := a.config.Audit.RecordAtomic(request.Context(), event, audit.Success,
+		func(ctx context.Context, entry operational.AuditEvent) (operational.AuditEvent, error) {
+			var err error
+			command, entry, err = mutate(ctx, entry)
+			return entry, err
+		},
 		slog.String("actor", session.Login),
-		slog.Int64("command_id", command.ID),
-		slog.String("action", command.ActionID),
-		slog.String("repository", command.Repository),
-		slog.String("status", string(command.Status)),
 		slog.Any("assurance", session.Assurance),
 		slog.Time("authenticated_at", session.AuthenticatedAt),
-	}, extra...)
-	return a.config.Audit.Record(request.Context(), event, audit.Success, attrs...)
-}
-
-// auditUnavailable fails a queue mutation closed when its audit record could
-// not be stored. A newly queued command is canceled so it never runs unaudited.
-func (a *App) auditUnavailable(response http.ResponseWriter, request *http.Request, queued int64) {
-	if queued != 0 {
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(request.Context()), 10*time.Second)
-		defer cancel()
-		if _, err := a.hostedCLI.queue.Cancel(ctx, queued); err != nil {
-			a.config.Logger.Printf("hosted CLI command %d could not be canceled after an audit failure: %v", queued, err)
-		}
+	)
+	if errors.Is(err, audit.ErrMirrorUnavailable) && !errors.Is(err, audit.ErrUnavailable) {
+		hostedCLILog.Printf("hosted CLI mutation stored id=%d status=%s but audit mirror unavailable", command.ID, command.Status)
+		err = cliFailure(http.StatusServiceUnavailable, fmt.Sprintf(
+			"CLI command %d is %s. The mutation and audit event were stored, but the audit mirror is unavailable. Check the queue before retrying, and reuse the same idempotency key.",
+			command.ID, command.Status))
 	}
-	writeHostedCLIError(response, cliFailure(http.StatusServiceUnavailable, "The audit trail is unavailable. Try again later."))
+	return command, err
 }
 
 func (a *App) auditCLIRejected(request *http.Request, session oauthSession, action string, err error) {
@@ -295,17 +300,15 @@ func (a *App) hostedCLIEnqueue(response http.ResponseWriter, request *http.Reque
 		writeHostedCLIError(response, err)
 		return
 	}
-	command, err := a.hostedCLI.queue.Enqueue(request.Context(), invocation, idempotencyKey(request, payload.IdempotencyKey), 0)
+	command, err := a.mutateCLICommand(request, session, "cli_command.admitted",
+		func(ctx context.Context, event operational.AuditEvent) (operational.CLICommand, operational.AuditEvent, error) {
+			return a.hostedCLI.queue.EnqueueAudited(ctx, invocation, idempotencyKey(request, payload.IdempotencyKey), 0, event)
+		})
 	if err != nil {
-		a.auditCLIRejected(request, session, payload.ID, err)
 		writeHostedCLIError(response, err)
 		return
 	}
 	hostedCLILog.Printf("hosted CLI command queued id=%d action=%s", command.ID, command.ActionID)
-	if err := a.auditCLICommand(request, session, "cli_command.admitted", command); err != nil {
-		a.auditUnavailable(response, request, command.ID)
-		return
-	}
 	writeJSON(response, http.StatusAccepted, hostedCLICommandJSON(command))
 }
 
@@ -400,12 +403,12 @@ func (a *App) hostedCLICancel(response http.ResponseWriter, request *http.Reques
 	}
 	if err == nil {
 		var command operational.CLICommand
-		if command, err = a.hostedCLI.queue.Cancel(request.Context(), id); err == nil {
+		command, err = a.mutateCLICommand(request, session, "cli_command.cancel_requested",
+			func(ctx context.Context, event operational.AuditEvent) (operational.CLICommand, operational.AuditEvent, error) {
+				return a.hostedCLI.queue.CancelAudited(ctx, id, event)
+			})
+		if err == nil {
 			hostedCLILog.Printf("hosted CLI command cancel requested id=%d", id)
-			if err := a.auditCLICommand(request, session, "cli_command.cancel_requested", command); err != nil {
-				a.auditUnavailable(response, request, 0)
-				return
-			}
 			writeJSON(response, http.StatusOK, hostedCLICommandJSON(command))
 			return
 		}
@@ -443,17 +446,13 @@ func (a *App) hostedCLIRetry(response http.ResponseWriter, request *http.Request
 	}
 	if err == nil {
 		var retried operational.CLICommand
-		if retried, err = a.hostedCLI.queue.Enqueue(request.Context(), invocation, idempotencyKey(request, payload.IdempotencyKey), id); err == nil {
-			if retried.RetryOf != id {
-				err = cliFailure(http.StatusConflict, "Retry idempotency key conflicts with another command.")
-			} else {
-				if err := a.auditCLICommand(request, session, "cli_command.retried", retried, slog.Int64("retry_of", id)); err != nil {
-					a.auditUnavailable(response, request, retried.ID)
-					return
-				}
-				writeJSON(response, http.StatusAccepted, hostedCLICommandJSON(retried))
-				return
-			}
+		retried, err = a.mutateCLICommand(request, session, "cli_command.retried",
+			func(ctx context.Context, event operational.AuditEvent) (operational.CLICommand, operational.AuditEvent, error) {
+				return a.hostedCLI.queue.EnqueueAudited(ctx, invocation, idempotencyKey(request, payload.IdempotencyKey), id, event)
+			})
+		if err == nil {
+			writeJSON(response, http.StatusAccepted, hostedCLICommandJSON(retried))
+			return
 		}
 	}
 	writeHostedCLIError(response, err)

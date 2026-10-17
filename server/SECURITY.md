@@ -654,8 +654,20 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   when that command reaches a terminal state. It never returns to the pool.
   The broker checks the grant GitHub returns. If it covers other
   repositories, or permissions beyond those requested, the token is revoked
-  at once and the command fails. Failed revocations are retried until the
-  token expires. Pre-minted backlog
+  at once and the command fails. Every received token has a cleanup owner,
+  including rejected grants and failed mint-audit appends. Before use, tokens
+  are encrypted with the current session key and retained in the protected
+  operational revocation queue, isolated from OAuth cleanup. The executor
+  holding the command queue lease retries interrupted owners' tokens; active
+  local tokens are not revoked by periodic maintenance. Journal debt is removed
+  only after confirmed revocation or expiry. Unpersisted cleanup failures stop
+  further token issuance; graceful shutdown retains ownership while retrying
+  until persistence, revocation, or expiry succeeds (at most the last received
+  token's one-hour lifetime, plus bounded in-flight requests). Cancellation of
+  `Broker.Close` reports unresolved cleanup and keeps its owner; executor
+  graceful shutdown ignores command cancellation for this cleanup. An abrupt process kill in
+  the non-atomic GitHub-issuance/local-persistence window still relies on
+  GitHub's token expiry. Pre-minted backlog
   tokens are bounded by `--max-pooled-tokens` (default 8), two per scope, and
   a two-minute idle lifetime. Idle tokens are revoked and are all revoked at
   shutdown.
@@ -692,6 +704,16 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   evidence. Both profiles preserve scoped credentials, lease fencing, and
   retained claims on uncertain cleanup; neither is a production deployment
   option or an automatic fallback from Docker.
+- **Output safety**: stdout and stderr independently retain unfinished known
+  credentials and credential-shaped spans before UTF-8-safe framing. Writes,
+  newlines, and size-based flushes cannot expose a credential split between
+  stored chunks. Unfinished registered-credential prefixes are masked at close.
+  Retention is bounded by the longest registered credential
+  plus two 8 KiB buffers per stream. If an unresolved credential-shaped span
+  exceeds 8 KiB, that stream emits a redaction/suppression notice and discards
+  further output until command completion; the other stream remains available.
+  This fails closed instead of guessing where an unbounded or overlapping
+  credential ends. Queue output limits still apply.
 - **Native command planning**: Go re-plans every command against the catalog
   allowlist. CAO campaign updates become native `gh-aw update` invocations
   constrained to the configured control repository and selected CAO package.

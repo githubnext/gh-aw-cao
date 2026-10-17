@@ -26,10 +26,11 @@ type fakeMinter struct {
 	ttl        time.Duration
 	failRevoke bool
 	scopes     []map[string]string
+	now        func() time.Time
 }
 
 func newFakeMinter() *fakeMinter {
-	return &fakeMinter{live: map[string]bool{}, ttl: time.Hour}
+	return &fakeMinter{live: map[string]bool{}, ttl: time.Hour, now: time.Now}
 }
 
 func (m *fakeMinter) MintScopedToken(_ context.Context, installationID int64, scope githubapp.TokenScope) (githubapp.ScopedToken, error) {
@@ -42,7 +43,7 @@ func (m *fakeMinter) MintScopedToken(_ context.Context, installationID int64, sc
 	m.scopes = append(m.scopes, scope.Permissions)
 	value := fmt.Sprintf("ghs_fake%04d", m.next)
 	m.live[value] = true
-	return githubapp.NewScopedToken(value, installationID, time.Now().Add(m.ttl)), nil
+	return githubapp.NewScopedToken(value, installationID, m.now().Add(m.ttl)), nil
 }
 
 func (m *fakeMinter) RevokeToken(_ context.Context, token githubapp.ScopedToken) error {
@@ -97,6 +98,7 @@ func TestBrokerTokensAreSingleUseAndRevoked(t *testing.T) {
 func TestBrokerPoolIsBoundedAndIdleTokensAreRevoked(t *testing.T) {
 	minter := newFakeMinter()
 	now := time.Now()
+	minter.now = func() time.Time { return now }
 	broker := NewBroker(minter, BrokerOptions{MaxPooled: 3, MaxPooledPerScope: 2, IdleTTL: time.Minute, Now: func() time.Time { return now }})
 	ctx := context.Background()
 	need := now.Add(15 * time.Minute)
@@ -116,7 +118,9 @@ func TestBrokerPoolIsBoundedAndIdleTokensAreRevoked(t *testing.T) {
 		t.Fatalf("global bound not enforced: %d pooled", pooled)
 	}
 	now = now.Add(2 * time.Minute)
-	broker.Maintain(ctx)
+	if err := broker.Maintain(ctx); err != nil {
+		t.Fatal(err)
+	}
 	if broker.Stats().Pooled != 0 || minter.liveCount() != 0 {
 		t.Fatalf("idle tokens must be revoked: %+v live=%d", broker.Stats(), minter.liveCount())
 	}
@@ -148,7 +152,9 @@ func TestBrokerRetriesFailedRevocationAndCloseRevokesPool(t *testing.T) {
 	}
 	minter.failRevoke = false
 	_ = broker.Prefetch(ctx, 1, testScope, need)
-	broker.Close(ctx)
+	if err := broker.Close(ctx); err != nil {
+		t.Fatal(err)
+	}
 	if minter.liveCount() != 0 || broker.Stats().PendingRevocations != 0 {
 		t.Fatalf("close must revoke everything: live=%d", minter.liveCount())
 	}

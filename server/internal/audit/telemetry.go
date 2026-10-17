@@ -18,6 +18,7 @@ const (
 	instrumentationName = "github.com/githubnext/gh-aw-cao/server/audit"
 	metricEventCount    = "cao_audit.event.count"
 	metricAppendTime    = "cao_audit.append.duration"
+	metricMirrorCount   = "cao_audit.mirror.count"
 	eventNamePrefix     = "cao.audit."
 )
 
@@ -25,6 +26,7 @@ var (
 	instrumentsOnce sync.Once
 	eventCounter    metric.Int64Counter
 	appendDuration  metric.Float64Histogram
+	mirrorCounter   metric.Int64Counter
 )
 
 func instruments() (metric.Int64Counter, metric.Float64Histogram) {
@@ -36,8 +38,18 @@ func instruments() (metric.Int64Counter, metric.Float64Histogram) {
 		appendDuration, _ = meter.Float64Histogram(metricAppendTime,
 			metric.WithDescription("Time to append one event to the tamper-evident audit table."), metric.WithUnit("s"),
 			metric.WithExplicitBucketBoundaries(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5))
+		mirrorCounter, _ = meter.Int64Counter(metricMirrorCount,
+			metric.WithDescription("Audit JSON mirror attempts by success, timeout, or error outcome."),
+			metric.WithUnit("{event}"))
 	})
 	return eventCounter, appendDuration
+}
+
+func observeMirror(ctx context.Context, outcome string) {
+	_, _ = instruments()
+	if mirrorCounter != nil {
+		mirrorCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("cao_audit.mirror.outcome", outcome)))
+	}
 }
 
 // traceAttrs correlates an event with the active span so the audit table,

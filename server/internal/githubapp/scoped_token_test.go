@@ -68,12 +68,12 @@ func TestMintScopedTokenRequestsExplicitRepositoryAndPermissions(t *testing.T) {
 	}
 	for _, rendered := range []string{token.String(), fmt.Sprintf("%v", token), fmt.Sprintf("%#v", token)} {
 		if strings.Contains(rendered, "ghs_scopedvalue") {
-			t.Fatalf("formatted token leaked secret: %s", rendered)
+			t.Fatal("formatted token leaked secret")
 		}
 	}
 	encoded, _ := json.Marshal(token)
 	if strings.Contains(string(encoded), "ghs_scopedvalue") {
-		t.Fatalf("JSON token leaked secret: %s", encoded)
+		t.Fatal("JSON token leaked secret")
 	}
 }
 
@@ -122,7 +122,7 @@ func TestRevokeTokenUsesTheTokenItselfAndToleratesExpiredTokens(t *testing.T) {
 		t.Fatalf("server failure error = %v", err)
 	}
 	if len(authorizations) != 3 || authorizations[0] != "token ghs_revoke" {
-		t.Fatalf("authorizations = %#v", authorizations)
+		t.Fatal("revocations did not use the expected token authorization")
 	}
 	if err := client.RevokeToken(context.Background(), ScopedToken{}); err != nil {
 		t.Fatalf("empty token revoke: %v", err)
@@ -172,7 +172,7 @@ func TestFindRepositoryInstallationAndCollaboratorPermission(t *testing.T) {
 	}
 }
 
-func TestMintScopedTokenRevokesAndRejectsOverBroadGrants(t *testing.T) {
+func TestMintScopedTokenTransfersRejectedGrantsForCleanup(t *testing.T) {
 	for name, granted := range map[string]string{
 		"extra permission":   `"permissions":{"contents":"read","administration":"write"},"repositories":[{"name":"api"}]`,
 		"escalated level":    `"permissions":{"contents":"write"},"repositories":[{"name":"api"}]`,
@@ -192,16 +192,37 @@ func TestMintScopedTokenRevokesAndRejectsOverBroadGrants(t *testing.T) {
 				response.WriteHeader(http.StatusCreated)
 				_, _ = fmt.Fprintf(response, `{"token":"ghs_broad","expires_at":%q,%s}`, time.Now().Add(time.Hour).UTC().Format(time.RFC3339), granted)
 			})
-			_, err := client.MintScopedToken(context.Background(), 9, TokenScope{
+			token, err := client.MintScopedToken(context.Background(), 9, TokenScope{
 				Repositories: []string{"api"}, Permissions: map[string]string{"contents": "read"},
 			})
 			if err == nil || strings.Contains(err.Error(), "ghs_broad") {
-				t.Fatalf("over-broad grant must fail without leaking: %v", err)
+				t.Fatal("over-broad grant must fail without leaking")
+			}
+			if token.Secret() == "" || token.ExpiresAt.IsZero() {
+				t.Fatal("rejected grant must transfer its credential and expiry for cleanup")
+			}
+			if err := client.RevokeToken(t.Context(), token); err != nil {
+				t.Fatal(err)
 			}
 			if !revoked {
 				t.Fatal("over-broad token must be revoked immediately")
 			}
 		})
+	}
+}
+
+func TestMintScopedTokenMissingExpiryRetainsConservativeCleanupLifetime(t *testing.T) {
+	client := testScopedClient(t, func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		response.WriteHeader(http.StatusCreated)
+		_, _ = response.Write([]byte(`{"token":"ghs_missingexpiry","permissions":{"contents":"read"},"repositories":[{"name":"api"}]}`))
+	})
+	before := time.Now()
+	token, err := client.MintScopedToken(t.Context(), 9, TokenScope{
+		Repositories: []string{"api"}, Permissions: map[string]string{"contents": "read"},
+	})
+	if err == nil || token.Secret() == "" || token.ExpiresAt.Before(before.Add(time.Hour)) {
+		t.Fatal("missing expiry must reject use and retain a full installation-token lifetime for cleanup")
 	}
 }
 
