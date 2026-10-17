@@ -82,6 +82,19 @@
       "target_commit": "dda6e4ad3194da3253b9b944f447aa590aa4e377",
       "target_repo": "githubnext/gh-aw-cao",
       "reason": "Re-confirmed on HEAD dda6e4a: sole recursive chmod call remains tests/e2e/cao-mcp-container.mjs:89, widening perms on a scratch mkdtemp directory, not narrowing restricted files; remains a false positive. No new recursive chmod call sites found. Rule stays deprecated centrally."
+    },
+    {
+      "false_negative_count": 0,
+      "false_positive_count": 2,
+      "missing_suppression_count": 1,
+      "true_positive_count": 1,
+      "unclear_diagnostic_count": 0,
+      "unsafe_autofix_count": 0,
+      "reason": "Source inspection at HEAD 1b716d1: src/artifact-preservation.ts chmodRuntimeArtifacts() still runs chmod -R a+rX on the default 'recursive' runtime dir (line ~157, default at ~233); chmodPublicArtifacts() now filters private enclave audit files and cloud-hypervisor dirs before chmod -R (line ~209), so that site and the artifact-permissions.ts /fix chown/chmod helper are false positives without suppression support. Code has been refactored since b179fef; the default recursive path remains the one genuine hit. Grep/inspection-based, not an ESLint run.",
+      "target_commit": "1b716d142ce850b38944eabab5cacf91b5a96e9f",
+      "readiness_for_target": "needs-work",
+      "target_repo": "github/gh-aw-firewall",
+      "txn_id": "refiner-39067866988-1"
     }
   ],
   "affected_paths": [
@@ -151,8 +164,8 @@
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
   "language": "typescript",
   "last_seen_at": "2026-10-13T16:57:20Z",
-  "last_updated": "2026-10-11T04:07:34Z",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/38110386121",
+  "last_updated": "2026-10-17T20:50:00Z",
+  "last_updated_by_run": "39067866988",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "likely_false_positives": "Recursive chmod on directories that are guaranteed never to contain restricted-mode files (e.g. purely public build-output directories) is safe; the rule should allow an explicit exclusion/allowlist comment or a narrower non-recursive alternative to suppress.",
   "mechanical_correction": "Restrict the chmod to the specific top-level directory and its direct (non-recursive) files only, or explicitly enumerate/exclude known-sensitive subpaths before any recursive step. When a file must stay private, create it with the restrictive mode via `fs.openSync(path, flags, 0o600)` + `fs.fchmodSync` (or equivalent) rather than relying on a later broad chmod pass to skip it.",
