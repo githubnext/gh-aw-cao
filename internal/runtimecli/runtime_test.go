@@ -112,7 +112,9 @@ func TestCheckNode(t *testing.T) {
 	}
 	err = checkNode(context.Background(), node)
 	var major int
-	fmt.Sscanf(string(output), "v%d.", &major)
+	if _, scanErr := fmt.Sscanf(string(output), "v%d.", &major); scanErr != nil {
+		t.Fatal(scanErr)
+	}
 	if major >= 24 && err != nil {
 		t.Fatal(err)
 	}
@@ -179,11 +181,17 @@ func TestRuntimeHelper(t *testing.T) {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		fmt.Fprintln(os.Stdout, "terminal input: "+strings.TrimSpace(line))
+		if _, err := fmt.Fprintln(os.Stdout, "terminal input: "+strings.TrimSpace(line)); err != nil {
+			t.Fatal(err)
+		}
 		os.Exit(0)
 	case "success":
-		io.Copy(os.Stdout, os.Stdin)
-		fmt.Fprintln(os.Stdout, args[1])
+		if _, err := io.Copy(os.Stdout, os.Stdin); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := fmt.Fprintln(os.Stdout, args[1]); err != nil {
+			t.Fatal(err)
+		}
 		fmt.Fprintln(os.Stderr, "diagnostic")
 		os.Exit(0)
 	case "wait":
@@ -191,7 +199,9 @@ func TestRuntimeHelper(t *testing.T) {
 		os.Exit(0)
 	default:
 		var code int
-		fmt.Sscan(args[0], &code)
+		if _, err := fmt.Sscan(args[0], &code); err != nil {
+			t.Fatal(err)
+		}
 		fmt.Fprintln(os.Stderr, "runtime failed")
 		os.Exit(code)
 	}

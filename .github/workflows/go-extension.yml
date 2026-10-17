@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - .github/workflows/go-extension.yml
+      - .github/workflows/cao.json
+      - .github/actions/setup-gh-aw/**
+      - .golangci.yml
       - cmd/**
       - internal/**
       - go.mod
@@ -20,6 +23,9 @@ on:
     branches: [main]
     paths:
       - .github/workflows/go-extension.yml
+      - .github/workflows/cao.json
+      - .github/actions/setup-gh-aw/**
+      - .golangci.yml
       - cmd/**
       - internal/**
       - go.mod
@@ -42,7 +48,7 @@ concurrency:
 
 jobs:
   extension-quality:
-    name: Format, vet, test, and build
+    name: Format, lint, vet, test, and build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -53,6 +59,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+      - name: Check formatting
+        shell: bash
+        run: |
+          golangci-lint fmt --diff ./cmd/... ./internal/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"
+          test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"
+      - name: Lint
+        run: golangci-lint run ./cmd/... ./internal/...
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
@@ -71,7 +86,33 @@ jobs:
         run: |
           ./gh-cao --help
           ./gh-cao version
-          ./gh-cao doctor
+          ./gh-cao doctor --help
           ./gh-cao quickstart --help
-          ./gh-cao setup-auth token --help
+          ./gh-cao setup --help
+          ./gh-cao setup auth --help
+          ./gh-cao setup auth github-app --help
+          ./gh-cao setup auth enterprise-app --help
+          ./gh-cao setup auth token --help
           ./gh-cao pages --json > /dev/null
+
+  extension-authtests:
+    name: Doctor authenticated integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Install policy-pinned gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
+      - name: Run authenticated doctor integration tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: make authtests

@@ -12,8 +12,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type campaignWorker struct {
+	Name, Workflow string
+}
+
+type campaignDeclaration struct {
+	Campaign, Orchestrator string
+	Workers                []campaignWorker
+}
+
+func (d *campaignDeclaration) workerNames() []string {
+	names := make([]string, 0, len(d.Workers))
+	for _, worker := range d.Workers {
+		names = append(names, worker.Name)
+	}
+	return names
+}
+
 func campaignWorkflows(campaign string) ([]string, error) {
-	path := filepath.Join(campaign, "cao.json")
+	declaration, err := readCampaignDeclaration(campaign, campaign)
+	if err != nil {
+		return nil, err
+	}
+	result := []string{declaration.Orchestrator}
+	for _, worker := range declaration.Workers {
+		result = append(result, worker.Workflow)
+	}
+	return result, nil
+}
+
+func readCampaignDeclaration(directory, campaign string) (result *campaignDeclaration, err error) {
+	path := filepath.Join(directory, "cao.json")
 	file, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("campaign %s is not installed or does not declare CAO workflows", campaign)
@@ -21,7 +50,7 @@ func campaignWorkflows(campaign string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { err = errors.Join(err, file.Close()) }()
 	var declaration struct {
 		Campaign     string          `json:"campaign"`
 		Orchestrator string          `json:"orchestrator"`
@@ -46,7 +75,7 @@ func campaignWorkflows(campaign string) ([]string, error) {
 	if err != nil || token != json.Delim('{') {
 		return nil, fmt.Errorf("%s workers must be a non-empty object", path)
 	}
-	result := []string{declaration.Orchestrator}
+	result = &campaignDeclaration{Campaign: campaign, Orchestrator: declaration.Orchestrator}
 	seen := map[string]bool{}
 	workerNames := map[string]bool{}
 	for workers.More() {
@@ -70,9 +99,9 @@ func campaignWorkflows(campaign string) ([]string, error) {
 			return nil, fmt.Errorf("%s workers must name unique workflows", path)
 		}
 		seen[workflow] = true
-		result = append(result, workflow)
+		result.Workers = append(result.Workers, campaignWorker{Name: worker, Workflow: workflow})
 	}
-	if len(result) == 1 {
+	if len(result.Workers) == 0 {
 		return nil, fmt.Errorf("%s workers must be a non-empty object", path)
 	}
 	return result, nil
@@ -146,6 +175,8 @@ func checkLiveAuthentication(cmd *cobra.Command, gh ghExecutor) {
 		}
 	}
 	if !configured && os.Getenv("CI") == "true" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Live write authentication is not configured for %s; run gh cao setup to configure a GitHub App or PAT before posting live items.\n", repository)
+		if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "Live write authentication is not configured for %s; run gh cao setup to configure a GitHub App or PAT before posting live items.\n", repository); err != nil {
+			log.Print("Unable to write live authentication warning")
+		}
 	}
 }

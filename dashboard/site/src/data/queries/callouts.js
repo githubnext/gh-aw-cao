@@ -1,4 +1,7 @@
 import { timestampMilliseconds } from '../model/schema.js';
+import { createDebug } from '../../debug.js';
+
+const debugCallouts = createDebug('callouts');
 
 /** @typedef {{ id: string, visibility: 'visible' | 'hidden' | 'unavailable' }} CalloutVisibility */
 
@@ -12,12 +15,15 @@ import { timestampMilliseconds } from '../model/schema.js';
  */
 export function queryCalloutVisibility(callouts, sources, signal) {
   const now = Date.now();
-  return callouts.map((callout) => {
+  let unavailableCount = 0;
+  /** @type {CalloutVisibility[]} */
+  const results = callouts.map((callout) => {
     signal?.throwIfAborted();
     const condition = callout['visible-when'];
     if (!condition) return { id: callout.id, visibility: 'visible' };
     const source = sources[condition.source];
     if (!source || source.metadata?.availability === 'unavailable') {
+      unavailableCount += 1;
       return { id: callout.id, visibility: 'unavailable' };
     }
     const visible = source.rows.some((row) => {
@@ -29,4 +35,6 @@ export function queryCalloutVisibility(callouts, sources, signal) {
     });
     return { id: callout.id, visibility: visible ? 'visible' : 'hidden' };
   });
+  debugCallouts({ event: 'visibility-queried', status: 'complete', calloutCount: callouts.length, unavailableCount });
+  return results;
 }

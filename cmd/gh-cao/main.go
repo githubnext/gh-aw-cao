@@ -55,6 +55,8 @@ func reportError(err error, stderr io.Writer) int {
 	if errors.Is(err, context.Canceled) {
 		return 130
 	}
-	fmt.Fprintln(stderr, "error:", err)
+	if _, writeErr := fmt.Fprintln(stderr, "error:", err); writeErr != nil {
+		return 1
+	}
 	return 1
 }

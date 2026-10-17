@@ -29,7 +29,6 @@ var (
 )
 
 func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
-	setup := operatorCommand("setup", "Configure repository scope and authentication", cobra.NoArgs, []operatorFlag{jsonFlag}, execute)
 	quickstart := operatorCommand("quickstart", "Install, run, collect, or inspect a bounded first review", cobra.NoArgs, []operatorFlag{
 		textFlag("step", "install (default), run, collect, or dashboard"),
 		textFlag("target", "Explicit public target OWNER/REPO for installation"),
@@ -64,34 +63,6 @@ func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
 		databaseFlag, dashboardFlag, textFlag("host", "Bind host (default 127.0.0.1)"), textFlag("port", "Bind port (default 8765)"),
 	}, execute)
 	upgrade := operatorCommand("upgrade-gh-aw VERSION", "Upgrade gh-aw and its policy pin to an exact release", cobra.ExactArgs(1), nil, execute)
-	auth := &cobra.Command{
-		Use: "setup-auth", Short: "Configure read and write authentication", Args: cobra.NoArgs,
-		RunE: func(*cobra.Command, []string) error {
-			return fmt.Errorf("setup-auth requires github-app, enterprise-app, or token")
-		},
-	}
-	commonAuth := []operatorFlag{
-		textFlag("repo", "Control repository OWNER/REPO"), textFlag("policy", "CAO policy path"),
-		{name: "write-repository", description: "Explicit safe-output repository OWNER/REPO (repeatable)", repeat: true},
-		boolFlag("dry-run", "Describe configuration without applying it"),
-	}
-	app := operatorCommand("github-app", "Configure organization-owned read and write GitHub Apps", cobra.NoArgs, appendFlags(commonAuth,
-		textFlag("read-client-id", "Existing read App client ID"), textFlag("write-client-id", "Existing write App client ID"),
-		textFlag("read-app-name", "Name for a new read App"), textFlag("write-app-name", "Name for a new write App"),
-		boolFlag("force", "Replace the selected App configuration"), boolFlag("no-open", "Print browser URLs instead of opening them"),
-	), execute)
-	enterprise := operatorCommand("enterprise-app", "Configure existing enterprise-owned GitHub Apps", cobra.NoArgs, appendFlags(commonAuth,
-		textFlag("read-client-id", "Read App client ID"), textFlag("write-client-id", "Write App client ID"),
-	), execute)
-	token := operatorCommand("token", "Configure explicitly scoped fine-grained PAT pairs", cobra.NoArgs, appendFlags(commonAuth,
-		textFlag("expires-in", "Token expiration in days, 1 through 366 (default 30)"),
-		boolFlag("no-open", "Print token-creation URLs instead of opening them"),
-		boolFlag("keep-existing", "Preserve existing token secrets"),
-		boolFlag("replace-existing", "Replace existing token secrets"),
-	), execute)
-	token.MarkFlagsMutuallyExclusive("keep-existing", "replace-existing")
-	auth.AddCommand(app, enterprise, token)
-
 	gh := &cobra.Command{
 		Use: "gh", Short: "Inspect workflow runs and safe-output issues or pull requests", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
@@ -132,8 +103,7 @@ func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
 		return nil
 	}
 	computation.AddCommand(intelligence, health)
-	root.AddCommand(setup, quickstart, validate, download, pages, queries, info, prompt, query, mcp, upgrade, auth, gh, computation,
-		passthroughCommand("add CAMPAIGN [GH_AW_ADD_OPTIONS...] | --repository OWNER/REPO", "Install a campaign or enroll one exact repository", execute),
+	root.AddCommand(setupCommand(execute), quickstart, validate, download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
 		passthroughCommand("update [REF] [GH_AW_OPTIONS...]", "Update installed CAO packages without widening rollout", execute),
 	)
 }
@@ -185,10 +155,10 @@ func operatorCommand(use, short string, args cobra.PositionalArgs, flags []opera
 	return cmd
 }
 
-// gh-aw add/update options evolve independently; retain their exact order and values.
+// gh-aw update options evolve independently; retain their exact order and values.
 func passthroughCommand(use, short string, execute runtimeExecutor) *cobra.Command {
 	cmd := &cobra.Command{Use: use, Short: short, DisableFlagParsing: true}
-	cmd.Long = short + ".\n\nOptions are passed unchanged to the installed CAO runtime and gh-aw.\nUse --campaign SLUG with update; use --repository OWNER/REPO with add."
+	cmd.Long = short + ".\n\nOptions are passed unchanged to the installed CAO runtime and gh-aw.\nUse --campaign SLUG with update."
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		for _, arg := range args {
 			if arg == "--" {
@@ -196,18 +166,6 @@ func passthroughCommand(use, short string, execute runtimeExecutor) *cobra.Comma
 			}
 			if arg == "--help" || arg == "-h" {
 				return cmd.Help()
-			}
-		}
-		if cmd.Name() == "add" {
-			if len(args) == 0 {
-				return fmt.Errorf("add requires a campaign or --repository OWNER/REPO")
-			}
-			if args[0] == "--repository" {
-				if len(args) != 2 || !repositoryPattern.MatchString(args[1]) {
-					return fmt.Errorf("add --repository requires exactly one OWNER/REPO")
-				}
-			} else if strings.HasPrefix(args[0], "-") {
-				return fmt.Errorf("add requires a campaign")
 			}
 		}
 		return execute(cmd, append(commandWords(cmd), args...))

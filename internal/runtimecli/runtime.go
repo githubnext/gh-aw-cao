@@ -133,7 +133,9 @@ func run(ctx context.Context, executable string, args []string, stdin io.Reader,
 	err := cmd.Run()
 	if ctx.Err() != nil {
 		if cleanupErr := stopProcessTree(cmd); cleanupErr != nil {
-			fmt.Fprintln(stderr, "error: unable to stop CAO runtime subprocesses:", cleanupErr)
+			if _, writeErr := fmt.Fprintln(stderr, "error: unable to stop CAO runtime subprocesses:", cleanupErr); writeErr != nil {
+				return errors.Join(ctx.Err(), cleanupErr, writeErr)
+			}
 		}
 		return ctx.Err()
 	}

@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-// Preserve operator-owned key order instead of sorting the entire policy on a mode change.
+// Preserve operator-owned key order instead of sorting the entire policy on mutation.
 func orderedPolicyJSON(document map[string]any, original []byte) ([]byte, error) {
 	var compact bytes.Buffer
 	if err := writeOrderedJSON(&compact, document, original); err != nil {
@@ -24,7 +24,7 @@ func writeOrderedJSON(output *bytes.Buffer, value any, original json.RawMessage)
 	case map[string]any:
 		var keys []string
 		old := map[string]json.RawMessage{}
-		if len(original) != 0 {
+		if trimmed := bytes.TrimSpace(original); len(trimmed) != 0 && trimmed[0] == '{' {
 			decoder := json.NewDecoder(bytes.NewReader(original))
 			if _, err := decoder.Token(); err != nil {
 				return err
@@ -71,7 +71,7 @@ func writeOrderedJSON(output *bytes.Buffer, value any, original json.RawMessage)
 		output.WriteByte('}')
 	case []any:
 		var old []json.RawMessage
-		if len(original) != 0 {
+		if trimmed := bytes.TrimSpace(original); len(trimmed) != 0 && trimmed[0] == '[' {
 			if err := json.Unmarshal(original, &old); err != nil {
 				return err
 			}

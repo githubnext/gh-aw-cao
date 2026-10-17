@@ -377,6 +377,32 @@ func run(arguments []string) error {
 	return root.Execute()
 }
 
+// doctorBackendSource identifies which input selected the operational backend
+// the doctor diagnoses. It is useful for diagnosing misconfiguration without
+// logging any policy path or endpoint.
+type doctorBackendSource string
+
+const (
+	doctorBackendSourcePolicy  doctorBackendSource = "policy"
+	doctorBackendSourceRedis   doctorBackendSource = "redis"
+	doctorBackendSourceDefault doctorBackendSource = "default"
+)
+
+// resolveDoctorBackendSource applies the doctor's backend precedence: a
+// reviewed operational policy (selected explicitly or through a policy path
+// variable) wins, then an explicit Redis URL flag or CAO_REDIS_URL, then the
+// default Postgres-backed diagnosis.
+func resolveDoctorBackendSource(policySelected bool, policyPath, marketplacePolicyPath string, redisFlagChanged bool, redisEnv string) doctorBackendSource {
+	switch {
+	case policySelected || strings.TrimSpace(policyPath) != "" || strings.TrimSpace(marketplacePolicyPath) != "":
+		return doctorBackendSourcePolicy
+	case redisFlagChanged || strings.TrimSpace(redisEnv) != "":
+		return doctorBackendSourceRedis
+	default:
+		return doctorBackendSourceDefault
+	}
+}
+
 // newDoctorCommand builds the read-only diagnostic check-up subcommand.
 //
 // It reports rather than repairs, and it exits non-zero when it found a
@@ -423,11 +449,12 @@ func newDoctorCommand() *cobra.Command {
 		if selectionErr != nil {
 			return selectionErr
 		}
-		hasPolicy := selected ||
-			strings.TrimSpace(os.Getenv("CAO_POLICY_PATH")) != "" ||
-			strings.TrimSpace(os.Getenv("CAO_MARKETPLACE_POLICY_PATH")) != ""
-		switch {
-		case hasPolicy:
+		backendSource := resolveDoctorBackendSource(
+			selected, os.Getenv("CAO_POLICY_PATH"), os.Getenv("CAO_MARKETPLACE_POLICY_PATH"),
+			cmd.Flags().Changed("redis-url"), os.Getenv("CAO_REDIS_URL"))
+		commandLog.Printf("doctor resolved backend source=%s", backendSource)
+		switch backendSource {
+		case doctorBackendSourcePolicy:
 			settings, provider, selectionErr := server.NewOperationalDiagnosticsFromEnv(ctx)
 			if selectionErr != nil && settings.Backend == "" {
 				return selectionErr
@@ -448,7 +475,7 @@ func newDoctorCommand() *cobra.Command {
 					check.RedisStore = server.NewRedisProviderDiagnostics(redisStore)
 				}
 			}
-		case cmd.Flags().Changed("redis-url") || strings.TrimSpace(os.Getenv("CAO_REDIS_URL")) != "":
+		case doctorBackendSourceRedis:
 			check.Backend = "redis"
 			maxRedisBytes, err := server.RedisMaxBytesFromEnv(0)
 			if err != nil {
