@@ -199,7 +199,8 @@ a subprocess starts.
    pinned by OCI SHA-256 digest (default
    `ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090`),
    or in an operator-approved digest-pinned mirror. An unpinned image reference
-   MUST fail startup. The executor MUST use the local Docker `default` context;
+   MUST fail startup. Except for the explicit local-development profiles in
+   section 6a, the executor MUST use the local Docker `default` context;
    remote contexts MUST NOT be used because the command's workspace is a
    host-local bind mount.
 7. The Go planner MUST accept only fixed `gh` and `gh-aw` container entrypoints.
@@ -208,22 +209,23 @@ a subprocess starts.
    repository before invoking the planned entrypoint: the pinned `gh-aw update`
    and `upgrade --repo` implementations require a Git root before cloning their
    target. The bootstrap MUST disable Git templates and pass the planned
-   program and arguments as positional parameters to `exec`, never interpolate
+   program and arguments as positional parameters to the fixed entrypoint, never interpolate
    them into shell source. This bootstrap grants no host execution or
    repository-discovery authority. A CAO campaign update MUST be translated to a native `gh-aw update`
    command scoped to the configured control repository and the catalog-selected
    CAO package. The container image reference MUST be recorded in the audit
    event for command start.
-8. The container MUST use a read-only root filesystem, drop all Linux
+8. Linux-image profiles MUST use a read-only root filesystem, drop all Linux
    capabilities, enable `no-new-privileges`, and apply process and memory
    limits. The per-command workspace MUST be its only writable host bind mount;
    `/tmp` MAY be a bounded tmpfs. The executor MUST NOT mount the host home,
    Docker socket, App key, database credentials, or other server files.
 9. The subprocess environment MUST be minimal: the single-use `GH_TOKEN`, an
    empty system git configuration, the `gh` credential helper, and the App bot
-   identity. The executor MUST pass it through a temporary mode-`0600`
+   identity. For Linux-image profiles, the executor MUST pass it through a temporary mode-`0600`
    environment file outside the mounted workspace, remove that file after
-   container creation, and MUST NOT place token values in command arguments.
+   container creation. Windows Sandbox MUST use the protected input mapping
+   specified in section 6a instead. No profile may place token values in command arguments.
 10. The executor MUST attempt bounded forced container removal on cancellation,
    deadline, or loss of the lease. Command output MUST redact the token. Logs MUST NOT
    contain tokens, private keys, or OAuth credentials.
@@ -266,14 +268,81 @@ a subprocess starts.
    cancellation-detached, bounded context. Recovery through `RecoverableRunner`
    MUST retain the same original-runtime and lease-fencing requirements.
    Docker is the only production adapter and retains the local-default-context
-   restriction and existing durable daemon IDs. Other adapters require their
-   own backend-scoped runtime identity and equivalent isolation; this interface
-   does not enable remote Docker or a new deployment backend. Hosted commands
+   restriction and existing durable daemon IDs. The native development
+   adapters in section 6a require their own backend-scoped runtime identity;
+   they do not enable remote Docker or a new production backend. Hosted commands
    are non-interactive; supplied stdin MUST be rejected rather than discarded.
    The lifecycle boundary adds no exactly-once guarantee or cross-command
    deduplication: idempotent update commands may overlap within configured
    capacity. This does not make workflow dispatch idempotent, change retry
    admission, or release capacity occupied by an unconfirmed workload.
+
+## 6a. Native local-development profiles
+
+1. `CAO_HOSTED_CLI_CONTAINER_RUNTIME` MUST default to `docker`; unknown values
+   MUST fail startup. Explicit `apple` or `windows-sandbox` selection MUST
+   require `execute-cli --sqlite` and the matching host platform. Missing
+   native prerequisites MUST fail closed, never select Docker or host execution
+   automatically. Admission, live permission rechecks, token scope, audit
+   requirements, deadlines, and retained-claim recovery remain unchanged.
+2. Apple container MUST use the pinned Linux image in a private Linux VM on
+   Apple Silicon. The adapter MUST select the Linux runtime explicitly, mount
+   only the private workspace, drop capabilities, enforce no-new-privileges
+   inside the guest, and bound VM CPU, memory, and the user's process count.
+   The default image is AMD64 and requires Rosetta. Its temporary `/tmp`
+   filesystem MUST be bounded; the native CLI does not expose Docker's exact
+   tmpfs mount options.
+3. Apple runtime identity MUST include its actual service-reported data root,
+   local host/user/session identity, and a durable private random identity
+   record. Changing or losing that identity MUST block old-runtime recovery.
+   The adapter MUST preserve both output streams from startup without relying
+   on the native CLI's indefinitely following log reader. The guest MUST write
+   an identity-bound, bounded exit receipt. Neither that receipt nor a native
+   `stopped` snapshot is sufficient: the corresponding launchd VM service MUST
+   also be independently absent before termination is confirmed.
+4. Windows Sandbox is an explicit development-only exception to the Linux
+   image requirement. It MUST use a locally supplied, SHA-256-pinned archive of
+   Windows `gh`, `gh-aw`, and portable Git, including their dependencies.
+   The staged archive MUST be verified before VM creation and again in the
+   guest. The audit image identity MUST identify the Windows archive digest,
+   not pretend it is the Linux OCI image. An OCI-image override MUST be rejected
+   for this profile, and missing tools MUST NOT fall back to host binaries.
+5. Windows Sandbox MUST enforce its single-instance limit across local
+   executor namespaces and processes, not just a queue's concurrency setting.
+   Its SQLite queue concurrency MUST be one and MUST match between admission
+   and execution; existing queue configuration MUST NOT be silently rewritten.
+   An unrelated or user-started Sandbox MUST cause admission to the native
+   runtime to fail; it MUST NOT be attached to, reused, or stopped. Ownership
+   MUST be durably recorded before launch and retained while termination is
+   uncertain. Recovery MUST act only on the recorded owned VM.
+   Until a Sandbox-to-host-VM identity mapping is verified, this profile MUST
+   reject any pre-existing HCS-managed VM and require empty host-compute VM
+   inventory after exact-owned-ID shutdown. It MUST NOT stop foreign VMs.
+   Missing or malformed host-compute evidence MUST fail closed; current-user
+   CLI inventory or absence of a GUI process is insufficient.
+   Global HCS enumeration MUST require elevated administrator or effective
+   Hyper-V Administrators privileges. An indeterminate `starting` reservation
+   MUST remain fenced even when both inventories are empty; the current
+   operator-acknowledged recovery path MUST NOT clear it.
+6. Windows configuration MUST disable clipboard, audio, video, printer, and
+   GPU sharing, enable the protected client, set an explicit memory limit,
+   and map only private command inputs read-only and the command workspace
+   writable. GitHub network access is permitted for the scoped command.
+   A fixed guest bootstrap MUST read arguments and credentials from protected
+   files, not interpolate them into scripts or launcher arguments. Guest
+   stdout/stderr and exit receipts MUST be read with bounded memory and without
+   following guest-controlled links outside the private workspace.
+   Windows workspace privacy MUST be validated from ownership, DACLs, and
+   reparse state before staging and immediately before VM creation, including
+   existing descendants. The work root MUST have a pre-provisioned protected,
+   inheritable private DACL; Unix file modes MUST NOT substitute for this check.
+7. Guest receipts establish only the command's reported result, not VM
+   termination. An owned VM MUST be independently confirmed stopped or absent
+   before its receipt can become a settled result. Cancellation, failed launch,
+   lost transport, and failed cleanup MUST preserve the same uncertainty and
+   lease-fencing guarantees as the Docker adapter. Native prerequisites are
+   operator-managed; the executor MUST NOT install OS features or change
+   global runtime configuration automatically.
 
 ## 7. Audit trail
 

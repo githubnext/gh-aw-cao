@@ -677,6 +677,21 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   a stop request is not confirmation of termination. Recovery must confirm termination on
   the original daemon after the old executor and its requests have stopped.
   Output redaction applies before persistence.
+- **Native development profiles**: only `execute-cli --sqlite` may explicitly
+  select Apple container on Apple Silicon or Windows Sandbox on Windows.
+  Apple uses the pinned Linux image, a private VM, resource limits, and a fixed
+  in-guest no-new-privileges bootstrap. Its API's stopped state must be backed
+  by absence of the VM's launchd service. Windows Sandbox instead requires an
+  explicitly approved SHA-256-pinned Windows tools archive; it never falls
+  back to host binaries or claims to execute the Linux image. Sandbox ownership
+  spans local executor namespaces, and unrelated/user-created sandboxes must
+  never be adopted or stopped. The conservative Windows profile rejects other
+  HCS-managed VMs and requires independent host-compute VM absence before
+  settlement; it never guesses a Sandbox-to-host-VM ID mapping.
+  Native guest result files are not termination
+  evidence. Both profiles preserve scoped credentials, lease fencing, and
+  retained claims on uncertain cleanup; neither is a production deployment
+  option or an automatic fallback from Docker.
 - **Native command planning**: Go re-plans every command against the catalog
   allowlist. CAO campaign updates become native `gh-aw update` invocations
   constrained to the configured control repository and selected CAO package.

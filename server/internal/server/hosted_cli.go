@@ -87,7 +87,7 @@ func (a *App) EnableHostedCLIActions(ctx context.Context, config HostedCLIConfig
 		if queues == nil {
 			return errors.New("hosted CLI actions require the postgres operational store or --hosted-cli-sqlite")
 		}
-		options, err := operational.CLICommandQueueOptions{}.Resolve()
+		options, err := hostedCLIQueueOptions(config.DebugStore != nil)
 		if err != nil {
 			return err
 		}

@@ -260,7 +260,7 @@ backlog.
 The Go planner translates the hosted CAO package-update action into a native
 `gh-aw update`; it never invokes `cao.sh` or executes control-repository scripts.
 The executor runs only `gh` or the Go `gh-aw` CLI in the official digest-pinned
-gh-aw container, mounting only the per-command workspace and passing the
+gh-aw container by default, mounting only the per-command workspace and passing the
 single-use token through a temporary protected environment file. The broker
 revokes and rejects any token whose granted scope exceeds the request. Both
 processes append credential-free audit events (`server/internal/audit`) to the
@@ -270,6 +270,22 @@ when the event cannot be stored.
 For local debugging only, `--hosted-cli-sqlite` and `execute-cli --sqlite`
 share a loopback-only SQLite file (`server/internal/operational/sqlite`) that
 provides the same queue and audit table without PostgreSQL.
+That SQLite development profile may explicitly select an alternative
+`ContainerLifecycle` adapter without changing admission or token authority.
+Docker remains the production default and keeps its local-default-context
+restriction. Apple Silicon development uses Apple's `container` CLI with the
+same pinned Linux image, a private VM, dropped capabilities, and an in-guest
+no-new-privileges bootstrap. Windows development uses Windows Sandbox and a
+separately SHA-256-pinned archive of Windows `gh`, `gh-aw`, and Git tools, not a
+Linux-image fallback. Native providers preserve registration before creation,
+private workspace isolation, bounded cleanup, and original-runtime recovery.
+Guest result receipts or launcher exit never prove VM termination. Windows
+Sandbox ownership is exclusive across local executor namespaces; unrelated
+user sandboxes must not be reused or stopped. Without a verified Sandbox-to-HCS
+VM identity mapping, this conservative profile rejects other HCS-managed VMs
+and requires empty host-compute VM inventory before settlement.
+These development exceptions do
+not enable a new production runtime or exactly-once external effects.
 Tokens appear in those events only as GitHub's `hashed_token` digest.
 `cao-dashboard audit verify` checks the chain against external head anchors
 and `audit export` writes rows as JSON Lines. Audit events are also OTLP log
