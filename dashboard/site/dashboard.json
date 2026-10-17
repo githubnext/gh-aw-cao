@@ -893,8 +893,8 @@
         "label": "Update all",
         "description": "Queue an individual update for every listed campaign, then open Commands.",
         "icon": "sync",
-        "command": "./cao.sh update --campaign {{campaign}} --pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]({{cao-repository-url}}) to update the {{campaign}} campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard]({{cao-url}}#page-maintenance-campaigns).'",
-        "preview-command": "./cao.sh update --campaign {{campaign}}",
+        "command": "gh aw update https://github.com/githubnext/gh-aw-cao/{{campaign}} --repo {{cao-repository}} --pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]({{cao-repository-url}}) to update the {{campaign}} campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard]({{cao-url}}#page-maintenance-campaigns).'",
+        "preview-command": "gh aw update https://github.com/githubnext/gh-aw-cao/{{campaign}} --repo {{cao-repository}}",
         "placement": "view",
         "arguments": [
           {
@@ -992,7 +992,7 @@
         "label": "Update",
         "description": "Update this campaign's agentic workflow.",
         "icon": "sync",
-        "command": "./cao.sh update --campaign {{campaign}} --pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]({{cao-repository-url}}) to update the {{campaign}} campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard]({{cao-url}}#page-maintenance-campaigns).'",
+        "command": "gh aw update https://github.com/githubnext/gh-aw-cao/{{campaign}} --repo {{cao-repository}} --pr-message 'This pull request was requested through [Central Agentic Ops (CAO)]({{cao-repository-url}}) to update the {{campaign}} campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard]({{cao-url}}#page-maintenance-campaigns).'",
         "placement": "row",
         "arguments": [
           {

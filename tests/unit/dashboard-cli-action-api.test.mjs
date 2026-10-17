@@ -4,7 +4,6 @@ import { createServer } from "node:http";
 import test from "node:test";
 import { createCliActionApi, resolveQueuedCliAction } from "../../dashboard/cli-action-api.mjs";
 import { parseDashboardCommand } from "../../dashboard/cli-actions.mjs";
-import { parseUpdateArguments } from "../../activity/commands/update.mjs";
 import { cliActionTemplateContext } from "../../dashboard/site/src/cli-action-template.js";
 
 const dashboard = { dashboard: { "cli-actions": [
@@ -41,14 +40,11 @@ test("built-in update and upgrade actions carry CAO attribution as one PR messag
       }, context);
       const tokens = parseDashboardCommand(invocation.command);
       assert.deepEqual(tokens, [
-        ...(update ? ["./cao.sh", "update", "--campaign", "activity"] : ["gh", "aw", "upgrade", "--repo", "octo/example"]),
+        ...(update
+          ? ["gh", "aw", "update", "https://github.com/githubnext/gh-aw-cao/activity", "--repo", "acme/control"]
+          : ["gh", "aw", "upgrade", "--repo", "octo/example"]),
         "--pr-message", message, ...(createPr ? ["--create-pull-request"] : []),
       ]);
-      if (update) {
-        const parsed = parseUpdateArguments(tokens.slice(2), Error);
-        assert.equal(parsed.ref, undefined);
-        assert.deepEqual(parsed.updateOptions, ["--pr-message", message, ...(createPr ? ["--create-pull-request"] : [])]);
-      }
     }
   }
 });

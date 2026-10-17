@@ -125,15 +125,38 @@ It does not replace repository permissions, branch protections, or human review.
 See the [open issues](https://github.com/githubnext/gh-aw-cao/issues) for current
 work and planned improvements.
 
-### Go extension scaffold
+### GitHub CLI extension
 
-The repository includes a development scaffold for the `gh cao` GitHub CLI
-extension. Run `make build` to produce `./gh-cao`, then try
-`./gh-cao --help`, `./gh-cao version`, or `./gh-cao doctor`.
-Only those scaffold commands are implemented: `cao.sh`, the Node.js CLI, and
-the installer remain unchanged. Releases include version-stamped binaries for
-Linux, macOS, and Windows (amd64 and arm64), plus SHA-256 checksums. Command
-parity remains future work. See [extension development](CONTRIBUTING.md#go-extension-development)
+The `gh cao` Go extension exposes the operator commands for setup,
+authentication, campaigns, validation, and read-only evidence analysis.
+Run `make build` to produce `./gh-cao`, then try `./gh-cao --help`.
+Once a release containing extension binaries is promoted to latest, install
+without building Go locally:
+
+```bash
+gh extension install githubnext/gh-aw-cao
+gh aw-cao --help
+```
+
+GitHub CLI derives the installed command `gh aw-cao` from the repository name.
+The local development installation can expose the same executable as `gh cao`.
+
+Use `gh cao setup` for guided configuration or
+`gh cao setup auth github-app|enterprise-app|token` for authentication only.
+`campaigns add`, `init`, `campaigns mode`, `campaigns enable`, and
+`campaigns disable` execute natively in Go; repository enrollment
+(`repos add OWNER/REPO`) and other operator commands reuse the installed CAO Node.js 24+
+runtime to preserve production
+onboarding, policy, and Dashboard Language semantics. Run them from the control
+repository root, or select an installed runtime with `CAO_RUNTIME_ROOT`.
+Help, version, and the local `doctor` diagnostic need no CAO runtime.
+
+Activity and Dashboard Actions retain their Node CLI and pipeline commands;
+`cao.sh` and the installer remain compatible. Releases include version-stamped
+binaries named `gh-cao-OS-ARCH` (`.exe` on Windows) for Linux, macOS, and Windows
+(amd64 and arm64), plus SHA-256 checksums.
+See [the command reference](docs/cao-cli.md#github-cli-extension) for the migration
+boundary and [extension development](CONTRIBUTING.md#go-extension-development)
 for local installation, project layout, and checks.
 
 ## Documentation

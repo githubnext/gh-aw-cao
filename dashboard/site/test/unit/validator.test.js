@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js';
 import { DASHBOARD_QUERY_LIMITS, QUERY_MAX_JOINS } from '../../src/specification.js';
 import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
@@ -749,8 +750,9 @@ describe('dashboard document validation', () => {
   });
 
   it('accepts supported dashboard CLI actions', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    document.dashboard['cli-actions'].push({
+    const document = parse(validDocument);
+    document.dashboard.pages = document.dashboard.pages.filter((/** @type {{ kind: string }} */ page) => page.kind === 'custom');
+    document.dashboard['cli-actions'] = [{
       id: 'compile-workflows',
       label: 'Compile workflows',
       description: 'Validate editable workflow sources.',
@@ -765,8 +767,8 @@ describe('dashboard document validation', () => {
         flag: '--pre-releases',
         default: false
       }]
-    });
-    const addedAction = document.dashboard['cli-actions'][document.dashboard['cli-actions'].length - 1];
+    }];
+    const addedAction = document.dashboard['cli-actions'][0];
     const actionArguments = addedAction.arguments;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     addedAction['copy-only'] = 'true';

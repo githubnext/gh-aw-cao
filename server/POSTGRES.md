@@ -1,0 +1,275 @@
+# PostgreSQL provisioning, runtime, and audit retention
+
+Production startup opens existing state; it does not provision tables, replace
+functions/triggers, create namespaces, retain audit history, or maintain
+canonical partitions. This applies to `serve`, `serve-hosted`, external hosts,
+`ingest`, `collect`, and `execute-cli`. Provision before deploying this version.
+There is no automatic privileged fallback. The local SQLite hosted-CLI backend
+can exercise the same explicit bootstrap, runtime, retention, and evidence-reader
+lifecycle below, but is not a production substitute.
+
+## Local SQLite testing
+
+No PostgreSQL server, database roles, or `CAO_DATABASE_ADMIN_URL` are needed for
+the local hosted-CLI queue, token cleanup journal, and audit store:
+
+```sh
+mkdir -p .tmp
+cao-dashboard database bootstrap --store operational --sqlite .tmp/hosted-cli.sqlite
+cao-dashboard audit verify --sqlite .tmp/hosted-cli.sqlite
+cao-dashboard audit export --sqlite .tmp/hosted-cli.sqlite
+cao-dashboard database retain-audit --store operational --sqlite .tmp/hosted-cli.sqlite
+```
+
+Bootstrap creates a mode-0600 file and provisions its schema transactionally.
+For an existing local debug file, bootstrap is idempotent and preserves all
+audit history. Run it before upgrading/restarting `serve-hosted
+--hosted-cli-sqlite PATH` or `execute-cli --sqlite PATH`. Runtime and audit
+commands open existing state only: missing files, incomplete schemas, or
+missing audit guards fail without creating or repairing storage.
+
+`--sqlite` selects the local backend explicitly and ignores PostgreSQL connection
+settings. It supports operational `bootstrap` and `retain-audit` only. Do not
+pass `--namespace`; use one separate file per local deployment. This does **not**
+add a SQLite canonical dashboard/query backend, replace hosted authentication,
+or remove those parts of the full server's normal configuration requirements.
+Canonical `database maintain` and partition/statistics tests still use PostgreSQL.
+
+Audit retention is never implicit during bootstrap, runtime opening, appends,
+verification, or delivery. Invoke `retain-audit` explicitly; like PostgreSQL, it
+removes at most 512 events older than 400 elapsed days, only from the oldest
+contiguous expired prefix, and always preserves the newest event. Its JSON
+result includes `backend: "sqlite"` and `audit_events_removed`.
+
+`audit deliver --sqlite PATH` uses `OpenAuditReader(ctx, sqlitePath)` and a real
+SQLite read-only connection with deferred verification transactions. It can read
+the committed WAL snapshot while runtime holds a write transaction; attempts to
+append, retain, or execute DDL on that connection fail. `audit verify` intentionally
+uses the writable `OpenAuditStore` to append its verification result. Delivery
+still needs the explicitly configured HTTPS destination and independently
+preserved enrollment anchor described in
+[audit-delivery/README.md](audit-delivery/README.md); no destination is enabled
+automatically.
+
+Run local coverage without PostgreSQL, Docker, GitHub credentials, or an external
+delivery service:
+
+```sh
+go -C server test ./internal/operational/sqlite ./internal/server ./cmd/cao-dashboard \
+  -run 'Test(SQLite|LocalAudit|DatabaseSQLite|AuditDeliverSQLite|AuditVerifyAndExportSQLite|HostedCLIQueueOperationsSQLite)' -count=1
+```
+
+The delivery test runs the real command against an in-process TLS object fixture.
+It covers bounded delivery/restart, read-only source access, and preservation of
+expired source history. The fixture is not evidence of independent durable
+storage. SQLite has **no database principal/role isolation**: any file writer
+can bypass triggers, change the schema, or invoke retention. These tests do not
+replace the real PostgreSQL privilege tests below.
+
+## Authorities
+
+Use a dedicated database/schema and fresh roles with no inherited privileged
+membership. A schema is the database authorization boundary: application
+namespaces isolate records, not mutually distrusting database principals.
+Use separate schemas/databases and separate role sets for independently
+authorized deployments. Do not grant runtime or evidence roles membership in
+the owner, retention, `pg_write_all_data`, or other privileged roles.
+
+| Authority | Allowed | Not allowed |
+| --- | --- | --- |
+| Bootstrap/partition operator | Assume the non-login schema owner; create/upgrade schema, provision namespaces, maintain canonical partitions, explicitly destroy a namespace | Credentials must not be available to web, executor, collector, or exporter processes |
+| Runtime | Read/write operational records, cache, queues/output/execution identities; update only namespace budget columns; audit SELECT/INSERT; canonical ingestion/query DML; temporary staging tables; fixed canonical ANALYZE function | Audit UPDATE/DELETE/TRUNCATE, namespace DELETE/rename/config changes, permanent DDL, trigger changes, audit retention |
+| Audit retention | SELECT namespace version/config; EXECUTE the fixed audit-retention function | Direct audit reads/writes/deletes, operational mutation, arbitrary cutoff, DDL, namespace destruction |
+| Evidence reader | SELECT namespace version/config and audit rows; ListAudit/VerifyAudit | INSERT, UPDATE, DELETE, maintenance, retention, DDL |
+
+Runtime row locks, budget accounting, sequencing, and audited queue mutations
+remain in their original database transactions. `audit verify` additionally
+appends its verification result, so that command needs the runtime audit grant;
+direct `AuditLog.VerifyAudit` and `audit export` work with the evidence reader.
+The exported `OpenAuditStore` uses the existing-state diagnostics opener and
+does not initialize or maintain storage.
+
+## Fresh deployment
+
+Have the database administrator create distinct non-login group roles and
+assign separately authenticated, non-superuser logins. Authenticate via your
+secret manager/provider; the following SQL intentionally contains no passwords:
+
+```sql
+CREATE ROLE cao_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE ROLE cao_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE ROLE cao_retention NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE ROLE cao_evidence NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE SCHEMA cao AUTHORIZATION cao_owner;
+```
+
+The database administrator must also grant CONNECT to the service principals
+and TEMPORARY to `cao_runtime` on the target database (replace `cao_dashboard`
+with its actual name):
+
+```sql
+GRANT TEMPORARY ON DATABASE cao_dashboard TO cao_runtime;
+```
+
+This is only for ingestion staging tables, not permanent schema DDL. A schema
+owner cannot grant database-level rights; do not rely on PUBLIC's default
+TEMPORARY privilege in a hardened database.
+
+Grant each service login only its corresponding group. Give the separately
+controlled bootstrap login permission to `SET ROLE cao_owner`; provision while
+that role is active so tables **and** security-definer functions have the same
+non-login owner. Restrict database CONNECT and schema CREATE, review PUBLIC and
+default privileges, and ensure no runtime-writable schema precedes `cao` in its
+search path. Do not use blanket `GRANT ALL`, `ALL TABLES`, default table grants,
+superuser service logins, or ownership as a shortcut. The grant scripts assume
+fresh roles; they are not a general privilege scrubber for previously overgranted
+roles or column ACLs.
+
+Supply `CAO_DATABASE_ADMIN_URL` only to the short-lived operator job, selecting
+the database/schema and owner role through connection options. It is a separate
+input and never falls back to `CAO_POSTGRES_URL`. For example, when the URL is
+already injected into the operator environment, `PGOPTIONS` can select the
+owner and schema without placing credentials in arguments:
+
+```sh
+PGOPTIONS='-c role=cao_owner -c search_path=cao' \
+  cao-dashboard database bootstrap --store operational --namespace hosted-dashboard
+PGOPTIONS='-c role=cao_owner -c search_path=cao' \
+  cao-dashboard database bootstrap --store canonical --namespace hosted-dashboard
+```
+
+Use the exact operational `CAO_OPERATIONAL_NAMESPACE` and resolved capacity
+environment settings used by every replica. The canonical namespace is the
+existing `REDIS_NAMESPACE` (the hosted default is `hosted-dashboard`).
+With separate databases/schemas, supply the corresponding owner connection for
+each command. Both bootstrap orders are supported in a shared schema: canonical
+bootstrap's exact-name allowlist includes all operational tables, including
+`cao_operational_cli_executions`; it still rejects unknown tables.
+
+Apply the checked-in, explicit grants after bootstrap. For `psql`, configure
+`PGHOST`, `PGPORT`, `PGDATABASE` (database name), `PGUSER`, and a restricted
+`PGPASSFILE`, or use `PGSERVICE`/`PGSERVICEFILE`, separately from
+`CAO_DATABASE_ADMIN_URL`. Preserve the deployment's TLS settings. Do not pass a
+credential-bearing URL in arguments:
+
+```sh
+PGOPTIONS='-c role=cao_owner -c search_path=cao' \
+  psql -X -v ON_ERROR_STOP=1 -v schema=cao -v runtime=cao_runtime \
+  -v retention=cao_retention -v reader=cao_evidence \
+  -f server/postgres/operational-grants.sql
+PGOPTIONS='-c role=cao_owner -c search_path=cao' \
+  psql -X -v ON_ERROR_STOP=1 -v schema=cao -v runtime=cao_runtime \
+  -f server/postgres/canonical-grants.sql
+```
+
+Only apply the relevant script in each schema. Runtime then uses its own
+connection through `CAO_POSTGRES_URL` and the policy-selected operational URL
+environment variable. Neither policy nor service containers receive
+`CAO_DATABASE_ADMIN_URL`. Grant scripts do not create logins or change passwords.
+The canonical grant explicitly excludes operational tables, audit retention,
+and namespace deletion even when both stores share a schema.
+
+Canonical publication must refresh planner statistics inside its ingestion
+transaction. PostgreSQL 16 silently skips direct ANALYZE by non-owners.
+Bootstrap therefore defines `cao_analyze_native()` with only the fixed,
+schema-qualified canonical entity tables. Runtime receives EXECUTE, not
+ownership; PUBLIC and evidence readers do not. The existing ingestion context
+bounds and cancels this operation, which accepts no SQL or object-name input.
+
+## Existing deployment upgrade and rollback
+
+1. Pause admissions, drain/stop web, executor, collector, and backfill processes.
+   Preserve pending revocations and accepted work. Back up the operational
+   database and record externally stored audit anchors. Do not discard the
+   namespace or start a new one to avoid this migration.
+2. Review current ownership, role memberships, schema/default privileges,
+   column grants, and replication/superuser capabilities. Create fresh restricted
+   service roles. Have the DBA transfer the exact CAO tables, associated
+   sequences, and functions to the dedicated non-login owner if necessary.
+   Do not run database-wide `REASSIGN OWNED` against shared unrelated objects.
+3. Using the new binary as that owner, run operational bootstrap for the existing
+   namespace and capacity configuration. Its transaction installs the owner-only
+   namespace-delete guard, replaces the audit guard, installs the restricted
+   retention function, and upgrades namespace version 1 to 2 without deleting
+   records, changing budgets, or rewriting the audit chain. Runtime Open rejects
+   version 1. Configuration mismatches abort the migration.
+4. Run canonical bootstrap with the same configured retention windows, then
+   apply both grant scripts as applicable. The canonical physical contract is
+   unchanged by this release. If a different release changed that immutable
+   contract, provision a **separate canonical database** and re-ingest; never
+   drop a shared schema containing operational audit/queue/revocation state.
+5. Schedule the two separate maintenance jobs below, switch service secrets to
+   the restricted logins, and start one canary. Check readiness, audited
+   admission/cancellation, queue recovery, canonical ingestion/statistics,
+   external anchor verification, and maintenance job results before resuming.
+   Retire the old owner-capable service credential and verify it is not mounted
+   in runtime processes. Record the actual grants and rollout evidence.
+
+Do not roll back to the pre-separation binary using an owner credential: it
+replaces audit triggers on startup and performs retention in runtime maintenance.
+Keep admissions stopped and use a reviewed forward fix, or an independently
+reviewed restore procedure that preserves external anchors and unfinished work.
+Applying this code alone does not remove previously distributed credentials or
+establish SOC 2 compliance.
+
+## Separate scheduled maintenance
+
+Run canonical maintenance **at least daily** under the owner job, not a runtime
+service. It provisions the configured retained historical window plus the
+current and **four upcoming weeks**, then detaches/drops expired whole weeks.
+Use the same `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30) and
+`CAO_POSTGRES_LINKED_RETENTION_DAYS` (default 7) as runtime:
+
+```sh
+cao-dashboard database maintain --store canonical --namespace hosted-dashboard
+```
+
+Runtime startup verifies the complete expected partition window without DDL.
+Missing schema, statistics capability/grant, or partitions fail startup with an
+operator action. Long-running processes do not repair partitions: alert on any
+missed/failed daily maintenance job and repair before the four-week runway is
+exhausted. Missing ingestion weeks remain a hard error, not silent data loss.
+After extended downtime, run maintenance before restarting. Parent-table
+runtime grants cover future partitions; do not grant privileges on each child.
+
+Run `retain-audit` using a **retention-role** connection injected as
+`CAO_DATABASE_ADMIN_URL` in a different restricted job. Do not use the owner
+credential for routine audit retention:
+
+```sh
+cao-dashboard database retain-audit --store operational --namespace hosted-dashboard
+```
+
+Each call reports `audit_events_removed` and deletes at most 512 events older
+than 400 days as a contiguous oldest prefix. It always keeps the newest event,
+so sequence numbers never restart. Schedule enough bounded invocations for
+your event rate and alert on job failure/backlog; export and anchor before
+retiring evidence, and suspend the retention job for a legal hold.
+
+The SECURITY DEFINER function pins `search_path` to `pg_catalog, pg_temp`,
+schema-qualifies its tables, serializes with appends on the namespace row, and
+accepts only an existing namespace in its own schema. It accepts no cutoff or
+object name. PUBLIC/runtime/evidence EXECUTE is revoked. A user-controlled
+`cao.audit_retention` setting is not authority, and a namespace-delete guard
+checks the caller before a foreign-key cascade can assume table-owner identity.
+Owner/DBA break-glass destruction remains possible and must be separately
+approved, logged, and covered by external evidence retention.
+
+## Verification
+
+Use an isolated loopback PostgreSQL administrator and `psql`, never production:
+
+```sh
+POSTGRES_URL=... go -C server test ./internal/server \
+  -run 'TestPostgres(RuntimePrivilegeBoundary|RetentionPrivilegeBoundary|ProvisioningRequiredBeforeRuntime)' -count=1
+```
+
+These tests create real distinct logins and a non-login owner, apply the shipped
+SQL, exercise runtime factory startup and atomic audited operations, prove
+canonical statistics change during restricted ingestion, and reject direct
+audit mutations, TRUNCATE, DDL, trigger changes, SET ROLE, retention calls, and
+namespace cascades. They also cover SELECT-only export/verification, bounded
+retention, temporary-table shadowing, owner-only upgrades, and missing-partition
+repair. Existing operational conformance tests cover budgets, scoped queue
+transactions, restart, and atomic rollback. The tests do not establish deployed
+role grants, credential isolation, maintenance schedules, backups, or compliance.

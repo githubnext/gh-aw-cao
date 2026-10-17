@@ -6,6 +6,7 @@ import {
   deployedActivityShardEntries,
   deployedDashboardUrl,
   configureDeployedStorageQuota,
+  DEPLOYED_STORAGE_QUOTA_BYTES,
   legacyPhaseJsonToJsonl,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
@@ -20,6 +21,7 @@ import {
 } from "./dashboard-query-performance-helpers.mjs";
 import { dashboardPageAllSourceNames } from "../../dashboard/site/src/dashboard-chunks.js";
 import { loadDashboardSource } from "../../dashboard/report/bundle-dashboards.mjs";
+import { dashboardBenchmarkQueries } from "../helpers/dashboard-benchmark-queries.mjs";
 
 const shard = parseQueryPerformanceShard(process.env.DASHBOARD_QUERY_PERFORMANCE_SHARD);
 const outputDirectory = resolve("test-results/dashboard-query-performance");
@@ -38,7 +40,7 @@ const { document: dashboardSource } = await loadDashboardSource(
 const dashboardDocument = dashboardSource.dashboard;
 const dashboardContext = {
   pages: dashboardDocument.pages,
-  queries: dashboardDocument.queries,
+  queries: dashboardBenchmarkQueries(dashboardDocument),
   views: dashboardDocument.views ?? [],
 };
 const overviewSourceNames = dashboardPageAllSourceNames(
@@ -351,7 +353,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
     const report = {
       generatedAt: new Date().toISOString(),
       dashboardUrl: deployedDashboardUrl,
-      methodology: "Fresh Chromium profile with a fixed 2 GiB origin quota running the checkout's dashboard and query worker; proxy current deployed data; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the median of several settled Overview requests by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.",
+      methodology: `Fresh Chromium profile with a fixed ${DEPLOYED_STORAGE_QUOTA_BYTES / 1024 ** 3} GiB origin quota running the checkout's dashboard and query worker; proxy current deployed data; resolve declared form defaults before query execution; measure native IndexedDB count() across all canonical entity stores, initial Overview readiness, and the median of several settled Overview requests by worker phase; then measure a 25-row first chunk, one continuation chunk when present, and one unpaginated fill iteration.`,
       chunkSize: QUERY_CHUNK_SIZE,
       shard: { index: shard.index, total: shard.total },
       populateMs: Math.round(populateMs * 100) / 100,

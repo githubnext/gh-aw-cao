@@ -14,6 +14,11 @@ import (
 
 var log = logger.New("cao:gh")
 
+func Exec(ctx context.Context, args ...string) (string, string, error) {
+	stdout, stderr, err := gh.ExecContext(ctx, args...)
+	return stdout.String(), stderr.String(), err
+}
+
 func Version(ctx context.Context) (string, error) {
 	return version(ctx, gh.ExecContext)
 }

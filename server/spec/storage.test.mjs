@@ -70,8 +70,11 @@ test('all run-owned tables share weekly partitions and maintenance coverage', ()
     assert.match(declaration ?? '', /\) PARTITION BY RANGE \(run_at\)$/);
   }
   const maintenance = readFileSync(new URL('../internal/postgresx/partitions.go', import.meta.url), 'utf8');
-  const registered = maintenance.match(/tables := \[\]string\{([^}]+)\}/);
+  const registered = maintenance.match(/var partitionTables = \[\]string\{([^}]+)\}/);
   assert.ok(registered, 'weekly maintenance must declare its partitioned tables');
+  assert.match(maintenance, /tables := partitionTables/);
+  const provisioned = readFileSync(new URL('../internal/postgresx/provisioned.go', import.meta.url), 'utf8');
+  assert.match(provisioned, /range partitionTables/, 'runtime readiness must validate the same partition tables');
   const dropOrder = [...registered[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual([...dropOrder].sort(), names);
   for (const [child, relationships] of parents) {

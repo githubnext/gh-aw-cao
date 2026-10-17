@@ -251,7 +251,7 @@ func TestHostedRebuildRequiresExplicitAdministrator(t *testing.T) {
 	request = request.WithContext(context.WithValue(
 		request.Context(),
 		oauthSessionContextKey{},
-		oauthSession{Login: "CAO-ADMIN"},
+		assuredSession("CAO-ADMIN"),
 	))
 	if !app.adminAuthorized(request) {
 		t.Fatal("explicit administrator was denied")

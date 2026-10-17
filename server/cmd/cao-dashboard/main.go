@@ -119,9 +119,9 @@ func newPostgresStore(ctx context.Context, flagValue, namespace string) (*postgr
 		return nil, err
 	}
 	commandLog.Printf("postgres endpoint resolved source=%s", source)
-	store, err := postgresx.NewWithNamespace(ctx, endpoint, namespace)
+	store, err := postgresx.OpenWithNamespace(ctx, endpoint, namespace)
 	if err != nil {
-		return nil, errors.New("postgres is unavailable")
+		return nil, fmt.Errorf("open provisioned postgres storage: %w", err)
 	}
 	return store, nil
 }
@@ -354,6 +354,10 @@ func newRootCommand() *cobra.Command {
 		newServeHostedCommand(),
 		newIngestCommand(),
 		newCollectCommand(),
+		newExecuteCLICommand(),
+		newHostedCLICommand(),
+		newAuditCommand(),
+		newDatabaseCommand(),
 		newBackfillCommand(),
 		newDoctorCommand(),
 		newTelemetrySmokeCommand(),
@@ -372,6 +376,32 @@ func run(arguments []string) error {
 		commandLog.Printf("running subcommand=%s", target.Name())
 	}
 	return root.Execute()
+}
+
+// doctorBackendSource identifies which input selected the operational backend
+// the doctor diagnoses. It is useful for diagnosing misconfiguration without
+// logging any policy path or endpoint.
+type doctorBackendSource string
+
+const (
+	doctorBackendSourcePolicy  doctorBackendSource = "policy"
+	doctorBackendSourceRedis   doctorBackendSource = "redis"
+	doctorBackendSourceDefault doctorBackendSource = "default"
+)
+
+// resolveDoctorBackendSource applies the doctor's backend precedence: a
+// reviewed operational policy (selected explicitly or through a policy path
+// variable) wins, then an explicit Redis URL flag or CAO_REDIS_URL, then the
+// default Postgres-backed diagnosis.
+func resolveDoctorBackendSource(policySelected bool, policyPath, marketplacePolicyPath string, redisFlagChanged bool, redisEnv string) doctorBackendSource {
+	switch {
+	case policySelected || strings.TrimSpace(policyPath) != "" || strings.TrimSpace(marketplacePolicyPath) != "":
+		return doctorBackendSourcePolicy
+	case redisFlagChanged || strings.TrimSpace(redisEnv) != "":
+		return doctorBackendSourceRedis
+	default:
+		return doctorBackendSourceDefault
+	}
 }
 
 // newDoctorCommand builds the read-only diagnostic check-up subcommand.
@@ -420,11 +450,12 @@ func newDoctorCommand() *cobra.Command {
 		if selectionErr != nil {
 			return selectionErr
 		}
-		hasPolicy := selected ||
-			strings.TrimSpace(os.Getenv("CAO_POLICY_PATH")) != "" ||
-			strings.TrimSpace(os.Getenv("CAO_MARKETPLACE_POLICY_PATH")) != ""
-		switch {
-		case hasPolicy:
+		backendSource := resolveDoctorBackendSource(
+			selected, os.Getenv("CAO_POLICY_PATH"), os.Getenv("CAO_MARKETPLACE_POLICY_PATH"),
+			cmd.Flags().Changed("redis-url"), os.Getenv("CAO_REDIS_URL"))
+		commandLog.Printf("doctor resolved backend source=%s", backendSource)
+		switch backendSource {
+		case doctorBackendSourcePolicy:
 			settings, provider, selectionErr := server.NewOperationalDiagnosticsFromEnv(ctx)
 			if selectionErr != nil && settings.Backend == "" {
 				return selectionErr
@@ -445,7 +476,7 @@ func newDoctorCommand() *cobra.Command {
 					check.RedisStore = server.NewRedisProviderDiagnostics(redisStore)
 				}
 			}
-		case cmd.Flags().Changed("redis-url") || strings.TrimSpace(os.Getenv("CAO_REDIS_URL")) != "":
+		case doctorBackendSourceRedis:
 			check.Backend = "redis"
 			maxRedisBytes, err := server.RedisMaxBytesFromEnv(0)
 			if err != nil {
@@ -562,8 +593,21 @@ func newServeHostedCommand() *cobra.Command {
 	agentCatalog := cmd.Flags().String("agent-catalog", "../dashboard/site/src/agent/catalog.generated.json", "materialized read-only agent catalog")
 	mcpContract := cmd.Flags().String("mcp-contract", "../dashboard/site/src/agent/mcp-contract.json", "shared MCP tool contract")
 	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
+	experimental := cmd.Flags().Bool("experimental", false, "enable experimental server features")
+	hostedCLIActions := cmd.Flags().Bool("hosted-cli-actions", false,
+		"accept CLI action commands from authorized administrators into the hosted queue drained by execute-cli")
+	cliActionsCatalog := cmd.Flags().String("cli-actions-catalog", "../dashboard/site/dashboard.json",
+		"dashboard document declaring the CLI actions accepted by --hosted-cli-actions")
+	hostedCLISQLite := cmd.Flags().String("hosted-cli-sqlite", "",
+		"local debugging only: SQLite file holding the hosted CLI queue and audit table, shared with execute-cli --sqlite; requires --experimental, --hosted-cli-actions, and a loopback --listen")
 	cmd.RunE = func(*cobra.Command, []string) error {
-		commandLog.Printf("serve-hosted flags parsed tls=%s", resolveHostedTLSMode(*cert))
+		if *hostedCLIActions && !*experimental {
+			return errors.New("--hosted-cli-actions requires --experimental")
+		}
+		if *hostedCLISQLite != "" && !*hostedCLIActions {
+			return errors.New("--hosted-cli-sqlite requires --hosted-cli-actions")
+		}
+		commandLog.Printf("serve-hosted flags parsed tls=%s hosted_cli_actions=%t", resolveHostedTLSMode(*cert), *hostedCLIActions)
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
@@ -579,6 +623,23 @@ func newServeHostedCommand() *cobra.Command {
 		)
 		if err != nil {
 			return err
+		}
+		if *hostedCLIActions {
+			config, err := server.HostedCLIConfigFromEnv(*cliActionsCatalog)
+			if err != nil {
+				return err
+			}
+			if *hostedCLISQLite != "" {
+				debugStore, err := server.OpenHostedCLISQLite(ctx, *hostedCLISQLite)
+				if err != nil {
+					return err
+				}
+				defer func() { _ = debugStore.Close() }()
+				config.DebugStore = debugStore
+			}
+			if err := app.EnableHostedCLIActions(ctx, config); err != nil {
+				return err
+			}
 		}
 		return app.Serve(ctx)
 	}
@@ -672,7 +733,7 @@ func newServeCommand() *cobra.Command {
 				return configErr
 			}
 			namespace, _ := resolveNamespaceDefault(os.Getenv("CAO_OPERATIONAL_NAMESPACE"), *redisNamespace)
-			store, err = postgres.New(ctx, dsn, namespace, config)
+			store, err = postgres.Open(ctx, dsn, namespace, config)
 		}
 		if err != nil {
 			return err
@@ -789,6 +850,57 @@ func classifyWorkerStop(runErr, ctxErr error) (workerStopReason, bool) {
 // newCollectCommand builds the collection worker role subcommand. It is the
 // same binary as the server, started with a different role, so collection
 // scales independently without a second deployment artifact.
+// newExecuteCLICommand drains the hosted CLI action queue. Each command runs
+// with a single-use, repository-scoped GitHub App installation token that is
+// revoked as soon as the command exits.
+func newExecuteCLICommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "execute-cli",
+		Short: "execute queued hosted CLI actions with single-use GitHub App tokens",
+	}
+	owner := cmd.Flags().String("owner", "", "executor lease owner; defaults to the hostname")
+	acknowledgeRecovery := cmd.Flags().Bool("acknowledge-recovery", false,
+		"resume claiming after commands interrupted by a previous executor were marked failed")
+	prefetch := cmd.Flags().Int("prefetch", 2, "queued commands whose tokens are minted ahead of execution; 0 disables")
+	maxPooled := cmd.Flags().Int("max-pooled-tokens", 8, "unused pre-minted tokens held at once; 0 disables pooling")
+	sqlitePath := cmd.Flags().String("sqlite", "",
+		"local debugging only: SQLite file shared with serve-hosted --hosted-cli-sqlite instead of the operational store")
+	cmd.RunE = func(*cobra.Command, []string) error {
+		if *prefetch < 0 || *maxPooled < 0 {
+			return errors.New("--prefetch and --max-pooled-tokens must not be negative")
+		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
+		if err != nil {
+			return err
+		}
+		defer closeTelemetry()
+		name, _, err := resolveConsumerName(*owner, os.Hostname)
+		if err != nil {
+			return err
+		}
+		executor, err := server.NewHostedCLIExecutorFromEnv(ctx, server.HostedCLIExecutorOptions{
+			Owner:               fmt.Sprintf("%s/%d", name, os.Getpid()),
+			AcknowledgeRecovery: *acknowledgeRecovery,
+			Prefetch:            *prefetch,
+			MaxPooledTokens:     *maxPooled,
+			SQLitePath:          *sqlitePath,
+			Logger:              log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
+		})
+		if err != nil {
+			return err
+		}
+		defer func() { _ = executor.Close() }()
+		runErr := executor.Run(ctx)
+		if runErr != nil && ctx.Err() != nil && errors.Is(runErr, context.Canceled) {
+			return nil
+		}
+		return runErr
+	}
+	return cmd
+}
+
 func newCollectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "collect",

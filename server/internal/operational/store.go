@@ -37,7 +37,7 @@ type Capability struct {
 type Capabilities struct {
 	Cache, RequestLimits, Sessions, Revocations        Capability
 	GitHubQuota, Collection, Coordination, Diagnostics Capability
-	CLICommands                                        Capability
+	CLICommands, Audit                                 Capability
 }
 
 type Health struct {
@@ -119,6 +119,7 @@ type OperationalServices struct {
 	Health             HealthProbe
 	IngestionMetrics   IngestionMetrics
 	CLICommands        CLICommandQueues
+	Audit              AuditLog
 }
 
 type Requirements struct {
@@ -127,6 +128,7 @@ type Requirements struct {
 	OAuth         bool
 	Collection    bool
 	CLICommands   bool
+	Audit         bool
 }
 
 type serviceFeature struct {
@@ -228,6 +230,7 @@ func ValidateOperationalServices(c Capabilities, s OperationalServices, r Requir
 		{"health", c.Diagnostics, !nilService(s.Health), true},
 		{"ingestion metrics", c.Diagnostics, !nilService(s.IngestionMetrics), true},
 		{"cli commands", c.CLICommands, !nilService(s.CLICommands), r.CLICommands},
+		{"audit", c.Audit, !nilService(s.Audit), r.Audit},
 	}, r)
 }
 

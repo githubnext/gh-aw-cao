@@ -39,7 +39,7 @@ test("deployed dashboard quota is bounded and scoped to the tested origin", asyn
     },
   }) };
   assert.equal(await configureDeployedStorageQuota(page, "http://127.0.0.1:1234/cao/"), session);
-  assert.equal(DEPLOYED_STORAGE_QUOTA_BYTES, 2 * 1024 ** 3);
+  assert.equal(DEPLOYED_STORAGE_QUOTA_BYTES, 4 * 1024 ** 3);
   assert.deepEqual(calls, [{
     method: "Storage.overrideQuotaForOrigin",
     parameters: { origin: "http://127.0.0.1:1234", quotaSize: DEPLOYED_STORAGE_QUOTA_BYTES },

@@ -5065,6 +5065,8 @@
     {
       "id": "eval-yes-shares",
       "subject": "Compute the YES share of each eval's recorded answers.",
+      "objective": "Expose recorded YES proportions for comparing answer categories without inferring verified operational outcomes.",
+      "acceptance": "Emit one YES row per retained canonical eval group, including zero YES counts; answer-share is yes / answers across recorded YES, NO and UNKNOWN observations. Do not count absent observations.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -5082,6 +5084,8 @@
     {
       "id": "eval-no-shares",
       "subject": "Compute the NO share of each eval's recorded answers.",
+      "objective": "Expose recorded NO proportions for comparing answer categories without treating historical answers as current verdicts.",
+      "acceptance": "Emit one NO row per retained canonical eval group, including zero NO counts; answer-share is no / answers across recorded YES, NO and UNKNOWN observations. Do not count absent observations.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -5099,6 +5103,8 @@
     {
       "id": "eval-unknown-shares",
       "subject": "Compute the explicit UNKNOWN share of each eval's recorded answers.",
+      "objective": "Expose explicitly recorded UNKNOWN proportions without conflating absent observations with classified uncertainty.",
+      "acceptance": "Emit one UNKNOWN row per retained canonical eval group, including zero UNKNOWN counts; answer-share is unknown / answers across recorded YES, NO and UNKNOWN observations. Missing observations are not UNKNOWN answers.",
       "description": "",
       "parameters": [],
       "sources": [

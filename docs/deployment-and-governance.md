@@ -39,6 +39,9 @@ A single control repository can address an explicitly named repository in anothe
 
 ## Operating Ownership
 
+For independent approval and exact-source validation at the prerelease-to-latest
+transition, see [Release promotion controls](release-controls.md).
+
 | Level | Owner | Controls | Does not control |
 | --- | --- | --- | --- |
 | **Catalog campaign** | Catalog maintainers; enterprise governance for an enterprise-owned catalog | Campaign source, `aw.yml`, workflow definitions, release approval, and compatibility policy | Installation credentials, organization-local extensions, or target repository acceptance |

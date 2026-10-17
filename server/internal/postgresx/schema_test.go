@@ -109,12 +109,34 @@ func TestInitializeRejectsChangedContract(t *testing.T) {
 }
 
 func TestInitializeRejectsNonEmptySchemaWithoutContract(t *testing.T) {
+	for _, table := range []string{"stray_table", "cao_operational_cli_unknown"} {
+		t.Run(table, func(t *testing.T) {
+			db, cleanup := schemaTestSchema(t)
+			defer cleanup()
+			if _, err := db.ExecContext(t.Context(), "CREATE TABLE "+table+" (id int)"); err != nil {
+				t.Fatal(err)
+			}
+			if err := initialize(t.Context(), db); err == nil {
+				t.Fatal("non-empty schema without a contract must be rejected")
+			}
+		})
+	}
+}
+
+func TestInitializePreservesHostedExecutionTable(t *testing.T) {
 	db, cleanup := schemaTestSchema(t)
 	defer cleanup()
-	if _, err := db.ExecContext(t.Context(), "CREATE TABLE stray_table (id int)"); err != nil {
+	if _, err := db.ExecContext(t.Context(), "CREATE TABLE cao_operational_cli_executions (command_id bigint PRIMARY KEY)"); err != nil {
 		t.Fatal(err)
 	}
-	if err := initialize(t.Context(), db); err == nil {
-		t.Fatal("non-empty schema without a contract must be rejected")
+	if _, err := db.ExecContext(t.Context(), "INSERT INTO cao_operational_cli_executions VALUES (42)"); err != nil {
+		t.Fatal(err)
+	}
+	if err := initialize(t.Context(), db); err != nil {
+		t.Fatalf("hosted execution state blocked canonical initialization: %v", err)
+	}
+	var id int64
+	if err := db.QueryRowContext(t.Context(), "SELECT command_id FROM cao_operational_cli_executions").Scan(&id); err != nil || id != 42 {
+		t.Fatalf("canonical initialization changed hosted execution state: id=%d, err=%v", id, err)
 	}
 }

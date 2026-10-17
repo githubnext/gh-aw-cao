@@ -169,17 +169,15 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 		available = min(available, max(0, (state.Available-floor)/cost))
 		retry = maxTime(retry, state.ResetAt)
 	}
-	if available == 0 {
-		quotaLog.Printf("admission exhausted: resources=%d", len(resources))
-		return decision{ID: req.ID, Reason: "exhausted", RetryAt: retry.UTC().Format(time.RFC3339)}
+	capacity, reason := admissionOutcome(req.Operation, concurrency, active, req.Running, available)
+	switch reason {
+	case "exhausted":
+		return decision{ID: req.ID, Reason: reason, RetryAt: retry.UTC().Format(time.RFC3339)}
+	case "concurrency":
+		return decision{ID: req.ID, Capacity: capacity, Reason: reason}
 	}
-	result := decision{ID: req.ID, Capacity: min(concurrency, active+available), Reason: "available"}
+	result := decision{ID: req.ID, Capacity: capacity, Reason: reason}
 	if req.Operation != "admit" {
-		return result
-	}
-	if max(active, req.Running) >= result.Capacity {
-		result.Reason = "concurrency"
-		quotaLog.Printf("admission at concurrency bound: active=%d running=%d capacity=%d", active, req.Running, result.Capacity)
 		return result
 	}
 	held, err := b.reserveAll(ctx, current.identity, resources, cost, floor)
@@ -190,6 +188,23 @@ func (b *bridge) handle(ctx context.Context, req request) decision {
 	b.reservations[result.ReservationID] = &reservation{buckets: held}
 	quotaLog.Printf("admitted reservation: buckets=%d active=%d capacity=%d", len(held), active, result.Capacity)
 	return result
+}
+
+// admissionOutcome classifies an admission attempt from the quota-limited
+// headroom: "exhausted" when no quota remains, "concurrency" when an admit
+// request finds the active or externally running count at capacity, and
+// "available" otherwise.
+func admissionOutcome(operation string, concurrency, active, running, available int) (capacity int, reason string) {
+	if available <= 0 {
+		quotaLog.Printf("admission exhausted: concurrency=%d", concurrency)
+		return 0, "exhausted"
+	}
+	capacity = min(concurrency, active+available)
+	if operation == "admit" && max(active, running) >= capacity {
+		quotaLog.Printf("admission at concurrency bound: active=%d running=%d capacity=%d", active, running, capacity)
+		return capacity, "concurrency"
+	}
+	return capacity, "available"
 }
 
 // parkAfterRateLimit extends the bridge-wide park and parks every held bucket:
@@ -376,21 +391,24 @@ func serve(input io.Reader, output io.Writer, b *bridge) error {
 	scanner.Buffer(make([]byte, 4096), 64*1024)
 	encoder := json.NewEncoder(output)
 	for scanner.Scan() {
-		var req request
-		if err := json.Unmarshal(scanner.Bytes(), &req); err != nil {
-			if err := encoder.Encode(b.unknown(0)); err != nil {
-				return err
-			}
-			continue
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		result := b.handle(ctx, req)
-		cancel()
-		if err := encoder.Encode(result); err != nil {
+		if err := encoder.Encode(b.handleLine(scanner.Bytes())); err != nil {
 			return err
 		}
 	}
 	return scanner.Err()
+}
+
+// handleLine answers one JSONL protocol line. A malformed line yields an
+// "unknown" decision with ID 0 instead of terminating the stream.
+func (b *bridge) handleLine(line []byte) decision {
+	var req request
+	if err := json.Unmarshal(line, &req); err != nil {
+		quotaLog.Printf("rejected request line: reason=invalid_json bytes=%d", len(line))
+		return b.unknown(0)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	return b.handle(ctx, req)
 }
 
 func run() error {

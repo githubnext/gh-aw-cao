@@ -102,6 +102,7 @@ func TestBlackboxOAuthAndProxyCORS(t *testing.T) {
 	if !state.HttpOnly || !state.Secure || location.Query().Get("state") == "" {
 		t.Fatal("OAuth state redirect or cookie missing required protection")
 	}
+	authorizeFakeGitHub(t, app, location.String())
 	callback := azureRequest(t, http.MethodGet, "/auth/callback?code=code-1&state="+url.QueryEscape(location.Query().Get("state")))
 	callback.AddCookie(state)
 	result := httptest.NewRecorder()

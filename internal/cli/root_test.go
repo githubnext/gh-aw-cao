@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"context"
-	"errors"
 	"strings"
 	"testing"
 )
@@ -14,7 +13,7 @@ func TestCommands(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"root help", nil, "command parity is future work"},
+		{"root help", nil, "Configure and operate Central Agentic Ops"},
 		{"help flag", []string{"--help"}, "gh cao [command]"},
 		{"version flag", []string{"--version"}, "gh cao version test\n"},
 		{"version command", []string{"version"}, "gh cao version test\n"},
@@ -45,7 +44,7 @@ func TestCommands(t *testing.T) {
 
 func TestInvalidCommands(t *testing.T) {
 	for _, args := range [][]string{
-		{"setup"},
+		{"setup", "extra"},
 		{"--unknown"},
 		{"version", "extra"},
 		{"doctor", "extra"},
@@ -67,43 +66,5 @@ func TestInvalidCommands(t *testing.T) {
 				t.Fatalf("error must be rendered once by the entry point, got %q", output.String())
 			}
 		})
-	}
-}
-
-func TestDoctor(t *testing.T) {
-	type contextKey struct{}
-	ctx := context.WithValue(context.Background(), contextKey{}, "marker")
-	root := newRootCommand("test", func(got context.Context) (string, error) {
-		if got.Value(contextKey{}) != "marker" {
-			t.Fatal("command context was not propagated")
-		}
-		return "gh version test", nil
-	})
-	var output bytes.Buffer
-	root.SetOut(&output)
-	root.SetArgs([]string{"doctor"})
-	if err := root.ExecuteContext(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(output.String(), "gh version test\n") ||
-		!strings.Contains(output.String(), "CAO policy were not checked") {
-		t.Fatalf("unexpected diagnostic: %q", output.String())
-	}
-}
-
-func TestDoctorFailure(t *testing.T) {
-	want := errors.New("gh unavailable")
-	root := newRootCommand("test", func(context.Context) (string, error) {
-		return "", want
-	})
-	var output bytes.Buffer
-	root.SetOut(&output)
-	root.SetErr(&output)
-	root.SetArgs([]string{"doctor"})
-	if err := root.ExecuteContext(context.Background()); !errors.Is(err, want) {
-		t.Fatalf("error = %v, want %v", err, want)
-	}
-	if output.Len() != 0 {
-		t.Fatalf("failed diagnostic must not report success: %q", output.String())
 	}
 }

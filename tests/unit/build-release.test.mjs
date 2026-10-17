@@ -10,8 +10,8 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const script = join(root, "scripts/build-release.sh");
 const platforms = [
-  "darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64",
-  "windows-amd64.exe", "windows-arm64.exe",
+  "gh-cao-darwin-amd64", "gh-cao-darwin-arm64", "gh-cao-linux-amd64", "gh-cao-linux-arm64",
+  "gh-cao-windows-amd64.exe", "gh-cao-windows-arm64.exe",
 ];
 
 function fixture(t) {
@@ -50,7 +50,13 @@ test("release builder embeds the exact tag in every platform binary and seals ch
   const builds = readFileSync(log, "utf8").trim().split("\n").map((line) => JSON.parse(line));
   assert.equal(builds.length, platforms.length);
   for (const [index, build] of builds.entries()) {
-    assert.equal(`${build.GOOS}-${build.GOARCH}${build.GOOS === "windows" ? ".exe" : ""}`, platforms[index]);
+    const suffix = `${build.GOOS}-${build.GOARCH}${build.GOOS === "windows" ? ".exe" : ""}`;
+    assert.equal(`gh-cao-${suffix}`, platforms[index]);
+    assert.deepEqual(
+      readdirSync(output).filter((name) => name.endsWith(suffix)),
+      [platforms[index]],
+      "gh extension install must find exactly one asset for each platform",
+    );
     assert.equal(build.CGO_ENABLED, "0");
     assert.deepEqual(build.args, [
       "build", "-mod=readonly", "-trimpath", "-ldflags=-s -w -X main.version=v1.2.3",
@@ -98,5 +104,5 @@ test("release builder stops on compilation failure without sealing partial artif
   assert.notEqual(result.status, 0);
   assert.equal(readFileSync(log, "utf8").trim().split("\n").length, 3);
   assert.equal(existsSync(join(output, "checksums.txt")), false);
-  assert.equal(existsSync(join(output, "windows-amd64.exe")), false);
+  assert.equal(existsSync(join(output, "gh-cao-windows-amd64.exe")), false);
 });

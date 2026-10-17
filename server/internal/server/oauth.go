@@ -102,16 +102,34 @@ type GitHubOAuthConfig struct {
 	PreviousSessionSecret string
 	AllowedOrganizations  []string
 	AllowedTeams          []string
-	AuthURL               string
-	TokenURL              string
-	UserURL               string
-	OrgMembershipURL      string
-	TeamMembershipURL     string
-	RevokeURL             string
-	HTTPClient            *http.Client
-	RevocationKeyPrefix   string
-	loginStateSecret      string
+	// LocalDevelopmentUser replaces membership authorization for one
+	// explicitly configured login, only on a validated loopback TLS server.
+	LocalDevelopmentUser string
+	AuthURL              string
+	TokenURL             string
+	UserURL              string
+	OrgMembershipURL     string
+	TeamMembershipURL    string
+	RevokeURL            string
+	HTTPClient           *http.Client
+	RevocationKeyPrefix  string
+	// AdminReauthenticationMaxAge bounds how long after an interactive OAuth
+	// authorization an administrator may act. Token refresh and periodic
+	// revalidation never extend it.
+	AdminReauthenticationMaxAge time.Duration
+	// SSOOrganizations are organizations the operator attests enforce SAML or
+	// OIDC single sign-on. An active membership read with a fresh token proves
+	// GitHub accepted that token's SSO authorization.
+	SSOOrganizations []string
+	loginStateSecret string
 }
+
+const (
+	defaultAdminReauthenticationMaxAge = 15 * time.Minute
+	maxAdminReauthenticationMaxAge     = time.Hour
+	assuranceTwoFactor                 = "2fa"
+	assuranceSSOPrefix                 = "sso:"
+)
 
 type githubOAuth struct {
 	config      GitHubOAuthConfig
@@ -122,23 +140,50 @@ type githubOAuth struct {
 	key         []byte
 	keys        map[string][]byte
 	log         func(string)
+	// Set only when hosted CLI actions are enabled. Rechecked at both ends
+	// of explicit repository consent; ordinary login never consults it.
+	repositoryConsentAllowed func(oauthSession) bool
 }
 
 type oauthSession struct {
-	ID             string    `json:"id"`
-	Login          string    `json:"login"`
-	AvatarURL      string    `json:"avatarUrl,omitempty"`
-	AccessToken    string    `json:"accessToken"`
-	RefreshToken   string    `json:"refreshToken"`
-	AccessExpires  time.Time `json:"accessExpires"`
-	RefreshExpires time.Time `json:"refreshExpires"`
-	AuthorizedAt   time.Time `json:"authorizedAt"`
-	CSRFToken      string    `json:"csrfToken"`
+	ID                   string    `json:"id"`
+	Login                string    `json:"login"`
+	GitHubID             int64     `json:"githubId,omitempty"`
+	LocalDevelopmentUser string    `json:"localDevelopmentUser,omitempty"`
+	AvatarURL            string    `json:"avatarUrl,omitempty"`
+	AccessToken          string    `json:"accessToken"`
+	RefreshToken         string    `json:"refreshToken"`
+	AccessExpires        time.Time `json:"accessExpires"`
+	RefreshExpires       time.Time `json:"refreshExpires"`
+	AuthorizedAt         time.Time `json:"authorizedAt"`
+	CSRFToken            string    `json:"csrfToken"`
+	// AuthenticatedAt is set only by an interactive authorization-code
+	// callback and is the step-up time for administrator operations.
+	AuthenticatedAt time.Time `json:"authenticatedAt,omitempty"`
+	// Assurance records 2FA enrollment or attested SSO access disclosed at
+	// AuthenticatedAt: "2fa" and/or "sso:ORG".
+	Assurance []string `json:"assurance,omitempty"`
 }
 
 type githubAccount struct {
+	ID        int64  `json:"id"`
 	Login     string `json:"login"`
 	AvatarURL string `json:"avatar_url"`
+	// TwoFactorAuthentication is present only when GitHub discloses it to the
+	// token; absence is treated as unverified.
+	TwoFactorAuthentication *bool `json:"two_factor_authentication"`
+}
+
+type oauthConsentState struct {
+	SessionBinding string `json:"session"`
+	GitHubID       int64  `json:"githubId"`
+	Login          string `json:"login"`
+	ExpiresAt      int64  `json:"expiresAt"`
+}
+
+func oauthSessionBinding(id string) string {
+	sum := sha256.Sum256([]byte(id))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
 type tokenResponse struct {
@@ -167,8 +212,27 @@ func (config *GitHubOAuthConfig) validate() error {
 	if config.PreviousSessionSecret != "" && len(config.PreviousSessionSecret) < 32 {
 		return errors.New("previous session secret must contain at least 32 characters")
 	}
-	if len(config.AllowedOrganizations) == 0 && len(config.AllowedTeams) == 0 {
+	if config.LocalDevelopmentUser != "" {
+		if strings.TrimSpace(config.LocalDevelopmentUser) != config.LocalDevelopmentUser ||
+			strings.ContainsAny(config.LocalDevelopmentUser, "/ ,\t\r\n*") {
+			return errors.New("CAO_GITHUB_LOCAL_USER must be one exact GitHub login")
+		}
+		if len(config.AllowedOrganizations) != 0 || len(config.AllowedTeams) != 0 || len(config.SSOOrganizations) != 0 {
+			return errors.New("CAO_GITHUB_LOCAL_USER cannot be combined with organization, team, or SSO authorization")
+		}
+	} else if len(config.AllowedOrganizations) == 0 && len(config.AllowedTeams) == 0 {
 		return errors.New("GitHub OAuth authorization requires at least one allowed organization or team")
+	}
+	if config.AdminReauthenticationMaxAge == 0 {
+		config.AdminReauthenticationMaxAge = defaultAdminReauthenticationMaxAge
+	}
+	if config.AdminReauthenticationMaxAge < time.Minute || config.AdminReauthenticationMaxAge > maxAdminReauthenticationMaxAge {
+		return errors.New("CAO_ADMIN_REAUTH_MAX_AGE must be a duration from 1m to 1h")
+	}
+	for _, org := range config.SSOOrganizations {
+		if strings.TrimSpace(org) == "" || strings.ContainsAny(org, "/ ") {
+			return errors.New("CAO_GITHUB_SSO_ORGANIZATIONS must list organization logins")
+		}
 	}
 	if config.AuthURL == "" {
 		config.AuthURL = "https://github.com/login/oauth/authorize"
@@ -248,15 +312,58 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 		writeError(response, http.StatusUnauthorized, "GitHub sign-in requires a top-level navigation")
 		return
 	}
+	var consent *oauthConsentState
+	if values, requested := request.URL.Query()["hosted_cli"]; requested {
+		if len(values) != 1 || values[0] != "1" {
+			oauth.logBranch("login.consent_request_invalid")
+			writeError(response, http.StatusBadRequest, "Invalid hosted administrator consent request")
+			return
+		}
+		if oauth.repositoryConsentAllowed == nil {
+			oauth.logBranch("login.consent_disabled")
+			writeError(response, http.StatusForbidden, "Hosted administrator consent is not enabled")
+			return
+		}
+		session, ok := oauth.session(response, request)
+		if !ok {
+			oauth.logBranch("login.consent_session_missing")
+			writeError(response, http.StatusUnauthorized, "Sign in before requesting hosted administrator consent")
+			return
+		}
+		if !oauth.repositoryConsentAllowed(session) {
+			oauth.logBranch("login.consent_admin_rejected")
+			writeError(response, http.StatusForbidden, "Administrator access is required for repository consent")
+			return
+		}
+		if session.GitHubID <= 0 {
+			oauth.logBranch("login.consent_subject_missing")
+			writeError(response, http.StatusUnauthorized, "Sign in again before requesting hosted administrator consent")
+			return
+		}
+		consent = &oauthConsentState{
+			SessionBinding: oauthSessionBinding(session.ID), GitHubID: session.GitHubID,
+			Login: session.Login, ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+		}
+	}
 	state, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("login.state_generation_failed")
 		writeError(response, http.StatusInternalServerError, "failed to initialize login")
 		return
 	}
+	cookieState := state
+	if consent != nil {
+		data, err := json.Marshal(consent)
+		if err != nil {
+			oauth.logBranch("login.consent_state_failed")
+			writeError(response, http.StatusInternalServerError, "Failed to initialize hosted administrator consent")
+			return
+		}
+		cookieState += "." + base64.RawURLEncoding.EncodeToString(data)
+	}
 	http.SetCookie(response, &http.Cookie{
 		Name:     "cao_oauth_state",
-		Value:    oauth.sign(state),
+		Value:    oauth.sign(cookieState),
 		Path:     "/auth/",
 		Secure:   true,
 		HttpOnly: true,
@@ -268,9 +375,18 @@ func (oauth *githubOAuth) login(response http.ResponseWriter, request *http.Requ
 	values.Set("client_id", oauth.config.ClientID)
 	values.Set("redirect_uri", oauth.config.RedirectURL)
 	values.Set("state", state)
-	values.Set("scope", "read:org")
 	if strings.HasPrefix(oauth.config.ClientID, "Iv") {
 		values.Set("scope", "offline_access")
+	} else {
+		// GitHub omits two_factor_authentication without read:user (or user).
+		scope := "read:org read:user"
+		if oauth.config.LocalDevelopmentUser != "" {
+			scope = "read:user"
+		}
+		if consent != nil {
+			scope += " repo"
+		}
+		values.Set("scope", scope)
 	}
 	values.Set("prompt", "select_account")
 	oauth.logBranch("login.account_selection_requested")
@@ -326,7 +442,8 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		}
 		writeOAuthFailure(response, status, reason, span.SpanContext().TraceID())
 	}
-	if !oauth.validState(request) {
+	consent, validState := oauth.loginState(request)
+	if !validState {
 		serverLog.Printf("oauth callback rejected invalid state")
 		oauth.logBranch("callback.state_rejected")
 		fail(http.StatusBadRequest, "invalid_state")
@@ -404,6 +521,25 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		fail(http.StatusForbidden, "authorization_failed")
 		return
 	}
+	session.Login = account.Login
+	session.GitHubID = account.ID
+	session.LocalDevelopmentUser = oauth.config.LocalDevelopmentUser
+	session.AuthenticatedAt = now
+	session.Assurance = oauth.verifiedAssurance(ctx, tokens.AccessToken, account)
+	if consent != nil {
+		previous, ok := oauth.loadRequestSession(request)
+		if !ok || oauth.repositoryConsentAllowed == nil ||
+			!constantTimeTokenEqual(consent.SessionBinding, oauthSessionBinding(previous.ID)) ||
+			previous.GitHubID != consent.GitHubID || account.ID != consent.GitHubID ||
+			!strings.EqualFold(previous.Login, consent.Login) || !strings.EqualFold(account.Login, consent.Login) ||
+			!oauth.repositoryConsentAllowed(session) || !oauth.adminAssured(session, time.Now().UTC()) ||
+			time.Now().Unix() >= consent.ExpiresAt {
+			oauth.logBranch("callback.consent_rejected")
+			fail(http.StatusForbidden, "authorization_failed")
+			return
+		}
+		oauth.logBranch("callback.consent_authorized")
+	}
 	sessionID, err := randomToken(32)
 	if err != nil {
 		oauth.logBranch("callback.session_id_generation_failed")
@@ -417,7 +553,6 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		return
 	}
 	session.ID = sessionID
-	session.Login = account.Login
 	session.AvatarURL = account.AvatarURL
 	session.CSRFToken = csrfToken
 	if err := oauth.saveSession(ctx, session); err != nil {
@@ -462,10 +597,56 @@ func (oauth *githubOAuth) currentAccount(response http.ResponseWriter, request *
 		return
 	}
 	oauth.logBranch("current_account.succeeded")
-	writeJSON(response, http.StatusOK, map[string]string{
+	payload := map[string]string{
 		"login":     session.Login,
 		"avatarUrl": session.AvatarURL,
-	})
+	}
+	if until, ok := oauth.adminAssuranceExpires(session); ok && time.Now().UTC().Before(until) {
+		payload["adminAssuranceExpiresAt"] = until.Format(time.RFC3339)
+	}
+	writeJSON(response, http.StatusOK, payload)
+}
+
+// verifiedAssurance records disclosed 2FA enrollment or attested SSO access
+// for a freshly authorized token, not proof of a new MFA ceremony.
+// It never infers assurance from absent data.
+func (oauth *githubOAuth) verifiedAssurance(ctx context.Context, accessToken string, account githubAccount) []string {
+	var assurance []string
+	if account.TwoFactorAuthentication != nil && *account.TwoFactorAuthentication {
+		assurance = append(assurance, assuranceTwoFactor)
+		oauth.logBranch("assurance.two_factor_verified")
+	}
+	for _, org := range oauth.config.SSOOrganizations {
+		if oauth.orgAuthorized(ctx, accessToken, org) {
+			assurance = append(assurance, assuranceSSOPrefix+strings.ToLower(org))
+			oauth.logBranch("assurance.sso_verified")
+		}
+	}
+	if len(assurance) == 0 {
+		oauth.logBranch("assurance.unverified")
+	}
+	return assurance
+}
+
+// adminAssuranceExpires reports when the session's administrator step-up
+// lapses. Sessions without a verified factor never qualify.
+func (oauth *githubOAuth) adminAssuranceExpires(session oauthSession) (time.Time, bool) {
+	if session.AuthenticatedAt.IsZero() || len(session.Assurance) == 0 {
+		return time.Time{}, false
+	}
+	return session.AuthenticatedAt.Add(oauth.adminReauthenticationMaxAge()), true
+}
+
+func (oauth *githubOAuth) adminReauthenticationMaxAge() time.Duration {
+	if oauth.config.AdminReauthenticationMaxAge <= 0 {
+		return defaultAdminReauthenticationMaxAge
+	}
+	return oauth.config.AdminReauthenticationMaxAge
+}
+
+func (oauth *githubOAuth) adminAssured(session oauthSession, now time.Time) bool {
+	until, ok := oauth.adminAssuranceExpires(session)
+	return ok && !now.Before(session.AuthenticatedAt) && now.Before(until)
 }
 
 func (oauth *githubOAuth) clearRequestSession(response http.ResponseWriter, request *http.Request) error {
@@ -703,9 +884,36 @@ func (oauth *githubOAuth) requestHasSession(request *http.Request) bool {
 }
 
 func (oauth *githubOAuth) validState(request *http.Request) bool {
+	_, ok := oauth.loginState(request)
+	return ok
+}
+
+func (oauth *githubOAuth) loginState(request *http.Request) (*oauthConsentState, bool) {
 	state := request.URL.Query().Get("state")
 	cookie, err := request.Cookie("cao_oauth_state")
-	return err == nil && state != "" && constantTimeTokenEqual(cookie.Value, oauth.sign(state))
+	// A provider state is opaque randomness, never the signed cookie's
+	// consent payload. Accepting dots here would permit a consent downgrade.
+	if err != nil || state == "" || strings.Contains(state, ".") {
+		return nil, false
+	}
+	if constantTimeTokenEqual(cookie.Value, oauth.sign(state)) {
+		return nil, true
+	}
+	parts := strings.Split(cookie.Value, ".")
+	if len(parts) != 3 || parts[0] != state ||
+		!constantTimeTokenEqual(cookie.Value, oauth.sign(state+"."+parts[1])) {
+		return nil, false
+	}
+	data, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, false
+	}
+	var consent oauthConsentState
+	if json.Unmarshal(data, &consent) != nil || consent.SessionBinding == "" ||
+		consent.GitHubID <= 0 || consent.Login == "" || time.Now().Unix() >= consent.ExpiresAt {
+		return nil, false
+	}
+	return &consent, true
 }
 
 func (oauth *githubOAuth) exchange(ctx context.Context, values url.Values) (tokenResponse, error) {
@@ -748,6 +956,14 @@ func (oauth *githubOAuth) authorizedAccount(ctx context.Context, accessToken str
 	if err != nil {
 		oauth.logBranch("authorization.identity_failed")
 		return githubAccount{}, err
+	}
+	if oauth.config.LocalDevelopmentUser != "" {
+		if account.ID <= 0 || !strings.EqualFold(account.Login, oauth.config.LocalDevelopmentUser) {
+			oauth.logBranch("authorization.local_user_rejected")
+			return githubAccount{}, errors.New("GitHub account is not the configured local developer")
+		}
+		oauth.logBranch("authorization.local_user_allowed")
+		return account, nil
 	}
 	for _, org := range oauth.config.AllowedOrganizations {
 		if oauth.orgAuthorized(ctx, accessToken, org) {
@@ -1025,6 +1241,10 @@ func (oauth *githubOAuth) loadSessionRecord(ctx context.Context, sessionID strin
 	var session oauthSession
 	if err := json.Unmarshal(plain, &session); err != nil {
 		return oauthSession{}, "", err
+	}
+	if !strings.EqualFold(session.LocalDevelopmentUser, oauth.config.LocalDevelopmentUser) {
+		oauth.logBranch("session.authorization_mode_rejected")
+		return oauthSession{}, "", errors.New("session does not match the configured OAuth authorization mode")
 	}
 	return session, sealed, nil
 }

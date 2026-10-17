@@ -62,7 +62,7 @@ func TestGitHubQuotaUsageRequiresHostedAdministrator(t *testing.T) {
 	}
 
 	request = httptest.NewRequestWithContext(
-		context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "operator"}),
+		context.WithValue(t.Context(), oauthSessionContextKey{}, assuredSession("operator")),
 		http.MethodGet, "/api/v1/github-quota/usage", nil,
 	)
 	response = httptest.NewRecorder()

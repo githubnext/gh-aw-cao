@@ -22,6 +22,7 @@ const futureRunWeeks = 4
 const partitionMaintenanceInterval = 24 * time.Hour
 
 var partitionsLog = logger.New("cao:postgresx:partitions")
+var partitionTables = []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools", "runs"}
 
 // weekStart truncates t (interpreted in UTC) to the Monday 00:00:00 that
 // begins its partition week. It is extracted from RunPartitionMaintenance so
@@ -54,7 +55,7 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	if _, err := lock.Exec(ctx, "SELECT pg_advisory_lock(712083241, 17484)"); err != nil {
 		return err
 	}
-	tables := []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools", "runs"}
+	tables := partitionTables
 	cutoff := now.UTC().AddDate(0, 0, -retentionDays)
 	linkedCutoff := now.UTC().AddDate(0, 0, -linkedRetentionDays)
 	start := weekStart(cutoff)

@@ -117,7 +117,7 @@ func TestCollectionStatusRequiresHostedAdministrator(t *testing.T) {
 	}
 
 	request = httptest.NewRequestWithContext(
-		context.WithValue(t.Context(), oauthSessionContextKey{}, oauthSession{Login: "operator"}),
+		context.WithValue(t.Context(), oauthSessionContextKey{}, assuredSession("operator")),
 		http.MethodGet, "/api/v1/ingestion/health", nil,
 	)
 	response = httptest.NewRecorder()

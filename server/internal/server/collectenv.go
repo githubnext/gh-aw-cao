@@ -147,6 +147,20 @@ func envDuration(name string) time.Duration {
 	return value
 }
 
+// envStrictDuration returns -1 for a malformed value so validation fails
+// closed instead of silently applying a default.
+func envStrictDuration(name string) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return 0
+	}
+	value, err := time.ParseDuration(raw)
+	if err != nil {
+		return -1
+	}
+	return value
+}
+
 func envBool(name string) bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
 	case "1", "true", "yes", "on":
@@ -192,7 +206,7 @@ func NewCollectorFromEnv(ctx context.Context, databaseQueriesPath string) (*Coll
 	if databaseNamespace == "" {
 		databaseNamespace = "hosted-dashboard"
 	}
-	database, err := postgresx.NewWithNamespace(ctx, postgresURL, databaseNamespace)
+	database, err := postgresx.OpenWithNamespace(ctx, postgresURL, databaseNamespace)
 	if err != nil {
 		return nil, errors.New("connect to dashboard Postgres failed")
 	}
