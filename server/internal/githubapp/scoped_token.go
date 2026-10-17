@@ -26,6 +26,10 @@ type ScopedToken struct {
 	Permissions    map[string]string
 }
 
+// ScopedTokenLifetime is GitHub's maximum installation-token lifetime. Cleanup
+// can conservatively wait this long from receipt when expiry evidence is absent.
+const ScopedTokenLifetime = time.Hour
+
 // NewScopedToken constructs a token from an externally minted credential. It
 // exists for tests and alternative brokers; production tokens come from
 // MintScopedToken.
@@ -117,6 +121,8 @@ func (s TokenScope) Key(installationID int64) string {
 // MintScopedToken requests a fresh installation token restricted to scope.
 // Unlike InstallationToken it never reuses a cached credential: every call
 // creates a distinct token that the caller must revoke with RevokeToken.
+// A nonempty token returned WITH an error is cleanup-only: the caller must
+// retain and revoke it, never use it. This also covers rejected grants.
 func (c *Client) MintScopedToken(ctx context.Context, installationID int64, scope TokenScope) (ScopedToken, error) {
 	if installationID <= 0 {
 		return ScopedToken{}, errors.New("installation id is required")
@@ -139,13 +145,16 @@ func (c *Client) MintScopedToken(ctx context.Context, installationID int64, scop
 	if token.GetToken() == "" {
 		return ScopedToken{}, errors.New("mint scoped installation token: response is missing a token")
 	}
-	minted := ScopedToken{value: token.GetToken(), InstallationID: installationID}
+	minted := ScopedToken{value: token.GetToken(), InstallationID: installationID, ExpiresAt: token.GetExpiresAt().Time}
+	cleanupDeadline := time.Now().Add(ScopedTokenLifetime)
+	if minted.ExpiresAt.IsZero() || minted.ExpiresAt.After(cleanupDeadline) {
+		// Installation tokens expire after one hour. Missing expiry evidence
+		// cannot authorize use, but cleanup must retain a conservative lifetime.
+		minted.ExpiresAt = cleanupDeadline
+		return minted, errors.New("mint scoped installation token: response expiry is missing or invalid")
+	}
 	if err := verifyGrantedScope(scope, token); err != nil {
-		// Never use a credential broader than requested; invalidate it now.
-		if revokeErr := c.RevokeToken(context.WithoutCancel(ctx), minted); revokeErr != nil {
-			appLog.Printf("over-broad scoped token revocation failed")
-		}
-		return ScopedToken{}, fmt.Errorf("mint scoped installation token: %w", err)
+		return minted, fmt.Errorf("mint scoped installation token: %w", err)
 	}
 	appLog.Printf("minted scoped installation token repositories=%d permissions=%d", len(scope.Repositories), len(scope.Permissions))
 	return ScopedToken{
