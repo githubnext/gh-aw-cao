@@ -1,7 +1,35 @@
 {
   "source_sha": "8332050ca00104805d3a7539f1e46b39418d1426",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-17T02:40:00Z",
+      "worker_run_id": 38995095701,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        38995249093,
+        38995179876,
+        38995006790,
+        38993342825,
+        38992733552,
+        38991200650,
+        38990576500,
+        38990080457,
+        38990062433,
+        38989881859,
+        38989255404,
+        38988933940,
+        38988429472,
+        38987633766,
+        38984998455,
+        38984593958,
+        38984403344,
+        38984394547,
+        38983145138,
+        38982147570
+      ],
+      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 8332050ca00104805d3a7539f1e46b39418d1426. In the latest 20 completed docs.yml runs from 2026-10-16T23:33:15Z through 2026-10-17T02:30:34Z, 15 runs concluded success and 5 concluded skipped; there were no failed, cancelled, action_required, or timed_out docs runs in the inspected window. The .github/workflows/docs.yml blob (9a4834bb3d54ed40376fab886e8e1effff0951d5) and .github/workflows/cao-dashboard.yml blob (415481b74f6b56b4d012c9a23e076b13bcaca2bd) were identical across every inspected docs head SHA, so the 10 successful docs build jobs are a comparable same-workflow sample across push, schedule, and workflow_run triggers. Trusted metadata showed docs queue time median 0.0s (p90 0.0s), docs workflow execution 66.0s (p90 82.6s) across 15 successful runs, schedule-freshness 7.0s (p90 8.0s), build 43.5s (p90 55.0s) across 10 successful build jobs, and deploy 16.0s (p90 21.3s) across 8 successful publish runs. Docs build-step timings showed Set up Node.js 3.0s median (p90 5.2s), Restore node_modules 5.0s (p90 7.0s), Build documentation 13.0s (p90 14.1s), Restore cached CAO Dashboard 2.0s (p90 3.0s), Upload Pages artifact 8.5s (p90 10.0s), and Deploy Pages 13.0s (p90 17.0s). Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact were skipped in all 10 successful docs build jobs, confirming the warm path for npm, node_modules, and dashboard reuse. Bounded logs from current-source docs runs 38995249093, 38990576500, and 38990062433 verified cache restores for setup-node npm, Linux-node-24 node_modules, and central-agentic-ops-dashboard, Astro building 76 pages in 8.14s, 10.13s, and 11.86s, Pagefind starting only after the page build, and /llms-full.txt as the slowest single route at +960ms, +1.45s, and +1.54s. The latest 20 completed cao-dashboard.yml runs from 2026-10-16T22:25:28Z through 2026-10-17T02:27:38Z contained 9 successful builds and 11 skipped callbacks. Across those 9 successful dashboard runs, trusted metadata showed queue time median 0.0s (p90 0.0s), dashboard workflow execution 175.0s (p90 279.0s), build 156.0s (p90 262.2s), cache 11.0s (p90 12.0s), Restore collected activity data 4.0s (p90 5.4s), Install dashboard build dependencies 4.0s (p90 6.0s), Upgrade fallback activity data 117.0s (p90 192.4s), Assess activity database health 11.0s (p90 39.0s), Assemble Dashboard Language site 4.0s (p90 6.2s), Upload dashboard artifact 9.0s (p90 9.2s), Download dashboard artifact 4.0s (p90 4.2s), and Save dashboard cache 3.0s (p90 3.0s). Bounded logs from dashboard run 38990418608 verified a cao-activity-v5-38988221889-1 cache hit, dashboard npm ci adding 10 packages in 2s, a validated 510.7 MiB SQLite payload, 355 copied activity shards totaling 330.5 MiB, a 46.6 MB dashboard artifact upload, and immediate artifact re-download before saving the fixed central-agentic-ops-dashboard cache key; outlier dashboard run 38984482860 took 379s because Upgrade fallback activity data alone took 290s. No new recommendation in the Astro documentation generation category is actionable because repeated evidence shows docs-side Astro generation is already a stable secondary cost, the largest observed per-route cost remains /llms-full.txt at about 1 to 1.5 seconds, and no concrete workflow-only change in this category is evidenced to save at least 60 seconds or materially more than 15 percent of median docs execution time without weakening correctness, freshness, or deployment safety. Open issues #16825, #17171, #18158, and #16054 remain the active non-duplicate queue for higher-value docs build-time work, and there is no open Astro-specific issue whose evidence materially changed in this window."
+    },
     {
       "evaluated_at": "2026-10-17T02:01:45Z",
       "worker_run_id": 38992951384,
@@ -771,34 +799,6 @@
         38857759623
       ],
       "outcome": "Evaluated category \"reusable dashboard generation\" on source SHA 55bb730caca0e609d6074146c25b467b3e839020. In the latest 20 completed docs.yml runs from 2026-10-16T05:49:06Z through 2026-10-16T09:38:00Z, 19 runs concluded success and 1 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Seven comparable successful docs runs executed both build and deploy (38876897045, 38868963660, 38866105775, 38864038769, 38862275278, 38860736621, 38858450242). Trusted run, job, and step metadata for those comparable runs showed median queue time 0.0s (p90 0.0s), docs workflow execution 73.0s (p90 79.2s), build 40.0s (p90 48.6s), deploy 11.0s (p90 15.8s), Restore node_modules 5.0s (p90 6.5s), Build documentation 13.5s (p90 15.0s), Restore cached CAO Dashboard 1.5s (p90 2.5s), and Upload Pages artifact 5.0s (p90 6.0s). Bounded logs from docs run 38876897045 confirmed a setup-node npm cache hit, a 283 MB node_modules cache hit, a cached central-agentic-ops-dashboard restore, Astro building 75 pages in 7.11s, and Upload Pages artifact producing a 29.9 MB github-pages bundle in about 3.3s. Related cao-dashboard.yml evidence in the latest 20 completed workflow_run callbacks contained 14 successful main-branch builds (38876685954, 38868790117, 38865858009, 38863840822, 38860528528, 38858288863, 38855449902, 38852328230, 38851551055, 38850292556, 38848474549, 38846977223, 38845019414, 38843959846). Across that success cohort, trusted metadata showed median queue time 0.0s (p90 0.0s), full execution 115.5s (p90 131.4s), build 103.5s (p90 115.7s), Restore collected activity data 3.0s (p90 3.7s), Install dashboard build dependencies 2.5s (p90 4.7s), Upgrade fallback activity data 80.0s (p90 90.0s), Assemble Dashboard Language site 2.5s (p90 3.0s), and Upload dashboard artifact 4.0s (p90 5.0s). The current-source dashboard subset (38876685954, 38868790117, 38865858009, 38863840822) still showed Upgrade fallback activity data at 64.5s median, with Install dashboard build dependencies at 3.0s, Assemble Dashboard Language site at 3.0s, and Upload dashboard artifact at 4.0s. Bounded logs from dashboard run 38876685954 confirmed a cache hit for cao-activity-v5-38873882743-1, npm ci adding only 6 packages in 2s, validation of a 262.1 MiB gh-aw-logs.sqlite database, copying 207 activity shards totaling 186.0 MiB, and uploading the compressed central-agentic-ops-dashboard artifact at 26.1 MB in about 4s. Open self-care docs build-time issue #16825 already represents the same underlying reusable-dashboard-generation change: caching upgraded CAO activity snapshots across repeated CAO Dashboard builds. The current source and timing evidence still point to that same producer-side reuse gap, so creating an equivalent new issue would be a duplicate; with only create_issue/noop available in this worker, the category advances with a no-op rather than a repeated issue."
-    },
-    {
-      "evaluated_at": "2026-10-16T09:30:20Z",
-      "worker_run_id": 38880281866,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        38880420321,
-        38877656235,
-        38876897045,
-        38876510336,
-        38874195614,
-        38871048661,
-        38869711428,
-        38868963660,
-        38868680670,
-        38867288108,
-        38866105775,
-        38864550032,
-        38864038769,
-        38862275278,
-        38861640007,
-        38860736621,
-        38859005814,
-        38858450242,
-        38857759623,
-        38857716654
-      ],
-      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 55bb730caca0e609d6074146c25b467b3e839020. In the latest 20 completed docs.yml runs from 2026-10-16T05:48:37Z through 2026-10-16T09:26:03Z, 19 runs concluded success and 1 concluded skipped; there were no failed, cancelled, action_required, or timed_out runs in the inspected window. Five same-source comparable successful docs runs executed both build and deploy (38876897045, 38868963660, 38866105775, 38864038769, 38862275278). Trusted run, job, and step metadata for those comparable runs showed median queue time 0.0s (p90 0.0s), docs workflow execution 73.0s (p90 77.6s), schedule-freshness 8.0s (p90 9.2s), build 40.0s (p90 45.8s), deploy 11.0s (p90 15.4s), Restore node_modules 5.0s (p90 6.2s), Build documentation 13.0s (p90 14.6s), Restore cached CAO Dashboard 2.0s (p90 2.6s), and Upload Pages artifact 5.0s (p90 6.0s). Bounded logs from docs run 38876897045 confirmed a setup-node npm cache restore, a 283 MB node_modules cache hit, a 24 MB central-agentic-ops-dashboard cache hit, Astro building 75 pages in 7.11s, and a 29.9 MB Pages artifact upload in about 3.3s. Related cao-dashboard.yml evidence in the latest 20 completed workflow_run callbacks contained 14 successful main-branch builds (38876685954, 38868790117, 38865858009, 38863840822, 38860528528, 38858288863, 38855449902, 38852328230, 38851551055, 38850292556, 38848474549, 38846977223, 38845019414, 38843959846). Across that success cohort, trusted metadata showed median queue time 0.0s (p90 0.0s), full execution 115.5s (p90 131.4s), build 103.5s (p90 115.7s), Restore collected activity data 3.0s (p90 3.7s), Install dashboard build dependencies 2.5s (p90 4.7s), Upgrade fallback activity data 80.0s (p90 90.0s), Assemble Dashboard Language site 2.5s (p90 3.0s), and Upload dashboard artifact 4.0s (p90 5.0s). The current-source dashboard subset (38876685954, 38868790117, 38865858009, 38863840822) still showed Install dashboard build dependencies at 3.0-3.7s, Assemble Dashboard Language site at 3.0-3.7s, and the dominant repeated producer cost in Upgrade fallback activity data at 64.5s median. Bounded logs from dashboard run 38876685954 confirmed a cache hit for cao-activity-v5-38873882743-1, npm ci adding only 6 packages in 2s, validation of a 262.1 MiB gh-aw-logs.sqlite database, copying 207 activity shards totaling 186.0 MiB, and uploading the compressed central-agentic-ops-dashboard artifact at 26.1 MB in about 4s. Open self-care docs build-time issues #16825, #17171, #18158, and #16054 still cover the materially larger repeated bottlenecks. No new Astro documentation-generation change is actionable because the docs Build documentation step remains a stable ~13 second slice, the dashboard site-assembly step remains ~3 seconds, and no concrete workflow-only change in this category is evidenced to save at least 60 seconds or 15 percent of the 73-second median docs execution time without weakening correctness, freshness, or deployment safety."
     }
   ]
 }
