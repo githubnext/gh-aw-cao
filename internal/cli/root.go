@@ -35,7 +35,7 @@ func newCommand(version string, ghVersion func(context.Context) (string, error),
 		},
 		Long: `Configure and operate Central Agentic Ops from a control repository.
 
-Policy initialization, campaign modes, and workflow enablement run in Go.
+Campaign installation, policy initialization, campaign modes, and workflow enablement run in Go.
 Other operator commands use the installed CAO runtime (Node.js 24 or newer).
 Activity and Dashboard Actions pipeline commands remain in ./cao.sh.
 Help, version, and the local doctor diagnostic do not load the CAO runtime.`,
@@ -77,6 +77,7 @@ Help, version, and the local doctor diagnostic do not load the CAO runtime.`,
 		},
 	)
 	addPolicyCommands(root, gh)
+	root.AddCommand(repositoryCommands(runtime))
 	addOperatorCommands(root, runtime)
 	return root
 }

@@ -34,7 +34,8 @@ to invoke it as `gh cao`.
 | Surface | Commands | Execution |
 | --- | --- | --- |
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
-| Onboarding and lifecycle | `setup`, `quickstart`, `setup-auth github-app\|enterprise-app\|token`, `add`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
+| Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
+| Onboarding and lifecycle | `setup`, `quickstart`, `setup-auth github-app\|enterprise-app\|token`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Same installed runtime and canonical query engine as the dashboard and existing CLI. |
 | Local diagnostics | `doctor`, `version` | Native Go. `doctor` checks only the local `gh` executable. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Remain in `./cao.sh` / `activity/cao.mjs`; not migrated to the extension. |
@@ -49,7 +50,8 @@ or policy authority, and never downloads code implicitly.
 
 ```bash
 gh cao init
-gh cao add githubnext/gh-aw-cao/dependabot
+gh cao campaigns add githubnext/gh-aw-cao/dependabot
+gh cao repos add acme/example-service
 gh cao campaigns mode preview dependabot
 gh cao campaigns enable dependabot
 gh cao campaigns disable dependabot
@@ -62,10 +64,22 @@ All help works offline, including `gh cao quickstart --help` and
 `gh cao campaigns --help`. Campaign controls are available only under
 `campaigns` in the extension; `./cao.sh mode`, `./cao.sh enable`, and
 `./cao.sh disable` keep their existing syntax.
-`gh cao setup-auth token --help` also works offline. `add` and `update` retain
+Repository enrollment uses `gh cao repos add OWNER/REPO`; the extension has no
+root-level `add` command. `./cao.sh add CAMPAIGN` and
+`./cao.sh add --repository OWNER/REPO` retain their existing syntax.
+`gh cao setup-auth token --help` also works offline. `campaigns add` and `update` retain
 gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
 secret prompts, and validator exit codes retain their existing contracts.
 There is no `gh cao run`: workflow execution still belongs to gh-aw.
+
+Campaign installation fetches only the installed package's full `resolvedCommit`
+SHA from the official catalog, or copies only Git-tracked campaign files from a
+local catalog checkout. It replaces the selected campaign's resources, refreshes
+its intelligence metadata, and merges declared workers while preserving existing
+enablement, mode ceilings, campaign settings, and repository scope. It does not
+reinstall the control-plane runtime or plugin. Missing policy is initialized for
+the exact current control repository. Install the root package with `install.sh`,
+not `gh cao campaigns add`; review and commit generated workflows and policy together.
 
 `gh cao doctor` is deliberately **not** `./cao.sh doctor`: use the latter for
 the existing SQLite snapshot check/repair operation. Neither Activity nor

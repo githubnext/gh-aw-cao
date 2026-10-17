@@ -47,9 +47,9 @@ func TestOperatorCommandInventory(t *testing.T) {
 	}
 	slices.Sort(names)
 	want := []string{
-		"add", "campaigns", "computation", "doctor", "download", "gh", "init",
+		"campaigns", "computation", "doctor", "download", "gh", "init",
 		"mcp", "pages", "prompt", "queries", "query", "query-info",
-		"quickstart", "setup", "setup-auth", "update", "upgrade-gh-aw", "validate", "version",
+		"quickstart", "repos", "setup", "setup-auth", "update", "upgrade-gh-aw", "validate", "version",
 	}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("command inventory = %v, want %v", names, want)
@@ -67,7 +67,7 @@ func TestCampaignCommandInventory(t *testing.T) {
 		names = append(names, command.Name())
 	}
 	slices.Sort(names)
-	if want := []string{"disable", "enable", "mode"}; !reflect.DeepEqual(names, want) {
+	if want := []string{"add", "disable", "enable", "mode"}; !reflect.DeepEqual(names, want) {
 		t.Fatalf("campaign command inventory = %v, want %v", names, want)
 	}
 }
@@ -75,6 +75,7 @@ func TestCampaignCommandInventory(t *testing.T) {
 func TestCampaignControlsAreNotRootCommands(t *testing.T) {
 	for _, args := range [][]string{
 		{"mode", "preview", "one"}, {"enable", "one"}, {"disable", "one"},
+		{"add", "githubnext/gh-aw-cao/demo"},
 	} {
 		t.Run(args[0], func(t *testing.T) {
 			root, stdout, stderr := testCommand(t, nil, nil)
@@ -142,8 +143,7 @@ func TestOperatorRuntimeArguments(t *testing.T) {
 		{[]string{"setup-auth", "token", "--repo", "owner/repo", "--write-repository", "a/one", "--write-repository", "b/two", "--dry-run"}, []string{"setup-auth", "token", "--dry-run", "--repo", "owner/repo", "--write-repository", "a/one", "--write-repository", "b/two"}},
 		{[]string{"setup-auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "one", "--write-client-id", "two"}, []string{"setup-auth", "enterprise-app", "--read-client-id", "one", "--repo", "owner/repo", "--write-client-id", "two"}},
 		{[]string{"upgrade-gh-aw", "v1.2.3"}, []string{"upgrade-gh-aw", "v1.2.3"}},
-		{[]string{"add", "githubnext/gh-aw-cao/dependabot", "--engine", "copilot", "--unknown-future-flag"}, []string{"add", "githubnext/gh-aw-cao/dependabot", "--engine", "copilot", "--unknown-future-flag"}},
-		{[]string{"add", "--repository", "owner/repo"}, []string{"add", "--repository", "owner/repo"}},
+		{[]string{"repos", "add", "owner/repo"}, []string{"add", "--repository", "owner/repo"}},
 		{[]string{"update", "--campaign", "dependabot", "main", "--engine", "copilot"}, []string{"update", "--campaign", "dependabot", "main", "--engine", "copilot"}},
 	}
 	for _, tt := range tests {
@@ -186,6 +186,10 @@ func TestOperatorInvalidInputDoesNotExecute(t *testing.T) {
 		{"campaigns", "mode", "debug", "one"}, {"campaigns", "enable", "../one"},
 		{"setup-auth"}, {"gh"}, {"computation"}, {"add"}, {"add", "--repository"},
 		{"add", "--repository", "owner/*"}, {"add", "--repository", "owner/repo", "extra"},
+		{"add", "githubnext/gh-aw-cao/demo"}, {"add", "githubnext/gh-aw-cao/demo", "--force"},
+		{"campaigns", "add"}, {"campaigns", "add", "--repository", "owner/repo"},
+		{"repos"}, {"repos", "unknown"}, {"repos", "add"}, {"repos", "add", "owner/*"},
+		{"repos", "add", "owner/repo", "extra"}, {"repos", "add", "--repository", "owner/repo"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			root, stdout, stderr := testCommand(t, nil, nil)

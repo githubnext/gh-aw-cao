@@ -148,7 +148,7 @@ On Windows, build `gh-cao.exe` with
 | Path | Responsibility |
 | --- | --- |
 | `cmd/gh-cao/` | Process entry point, interrupt cancellation, exit status, and link-time version (`-X main.version=...`). |
-| `internal/cli/` | Cobra operator commands, native policy initialization/modes and workflow enablement, help, version, and local diagnostics. |
+| `internal/cli/` | Cobra operator commands, native campaign installation/materialization, policy initialization/modes and workflow enablement, help, version, and local diagnostics. |
 | `internal/ghcli/` | Context-aware GitHub CLI calls through `github.com/cli/go-gh/v2`, the same helper used by gh-aw. |
 | `internal/runtimecli/` | Explicit installed-runtime discovery and cancellation-aware Node process/stdio/exit-status boundary for shared domain services. |
 | `go.mod`, `go.sum` | Pinned extension dependencies, separate from `server/go.mod`. |
@@ -164,8 +164,9 @@ as needed rather than its full CLI command implementation.
 
 Help for every operator command and version work offline without GitHub authentication. `doctor` runs only
 `gh --version` with a five-second timeout; it does not check authentication,
-gh-aw, rollout policy, or operational readiness. `init`, `campaigns mode`,
-`campaigns enable`, and `campaigns disable` run in Go without Node; the other
+gh-aw, rollout policy, or operational readiness. `campaigns add`, `init`,
+`campaigns mode`, `campaigns enable`, and `campaigns disable` run in Go without Node;
+repository enrollment (`repos add OWNER/REPO`) and the other
 operator commands require Node.js 24+ and an installed root CAO runtime.
 Runtime discovery checks the working
 directory and its ancestors without crossing a Git repository boundary, then

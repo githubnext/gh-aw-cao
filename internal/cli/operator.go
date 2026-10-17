@@ -133,7 +133,6 @@ func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
 	}
 	computation.AddCommand(intelligence, health)
 	root.AddCommand(setup, quickstart, validate, download, pages, queries, info, prompt, query, mcp, upgrade, auth, gh, computation,
-		passthroughCommand("add CAMPAIGN [GH_AW_ADD_OPTIONS...] | --repository OWNER/REPO", "Install a campaign or enroll one exact repository", execute),
 		passthroughCommand("update [REF] [GH_AW_OPTIONS...]", "Update installed CAO packages without widening rollout", execute),
 	)
 }
@@ -185,10 +184,10 @@ func operatorCommand(use, short string, args cobra.PositionalArgs, flags []opera
 	return cmd
 }
 
-// gh-aw add/update options evolve independently; retain their exact order and values.
+// gh-aw update options evolve independently; retain their exact order and values.
 func passthroughCommand(use, short string, execute runtimeExecutor) *cobra.Command {
 	cmd := &cobra.Command{Use: use, Short: short, DisableFlagParsing: true}
-	cmd.Long = short + ".\n\nOptions are passed unchanged to the installed CAO runtime and gh-aw.\nUse --campaign SLUG with update; use --repository OWNER/REPO with add."
+	cmd.Long = short + ".\n\nOptions are passed unchanged to the installed CAO runtime and gh-aw.\nUse --campaign SLUG with update."
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		for _, arg := range args {
 			if arg == "--" {
@@ -196,18 +195,6 @@ func passthroughCommand(use, short string, execute runtimeExecutor) *cobra.Comma
 			}
 			if arg == "--help" || arg == "-h" {
 				return cmd.Help()
-			}
-		}
-		if cmd.Name() == "add" {
-			if len(args) == 0 {
-				return fmt.Errorf("add requires a campaign or --repository OWNER/REPO")
-			}
-			if args[0] == "--repository" {
-				if len(args) != 2 || !repositoryPattern.MatchString(args[1]) {
-					return fmt.Errorf("add --repository requires exactly one OWNER/REPO")
-				}
-			} else if strings.HasPrefix(args[0], "-") {
-				return fmt.Errorf("add requires a campaign")
 			}
 		}
 		return execute(cmd, append(commandWords(cmd), args...))

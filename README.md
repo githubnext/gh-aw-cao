@@ -130,8 +130,9 @@ work and planned improvements.
 The `gh cao` Go extension exposes the operator commands for setup,
 authentication, campaigns, validation, and read-only evidence analysis.
 Run `make build` to produce `./gh-cao`, then try `./gh-cao --help`.
-`init`, `campaigns mode`, `campaigns enable`, and `campaigns disable` execute
-natively in Go; other operator commands reuse the installed CAO Node.js 24+
+`campaigns add`, `init`, `campaigns mode`, `campaigns enable`, and
+`campaigns disable` execute natively in Go; repository enrollment
+(`repos add OWNER/REPO`) and other operator commands reuse the installed CAO Node.js 24+
 runtime to preserve production
 onboarding, policy, and Dashboard Language semantics. Run them from the control
 repository root, or select an installed runtime with `CAO_RUNTIME_ROOT`.

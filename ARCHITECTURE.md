@@ -406,7 +406,7 @@ reconstructable.
 | `<operation>/operational-value.mjs` | Optional deterministic repository-scoped operational-value computation installed with its package. |
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
-| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `internal/runtimecli/` | Independent root Go module for operator-facing `gh cao` commands, native policy initialization/modes and workflow enablement, and an explicit installed-Node-runtime boundary for shared domain services; Actions pipeline commands remain Node-owned. |
+| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `internal/runtimecli/` | Independent root Go module for operator-facing `gh cao` commands, native campaign installation/materialization, policy initialization/modes and workflow enablement, and an explicit installed-Node-runtime boundary for shared domain services; Actions pipeline commands remain Node-owned. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
@@ -432,10 +432,20 @@ The extension's root `go.mod` is separate from `server/go.mod`.
 depends on `internal/ghcli/` and `internal/runtimecli/`. Shared logging comes from
 `github.com/github/gh-aw/pkg/logger`; GitHub CLI execution uses
 `github.com/cli/go-gh/v2`, the same helper used by gh-aw. The Go command layer
-owns operator argument validation and help. Policy initialization, campaign mode
-changes, and workflow enablement run natively in Go; initialization refuses
+owns operator argument validation and help. Campaign installation, policy
+initialization, campaign mode changes, and workflow enablement run natively in Go.
+`gh cao campaigns add` delegates package ownership and workflow generation to
+`gh aw add`, preserves its option vector, then materializes only the selected
+campaign from its installed full `resolvedCommit` SHA or a local catalog's
+Git-tracked files. Archive extraction rejects escaping paths and links; staged
+resources and declarations are checked before replacing the campaign directory.
+Intelligence metadata is refreshed, generated auto-upgrade Actions are pinned
+using the installed setup Action, and worker declarations are merged without
+widening scope, modes, enablement, or worker ceilings. Missing policy initializes
+only the exact current control repository. Initialization refuses
 replacement, preview maps to review, and campaign declarations are fully checked
-before workflow mutation. Other operator commands reuse the installed Node.js
+before workflow enablement/disablement. Repository enrollment (`gh cao repos add OWNER/REPO`),
+updates, and other operator commands reuse the installed Node.js
 24+ runtime, preserving the production onboarding, authentication, policy
 validation, and canonical query engines instead of introducing alternate
 semantics. The bridge passes argument vectors and stdio directly without a shell,
