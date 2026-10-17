@@ -101,7 +101,8 @@ export function routingMetadata(type, data) {
     code: identifier(data.code ?? field(data, 'errorCode') ?? field(data, 'failureCode')),
     name: identifier(field(data, 'jobId') ?? data.event),
     status: type === 'session.format' ? (data.version === 1 ? 'supported' : 'unsupported')
-      : identifier(data.status ?? data.result),
+      : identifier(typeof data.status === 'number' && Number.isFinite(data.status)
+        ? String(data.status) : data.status ?? data.result),
     durationMs: numeric(field(data, 'durationMs')),
     httpStatus: numeric(field(data, 'httpStatus') ?? (typeof data.status === 'number' ? data.status : undefined)),
     threshold: numeric(data.threshold),

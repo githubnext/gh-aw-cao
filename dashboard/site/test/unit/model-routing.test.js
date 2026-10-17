@@ -53,6 +53,12 @@ async function query(indexedDB, names, parameters = {}) {
 
 describe('model routing unified-session contract', () => {
   afterEach(() => vi.unstubAllGlobals());
+  it.each(['firewall.event', 'firewall.upstream_error'])('preserves numeric status and HTTP evidence for %s', (type) => {
+    const document = session(1, [event(type, { status: 429 })]);
+    expect(document.events.find((entry) => entry.type === type)?.fields)
+      .toMatchObject({ status: '429', httpStatus: 429 });
+  });
+
   it('declares all analytics views and resolves payloads through the production worker', async () => {
     const indexedDB = new IDBFactory();
     vi.stubGlobal('indexedDB', indexedDB);
