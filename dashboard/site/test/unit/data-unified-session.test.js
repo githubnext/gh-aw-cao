@@ -81,6 +81,15 @@ describe('unified session ingestion', () => {
     expect(events[1].fields.status).toBe('error');
   });
 
+  it('projects numeric firewall metadata statuses as canonical strings', () => {
+    const content = session([
+      { type: 'firewall.event', data: { event: 'response', status: 200 } }
+    ]);
+    expect(parseUnifiedSession(content, 'aw_session.jsonl')[0].fields.status).toBe('200');
+    expect(adaptGhAwTimelineFiles([{ path: 'aw_session.jsonl', content }], 'run:1'))
+      .toMatchObject([{ kind: 'audit', data: { type: 'firewall.event', status: '200' } }]);
+  });
+
   it('normalizes MCP executions, inherits completion identity, and leaves local tools alone', () => {
     const events = parseUnifiedSession(session([
       { type: 'tool.execution_start', data: { mcpServerName: 'github', toolName: 'github-actions_list', toolCallId: 'call-1' } },

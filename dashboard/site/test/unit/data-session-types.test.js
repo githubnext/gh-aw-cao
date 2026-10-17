@@ -45,4 +45,13 @@ describe('AW unified session event identifiers', () => {
     expect(pruneCanonicalRecord('domains', { type: 'net_blocked', decision: 'blocked' }))
       .toEqual({ type: 'firewall.http_access', decision: 'blocked' });
   });
+
+  it('normalizes numeric event statuses without changing the source record', () => {
+    const record = { type: 'firewall.event', status: 200 };
+    expect(alignSessionEventRecord(record)).toEqual({ ...record, status: '200' });
+    expect(record.status).toBe(200);
+    expect(pruneCanonicalRecord('audits', record)).toEqual({ ...record, status: '200' });
+    expect(alignSessionEventRecord({ type: 'firewall.event', status: null }))
+      .toEqual({ type: 'firewall.event', status: null });
+  });
 });

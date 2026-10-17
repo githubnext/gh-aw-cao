@@ -32,6 +32,9 @@ export function unifiedSessionEventType(type) {
  * @param {Record<string, unknown>} record
  */
 export function alignSessionEventRecord(record) {
+  if (typeof record.status === 'number' && Number.isFinite(record.status)) {
+    record = { ...record, status: String(record.status) };
+  }
   if (typeof record.type !== 'string') return record;
   const type = unifiedSessionEventType(record.type);
   if (type === record.type) return record;
