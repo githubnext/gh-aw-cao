@@ -53,7 +53,7 @@ func applyInt64Settings(settings []positiveInt64Setting) error {
 
 func applyIntSettings(settings []positiveIntSetting) error {
 	for _, setting := range settings {
-		n, set, err := positiveEnvSetting(setting.name, strconv.IntSize)
+		n, set, err := positiveEnvSetting(setting.name, 0)
 		if err != nil {
 			return err
 		}
