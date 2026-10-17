@@ -2,15 +2,12 @@
  * Site-wide dashboard notices with volatile dismissal state.
  */
 
-import { h } from '../dom.js';
-import { renderCloseButton, renderIconSpan } from './ui-primitives.js';
 import { createDebug } from '../debug.js';
-import { render, state } from '../reactive.js';
+import { effect, state } from '../reactive.js';
 import { timestampMilliseconds } from '../data/model/schema.js';
+import { publishNotification, resolveNotification } from '../notification-service.js';
 
 const debugSiteCallout = createDebug('site-callout');
-
-const dismissedCalloutIds = state(new Set());
 
 /**
  * @typedef {{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals?: unknown, ['older-than-hours']?: number } }} SiteCallout
@@ -31,17 +28,58 @@ const dismissedCalloutIds = state(new Set());
  */
 export function bindSiteCallouts(callouts, sources, loader, signal, pages) {
   if (!callouts?.length || signal.aborted) return null;
-  const element = h('div', { className: 'site-callouts-host' });
   const current = state(sources);
   const clock = state(Date.now());
   const failed = state(false);
-  render(element, () => failed.get()
-    ? h('p', { className: 'site-callouts', role: 'status' },
-      'Dashboard notice data is unavailable. Freshness could not be checked.')
-    : renderSiteCallouts(callouts, current.get(), {
-      now: clock.get(),
-      pageTitles: Object.fromEntries(pages.map((page) => [page.id, page.title ?? page.id]))
-    }), { signal });
+  /** @type {Map<string, import('../notification-service.js').NotificationHandle>} */
+  const handles = new Map();
+  const failureId = 'site-callouts:unavailable';
+  effect(() => {
+    const visible = failed.get() ? [] : visibleSiteCallouts(callouts, current.get(), clock.get());
+    for (const callout of callouts) {
+      const id = `site-callout:${callout.id}`;
+      if (!visible.includes(callout)) {
+        // An unavailable query is not evidence that the condition resolved.
+        const visibility = callout['visible-when'];
+        const source = visibility ? current.get()[visibility.source] : undefined;
+        if (failed.get() || (visibility && (!source || source.metadata?.availability === 'unavailable'))) handles.get(id)?.dismiss();
+        else resolveNotification(id);
+        handles.delete(id);
+        continue;
+      }
+      const page = callout['navigation-page'];
+      const notification = {
+        id,
+        message: callout.title,
+        description: callout.description,
+        icon: callout.icon,
+        jsonPath: `$.dashboard.callouts[${callouts.indexOf(callout)}]`,
+        tone: /** @type {const} */ ('warning'),
+        duration: 0,
+        ...(page ? {
+          href: `#page-${page}`,
+          linkLabel: `View ${pages.find((entry) => entry.id === page)?.title ?? page.replaceAll('-', ' ')}`
+        } : {})
+      };
+      const handle = handles.get(id);
+      if (handle) handle.update(notification);
+      else handles.set(id, publishNotification(notification));
+    }
+    if (failed.get()) {
+      handles.set(failureId, publishNotification({
+        id: failureId,
+        message: 'Dashboard notice data is unavailable. Freshness could not be checked.',
+        tone: 'warning', duration: 0
+      }));
+    } else {
+      resolveNotification(failureId);
+      handles.delete(failureId);
+    }
+  }, { signal });
+  signal.addEventListener('abort', () => {
+    for (const handle of handles.values()) handle.dismiss();
+    handles.clear();
+  }, { once: true });
   if (callouts.some((callout) => callout['visible-when']?.['older-than-hours'] !== undefined)) {
     const timer = setInterval(() => clock.set(Date.now()), 60_000);
     signal.addEventListener('abort', () => clearInterval(timer), { once: true });
@@ -65,77 +103,26 @@ export function bindSiteCallouts(callouts, sources, loader, signal, pages) {
         failed.set(true);
       });
   }
-  return element;
+  return null;
 }
 
 /**
  * @param {SiteCallout[] | undefined} callouts
  * @param {Record<string, CalloutSource>} sources
- * @param {{ now?: number, pageTitles?: Record<string, string> }} [options]
- * @returns {HTMLElement | null}
+ * @param {number} [now]
+ * @returns {SiteCallout[]}
  */
-export function renderSiteCallouts(callouts, sources, options = {}) {
-  if (!Array.isArray(callouts)) return null;
+export function visibleSiteCallouts(callouts, sources, now = Date.now()) {
+  if (!Array.isArray(callouts)) return [];
   const visibleCallouts = callouts.filter((callout) => (
-    !dismissedCalloutIds.get().has(callout.id) && matchesVisibility(callout['visible-when'], sources, options.now ?? Date.now())
+    matchesVisibility(callout['visible-when'], sources, now)
   ));
   debugSiteCallout({
     event: 'rendered',
     declaredCount: callouts.length,
     visibleCount: visibleCallouts.length
   });
-  if (visibleCallouts.length === 0) return null;
-  return h(
-    'section',
-    { className: 'site-callouts', 'aria-label': 'Dashboard notices' },
-    visibleCallouts.map((callout) => renderSiteCallout(callout, options.pageTitles?.[callout['navigation-page'] ?? '']))
-  );
-}
-
-/**
- * @param {SiteCallout} callout
- * @param {string} [pageTitle]
- * @returns {HTMLElement}
- */
-export function renderSiteCallout(callout, pageTitle) {
-  const headingId = `site-callout-${callout.id}-heading`;
-  const descriptionId = `site-callout-${callout.id}-description`;
-  const content = h(
-    'span',
-    { className: 'site-callout-content' },
-    h('strong', { id: headingId }, callout.title),
-    h('span', { id: descriptionId }, callout.description),
-    callout['navigation-page']
-      ? h(
-          'a',
-          { href: `#page-${callout['navigation-page']}`, className: 'site-callout-link' },
-          `View ${pageTitle ?? callout['navigation-page'].replaceAll('-', ' ')}`
-        )
-      : null
-  );
-  const element = h(
-    'aside',
-    {
-      className: 'site-callout',
-      role: 'status',
-      'aria-labelledby': headingId,
-      'aria-describedby': descriptionId,
-      'data-key': callout.id,
-      'data-site-callout': callout.id
-    },
-    renderIconSpan('site-callout-icon', typeof callout.icon === 'string' ? callout.icon : 'info'),
-    content,
-    renderCloseButton({
-      className: 'site-callout-dismiss',
-      label: `Dismiss ${callout.title}`,
-      onClick: () => {
-        dismissedCalloutIds.set((current) => new Set([...current, callout.id]));
-        debugSiteCallout({ event: 'dismissed', id: callout.id });
-        element.remove();
-      }
-    })
-  );
-  return element;
+  return visibleCallouts;
 }
 
 /**

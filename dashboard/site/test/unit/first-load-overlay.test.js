@@ -262,11 +262,11 @@ describe('browser first-load presentation', () => {
     await vi.waitFor(() => expect(document.querySelector('.first-load-copy-status')?.textContent).toBe('Could not copy preparation details.'));
   });
 
-  it('shows the private-session storage warning inside the modal instead of promising cache reuse', () => {
+  it('keeps import duration honest without duplicating the managed storage notice', () => {
     mountFirstLoadOverlay({ document, signal: owner.signal, retry: vi.fn() });
     recordPreparationStorage({ persisted: false, quota: null, usage: null });
     const dialog = document.querySelector('dialog');
-    expect(dialog?.textContent).toContain('data will be lost when the private session ends');
+    expect(dialog?.querySelector('.first-load-storage-warning')).toBeNull();
     expect(dialog?.querySelector('.first-load-duration')?.textContent).toContain('download the data again');
     recordPreparationStorage({ persisted: true, quota: 1000, usage: 100 });
     expect(dialog?.textContent).not.toContain('data will be lost when the private session ends');

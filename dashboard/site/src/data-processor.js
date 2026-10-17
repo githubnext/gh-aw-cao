@@ -2,7 +2,7 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { batch } from './reactive.js';
-import { publishNotification } from './notification-service.js';
+import { publishNotification, resolveNotification } from './notification-service.js';
 import { browserFirstLoad, recordPreparationEvent } from './browser-first-load.js';
 import { createDebug, diagnosticErrorName, withDebugParameter } from './debug.js';
 import {
@@ -1101,7 +1101,7 @@ function getWorker() {
           }
           if (id) {
             if (!cancelledWorkerNotificationIds.has(id)) {
-              workerNotificationHandles.get(id)?.dismiss();
+              resolveNotification(`worker:${id}`);
             }
             workerNotificationHandles.delete(id);
             cancelledWorkerNotificationIds.delete(id);
@@ -1113,7 +1113,10 @@ function getWorker() {
           const current = workerNotificationHandles.get(id);
           /** @type {ReturnType<typeof publishNotification>} */
           let handle;
-          const interactive = attachWorkerNotificationActions(interactiveNotification, id, () => handle);
+          const interactive = {
+            ...attachWorkerNotificationActions(interactiveNotification, id, () => handle),
+            id: `worker:${id}`
+          };
           if (current) {
             handle = current;
             current.update(interactive);

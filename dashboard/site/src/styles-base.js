@@ -59,7 +59,7 @@ export const baseStyles = `:root {
     --focus: #0969da;
   }
 }
-:is(.dashboard-root, .first-load-overlay)[data-theme="dark"] {
+:is(.dashboard-root, .first-load-overlay, .dashboard-notifications)[data-theme="dark"] {
   color-scheme: dark;
   --canvas: #0d1117;
   --canvas-subtle: #151b23;
@@ -88,7 +88,7 @@ export const baseStyles = `:root {
   --focus: #58a6ff;
   --on-emphasis: #ffffff;
 }
-:is(.dashboard-root, .first-load-overlay)[data-theme="light"] {
+:is(.dashboard-root, .first-load-overlay, .dashboard-notifications)[data-theme="light"] {
   color-scheme: light;
   --canvas: #ffffff;
   --canvas-subtle: #f6f8fa;

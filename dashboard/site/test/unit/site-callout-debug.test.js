@@ -29,12 +29,11 @@ describe('site callout debug logging', () => {
   it('is disabled by default (no debug output) when the debug query is absent', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '');
-    const { renderSiteCallouts } = await import('../../src/components/site-callout.js');
+    const { bindSiteCallouts } = await import('../../src/components/site-callout.js');
 
     const callouts = [{ id: 'default-off', title: 'Notice', description: 'Some notice' }];
-    const element = renderSiteCallouts(callouts, {});
-    document.body.append(element ?? document.createElement('div'));
-    element?.querySelector('.site-callout-dismiss')?.dispatchEvent(new MouseEvent('click'));
+    bindSiteCallouts(callouts, {}, undefined, new AbortController().signal, []);
+    document.querySelector('.dashboard-notification-dismiss')?.dispatchEvent(new MouseEvent('click'));
 
     expect(debugFn).not.toHaveBeenCalled();
   });
@@ -42,7 +41,7 @@ describe('site callout debug logging', () => {
   it('logs a rendered event with declared and visible counts under its predictable category', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=site-callout');
-    const { renderSiteCallouts } = await import('../../src/components/site-callout.js');
+    const { visibleSiteCallouts } = await import('../../src/components/site-callout.js');
 
     const callouts = [
       { id: 'always-visible', title: 'Always', description: 'Always visible' },
@@ -53,7 +52,7 @@ describe('site callout debug logging', () => {
         'visible-when': { source: 'health', field: 'status', equals: 'critical' }
       }
     ];
-    renderSiteCallouts(callouts, { health: { rows: [{ status: 'ok' }] } });
+    visibleSiteCallouts(callouts, { health: { rows: [{ status: 'ok' }] } });
 
     expect(debugFn).toHaveBeenCalledWith('[cao:site-callout]', {
       event: 'rendered',
@@ -62,29 +61,28 @@ describe('site callout debug logging', () => {
     });
   });
 
-  it('logs a dismissed event with the callout id when the dismiss button is clicked', async () => {
+  it('delegates dismissal logging to the notification manager', async () => {
     const debugFn = vi.fn();
-    mockDebugModule(debugFn, '?debug=site-callout');
-    const { renderSiteCallouts } = await import('../../src/components/site-callout.js');
+    mockDebugModule(debugFn, '?debug=notification-service');
+    const { bindSiteCallouts } = await import('../../src/components/site-callout.js');
 
     const callouts = [{ id: 'dismiss-me', title: 'Dismiss me', description: 'A dismissible notice' }];
-    const element = renderSiteCallouts(callouts, {});
-    document.body.append(/** @type {HTMLElement} */ (element));
-    const dismissButton = /** @type {HTMLButtonElement | null} */ (element?.querySelector('.site-callout-dismiss'));
+    bindSiteCallouts(callouts, {}, undefined, new AbortController().signal, []);
+    const dismissButton = /** @type {HTMLButtonElement | null} */ (document.querySelector('.dashboard-notification-dismiss'));
     dismissButton?.click();
+    document.querySelector('.dashboard-notification')?.dispatchEvent(new Event('transitionend'));
 
-    expect(debugFn).toHaveBeenCalledWith('[cao:site-callout]', { event: 'dismissed', id: 'dismiss-me' });
+    expect(debugFn).toHaveBeenCalledWith('[cao:notification-service]', { event: 'dismissed', tone: 'warning', activeCount: 0 });
   });
 
   it('never logs record content, only scalar metadata', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=site-callout');
-    const { renderSiteCallouts } = await import('../../src/components/site-callout.js');
+    const { bindSiteCallouts } = await import('../../src/components/site-callout.js');
 
     const callouts = [{ id: 'scalar-only', title: 'Title', description: 'Description text' }];
-    const element = renderSiteCallouts(callouts, {});
-    document.body.append(/** @type {HTMLElement} */ (element));
-    element?.querySelector('.site-callout-dismiss')?.dispatchEvent(new MouseEvent('click'));
+    bindSiteCallouts(callouts, {}, undefined, new AbortController().signal, []);
+    document.querySelector('.dashboard-notification-dismiss')?.dispatchEvent(new MouseEvent('click'));
 
     for (const call of debugFn.mock.calls) {
       const [, payload] = call;

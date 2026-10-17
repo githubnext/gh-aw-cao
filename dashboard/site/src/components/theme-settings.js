@@ -7,6 +7,7 @@ import { createFactoryScope } from './factory-elements.js';
 
 const THEME_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.theme');
 const debugTheme = createDebug('theme-settings');
+export const DASHBOARD_THEME_CHANGE_EVENT = 'dashboard-theme-change';
 
 /** @typedef {'system'|'light'|'dark'} DashboardTheme */
 
@@ -70,6 +71,7 @@ export function renderThemeControl() {
       onClick: () => {
         persistTheme(value);
         theme.set(value);
+        buttons[0].ownerDocument.dispatchEvent(new Event(DASHBOARD_THEME_CHANGE_EVENT));
       }
     }, octicon(icon), h('span', null, label))));
   }

@@ -379,7 +379,6 @@ test('full-view content keeps a responsive horizontal inset', async ({ page }) =
         <aside class="org-sidebar"></aside>
         <div class="app-main">
           <div class="top-nav"><div class="shell">Campaigns</div></div>
-          <div class="site-callouts"><div data-callout>Refresh warning</div></div>
           <main class="dashboard-prototype">
             <div class="report-body" data-page-content>Campaigns content</div>
           </main>

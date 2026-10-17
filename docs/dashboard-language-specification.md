@@ -1882,7 +1882,24 @@ Research should compare one through four essential views, record disclosure use,
 - **DLS-SAFE-011:** A presenter's report action toolbar **MUST** expose a descriptive accessible name or description for its refresh control identifying what the control does, and **MUST** expose a non-empty accessible label for its GitHub repository link when `dashboard.repository` is present.
 - **DLS-SAFE-012:** A presenter that renders `outcome-body-html` **MUST** rebuild it through a context-appropriate element and attribute allowlist, discard executable or embedded content, and apply **DLS-SAFE-004** to retained links and images.
 - **DLS-SAFE-013:** A presenter **MUST** render user-controlled list content as sanitized, inert text and **MUST** systematically constrain list item titles with visual ellipsis at every supported viewport size while preserving the complete text for accessible technologies.
-- **DLS-SAFE-014:** A presenter **MUST** expose every visible site-wide callout independently of the active page with its title and description as text and a descriptively named dismiss control. When `navigation-page` is present, the callout content **MUST** link to that dashboard page. Dismissal **MUST** last for the lifetime of the loaded document and **MUST NOT** be persisted across document loads.
+- **DLS-SAFE-014:** A presenter **MUST** expose every visible site-wide callout independently of the active page with its title and description as text and a descriptively named dismiss control. When `navigation-page` is present, the callout content **MUST** link to that dashboard page. Dismissal **MUST** survive navigation and repeated updates for the same active condition, until that condition resolves or the document unloads, and **MUST NOT** be persisted across document loads. A later recurrence after resolution **MAY** notify again.
+
+The CAO presenter uses one document-owned notification manager for declarative
+callouts, browser-storage warnings, worker ingestion progress, refresh failures,
+and transient feedback. Stable notification IDs update existing notices rather
+than adding duplicates. The shared, scrollable notification region owns rendering,
+accessible dismissal, timers, navigation links, actions, and volatile dismissal
+state; resolving a condition removes its notice and resets dismissal for a later
+recurrence. Producers retain responsibility for their abort-scoped subscriptions
+and explicitly release notices when their lifetime ends. Replacing a producer
+cannot let its older cleanup remove a notice already adopted by its replacement.
+
+Browser capability and import lifecycle feedback are interaction state, not
+canonical data queries, so their presentation cannot be described by evidence
+marks. Evidence-based callout conditions and sources remain declared in Dashboard
+Language and subscribed through the worker. The first-import dialog and compact
+status indicators remain contextual progress/status surfaces, not separate
+notification managers.
 - **DLS-SAFE-015:** A presenter **MUST** treat table-action context as untrusted data, serialize it without interpretation, and keep it explicitly separated from the author-declared intent. Table actions **MUST NOT** execute document or row content.
 
 ---

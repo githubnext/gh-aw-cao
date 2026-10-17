@@ -2,7 +2,6 @@ import { h } from '../dom.js';
 import { agenticWorkflowMark, octicon } from '../octicons.js';
 import { derived, effect, onCleanup, render, state } from '../reactive.js';
 import { browserFirstLoad, preparationDiagnostics, preparationStorage } from '../browser-first-load.js';
-import { TEMPORARY_STORAGE_WARNING } from '../browser-storage.js';
 import { createDebug } from '../debug.js';
 import { createCopyControl, createModalDialog } from './ui-primitives.js';
 import { restoreDashboardTheme } from './theme-settings.js';
@@ -58,7 +57,6 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
   const eyebrow = h('p', { className: 'first-load-eyebrow' });
   const description = h('p', { className: 'first-load-description' });
   const durationNote = h('p', { className: 'first-load-note first-load-duration' });
-  const storageWarning = h('p', { className: 'first-load-note first-load-storage-warning', role: 'status' });
   const reasonCopy = h('span');
   const copyControl = createCopyControl({
     getContent: () => {
@@ -116,7 +114,6 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     message,
     ingestionDetails,
     durationNote,
-    storageWarning,
     dismissButton,
     retryButton,
     continuationNote,
@@ -159,9 +156,6 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
         'Bringing your campaign activity together for a first look.'
       );
   }, { signal });
-  render(storageWarning, () => preparationStorage.get()?.persisted === true || !preparationStorage.get()
-    ? [] : responsiveCopy(TEMPORARY_STORAGE_WARNING,
-      'Private sessions lose downloaded data when closed.'), { signal });
   render(durationNote, () => preparationStorage.get() && preparationStorage.get()?.persisted !== true
     ? 'Preparation can take several minutes. This browser may need to download the data again on a future visit.'
     : browserFirstLoad.get().reason === 'upgrade'
@@ -237,9 +231,7 @@ export function mountFirstLoadOverlay({ document, signal: ownerSignal, retry }) 
     dismissButton.hidden = current.status === 'failed';
     retryButton.hidden = current.status !== 'failed';
     continuationNote.hidden = current.status === 'failed';
-    const temporaryStorage = preparationStorage.get() && preparationStorage.get()?.persisted !== true;
-    storageWarning.hidden = !temporaryStorage;
-    durationNote.hidden = current.status === 'failed' || Boolean(temporaryStorage);
+    durationNote.hidden = current.status === 'failed';
     if (visible && !dialog.open) {
       restoreDashboardTheme(dialog);
       open();

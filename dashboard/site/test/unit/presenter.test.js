@@ -2595,33 +2595,37 @@ describe('presenter built-in and custom pages', () => {
     };
 
     const rendered = renderDashboard({ document, sources });
-    expect(rendered.querySelectorAll('.site-callout')).toHaveLength(2);
-    expect(rendered.querySelector('[data-site-callout="rate-limit-message"]')?.textContent).toContain('Dashboard data is partial');
+    const notices = globalThis.document;
+    expect(notices.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(2);
+    expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]')?.textContent).toContain('Dashboard data is partial');
     const detailsLink = /** @type {HTMLAnchorElement | null} */ (
-      rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link')
+      notices.querySelector('[data-notification-id="site-callout:rate-limit-message"] .dashboard-notification-link')
     );
     expect(detailsLink?.getAttribute('href')).toBe('#page-coverage');
     expect(detailsLink?.textContent).toBe('View coverage');
     const navigationLink = /** @type {HTMLAnchorElement | null} */ (
-      rendered.querySelector('[data-site-callout="operator-message"] .site-callout-link')
+      notices.querySelector('[data-notification-id="site-callout:operator-message"] .dashboard-notification-link')
     );
     expect(navigationLink?.getAttribute('href')).toBe('#page-usage');
     expect(navigationLink?.textContent).toBe('View Usage');
     const dismiss = /** @type {HTMLButtonElement | null} */ (
-      rendered.querySelector('[data-site-callout="operator-message"] .site-callout-dismiss')
+      notices.querySelector('[data-notification-id="site-callout:operator-message"] .dashboard-notification-dismiss')
     );
     expect(dismiss?.getAttribute('aria-label')).toBe('Dismiss Operator message');
     dismiss?.click();
-    expect(rendered.querySelector('[data-site-callout="operator-message"]')).toBeNull();
+    expect(notices.querySelector('[data-notification-id="site-callout:operator-message"]:not(.dashboard-notification-exit)')).toBeNull();
     expect(window.localStorage).toHaveLength(0);
     expect(sessionStorage).toHaveLength(0);
 
     const rerendered = renderDashboard({ document, sources });
-    expect(rerendered.querySelector('[data-site-callout="operator-message"]')).toBeNull();
-    expect(rerendered.querySelector('[data-site-callout="rate-limit-message"]')).not.toBeNull();
+    disposeDashboard(rendered);
+    expect(notices.querySelector('[data-notification-id="site-callout:operator-message"]:not(.dashboard-notification-exit)')).toBeNull();
+    expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]:not(.dashboard-notification-exit)')).not.toBeNull();
 
     const complete = renderDashboard({ document, sources: {} });
-    expect(complete.querySelector('[data-site-callout="rate-limit-message"]')).toBeNull();
+    disposeDashboard(rerendered);
+    expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]:not(.dashboard-notification-exit)')).toBeNull();
+    disposeDashboard(complete);
   });
 
   it('collapses the sidebar to icons and restores the persisted display mode', () => {
