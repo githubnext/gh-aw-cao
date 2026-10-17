@@ -125,15 +125,23 @@ It does not replace repository permissions, branch protections, or human review.
 See the [open issues](https://github.com/githubnext/gh-aw-cao/issues) for current
 work and planned improvements.
 
-### Go extension scaffold
+### GitHub CLI extension
 
-The repository includes a development scaffold for the `gh cao` GitHub CLI
-extension. Run `make build` to produce `./gh-cao`, then try
-`./gh-cao --help`, `./gh-cao version`, or `./gh-cao doctor`.
-Only those scaffold commands are implemented: `cao.sh`, the Node.js CLI, and
-the installer remain unchanged. Releases include version-stamped binaries for
-Linux, macOS, and Windows (amd64 and arm64), plus SHA-256 checksums. Command
-parity remains future work. See [extension development](CONTRIBUTING.md#go-extension-development)
+The `gh cao` Go extension exposes the operator commands for setup,
+authentication, campaigns, validation, and read-only evidence analysis.
+Run `make build` to produce `./gh-cao`, then try `./gh-cao --help`.
+`init`, `campaigns mode`, `campaigns enable`, and `campaigns disable` execute
+natively in Go; other operator commands reuse the installed CAO Node.js 24+
+runtime to preserve production
+onboarding, policy, and Dashboard Language semantics. Run them from the control
+repository root, or select an installed runtime with `CAO_RUNTIME_ROOT`.
+Help, version, and the local `doctor` diagnostic need no CAO runtime.
+
+Activity and Dashboard Actions retain their Node CLI and pipeline commands;
+`cao.sh` and the installer remain compatible. Releases include version-stamped
+binaries for Linux, macOS, and Windows (amd64 and arm64), plus SHA-256 checksums.
+See [the command reference](docs/cao-cli.md#github-cli-extension) for the migration
+boundary and [extension development](CONTRIBUTING.md#go-extension-development)
 for local installation, project layout, and checks.
 
 ## Documentation
