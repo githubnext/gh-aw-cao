@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -423,4 +424,37 @@ func TestDeliveryReservationLifecycle(t *testing.T) {
 		t.Fatal("expiry did not free delivery")
 	}
 	invariant(t, s)
+}
+
+func TestDueForPromotionFiltersOrdersAndLimits(t *testing.T) {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	item := func(order uint64, target string, offset time.Duration) scheduled {
+		return scheduled{task: &queued{order: order}, target: target, due: base.Add(offset)}
+	}
+	tasks := []scheduled{
+		item(1, "tasks", 2*time.Second),
+		item(2, "other", 0),
+		item(3, "tasks", time.Second),
+		item(4, "tasks", time.Second),
+		item(5, "tasks", time.Hour),
+	}
+
+	got := dueForPromotion(tasks, "tasks", base.Add(2*time.Second), 10)
+	var orders []uint64
+	for _, d := range got {
+		orders = append(orders, d.task.order)
+	}
+	if want := []uint64{3, 4, 1}; !reflect.DeepEqual(orders, want) {
+		t.Fatalf("due order = %v, want %v", orders, want)
+	}
+
+	if got := dueForPromotion(tasks, "tasks", base.Add(2*time.Second), 2); len(got) != 2 || got[1].task.order != 4 {
+		t.Fatalf("limit not applied after ordering: %+v", got)
+	}
+	if got := dueForPromotion(tasks, "tasks", base.Add(-time.Second), 5); len(got) != 0 {
+		t.Fatalf("promoted tasks before due time: %+v", got)
+	}
+	if got := dueForPromotion(nil, "tasks", base, 1); len(got) != 0 {
+		t.Fatalf("promoted from empty schedule: %+v", got)
+	}
 }
