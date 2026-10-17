@@ -59,6 +59,55 @@ func failedAuditCommand(t *testing.T, f *auditFixture, lease operational.CLIComm
 	return command
 }
 
+func TestAuditedRetryRecordsNewRequesterWithoutChangingAction(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres"} {
+		t.Run(dialect, func(t *testing.T) {
+			f := newAuditFixture(t, dialect)
+			original := failedAuditCommand(t, f, acquireAuditLease(t, f))
+			invocation := original.CLICommandInvocation
+			invocation.Actor = "mona"
+			event := admissionEvent(original.ID)
+			event.Actor = invocation.Actor
+			retried, recorded, err := f.queue.EnqueueAudited(t.Context(), invocation, "new-requester", original.ID, event)
+			if err != nil || retried.Actor != invocation.Actor || recorded.Actor != invocation.Actor || retried.RetryOf != original.ID {
+				t.Fatalf("new requester retry = %+v, %+v, %v", retried, recorded, err)
+			}
+			retained, err := f.queue.Detail(t.Context(), original.ID)
+			if err != nil || retained.Actor != original.Actor {
+				t.Fatal("retry changed the original requester")
+			}
+			replayed, _, err := f.queue.EnqueueAudited(t.Context(), invocation, "new-requester", original.ID, event)
+			if err != nil || replayed.ID != retried.ID {
+				t.Fatalf("retry replay = %+v, %v", replayed, err)
+			}
+			otherActor := invocation
+			otherActor.Actor = "hubot"
+			otherEvent := event
+			otherEvent.Actor = otherActor.Actor
+			if _, _, err := f.queue.EnqueueAudited(t.Context(), otherActor, "new-requester", original.ID, otherEvent); !errors.Is(err, operational.ErrConflict) {
+				t.Fatalf("different requester reused an idempotency key: %v", err)
+			}
+			for _, change := range []func(*operational.CLICommandInvocation){
+				func(value *operational.CLICommandInvocation) { value.Command = "gh aw logs" },
+				func(value *operational.CLICommandInvocation) { value.Repository = "octo/other" },
+				func(value *operational.CLICommandInvocation) { value.ActionID = "other" },
+				func(value *operational.CLICommandInvocation) { value.Arguments = map[string]bool{"argument": true} },
+				func(value *operational.CLICommandInvocation) { value.Values = map[string]string{"value": "changed"} },
+				func(value *operational.CLICommandInvocation) { input := "changed"; value.Input = &input },
+			} {
+				changed := invocation
+				change(&changed)
+				if _, _, err := f.queue.EnqueueAudited(t.Context(), changed, "", original.ID, event); !errors.Is(err, operational.ErrConflict) {
+					t.Fatalf("changed action was retried: %v", err)
+				}
+			}
+			if _, err := f.store.VerifyAudit(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestAuditedAdmissionCannotBeClaimedBeforeAuditCommit(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres"} {
 		for _, retry := range []bool{false, true} {

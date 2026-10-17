@@ -173,8 +173,15 @@ request on the first failure:
 
 List, detail, output, cancel, and retry routes MUST require the same
 step-up. Retry MUST create a new admission subject to the same checks.
+It MUST record the currently authorized requester without changing the
+original command's actor. The action, arguments, input, and target MUST remain
+unchanged; idempotency keys MUST remain bound to the requesting actor.
 Cancel MUST confirm, with the requester's own OAuth token, write access to
 the command's target repository before changing the command.
+
+Mutation request bodies MUST contain exactly one JSON document with an
+`application/json` media type and MUST NOT exceed 1 MiB, including trailing
+whitespace. Unknown fields and trailing non-whitespace content MUST be rejected.
 
 The backend MUST validate the requester's write permission on the target
 repository before it issues any work: before a command is queued, retried,
@@ -254,6 +261,8 @@ to the executor's App-only credential for requester authorization.
    bounded in total (`--max-pooled-tokens`, default 8, 0 disables pooling),
    per scope (default 2), and by idle lifetime (default 2 minutes). Idle
    tokens MUST be revoked when they expire from the pool and at shutdown.
+   Disabled or saturated pools MUST skip speculative requester verification
+   token minting; actual command execution MUST still revalidate access.
 7. The broker MUST discard a pooled token that would expire before the
    command deadline plus one minute.
 8. Concurrent token minting MUST be bounded (default 4).
@@ -404,7 +413,8 @@ to the executor's App-only credential for requester authorization.
    image requirement. It MUST use a locally supplied, SHA-256-pinned archive of
    Windows `gh`, `gh-aw`, and portable Git, including their dependencies.
    The staged archive MUST be verified before VM creation and again in the
-   guest. The audit image identity MUST identify the Windows archive digest,
+   guest. The executor and audit image identity MUST identify the Windows
+   archive as `windows-bundle@sha256:<64 lowercase hex digits>`,
    not pretend it is the Linux OCI image. An OCI-image override MUST be rejected
    for this profile, and missing tools MUST NOT fall back to host binaries.
 5. Windows Sandbox MUST enforce its single-instance limit across local

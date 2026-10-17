@@ -165,15 +165,20 @@ func (b *Broker) Acquire(ctx context.Context, installationID int64, scope github
 	return token, nil
 }
 
+// An empty key checks only global capacity before resolving an installation.
+func (b *Broker) prefetchCapacity(key string) bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return !b.closed && b.pooledLocked() < b.options.MaxPooled &&
+		(key == "" || len(b.pool[key]) < b.options.MaxPooledPerScope)
+}
+
 // Prefetch pre-mints one token for scope when the pool has room. It is a
 // best-effort optimization for queued commands and never blocks on a full
 // pool.
 func (b *Broker) Prefetch(ctx context.Context, installationID int64, scope githubapp.TokenScope, needUntil time.Time) error {
 	key := scope.Key(installationID)
-	b.mutex.Lock()
-	full := b.closed || b.pooledLocked() >= b.options.MaxPooled || len(b.pool[key]) >= b.options.MaxPooledPerScope
-	b.mutex.Unlock()
-	if full {
+	if !b.prefetchCapacity(key) {
 		return nil
 	}
 	token, err := b.mint(ctx, installationID, scope)

@@ -370,6 +370,52 @@ func TestHostedCLIEnqueueRecordsActorAndRepository(t *testing.T) {
 	}
 }
 
+func TestReadHostedCLIJSONRequiresBoundedSingleDocument(t *testing.T) {
+	valid := `{"value":"accepted"}`
+	for _, test := range []struct {
+		name, body, contentType string
+		status                  int
+	}{
+		{name: "valid", body: valid},
+		{name: "valid-charset", body: valid, contentType: "application/json; charset=utf-8"},
+		{name: "trailing-whitespace", body: valid + " \r\n\t"},
+		{name: "exact-limit", body: valid + strings.Repeat(" ", maxHostedCLIRequestBytes-len(valid))},
+		{name: "trailing-array-close", body: valid + "]", status: http.StatusBadRequest},
+		{name: "trailing-object-close", body: valid + "}", status: http.StatusBadRequest},
+		{name: "second-object", body: valid + `{}`, status: http.StatusBadRequest},
+		{name: "second-null", body: valid + `null`, status: http.StatusBadRequest},
+		{name: "trailing-garbage", body: valid + "garbage", status: http.StatusBadRequest},
+		{name: "unknown-field", body: `{"unknown":true}`, status: http.StatusBadRequest},
+		{name: "oversized-whitespace", body: valid + strings.Repeat(" ", maxHostedCLIRequestBytes-len(valid)+1), status: http.StatusBadRequest},
+		{name: "oversized-value", body: `{"value":"` + strings.Repeat("a", maxHostedCLIRequestBytes) + `"}`, status: http.StatusBadRequest},
+		{name: "media-type-prefix", body: valid, contentType: "application/jsonp", status: http.StatusUnsupportedMediaType},
+		{name: "malformed-media-type", body: valid, contentType: "application/json; charset", status: http.StatusUnsupportedMediaType},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/__cli_commands", strings.NewReader(test.body))
+			contentType := test.contentType
+			if contentType == "" {
+				contentType = "application/json"
+			}
+			request.Header.Set("Content-Type", contentType)
+			var payload struct {
+				Value string `json:"value"`
+			}
+			err := readHostedCLIJSON(request, &payload)
+			if test.status == 0 {
+				if err != nil || payload.Value != "accepted" {
+					t.Fatalf("valid request: value=%q, err=%v", payload.Value, err)
+				}
+				return
+			}
+			var failure *hostedCLIError
+			if !errors.As(err, &failure) || failure.status != test.status {
+				t.Fatalf("invalid request: got %v, want status %d", err, test.status)
+			}
+		})
+	}
+}
+
 func TestHostedCLIRepositoryAccessOAuthContract(t *testing.T) {
 	for _, test := range []struct {
 		name    string

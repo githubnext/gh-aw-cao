@@ -692,6 +692,103 @@ func TestExecutorVerifiesWithMetadataTokenBeforeWorkToken(t *testing.T) {
 	}
 }
 
+type prefetchGitHub struct {
+	fakeGitHub
+	lookups, verifications int
+}
+
+func (g *prefetchGitHub) FindRepositoryInstallation(ctx context.Context, repository string) (int64, error) {
+	g.lookups++
+	return g.fakeGitHub.FindRepositoryInstallation(ctx, repository)
+}
+
+func (g *prefetchGitHub) CollaboratorPermission(ctx context.Context, token githubapp.ScopedToken, repository, actor string) (string, error) {
+	g.verifications++
+	return g.fakeGitHub.CollaboratorPermission(ctx, token, repository, actor)
+}
+
+func TestExecutorPrefetchSkipsVerificationWithoutPoolCapacity(t *testing.T) {
+	for _, test := range []struct {
+		name                    string
+		maxPooled               int
+		fill, close, denied     bool
+		wantLookups, wantChecks int
+		wantMinted, wantPooled  int
+	}{
+		{name: "disabled"},
+		{name: "global-full", maxPooled: 1, fill: true, wantPooled: 1},
+		{name: "scope-full", maxPooled: 2, fill: true, wantLookups: 1, wantPooled: 1},
+		{name: "closed", maxPooled: 2, close: true},
+		{name: "available", maxPooled: 2, wantLookups: 1, wantChecks: 1, wantMinted: 2, wantPooled: 1},
+		{name: "denied", maxPooled: 2, denied: true, wantLookups: 1, wantChecks: 3, wantMinted: 3},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			queue, minter := newFakeQueue(), newFakeMinter()
+			broker := NewBroker(minter, BrokerOptions{MaxPooled: test.maxPooled, MaxPooledPerScope: 1})
+			t.Cleanup(func() {
+				if err := broker.Close(context.Background()); err != nil {
+					t.Error(err)
+				}
+				if minter.liveCount() != 0 {
+					t.Error("prefetch retained credentials after shutdown")
+				}
+			})
+			command := "gh workflow run collect.yml --repo octo/app"
+			enqueue(t, queue, command, "octo/app", "mona")
+			if test.fill {
+				plan, err := PlanCommand(command, "")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := broker.Prefetch(t.Context(), 42, scopeFor(plan), time.Now().Add(time.Minute)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if test.close {
+				if err := broker.Close(t.Context()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			github := &prefetchGitHub{fakeGitHub: fakeGitHub{permission: "write"}}
+			if test.denied {
+				github.permission = "read"
+			}
+			executor, err := NewExecutor(queue, broker, github, &fakeRunner{}, Options{Owner: "prefetch-test", Prefetch: 2})
+			if err != nil {
+				t.Fatal(err)
+			}
+			before := broker.Stats().Minted
+			for range 3 {
+				executor.prefetch(t.Context())
+			}
+			stats := broker.Stats()
+			if github.lookups != test.wantLookups || github.verifications != test.wantChecks ||
+				stats.Minted-before != int64(test.wantMinted) || stats.Pooled != test.wantPooled {
+				t.Fatalf("lookups=%d checks=%d minted=%d pooled=%d; want %d, %d, %d, %d",
+					github.lookups, github.verifications, stats.Minted-before, stats.Pooled,
+					test.wantLookups, test.wantChecks, test.wantMinted, test.wantPooled)
+			}
+		})
+	}
+}
+
+func TestExecutorRejectsUnpinnedPayloadIdentities(t *testing.T) {
+	for _, image := range []string{
+		"ghcr.io/github/gh-aw:latest", "windows-bundle", "windows-bundle@sha256:",
+		"windows-bundle@sha256:" + strings.Repeat("a", 63),
+		"windows-bundle@sha256:" + strings.Repeat("A", 64),
+		"windows-bundle@sha256:" + strings.Repeat("a", 65),
+		"windows-bundle@sha256:" + strings.Repeat("a", 64) + "\n",
+		strings.Repeat("a", 64),
+	} {
+		t.Run(image, func(t *testing.T) {
+			if _, err := (Options{Owner: "test", ContainerImage: image}).resolve(); err == nil {
+				t.Fatal("unrecognized or unpinned execution payload accepted")
+			}
+		})
+	}
+}
+
 // failingAuditStore rejects appends of one event name.
 type failingAuditStore struct{ event string }
 

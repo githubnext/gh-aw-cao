@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -211,15 +212,17 @@ func (a *App) auditCLIRejected(request *http.Request, session oauthSession, acti
 }
 
 func readHostedCLIJSON(request *http.Request, output any) error {
-	if !strings.HasPrefix(strings.ToLower(request.Header.Get("Content-Type")), "application/json") {
+	mediaType, _, err := mime.ParseMediaType(request.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
 		return cliFailure(http.StatusUnsupportedMediaType, "CLI action requests must be JSON.")
 	}
-	decoder := json.NewDecoder(io.LimitReader(request.Body, maxHostedCLIRequestBytes+1))
+	request.Body = http.MaxBytesReader(nil, request.Body, maxHostedCLIRequestBytes)
+	decoder := json.NewDecoder(request.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(output); err != nil {
 		return cliFailure(http.StatusBadRequest, "Invalid CLI action request.")
 	}
-	if decoder.More() {
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		return cliFailure(http.StatusBadRequest, "Invalid CLI action request.")
 	}
 	return nil

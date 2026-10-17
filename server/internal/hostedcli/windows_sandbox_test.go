@@ -315,6 +315,50 @@ func TestWindowsSandboxConstructorAndPinnedArchive(t *testing.T) {
 	}
 }
 
+func TestWindowsSandboxExecutorUsesPinnedBundleIdentity(t *testing.T) {
+	f := newWindowsSandboxFixture(t)
+	f.machine.guest = func(input, workspace string) error {
+		return writeWindowsSandboxTestReceipt(input, workspace, 0)
+	}
+	runner := f.runner(t)
+	queue := newFakeQueue()
+	minter := newFakeMinter()
+	broker := NewBroker(minter, BrokerOptions{})
+	t.Cleanup(func() { _ = broker.Close(context.Background()) })
+	executor, err := NewExecutor(queue, broker, fakeGitHub{permission: "write"}, runner, Options{
+		Owner: "windows-executor", ContainerImage: runner.Image, WorkRoot: f.base,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command, err := queue.Enqueue(t.Context(), operational.CLICommandInvocation{
+		ActionID: "run", Command: "gh workflow run collect.yml --repo octo/app",
+		Actor: "octocat", Repository: "octo/app",
+	}, "windows-run", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease, err := queue.Acquire(t.Context(), "windows-executor", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	claimed, err := queue.Claim(t.Context(), lease)
+	if err != nil || claimed == nil {
+		t.Fatalf("claim = %v, %v", claimed, err)
+	}
+	executor.execute(t.Context(), lease, *claimed)
+	completed, err := queue.Detail(t.Context(), command.ID)
+	if err != nil || completed.Status != operational.CLICommandCompleted || completed.ExecutionClaimed {
+		t.Fatalf("Windows execution = %+v, %v", completed, err)
+	}
+	if minter.liveCount() != 0 {
+		t.Fatal("Windows execution retained a work token")
+	}
+	if _, err := NewContainerRunner(runner.Image, NewDockerContainerLifecycle("", nil)); err == nil {
+		t.Fatal("Windows tools bundle was accepted by the OCI runner constructor")
+	}
+}
+
 func TestWindowsSandboxArchivePathsAndRequiredTools(t *testing.T) {
 	for _, extra := range []string{"../escape", "git/../escape", "git/NUL.txt", "git/tool:stream", "git/dir./tool", `git\tool.exe`, "/git/tool.exe", "GH/GH.EXE"} {
 		t.Run(extra, func(t *testing.T) {

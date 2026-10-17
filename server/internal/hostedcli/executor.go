@@ -43,7 +43,7 @@ type Options struct {
 	Owner string
 	// ControlRepository is the OWNER/REPOSITORY targeted by CAO package updates.
 	ControlRepository string
-	// ContainerImage is the digest-pinned gh-aw image used for command execution.
+	// ContainerImage identifies the digest-pinned OCI image or Windows tools bundle.
 	ContainerImage string
 	// GitHubHost is the GitHub hostname; empty selects github.com.
 	GitHubHost string
@@ -80,8 +80,10 @@ func (o Options) resolve() (Options, error) {
 	if o.ContainerImage == "" {
 		o.ContainerImage = DefaultContainerImage
 	}
-	if !containerImagePattern.MatchString(o.ContainerImage) {
-		return o, errors.New("hosted CLI container image must be a digest-pinned OCI image reference")
+	bundleDigest, windowsBundle := strings.CutPrefix(o.ContainerImage, "windows-bundle@sha256:")
+	pinnedWindowsBundle := windowsBundle && windowsSandboxDigest.MatchString(bundleDigest)
+	if !containerImagePattern.MatchString(o.ContainerImage) && !pinnedWindowsBundle {
+		return o, errors.New("hosted CLI execution payload must be a digest-pinned OCI image or Windows tools bundle")
 	}
 	if o.CommandTimeout <= 0 {
 		o.CommandTimeout = 15 * time.Minute
@@ -256,7 +258,7 @@ func (e *Executor) renew(ctx context.Context, abort context.CancelFunc, lease op
 }
 
 func (e *Executor) prefetch(ctx context.Context) {
-	if e.options.Prefetch == 0 {
+	if e.options.Prefetch == 0 || !e.broker.prefetchCapacity("") {
 		return
 	}
 	page, err := e.queue.List(ctx, operational.CLICommandFilter{
@@ -275,11 +277,15 @@ func (e *Executor) prefetch(ctx context.Context) {
 		if err != nil {
 			continue
 		}
+		scope := scopeFor(plan)
+		if !e.broker.prefetchCapacity(scope.Key(installationID)) {
+			continue
+		}
 		// Never pre-mint a work token for a requester who cannot write.
 		if permission, err := e.verifyRequester(ctx, installationID, plan, command.Actor); err != nil || !canWrite(permission) {
 			continue
 		}
-		if err := e.broker.Prefetch(ctx, installationID, scopeFor(plan), needUntil); err != nil {
+		if err := e.broker.Prefetch(ctx, installationID, scope, needUntil); err != nil {
 			executorLog.Printf("token prefetch failed: %v", err)
 		}
 	}
