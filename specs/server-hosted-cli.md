@@ -403,6 +403,19 @@ priority order:
 6. Expose executor liveness and readiness that reflect store, App, and
    revocation health.
 
+### SOC 2 evidence boundary
+
+The hosted CLI provides technical control mechanisms and evidence sources; it
+does not establish SOC 2 compliance or provide an attestation. The organization
+and its auditor determine the audited system boundary, applicable criteria,
+control owners, and review period. In particular, PostgreSQL hash chaining
+alone cannot detect a consistent rewrite by a database superuser. Operators
+using these records for audit evidence SHOULD forward them to write-once storage
+outside the database and retain external verification anchors, verification
+results, access/configuration records, and change-approval evidence for the
+applicable review period. Application audit and telemetry cannot prove that
+organizational access reviews, approvals, or incident responses were performed.
+
 ## 11. References
 
 - `server/SECURITY.md`

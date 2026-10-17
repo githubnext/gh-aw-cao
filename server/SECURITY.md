@@ -752,10 +752,35 @@ Recommended next steps, in priority order:
 6. Expose executor liveness and readiness that reflect store, App, and
    revocation health.
 
-For SOC 2 and ISO 27001 evidence, the audit table and its verification
-results cover logical access (CC6.1, A.5.15), privileged access (CC6.3,
-A.8.2), change control for reviewed control code (CC8.1, A.8.32), and
-monitoring (CC7.2, A.8.15, A.8.16).
+### SOC 2 evidence boundary
+
+CAO supplies technical controls and evidence sources; it does not make a
+deployment SOC 2 compliant or provide an attestation. The organization and its
+auditor define the system boundary, applicable criteria, control owners, and
+review period, and assess whether controls operated effectively throughout that
+period. The following mapping is limited to the hosted CLI:
+
+| Area | CAO mechanism | Evidence to retain | Deployment responsibility |
+| --- | --- | --- | --- |
+| Logical access (CC6.1) | GitHub OAuth organization/team authorization, explicit administrator allowlisting, repository permission checks, and least-privilege installation tokens | Effective authorization configuration and retained access/admission audit events | Review membership, administrator lists, App installation scope, and access changes on the organization's approved cadence |
+| Privileged access (CC6.3) | Assured administrator step-up, live execution permission checks, and durable denial/admission events | `admin.denied`, `cli_command.admitted`, and execution permission events correlated with GitHub audit records | Operate identity lifecycle, access reviews, and timely removal of departed or transferred personnel |
+| Change management (CC8.1) | Fixed Go command planning and a digest-pinned execution image recorded at command start; CAO does not enforce an organization's review policy | Pull requests, required review/check results, release/deployment approvals, and image digest records | Enforce branch protection and deployment approval policies; preserve the evidence for each release |
+| Monitoring (CC7.2) | Hash-chained audit rows, `audit verify` with external anchors, audit export, OTLP records, and documented alert signals | Verification results and anchors, exported audit rows, SIEM delivery/alert records, and incident follow-up | Schedule verification, store anchors and forwarded events outside PostgreSQL in write-once storage, and investigate alerts |
+
+The audit chain is tamper-evident only while an attacker cannot rewrite the
+entire chain. A database superuser can rewrite it consistently; anchors kept
+outside the database and write-once forwarding are required to detect that
+threat. The chain, exporter, metrics, and documentation do not provide evidence
+that the organization performed access reviews, approved deployments, or
+responded to alerts.
+
+Personnel controls, risk assessments, vendor management, incident-response
+execution, business continuity, and independent audit activities are outside
+this application. The recommended hardening items above (especially external
+write-once forwarding, scheduled anchored verification, separate database
+roles, and managed key signing) remain deployment work, not implemented CAO
+controls. Do not represent this mapping as a SOC 2 report, certification, or
+independent assessment.
 
 ## Secrets and logging
 
