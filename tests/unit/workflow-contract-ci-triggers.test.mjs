@@ -72,6 +72,90 @@ test("MCP parity keeps service-backed Go integration tests out of its contract s
   assert.ok(job.env.CAO_POSTGRES_URL);
 });
 
+test("Go extension quality checks cover root-module sources and lint configuration", () => {
+  for (const event of ["pull_request", "push"]) {
+    for (const file of [
+      ".github/workflows/go-extension.yml",
+      ".github/workflows/cao.json",
+      ".github/actions/setup-gh-aw/action.yml",
+      ".golangci.yml",
+      "cmd/gh-cao/main.go",
+      "internal/cli/doctor.go",
+      "internal/cli/doctor_test.go",
+      "internal/cli/doctor_auth_test.go",
+      "internal/ghcli/gh.go",
+      "internal/runtimecli/runtime.go",
+      "go.mod",
+      "go.sum",
+    ]) {
+      assert.ok(runsForFile("go-extension.yml", event, file), `${event}: ${file}`);
+    }
+    assert.equal(runsForFile("go-extension.yml", event, "server/internal/server/server.go"), false);
+  }
+
+  const { jobs, defaults } = parse(workflow("go-extension.yml"));
+  const job = jobs["extension-quality"];
+  const steps = job.steps;
+  const go = steps.find((step) => step.uses?.startsWith("actions/setup-go@"));
+  const install = steps.find((step) => step.name === "Install golangci-lint");
+  const format = steps.find((step) => step.name === "Check formatting");
+  const lint = steps.find((step) => step.name === "Lint");
+  const serverSteps = parse(workflow("cgo.yml")).jobs["server-quality"].steps;
+  assert.equal(job.if, undefined);
+  assert.equal(defaults?.run?.["working-directory"] ?? ".", ".");
+  assert.equal(job.defaults?.run?.["working-directory"] ?? ".", ".");
+  assert.equal(go.with["go-version-file"], "go.mod");
+  assert.equal(install.run, serverSteps.find((step) => step.name === "Install golangci-lint").run);
+  assert.ok(steps.indexOf(go) < steps.indexOf(install));
+  assert.ok(steps.indexOf(install) < steps.indexOf(format));
+  assert.ok(steps.indexOf(install) < steps.indexOf(lint));
+  assert.equal(format["working-directory"] ?? ".", ".");
+  assert.equal(lint["working-directory"] ?? ".", ".");
+  assert.equal(format.shell, "bash");
+  assert.equal(format.run, [
+    'golangci-lint fmt --diff ./cmd/... ./internal/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"',
+    'test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"',
+    "",
+  ].join("\n"));
+  assert.equal(lint.run, "golangci-lint run ./cmd/... ./internal/...");
+  assert.ok(steps.some((step) => step.run === "make check"));
+});
+
+test("Go extension keeps authenticated doctor integration separate from unit and smoke tests", () => {
+  const { jobs, permissions } = parse(workflow("go-extension.yml"));
+  const quality = jobs["extension-quality"];
+  assert.ok(quality.steps.some((step) => step.run === "make check"));
+  assert.equal(quality.steps.some((step) => step.uses === "./.github/actions/setup-gh-aw"), false);
+  assert.equal(quality.env?.GH_TOKEN, undefined);
+  const smoke = quality.steps.find((step) => step.name === "Smoke test extension");
+  assert.equal(smoke.env, undefined);
+  assert.ok(smoke.run.split("\n").includes("./gh-cao doctor --help"));
+  assert.equal(smoke.run.split("\n").includes("./gh-cao doctor"), false);
+
+  const job = jobs["extension-authtests"];
+  const steps = job.steps;
+  const go = steps.find((step) => step.uses?.startsWith("actions/setup-go@"));
+  const node = steps.find((step) => step.uses?.startsWith("actions/setup-node@"));
+  const install = steps.find((step) => step.uses === "./.github/actions/setup-gh-aw");
+  const auth = steps.find((step) => step.name === "Run authenticated doctor integration tests");
+  assert.ok(install, "doctor requires the policy-pinned gh-aw installation");
+  assert.equal(go.with["go-version-file"], "go.mod");
+  assert.ok(steps.indexOf(node) < steps.indexOf(install));
+  assert.ok(steps.indexOf(install) < steps.indexOf(auth));
+  assert.deepEqual(auth.env, { GH_TOKEN: "${{ github.token }}" });
+  assert.deepEqual(permissions, { contents: "read" });
+  assert.equal(job.permissions, undefined);
+  assert.equal(job.env?.GH_TOKEN, undefined);
+  assert.equal(job.if, undefined);
+  assert.equal(job.needs, undefined);
+  assert.equal(quality.needs, undefined);
+  assert.equal(install.if, undefined);
+  assert.equal(install["continue-on-error"], undefined);
+  assert.equal(auth.if, undefined);
+  assert.equal(auth["continue-on-error"], undefined);
+  assert.equal(auth.run, "make authtests");
+});
+
 test("pull request triggers route frontend, control, server, and test changes selectively", () => {
   const cases = [
     ["dashboard/site/src/dashboard-app.js", ["cid.yml"]],

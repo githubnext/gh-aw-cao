@@ -457,7 +457,7 @@ a live Projects V2 end-to-end deployment.
 | `<operation>/operational-value.mjs` | Optional deterministic repository-scoped operational-value computation installed with its package. |
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
-| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/` | Independent root Go module scaffolding the native `gh cao` extension: help, version, and a bounded local GitHub CLI diagnostic only; no shell/Node command migration or delegation. |
+| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `internal/runtimecli/` | Independent root Go module for operator-facing `gh cao` commands, native campaign installation/materialization, policy initialization/modes and workflow enablement, and an explicit installed-Node-runtime boundary for shared domain services; Actions pipeline commands remain Node-owned. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
 | `server/cmd/cao-webhook-gateway/`, `server/internal/webhookgateway/`, `server/internal/webhookgatewayhost/` | Optional isolated gateway entry point, consumer contracts and pure decisions, and host adapters; durable state extends the existing PostgreSQL operational adapter. |
@@ -481,12 +481,38 @@ a live Projects V2 end-to-end deployment.
 
 The extension's root `go.mod` is separate from `server/go.mod`.
 `cmd/gh-cao/` owns process lifecycle and depends on `internal/cli/`, which
-depends on `internal/ghcli/`. Shared logging comes from
+depends on `internal/ghcli/` and `internal/runtimecli/`. Shared logging comes from
 `github.com/github/gh-aw/pkg/logger`; GitHub CLI execution uses
-`github.com/cli/go-gh/v2`, the same helper used by gh-aw. The scaffold does not
-read policy, access GitHub APIs, or change control-plane authority, installation,
-or runtime ownership. Existing operations remain in `cao.sh` and the Node.js
-CLI; command parity remains future work.
+`github.com/cli/go-gh/v2`, the same helper used by gh-aw. The Go command layer
+owns operator argument validation and help. Campaign installation, policy
+initialization, campaign mode changes, and workflow enablement run natively in Go.
+`gh cao campaigns add` delegates package ownership and workflow generation to
+`gh aw add`, preserves its option vector, then materializes only the selected
+campaign from its installed full `resolvedCommit` SHA or a local catalog's
+Git-tracked files. Archive extraction rejects escaping paths and links; staged
+resources and declarations are checked before replacing the campaign directory.
+Intelligence metadata is refreshed, generated auto-upgrade Actions are pinned
+using the installed setup Action, and worker declarations are merged without
+widening scope, modes, enablement, or worker ceilings. Missing policy initializes
+only the exact current control repository. Initialization refuses
+replacement, preview maps to review, and campaign declarations are fully checked
+before workflow enablement/disablement. Repository enrollment (`gh cao repos add OWNER/REPO`),
+updates, and other operator commands reuse the installed Node.js
+24+ runtime, preserving the production onboarding, authentication, policy
+validation, and canonical query engines instead of introducing alternate
+semantics. The bridge passes argument vectors and stdio directly without a shell,
+preserves failure/validation statuses and cancellation, and never fetches code
+implicitly. `CAO_RUNTIME_ROOT` explicitly selects code; otherwise discovery stays
+within the current repository before checking beside the extension executable.
+Runtime selection never changes the working directory or grants policy authority.
+All command help and version work without Node or GitHub access. Native Go
+`doctor` performs bounded read-only GitHub CLI, gh-aw version, authentication,
+and basic local policy structure/compiler-pin checks, with text or JSON results
+and nonzero status for failed or skipped checks. Authentication may contact
+GitHub; raw authentication output and subprocess errors are never reported.
+Doctor does not replace production policy/workflow validation, grant authority,
+or invoke the Node snapshot-repair command. Activity and Dashboard Actions, pipeline commands,
+`cao.sh`, canonical installation paths, and runtime ownership remain unchanged.
 From the repository root, `make build` creates the ignored local extension
 binary and `make check` runs formatting checks, `go vet`, race-enabled unit
 tests, and a build. Go checks are scoped to `cmd/` and `internal/`, excluding

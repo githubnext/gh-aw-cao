@@ -671,6 +671,36 @@ func TestResolveBackfillMode(t *testing.T) {
 	}
 }
 
+func TestResolveDoctorBackendSource(t *testing.T) {
+	tests := []struct {
+		name        string
+		selected    bool
+		policyPath  string
+		marketplace string
+		redisFlag   bool
+		redisEnv    string
+		want        doctorBackendSource
+	}{
+		{name: "nothing configured", want: doctorBackendSourceDefault},
+		{name: "selected policy", selected: true, want: doctorBackendSourcePolicy},
+		{name: "policy path", policyPath: "policy.json", want: doctorBackendSourcePolicy},
+		{name: "marketplace policy path", marketplace: "market.json", want: doctorBackendSourcePolicy},
+		{name: "blank policy paths are ignored", policyPath: "  ", marketplace: "\t", want: doctorBackendSourceDefault},
+		{name: "redis flag", redisFlag: true, want: doctorBackendSourceRedis},
+		{name: "redis env", redisEnv: "redis://127.0.0.1:6379/0", want: doctorBackendSourceRedis},
+		{name: "blank redis env is ignored", redisEnv: "  ", want: doctorBackendSourceDefault},
+		{name: "policy outranks redis", policyPath: "policy.json", redisFlag: true, redisEnv: "redis://x", want: doctorBackendSourcePolicy},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveDoctorBackendSource(tt.selected, tt.policyPath, tt.marketplace, tt.redisFlag, tt.redisEnv)
+			if got != tt.want {
+				t.Errorf("resolveDoctorBackendSource() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestClassifyWorkerStop(t *testing.T) {
 	someErr := errors.New("lease failed")
 

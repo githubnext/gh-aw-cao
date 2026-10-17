@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/githubnext/gh-aw-cao/internal/cli"
+	"github.com/githubnext/gh-aw-cao/internal/runtimecli"
 )
 
 var version = "dev"
@@ -16,12 +20,43 @@ func main() {
 }
 
 func run() int {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(signals)
+	go func() {
+		select {
+		case received := <-signals:
+			code := 130
+			if received == syscall.SIGTERM {
+				code = 143
+			}
+			cancel(&runtimecli.ExitError{Code: code})
+		case <-ctx.Done():
+		}
+	}()
 
-	if err := cli.NewRootCommand(version).ExecuteContext(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+	err := cli.NewRootCommand(version).ExecuteContext(ctx)
+	if ctx.Err() != nil {
+		return reportError(context.Cause(ctx), os.Stderr)
+	}
+	return reportError(err, os.Stderr)
+}
+
+func reportError(err error, stderr io.Writer) int {
+	if err == nil {
+		return 0
+	}
+	var exit *runtimecli.ExitError
+	if errors.As(err, &exit) {
+		return exit.Code
+	}
+	if errors.Is(err, context.Canceled) {
+		return 130
+	}
+	if _, writeErr := fmt.Fprintln(stderr, "error:", err); writeErr != nil {
 		return 1
 	}
-	return 0
+	return 1
 }
