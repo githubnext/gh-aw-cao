@@ -137,15 +137,16 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond(http.StatusServiceUnavailable, "invalid")
 			return
 		}
-		matchEnd("matched")
 		if matched {
 			matches = append(matches, subscription)
 		}
 	}
 	if len(matches) == 0 {
+		matchEnd("filtered")
 		respond(http.StatusNoContent, "filtered")
 		return
 	}
+	matchEnd("matched")
 	now := time.Now()
 	traceCarrier := propagation.MapCarrier{}
 	propagation.TraceContext{}.Inject(ctx, traceCarrier)

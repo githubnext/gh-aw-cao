@@ -234,7 +234,8 @@ the previous secret after the approved overlap and restart again.
 The dispatch role publishes short-lived authorization proofs (30 seconds) to
 the existing operational `StateStore`, using one bounded fixed key per
 subscription ID. Its proof primer runs even when the queue is empty. Receive
-admits only with a fresh proof bound to the exact trusted subscription revision;
+admits only with a fresh proof bound to both the current queue policy revision
+and the exact trusted subscription revision;
 missing, expired, mismatched, or incomplete proofs fail closed. No private key is
 delegated to ingress. Before each outbound attempt, dispatch always performs
 fresh live installation/repository checks for both source and destination,
@@ -270,6 +271,8 @@ Production workers must receive the shared-quota `Budget` adapter even though
 the shell allows it to be absent in pure tests. Its acquire/release lifecycle
 wraps durable dispatch reservation; the paired dispatcher reconciles actual
 GitHub response quota without changing a known accepted dispatch into a retry.
+Cancellation after a known response or a proven unsent request preserves that
+observation; only an uncertain transport outcome becomes `ambiguous`.
 
 The reviewed `control-plane.webhook-gateway` section binds enabled state,
 monotonic revision, App identities, namespace, queue/worker bounds, explicit
@@ -293,6 +296,9 @@ IDs; compiler-declared generic constraints must bind the exact approved set to
 Current authenticated GraphQL authorization checks exact project identity and
 organization ownership only, without fetching project content or enriching
 missing filter values. User-owned/unverifiable project nodes fail closed.
+The dispatch role records project responses in the receiving App installation's
+shared `graphql` quota bucket, including backoff; unavailable quota storage
+defers authorization.
 For Projects item edited events, actual `changes.field_value` supplies only
 `field_node_id` and `field_type`, not selected status names, labels, or from/to
 values. Missing status/label/transition operands are Unknown/nonmatch; do not

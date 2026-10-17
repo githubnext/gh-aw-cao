@@ -104,7 +104,11 @@ func (g *QuotaGate) Dispatch(ctx context.Context, subscription gateway.Subscript
 }
 
 func ObserveQuota(ctx context.Context, service QuotaService, app string, installation int64, quota githubquota.ResponseQuota) error {
-	bucket := githubquota.BucketID{App: app, Installation: installation, Resource: githubquota.ResourceCore}
+	resource := quota.Resource
+	if resource == "" {
+		resource = githubquota.ResourceCore
+	}
+	bucket := githubquota.BucketID{App: app, Installation: installation, Resource: resource}
 	var failures []error
 	if quota.HasObservation {
 		observation := quota.Observation

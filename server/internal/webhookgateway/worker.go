@@ -203,9 +203,6 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	dispatchCtx, dispatchEnd := gatewayStage(dispatchCtx, "dispatch", job.Subscription.Source.Event)
 	response := w.Dispatcher.Dispatch(dispatchCtx, job.Subscription, job.Payload)
 	response.Kind = job.Subscription.Destination.Kind
-	if dispatchCtx.Err() != nil {
-		response.TransportOutcome = "unknown"
-	}
 	cancel()
 	result, err := ClassifyDispatchResponse(time.Now(), response)
 	if err != nil {

@@ -259,7 +259,7 @@ func dispatch(ctx context.Context, policy gateway.PolicySnapshot, loader gateway
 	if err != nil {
 		return err
 	}
-	authority := webhookgatewayhost.LiveAuthority{Loader: loader, Queue: queue, Receiving: receiver, Dispatch: dispatcher, State: store}
+	authority := webhookgatewayhost.LiveAuthority{Loader: loader, Queue: queue, Receiving: receiver, Dispatch: dispatcher, State: store, Quota: quota}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var workers sync.WaitGroup

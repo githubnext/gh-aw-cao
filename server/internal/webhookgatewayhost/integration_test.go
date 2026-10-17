@@ -36,7 +36,7 @@ func (s demoSecrets) WebhookSecrets(context.Context, string) ([]byte, []byte, er
 
 type demoProjectAPI struct{ authorityAPI }
 
-func (a demoProjectAPI) WebhookGatewayProjects(_ context.Context, installation, organization int64, ids []string) error {
+func (a demoProjectAPI) WebhookGatewayProjectsWithQuota(_ context.Context, installation, organization int64, ids []string, _ func(githubquota.ResponseQuota)) error {
 	if installation != 10 || organization != 12 || len(ids) != 1 || ids[0] != "PVT_example_project" {
 		return gateway.ErrUnauthorized
 	}
@@ -192,7 +192,7 @@ func TestProjectsV2GatewayPostgresDemonstration(t *testing.T) {
 	}
 }
 
-func demoDispatchClient(t *testing.T) (*githubapp.Client, *atomic.Int64) {
+func demoDispatchClient(t *testing.T, transports ...http.RoundTripper) (*githubapp.Client, *atomic.Int64) {
 	t.Helper()
 	calls := &atomic.Int64{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -226,7 +226,11 @@ func demoDispatchClient(t *testing.T) (*githubapp.Client, *atomic.Int64) {
 		t.Fatal(err)
 	}
 	private := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
-	client, err := githubapp.New(githubapp.Config{AppID: 2, PrivateKeyPEM: private, BaseURL: server.URL + "/", UploadURL: server.URL + "/"})
+	var transport http.RoundTripper
+	if len(transports) > 0 {
+		transport = transports[0]
+	}
+	client, err := githubapp.New(githubapp.Config{AppID: 2, PrivateKeyPEM: private, BaseURL: server.URL + "/", UploadURL: server.URL + "/", Transport: transport})
 	if err != nil {
 		t.Fatal(err)
 	}

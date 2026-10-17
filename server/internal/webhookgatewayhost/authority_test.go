@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -167,7 +168,7 @@ func TestReceiveAuthorityRejectsStaleOrReplacedProof(t *testing.T) {
 
 	proof.CheckedAt = time.Now().Add(-time.Minute)
 	proof.ExpiresAt = time.Now().Add(-30 * time.Second)
-	data, err := json.Marshal(proof)
+	data, err := json.Marshal(authorizationProof{Revision: policy.Revision, Snapshot: proof})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,6 +183,24 @@ func TestReceiveAuthorityRejectsStaleOrReplacedProof(t *testing.T) {
 	}
 }
 
+func TestReceiveAuthorityRejectsProofFromPreviousPolicy(t *testing.T) {
+	policy, job, receiver, dispatcher := authorityFixture()
+	state := authorityState{}
+	revision := &authorityRevision{}
+	live := LiveAuthority{Loader: authorityPolicy{policy}, Queue: revision, Receiving: receiver, Dispatch: dispatcher, State: state}
+	if _, err := live.Authorize(t.Context(), job); err != nil {
+		t.Fatal(err)
+	}
+	policy.Revision.Revision++
+	policy.Revision.Digest = strings.Repeat("d", 64)
+	policy.AllowedOwners = []string{"narrowed"}
+	job.QueueRevision = policy.Revision
+	receive := ReceiveAuthority{Loader: authorityPolicy{policy}, Queue: revision, State: state}
+	if _, err := receive.Authorize(t.Context(), job); !errors.Is(err, gateway.ErrUnavailable) {
+		t.Fatalf("previous policy's proof authorized admission after scope narrowing: %v", err)
+	}
+}
+
 func TestObservedInstallationRemovalReturnsCancellationEvidence(t *testing.T) {
 	policy, job, receiver, dispatcher := authorityFixture()
 	dispatcher.err = &githubapp.GatewayAPIError{StatusCode: http.StatusNotFound}
@@ -193,5 +212,60 @@ func TestObservedInstallationRemovalReturnsCancellationEvidence(t *testing.T) {
 	decision, err := gateway.ValidateAuthorization(time.Now(), job, proof)
 	if err != nil || !decision.Cancel || decision.Allowed {
 		t.Fatalf("withdrawal did not cancel: %+v %v", decision, err)
+	}
+}
+
+type authorityProjectAPI struct {
+	authorityAPI
+	quota githubquota.ResponseQuota
+}
+
+func (a authorityProjectAPI) WebhookGatewayProjectsWithQuota(_ context.Context, _, _ int64, _ []string, observe func(githubquota.ResponseQuota)) error {
+	observe(a.quota)
+	return nil
+}
+
+func TestAuthorityAccountsProjectResponsesInGraphQLBucket(t *testing.T) {
+	for _, unavailable := range []bool{false, true} {
+		t.Run(fmt.Sprint(unavailable), func(t *testing.T) {
+			policy, job, receiver, dispatcher := authorityFixture()
+			job.Subscription.Source.ProjectIDs = []string{"PVT_project"}
+			job.Subscription.Source.IdentityConstraints = []gateway.IdentityConstraint{
+				{Path: "/projects_v2_item/project_node_id", Value: json.RawMessage(`"PVT_project"`)},
+			}
+			policy.Subscriptions = []gateway.Subscription{job.Subscription}
+			grant := policy.Grants[job.Subscription.ID]
+			grant.ProjectIDs = job.Subscription.Source.ProjectIDs
+			policy.Grants[job.Subscription.ID] = grant
+			quota := &quotaFake{}
+			if unavailable {
+				quota.err = errors.New("unavailable")
+			}
+			live := LiveAuthority{Loader: authorityPolicy{policy}, Queue: &authorityRevision{}, Dispatch: dispatcher, Quota: quota,
+				Receiving: authorityProjectAPI{authorityAPI: receiver, quota: githubquota.ResponseQuota{
+					HasResponse: true, HasObservation: true, Resource: "graphql",
+					Observation: githubquota.Observation{Limit: 5000, Remaining: 4999, ResetAt: time.Now().Add(time.Hour)},
+					ParkUntil:   time.Now().Add(time.Minute), ParkReason: "secondary-rate-limit",
+				}}}
+			proof, err := live.Authorize(t.Context(), job)
+			if unavailable {
+				if !errors.Is(err, gateway.ErrUnavailable) || proof.Complete {
+					t.Fatalf("quota storage failure authorized project access: %+v %v", proof, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			decision, err := gateway.ValidateAuthorization(time.Now(), job, proof)
+			if err != nil || !decision.Allowed {
+				t.Fatalf("project authorization failed: %+v %v", decision, err)
+			}
+			bucket := githubquota.BucketID{App: "1", Installation: 10, Resource: "graphql"}
+			if len(quota.observed) != 1 || quota.observed[0] != bucket ||
+				len(quota.parkedBuckets) != 1 || quota.parkedBuckets[0] != bucket {
+				t.Fatalf("project quota used the wrong bucket: observed=%v parked=%v", quota.observed, quota.parkedBuckets)
+			}
+		})
 	}
 }

@@ -10,16 +10,17 @@ import (
 
 // Domain errors deliberately carry no webhook contents or upstream error bodies.
 var (
-	ErrInvalid       = errors.New("invalid webhook gateway input")
-	ErrConflict      = errors.New("webhook gateway conflict")
-	ErrCapacity      = errors.New("webhook gateway capacity")
-	ErrNotFound      = errors.New("webhook gateway job not found")
-	ErrUnauthorized  = errors.New("webhook gateway authorization incomplete")
-	ErrUnavailable   = errors.New("webhook gateway unavailable")
-	ErrQueueInvalid  = ErrInvalid
-	ErrQueueConflict = ErrConflict
-	ErrQueueCapacity = ErrCapacity
-	ErrQueueNotFound = ErrNotFound
+	ErrInvalid        = errors.New("invalid webhook gateway input")
+	ErrConflict       = errors.New("webhook gateway conflict")
+	ErrCapacity       = errors.New("webhook gateway capacity")
+	ErrNotFound       = errors.New("webhook gateway job not found")
+	ErrUnauthorized   = errors.New("webhook gateway authorization incomplete")
+	ErrUnavailable    = errors.New("webhook gateway unavailable")
+	ErrRequestNotSent = errors.New("webhook gateway request was not sent")
+	ErrQueueInvalid   = ErrInvalid
+	ErrQueueConflict  = ErrConflict
+	ErrQueueCapacity  = ErrCapacity
+	ErrQueueNotFound  = ErrNotFound
 )
 
 // Event contains common GitHub identities; SourceID is assigned by the trusted ingress route.

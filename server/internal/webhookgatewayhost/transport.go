@@ -1,14 +1,15 @@
 package webhookgatewayhost
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
 )
 
-var ErrAPIBudget = errors.New("gateway API request budget is unavailable")
+var ErrAPIBudget = fmt.Errorf("gateway API request budget is unavailable: %w", gateway.ErrRequestNotSent)
 
 // BudgetTransport reuses deployment-scoped operational request admission for
 // every App/JWT, installation-token, authorization and dispatch HTTP request.

@@ -273,19 +273,35 @@ func TestWorkerCannotSendOnUnknownAuthorityOrBudgetFailure(t *testing.T) {
 	}
 }
 
-func TestWorkerCancellationAfterBeginIsTerminalAmbiguous(t *testing.T) {
-	queue := &shellQueue{}
-	worker := shellWorker(queue, &shellAuthorizer{})
-	ctx, cancel := context.WithCancel(context.Background())
-	worker.Dispatcher = shellDispatch(func(context.Context, Subscription, json.RawMessage) DispatchResponse {
-		cancel()
-		return DispatchResponse{StatusCode: 204, TransportOutcome: "response"}
-	})
-	if _, err := worker.RunOnce(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if queue.final.State != Ambiguous || queue.finishCtx != nil || queue.final.AcceptedStatus != 0 || queue.final.WorkflowRunID != 0 {
-		t.Fatalf("final %+v finish context %v", queue.final, queue.finishCtx)
+func TestWorkerCancellationPreservesDispatchObservation(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		response DispatchResponse
+		state    JobState
+		status   int
+	}{
+		{"accepted", DispatchResponse{StatusCode: 204, TransportOutcome: "response"}, Succeeded, 204},
+		{"rate-limited", DispatchResponse{StatusCode: 429, TransportOutcome: "response", RetryAfter: "60"}, Ready, 0},
+		{"not-sent", DispatchResponse{TransportOutcome: "not-sent"}, Ready, 0},
+		{"unknown", DispatchResponse{TransportOutcome: "unknown"}, Ambiguous, 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			queue := &shellQueue{}
+			worker := shellWorker(queue, &shellAuthorizer{})
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			worker.Dispatcher = shellDispatch(func(context.Context, Subscription, json.RawMessage) DispatchResponse {
+				cancel()
+				return test.response
+			})
+			if _, err := worker.RunOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if queue.final.State != test.state || queue.finishCtx != nil ||
+				queue.final.AcceptedStatus != test.status || queue.final.WorkflowRunID != 0 {
+				t.Fatalf("final %+v finish context %v", queue.final, queue.finishCtx)
+			}
+		})
 	}
 }
 

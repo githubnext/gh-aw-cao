@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
@@ -18,13 +19,18 @@ import (
 
 const proofLifetime = 30 * time.Second
 
+type authorizationProof struct {
+	Revision gateway.QueueRevision         `json:"revision"`
+	Snapshot gateway.AuthorizationSnapshot `json:"snapshot"`
+}
+
 type AuthorityAPI interface {
 	WebhookGatewayInstallation(context.Context, int64) (githubapp.GatewayInstallation, githubquota.ResponseQuota, error)
 	WebhookGatewayRepository(context.Context, int64, int64, ...func(githubquota.ResponseQuota)) (githubapp.GatewayRepository, githubquota.ResponseQuota, error)
 }
 
 type ProjectAuthority interface {
-	WebhookGatewayProjects(context.Context, int64, int64, []string) error
+	WebhookGatewayProjectsWithQuota(context.Context, int64, int64, []string, func(githubquota.ResponseQuota)) error
 }
 
 type PolicyLoader interface {
@@ -40,6 +46,7 @@ type LiveAuthority struct {
 	Queue               RevisionApplier
 	Receiving, Dispatch AuthorityAPI
 	State               operational.StateStore
+	Quota               QuotaService
 }
 
 type ReceiveAuthority struct {
@@ -99,9 +106,13 @@ func (a ReceiveAuthority) Authorize(ctx context.Context, job gateway.Job) (gatew
 	if err != nil {
 		return gateway.AuthorizationSnapshot{}, gateway.ErrUnavailable
 	}
-	var proof gateway.AuthorizationSnapshot
+	var stored authorizationProof
 	now := time.Now().UTC()
-	if json.Unmarshal(data, &proof) != nil || !proof.Complete || proof.CurrentRevision != revision ||
+	if json.Unmarshal(data, &stored) != nil || stored.Revision != policy.Revision {
+		return gateway.AuthorizationSnapshot{}, gateway.ErrUnavailable
+	}
+	proof := stored.Snapshot
+	if !proof.Complete || proof.CurrentRevision != revision ||
 		proof.CheckedAt.After(now) || now.Sub(proof.CheckedAt) >= proofLifetime || !now.Before(proof.ExpiresAt) {
 		return gateway.AuthorizationSnapshot{}, gateway.ErrUnavailable
 	}
@@ -138,7 +149,7 @@ func (a LiveAuthority) Authorize(ctx context.Context, job gateway.Job) (gateway.
 		return gateway.AuthorizationSnapshot{}, err
 	}
 	if a.State != nil {
-		data, marshalErr := json.Marshal(proof)
+		data, marshalErr := json.Marshal(authorizationProof{Revision: policy.Revision, Snapshot: proof})
 		if marshalErr != nil {
 			return gateway.AuthorizationSnapshot{}, marshalErr
 		}
@@ -192,7 +203,18 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 		if !supported || subscription.Source.OrganizationID <= 0 {
 			return proof, gateway.ErrUnavailable
 		}
-		if err := projects.WebhookGatewayProjects(ctx, subscription.Source.InstallationID, subscription.Source.OrganizationID, subscription.Source.ProjectIDs); err != nil {
+		var quotaErr error
+		projectErr := projects.WebhookGatewayProjectsWithQuota(ctx, subscription.Source.InstallationID, subscription.Source.OrganizationID, subscription.Source.ProjectIDs,
+			func(response githubquota.ResponseQuota) {
+				if a.Quota != nil {
+					quotaErr = errors.Join(quotaErr, ObserveQuota(ctx, a.Quota, strconv.FormatInt(policy.Policy.ReceivingAppID, 10),
+						subscription.Source.InstallationID, response))
+				}
+			})
+		if quotaErr != nil {
+			return proof, gateway.ErrUnavailable
+		}
+		if err := projectErr; err != nil {
 			if !errors.Is(err, gateway.ErrUnauthorized) {
 				return proof, gateway.ErrUnavailable
 			}

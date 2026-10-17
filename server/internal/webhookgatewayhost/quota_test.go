@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
@@ -18,9 +19,12 @@ import (
 type quotaFake struct {
 	released, committed, parked int
 	err                         error
+	observed                    []githubquota.BucketID
+	parkedBuckets               []githubquota.BucketID
 }
 
-func (q *quotaFake) Observe(context.Context, githubquota.BucketID, githubquota.Observation) error {
+func (q *quotaFake) Observe(_ context.Context, bucket githubquota.BucketID, _ githubquota.Observation) error {
+	q.observed = append(q.observed, bucket)
 	return q.err
 }
 func (q *quotaFake) Reserve(_ context.Context, bucket githubquota.BucketID, _ githubquota.ReservationRequest) (githubquota.Reservation, error) {
@@ -34,8 +38,9 @@ func (q *quotaFake) Release(context.Context, githubquota.Reservation) error {
 	q.released++
 	return q.err
 }
-func (q *quotaFake) Park(context.Context, githubquota.BucketID, time.Time, string) error {
+func (q *quotaFake) Park(_ context.Context, bucket githubquota.BucketID, _ time.Time, _ string) error {
 	q.parked++
+	q.parkedBuckets = append(q.parkedBuckets, bucket)
 	return q.err
 }
 
@@ -121,7 +126,34 @@ func TestAPIBudgetStopsHTTPBeforeSending(t *testing.T) {
 			t.Fatal(closeErr)
 		}
 	}
-	if !errors.Is(err, ErrAPIBudget) || calls != 0 {
+	if !errors.Is(err, ErrAPIBudget) || !errors.Is(err, gateway.ErrRequestNotSent) || calls != 0 {
 		t.Fatal("exhausted distributed budget made an HTTP call")
+	}
+}
+
+type dispatchAPILimiter struct {
+	apiLimiter
+	remaining int
+}
+
+func (l *dispatchAPILimiter) TakeRateLimitToken(_ context.Context, _ string, _ int, _ time.Duration) (operational.RateLimitResult, error) {
+	l.remaining--
+	return operational.RateLimitResult{Allowed: l.remaining >= 0}, nil
+}
+
+func TestDispatchAPIBudgetRefusalIsKnownNotSent(t *testing.T) {
+	limiter := &dispatchAPILimiter{remaining: 2}
+	client, calls := demoDispatchClient(t, BudgetTransport{Limiter: limiter})
+	subscription := gateway.Subscription{Provider: "github", AppID: 2,
+		Destination: gateway.Destination{Kind: "workflow_dispatch", InstallationID: 20, RepositoryID: 21,
+			Workflow: "project-change.yml", Ref: "main"}}
+	response := (githubapp.WebhookGatewayDispatcher{Client: client}).Dispatch(t.Context(), subscription,
+		json.RawMessage(`{"ref":"main","inputs":{}}`))
+	if limiter.remaining != -1 || calls.Load() != 0 || response.TransportOutcome != "not-sent" || response.StatusCode != 0 {
+		t.Fatalf("local budget refusal was not classified as unsent: %+v", response)
+	}
+	result, err := gateway.ClassifyDispatchResponse(time.Now(), response)
+	if err != nil || result.Outcome != "retry" {
+		t.Fatalf("proven unsent request became terminal: %+v %v", result, err)
 	}
 }

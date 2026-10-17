@@ -223,7 +223,7 @@ func (d WebhookGatewayDispatcher) DispatchWithQuota(ctx context.Context, subscri
 		result.TransportOutcome = "unknown"
 		quota := gatewayResponseQuota(nil, err)
 		var tokenErr *ghinstallation.HTTPError
-		if errors.As(err, &tokenErr) {
+		if errors.As(err, &tokenErr) || errors.Is(err, webhookgateway.ErrRequestNotSent) {
 			result.TransportOutcome = "not-sent"
 		}
 		d.observe(ctx, destination.InstallationID, quota)
