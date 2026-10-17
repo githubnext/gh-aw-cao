@@ -54,7 +54,7 @@ func loadKey(path string) ([]byte, error) {
 	if path == "" {
 		return nil, errors.New("gateway App private key file is required")
 	}
-	file, err := os.Open(path) // #nosec G304 -- credential path is supplied by the trusted deployment, never webhook input.
+	file, err := os.Open(path) // #nosec G304 G703 -- credential path is supplied by the trusted deployment, never webhook input.
 	if err != nil {
 		return nil, errors.New("gateway App private key is unavailable")
 	}
