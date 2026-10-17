@@ -12,10 +12,25 @@ export const populatedDashboardPages = [
 const deployedDashboardBase = new URL(deployedDashboardUrl);
 const deployedActivityShardDirectories = new Set(["gh-aw-logs-runs", "gh-aw-logs-records"]);
 
+export async function deployedStorageContext({
+  playwright, browserName, headless, channel, launchOptions, contextOptions,
+}, use) {
+  // Origin quota overrides do not enlarge Chromium's memory-sized incognito pool.
+  // An empty userDataDir creates a fresh disk-backed profile removed on close.
+  const context = await playwright[browserName].launchPersistentContext("", {
+    headless, channel, ...launchOptions, ...contextOptions,
+  });
+  try {
+    await use(context);
+  } finally {
+    await context.close();
+  }
+}
+
 export async function configureDeployedStorageQuota(page, url) {
   const session = await page.context().newCDPSession(page);
   try {
-    // Incognito quotas depend on runner memory, not the dataset under test.
+    // Keep the origin budget independent of the runner's available storage.
     await session.send("Storage.overrideQuotaForOrigin", {
       origin: new URL(url).origin,
       quotaSize: DEPLOYED_STORAGE_QUOTA_BYTES,
