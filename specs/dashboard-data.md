@@ -2383,7 +2383,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 40;
+const DATABASE_VERSION = 41;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
