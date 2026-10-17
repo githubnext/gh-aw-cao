@@ -252,7 +252,19 @@ a subprocess starts.
 3. Every event MUST also be mirrored as one JSON line with `"audit":"cao"`,
    `event`, `outcome`, `stored`, and, when stored, `sequence`. The mirror goes
    to standard error, or to the file named by `CAO_AUDIT_LOG`, opened for
-   append with mode `0600`, for SIEM forwarding.
+   append with mode `0600`, for SIEM forwarding. Waiting for and writing the
+   mirror MUST return within a separate 250-millisecond budget. Writers MUST
+   share a single in-flight slot across logger copies: a stalled writer MUST
+   NOT cause unbounded background writes or indefinitely block audit callers
+   or shutdown.
+   An arbitrary `io.Writer` cannot be forcibly canceled; at most one write
+   may remain blocked until the sink resumes or the process exits. No retry
+   queue is retained. A timeout, short write, or writer failure MUST return
+   `ErrMirrorUnavailable` and increment `cao_audit.mirror.count` with a
+   credential-free outcome. Mirror errors MUST NOT be represented as durable
+   append failures or trigger compensation. A hosted mutation whose durable
+   commit succeeded MUST report its committed command ID and state even when
+   mirror confirmation fails; same-key replay MUST NOT duplicate or cancel it.
 4. Enabling hosted CLI actions, in either process, MUST fail unless the
    operational store provides the audit table. Privileged steps MUST fail
    closed when their event cannot be stored: a minted token is revoked and not
@@ -313,6 +325,9 @@ a subprocess starts.
     and idle-in-transaction waits before acquiring the namespace lock. SQLite
     MUST bound its busy wait to one second. Deadline and storage failures MUST
     remain observable and MUST NOT be interpreted as confirmed rollback.
+    PostgreSQL MUST preserve any stricter nonzero session timeout rather than
+    replacing an operator's ceiling with a longer caller budget; limits MUST
+    be transaction-local and MUST NOT change subsequent session defaults.
 
 ## 7a. Telemetry
 
@@ -333,6 +348,7 @@ Actors are joined from the audit trail by command ID.
 | UpDownCounter | `cao_hostedcli.lease.held` | none |
 | Counter | `cao_audit.event.count` | event, outcome, stored |
 | Histogram (s) | `cao_audit.append.duration` | stored |
+| Counter | `cao_audit.mirror.count` | outcome (`success`, `timeout`, `error`) |
 
 Span status descriptions MUST be generic. The executor MUST pass only a W3C
 `TRACEPARENT` for the command span to the subprocess and MUST NOT forward
@@ -340,6 +356,7 @@ baggage, trace state, or exporter configuration.
 
 Operators SHOULD alert when `pending_revocations` stays above zero, when
 `cao_audit.event.count{stored="false"}` increases, on any
+`cao_audit.mirror.count{outcome="timeout"}` or `outcome="error"`, on any
 `audit.verify_failed` event, on spikes in `admin.denied`, and when
 `lease.held` is zero while commands are queued.
 

@@ -4,11 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/hostedcli"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/sqlite"
@@ -140,5 +143,46 @@ func TestHostedCLIRejectsNonAtomicQueue(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("hosted admission accepted a queue without atomic audit persistence")
+	}
+}
+
+type failingHostedMirror struct{}
+
+func (failingHostedMirror) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
+
+func TestHostedSQLiteMirrorFailureReportsCommittedCommand(t *testing.T) {
+	f, store, _ := hostedSQLiteFixture(t)
+	f.app.config.Audit = audit.New(failingHostedMirror{}).WithStore(store)
+	body := `{"id":"upgrade-target-repository","values":{"repository":"octo/app"},"idempotencyKey":"mirror-failure"}`
+	for range 2 {
+		response := f.do(t, http.MethodPost, "/__cli_commands", body, true)
+		if response.Code != http.StatusServiceUnavailable ||
+			!strings.Contains(response.Body.String(), "CLI command 1 is queued") ||
+			!strings.Contains(response.Body.String(), "mutation and audit event were stored") {
+			t.Fatalf("mirror failure hid committed identity/state: %d %s", response.Code, response.Body)
+		}
+		command, err := f.app.hostedCLI.queue.Detail(t.Context(), 1)
+		if err != nil || command.Status != operational.CLICommandQueued {
+			t.Fatalf("mirror failure canceled committed work: %+v, %v", command, err)
+		}
+		if _, err := f.app.hostedCLI.queue.Detail(t.Context(), 2); !errors.Is(err, operational.ErrCLICommandNotFound) {
+			t.Fatalf("mirror failure retry duplicated admission: %v", err)
+		}
+	}
+	f.app.config.Audit = audit.New(io.Discard).WithStore(store)
+	if response := f.do(t, http.MethodPost, "/__cli_commands", body, true); response.Code != http.StatusAccepted {
+		t.Fatalf("mirror recovery = %d: %s", response.Code, response.Body)
+	}
+	events, err := store.ListAudit(t.Context(), operational.AuditFilter{})
+	if err != nil || len(events) != 3 {
+		t.Fatalf("mirror recovery lost durable events: %+v, %v", events, err)
+	}
+	for _, event := range events {
+		if event.Attributes["command_id"] != "1" {
+			t.Fatalf("mirror recovery changed command identity: %+v", event)
+		}
+	}
+	if _, err := store.VerifyAudit(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 }

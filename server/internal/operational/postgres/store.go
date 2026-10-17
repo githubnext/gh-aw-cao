@@ -224,9 +224,12 @@ func (s *Store) transact(ctx context.Context, fn func(*transaction) error) (err 
 	defer func() { _ = tx.Rollback() }()
 	if deadline, ok := ctx.Deadline(); ok {
 		wait := max(1, time.Until(deadline).Milliseconds())
-		// Also bound server-side waits if client cancellation cannot reach
-		// PostgreSQL. Set these before taking the namespace lock.
-		if _, err := tx.ExecContext(ctx, `SELECT set_config('lock_timeout',$1,true),set_config('statement_timeout',$1,true),set_config('idle_in_transaction_session_timeout',$1,true)`, strconv.FormatInt(wait, 10)); err != nil {
+		// pg_settings expresses these timeouts in milliseconds, including
+		// session overrides. Never widen an operator's nonzero ceiling.
+		// Bound server-side waits before taking the namespace lock.
+		if _, err := tx.ExecContext(ctx, `SELECT set_config(name,
+			LEAST(NULLIF(setting::bigint,0),$1::bigint)::text,true)
+			FROM pg_settings WHERE name IN ('lock_timeout','statement_timeout','idle_in_transaction_session_timeout')`, strconv.FormatInt(wait, 10)); err != nil {
 			return err
 		}
 	}

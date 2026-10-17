@@ -16,7 +16,6 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
@@ -32,16 +31,19 @@ const (
 // ErrUnavailable reports that an event could not be stored durably.
 var ErrUnavailable = errors.New("audit trail unavailable")
 
+// ErrMirrorUnavailable reports an unconfirmed JSON mirror write, not a failed
+// durable append. A committed mutation must never be compensated for this.
+var ErrMirrorUnavailable = errors.New("audit mirror unavailable")
+
 // Logger records audit events. A nil *Logger discards events.
 type Logger struct {
-	logger *slog.Logger
+	mirror *mirror
 	store  operational.AuditLog
-	mutex  *sync.Mutex
 }
 
 // New writes JSON audit events to writer.
 func New(writer io.Writer) *Logger {
-	return &Logger{logger: slog.New(slog.NewJSONHandler(writer, &slog.HandlerOptions{Level: slog.LevelInfo})), mutex: &sync.Mutex{}}
+	return &Logger{mirror: &mirror{writer: writer, active: make(chan struct{}, 1)}}
 }
 
 // WithStore returns a logger that appends every event to the durable audit
@@ -49,9 +51,9 @@ func New(writer io.Writer) *Logger {
 // mirroring.
 func (l *Logger) WithStore(store operational.AuditLog) *Logger {
 	if l == nil {
-		return &Logger{store: store, mutex: &sync.Mutex{}}
+		return &Logger{store: store}
 	}
-	return &Logger{logger: l.logger, store: store, mutex: l.mutex}
+	return &Logger{mirror: l.mirror, store: store}
 }
 
 // Durable reports whether events are persisted to the audit table.
@@ -75,6 +77,8 @@ func FromEnv() (*Logger, error) {
 // ErrUnavailable when a durable store is configured and the append fails;
 // callers guarding privileged work must then fail closed. The event is still
 // mirrored, marked stored=false, so the failure itself remains observable.
+// Mirror writes have a separate finite budget and return ErrMirrorUnavailable
+// on backpressure or failure, even if durable persistence succeeded.
 // Attribute values must not contain secrets.
 func (l *Logger) Record(ctx context.Context, event, outcome string, attrs ...slog.Attr) error {
 	if l == nil {
@@ -125,7 +129,8 @@ func (l *Logger) record(ctx context.Context, event, outcome string,
 		}
 	}
 	observe(context.WithoutCancel(ctx), event, outcome, persist != nil && storeErr == nil, stored.Sequence, started, persist != nil, attrs)
-	if l.logger != nil {
+	var mirrorErr error
+	if l.mirror != nil {
 		fields := make([]slog.Attr, 0, len(attrs)+5)
 		fields = append(fields, slog.String("audit", "cao"), slog.String("event", event), slog.String("outcome", outcome))
 		switch {
@@ -135,14 +140,12 @@ func (l *Logger) record(ctx context.Context, event, outcome string,
 			fields = append(fields, slog.Bool("stored", true), slog.Int64("sequence", stored.Sequence))
 		}
 		fields = append(fields, attrs...)
-		l.mutex.Lock()
-		l.logger.LogAttrs(context.WithoutCancel(ctx), slog.LevelInfo, "audit", fields...)
-		l.mutex.Unlock()
+		mirrorErr = l.mirror.write(context.WithoutCancel(ctx), fields)
 	}
 	if storeErr != nil {
-		return fmt.Errorf("%w: %s: %w", ErrUnavailable, event, storeErr)
+		storeErr = fmt.Errorf("%w: %s: %w", ErrUnavailable, event, storeErr)
 	}
-	return nil
+	return errors.Join(storeErr, mirrorErr)
 }
 
 func toEvent(event, outcome string, attrs []slog.Attr) operational.AuditEvent {

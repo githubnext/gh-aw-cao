@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -185,6 +186,12 @@ func (a *App) mutateCLICommand(request *http.Request, session oauthSession, even
 		slog.Any("assurance", session.Assurance),
 		slog.Time("authenticated_at", session.AuthenticatedAt),
 	)
+	if errors.Is(err, audit.ErrMirrorUnavailable) && !errors.Is(err, audit.ErrUnavailable) {
+		hostedCLILog.Printf("hosted CLI mutation stored id=%d status=%s but audit mirror unavailable", command.ID, command.Status)
+		err = cliFailure(http.StatusServiceUnavailable, fmt.Sprintf(
+			"CLI command %d is %s. The mutation and audit event were stored, but the audit mirror is unavailable. Check the queue before retrying, and reuse the same idempotency key.",
+			command.ID, command.Status))
+	}
 	return command, err
 }
 
