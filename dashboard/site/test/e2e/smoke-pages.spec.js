@@ -118,7 +118,7 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
 
 
 
-test('Ingestion shows CAO Activity status, size trend, and retained transactions', async ({ page }) => {
+test('Ingestion shows shard activity dates and retained transactions', async ({ page }) => {
   const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -165,8 +165,8 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
         'indexing-ingestion-runs': {
           source: 'indexing-ingestion-runs',
           rows: [
-            { createdAt: '2026-09-11T01:00:00Z', 'workflow-runs': 6050, 'run-count-status': 'Reported run count' },
-            { createdAt: '2026-09-12T02:00:00Z', 'workflow-runs': 6950, 'run-count-status': 'Reported run count' }
+            { 'shard-day': '2026-09-11', 'workflow-runs': 6050, 'run-count-status': 'Reported run count' },
+            { 'shard-day': '2026-09-12', 'workflow-runs': 6950, 'run-count-status': 'Reported run count' }
           ],
           metadata
         },
@@ -209,7 +209,7 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
   await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(5);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
   await transactionsPage.locator('[data-view-id="indexing-workflow-runs"]').scrollIntoViewIfNeeded();
-  await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(1);
+  await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(0);
   await expect(transactionsPage.locator('[data-chart-widget="scatter"] .scatter-chart-point')).toHaveCount(2);
   await expect(transactionsPage.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(1);
   await expect(transactionsPage.locator('[data-view-id="ingestion-queue-sizes"]')).toHaveCount(0);

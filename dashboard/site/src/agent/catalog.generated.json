@@ -4319,14 +4319,33 @@
       }
     },
     {
-      "id": "indexing-ingestion-runs",
-      "subject": "Show every retained ingestion transaction at its precise timestamp.",
-      "objective": "Compare reported run counts across individual ingestion operations.",
-      "acceptance": "Preserve every transaction, including coincident timestamps, all kinds, and zero counts, without grouping, limits, or page filters. Missing counts remain unavailable and use explicitly labeled zero-position placeholders, not measured zeroes.",
+      "id": "indexing-shard-dates",
+      "subject": "Read the activity date encoded in each retained transaction's shard filename.",
+      "objective": "Separate source shard dates from ingestion timestamps.",
+      "acceptance": "Keep every transaction and leave absent, invalid, or structural shard dates unknown; never substitute import time.",
       "description": "",
       "parameters": [],
       "sources": [
         "transactions"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "transactions"
+        ]
+      }
+    },
+    {
+      "id": "indexing-ingestion-runs",
+      "subject": "Show retained ingestion transactions at the activity date encoded in their shard filename.",
+      "objective": "Compare reported run counts by source shard activity date, independently of import time.",
+      "acceptance": "Preserve every dated transaction, including coincident dates, all kinds, and zero counts, without grouping, limits, or page filters. Omit missing or invalid shard dates; never substitute import time. Missing counts use labeled zero-position placeholders, not measured zeroes.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "indexing-shard-dates"
       ],
       "used-by-pages": [
         "indexing"

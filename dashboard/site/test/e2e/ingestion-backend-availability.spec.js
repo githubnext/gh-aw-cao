@@ -10,7 +10,7 @@ const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const origin = 'http://ingestion-backend.dashboard.test';
 const asOf = '2026-09-24T00:00:00Z';
 const hash = 'a'.repeat(64);
-const shardName = `gh-aw-logs-runs/logs-${hash}-${'b'.repeat(16)}.jsonl`;
+const shardName = `gh-aw-logs-runs/2026-09-24-0000-${'b'.repeat(16)}.jsonl`;
 const contract = JSON.parse(readFileSync(join(siteRoot, 'test/fixtures/ingestion-backend-contract.json'), 'utf8'));
 const pageDefinition = authoritativeDashboard.dashboard.pages.find(
   (/** @type {{ id: string }} */ page) => page.id === contract.page
@@ -143,7 +143,11 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   });
   expect(ingestionRows.metadata.availability).toBe('available');
   expect(ingestionRows.rows.length).toBeGreaterThan(0);
-  await expect(scatter.locator('.scatter-chart-point')).toHaveCount(ingestionRows.rows.length);
+  expect(ingestionRows.rows.find((/** @type {any} */ row) => row['shard-day'])?.['shard-day']).toBe('2026-09-24');
+  await expect(scatter.locator('.scatter-chart-point')).toHaveCount(
+    ingestionRows.rows.filter((/** @type {any} */ row) => row['shard-day']).length
+  );
+  await expect(scatter).toContainText('UTC activity date in the source shard filename');
   await expect(scatter).toContainText('Missing run counts are labeled');
   await expect(page.locator('.first-load-overlay')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

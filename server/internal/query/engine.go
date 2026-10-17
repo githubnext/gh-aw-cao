@@ -125,7 +125,7 @@ func computeArity(function string) (int, int, bool) {
 	arities := map[string][2]int{
 		"literal": {1, 1}, "coalesce": {1, 8}, "concat": {1, 8}, "lower": {1, 1}, "upper": {1, 1},
 		"title-case": {1, 1}, "trim": {1, 1}, "replace-suffix": {3, 3}, "url-encode": {1, 1},
-		"date-day": {1, 1}, "timestamp": {1, 1}, "date-bucket": {2, 2}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1}, "link": {2, 2},
+		"date-day": {1, 1}, "activity-shard-day": {1, 1}, "timestamp": {1, 1}, "date-bucket": {2, 2}, "calendar-week-point": {3, 3}, "dashboard-link": {3, 4}, "link-href": {1, 1}, "link": {2, 2},
 		"equals-any": {2, 8}, "greater-than": {2, 2}, "if": {3, 3}, "format-count": {1, 1},
 		"format-percent": {1, 1}, "array-length": {1, 1}, "failure-streak-point": {3, 3},
 		"number": {1, 1}, "positive-integer": {2, 2}, "sum": {2, 8}, "difference": {2, 2},
