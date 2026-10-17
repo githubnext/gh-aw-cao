@@ -397,6 +397,57 @@ generation, computes detailed audit causes only for selected or prioritized
 partitions, and discards every result safely because canonical evidence remains
 reconstructable.
 
+### Optional webhook gateway
+
+`server/cmd/cao-webhook-gateway/` is a standalone, opt-in receiver/dispatcher,
+distinct from dashboard webhook reconciliation and collection. Consumer-owned
+contracts and pure subscription, bounded generic filter, authorization, and
+outcome decisions live in `server/internal/webhookgateway/`; infrastructure
+adapters live in `server/internal/webhookgatewayhost/`. Event names and
+compiler-declared identity constraints are data, not event-specific routing code.
+The host reuses existing `githubapp` authentication, `githubquota`, operational
+request limits, and OpenTelemetry rather than creating parallel frameworks.
+The explicit `webhook-gateway-runtime` target in `server/Dockerfile` is a lean,
+non-root image without Node or dashboard dependencies; the default final
+dashboard target is unchanged. Startup requires an explicit role and policy path.
+Receive permits plaintext only on numeric loopback; non-loopback listeners
+require both TLS certificate and key.
+
+Receive and dispatch are separate processes and credential domains. Receive
+verifies bounded raw deliveries with HMAC secrets and holds no App private keys.
+Dispatch holds independent receiving-App read and dispatch-App private keys, but
+no HMAC secret. It primes 30-second admission authorization proofs in the existing
+operational `StateStore`, even with an empty queue. Egress independently rechecks
+live GitHub installation/repository grants, identities, visibility, current root
+scope, and approved revision; an admission proof never authorizes sending.
+
+Fresh `control-plane.webhook-gateway` policy in `.github/workflows/cao.json`
+binds exact-SHA compiler artifacts and digests separately from administrative
+grants. Missing or invalid policy/evidence fails closed without stale fallback.
+The gateway is not installed or enabled by default and cannot widen campaign
+scope, enablement, or live authority. Repository and owner allowlists intersect
+when both are declared. Source-route additions, deployment identity and capacity
+changes require restart; root-scope changes require a new gateway revision.
+Monotonic persisted queue revisions reject
+stale callers and serialize observed revocation with the irreversible dispatch
+reservation; they cannot recall an in-flight request or guarantee instantaneous
+remote revocation.
+
+The existing PostgreSQL operational adapter extends its own namespace with
+`cao_operational_webhook_*` tables, not canonical dashboard schema or collection
+jobs. Atomic bounded batch admission reserves deduplication and protected
+capacity together. Database-time leases, ownership fences and version CAS guard
+claims and completion; HTTP and backoff remain outside database transactions.
+Uncertain acceptance or expired dispatch leases become terminal `ambiguous`,
+never automatic replay. Acceptance is not workflow success or operational value.
+Cancellation joins owned workers before storage closes.
+
+`specs/rfc-033-webhook-gateway.md` specifies the safety contract and bounded model.
+An official gh-aw subscription metadata emitter and immutable execution binding
+remain external, unverified dependencies blocking production activation.
+Hand-authored fixtures demonstrate local contracts, not compiler integration or
+a live Projects V2 end-to-end deployment.
+
 ## Source tree
 
 | Path | Responsibility |
@@ -409,6 +460,7 @@ reconstructable.
 | `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/` | Independent root Go module scaffolding the native `gh cao` extension: help, version, and a bounded local GitHub CLI diagnostic only; no shell/Node command migration or delegation. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
+| `server/cmd/cao-webhook-gateway/`, `server/internal/webhookgateway/`, `server/internal/webhookgatewayhost/` | Optional isolated gateway entry point, consumer contracts and pure decisions, and host adapters; durable state extends the existing PostgreSQL operational adapter. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |

@@ -5,7 +5,7 @@ export class PolicyError extends Error {}
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
-const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "publishing", "marketplace"];
+const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "publishing", "marketplace", "webhook-gateway"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const ACTIVITY_KEYS = ["repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
@@ -274,6 +274,72 @@ function validateControlPlane(control) {
   }
   if ("publishing" in control) validatePublishing(control.publishing);
   if ("marketplace" in control) validateMarketplace(control.marketplace);
+  if ("webhook-gateway" in control) validateWebhookGateway(control["webhook-gateway"]);
+}
+
+function validateWebhookGateway(gateway) {
+  const path = "control-plane.webhook-gateway";
+  assertMapping(gateway, path);
+  assertKeys(gateway, ["version", "enabled", "revision", "receivingAppId", "dispatchAppId", "namespace", "artifacts", "grants", "queue", "workers"], path);
+  assertInteger(gateway.version, `${path}.version`, 1, 1);
+  assertBoolean(gateway.enabled, `${path}.enabled`);
+  for (const key of ["revision", "receivingAppId", "dispatchAppId"]) assertInteger(gateway[key], `${path}.${key}`, 1);
+  if (gateway.receivingAppId === gateway.dispatchAppId) throw new PolicyError(`${path} requires distinct App identities`);
+  assertInteger(gateway.workers, `${path}.workers`, 1, 32);
+  assertString(gateway.namespace, `${path}.namespace`, /^[A-Za-z0-9._-]{1,128}$/);
+  for (const key of ["artifacts", "grants"]) {
+    if (!Array.isArray(gateway[key]) || gateway[key].length > 1024) throw new PolicyError(`${path}.${key} must contain at most 1024 entries`);
+  }
+  for (const artifact of gateway.artifacts) {
+    assertMapping(artifact, `${path}.artifacts`);
+    assertKeys(artifact, ["path", "sha256", "repositoryId", "commitSha", "compilerId"], `${path}.artifacts`);
+    assertString(artifact.path, `${path}.artifacts.path`, SAFE_REGISTRY_PATH_PATTERN);
+    if (!artifact.path) throw new PolicyError(`${path}.artifacts.path is required`);
+    assertString(artifact.sha256, `${path}.artifacts.sha256`, /^[a-f0-9]{64}$/);
+    assertString(artifact.commitSha, `${path}.artifacts.commitSha`, /^[a-f0-9]{40}$/);
+    assertString(artifact.compilerId, `${path}.artifacts.compilerId`, /^.{1,128}$/);
+    assertInteger(artifact.repositoryId, `${path}.artifacts.repositoryId`, 1);
+  }
+  const grants = new Set();
+  for (const grant of gateway.grants) {
+    assertMapping(grant, `${path}.grants`);
+    assertKeys(grant, ["subscriptionId", "digest", "sourceInstallationId", "sourceRepositoryId", "sourceOrganizationId", "projectIds",
+      "receivingInstallationId", "destinationInstallationId", "destinationRepositoryId", "dispatchKind", "allowVisibilityTransfer", "expiresAt", "revoked"], `${path}.grants`);
+    assertString(grant.subscriptionId, `${path}.grants.subscriptionId`, /^[A-Za-z0-9._-]{1,200}$/);
+    if (grants.has(grant.subscriptionId)) throw new PolicyError(`${path}.grants contains duplicate approval`);
+    grants.add(grant.subscriptionId);
+    assertString(grant.digest, `${path}.grants.digest`, /^[a-f0-9]{64}$/);
+    for (const key of ["sourceInstallationId", "receivingInstallationId", "destinationInstallationId", "destinationRepositoryId"]) {
+      assertInteger(grant[key], `${path}.grants.${key}`, 1);
+    }
+    for (const key of ["sourceRepositoryId", "sourceOrganizationId"]) assertInteger(grant[key], `${path}.grants.${key}`, 0);
+    if (!grant.sourceRepositoryId && !grant.sourceOrganizationId) throw new PolicyError(`${path}.grants requires an explicit source`);
+    if (grant.sourceInstallationId !== grant.receivingInstallationId) throw new PolicyError(`${path}.grants receiving installation mismatch`);
+    if ("projectIds" in grant) assertUniqueStrings(grant.projectIds, `${path}.grants.projectIds`, /^[A-Za-z0-9_=-]{1,200}$/);
+    assertOneOf(grant.dispatchKind, `${path}.grants.dispatchKind`, ["workflow_dispatch", "repository_dispatch"]);
+    for (const key of ["allowVisibilityTransfer", "revoked"]) if (key in grant) assertBoolean(grant[key], `${path}.grants.${key}`);
+    assertString(grant.expiresAt, `${path}.grants.expiresAt`, /^\d{4}-\d{2}-\d{2}T/);
+    if (!Number.isFinite(Date.parse(grant.expiresAt))) throw new PolicyError(`${path}.grants.expiresAt must be a timestamp`);
+  }
+  if ("queue" in gateway) {
+    assertMapping(gateway.queue, `${path}.queue`);
+    assertKeys(gateway.queue, ["maxRows", "maxBytes", "maxTenantRows", "maxTenantBytes", "maxSourceRows", "maxSourceBytes",
+      "maxDestinationRows", "maxDestinationBytes", "maxPayloadBytes", "maxBatch", "maxConcurrency", "maxAge",
+      "dedupWindow", "terminalRetention", "leaseDuration", "rates"], `${path}.queue`);
+    for (const [key, value] of Object.entries(gateway.queue)) {
+      if (key !== "rates") assertInteger(value, `${path}.queue.${key}`, 1);
+    }
+    if ("rates" in gateway.queue) {
+      assertMapping(gateway.queue.rates, `${path}.queue.rates`);
+      assertKeys(gateway.queue.rates, ["global", "app", "tenant", "destination", "workflow"], `${path}.queue.rates`);
+      for (const rate of Object.values(gateway.queue.rates)) {
+        assertMapping(rate, `${path}.queue.rates`);
+        assertKeys(rate, ["capacity", "period"], `${path}.queue.rates`);
+        assertInteger(rate.capacity, `${path}.queue.rates.capacity`, 1);
+        assertInteger(rate.period, `${path}.queue.rates.period`, 1);
+      }
+    }
+  }
 }
 
 function validateMarketplace(marketplace) {

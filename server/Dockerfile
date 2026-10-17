@@ -38,6 +38,11 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" \
     -o /out/cao-dashboard \
     ./cmd/cao-dashboard
+RUN CGO_ENABLED=0 go build \
+    -trimpath \
+    -ldflags="-s -w -X main.version=${VERSION}" \
+    -o /out/cao-webhook-gateway \
+    ./cmd/cao-webhook-gateway
 
 FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8 AS dashboard-runtime
 
@@ -138,5 +143,19 @@ USER 65532:65532
 VOLUME ["/app/evidence"]
 ENTRYPOINT ["/app/cao-dashboard"]
 CMD ["collect", "--database-queries", "/app/queries/database.json"]
+
+FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8 AS webhook-gateway-runtime
+
+# hadolint ignore=DL3018
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates \
+    && addgroup -S -g 65532 cao \
+    && adduser -S -D -H -u 65532 -G cao cao
+COPY --from=server-build --chown=cao:cao /out/cao-webhook-gateway /app/cao-webhook-gateway
+WORKDIR /app
+USER 65532:65532
+EXPOSE 8081
+ENTRYPOINT ["/app/cao-webhook-gateway"]
+CMD ["--policy", "/policy/cao.json"]
 
 FROM dashboard-runtime AS final

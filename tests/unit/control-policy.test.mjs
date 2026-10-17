@@ -24,6 +24,34 @@ function validate(policy) {
   });
 }
 
+test("control policy recognizes an isolated, opt-in webhook gateway without enabling campaigns", () => {
+  const document = {
+    version: 1, "gh-aw-version": "v0.92.4",
+    "control-plane": {
+      scope: { "allowed-repositories": ["acme/control"] },
+      "webhook-gateway": {
+        version: 1, enabled: false, revision: 1, receivingAppId: 1, dispatchAppId: 2,
+        namespace: "webhook-gateway", workers: 1, artifacts: [], grants: [],
+      },
+    },
+  };
+  const result = validate(JSON.stringify(document));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(parsePolicy(JSON.stringify(document))["control-plane"]["webhook-gateway"].enabled, false);
+  assert.equal(schema.$defs.controlPlane.properties["webhook-gateway"].$ref, "#/$defs/webhookGateway");
+  for (const mutate of [
+    (gateway) => { gateway.dispatchAppId = gateway.receivingAppId; },
+    (gateway) => { gateway.enabled = "live"; },
+    (gateway) => { gateway.privateKey = "not-allowed"; },
+    (gateway) => { gateway.queue = { unknown: 1 }; },
+    (gateway) => { gateway.queue = { rates: { global: { capacity: 1, period: -1 } } }; },
+  ]) {
+    const invalid = structuredClone(document);
+    mutate(invalid["control-plane"]["webhook-gateway"]);
+    assert.notEqual(validate(JSON.stringify(invalid)).status, 0);
+  }
+});
+
 function effective(policy, {
   campaignName = "dependabot",
   role = "orchestrator",
