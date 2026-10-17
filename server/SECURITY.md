@@ -638,7 +638,10 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
 - **Tokens** are installation tokens minted for exactly one repository with
   the plan's narrowest permissions. A token serves one command and is revoked
   when that command reaches a terminal state. It never returns to the pool.
-  Failed revocations are retried until the token expires. Pre-minted backlog
+  The broker checks the grant GitHub returns. If it covers other
+  repositories, or permissions beyond those requested, the token is revoked
+  at once and the command fails. Failed revocations are retried until the
+  token expires. Pre-minted backlog
   tokens are bounded by `--max-pooled-tokens` (default 8), two per scope, and
   a two-minute idle lifetime. Idle tokens are revoked and are all revoked at
   shutdown.
@@ -665,6 +668,16 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   `CAO_HOSTED_CLI_APP_ID` and `CAO_HOSTED_CLI_PRIVATE_KEY` or its `_FILE` or
   `_BASE64` variant, available only to `execute-cli`.
 
+- **Audit trail**: both processes write append-only JSON audit events
+  (`"audit":"cao"`) to standard error or to `CAO_AUDIT_LOG`, which is opened
+  for append with mode `0600`. The events cover admin denials (with the
+  step-up or not-admin reason), admission, rejection, cancel, retry, token
+  mint and revocation, the command's start, permission denial, and finish.
+  They carry the actor, repository, assurance, and control revision, but no
+  credentials. Tokens appear only as `hashed_token`, in GitHub's audit-log
+  format, so CAO events join GitHub's record of the App's actions. Forward
+  the events to a SIEM with retention that meets your compliance policy.
+
 The executor's authorization and token lifecycle are model-checked in
 [`specs/tla/HostedCLIActions.tla`](../specs/tla/README.md#hosted-cli-actions-model).
 
@@ -676,6 +689,7 @@ The executor's authorization and token lifecycle are model-checked in
   payloads, or browser-readable metadata.
 - Never log or persist hosted CLI installation tokens or the hosted CLI App
   private key. Tokens are redacted from command output and revoked after use.
+  Audit events identify tokens only by their SHA-256 `hashed_token`.
 - Prefer environment variables or local command arguments supplied by a secret
   manager for Redis credentials.
 - In Azure, prefer Key Vault references in app settings. Bicep outputs must not

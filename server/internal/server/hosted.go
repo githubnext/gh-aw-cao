@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
@@ -131,8 +132,14 @@ func newHostedAppWithPolicy(
 	if err != nil {
 		return nil, errors.New("connect to dashboard Postgres failed")
 	}
+	auditLog, err := audit.FromEnv()
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
 	config := Config{
 		Database:               database,
+		Audit:                  auditLog,
 		HostProfile:            host.Profile,
 		SingleReplicaConfirmed: host.SingleReplicaConfirmed,
 		AllowVolatile:          host.AllowVolatile,

@@ -3,9 +3,11 @@ package hostedcli
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 )
@@ -32,6 +34,8 @@ type BrokerOptions struct {
 	// RevokeTimeout bounds one revocation request.
 	RevokeTimeout time.Duration
 	Now           func() time.Time
+	// Audit records token lifecycle events; nil disables them.
+	Audit *audit.Logger
 }
 
 func (o BrokerOptions) resolve() BrokerOptions {
@@ -247,6 +251,12 @@ func (b *Broker) mint(ctx context.Context, installationID int64, scope githubapp
 	b.mutex.Lock()
 	b.stats.Minted++
 	b.mutex.Unlock()
+	b.options.Audit.Record(ctx, "token.minted", audit.Success,
+		slog.Int64("installation_id", installationID),
+		slog.Any("repositories", scope.Repositories),
+		slog.Any("permissions", scope.Permissions),
+		slog.String("hashed_token", token.Hashed()),
+		slog.Time("expires_at", token.ExpiresAt))
 	return token, nil
 }
 
@@ -264,6 +274,9 @@ func (b *Broker) revoke(ctx context.Context, token githubapp.ScopedToken) error 
 	b.mutex.Unlock()
 	if err != nil {
 		brokerLog.Printf("scoped token revocation failed; will retry")
+		b.options.Audit.Record(ctx, "token.revoke_failed", audit.Failure, slog.String("hashed_token", token.Hashed()))
+	} else {
+		b.options.Audit.Record(ctx, "token.revoked", audit.Success, slog.String("hashed_token", token.Hashed()))
 	}
 	return err
 }

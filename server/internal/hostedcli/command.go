@@ -139,7 +139,7 @@ func hasPrefix(tokens []string, prefix ...string) bool {
 // publishingOptions parses the shared --pr-message and boolean publishing
 // flags. Mutating hosted commands must publish through a pull request because
 // the ephemeral workspace is discarded after the run.
-func publishingOptions(args []string, booleans map[string]bool, values map[string]bool) (map[string]string, map[string]bool, error) {
+func publishingOptions(args []string, booleans map[string]bool, values map[string]bool) (map[string]string, error) {
 	valueOptions := map[string]string{}
 	flags := map[string]bool{}
 	for index := 0; index < len(args); index++ {
@@ -147,26 +147,26 @@ func publishingOptions(args []string, booleans map[string]bool, values map[strin
 		switch {
 		case values[argument]:
 			if index+1 >= len(args) || strings.HasPrefix(args[index+1], "-") || args[index+1] == "" {
-				return nil, nil, errors.New("CLI action option requires a value")
+				return nil, errors.New("CLI action option requires a value")
 			}
 			if _, duplicate := valueOptions[argument]; duplicate {
-				return nil, nil, errors.New("CLI action option is repeated")
+				return nil, errors.New("CLI action option is repeated")
 			}
 			valueOptions[argument] = args[index+1]
 			index++
 		case booleans[argument]:
 			flags[argument] = true
 		default:
-			return nil, nil, ErrNotHosted
+			return nil, ErrNotHosted
 		}
 	}
 	if flags["--auto-merge"] && !flags["--create-pull-request"] {
-		return nil, nil, errors.New("--auto-merge requires --create-pull-request")
+		return nil, errors.New("--auto-merge requires --create-pull-request")
 	}
 	if !flags["--create-pull-request"] {
-		return nil, nil, errors.New("hosted execution publishes changes only through --create-pull-request")
+		return nil, errors.New("hosted execution publishes changes only through --create-pull-request")
 	}
-	return valueOptions, flags, nil
+	return valueOptions, nil
 }
 
 var publishingPermissions = map[string]string{
@@ -174,7 +174,7 @@ var publishingPermissions = map[string]string{
 }
 
 func planUpgrade(args []string) (Plan, error) {
-	values, _, err := publishingOptions(args,
+	values, err := publishingOptions(args,
 		map[string]bool{"--create-pull-request": true, "--pre-releases": true, "--auto-merge": true},
 		map[string]bool{"--repo": true, "--pr-message": true})
 	if err != nil {
@@ -246,7 +246,7 @@ func planCAOUpdate(args []string, controlRepository string) (Plan, error) {
 	if !targetRepository.MatchString(controlRepository) {
 		return Plan{}, errors.New("hosted CAO commands require a configured control repository")
 	}
-	values, _, err := publishingOptions(args,
+	values, err := publishingOptions(args,
 		map[string]bool{"--create-pull-request": true, "--auto-merge": true, "--pre-releases": true},
 		map[string]bool{"--campaign": true, "--pr-message": true})
 	if err != nil {

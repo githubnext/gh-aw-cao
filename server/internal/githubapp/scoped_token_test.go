@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -46,7 +47,7 @@ func TestMintScopedTokenRequestsExplicitRepositoryAndPermissions(t *testing.T) {
 		_ = json.Unmarshal(raw, &body)
 		response.Header().Set("Content-Type", "application/json")
 		response.WriteHeader(http.StatusCreated)
-		_, _ = fmt.Fprintf(response, `{"token":"ghs_scopedvalue","expires_at":%q}`, time.Now().Add(time.Hour).UTC().Format(time.RFC3339))
+		_, _ = fmt.Fprintf(response, `{"token":"ghs_scopedvalue","expires_at":%q,"permissions":{"contents":"write","metadata":"read"},"repositories":[{"name":"api"}]}`, time.Now().Add(time.Hour).UTC().Format(time.RFC3339))
 	})
 	token, err := client.MintScopedToken(context.Background(), 9, TokenScope{
 		Repositories: []string{"api"},
@@ -155,7 +156,7 @@ func TestFindRepositoryInstallationAndCollaboratorPermission(t *testing.T) {
 	if err != nil || id != 77 {
 		t.Fatalf("installation = %d, %v", id, err)
 	}
-	if _, err := client.FindRepositoryInstallation(context.Background(), "octo/missing"); err != ErrNotFound {
+	if _, err := client.FindRepositoryInstallation(context.Background(), "octo/missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing installation error = %v", err)
 	}
 	if _, err := client.FindRepositoryInstallation(context.Background(), "octo"); err == nil {
@@ -168,5 +169,49 @@ func TestFindRepositoryInstallationAndCollaboratorPermission(t *testing.T) {
 	identity, err := client.BotIdentity(context.Background())
 	if err != nil || identity.Name != "cao-app[bot]" || identity.Email != "4242+cao-app[bot]@users.noreply.github.com" {
 		t.Fatalf("identity = %#v, %v", identity, err)
+	}
+}
+
+func TestMintScopedTokenRevokesAndRejectsOverBroadGrants(t *testing.T) {
+	for name, granted := range map[string]string{
+		"extra permission":   `"permissions":{"contents":"read","administration":"write"},"repositories":[{"name":"api"}]`,
+		"escalated level":    `"permissions":{"contents":"write"},"repositories":[{"name":"api"}]`,
+		"extra repository":   `"permissions":{"contents":"read"},"repositories":[{"name":"api"},{"name":"other"}]`,
+		"missing grant info": `"repositories":[{"name":"api"}]`,
+		"all repositories":   `"permissions":{"contents":"read"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			revoked := false
+			client := testScopedClient(t, func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodDelete && request.URL.Path == "/api/v3/installation/token" {
+					revoked = request.Header.Get("Authorization") == "token ghs_broad"
+					response.WriteHeader(http.StatusNoContent)
+					return
+				}
+				response.Header().Set("Content-Type", "application/json")
+				response.WriteHeader(http.StatusCreated)
+				_, _ = fmt.Fprintf(response, `{"token":"ghs_broad","expires_at":%q,%s}`, time.Now().Add(time.Hour).UTC().Format(time.RFC3339), granted)
+			})
+			_, err := client.MintScopedToken(context.Background(), 9, TokenScope{
+				Repositories: []string{"api"}, Permissions: map[string]string{"contents": "read"},
+			})
+			if err == nil || strings.Contains(err.Error(), "ghs_broad") {
+				t.Fatalf("over-broad grant must fail without leaking: %v", err)
+			}
+			if !revoked {
+				t.Fatal("over-broad token must be revoked immediately")
+			}
+		})
+	}
+}
+
+func TestScopedTokenHashedMatchesGitHubAuditFormat(t *testing.T) {
+	token := NewScopedToken("ghs_example", 1, time.Now())
+	// base64(sha256("ghs_example"))
+	if got := token.Hashed(); got == "" || strings.Contains(got, "ghs_example") || len(got) != 44 {
+		t.Fatalf("hashed = %q", got)
+	}
+	if (ScopedToken{}).Hashed() != "" {
+		t.Fatal("empty token must hash to empty")
 	}
 }

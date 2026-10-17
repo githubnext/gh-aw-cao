@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -9,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 )
 
 func storedSession(t *testing.T, app *App, cookie *http.Cookie) oauthSession {
@@ -110,9 +113,10 @@ func TestAdminStepUpIsNotExtendedByTokenRefresh(t *testing.T) {
 }
 
 func TestAdminStepUpExpiresAndRequestsReauthentication(t *testing.T) {
+	var auditLog bytes.Buffer
 	app := &App{
 		oauth:  &githubOAuth{config: GitHubOAuthConfig{AdminReauthenticationMaxAge: 10 * time.Minute}},
-		config: Config{AdminUsers: []string{"operator"}},
+		config: Config{AdminUsers: []string{"operator"}, Audit: audit.New(&auditLog)},
 	}
 	stale := assuredSession("operator")
 	stale.AuthenticatedAt = time.Now().UTC().Add(-11 * time.Minute)
@@ -144,6 +148,9 @@ func TestAdminStepUpExpiresAndRequestsReauthentication(t *testing.T) {
 	app.collectionStatus(response, request)
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("non-administrator returned %d, want 403 without step-up challenge", response.Code)
+	}
+	if strings.Count(auditLog.String(), `"reason":"step_up_required"`) != 2 || strings.Count(auditLog.String(), `"reason":"not_admin"`) != 1 {
+		t.Fatalf("admin denials must be audited with their reason: %s", auditLog.String())
 	}
 }
 

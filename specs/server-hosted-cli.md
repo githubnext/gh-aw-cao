@@ -115,17 +115,21 @@ step-up. Retry MUST create a new admission subject to the same checks.
    pull requests, and workflows write, plus metadata read.
 2. Each command MUST use an installation token minted for exactly its target
    repository, with the narrowest permissions its plan requires.
-3. A token MUST be used by at most one command. After the command reaches a
+3. The broker MUST verify the grant GitHub returns. If the response omits the
+   granted permissions or repositories, grants a permission that was not
+   requested or at a higher level, or covers different repositories, the
+   broker MUST revoke the token immediately and fail the mint.
+4. A token MUST be used by at most one command. After the command reaches a
    terminal state, the token MUST be revoked and MUST NOT return to the pool.
-4. If revocation fails, the broker MUST retry until the token is revoked or
+5. If revocation fails, the broker MUST retry until the token is revoked or
    expires.
-5. The broker MAY pre-mint unused tokens for queued backlog. The pool MUST be
+6. The broker MAY pre-mint unused tokens for queued backlog. The pool MUST be
    bounded in total (`--max-pooled-tokens`, default 8, 0 disables pooling),
    per scope (default 2), and by idle lifetime (default 2 minutes). Idle
    tokens MUST be revoked when they expire from the pool and at shutdown.
-6. The broker MUST discard a pooled token that would expire before the
+7. The broker MUST discard a pooled token that would expire before the
    command deadline plus one minute.
-7. Concurrent token minting MUST be bounded (default 4).
+8. Concurrent token minting MUST be bounded (default 4).
 
 ## 6. Execution
 
@@ -157,7 +161,30 @@ step-up. Retry MUST create a new admission subject to the same checks.
 8. Command output MUST redact the token. Logs MUST NOT contain tokens,
    private keys, or OAuth credentials.
 
-## 7. Formal model
+## 7. Audit trail
+
+1. The web and executor processes MUST emit append-only JSON audit events,
+   one per line, each with `"audit":"cao"`, `event`, `outcome`
+   (`success`, `denied`, or `failure`), and a timestamp. Events go to
+   standard error, or to the file named by `CAO_AUDIT_LOG`, which is opened
+   for append with mode `0600`.
+2. The web process MUST record `admin.denied` with the reason
+   (`step_up_required` or `not_admin`), the method, and the path for every
+   refused administrator request. It MUST record `cli_command.admitted`,
+   `cli_command.rejected`, `cli_command.cancel_requested`, and
+   `cli_command.retried`. Each admitted event carries the actor, action,
+   repository, assurance factors, and step-up time.
+3. The executor MUST record `token.minted`, `token.revoked`, and
+   `token.revoke_failed`. It MUST also record `cli_command.started`,
+   `cli_command.permission_denied`, and `cli_command.finished`, with the
+   actor, repository, installation, granted permissions, control revision,
+   status, and exit code.
+4. Events MUST NOT contain tokens, keys, or OAuth credentials. Token events
+   MUST identify the token by `hashed_token`, the Base64 SHA-256 digest that
+   GitHub uses in its audit log. Operators can then join CAO events to
+   GitHub's audit-log entries for the App's actions.
+
+## 8. Formal model
 
 `specs/tla/HostedCLIActions.tla` models enablement, step-up admission, live
 recheck, and the token broker. Its enabled and disabled configurations MUST
@@ -165,18 +192,22 @@ pass TLC with no violation of `Safety` or `TerminalTokenInvalidated` before
 this specification or the corresponding implementation changes.
 `specs/tla/README.md` maps each property to its implementation boundary.
 
-## 8. Conformance tests
+## 9. Conformance tests
 
 - `server/internal/server/admin_step_up_test.go`: freshness, assurance,
   refresh non-extension, and the `401` and `403` responses.
 - `server/internal/server/hosted_cli_test.go`: flag gating, admission order,
   and requester permission.
 - `server/internal/hostedcli`: broker single use, revocation and retry, pool
-  bounds, executor recheck, isolation, and redaction.
+  bounds, executor recheck, isolation, redaction, and audit events without
+  secrets.
+- `server/internal/githubapp/scoped_token_test.go`: over-broad grants are
+  revoked and rejected, and `hashed_token` matches GitHub's format.
+- `server/internal/audit`: event shape and append-only `0600` file output.
 - `tests/unit/setup-hosted-cli-app.test.mjs`: least-privilege App manifest and
   helper safety.
 
-## 9. Security considerations
+## 10. Security considerations
 
 The App private key grants every permission the App has on every installed
 repository. Operators MUST store it as a secret available only to the
@@ -192,16 +223,17 @@ and SHOULD advance `CAO_HOSTED_CLI_CONTROL_REVISION` only after reviewing the
 control repository at that commit. Code at the reviewed revision is trusted
 to the same degree as the executor itself.
 
-## 10. References
+## 11. References
 
 - `server/SECURITY.md`
 - `specs/server-operational-storage.md`
 - `specs/tla/README.md`
 - [GitHub App improvements for least privilege and management](https://github.blog/changelog/2026-10-13-github-app-improvements-for-least-privilege-and-management/)
 
-## 11. Change log
+## 12. Change log
 
 ### Version 1.0.0 (Working Draft)
 
 - Initial hosted CLI actions, administrator step-up, and token broker
   contract.
+- Added granted-scope verification and the audit trail.

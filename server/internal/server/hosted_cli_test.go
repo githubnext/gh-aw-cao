@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/hostedcli"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
@@ -54,7 +56,7 @@ func (q *hostedCLITestQueue) Enqueue(_ context.Context, invocation operational.C
 	return *command, nil
 }
 func (q *hostedCLITestQueue) Claim(context.Context, operational.CLICommandLease) (*operational.CLICommand, error) {
-	return nil, nil
+	return nil, nil //nolint:nilnil // CLICommandQueue.Claim reports no runnable command as nil, nil.
 }
 func (q *hostedCLITestQueue) Finish(context.Context, operational.CLICommandLease, int64, operational.CLICommandResult) error {
 	return nil
@@ -365,5 +367,44 @@ func TestHostedCLIExecutorRequiresDedicatedApp(t *testing.T) {
 	if _, err := NewHostedCLIExecutorFromEnv(t.Context(), HostedCLIExecutorOptions{}); err == nil ||
 		!strings.Contains(err.Error(), "CAO_HOSTED_CLI_APP_ID") {
 		t.Fatalf("executor started without a dedicated App: %v", err)
+	}
+}
+
+func TestHostedCLIAuditsAdminDecisionsWithoutCredentials(t *testing.T) {
+	var buffer bytes.Buffer
+	fixture := newHostedCLIFixture(t, []string{"octocat"})
+	fixture.app.config.Audit = audit.New(&buffer)
+	if response := fixture.do(t, http.MethodPost, "/__cli_commands", hostedUpgradeRequest, true); response.Code != http.StatusAccepted {
+		t.Fatalf("enqueue = %d", response.Code)
+	}
+	fixture.push = false
+	if response := fixture.do(t, http.MethodPost, "/__cli_commands", hostedUpgradeRequest, true); response.Code != http.StatusForbidden {
+		t.Fatalf("enqueue without push = %d", response.Code)
+	}
+	fixture.app.config.AdminUsers = []string{"someone-else"}
+	if response := fixture.do(t, http.MethodGet, "/__cli_commands", "", false); response.Code != http.StatusForbidden {
+		t.Fatalf("non-admin list = %d", response.Code)
+	}
+	events := map[string]map[string]any{}
+	for _, line := range strings.Split(strings.TrimSpace(buffer.String()), "\n") {
+		var event map[string]any
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatalf("audit line is not JSON: %q", line)
+		}
+		events[event["event"].(string)] = event
+	}
+	admitted := events["cli_command.admitted"]
+	if admitted == nil || admitted["actor"] != "octocat" || admitted["repository"] != "octo/app" ||
+		admitted["action"] != "upgrade-target-repository" || admitted["authenticated_at"] == nil {
+		t.Fatalf("admission was not audited: %v", events)
+	}
+	if rejected := events["cli_command.rejected"]; rejected == nil || rejected["http_status"] != float64(http.StatusForbidden) {
+		t.Fatalf("rejection was not audited: %v", events)
+	}
+	if denied := events["admin.denied"]; denied == nil || denied["reason"] != "not_admin" || denied["path"] != "/__cli_commands" {
+		t.Fatalf("admin denial was not audited: %v", events)
+	}
+	if strings.Contains(buffer.String(), "access-token") || strings.Contains(buffer.String(), "refresh-token") {
+		t.Fatal("audit events must not contain OAuth credentials")
 	}
 }

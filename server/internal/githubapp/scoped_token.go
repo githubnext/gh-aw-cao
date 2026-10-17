@@ -2,6 +2,8 @@ package githubapp
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,6 +35,17 @@ func NewScopedToken(value string, installationID int64, expiresAt time.Time) Sco
 
 // Secret returns the credential for injection into one subprocess environment.
 func (t ScopedToken) Secret() string { return t.value }
+
+// Hashed returns GitHub's audit-log hashed_token form of the credential
+// (base64 of its SHA-256 digest), which identifies the token in GitHub audit
+// events without revealing it.
+func (t ScopedToken) Hashed() string {
+	if t.value == "" {
+		return ""
+	}
+	digest := sha256.Sum256([]byte(t.value))
+	return base64.StdEncoding.EncodeToString(digest[:])
+}
 
 func (t ScopedToken) String() string   { return "[REDACTED]" }
 func (t ScopedToken) GoString() string { return "githubapp.ScopedToken{[REDACTED]}" }
@@ -125,6 +138,14 @@ func (c *Client) MintScopedToken(ctx context.Context, installationID int64, scop
 	}
 	if token.GetToken() == "" {
 		return ScopedToken{}, errors.New("mint scoped installation token: response is missing a token")
+	}
+	minted := ScopedToken{value: token.GetToken(), InstallationID: installationID}
+	if err := verifyGrantedScope(scope, token); err != nil {
+		// Never use a credential broader than requested; invalidate it now.
+		if revokeErr := c.RevokeToken(context.WithoutCancel(ctx), minted); revokeErr != nil {
+			appLog.Printf("over-broad scoped token revocation failed")
+		}
+		return ScopedToken{}, fmt.Errorf("mint scoped installation token: %w", err)
 	}
 	appLog.Printf("minted scoped installation token repositories=%d permissions=%d", len(scope.Repositories), len(scope.Permissions))
 	return ScopedToken{
@@ -281,4 +302,43 @@ func clonePermissions(permissions map[string]string) map[string]string {
 		clone[name] = level
 	}
 	return clone
+}
+
+var permissionRank = map[string]int{"read": 1, "write": 2}
+
+// verifyGrantedScope fails closed unless GitHub granted exactly the requested
+// repositories and no permission beyond the requested level.
+func verifyGrantedScope(scope TokenScope, token *github.InstallationToken) error {
+	granted := map[string]string{}
+	if token.Permissions != nil {
+		raw, err := json.Marshal(token.Permissions)
+		if err != nil {
+			return errors.New("granted permissions could not be read")
+		}
+		if err := json.Unmarshal(raw, &granted); err != nil {
+			return errors.New("granted permissions could not be read")
+		}
+	}
+	if len(granted) == 0 {
+		return errors.New("response does not report granted permissions")
+	}
+	for name, level := range granted {
+		requested, ok := scope.Permissions[name]
+		if !ok || permissionRank[level] == 0 || permissionRank[level] > permissionRank[requested] {
+			return fmt.Errorf("granted permission %q exceeds the requested scope", name)
+		}
+	}
+	want := map[string]bool{}
+	for _, name := range scope.Repositories {
+		want[strings.ToLower(name)] = true
+	}
+	if len(token.Repositories) != len(want) {
+		return errors.New("granted repositories differ from the requested scope")
+	}
+	for _, repository := range token.Repositories {
+		if !want[strings.ToLower(repository.GetName())] {
+			return errors.New("granted repositories differ from the requested scope")
+		}
+	}
+	return nil
 }

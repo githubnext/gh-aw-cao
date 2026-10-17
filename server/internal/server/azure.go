@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
@@ -296,8 +297,14 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if err != nil {
 		return nil, fmt.Errorf("connect to dashboard Postgres: %w", err)
 	}
+	auditLog, err := audit.FromEnv()
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
 	app, err := New(ctx, store, Config{
 		Database:               database,
+		Audit:                  auditLog,
 		DatabaseQueriesPath:    databaseQueries,
 		HostProfile:            profile,
 		SingleReplicaConfirmed: host.SingleReplicaConfirmed,

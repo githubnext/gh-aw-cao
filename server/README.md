@@ -618,6 +618,7 @@ cao-dashboard execute-cli --max-pooled-tokens 8
 | `CAO_HOSTED_CLI_GITHUB_API_URL`, `CAO_HOSTED_CLI_GITHUB_URL` | GitHub API and web URLs for GHES. |
 | `CAO_HOSTED_CLI_DASHBOARD_URL` | Dashboard URL used in command backlinks. |
 | `CAO_HOSTED_CLI_WORK_ROOT`, `CAO_HOSTED_CLI_GH` | Executor workspace root and `gh` binary. |
+| `CAO_AUDIT_LOG` | Optional append-only JSON audit log file (mode `0600`) for `serve-hosted` and `execute-cli`. Defaults to standard error. |
 
 Each command runs with a single-use installation token scoped to its target
 repository, and the token is revoked when the command finishes. The broker

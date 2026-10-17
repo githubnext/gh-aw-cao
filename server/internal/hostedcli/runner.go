@@ -40,6 +40,7 @@ type ExecRunner struct {
 // with a nil error; err reports start failures and context termination.
 func (r ExecRunner) Run(ctx context.Context, process Process, output OutputFunc) (int, error) {
 	// #nosec G204 -- Program and Args come from the validated hosted plan.
+	//nolint:noctx // ctx kills the whole process group below; CommandContext would kill only the leader.
 	command := exec.Command(process.Program, process.Args...)
 	command.Dir = process.Dir
 	command.Env = process.Env

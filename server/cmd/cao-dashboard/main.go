@@ -841,7 +841,7 @@ func newExecuteCLICommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		defer executor.Close()
+		defer func() { _ = executor.Close() }()
 		runErr := executor.Run(ctx)
 		if runErr != nil && ctx.Err() != nil && errors.Is(runErr, context.Canceled) {
 			return nil

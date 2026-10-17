@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/hostedcli"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
@@ -122,7 +123,11 @@ func newHostedCLIExecutor(ctx context.Context, store operational.Store, client *
 		return nil, err
 	}
 	workRoot := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_WORK_ROOT"))
-	broker := hostedcli.NewBroker(client, hostedcli.BrokerOptions{MaxPooled: options.MaxPooledTokens})
+	auditLog, err := audit.FromEnv()
+	if err != nil {
+		return nil, err
+	}
+	broker := hostedcli.NewBroker(client, hostedcli.BrokerOptions{MaxPooled: options.MaxPooledTokens, Audit: auditLog})
 	return hostedcli.NewExecutor(queue, broker, client, hostedcli.ExecRunner{}, hostedcli.Options{
 		Owner:               options.Owner,
 		ControlRepository:   control,
@@ -136,6 +141,7 @@ func newHostedCLIExecutor(ctx context.Context, store operational.Store, client *
 		Prefetch:            options.Prefetch,
 		AcknowledgeRecovery: options.AcknowledgeRecovery,
 		Logger:              options.Logger,
+		Audit:               auditLog,
 	})
 }
 

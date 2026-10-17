@@ -252,7 +252,10 @@ workspace with a single-use, repository-scoped GitHub App installation token
 that is revoked on completion. A bounded broker pre-mints tokens for backlog.
 Control-repository `./cao.sh` actions run only at an operator-reviewed commit
 (`CAO_HOSTED_CLI_CONTROL_REVISION`), and each command gets a private copy of
-the gh extensions.
+the gh extensions. The broker revokes and rejects any token whose granted
+scope exceeds the request. Both processes emit credential-free JSON audit
+events (`server/internal/audit`). Tokens appear in those events only as
+GitHub's `hashed_token` digest.
 Every hosted administrator operation requires a fresh, assured interactive
 OAuth authentication (2FA or attested SSO) within a bounded maximum age.
 `specs/server-hosted-cli.md` and `specs/tla/HostedCLIActions.tla` specify and

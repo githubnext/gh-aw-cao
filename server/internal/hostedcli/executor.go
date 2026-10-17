@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
@@ -66,6 +68,8 @@ type Options struct {
 	// subprocesses have terminated.
 	AcknowledgeRecovery bool
 	Logger              *log.Logger
+	// Audit records command lifecycle events; nil disables them.
+	Audit *audit.Logger
 }
 
 func (o Options) resolve() (Options, error) {
@@ -298,7 +302,7 @@ type failure string
 func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLease, command operational.CLICommand) {
 	sink := newOutputSink(ctx, e.queue, lease, command.ID)
 	exitCode, status, reason := e.run(ctx, command, sink)
-	sink.close()
+	sink.close() //nolint:contextcheck // the sink carries the command context; OutputFunc callbacks have no context parameter.
 	result := operational.CLICommandResult{Status: status, Error: storableError(string(reason))}
 	if exitCode != nil {
 		result.ExitCode = exitCode
@@ -313,6 +317,16 @@ func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLeas
 		return
 	}
 	executorLog.Printf("command settled id=%d status=%s", command.ID, status)
+	outcome := audit.Success
+	if status != operational.CLICommandCompleted {
+		outcome = audit.Failure
+	}
+	attrs := []slog.Attr{slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
+		slog.String("repository", command.Repository), slog.String("status", string(status))}
+	if exitCode != nil {
+		attrs = append(attrs, slog.Int("exit_code", *exitCode))
+	}
+	e.options.Audit.Record(ctx, "cli_command.finished", outcome, attrs...)
 }
 
 func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink *outputSink) (*int, operational.CLICommandStatus, failure) {
@@ -351,12 +365,22 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 		return nil, operational.CLICommandFailed, "The requester's repository permission could not be verified."
 	}
 	if permission != "admin" && permission != "write" {
+		e.options.Audit.Record(ctx, "cli_command.permission_denied", audit.Denied,
+			slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
+			slog.String("repository", plan.Repository), slog.String("permission", permission))
 		return nil, operational.CLICommandFailed, "The requester no longer has write access to the target repository."
 	}
 	identity, err := e.github.BotIdentity(runCtx)
 	if err != nil {
 		return nil, operational.CLICommandFailed, "The GitHub App identity could not be resolved."
 	}
+	e.options.Audit.Record(ctx, "cli_command.started", audit.Success,
+		slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
+		slog.String("repository", plan.Repository), slog.String("app_identity", identity.Name),
+		slog.Int64("installation_id", installationID), slog.Any("permissions", plan.Permissions),
+		slog.Bool("control_checkout", plan.ControlCheckout), slog.String("control_revision", e.options.ControlRevision),
+		slog.String("hashed_token", token.Hashed()), slog.Time("token_expires_at", token.ExpiresAt))
+	//nolint:contextcheck // the sink carries the command context; OutputFunc callbacks have no context parameter.
 	sink.notice(fmt.Sprintf("Running as %s for %s with a single-use token scoped to %s (%s).\n",
 		identity.Name, command.Actor, plan.Repository, describePermissions(plan.Permissions)))
 

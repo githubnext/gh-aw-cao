@@ -1,7 +1,9 @@
 package hostedcli
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 )
@@ -200,7 +203,7 @@ func (q *fakeQueue) Claim(context.Context, operational.CLICommandLease) (*operat
 			return &copy, nil
 		}
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // CLICommandQueue.Claim reports no runnable command as nil, nil.
 }
 func (q *fakeQueue) Finish(_ context.Context, _ operational.CLICommandLease, id int64, result operational.CLICommandResult) error {
 	q.mutex.Lock()
@@ -364,7 +367,7 @@ func startExecutorWith(t *testing.T, queue *fakeQueue, minter *fakeMinter, githu
 		CommandTimeout: time.Minute, Prefetch: 2, WorkRoot: t.TempDir(),
 	}
 	configure(&options)
-	executor, err := NewExecutor(queue, NewBroker(minter, BrokerOptions{MaxPooled: 2}), github, runner, options)
+	executor, err := NewExecutor(queue, NewBroker(minter, BrokerOptions{MaxPooled: 2, Audit: options.Audit}), github, runner, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -556,7 +559,7 @@ func TestExecutorGivesEachCommandPrivateExtensions(t *testing.T) {
 	if err := os.MkdirAll(extension, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(extension, "gh-aw"), []byte("trusted"), 0o700); err != nil {
+	if err := os.WriteFile(filepath.Join(extension, "gh-aw"), []byte("trusted"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	queue, minter := newFakeQueue(), newFakeMinter()
@@ -564,12 +567,12 @@ func TestExecutorGivesEachCommandPrivateExtensions(t *testing.T) {
 	var seen []string
 	runner.run = func(_ context.Context, process Process, _ OutputFunc) (int, error) {
 		binary := filepath.Join(envValue(process, "XDG_DATA_HOME"), "gh", "extensions", "gh-aw", "gh-aw")
-		content, err := os.ReadFile(binary)
+		content, err := os.ReadFile(binary) // #nosec G304 -- test workspace path
 		if err != nil {
 			return 1, err
 		}
 		seen = append(seen, string(content))
-		return 0, os.WriteFile(binary, []byte("tampered"), 0o700)
+		return 0, os.WriteFile(binary, []byte("tampered"), 0o600)
 	}
 	startExecutorWith(t, queue, minter, fakeGitHub{permission: "write"}, runner, func(options *Options) {
 		options.DataHome = dataHome
@@ -583,7 +586,99 @@ func TestExecutorGivesEachCommandPrivateExtensions(t *testing.T) {
 	if strings.Join(seen, ",") != "trusted,trusted" {
 		t.Fatalf("a command must not alter extensions seen by later commands: %v", seen)
 	}
-	if content, _ := os.ReadFile(filepath.Join(extension, "gh-aw")); string(content) != "trusted" {
+	if content, _ := os.ReadFile(filepath.Join(extension, "gh-aw")); /* #nosec G304 -- test temporary file */ string(content) != "trusted" {
 		t.Fatal("the operator's extensions must not be modified")
+	}
+}
+
+type syncBuffer struct {
+	mutex  sync.Mutex
+	buffer bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.buffer.Write(p)
+}
+
+func (b *syncBuffer) events() []map[string]any {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	var events []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(b.buffer.String()), "\n") {
+		var event map[string]any
+		if line != "" && json.Unmarshal([]byte(line), &event) == nil {
+			events = append(events, event)
+		}
+	}
+	return events
+}
+
+func (b *syncBuffer) String() string {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.buffer.String()
+}
+
+func TestExecutorAuditsCommandAndTokenLifecycleWithoutSecrets(t *testing.T) {
+	queue, minter := newFakeQueue(), newFakeMinter()
+	runner := &fakeRunner{minter: minter}
+	var buffer syncBuffer
+	startExecutorWith(t, queue, minter, fakeGitHub{permission: "write"}, runner, func(options *Options) {
+		options.Audit = audit.New(&buffer)
+	})
+	allowed := enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona")
+	queue.waitSettled(t, allowed)
+	deadline := time.Now().Add(5 * time.Second)
+	want := []string{"token.minted", "cli_command.started", "token.revoked", "cli_command.finished"}
+	for {
+		seen := map[string]map[string]any{}
+		for _, event := range buffer.events() {
+			seen[event["event"].(string)] = event
+		}
+		missing := false
+		for _, name := range want {
+			if seen[name] == nil {
+				missing = true
+			}
+		}
+		if !missing {
+			started := seen["cli_command.started"]
+			if started["actor"] != "mona" || started["repository"] != "octo/app" || started["hashed_token"] == "" ||
+				started["hashed_token"] != seen["token.revoked"]["hashed_token"] {
+				t.Fatalf("unexpected started event %v", started)
+			}
+			if seen["cli_command.finished"]["status"] != string(operational.CLICommandCompleted) {
+				t.Fatalf("unexpected finished event %v", seen["cli_command.finished"])
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("missing audit events in %s", buffer.String())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if strings.Contains(buffer.String(), "ghs_") {
+		t.Fatal("audit events must never contain token values")
+	}
+}
+
+func TestExecutorAuditsRevokedRequesterPermission(t *testing.T) {
+	queue, minter := newFakeQueue(), newFakeMinter()
+	var buffer syncBuffer
+	startExecutorWith(t, queue, minter, fakeGitHub{permission: "read"}, &fakeRunner{}, func(options *Options) {
+		options.Audit = audit.New(&buffer)
+	})
+	queue.waitSettled(t, enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona"))
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(buffer.String(), `"cli_command.finished"`) {
+		if time.Now().After(deadline) {
+			t.Fatalf("missing finished event in %s", buffer.String())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !strings.Contains(buffer.String(), `"event":"cli_command.permission_denied","outcome":"denied"`) {
+		t.Fatalf("permission denial must be audited: %s", buffer.String())
 	}
 }

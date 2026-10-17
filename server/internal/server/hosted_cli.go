@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/hostedcli"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
@@ -137,6 +139,35 @@ func (a *App) authorizeHostedCLI(response http.ResponseWriter, request *http.Req
 	return session, true
 }
 
+// auditCLICommand records an administrator's queue mutation together with the
+// step-up assurance that authorized it.
+func (a *App) auditCLICommand(request *http.Request, session oauthSession, event string, command operational.CLICommand, extra ...slog.Attr) {
+	attrs := append([]slog.Attr{
+		slog.String("actor", session.Login),
+		slog.Int64("command_id", command.ID),
+		slog.String("action", command.ActionID),
+		slog.String("repository", command.Repository),
+		slog.String("status", string(command.Status)),
+		slog.Any("assurance", session.Assurance),
+		slog.Time("authenticated_at", session.AuthenticatedAt),
+	}, extra...)
+	a.config.Audit.Record(request.Context(), event, audit.Success, attrs...)
+}
+
+func (a *App) auditCLIRejected(request *http.Request, session oauthSession, action string, err error) {
+	status := http.StatusInternalServerError
+	var requestErr *hostedcli.RequestError
+	var failure *hostedCLIError
+	switch {
+	case errors.As(err, &requestErr):
+		status = requestErr.Status
+	case errors.As(err, &failure):
+		status = failure.status
+	}
+	a.config.Audit.Record(request.Context(), "cli_command.rejected", audit.Denied,
+		slog.String("actor", session.Login), slog.String("action", action), slog.Int("http_status", status))
+}
+
 func readHostedCLIJSON(request *http.Request, output any) error {
 	if !strings.HasPrefix(strings.ToLower(request.Header.Get("Content-Type")), "application/json") {
 		return cliFailure(http.StatusUnsupportedMediaType, "CLI action requests must be JSON.")
@@ -210,15 +241,18 @@ func (a *App) hostedCLIEnqueue(response http.ResponseWriter, request *http.Reque
 	}
 	invocation, err := a.admit(request.Context(), session, payload)
 	if err != nil {
+		a.auditCLIRejected(request, session, payload.ID, err)
 		writeHostedCLIError(response, err)
 		return
 	}
 	command, err := a.hostedCLI.queue.Enqueue(request.Context(), invocation, idempotencyKey(request, payload.IdempotencyKey), 0)
 	if err != nil {
+		a.auditCLIRejected(request, session, payload.ID, err)
 		writeHostedCLIError(response, err)
 		return
 	}
 	hostedCLILog.Printf("hosted CLI command queued id=%d action=%s", command.ID, command.ActionID)
+	a.auditCLICommand(request, session, "cli_command.admitted", command)
 	writeJSON(response, http.StatusAccepted, hostedCLICommandJSON(command))
 }
 
@@ -297,7 +331,8 @@ func (a *App) hostedCLIDetail(response http.ResponseWriter, request *http.Reques
 }
 
 func (a *App) hostedCLICancel(response http.ResponseWriter, request *http.Request) {
-	if _, ok := a.authorizeHostedCLI(response, request); !ok {
+	session, ok := a.authorizeHostedCLI(response, request)
+	if !ok {
 		return
 	}
 	var payload struct {
@@ -311,6 +346,7 @@ func (a *App) hostedCLICancel(response http.ResponseWriter, request *http.Reques
 		var command operational.CLICommand
 		if command, err = a.hostedCLI.queue.Cancel(request.Context(), id); err == nil {
 			hostedCLILog.Printf("hosted CLI command cancel requested id=%d", id)
+			a.auditCLICommand(request, session, "cli_command.cancel_requested", command)
 			writeJSON(response, http.StatusOK, hostedCLICommandJSON(command))
 			return
 		}
@@ -352,6 +388,7 @@ func (a *App) hostedCLIRetry(response http.ResponseWriter, request *http.Request
 			if retried.RetryOf != id {
 				err = cliFailure(http.StatusConflict, "Retry idempotency key conflicts with another command.")
 			} else {
+				a.auditCLICommand(request, session, "cli_command.retried", retried, slog.Int64("retry_of", id))
 				writeJSON(response, http.StatusAccepted, hostedCLICommandJSON(retried))
 				return
 			}

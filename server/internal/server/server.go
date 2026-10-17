@@ -12,6 +12,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -29,6 +30,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
@@ -81,6 +83,9 @@ type Config struct {
 	WebhookSecret        string
 	AdminUsers           []string
 	Logger               *log.Logger
+	// Audit records security audit events for administrator and hosted CLI
+	// operations; nil disables them (local mode and tests).
+	Audit *audit.Logger
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
 	RateLimits RateLimitConfig
@@ -1015,7 +1020,15 @@ func (a *App) adminListed(session oauthSession) bool {
 // lapsed (401, re-authenticate) from a non-administrator (403).
 func (a *App) writeAdminDenied(response http.ResponseWriter, request *http.Request, message string) {
 	if a.oauth != nil {
-		if session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession); ok && a.adminListed(session) {
+		session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+		reason := "not_admin"
+		if ok && a.adminListed(session) {
+			reason = "step_up_required"
+		}
+		a.config.Audit.Record(request.Context(), "admin.denied", audit.Denied,
+			slog.String("actor", session.Login), slog.String("reason", reason),
+			slog.String("method", request.Method), slog.String("path", request.URL.Path))
+		if reason == "step_up_required" {
 			maxAge := int(a.oauth.adminReauthenticationMaxAge() / time.Second)
 			response.Header().Set("WWW-Authenticate", fmt.Sprintf(`CAO-Step-Up realm="admin", max_age=%d`, maxAge))
 			writeErrorPayload(response, http.StatusUnauthorized, map[string]string{
