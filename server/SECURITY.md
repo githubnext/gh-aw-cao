@@ -747,16 +747,39 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   tokens are bounded by `--max-pooled-tokens` (default 8), two per scope, and
   a two-minute idle lifetime. Idle tokens are revoked and are all revoked at
   shutdown.
-- **Isolation**: each command runs in a fresh `0700` workspace that is removed
-  afterwards inside the digest-pinned `ghcr.io/github/gh-aw` image. The container
+- **Isolation**: each command runs in a fresh `0700` workspace inside the
+  digest-pinned `ghcr.io/github/gh-aw` image; the workspace is removed only after
+  confirmed workload termination. The container
   has a read-only root, no added capabilities, resource limits, and only the
   per-command workspace mounted writable. Only the `gh` and `gh-aw` entrypoints
-  are allowed. A temporary mode-`0600` environment file supplies the scoped
+  are allowed, following a fixed in-container Git initialization bootstrap
+  that preserves their positional arguments. A temporary mode-`0600` environment file supplies the scoped
   token and minimal command environment; the App key, database credentials,
   executor home, and Docker socket are not mounted. The root Docker context must
   be local because it bind-mounts a host workspace. On cancellation, timeout, or
-  lease loss, the executor forcibly removes the container. Output redaction
-  applies before persistence.
+  lease loss, the executor attempts bounded forced removal. Durable container
+  name and daemon identity are registered before creation; unconfirmed
+  termination retains the execution claim and workspace. Successful Docker
+  startup or log-stream closure alone cannot settle a command. The lifecycle
+  interface keeps startup, output transport, and workload evidence separate;
+  a stop request is not confirmation of termination. Recovery must confirm termination on
+  the original daemon after the old executor and its requests have stopped.
+  Output redaction applies before persistence.
+- **Native development profiles**: only `execute-cli --sqlite` may explicitly
+  select Apple container on Apple Silicon or Windows Sandbox on Windows.
+  Apple uses the pinned Linux image, a private VM, resource limits, and a fixed
+  in-guest no-new-privileges bootstrap. Its API's stopped state must be backed
+  by absence of the VM's launchd service. Windows Sandbox instead requires an
+  explicitly approved SHA-256-pinned Windows tools archive; it never falls
+  back to host binaries or claims to execute the Linux image. Sandbox ownership
+  spans local executor namespaces, and unrelated/user-created sandboxes must
+  never be adopted or stopped. The conservative Windows profile rejects other
+  HCS-managed VMs and requires independent host-compute VM absence before
+  settlement; it never guesses a Sandbox-to-host-VM ID mapping.
+  Native guest result files are not termination
+  evidence. Both profiles preserve scoped credentials, lease fencing, and
+  retained claims on uncertain cleanup; neither is a production deployment
+  option or an automatic fallback from Docker.
 - **Output safety**: stdout and stderr independently retain unfinished known
   credentials and credential-shaped spans before UTF-8-safe framing. Writes,
   newlines, and size-based flushes cannot expose a credential split between

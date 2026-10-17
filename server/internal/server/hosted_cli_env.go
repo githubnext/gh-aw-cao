@@ -142,7 +142,11 @@ func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueu
 	if queues == nil {
 		return nil, errors.New("hosted CLI execution requires the postgres operational store or --sqlite")
 	}
-	queueOptions, err := operational.CLICommandQueueOptions{}.Resolve()
+	runner, err := newHostedCLIRunnerFromEnv(options)
+	if err != nil {
+		return nil, err
+	}
+	queueOptions, err := hostedCLIQueueOptions(options.SQLitePath != "")
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +168,6 @@ func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueu
 	}
 	auditLog = auditLog.WithStore(auditStore)
 	revocations, err := hostedCLIRevocationsFromEnv(revocationQueue)
-	if err != nil {
-		return nil, err
-	}
-	image := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_CONTAINER_IMAGE"))
-	dockerBinary := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_DOCKER"))
-	runner, err := hostedcli.NewContainerRunner(image, dockerBinary, hostedcli.ExecRunner{})
 	if err != nil {
 		return nil, err
 	}

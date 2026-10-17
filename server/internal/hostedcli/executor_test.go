@@ -165,16 +165,38 @@ func TestBrokerRetriesFailedRevocationAndCloseRevokesPool(t *testing.T) {
 
 // fakeQueue is a single-process CLICommandQueue for executor tests.
 type fakeQueue struct {
-	mutex    sync.Mutex
-	commands map[int64]*operational.CLICommand
-	order    []int64
-	output   map[int64][]operational.CLICommandOutput
-	settled  map[int64]bool
-	next     int64
+	mutex      sync.Mutex
+	commands   map[int64]*operational.CLICommand
+	order      []int64
+	output     map[int64][]operational.CLICommandOutput
+	settled    map[int64]bool
+	next       int64
+	executions map[int64]operational.CLICommandExecution
 }
 
 func newFakeQueue() *fakeQueue {
-	return &fakeQueue{commands: map[int64]*operational.CLICommand{}, output: map[int64][]operational.CLICommandOutput{}, settled: map[int64]bool{}}
+	return &fakeQueue{commands: map[int64]*operational.CLICommand{}, output: map[int64][]operational.CLICommandOutput{}, settled: map[int64]bool{}, executions: map[int64]operational.CLICommandExecution{}}
+}
+
+func (q *fakeQueue) RegisterExecution(_ context.Context, _ operational.CLICommandLease, execution operational.CLICommandExecution) error {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	if err := execution.Validate(); err != nil {
+		return err
+	}
+	q.executions[execution.CommandID] = execution
+	return nil
+}
+func (q *fakeQueue) UnsettledExecutions(context.Context, operational.CLICommandLease) ([]operational.CLICommandExecution, error) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	var executions []operational.CLICommandExecution
+	for id, execution := range q.executions {
+		if q.commands[id].ExecutionClaimed {
+			executions = append(executions, execution)
+		}
+	}
+	return executions, nil
 }
 
 func (q *fakeQueue) Acquire(_ context.Context, owner string, _ time.Duration) (operational.CLICommandLease, error) {

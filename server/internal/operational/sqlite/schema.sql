@@ -30,6 +30,11 @@ CREATE TABLE IF NOT EXISTS cao_operational_cli_commands (
 );
 CREATE INDEX IF NOT EXISTS cao_operational_cli_fifo
     ON cao_operational_cli_commands(queue, status, id);
+CREATE TABLE IF NOT EXISTS cao_operational_cli_executions (
+    command_id INTEGER PRIMARY KEY REFERENCES cao_operational_cli_commands(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    runtime_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS cao_operational_cli_revocations (
     namespace TEXT NOT NULL,
     id TEXT NOT NULL,

@@ -741,8 +741,27 @@ requires a local Docker daemon using its `default` context. Each container has a
 read-only root filesystem, no added capabilities, and only its per-command
 workspace mounted writable. A temporary mode-`0600` environment file passes the
 scoped token; the executor's home, Docker socket, App key, and database
-credentials are not mounted or passed into the container. Cancellation,
-deadlines, and lease loss forcibly remove the container.
+credentials are not mounted or passed into the container. A fixed in-container
+bootstrap initializes the private Git root required by `gh-aw update/upgrade
+--repo`, then execs the planned CLI with unchanged positional arguments.
+Cancellation, deadlines, and lease loss attempt bounded forced removal.
+The container name and original Docker daemon identity are stored before
+creation. Docker CLI exit is not workload exit evidence: failed confirmation
+retains the execution claim and workspace, preventing reuse of that capacity.
+Recovery acknowledgement requires the old executor and its Docker requests to
+have stopped and successful reconciliation on the original daemon. Remove any
+retained workspace only after reconciliation; never switch Docker contexts to
+bypass recovery.
+
+`ContainerRunner` delegates runtime identity, creation, startup, inspection,
+stopping, and output collection to `ContainerLifecycle`. Docker remains the
+production adapter: it starts detached, then replays and follows logs while
+workload exit evidence remains a separate inspection. SQLite-only local
+development may explicitly use Apple container or Windows Sandbox as described
+below. These profiles do not enable Podman or managed jobs, change retry policy,
+or promise exactly-once effects. Idempotent updates may overlap within the
+configured concurrency limit; workflow dispatch does not inherit that
+idempotency assumption.
 
 `setup-auth hosted-cli` writes the downloaded key to a temporary local
 bootstrap file; that file is not a vault. Import it directly into the secret
@@ -762,9 +781,137 @@ Never put the key in checked-in configuration, command arguments, logs, or the
 | `CAO_HOSTED_CLI_DASHBOARD_URL` | Dashboard URL used in command backlinks. |
 | `CAO_HOSTED_CLI_CONTAINER_IMAGE` | Optional digest-pinned gh-aw image or approved mirror; defaults to `ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090`. |
 | `CAO_HOSTED_CLI_DOCKER` | Optional Docker CLI path; defaults to `docker`. |
+| `CAO_HOSTED_CLI_CONTAINER_RUNTIME` | `docker` (default), `apple`, or `windows-sandbox`. Native profiles require `execute-cli --sqlite` and the matching OS; there is no automatic fallback. |
+| `CAO_HOSTED_CLI_APPLE_CONTAINER` | Optional Apple container CLI path for the `apple` development profile; defaults to `container`. |
+| `CAO_HOSTED_CLI_WINDOWS_SANDBOX` | Optional Windows Sandbox CLI path for the `windows-sandbox` development profile. |
+| `CAO_HOSTED_CLI_WINDOWS_BUNDLE` | Required path to the approved ZIP archive containing Windows gh, gh-aw, and portable Git, including dependencies. |
+| `CAO_HOSTED_CLI_WINDOWS_BUNDLE_SHA256` | Required reviewed SHA-256 digest of the Windows tools archive. The Windows profile rejects `CAO_HOSTED_CLI_CONTAINER_IMAGE` rather than silently replacing an OCI image. |
 | `CAO_HOSTED_CLI_WORK_ROOT` | Executor workspace root. |
 | `CAO_SESSION_SECRET`, `CAO_SESSION_SECRET_PREVIOUS` | Required current encryption secret (at least 32 characters) and optional previous key for the executor's durable token cleanup journal. Keep previous keys until their cleanup debt is cleared or expires. |
 | `CAO_AUDIT_LOG` | Optional append-only file (mode `0600`) for the JSON mirror of audit events from `serve-hosted` and `execute-cli`; defaults to standard error. The authoritative trail is the PostgreSQL `cao_operational_audit_events` table. |
+
+#### Native runtimes for local development
+
+Native runtime selection changes only execution isolation. Keep the existing
+OAuth/App configuration, durable session-secret configuration, scoped tokens,
+and loopback-only SQLite debug server; never substitute a disposable secret or
+run the hosted command directly on the host. Native profiles are rejected for
+the production PostgreSQL executor.
+
+On **Apple Silicon macOS 26**, install Apple's
+[`container` CLI](https://github.com/apple/container) and start its services:
+
+```bash
+container system start --enable-kernel-install
+CAO_HOSTED_CLI_CONTAINER_RUNTIME=apple \
+  cao-dashboard execute-cli --sqlite ./.tmp/hosted-cli.sqlite
+```
+
+The adapter targets the verified container 1.2.2 CLI contract. It runs the
+existing AMD64 digest-pinned Linux image with Rosetta, using a private VM,
+read-only root, no capabilities, in-guest `no-new-privileges`, two CPUs, 1 GiB
+memory, a 256-process user limit, and bounded `/tmp`. Only the command workspace
+is mapped. It preserves stdout/stderr from startup instead of relying on
+`container logs --follow`, which does not signal workload exit. An identity-bound
+guest receipt supplies the exit code, but termination additionally requires
+the native container to be stopped and its launchd VM service absent.
+
+Native recovery is bound to the service-reported data root and a private
+durable identity under that root. Do not delete or replace the native runtime's
+data root to bypass recovery. The executor never starts global runtime services
+or installs Rosetta automatically. To exercise the installed runtime without
+GitHub writes, run from `server/`:
+
+```bash
+TMPDIR=/private/tmp CAO_TEST_APPLE_CONTAINER=1 \
+  go test -race ./internal/hostedcli -run '^TestAppleContainerNative' -v
+```
+
+On **Windows 11 24H2 or later**, enable
+[Windows Sandbox](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/)
+on a supported Windows edition and ensure its `wsb` CLI is available. Windows
+Sandbox cannot execute the Linux image: this explicit development profile
+instead requires an approved ZIP archive of Windows gh, gh-aw, and portable
+Git with a reviewed SHA-256 digest. All tool execution stays inside Sandbox,
+and the archive is checked both before launch and in the guest.
+
+The ZIP must have these root-relative paths, without an enclosing directory:
+
+```text
+gh/gh.exe
+gh-aw/gh-aw.exe
+git/cmd/git.exe
+git/usr/bin/sh.exe
+```
+
+Include the matching vendor-relative DLLs, certificates, Git helpers, and
+supporting files; the executable architecture must match the Windows host.
+The digest covers the entire archive. Limits are 512 MiB compressed and 1 GiB
+expanded. The fixed bootstrap runs as System inside the VM; this does not
+provide a restricted-user boundary inside the guest.
+
+```powershell
+$env:CAO_HOSTED_CLI_CONTAINER_RUNTIME = 'windows-sandbox'
+$env:CAO_HOSTED_CLI_WINDOWS_BUNDLE = 'C:\dev\approved-hosted-cli-tools.zip'
+$env:CAO_HOSTED_CLI_WINDOWS_BUNDLE_SHA256 = '<reviewed SHA-256>'
+$env:CAO_HOSTED_CLI_WORK_ROOT = 'C:\dev\cao-private-work'
+cao-dashboard execute-cli --sqlite .\.tmp\hosted-cli.sqlite
+```
+
+Windows Sandbox permits only one instance. This profile serializes execution
+across local executor namespaces and refuses an unrelated running Sandbox;
+it never adopts or terminates the user's session. Clipboard, device, printer,
+and GPU sharing are disabled. Only private command inputs and workspace are
+shared. Guest output/results do not release capacity until the owned VM is
+independently confirmed stopped or absent. Failed ownership or termination
+checks remain blocked for explicit recovery.
+
+This conservative profile also requires **no other HCS-managed VM**, including
+WSL2 or Docker Desktop VMs. It checks Windows Host Compute Service inventory
+before launch and after exact-owned-ID shutdown; it never stops foreign VMs.
+The provider does not assume Sandbox IDs equal host-compute VM IDs. Missing
+host-compute inventory access fails closed rather than relying on a guest
+receipt, launcher exit, or current-user CLI inventory alone.
+
+The executor account must be able to access the machine-global mutex and its
+private `%ProgramData%\CAO.WindowsSandboxExecutor.v1` ownership directory.
+The directory's owner and protected ACL must match the executor account, SYSTEM,
+and Administrators. Host-compute inventory requires an **elevated administrator
+or effective Hyper-V Administrators membership**. Enabling Sandbox requires
+administrator privileges; local policy may also require administrator
+provisioning for the ownership directory. The executor never elevates or changes
+these policies.
+
+Pre-provision `CAO_HOSTED_CLI_WORK_ROOT` with a protected, inheritable private
+DACL before starting the executor. Supported SDDL, substituting the executor
+account's SID for `<SID>`:
+
+```text
+O:<SID>D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;<SID>)
+```
+
+The adapter validates the root and every existing workspace descendant before
+staging and immediately before VM creation, accepting inherited private child
+ACLs and ownership by the account, SYSTEM, or Administrators. It rejects
+reparse paths and unsafe ACLs rather than changing permissions. Unix `0700`
+modes alone do not establish Windows privacy.
+
+Set the same runtime selector for both `serve-hosted --hosted-cli-sqlite` and
+`execute-cli --sqlite`. Windows uses a queue concurrency limit of one, so use
+a separate SQLite file when switching from another profile: existing queue
+configuration is not silently rewritten. Never discard a database or ownership
+record to bypass unsettled execution recovery.
+
+An indeterminate `starting` reservation remains fenced even when both inventories
+are empty: a delayed launch request cannot be ruled out. The current recovery
+acknowledgment does not clear that reservation.
+
+The Windows adapter is protocol-tested and cross-compiled, but has not been
+exercised on a Windows host. Microsoft documents `wsb --raw` without publishing
+its JSON schema. This adapter accepts only an array of records with `Id`,
+`Status` (`running` or `stopped`), and optional string `Uptime`; unknown formats
+fail closed. Native CLI, ACL, mapping, and bootstrap compatibility must be
+confirmed on the installed Windows build before using this development profile.
 
 #### Rotate the hosted CLI App key
 
