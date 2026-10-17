@@ -4,6 +4,8 @@ import { notificationStylesheet } from './styles.js';
 import { createDebug } from './debug.js';
 import { renderCloseButton } from './components/ui-primitives.js';
 import { DASHBOARD_THEME_CHANGE_EVENT, restoreDashboardTheme } from './components/theme-settings.js';
+import { batch, effect, onCleanup, render, state, untracked } from './reactive.js';
+import { createFactoryScope } from './components/factory-elements.js';
 
 const debug = createDebug('notification-service');
 
@@ -73,11 +75,11 @@ export function createNotificationService(document) {
     const existing = id ? keyed.get(id) : undefined;
     const handleFor = (/** @type {ReturnType<typeof renderNotification>} */ rendered) => ({
       dismiss() {
-        if (!id || keyed.get(id)?.owner === owner) rendered.handle.dismiss();
+        if (!id || keyed.get(id)?.owner === owner) untracked(() => rendered.handle.dismiss());
       },
       /** @param {string | Notification} next */
       update(next) {
-        if (!id || keyed.get(id)?.owner === owner) rendered.handle.update(next);
+        if (!id || keyed.get(id)?.owner === owner) untracked(() => rendered.handle.update(next));
       }
     });
     if (existing && id) {
@@ -107,7 +109,7 @@ export function createNotificationService(document) {
     publish,
     resolve(id) {
       dismissed.delete(id);
-      keyed.get(id)?.rendered.handle.dismiss();
+      untracked(() => keyed.get(id)?.rendered.handle.dismiss());
     },
     get connected() {
       return container.isConnected;
@@ -239,198 +241,140 @@ export function updateNotificationActions(element, actions) {
  * @param {(userDismissed: boolean) => void} onDismiss
  */
 function renderNotification(initial, container, onRemove, onDismiss) {
-  const message = span({
-    className: 'dashboard-notification-message',
-    role: initial.tone === 'error' ? 'alert' : 'status'
-  }, initial.message);
-  const icon = span({
-    className: 'dashboard-notification-icon',
-    'aria-hidden': 'true'
-  });
-  const summary = span({ className: 'dashboard-notification-summary' }, icon, message);
+  const lifetime = new AbortController();
+  const scope = createFactoryScope({ signal: lifetime.signal });
+  const current = state(initial);
+  const expanded = state(false);
+  const entering = state(true);
+  const dismissing = state(false);
+  const element = h('div', {});
   const detailId = `dashboard-notification-details-${++nextNotificationDetailId}`;
   const detailSubtitleId = `${detailId}-subtitle`;
-  const toggle = button({
-    className: 'dashboard-notification-toggle',
-    type: 'button',
-    'aria-expanded': 'false',
-    'aria-controls': `${detailSubtitleId} ${detailId}`,
-    'aria-label': `${initial.message} Show ingestion progress history`
-  }, summary, span({ className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
-  const details = h('ul', {
-    className: 'dashboard-notification-details',
-    id: detailId,
-    hidden: true
-  });
-  const detailsSubtitle = h('p', {
-    className: 'dashboard-notification-details-subtitle',
-    id: detailSubtitleId
-  });
-  const content = h('div', { className: 'dashboard-notification-content' });
-  const description = h('p', { className: 'dashboard-notification-description' });
-  description.id = `${detailId}-description`;
-  content.append(description);
-  const actions = h('div', { className: 'dashboard-notification-actions' });
-  const element = h('div', {
-    className: `dashboard-notification dashboard-notification-${initial.tone} dashboard-notification-enter`
-  }, content);
-  let current = initial;
-  const annotate = () => {
-    const search = element.ownerDocument.defaultView?.location.search ?? '';
-    if (!current.jsonPath || new URLSearchParams(search).get('debug') !== '1') return;
-    void import('./dom-provenance.js').then(({ annotateDomTree }) => {
-      if (!removed && current.jsonPath) annotateDomTree(element, current.jsonPath);
-    });
-  };
-  const messageLink = h('a', { className: 'dashboard-notification-link' });
-  const setMessage = () => {
-    if (current.href && !current.linkLabel) {
-      messageLink.setAttribute('href', current.href);
-      messageLink.textContent = current.message;
-      if (messageLink.parentElement !== message) message.replaceChildren(messageLink);
-    } else {
-      message.textContent = current.message;
-    }
-    description.textContent = current.description ?? '';
-    description.hidden = !current.description;
-    if (current.description) message.setAttribute('aria-describedby', description.id);
-    else message.removeAttribute('aria-describedby');
-    if (current.href && current.linkLabel) {
-      messageLink.setAttribute('href', current.href);
-      messageLink.textContent = current.linkLabel;
-      if (messageLink.parentElement !== content) content.append(messageLink);
-    } else if (messageLink.parentElement === content) {
-      messageLink.remove();
-    }
-  };
   let removed = false;
-  let dismissing = false;
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let dismissTimer;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let removalTimer;
-
-  const setIcon = () => {
-    icon.replaceChildren(...(current.icon ? [octicon(current.icon)] : []));
-    icon.hidden = !current.icon;
-  };
-  const setDetails = () => {
-    const expanded = toggle.getAttribute('aria-expanded') === 'true';
-    updateNotificationDetails(details, current.details);
-    if (current.details.length > 0) {
-      if (summary.parentElement !== toggle) toggle.prepend(summary);
-      if (!toggle.isConnected) content.prepend(toggle);
-      details.hidden = !expanded;
-      detailsSubtitle.textContent = current.detailsSubtitle ?? '';
-      detailsSubtitle.hidden = !expanded || !current.detailsSubtitle;
-      if (current.detailsSubtitle && !detailsSubtitle.isConnected) content.append(detailsSubtitle);
-      if (!current.detailsSubtitle) detailsSubtitle.remove();
-      if (!details.isConnected) content.append(details);
-    } else {
-      toggle.remove();
-      detailsSubtitle.remove();
-      details.remove();
-      if (summary.parentElement !== content) content.prepend(summary);
-    }
-    const expandedState = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute(
-      'aria-label',
-      `${current.message} ${expandedState ? 'Hide' : 'Show'} ingestion progress history`
-    );
-  };
-  const setActions = () => {
-    const placement = current.actions.every((action) => action.placement === 'details')
-      ? 'details'
-      : 'summary';
-    updateNotificationActions(actions, current.actions);
-    if (!current.actions.length) {
-      actions.remove();
-      return;
-    }
-    actions.hidden = placement === 'details'
-      && toggle.getAttribute('aria-expanded') !== 'true';
-    const parent = placement === 'details' ? content : element;
-    if (actions.parentElement !== parent) parent.append(actions);
-  };
-  toggle.onclick = () => {
-    const expanded = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute('aria-expanded', String(!expanded));
-    toggle.setAttribute(
-      'aria-label',
-      `${current.message} ${expanded ? 'Show' : 'Hide'} ingestion progress history`
-    );
-    details.hidden = expanded;
-    detailsSubtitle.hidden = expanded || !current.detailsSubtitle;
-    actions.hidden = Boolean(current.actions.length
-      && current.actions.every((action) => action.placement === 'details')
-      && expanded);
-    if (!expanded) details.scrollTop = details.scrollHeight;
-    if (expanded && current.dismissOnCollapse) dismiss();
-  };
-  details.addEventListener('wheel', (event) => {
-    const maxScrollTop = details.scrollHeight - details.clientHeight;
-    if (maxScrollTop <= 0 || event.deltaY === 0) return;
-    const scale = event.deltaMode === 1
-      ? 16
-      : event.deltaMode === 2
-        ? details.clientHeight
-        : 1;
-    details.scrollTop = Math.max(0, Math.min(maxScrollTop, details.scrollTop + event.deltaY * scale));
-    event.preventDefault();
-  }, { passive: false });
-  const scheduleDismissal = () => {
-    if (dismissTimer) clearTimeout(dismissTimer);
-    dismissTimer = current.duration > 0 ? setTimeout(dismiss, current.duration) : undefined;
-  };
   const remove = () => {
     if (removed) return;
     removed = true;
-    if (dismissTimer) clearTimeout(dismissTimer);
+    if (!dismissing.get()) onDismiss(false);
     if (removalTimer) clearTimeout(removalTimer);
+    lifetime.abort();
     element.remove();
     onRemove();
   };
   const dismiss = (userDismissed = false) => {
-    if (removed || dismissing) return;
-    dismissing = true;
-    if (dismissTimer) clearTimeout(dismissTimer);
+    if (removed || dismissing.get()) return;
     onDismiss(userDismissed);
-    element.classList.add('dashboard-notification-exit');
+    dismissing.set(true);
     element.addEventListener('transitionend', remove, { once: true });
     removalTimer = setTimeout(remove, EXIT_DURATION);
   };
-  const close = renderCloseButton({
-    className: 'dashboard-notification-dismiss',
-    label: `Dismiss ${current.message}`,
-    onClick: () => dismiss(true)
-  });
+  let followsLatest = true;
+  let scrollTop = 0;
+  let wasExpanded = false;
+  render(element, () => {
+    const value = current.get();
+    const open = expanded.get();
+    const details = element.querySelector('.dashboard-notification-details');
+    followsLatest = !details || (open && !wasExpanded)
+      || details.scrollTop + details.clientHeight >= details.scrollHeight - 1;
+    scrollTop = details?.scrollTop ?? 0;
+    wasExpanded = open;
+    const link = value.href ? h('a', {
+      className: 'dashboard-notification-link', href: value.href
+    }, value.linkLabel ?? value.message) : null;
+    const summary = span({ className: 'dashboard-notification-summary', dataset: { key: 'summary' } },
+      span({ className: 'dashboard-notification-icon', 'aria-hidden': 'true', hidden: !value.icon },
+        value.icon ? octicon(value.icon) : null),
+      span({
+        className: 'dashboard-notification-message',
+        role: value.tone === 'error' ? 'alert' : 'status',
+        ...(value.description ? { 'aria-describedby': `${detailId}-description` } : {})
+      }, link && !value.linkLabel ? link : value.message));
+    const detailsActions = value.actions.every((action) => action.placement === 'details');
+    const actions = value.actions.length ? h('div', {
+      className: 'dashboard-notification-actions', dataset: { key: 'actions' },
+      hidden: detailsActions && !open
+    }, ...value.actions.map((action, index) => button({
+      className: 'dashboard-notification-action', type: 'button',
+      dataset: { key: `action-${index}` }, onClick: action.run
+    }, action.label))) : null;
+    return [
+      h('div', { className: 'dashboard-notification-content', dataset: { key: 'content' } },
+        value.details.length ? button({
+          className: 'dashboard-notification-toggle', type: 'button',
+          dataset: { key: 'toggle' },
+          'aria-expanded': String(open), 'aria-controls': `${detailSubtitleId} ${detailId}`,
+          'aria-label': `${value.message} ${open ? 'Hide' : 'Show'} ingestion progress history`,
+          onClick: () => {
+            if (expanded.get() && current.get().dismissOnCollapse) dismiss();
+            else expanded.set((previous) => !previous);
+          }
+        }, summary, span({ className: 'dashboard-notification-chevron', 'aria-hidden': 'true' })) : summary,
+        h('p', { className: 'dashboard-notification-description', id: `${detailId}-description`, hidden: !value.description }, value.description),
+        value.linkLabel ? link : null,
+        value.details.length && value.detailsSubtitle ? h('p', {
+          className: 'dashboard-notification-details-subtitle', id: detailSubtitleId, hidden: !open
+        }, value.detailsSubtitle) : null,
+        value.details.length ? h('ul', {
+          className: 'dashboard-notification-details', id: detailId, hidden: !open,
+          onWheel: (/** @type {WheelEvent} */ event) => {
+            const target = /** @type {HTMLElement} */ (event.currentTarget);
+            const max = target.scrollHeight - target.clientHeight;
+            if (max <= 0 || !event.deltaY) return;
+            const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? target.clientHeight : 1;
+            target.scrollTop = Math.max(0, Math.min(max, target.scrollTop + event.deltaY * scale));
+            event.preventDefault();
+          }
+        }, ...value.details.map((detail, index) => h('li', { dataset: { key: `detail-${index}` } }, detail))) : null,
+        detailsActions ? actions : null),
+      detailsActions ? null : actions,
+      renderCloseButton({
+        className: 'dashboard-notification-dismiss', label: `Dismiss ${value.message}`,
+        onClick: () => dismiss(true)
+      })
+    ];
+  }, { signal: scope.signal });
+  effect(() => {
+    const value = current.get();
+    element.className = `dashboard-notification dashboard-notification-${value.tone}${entering.get() ? ' dashboard-notification-enter' : ''}${dismissing.get() ? ' dashboard-notification-exit' : ''}`;
+  }, { signal: scope.signal });
+  effect(() => {
+    const value = current.get();
+    expanded.get();
+    const details = element.querySelector('.dashboard-notification-details');
+    if (details) details.scrollTop = followsLatest ? details.scrollHeight : scrollTop;
+    const search = element.ownerDocument.defaultView?.location.search ?? '';
+    const jsonPath = value.jsonPath;
+    if (jsonPath && new URLSearchParams(search).get('debug') === '1') {
+      void import('./dom-provenance.js').then(({ annotateDomTree }) => {
+        if (!scope.signal.aborted && current.get().jsonPath === jsonPath) annotateDomTree(element, jsonPath);
+      });
+    }
+  }, { signal: scope.signal });
+  effect(() => {
+    const value = current.get();
+    if (dismissing.get() || !value.duration) return;
+    const timer = setTimeout(() => dismiss(), value.duration);
+    onCleanup(() => clearTimeout(timer));
+  }, { signal: scope.signal });
+  const frame = requestAnimationFrame(() => entering.set(false));
+  scope.signal.addEventListener('abort', () => {
+    cancelAnimationFrame(frame);
+    remove();
+  }, { once: true });
   const handle = {
     dismiss: () => dismiss(),
     /** @param {string | Notification} next */
     update(next) {
-      if (removed || dismissing) return;
-      current = normalizeNotification(next);
-      setMessage();
-      element.className = `dashboard-notification dashboard-notification-${current.tone}`;
-      message.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
-      setIcon();
-      setDetails();
-      setActions();
-      close.setAttribute('aria-label', `Dismiss ${current.message}`);
-      close.setAttribute('title', `Dismiss ${current.message}`);
-      annotate();
-      scheduleDismissal();
+      if (removed || dismissing.get()) return;
+      batch(() => {
+        current.set(normalizeNotification(next));
+        entering.set(false);
+      });
     }
   };
-
-  setMessage();
-  setIcon();
-  setDetails();
-  setActions();
-  element.append(close);
   container.append(element);
-  annotate();
-  requestAnimationFrame(() => element.classList.remove('dashboard-notification-enter'));
-  scheduleDismissal();
+  scope.bind(element);
   return { handle, remove, element };
 }

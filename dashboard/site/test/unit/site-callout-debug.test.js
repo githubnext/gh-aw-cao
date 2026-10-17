@@ -41,7 +41,7 @@ describe('site callout debug logging', () => {
   it('logs a rendered event with declared and visible counts under its predictable category', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=site-callout');
-    const { visibleSiteCallouts } = await import('../../src/components/site-callout.js');
+    const { bindSiteCallouts } = await import('../../src/components/site-callout.js');
 
     const callouts = [
       { id: 'always-visible', title: 'Always', description: 'Always visible' },
@@ -52,13 +52,15 @@ describe('site callout debug logging', () => {
         'visible-when': { source: 'health', field: 'status', equals: 'critical' }
       }
     ];
-    visibleSiteCallouts(callouts, { health: { rows: [{ status: 'ok' }] } });
+    const lifetime = new AbortController();
+    bindSiteCallouts(callouts, {}, undefined, lifetime.signal, []);
 
     expect(debugFn).toHaveBeenCalledWith('[cao:site-callout]', {
       event: 'rendered',
       declaredCount: 2,
       visibleCount: 1
     });
+    lifetime.abort();
   });
 
   it('delegates dismissal logging to the notification manager', async () => {

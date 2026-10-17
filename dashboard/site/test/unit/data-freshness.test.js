@@ -2,7 +2,8 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/data-freshness-contract.json' with { type: 'json' };
-import { bindSiteCallouts, visibleSiteCallouts } from '../../src/components/site-callout.js';
+import { bindSiteCallouts } from '../../src/components/site-callout.js';
+import { DataRequestWorker } from '../data-request-worker.js';
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
 import { processDataRequest } from '../../src/data-worker.js';
@@ -13,6 +14,13 @@ const now = Date.parse('2026-10-15T12:00:00Z');
 const dashboard = authoritativeDashboard.dashboard;
 const callout = dashboard.callouts.find((/** @type {{ id: string }} */ entry) => entry.id === contract.callout);
 let controller = new AbortController();
+
+/** @param {Record<string, import('../../src/presenter.js').LogicalSourceInput>} input */
+function calloutVisibility(input) {
+  return /** @type {import('../../src/data/queries/callouts.js').CalloutVisibility[]} */ (processDataRequest({
+    operation: 'query-dashboard-callouts', callouts: [callout], sources: input
+  }))[0].visibility;
+}
 
 /**
  * @param {unknown} timestamp
@@ -53,6 +61,7 @@ async function query() {
 }
 
 beforeEach(async () => {
+  vi.stubGlobal('Worker', DataRequestWorker);
   vi.spyOn(Date, 'now').mockReturnValue(now);
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
@@ -85,24 +94,23 @@ describe('declarative data freshness', () => {
 
   for (const entry of contract.cases) {
     it(`uses the exact 24-hour threshold for age ${entry.ageMs}`, () => {
-      const visible = visibleSiteCallouts([callout], sources(now - entry.ageMs), now);
-      expect(visible.length > 0).toBe(entry.visible);
+      expect(calloutVisibility(sources(now - entry.ageMs))).toBe(entry.visible ? 'visible' : 'hidden');
     });
   }
 
   it.each([null, undefined, '', 'invalid', Number.NaN])('keeps unknown timestamps unknown (%s)', (timestamp) => {
-    expect(visibleSiteCallouts([callout], sources(timestamp), now)).toEqual([]);
+    expect(calloutVisibility(sources(timestamp))).toBe('hidden');
   });
 
   it('never interprets unavailable evidence as stale', () => {
     const input = sources(now - 172800000);
     input[contract.source].metadata = { ...input[contract.source].metadata, availability: 'unavailable' };
-    expect(visibleSiteCallouts([callout], input, now)).toEqual([]);
+    expect(calloutVisibility(input)).toBe('unavailable');
   });
 
   it('accepts valid ISO instants without treating invalid calendar dates as evidence', () => {
-    expect(visibleSiteCallouts([callout], sources('2026-10-14T12:00:00Z'), now)).toEqual([callout]);
-    expect(visibleSiteCallouts([callout], sources('2026-02-30T12:00:00Z'), now)).toEqual([]);
+    expect(calloutVisibility(sources('2026-10-14T12:00:00Z'))).toBe('visible');
+    expect(calloutVisibility(sources('2026-02-30T12:00:00Z'))).toBe('hidden');
   });
 
   it('uses upstream evidence, not the current import time, through the production worker boundary', async () => {
@@ -111,14 +119,14 @@ describe('declarative data freshness', () => {
     const result = await query();
     expect(result[contract.source].metadata.availability).not.toBe('unavailable');
     expect(result[contract.source].rows).toEqual([{ [contract.field]: Date.parse(timestamp) }]);
-    expect(visibleSiteCallouts([callout], result, now)).toEqual([callout]);
+    expect(calloutVisibility(result)).toBe('visible');
     expect(result[contract.shardSource].rows[0]).toMatchObject({
       shard: 'gh-aw-logs-runs/example.jsonl', status: 'success',
       'ingested-at': new Date(now).toISOString()
     });
     await ingest(new Date(now - 1000).toISOString());
     const updated = await query();
-    expect(visibleSiteCallouts([callout], updated, now)).toEqual([]);
+    expect(calloutVisibility(updated)).toBe('hidden');
   });
 
   it('exposes browser and hosted shard receipts but excludes maintenance transactions', async () => {
@@ -149,13 +157,13 @@ describe('declarative data freshness', () => {
     expect(notice()).toBeNull();
     vi.spyOn(Date, 'now').mockReturnValue(now + 60_000);
     vi.advanceTimersByTime(60_000);
-    expect(notice()).not.toBeNull();
+    await vi.waitFor(() => expect(notice()).not.toBeNull());
     expect(notice()?.querySelector('a')?.textContent).toBe('View Ingestion');
     expect(notice()?.querySelector('a')?.getAttribute('href')).toBe('#page-indexing');
     expect(subscribe).toHaveBeenCalledWith([contract.source], expect.objectContaining({ signal: controller.signal }));
     const update = /** @type {import('../../src/presenter.js').PageSourceLoadOptions} */ (subscribe.mock.calls[0][1]).onUpdate;
     update(sources(now + 60_000));
-    expect(notice()).toBeNull();
+    await vi.waitFor(() => expect(notice()).toBeNull());
     controller.abort();
     update(initial);
     expect(notice()).toBeNull();

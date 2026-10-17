@@ -2541,7 +2541,7 @@ describe('presenter built-in and custom pages', () => {
 
 
 
-  it('renders conditional site-wide callouts and remembers dismissal only in memory', () => {
+  it('renders conditional site-wide callouts and remembers dismissal only in memory', async () => {
     window.localStorage.clear();
     sessionStorage.clear();
     const document = {
@@ -2596,7 +2596,7 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({ document, sources });
     const notices = globalThis.document;
-    expect(notices.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(2);
+    await vi.waitFor(() => expect(notices.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(2));
     expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]')?.textContent).toContain('Dashboard data is partial');
     const detailsLink = /** @type {HTMLAnchorElement | null} */ (
       notices.querySelector('[data-notification-id="site-callout:rate-limit-message"] .dashboard-notification-link')
@@ -2611,20 +2611,22 @@ describe('presenter built-in and custom pages', () => {
     const dismiss = /** @type {HTMLButtonElement | null} */ (
       notices.querySelector('[data-notification-id="site-callout:operator-message"] .dashboard-notification-dismiss')
     );
+    const storageBeforeDismiss = { ...window.localStorage };
+    const sessionBeforeDismiss = { ...sessionStorage };
     expect(dismiss?.getAttribute('aria-label')).toBe('Dismiss Operator message');
     dismiss?.click();
     expect(notices.querySelector('[data-notification-id="site-callout:operator-message"]:not(.dashboard-notification-exit)')).toBeNull();
-    expect(window.localStorage).toHaveLength(0);
-    expect(sessionStorage).toHaveLength(0);
+    expect({ ...window.localStorage }).toEqual(storageBeforeDismiss);
+    expect({ ...sessionStorage }).toEqual(sessionBeforeDismiss);
 
     const rerendered = renderDashboard({ document, sources });
     disposeDashboard(rendered);
     expect(notices.querySelector('[data-notification-id="site-callout:operator-message"]:not(.dashboard-notification-exit)')).toBeNull();
-    expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]:not(.dashboard-notification-exit)')).not.toBeNull();
+    await vi.waitFor(() => expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]:not(.dashboard-notification-exit)')).not.toBeNull());
 
     const complete = renderDashboard({ document, sources: {} });
     disposeDashboard(rerendered);
-    expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]:not(.dashboard-notification-exit)')).toBeNull();
+    await vi.waitFor(() => expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]:not(.dashboard-notification-exit)')).toBeNull());
     disposeDashboard(complete);
   });
 

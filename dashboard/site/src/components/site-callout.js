@@ -3,9 +3,9 @@
  */
 
 import { createDebug } from '../debug.js';
-import { effect, state } from '../reactive.js';
-import { timestampMilliseconds } from '../data/model/schema.js';
+import { batch, effect, state } from '../reactive.js';
 import { publishNotification, resolveNotification } from '../notification-service.js';
+import { subscribeCalloutVisibility } from '../data/callouts.js';
 
 const debugSiteCallout = createDebug('site-callout');
 
@@ -14,12 +14,7 @@ const debugSiteCallout = createDebug('site-callout');
  */
 
 /**
- * @typedef {{ rows?: Array<Record<string, unknown>>, metadata?: { availability?: string } }} CalloutSource
- */
-
-/**
- * Clock-based visibility is shell presentation; source selection and the newest
- * evidence timestamp are produced by the declared worker query.
+ * Presents worker-evaluated callout conditions without inspecting source rows.
  * @param {SiteCallout[] | undefined} callouts
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {import('../presenter.js').PageSourceLoader | undefined} loader
@@ -28,32 +23,36 @@ const debugSiteCallout = createDebug('site-callout');
  */
 export function bindSiteCallouts(callouts, sources, loader, signal, pages) {
   if (!callouts?.length || signal.aborted) return null;
-  const current = state(sources);
-  const clock = state(Date.now());
+  const visibility = state(callouts.map((callout) => ({
+    id: callout.id,
+    visibility: /** @type {import('../data/queries/callouts.js').CalloutVisibility['visibility']} */ (
+      callout['visible-when'] ? 'unavailable' : 'visible'
+    )
+  })));
   const failed = state(false);
   /** @type {Map<string, import('../notification-service.js').NotificationHandle>} */
   const handles = new Map();
   const failureId = 'site-callouts:unavailable';
   effect(() => {
-    const visible = failed.get() ? [] : visibleSiteCallouts(callouts, current.get(), clock.get());
-    for (const callout of callouts) {
+    const conditions = visibility.get();
+    let visibleCount = 0;
+    for (const [index, callout] of callouts.entries()) {
       const id = `site-callout:${callout.id}`;
-      if (!visible.includes(callout)) {
-        // An unavailable query is not evidence that the condition resolved.
-        const visibility = callout['visible-when'];
-        const source = visibility ? current.get()[visibility.source] : undefined;
-        if (failed.get() || (visibility && (!source || source.metadata?.availability === 'unavailable'))) handles.get(id)?.dismiss();
+      const condition = conditions[index].visibility;
+      if (failed.get() || condition !== 'visible') {
+        if (failed.get() || condition === 'unavailable') handles.get(id)?.dismiss();
         else resolveNotification(id);
         handles.delete(id);
         continue;
       }
+      visibleCount += 1;
       const page = callout['navigation-page'];
       const notification = {
         id,
         message: callout.title,
         description: callout.description,
         icon: callout.icon,
-        jsonPath: `$.dashboard.callouts[${callouts.indexOf(callout)}]`,
+        jsonPath: `$.dashboard.callouts[${index}]`,
         tone: /** @type {const} */ ('warning'),
         duration: 0,
         ...(page ? {
@@ -65,6 +64,7 @@ export function bindSiteCallouts(callouts, sources, loader, signal, pages) {
       if (handle) handle.update(notification);
       else handles.set(id, publishNotification(notification));
     }
+    debugSiteCallout({ event: 'rendered', declaredCount: callouts.length, visibleCount });
     if (failed.get()) {
       handles.set(failureId, publishNotification({
         id: failureId,
@@ -80,65 +80,16 @@ export function bindSiteCallouts(callouts, sources, loader, signal, pages) {
     for (const handle of handles.values()) handle.dismiss();
     handles.clear();
   }, { once: true });
-  if (callouts.some((callout) => callout['visible-when']?.['older-than-hours'] !== undefined)) {
-    const timer = setInterval(() => clock.set(Date.now()), 60_000);
-    signal.addEventListener('abort', () => clearInterval(timer), { once: true });
-  }
-  const names = [...new Set(callouts.flatMap((callout) => (
-    callout['visible-when'] ? [callout['visible-when'].source] : []
-  )))];
-  if (loader?.subscribeBackgroundSources && names.length && !signal.aborted) {
-    /** @param {Record<string, import('../presenter.js').LogicalSourceInput>} next */
-    const update = (next) => {
-      if (!signal.aborted) {
+  if (callouts.some((callout) => callout['visible-when'])) {
+    subscribeCalloutVisibility(callouts, sources, loader, signal, (result) => {
+      batch(() => {
+        visibility.set(result);
         failed.set(false);
-        current.set(next);
-      }
-    };
-    void loader.subscribeBackgroundSources(names, { signal, onUpdate: update })
-      .then(update)
-      .catch((error) => {
-        if (signal.aborted) return;
-        debugSiteCallout({ event: 'subscription-failed', errorName: error instanceof Error ? error.name : 'unknown' });
-        failed.set(true);
       });
+    }, (error) => {
+      debugSiteCallout({ event: 'subscription-failed', errorName: error instanceof Error ? error.name : 'unknown' });
+      failed.set(true);
+    });
   }
   return null;
-}
-
-/**
- * @param {SiteCallout[] | undefined} callouts
- * @param {Record<string, CalloutSource>} sources
- * @param {number} [now]
- * @returns {SiteCallout[]}
- */
-export function visibleSiteCallouts(callouts, sources, now = Date.now()) {
-  if (!Array.isArray(callouts)) return [];
-  const visibleCallouts = callouts.filter((callout) => (
-    matchesVisibility(callout['visible-when'], sources, now)
-  ));
-  debugSiteCallout({
-    event: 'rendered',
-    declaredCount: callouts.length,
-    visibleCount: visibleCallouts.length
-  });
-  return visibleCallouts;
-}
-
-/**
- * @param {SiteCallout['visible-when']} visibility
- * @param {Record<string, CalloutSource>} sources
- * @param {number} now
- * @returns {boolean}
- */
-function matchesVisibility(visibility, sources, now) {
-  if (!visibility) return true;
-  const source = sources[visibility.source];
-  if (source?.metadata?.availability === 'unavailable') return false;
-  return (source?.rows ?? []).some((row) => {
-    if (visibility['older-than-hours'] === undefined) return row[visibility.field] === visibility.equals;
-    const value = row[visibility.field];
-    const timestamp = typeof value === 'number' && Number.isFinite(value) ? value : timestampMilliseconds(value);
-    return timestamp !== null && now - timestamp >= visibility['older-than-hours'] * 3_600_000;
-  });
 }

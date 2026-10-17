@@ -157,7 +157,8 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   for (const id of contract.hostedViews) {
     await expect(page.locator(`[data-view-id="${id}"]`)).toHaveCount(0);
   }
-  const requests = await page.evaluate(() => /** @type {Window & { dashboardWorkerRequests?: Array<{ sourceNames?: string[] }> }} */ (window).dashboardWorkerRequests ?? []);
+  const requests = await page.evaluate(() => /** @type {Window & { dashboardWorkerRequests?: Array<{ operation: string, sourceNames?: string[] }> }} */ (window).dashboardWorkerRequests ?? []);
+  expect(requests.some((request) => request.operation === 'query-dashboard-callouts')).toBe(true);
   const sources = requests.flatMap((request) => request.sourceNames ?? []);
   for (const source of contract.hostedSources) expect(sources).not.toContain(source);
   expect(sources).not.toContain('collection-health');

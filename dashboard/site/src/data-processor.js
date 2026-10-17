@@ -384,6 +384,21 @@ export function processDashboardQueries(queries, sources, options = {}) {
 }
 
 /**
+ * @param {import('./components/site-callout.js').SiteCallout[]} callouts
+ * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ * @param {AbortSignal} signal
+ * @returns {Promise<import('./data/queries/callouts.js').CalloutVisibility[]>}
+ */
+export function processDashboardCallouts(callouts, sources, signal) {
+  return /** @type {Promise<import('./data/queries/callouts.js').CalloutVisibility[]>} */ (processRequest(
+    { operation: 'query-dashboard-callouts', callouts, sources },
+    () => Promise.reject(new Error('Dashboard callout queries require a data worker.')),
+    false,
+    signal
+  ));
+}
+
+/**
  * Ingests optional published rows and executes their declarative database
  * projections entirely in the data worker.
  * @param {Record<string, unknown>} sources

@@ -258,6 +258,20 @@ describe('dashboard notification service', () => {
     expect(() => service.publish('Later')).toThrow('Notification service has been disposed.');
   });
 
+  it('stops reactive rendering and timers when an owned notice is detached', async () => {
+    const service = createNotificationService(document);
+    const handle = service.publish({ id: 'detached', message: 'Pending.', duration: 1000 });
+    const element = document.querySelector('.dashboard-notification');
+    element?.remove();
+    await Promise.resolve();
+    handle.update({ message: 'Obsolete update.', duration: 5000 });
+    expect(element?.textContent).toContain('Pending.');
+    expect(vi.getTimerCount()).toBe(0);
+    service.publish({ id: 'detached', message: 'Replacement.', duration: 0 });
+    expect(document.querySelector('.dashboard-notification')?.textContent).toContain('Replacement.');
+    service.dispose();
+  });
+
   it('updates keyed notices without duplicating them and ignores superseded owners', () => {
     const service = createNotificationService(document);
     const previous = service.publish({ id: 'loading', message: 'Loading.', duration: 0 });
