@@ -65,6 +65,9 @@ type AuditLog interface {
 }
 
 const (
+	// AuditWriteTimeout bounds audit persistence, including detached cleanup
+	// and queue mutations that atomically append their admission event.
+	AuditWriteTimeout = 5 * time.Second
 	// AuditRetention keeps audit events for at least thirteen months, which
 	// covers annual compliance reviews with a margin.
 	AuditRetention = 400 * 24 * time.Hour

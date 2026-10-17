@@ -207,6 +207,10 @@ func (q *cliCommandQueue) AcknowledgeRecovery(ctx context.Context, lease operati
 }
 
 func (q *cliCommandQueue) Enqueue(ctx context.Context, invocation operational.CLICommandInvocation, idempotency string, retryOf int64) (operational.CLICommand, error) {
+	return q.enqueue(ctx, invocation, idempotency, retryOf, nil)
+}
+
+func (q *cliCommandQueue) enqueue(ctx context.Context, invocation operational.CLICommandInvocation, idempotency string, retryOf int64, event *operational.AuditEvent) (operational.CLICommand, error) {
 	data, err := invocation.Encode(q.options.MaxInputBytes)
 	if err != nil {
 		return operational.CLICommand{}, err
@@ -222,7 +226,7 @@ func (q *cliCommandQueue) Enqueue(ctx context.Context, invocation operational.CL
 	}
 	fingerprint := sha256.Sum256(append(append([]byte{}, data...), []byte(":"+strconv.FormatInt(retryOf, 10))...))
 	var command operational.CLICommand
-	err = q.transact(ctx, true, func(t *transaction, _ cliQueueState) error {
+	err = q.mutateCommand(ctx, &command, event, func(t *transaction, _ cliQueueState) error {
 		if idempotency != "" {
 			var previous []byte
 			var id int64

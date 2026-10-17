@@ -80,21 +80,58 @@ func (l *Logger) Record(ctx context.Context, event, outcome string, attrs ...slo
 	if l == nil {
 		return nil
 	}
+	var persist func(context.Context, operational.AuditEvent) (operational.AuditEvent, error)
+	if l.store != nil {
+		persist = l.store.AppendAudit
+	}
+	return l.record(context.WithoutCancel(ctx), event, outcome, persist, attrs...)
+}
+
+// RecordAtomic records a mutation through a store operation that commits the
+// mutation and event together. Unlike cleanup Record, it honors caller
+// cancellation. A commit error is uncertain, not proof of rollback: callers
+// must not compensate or retry without the original idempotency key.
+func (l *Logger) RecordAtomic(ctx context.Context, event, outcome string,
+	persist func(context.Context, operational.AuditEvent) (operational.AuditEvent, error), attrs ...slog.Attr,
+) error {
+	if !l.Durable() || persist == nil {
+		return ErrUnavailable
+	}
+	return l.record(ctx, event, outcome, persist, attrs...)
+}
+
+func (l *Logger) record(ctx context.Context, event, outcome string,
+	persist func(context.Context, operational.AuditEvent) (operational.AuditEvent, error), attrs ...slog.Attr,
+) error {
 	attrs = append(attrs, traceAttrs(ctx)...)
 	started := time.Now()
 	var stored operational.AuditEvent
 	var storeErr error
-	if l.store != nil {
-		stored, storeErr = l.store.AppendAudit(context.WithoutCancel(ctx), toEvent(event, outcome, attrs))
+	if persist != nil {
+		writeCtx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+		defer cancel()
+		stored, storeErr = persist(writeCtx, toEvent(event, outcome, attrs))
+		if storeErr == nil {
+			// Atomic queue operations add authoritative command fields.
+			known := make(map[string]bool, len(attrs))
+			for _, attr := range attrs {
+				known[attr.Key] = true
+			}
+			for key, value := range stored.Attributes {
+				if !known[key] {
+					attrs = append(attrs, slog.String(key, value))
+				}
+			}
+		}
 	}
-	observe(context.WithoutCancel(ctx), event, outcome, l.store != nil && storeErr == nil, stored.Sequence, started, l.store != nil, attrs)
+	observe(context.WithoutCancel(ctx), event, outcome, persist != nil && storeErr == nil, stored.Sequence, started, persist != nil, attrs)
 	if l.logger != nil {
 		fields := make([]slog.Attr, 0, len(attrs)+5)
 		fields = append(fields, slog.String("audit", "cao"), slog.String("event", event), slog.String("outcome", outcome))
 		switch {
 		case storeErr != nil:
 			fields = append(fields, slog.Bool("stored", false))
-		case l.store != nil:
+		case persist != nil:
 			fields = append(fields, slog.Bool("stored", true), slog.Int64("sequence", stored.Sequence))
 		}
 		fields = append(fields, attrs...)
@@ -103,7 +140,7 @@ func (l *Logger) Record(ctx context.Context, event, outcome string, attrs ...slo
 		l.mutex.Unlock()
 	}
 	if storeErr != nil {
-		return fmt.Errorf("%w: %s", ErrUnavailable, event)
+		return fmt.Errorf("%w: %s: %w", ErrUnavailable, event, storeErr)
 	}
 	return nil
 }

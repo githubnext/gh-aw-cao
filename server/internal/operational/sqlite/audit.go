@@ -20,33 +20,46 @@ const (
 // processes, so sequence numbers are gap-free and each record chains to its
 // committed predecessor.
 func (s *Store) AppendAudit(ctx context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
-	if err := operational.ValidateAuditEvent(event); err != nil {
-		return operational.AuditEvent{}, invalid(err.Error())
+	if ctx == nil {
+		return operational.AuditEvent{}, invalid("nil context")
 	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	err := s.transact(ctx, func(t *transaction) error {
-		prev := operational.AuditGenesis()
-		var last int64
-		err := t.tx.QueryRowContext(ctx, `SELECT sequence,hash FROM cao_operational_audit_events ORDER BY sequence DESC LIMIT 1`).Scan(&last, &prev)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		event.Sequence = last + 1
-		event.OccurredAt = t.now
-		record, err := operational.CanonicalAuditRecord(event)
-		if err != nil {
-			return invalid(err.Error())
-		}
-		if _, err := t.tx.ExecContext(ctx, `INSERT INTO cao_operational_audit_events(sequence,occurred_at,event,outcome,actor,record,prev_hash,hash) VALUES (?,?,?,?,?,?,?,?)`,
-			event.Sequence, nanos(event.OccurredAt), event.Event, event.Outcome, event.Actor, string(record), prev, operational.AuditChainHash(prev, record)); err != nil {
-			return err
-		}
-		if event.Sequence%auditMaintenanceEvery == 0 {
-			return t.maintainAudit()
-		}
-		return nil
+		var err error
+		event, err = t.appendAudit(event)
+		return err
 	})
 	if err != nil {
 		return operational.AuditEvent{}, err
+	}
+	return event, nil
+}
+
+func (t *transaction) appendAudit(event operational.AuditEvent) (operational.AuditEvent, error) {
+	if err := operational.ValidateAuditEvent(event); err != nil {
+		return operational.AuditEvent{}, invalid(err.Error())
+	}
+	prev := operational.AuditGenesis()
+	var last int64
+	err := t.tx.QueryRowContext(t.ctx, `SELECT sequence,hash FROM cao_operational_audit_events ORDER BY sequence DESC LIMIT 1`).Scan(&last, &prev)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return operational.AuditEvent{}, err
+	}
+	event.Sequence = last + 1
+	event.OccurredAt = t.now
+	record, err := operational.CanonicalAuditRecord(event)
+	if err != nil {
+		return operational.AuditEvent{}, invalid(err.Error())
+	}
+	if _, err := t.tx.ExecContext(t.ctx, `INSERT INTO cao_operational_audit_events(sequence,occurred_at,event,outcome,actor,record,prev_hash,hash) VALUES (?,?,?,?,?,?,?,?)`,
+		event.Sequence, nanos(event.OccurredAt), event.Event, event.Outcome, event.Actor, string(record), prev, operational.AuditChainHash(prev, record)); err != nil {
+		return operational.AuditEvent{}, err
+	}
+	if event.Sequence%auditMaintenanceEvery == 0 {
+		if err := t.maintainAudit(); err != nil {
+			return operational.AuditEvent{}, err
+		}
 	}
 	return event, nil
 }

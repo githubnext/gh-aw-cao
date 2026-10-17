@@ -24,6 +24,7 @@ import (
 
 type hostedCLITestQueue struct {
 	mutex    sync.Mutex
+	audit    *memoryAuditLog
 	commands map[int64]*operational.CLICommand
 	output   map[int64][]operational.CLICommandOutput
 	next     int64
@@ -117,6 +118,47 @@ func (q *hostedCLITestQueue) Output(_ context.Context, id, after int64, limit in
 }
 func (q *hostedCLITestQueue) Retain(context.Context) (int64, error) { return 0, nil }
 
+func (q *hostedCLITestQueue) EnqueueAudited(ctx context.Context, invocation operational.CLICommandInvocation, key string, retryOf int64, event operational.AuditEvent) (operational.CLICommand, operational.AuditEvent, error) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	command := operational.CLICommand{
+		CLICommandInvocation: invocation, ID: q.next + 1, Status: operational.CLICommandQueued,
+		CreatedAt: time.Unix(1700000000, 0), IdempotencyKey: key, RetryOf: retryOf,
+	}
+	event, err := operational.CLICommandAuditEvent(event, command)
+	if err == nil {
+		event, err = q.audit.AppendAudit(ctx, event)
+	}
+	if err != nil {
+		return operational.CLICommand{}, operational.AuditEvent{}, err
+	}
+	q.next++
+	q.commands[command.ID] = &command
+	return command, event, nil
+}
+
+func (q *hostedCLITestQueue) CancelAudited(ctx context.Context, id int64, event operational.AuditEvent) (operational.CLICommand, operational.AuditEvent, error) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	existing, ok := q.commands[id]
+	if !ok {
+		return operational.CLICommand{}, operational.AuditEvent{}, operational.ErrCLICommandNotFound
+	}
+	command := *existing
+	if !command.Status.Terminal() {
+		command.Status = operational.CLICommandCanceled
+	}
+	event, err := operational.CLICommandAuditEvent(event, command)
+	if err == nil {
+		event, err = q.audit.AppendAudit(ctx, event)
+	}
+	if err != nil {
+		return operational.CLICommand{}, operational.AuditEvent{}, err
+	}
+	q.commands[id] = &command
+	return command, event, nil
+}
+
 // memoryAuditLog is an in-process stand-in for the postgres audit table.
 type memoryAuditLog struct {
 	mutex  sync.Mutex
@@ -190,6 +232,7 @@ func newHostedCLIFixture(t *testing.T, admins []string) *hostedCLIFixture {
 	fixture.app = memoryOAuthApp(t, github.URL)
 	fixture.app.config.AdminUsers = admins
 	fixture.audit = &memoryAuditLog{}
+	fixture.queue.audit = fixture.audit
 	fixture.app.config.Audit = fixture.app.config.Audit.WithStore(fixture.audit)
 	catalog, err := hostedcli.LoadCatalog(filepath.Join("..", "..", "..", "dashboard", "site", "dashboard.json"))
 	if err != nil {
@@ -495,8 +538,8 @@ func TestHostedCLIMutationsFailClosedWithoutAudit(t *testing.T) {
 	}
 	fixture.queue.mutex.Lock()
 	defer fixture.queue.mutex.Unlock()
-	if status := fixture.queue.commands[2].Status; status != operational.CLICommandCanceled {
-		t.Fatalf("unaudited command left %s", status)
+	if len(fixture.queue.commands) != 1 || fixture.queue.commands[1].Status != operational.CLICommandQueued {
+		t.Fatal("audit failure must roll back admission and cancellation")
 	}
 }
 

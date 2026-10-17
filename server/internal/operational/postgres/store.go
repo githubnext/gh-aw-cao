@@ -10,10 +10,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
@@ -195,15 +197,39 @@ type transaction struct {
 
 // One namespace row serializes multi-record transitions and budget accounting.
 // No locks are held while a queue reader waits for work.
-func (s *Store) transact(ctx context.Context, fn func(*transaction) error) error {
+func (s *Store) transact(ctx context.Context, fn func(*transaction) error) (err error) {
 	if ctx == nil {
 		return invalid("nil context")
 	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		if cause := ctx.Err(); cause != nil {
+			err = errors.Join(err, cause)
+			return
+		}
+		// PostgreSQL can expire its deadline-derived timeout just before
+		// the client's timer fires. Preserve the context timeout contract.
+		var failure *pgconn.PgError
+		if _, bounded := ctx.Deadline(); bounded && errors.As(err, &failure) &&
+			(failure.Code == "57014" || failure.Code == "55P03") {
+			err = errors.Join(err, context.DeadlineExceeded)
+		}
+	}()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if deadline, ok := ctx.Deadline(); ok {
+		wait := max(1, time.Until(deadline).Milliseconds())
+		// Also bound server-side waits if client cancellation cannot reach
+		// PostgreSQL. Set these before taking the namespace lock.
+		if _, err := tx.ExecContext(ctx, `SELECT set_config('lock_timeout',$1,true),set_config('statement_timeout',$1,true),set_config('idle_in_transaction_session_timeout',$1,true)`, strconv.FormatInt(wait, 10)); err != nil {
+			return err
+		}
+	}
 	var namespace string
 	if err := tx.QueryRowContext(ctx, `SELECT namespace FROM cao_operational_namespaces WHERE namespace=$1 FOR UPDATE`, s.namespace).Scan(&namespace); err != nil {
 		return err
