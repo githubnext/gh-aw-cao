@@ -52,7 +52,7 @@ vi.mock("../../src/cancel-command.js", () => ({
 }));
 vi.mock("../../src/data-processor.js", () => dataProcessor);
 vi.mock("../../src/data/startup.js", () => startup);
-vi.mock("../../src/components/refresh-error.js", () => ({ renderRefreshError: vi.fn() }));
+vi.mock("../../src/components/refresh-error.js", () => ({ notifyRefreshError: vi.fn() }));
 vi.mock("../../src/diagnostics.js", () => ({ collectFullDiagnostics: vi.fn() }));
 vi.mock("../../src/dashboard-data-updates.js", () => dashboardDataUpdates);
 vi.mock("../../src/components/cli-actions.js", () => ({

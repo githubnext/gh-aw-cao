@@ -156,7 +156,7 @@ export async function queryGhData(indexedDB, resource, options) {
     const safeOutputType = resource === 'issues' ? 'create_issue' : 'create_pull_request';
     records = issues
       .filter((event) => (
-        event.type === 'safe_output.created'
+        event.type === 'safe_output.result'
         && event.isPullRequest === (resource === 'prs')
         && event.safeOutputType === safeOutputType
       ))

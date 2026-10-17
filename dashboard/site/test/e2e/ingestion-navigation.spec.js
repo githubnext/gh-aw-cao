@@ -202,8 +202,8 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
   await expect(importScreen.locator('header')).toBeInViewport({ ratio: 1 });
   await expect(importScreen.getByRole('button', { name: 'Explore data' })).toHaveCount(1);
   await expect(importScreen.locator('.first-load-server-option')).not.toBeVisible();
-  await expect(importScreen.locator('.first-load-storage-warning')).toBeVisible();
-  await expect(importScreen.locator('.first-load-storage-warning')).toContainText('private session ends');
+  await expect(importScreen.locator('.first-load-storage-warning')).toHaveCount(0);
+  await expect(page.locator('[data-notification-id="dashboard:browser-storage"]')).toContainText('private session ends');
   const importHistory = importScreen.locator('.first-load-ingestion-details');
   await expect(importHistory).toBeVisible();
   await importHistory.locator('summary').click();

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
 import { configureCliQueue, isCliQueueQuery } from '../../src/data/cli-queue.js';
 import commandQueueFixture from '../fixtures/cli-command-queue.json' with { type: 'json' };
 import commandsContract from '../fixtures/commands-view-contract.json' with { type: 'json' };
@@ -8,6 +9,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { CAMPAIGN_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 import { SERVER_SOURCE_VALUES, TABLE_FIELDS } from '../../src/specification.js';
 import campaignNavigationContract from '../fixtures/campaign-navigation-contract.json' with { type: 'json' };
+import evaluationContract from '../fixtures/evaluation-evidence-contract.json' with { type: 'json' };
 
 import { authoritativeDashboard as document } from '../authoritative-dashboard.js';
 const dashboard = document.dashboard;
@@ -175,26 +177,64 @@ describe('dashboard view query contracts', () => {
     expect(experiments.acceptance).toContain('counts are not completion percentages');
     expect(viewsOf(experiments)).toMatchObject([
       { mark: 'chart', chart: 'horizontal-bar', data: { source: 'experiment-assignment-coverage' } },
+      { mark: 'table', data: { source: 'experiment-assignments' }, 'lazy-list': true, layout: 'full-view' },
       { mark: 'table', data: { source: 'experiments' }, 'lazy-list': true, layout: 'full-view' }
     ]);
-    expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals'))[0])
-      .toMatchObject({ data: { source: 'eval-yes-no-status' } });
-    for (const id of ['evals', 'graders']) {
+    const assignments = viewsOf(experiments).find((view) => view.id === evaluationContract.experiments.view);
+    const assignmentEncoding = /** @type {{ columns: { field: string }[] }} */ (assignments?.encoding);
+    expect(assignmentEncoding.columns.map((column) => column.field))
+      .toEqual(evaluationContract.experiments.fields);
+    expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals')).find((view) => view.id === evaluationContract.evals.view))
+      .toMatchObject({
+        data: { source: evaluationContract.evals.query },
+        encoding: { columns: expect.arrayContaining([{ field: 'run', type: 'nominal', title: 'Run', display: evaluationContract.evals.runDisplay }]) }
+      });
+    for (const id of /** @type {const} */ (['evals', 'graders'])) {
       const page = dashboard.pages.find((/** @type {{ id?: string }} */ candidate) => candidate.id === id);
-      expect(viewsOf(page)[0]).toMatchObject({
+      const contract = evaluationContract[id];
+      const ledger = viewsOf(page).find((view) => view.id === contract.view);
+      expect(ledger).toMatchObject({
         mark: 'table', 'lazy-list': true, layout: 'full-view',
         data: { 'order-by': [{ field: 'workflow', direction: 'asc' }, { field: 'observed-at', direction: 'desc' }] }
       });
       expect(page.description).not.toContain('TODO:');
       expect(page.acceptance).toContain('not current verdicts');
+      expect(ledger).toMatchObject({ data: { source: contract.query } });
+      const encoding = /** @type {{ columns: { field: string }[] }} */ (ledger?.encoding);
+      expect(encoding.columns.map((column) => column.field)).toEqual(contract.fields);
     }
+    const scatter = evaluationContract.graders.scatter;
+    expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'graders'))[0])
+      .toMatchObject({
+        id: scatter.view, mark: 'chart', chart: 'scatter', scatter: { cluster: false },
+        data: { source: scatter.query },
+        encoding: {
+          x: { field: scatter.x, type: 'temporal' }, y: { field: scatter.y, type: 'quantitative' },
+          color: { field: scatter.color }, href: { field: scatter.href }
+        }
+      });
   });
 
-  it('computes assignment coverage and explicit YES/NO grader verdicts from declared evidence sources', () => {
+  it('declares three percentage bars per eval above the evidence ledger', () => {
+    const distribution = evaluationContract.evals.distribution;
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'evals');
+    expect(viewsOf(page)[0]).toMatchObject({
+      id: distribution.view, mark: 'chart', chart: distribution.chart,
+      data: { source: distribution.query, limit: 99 },
+      encoding: {
+        x: { field: distribution.x },
+        y: { field: distribution.y, unit: 'percent' },
+        section: { field: distribution.section },
+        color: { field: distribution.x }
+      }
+    });
+  });
+
+  it('keeps all eval answers and run links distinct from auxiliary grader verdicts', () => {
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries,
-      sourceNames: ['experiment-assignment-coverage', 'grader-status-ledger', 'eval-yes-no-status'],
+      sourceNames: ['experiment-assignment-coverage', 'grader-status-ledger', evaluationContract.evals.query],
       sources: {
         ...databaseTables,
         'experiment-assignments': {
@@ -208,8 +248,10 @@ describe('dashboard view query contracts', () => {
         'eval-observations': {
           source: 'eval-observations', metadata,
           rows: [
-            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'YES' },
-            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'UNKNOWN' },
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'YES', run: '1',
+              'evidence-link': 'https://github.com/octo/api/actions/runs/1' },
+            { workflow: 'worker.md', eval: 'answer', 'eval-result': 'UNKNOWN', run: '2',
+              'evidence-link': { href: 'https://github.com/octo/api/actions/runs/2', label: 'Run 2' } },
             { workflow: 'worker.md', eval: 'answer', 'eval-result': 'NO' }
           ]
         },
@@ -228,7 +270,12 @@ describe('dashboard view query contracts', () => {
       expect.objectContaining({ 'workflow-coordinate': 'githubnext/two:worker.md', experiment: 'prompt', assignments: 1 })
     ]));
     expect(results['grader-status-ledger'].rows.map((row) => row.verdict)).toEqual(['YES', 'NO', 'unknown']);
-    expect(results['eval-yes-no-status'].rows.map((row) => row['eval-result'])).toEqual(['YES', 'NO']);
+    expect(results[evaluationContract.evals.query].rows.map((row) => row['eval-result'])).toEqual(['YES', 'UNKNOWN', 'NO']);
+    expect(results[evaluationContract.evals.query].rows.map((row) => row['run-link'])).toEqual([
+      { href: 'https://github.com/octo/api/actions/runs/1', label: '1' },
+      { href: 'https://github.com/octo/api/actions/runs/2', label: '2' },
+      null
+    ]);
   });
 
   it('groups navigable experimental pages in one experimental section', () => {
@@ -238,6 +285,7 @@ describe('dashboard view query contracts', () => {
       label: 'Experimental',
       experimental: true,
       pages: [
+        'model-routing',
         'skills',
         'steering',
         'simulators'
@@ -1018,7 +1066,7 @@ describe('dashboard view query contracts', () => {
         workflow: '.github/workflows/worker.md',
         run: '101',
         'run-attempt': 1,
-        'event-type': 'safe_output.created',
+        'event-type': 'safe_output.result',
         'event-timestamp': '2026-09-20T12:00:00Z',
         'github-entity-type': 'issue',
         'is-pull-request': false,
@@ -1037,7 +1085,7 @@ describe('dashboard view query contracts', () => {
         workflow: '.github/workflows/worker.md',
         run: '102',
         'run-attempt': 1,
-        'event-type': 'safe_output.created',
+        'event-type': 'safe_output.result',
         'event-timestamp': '2026-09-20T13:00:00Z',
         'github-entity-type': 'pull_request',
         'is-pull-request': true,
@@ -1167,17 +1215,28 @@ describe('dashboard view query contracts', () => {
 
   it('materializes worker-resolvable view queries through the production worker handler', async () => {
     expect([...dashboardQueryDefects(queries).entries()]).toEqual([]);
-    const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))]
-      .filter((name) => queryNames.has(name));
+    const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))];
     const runtimeRequested = requested.filter((name) => isCliQueueQuery(queries, [name]));
     const workerRequested = requested.filter((name) => !requiresServerSource(name) && !runtimeRequested.includes(name));
     expect(requested.filter((name) => requiresServerSource(name)).sort()).toEqual(['github-api-usage', 'ingestion-health', 'ingestion-queue-sizes']);
-    const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
-      operation: 'execute-dashboard-queries',
-      queries,
-      sources: databaseTables,
-      sourceNames: workerRequested
-    }));
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    let results;
+    try {
+      results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+        operation: 'load-dashboard-query-sources',
+        queries,
+        sources: {
+          'configuration-policy': {
+            source: 'configuration-policy',
+            rows: [],
+            metadata: { availability: 'empty', completeness: 'complete', freshness: 'fresh' }
+          }
+        },
+        sourceNames: workerRequested
+      }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
 
     expect(Object.keys(results).sort()).toEqual([...workerRequested].sort());
     for (const name of workerRequested) {

@@ -92,6 +92,11 @@ worker's queue transport. Queue history, status filtering, ordering and counts
 remain declarative queries over the registered operational sources. Published
 dashboards neither enable this transport nor request queue data.
 
+The `storage-info` element also declares `data.sources: []`. It presents deployment
+configuration rather than activity evidence: browser-local IndexedDB, local-server
+SQLite, or server PostgreSQL. Unknown server configuration remains unknown; this
+element does not query, derive, or infer a storage engine from retained rows.
+
 ### 1.3 Design Goals
 
 The language is designed to be minimal, deterministic, auditable, and safe to validate. Built-in pages provide useful defaults. Custom pages provide only metric, table, chart, and time-series views.
@@ -308,7 +313,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 - **DLS-DOC-013:** `units`, when present, **MUST** be a non-empty mapping keyed by unique canonical identifiers. Each value **MUST** contain the non-empty string `name`, the non-empty string `symbol`, and the finite positive number `significant`, and **MAY** contain `format`.
 - **DLS-DOC-014:** A tooltip **MUST** contain exactly the non-empty human-readable strings `label` and `description` and **MAY** contain one canonical Octicon `icon`. A presenter **MUST** expose a tooltip as a keyboard-focusable help control named by `label`, associate its explanatory content with the control, and make that content available on both pointer hover and keyboard focus. `horizon`, when present, **MUST** contain exactly a non-empty human-readable `label` and one `tooltip`; the presenter **MUST** expose an icon-only clock control whose accessible name includes the horizon label and resolved duration. Pointer hover and keyboard focus **MUST** disclose the resolved duration. Activating the control **MUST** expose a compact horizon picker and a keyboard-accessible coverage disclosure containing the configured description with the precise resolved start, exclusive end, and duration.
 - **DLS-DOC-014a:** A `mark: list` view **MUST** declare `list.style` as `cards` or `issues`, and **MUST** declare a canonical Octicon `list.icon`. `list.action`, when present, **MUST** reference a view-placed CLI action. `encoding.href`, when present on a list view, **MUST** reference one relation-specific link field and binds the primary card title to that link.
-- **DLS-DOC-015:** `callouts`, when present, **MUST** be a non-empty sequence of mappings with unique canonical `id` values and non-empty `title` and `description` strings. A callout **MAY** contain one canonical Octicon `icon` and one `navigation-page` referencing a declared dashboard page. `visible-when`, when present, **MUST** contain exactly one canonical `source`, one `field` declared by that source, and either one scalar `equals` value or one positive finite `older-than-hours` value, but not both. Equality matches at least one source row. Age visibility matches at least one valid ISO timestamp or finite Unix-millisecond value whose age is at least the declared hours, using the current wall clock independently of page filters. Null, invalid, future, missing, or unavailable evidence **MUST NOT** establish staleness. The presenter **MUST** subscribe to declared callout sources for the dashboard lifetime and reevaluate clock-based visibility at least once per minute, without navigation. Queries own source selection and timestamp aggregation; the shared callout renderer owns clock-based visibility because a stored data revision does not change as time passes.
+- **DLS-DOC-015:** `callouts`, when present, **MUST** be a non-empty sequence of mappings with unique canonical `id` values and non-empty `title` and `description` strings. A callout **MAY** contain one canonical Octicon `icon` and one `navigation-page` referencing a declared dashboard page. `visible-when`, when present, **MUST** contain exactly one canonical `source`, one `field` declared by that source, and either one scalar `equals` value or one positive finite `older-than-hours` value, but not both. Equality matches at least one source row. Age visibility matches at least one valid ISO timestamp or finite Unix-millisecond value whose age is at least the declared hours, using the current wall clock independently of page filters. Null, invalid, future, missing, or unavailable evidence **MUST NOT** establish staleness. The presenter **MUST** subscribe to declared callout sources for the dashboard lifetime and request worker reevaluation of clock-based visibility at least once per minute, without navigation. The data worker **MUST** execute declared visibility conditions in its query layer. The shared callout renderer **MUST** consume only the resulting visibility states; it **MUST NOT** inspect source rows or compare evidence timestamps on the main thread.
 
 The default dashboard warns after 24 hours without new retained workflow activity,
 using the newest upstream update timestamp (or creation timestamp when absent),
@@ -456,7 +461,7 @@ Published dashboards **MUST NOT** request these providers.
   have no observed operational provenance and **MUST NOT** be represented as
   measured activity.
 
-- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries; the interaction-only `query-editor` and `command-terminal` elements **MAY** declare an empty list. An optional `data.route-field` **MUST** name one field from `data.source`.
+- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries; the interaction-only `query-editor` and `command-terminal` elements and deployment-only `storage-info` element **MAY** declare an empty list. An optional `data.route-field` **MUST** name one field from `data.source`.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.
 - **DLS-SEM-019:** A `usage` row **MUST** represent one model invocation and **MUST NOT** repeat invocation-level AIC across token-class rows.
 - **DLS-SEM-020:** Grader values, operational-grader results, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.
@@ -570,6 +575,7 @@ Computed fields use only the following typed, deterministic functions with the s
 | `literal` | 1 | scalar value |
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
 | `date-day` | 1 | UTC calendar date text |
+| `activity-shard-day` | 1 | UTC activity date from a normalized shard filename (`YYYY-MM-DD-NNNN-<16 hex digits>.jsonl`), optionally in a path or URL; invalid dates, the structural `0000-00-00` bucket, and undated filenames produce null, never an import-time fallback |
 | `date-bucket` | 2 | UTC bucket-start timestamp text for a timestamp and literal `hour`, `day`, `week` (Monday), or `month` |
 | `calendar-week-point` | 3 | serializable calendar point from timestamp, `time-end`, and an inclusion boolean or run conclusion; `true` includes the run regardless of conclusion, `false` excludes it, and conclusion strings include only `success` |
 | `equals-any` | 2–8 | whether the first argument equals any later argument |
@@ -578,6 +584,8 @@ Computed fields use only the following typed, deterministic functions with the s
 | `format-count`, `format-percent` | 1 | locale-stable display text |
 | `number` | 1 | finite number or null |
 | `timestamp` | 1 | UTC epoch milliseconds for valid RFC 3339 timestamp text with an explicit zone, or null; rejects invalid calendar dates, relative expressions and non-text values, and never reads the clock |
+| `iso-timestamp` | 1 | UTC ISO timestamp text from finite epoch milliseconds in years 0001 through 9999; missing or out-of-range values produce null |
+| `sqrt` | 1 | Square root of a known finite nonnegative numeric value; negative or unknown input produces null |
 | `sum`, `product` | 2–8 | finite number or null |
 | `difference`, `quotient` | 2 | finite number or null |
 
@@ -658,15 +666,20 @@ The transform preserves source-row order and measure declaration or map-property
 #### 5.5.4 Observation Windows
 
 A query may declare a `window` sequence after `aggregate` and `predict`. Each
-entry appends one numeric field without changing the number or order of rows.
+entry appends one field without changing the number or order of rows.
 Entries execute in declaration order, so a later entry can refer to a prior
 entry's output. An entry names its input `field`, unique output `as`, an
-`operation` (`rolling` or `change`), an ascending or descending `order-by`
+`operation` (`rolling`, `change`, `previous`, or `row-number`), an ascending or descending `order-by`
 sequence, and optional `groupby` dimensions. Each group is independent. Sort
 ties retain input order; authors who need ingestion-order-independent results
 should provide a unique final ordering key. Windows operate over **observations**,
 not calendar durations; bucket and aggregate first when the desired input is
 one observation per day.
+
+`previous` preserves the preceding observation's scalar type, including text,
+and returns null for the first observation of each group. `row-number` returns
+the one-based observation position within each group. Neither accepts rolling
+frames, reducers, alignment, change modes, or time-unit options.
 
 `rolling` takes a positive integer `frame` (the number of observations), a
 `reducer` of `mean` (default), `sum`, `min`, or `max`, and an `alignment` of
@@ -726,7 +739,7 @@ return the untransformed observations.
 - **DLS-QUERY-027:** `parameters`, when present, **MUST** be a non-empty sequence of mappings containing exactly a unique canonical `name` and a `type` of `number`, `string`, or `boolean`. A parameter reference **MUST** contain exactly `parameter` naming one parameter declared by the same query. Version 0.1.0 permits parameter references as query predicate `equals`, `gte`, or `lt` operands and as computed-field arguments. A parameter **MUST NOT** alter query topology or output schema.
 - **DLS-QUERY-028:** Before query execution, the presenter **MUST** resolve every parameter reference to one finite number, string, or Boolean value supplied by the active page form. A computed-field parameter reference resolves as a literal computed argument. A missing, structured, non-finite, undeclared, or type-incompatible value **MUST** fail the page projection closed and **MUST NOT** execute a broader query with the predicate or computation removed.
 - **DLS-QUERY-029:** A named-query agent transport **MAY** invoke a parameterized query by identifier with explicitly supplied scalar operands. It **MUST** discover parameter declarations through the query's transitive dependencies, validate each supplied value against its declared type and any bound page-form constraints, reject missing or unexpected operands, and substitute only scalar values into the reviewed query before executing through the bounded query engine. Parameter input **MUST NOT** alter query topology or execute authored scripts. A synthetic input such as `simulation-days` **MUST** remain labeled as modeled rather than measured evidence.
-- **DLS-QUERY-030:** A `window` **MUST** contain one to eight entries with unique `as` names and valid numeric input fields; each entry **MUST** declare `operation`, `field`, `as`, and a non-empty `order-by`, and **MAY** declare `groupby`. The available fields of each entry include outputs of earlier entries but not later ones. Rolling entries **MUST** specify a positive integer `frame`, **MAY** specify `reducer` and `alignment`, and **MUST NOT** specify change-only fields. Change entries **MAY** specify `mode`; `rate` **MUST** specify a temporal `time-field` and a valid `unit`, and other change modes **MUST NOT** specify these fields.
+- **DLS-QUERY-030:** A `window` **MUST** contain one to eight entries with unique `as` names and valid input fields; `rolling` and `change` require numeric inputs, while `previous` and `row-number` accept scalar inputs; each entry **MUST** declare `operation`, `field`, `as`, and a non-empty `order-by`, and **MAY** declare `groupby`. The available fields of each entry include outputs of earlier entries but not later ones. Rolling entries **MUST** specify a positive integer `frame`, **MAY** specify `reducer` and `alignment`, and **MUST NOT** specify change-only fields. Change entries **MAY** specify `mode`; `rate` **MUST** specify a temporal `time-field` and a valid `unit`, and other change modes **MUST NOT** specify these fields.
 - **DLS-QUERY-031:** Window evaluation **MUST** follow the Section 5.5.4 observation, partition, stable ordering, alignment, missing-value, division-by-zero, and elapsed-time rules. It **MUST** preserve input row order and count, and append only finite numbers or null. Window calculations **MUST** execute within the same cancellation and row-operation budgets as other declarative queries.
 
 ### 5.6 Parameterized Page Forms
@@ -820,7 +833,7 @@ the URL or persistent browser storage.
 ```
 
 - **DLS-FORM-001:** `form` **MUST** contain a non-empty `fields` sequence and **MAY** contain non-empty `title` and `description` strings and one `update` mapping. Field IDs **MUST** be unique canonical identifiers and **MUST** name a parameter declared by a dashboard query.
-- **DLS-FORM-002:** A form field **MUST** declare a non-empty `label`, one `control` of `slider`, `checkbox`, or `radio`, and a typed `default`. `slider` **MUST** declare finite numeric `min`, `max`, and positive `step`, with `min < max` and `default` inside the inclusive range. `checkbox` **MUST** have a Boolean default. `radio` **MUST** declare 2 to 12 uniquely valued, consistently typed scalar options and a default matching one option.
+- **DLS-FORM-002:** A form field **MUST** declare a non-empty `label`, one `control` of `slider`, `checkbox`, `radio`, or `text`, and a typed `default`. `text` requires a string default and MUST NOT declare numeric bounds or options; its debounced scalar value is bound to a query parameter, never interpreted as query code. `slider` **MUST** declare finite numeric `min`, `max`, and positive `step`, with `min < max` and `default` inside the inclusive range. `checkbox` **MUST** have a Boolean default. `radio` **MUST** declare 2 to 12 uniquely valued, consistently typed scalar options and a default matching one option.
 - **DLS-FORM-003:** Form fields **MUST** render in declaration order in an automatic responsive layout. Authors **MUST NOT** declare coordinates, columns, or breakpoints. Every control **MUST** expose its label, description when present, current value or checked state, keyboard operation, and native accessibility semantics.
 - **DLS-FORM-004:** `update.strategy` **MUST** be `debounce` or `throttle`; `delay-ms` **MUST** be an integer from 50 through 2000. The defaults are `debounce` and 250 milliseconds. Rapid updates **MUST** coalesce at the declared cadence, preserve the latest complete form state, cancel superseded requests or subscriptions, and prevent stale results from replacing newer results.
 - **DLS-FORM-005:** Form interaction code **MUST NOT** query data, filter rows, compute business state, or reconstruct relationships. It may own typed form state and DOM synchronization only. Query substitution and execution **MUST** remain inside the canonical page projection and data-worker boundary.
@@ -977,7 +990,7 @@ Every request contains `data`, a sequence of row mappings, and `operators`, an o
 | `select` | required `fields` | Projects and optionally renames fields. |
 | `slice` | `limit` and optional `offset` | Retains the requested contiguous range. |
 
-The `summarize` reducers are `count`, `distinct-count`, `distinct-list`, `sum`, `mean`, `min`, and `max`, with the semantics in Section 7.3 and Section 5.5.3. Within `summarize`, each aggregate-local filter executes after grouping and before its reducer. A missing or null filter field does not match a concrete literal; the explicit text value `unknown` matches a missing or null field. A matching row whose measure is missing, null, or empty is ignored by the reducer. An empty filtered input yields zero for `count`, `distinct-count`, and `sum`, and `null` for `mean`, `min`, and `max`; an observed numeric zero remains a contributing value. Thus zero and an absent aggregate result remain distinct. Operators execute from first to last; therefore a conforming compilation places query-level filtering before summarization, prediction, arrangement, and slicing.
+The `summarize` reducers include `count`, `distinct-count`, `distinct-list`, `unique`, `sum`, `mean`, `min`, `max`, `median`, `p75`, `p90`, and `p95`, with the semantics in Section 7.3 and Section 5.5.3. Quantiles ignore missing numeric values, return null for no known values, and use continuous linear interpolation at position `(n - 1) * p` in ascending order. Within `summarize`, each aggregate-local filter executes after grouping and before its reducer. A missing or null filter field does not match a concrete literal; the explicit text value `unknown` matches a missing or null field. A matching row whose measure is missing, null, or empty is ignored by the reducer. An empty filtered input yields zero for `count`, `distinct-count`, and `sum`, and `null` for `mean`, `min`, and `max`; an observed numeric zero remains a contributing value. Thus zero and an absent aggregate result remain distinct. Operators execute from first to last; therefore a conforming compilation places query-level filtering before summarization, prediction, arrangement, and slicing.
 
 ```json
 {
@@ -1729,7 +1742,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 ### 11.4 Normative Custom-View Requirements
 
 - **DLS-VIEW-001:** A custom page **MUST** contain `id`, `kind: custom`, and a non-empty `views` sequence; an omitted title **MUST** default from its page ID.
-- **DLS-VIEW-002:** Every view **MUST** contain a unique `id`, a `data` mapping, and one allowed `mark`. A `metric`, `table`, `list`, or `chart` view **MUST** contain one canonical `data.source` and an `encoding` mapping. An `element` view **MUST** contain one or more unique canonical `data.sources`, one allowed `element`, and no `encoding`; only the interaction-only `query-editor` and `command-terminal` elements **MAY** declare empty `data.sources`.
+- **DLS-VIEW-002:** Every view **MUST** contain a unique `id`, a `data` mapping, and one allowed `mark`. A `metric`, `table`, `list`, or `chart` view **MUST** contain one canonical `data.source` and an `encoding` mapping. An `element` view **MUST** contain one or more unique canonical `data.sources`, one allowed `element`, and no `encoding`; only the interaction-only `query-editor` and `command-terminal` elements and deployment-only `storage-info` element **MAY** declare empty `data.sources`.
 - **DLS-VIEW-003:** `metric` **MUST** encode exactly one `value` field and **MAY** encode `href`; it **MUST NOT** encode chart or table channels.
 - **DLS-VIEW-004:** `table` **MUST** encode non-empty `columns` and **MAY** encode `href`; it **MUST NOT** encode `value`, `x`, `y`, or `color`.
 - **DLS-VIEW-004b:** A table **MAY** declare `data.partial-source` as a distinct, previously declared query to render an initial inventory projection on the static data-worker backend. The partial query **MUST** preserve the final query's row identities and link fields without implying that absent computed values are zero or complete. Its metadata **MUST** mark `projection-state: pending` separately from evidence completeness; absent computed cells **MUST** render as pending, not zero. The worker **MUST** publish it before evaluating the complete query, then replace it with the complete view projection at the same data revision; a canceled or superseded subscription **MUST NOT** publish stale rows. Interactive filters, search, or ordering that depend on deferred fields **MUST** wait for the complete query. Hosted backends **MAY** return only the complete result.
@@ -1869,7 +1882,31 @@ Research should compare one through four essential views, record disclosure use,
 - **DLS-SAFE-011:** A presenter's report action toolbar **MUST** expose a descriptive accessible name or description for its refresh control identifying what the control does, and **MUST** expose a non-empty accessible label for its GitHub repository link when `dashboard.repository` is present.
 - **DLS-SAFE-012:** A presenter that renders `outcome-body-html` **MUST** rebuild it through a context-appropriate element and attribute allowlist, discard executable or embedded content, and apply **DLS-SAFE-004** to retained links and images.
 - **DLS-SAFE-013:** A presenter **MUST** render user-controlled list content as sanitized, inert text and **MUST** systematically constrain list item titles with visual ellipsis at every supported viewport size while preserving the complete text for accessible technologies.
-- **DLS-SAFE-014:** A presenter **MUST** expose every visible site-wide callout independently of the active page with its title and description as text and a descriptively named dismiss control. When `navigation-page` is present, the callout content **MUST** link to that dashboard page. Dismissal **MUST** last for the lifetime of the loaded document and **MUST NOT** be persisted across document loads.
+- **DLS-SAFE-014:** A presenter **MUST** expose every visible site-wide callout independently of the active page with its title and description as text and a descriptively named dismiss control. When `navigation-page` is present, the callout content **MUST** link to that dashboard page. Dismissal **MUST** survive navigation and repeated updates for the same active condition, until that condition resolves or the document unloads, and **MUST NOT** be persisted across document loads. A later recurrence after resolution **MAY** notify again.
+
+The CAO presenter uses one document-owned notification manager for declarative
+callouts, browser-storage warnings, worker ingestion progress, refresh failures,
+and transient feedback. Stable notification IDs update existing notices rather
+than adding duplicates. The shared, scrollable notification region owns rendering,
+accessible dismissal, timers, navigation links, actions, and volatile dismissal
+state; resolving a condition removes its notice and resets dismissal for a later
+recurrence. Producers retain responsibility for their abort-scoped subscriptions
+and explicitly release notices when their lifetime ends. Replacing a producer
+cannot let its older cleanup remove a notice already adopted by its replacement.
+
+Browser capability and import lifecycle feedback are interaction state, not
+canonical data queries, so their presentation cannot be described by evidence
+marks. Evidence-based callout conditions and sources remain declared in Dashboard
+Language and subscribed through the worker. The first-import dialog and compact
+status indicators remain contextual progress/status surfaces, not separate
+notification managers.
+
+The notification manager uses reactive state and owned `render` boundaries to
+morph each notice in place, preserving focused actions and expanded progress
+history. Each notice's effects and timers stop when it is removed. Callout
+subscriptions forward browser or hosted query results to the same data-worker
+visibility evaluator, cancel superseded evaluations, and ignore late results
+after their dashboard lifetime ends.
 - **DLS-SAFE-015:** A presenter **MUST** treat table-action context as untrusted data, serialize it without interpretation, and keep it explicitly separated from the author-declared intent. Table actions **MUST NOT** execute document or row content.
 
 ---

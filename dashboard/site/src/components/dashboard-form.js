@@ -69,6 +69,17 @@ export function renderDashboardForm(definition, currentValues, onChange, idPrefi
     const descriptionId = typeof field.description === 'string' ? `${controlId}-description` : undefined;
     const label = String(field.label);
     const description = descriptionId ? h('span', { id: descriptionId, className: 'dashboard-parameter-description' }, field.description) : null;
+    if (field.control === 'text') {
+      const input = /** @type {HTMLInputElement} */ (h('input', {
+        id: controlId, type: 'text', value: String(values[id] ?? ''), 'aria-describedby': descriptionId
+      }));
+      input.addEventListener('input', () => {
+        values[id] = input.value;
+        schedule();
+      });
+      return h('div', { className: 'dashboard-parameter-field' },
+        h('label', { htmlFor: controlId }, label), input, description);
+    }
     if (field.control === 'checkbox') {
       const input = /** @type {HTMLInputElement} */ (h('input', {
         id: controlId,

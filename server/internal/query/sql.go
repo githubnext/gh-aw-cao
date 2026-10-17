@@ -616,11 +616,23 @@ func (c *sqlCompiler) compute(relation SQLRelation, computed ComputedField) (SQL
 			break
 		}
 		out.Expression, out.Kind = "floor(extract(epoch FROM "+at+") * 1000)", SQLNumber
+	case "iso-timestamp":
+		value := sqlNumeric(args[0])
+		bounded := "(CASE WHEN " + value + " BETWEEN -62135596800000 AND 253402300799999 THEN trunc(" + value + ") END)"
+		out.Expression, out.Kind = "to_char((to_timestamp(trunc("+bounded+"/1000)) + mod("+bounded+",1000) * INTERVAL '1 millisecond') AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')", SQLText
+	case "sqrt":
+		value := sqlNumeric(args[0])
+		out.Expression, out.Kind = "sqrt(CASE WHEN "+value+" >= 0 THEN "+value+" END)", SQLNumber
 	case "date-day":
 		if args[0].Kind != SQLTimestamp {
 			return SQLColumn{}, errors.New("date-day requires a typed timestamp")
 		}
 		out.Expression, out.Kind = "to_char("+args[0].Expression+" AT TIME ZONE 'UTC', 'YYYY-MM-DD')", SQLText
+	case "activity-shard-day":
+		const pattern = `^(?:[^?#]*/)?([0-9]{4}-[0-9]{2}-[0-9]{2})-[0-9]{4,}-[a-fA-F0-9]{16}\.jsonl(?:[?#].*)?$`
+		day := "substring(" + sqlText(args[0]) + " from '" + pattern + "')"
+		out.Expression, out.Kind = "CASE WHEN left("+day+", 4) <> '0000' AND pg_input_is_valid("+day+
+			", 'date') THEN "+day+" ELSE NULL::text END", SQLText
 	case "date-bucket":
 		unit, ok := computed.Args[1].Value.(string)
 		if !ok || (unit != "hour" && unit != "day" && unit != "week" && unit != "month") {
@@ -853,6 +865,9 @@ func (c *sqlCompiler) aggregate(input SQLRelation, aggregate *Aggregate, name st
 			if value.Reducer == "sum" {
 				expression = "coalesce(" + expression + ", 0::numeric)"
 			}
+		case "median", "p75", "p90", "p95":
+			quantile := map[string]string{"median": "0.5", "p75": "0.75", "p90": "0.9", "p95": "0.95"}[value.Reducer]
+			expression = "percentile_cont(" + quantile + ") WITHIN GROUP (ORDER BY (" + sqlNumeric(column) + ")::double precision) FILTER (WHERE " + where + ")"
 		case "latest-failure-streak":
 			if column.Point != "failure" {
 				return SQLRelation{}, errors.New("latest-failure-streak requires failure-streak-point values")

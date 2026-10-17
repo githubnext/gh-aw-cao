@@ -36,6 +36,7 @@ import { prepareMemoryFile } from './data/repository-memory-jsonl.js';
 import { cliQueueOperation, cliQueueEnabled, configureCliQueue, isCliQueueQuery, queryCliQueue } from './data/cli-queue.js';
 import { createGitHubDataService } from './data/github-service.js';
 import { isGitHubQuerySource, githubSnapshotSource } from './data/github-query-sources.js';
+import { queryCalloutVisibility } from './data/queries/callouts.js';
 
 const debugIngestion = createDebug('data:ingestion');
 const debugPerformance = createDebug('data:performance');
@@ -913,11 +914,19 @@ export function publishedPhasedActivityShards(hashes) {
 }
 
 /**
- * @param {{ id?: unknown, operation?: unknown, action?: unknown, command?: unknown, commandId?: unknown, after?: unknown, idempotencyKey?: unknown, campaign?: unknown, campaigns?: unknown, path?: unknown, memoryRoot?: unknown, content?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown, githubConfiguration?: import('./data/github-service.js').GitHubBackendConfiguration, hostedSources?: Record<string, import('./presenter.js').LogicalSourceInput> }} request
+ * @param {{ id?: unknown, operation?: unknown, action?: unknown, command?: unknown, commandId?: unknown, after?: unknown, idempotencyKey?: unknown, campaign?: unknown, campaigns?: unknown, callouts?: unknown, path?: unknown, memoryRoot?: unknown, content?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, ingest?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown, githubConfiguration?: import('./data/github-service.js').GitHubBackendConfiguration, hostedSources?: Record<string, import('./presenter.js').LogicalSourceInput> }} request
  * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
+  if (request?.operation === 'query-dashboard-callouts') {
+    if (!Array.isArray(request.callouts)) throw new TypeError('Dashboard callouts must be an array.');
+    return queryCalloutVisibility(
+      request.callouts,
+      /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources ?? {}),
+      signal
+    );
+  }
   if (request?.operation === 'cli-queue') {
     return cliQueueOperation(/** @type {Record<string, unknown>} */ (request), signal, (event) => {
       workerScope?.postMessage({ type: 'cli-queue-output', id: request.id, event });
@@ -1372,6 +1381,7 @@ export function processDataRequest(request, signal) {
         ? Object.keys(sources)
         : [...requestedSourceNames(request.sourceNames)];
       const queries = Array.isArray(request.queries) ? request.queries : [];
+      const required = new Set(resolveDashboardQuerySources(queries, sourceNames));
       const database = /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (
         await loadDatabaseQuerySources(indexedDB, sources, {
           ingest: request.ingest === true, sourceNames, queries, signal
@@ -1382,9 +1392,14 @@ export function processDataRequest(request, signal) {
         ...paginateDashboardSources(
           pageScopedSources(database, new Set(sourceNames)),
           /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
-          continuationRevision(queries, Object.fromEntries(
-            Object.entries(database).map(([name, source]) => [name, source.metadata])
-          ))
+          continuationRevision(queries, {
+            inputs: Object.fromEntries(Object.entries(sources)
+              .filter(([name]) => required.has(name))
+              .map(([name, source]) => [
+                name, source && typeof source === 'object' && 'metadata' in source ? source.metadata : null
+              ])),
+            outputs: Object.fromEntries(Object.entries(database).map(([name, source]) => [name, source.metadata]))
+          })
         )
       };
     });

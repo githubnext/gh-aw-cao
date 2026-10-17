@@ -164,12 +164,20 @@ cao doctor \
 
 ## Browser data pipeline
 
+The unified-session adapter retains only metadata needed for model-routing
+analytics: safe identifiers, explicit classifier labels, request ownership,
+per-response token/AIC observations and source receipts. It accepts headerless
+legacy sessions and records their format coverage. Unsupported session versions
+retain the header only. Source-receipt phases take precedence over the collection
+event's conclusion-phase provenance. Prompts, bodies, free-form reasons/errors
+and content-derived hashes are not projected into routing facts.
+
 The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic Domain, Tool, Audit, and Issue records owned directly by those Runs. `github_api_rate_limit` envelopes create Audits only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 28. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 38. Its canonical stores are
+The canonical model is version 31. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 41. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
@@ -180,6 +188,8 @@ ingestion outcomes and is indexed by `createdAt`. The disposable
 Overview aggregates are computed by request-scoped queries over canonical runs
 rather than stored separately. Because the database is derived state, physical schema
 upgrades rebuild every store from authoritative dashboard inputs.
+
+Experiment assignments and eval observations come from the unified session when it contains them. Otherwise, ingestion accepts gh-aw's explicit current-run `assignments.json` artifact (including the compact `usage/experiment/` layout and prefixed artifact directories) and a supplied `evals.jsonl`. Collection requests the `usage,experiment` artifact sets without widening repository scope or collection budgets. Before retaining either artifact, collection verifies repository, run ID, and attempt against `aw_info.json`; a mismatch skips that evidence. Unified assignments, including an explicitly empty map, take precedence, and cumulative experiment state counts never infer a run's variant. The Experiments page shows retained assignment variants with run evidence links, and the Evals ledger shows `YES`, `NO`, and `UNKNOWN` answers distinctly; `UNKNOWN` is not a failed eval.
 
 Normalized shards are written in bounded transactions, with a separate receipt
 recorded after each complete shard. A stopped import can reuse those receipts on
@@ -329,7 +339,7 @@ cao gh issues --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --u
 cao gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
 ```
 
-`-R`, `-w`, `-s`, and `-L` alias `--repo`, `--workflow`, `--status`, and `--limit`. The default limit is 30. Date-only `--until` values include the entire date. Issue and pull request results come from canonical Issue records created by `safe_output.created` observations.
+`-R`, `-w`, `-s`, and `-L` alias `--repo`, `--workflow`, `--status`, and `--limit`. The default limit is 30. Date-only `--until` values include the entire date. Issue and pull request results come from canonical Issue records created by `safe_output.result` observations.
 
 Diagnose and repair the local database:
 

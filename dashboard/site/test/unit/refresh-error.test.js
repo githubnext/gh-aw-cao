@@ -1,19 +1,22 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { renderDashboardCurrentStatus, renderDashboardSnapshotStatus, renderRefreshError } from '../../src/components/refresh-error.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { renderDashboardCurrentStatus, notifyRefreshError } from '../../src/components/refresh-error.js';
 import { updateRateLimitNotification } from '../../src/rate-limit-notification.js';
+
+afterEach(() => document.body.replaceChildren());
 
 describe('refresh error', () => {
   it('explains the stale state and retries the refresh', () => {
     const retry = vi.fn();
-    const error = renderRefreshError(retry);
+    notifyRefreshError(retry, { snapshot: { createdAt: '2026-09-28T12:00:00.000Z' } });
+    const error = /** @type {HTMLElement} */ (document.querySelector('.dashboard-notification'));
 
-    expect(error.getAttribute('role')).toBe('alert');
+    expect(error.querySelector('[role="alert"]')).not.toBeNull();
     expect(error.textContent).toContain('Dashboard data could not be refreshed.');
     expect(error.textContent).toContain('Some views may be unavailable.');
     expect(error.textContent).toContain('most recent cached data');
 
-    const retryButton = /** @type {HTMLButtonElement | null} */ (error.querySelector('.source-refresh-retry'));
+    const retryButton = /** @type {HTMLButtonElement | null} */ (error.querySelector('.dashboard-notification-action'));
     expect(retryButton?.textContent).toBe('Retry');
     expect(retryButton?.type).toBe('button');
     retryButton?.click();
@@ -21,23 +24,23 @@ describe('refresh error', () => {
   });
 
   it('can dismiss the partial data warning', () => {
-    const error = renderRefreshError(vi.fn());
-    document.body.append(error);
+    notifyRefreshError(vi.fn());
+    const error = /** @type {HTMLElement} */ (document.querySelector('.dashboard-notification'));
 
-    const dismissButton = /** @type {HTMLButtonElement | null} */ (error.querySelector('.source-refresh-dismiss'));
-    expect(dismissButton?.getAttribute('aria-label')).toBe('Dismiss partial data warning');
-    expect(dismissButton?.getAttribute('title')).toBe('Dismiss partial data warning');
+    const dismissButton = /** @type {HTMLButtonElement | null} */ (error.querySelector('.dashboard-notification-dismiss'));
+    expect(dismissButton?.getAttribute('aria-label')).toBe('Dismiss Dashboard data could not be refreshed.');
     dismissButton?.click();
 
-    expect(document.body.contains(error)).toBe(false);
+    expect(error.classList.contains('dashboard-notification-exit')).toBe(true);
   });
 
   it('announces a failed refresh with the last complete snapshot time', () => {
-    const status = renderDashboardSnapshotStatus({ createdAt: '2026-09-28T12:00:00.000Z' });
+    notifyRefreshError(vi.fn(), { snapshot: { createdAt: '2026-09-28T12:00:00.000Z' } });
+    const status = /** @type {HTMLElement} */ (document.querySelector('.dashboard-notification'));
 
-    expect(status.getAttribute('role')).toBe('status');
-    expect(status.textContent).toContain('Dashboard refresh failed.');
-    expect(status.textContent).toContain('Showing the last complete snapshot from');
+    expect(status.querySelector('[role="alert"]')).not.toBeNull();
+    expect(status.textContent).toContain('Dashboard data could not be refreshed.');
+    expect(status.textContent).toContain('last complete snapshot from');
   });
 
   it('shows refresh progress in the existing status tooltip', () => {
@@ -84,7 +87,8 @@ describe('refresh error', () => {
   });
 
   it('does not claim cached data exists when the first refresh fails', () => {
-    const error = renderRefreshError(vi.fn(), { hasCachedSnapshot: false });
+    notifyRefreshError(vi.fn());
+    const error = /** @type {HTMLElement} */ (document.querySelector('.dashboard-notification'));
 
     expect(error.textContent).toContain('A complete dashboard snapshot is not available yet.');
     expect(error.textContent).not.toContain('most recent cached data');

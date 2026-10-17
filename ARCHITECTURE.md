@@ -459,6 +459,7 @@ reconstructable.
 | `<operation>/operational-value.mjs` | Optional deterministic repository-scoped operational-value computation installed with its package. |
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
+| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/` | Independent root Go module scaffolding the native `gh cao` extension: help, version, and a bounded local GitHub CLI diagnostic only; no shell/Node command migration or delegation. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
@@ -478,6 +479,24 @@ reconstructable.
 | `adr/` | Durable architectural decision history; normative contracts remain in `specs/` and specification-style documentation. |
 | `tests/` | Unit, integration, load, and workflow-contract tests. |
 | `scripts/` | Repository validation and maintenance utilities. |
+
+The extension's root `go.mod` is separate from `server/go.mod`.
+`cmd/gh-cao/` owns process lifecycle and depends on `internal/cli/`, which
+depends on `internal/ghcli/`. Shared logging comes from
+`github.com/github/gh-aw/pkg/logger`; GitHub CLI execution uses
+`github.com/cli/go-gh/v2`, the same helper used by gh-aw. The scaffold does not
+read policy, access GitHub APIs, or change control-plane authority, installation,
+or runtime ownership. Existing operations remain in `cao.sh` and the Node.js
+CLI; command parity remains future work.
+From the repository root, `make build` creates the ignored local extension
+binary and `make check` runs formatting checks, `go vet`, race-enabled unit
+tests, and a build. Go checks are scoped to `cmd/` and `internal/`, excluding
+npm dependency sources and the independent server module.
+`scripts/build-release.sh VERSION [OUTPUT_DIRECTORY]` cross-compiles standalone
+Linux, macOS, and Windows binaries for amd64 and arm64 with CGO disabled and the
+exact stable release tag embedded in `main.version`, then creates SHA-256
+checksums. `make release VERSION=vX.Y.Z` writes these assets to an empty
+`dist/gh-cao/` directory.
 
 Campaign manifests are the catalog's source of truth for installed workflows and
 the trusted materializer bootstrap. The materializer copies executable resources
@@ -506,7 +525,13 @@ build/test and source-free attestation use separate jobs, producing exact-SHA
 Actions artifacts retained for 90 days. The Release workflow creates a draft
 stable tag at an exact main SHA, waits for that SHA's successful runtime push
 run, verifies its checksum and signed provenance, and attaches the archive and
-checksum before a maintainer publishes the completed draft. Publication locks
+checksum together with the six extension binaries and their checksum manifest.
+The extension build runs in a separate read-only job at the exact release SHA
+with Go caching disabled, runs extension checks, and verifies the embedded tag.
+The source-free attachment job checks the complete binary checksum manifest;
+publication requires the exact nine-asset set before publishing the completed
+draft as an immutable prerelease. A maintainer reviews the completed notes and
+promotes the prerelease to stable. Publication locks
 the tag and assets through immutable releases; no workflow mutates release
 assets afterward. Stable tag sources use release assets; main/SHA sources use
 the successful, unexpired Actions artifacts. The operator materializer verifies GitHub signed provenance bound
@@ -917,7 +942,8 @@ all public; that does not authorize non-public targets or other campaigns.
   and sessions, with bounded volatile memory available only for an explicitly
   acknowledged single-process hosted deployment.
 - **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
-  rebuild, and query service.
+  rebuild, and query service, plus the independent native GitHub CLI extension
+  scaffold.
 - **Dashboard Language** keeps data operations declarative and off the browser
   main thread.
 - **Astro/Starlight** builds the documentation site. The operational dashboard

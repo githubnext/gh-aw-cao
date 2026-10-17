@@ -1893,22 +1893,14 @@ describe('presenter built-in and custom pages', () => {
         },
         'indexing-database-table-counts': {
           source: 'indexing-database-table-counts',
-          rows: [{ table: 'ingestion transactions', records: 1 }],
-          metadata
-        },
-        'indexing-daily-records': {
-          source: 'indexing-daily-records',
-          rows: [
-            { day: '2026-09-01', records: 8 },
-            { day: '2026-09-02', records: 10 }
-          ],
+          rows: [{ table: 'transactions', records: 1 }],
           metadata
         },
         'indexing-ingestion-runs': {
           source: 'indexing-ingestion-runs',
           rows: [
-            { createdAt: '2026-09-01T01:00:00Z', 'workflow-runs': 6, 'run-count-status': 'Reported run count' },
-            { createdAt: '2026-09-02T02:00:00Z', 'workflow-runs': 8, 'run-count-status': 'Reported run count' }
+            { 'shard-day': '2026-09-01', 'workflow-runs': 6, 'run-count-status': 'Reported run count' },
+            { 'shard-day': '2026-09-02', 'workflow-runs': 8, 'run-count-status': 'Reported run count' }
           ],
           metadata
         },
@@ -1964,7 +1956,9 @@ describe('presenter built-in and custom pages', () => {
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
       expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(8);
-      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(1);
+      expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(0);
+      expect(page?.querySelector('[data-view-id="ingestion-storage"]')?.textContent).toContain('Storage engine unknown');
+      expect(page?.querySelector('[data-view-id="indexing-size"]')).toBeNull();
       expect(page?.querySelectorAll('[data-chart-widget="scatter"] .scatter-chart-point')).toHaveLength(2);
       expect(page?.querySelectorAll('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).toHaveLength(1);
       expect(page?.querySelector('[data-view-id="github-api-usage"]')?.textContent).toContain('collector/123/core');
@@ -2547,7 +2541,7 @@ describe('presenter built-in and custom pages', () => {
 
 
 
-  it('renders conditional site-wide callouts and remembers dismissal only in memory', () => {
+  it('renders conditional site-wide callouts and remembers dismissal only in memory', async () => {
     window.localStorage.clear();
     sessionStorage.clear();
     const document = {
@@ -2601,33 +2595,39 @@ describe('presenter built-in and custom pages', () => {
     };
 
     const rendered = renderDashboard({ document, sources });
-    expect(rendered.querySelectorAll('.site-callout')).toHaveLength(2);
-    expect(rendered.querySelector('[data-site-callout="rate-limit-message"]')?.textContent).toContain('Dashboard data is partial');
+    const notices = globalThis.document;
+    await vi.waitFor(() => expect(notices.querySelectorAll('.dashboard-notification:not(.dashboard-notification-exit)')).toHaveLength(2));
+    expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]')?.textContent).toContain('Dashboard data is partial');
     const detailsLink = /** @type {HTMLAnchorElement | null} */ (
-      rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link')
+      notices.querySelector('[data-notification-id="site-callout:rate-limit-message"] .dashboard-notification-link')
     );
     expect(detailsLink?.getAttribute('href')).toBe('#page-coverage');
     expect(detailsLink?.textContent).toBe('View coverage');
     const navigationLink = /** @type {HTMLAnchorElement | null} */ (
-      rendered.querySelector('[data-site-callout="operator-message"] .site-callout-link')
+      notices.querySelector('[data-notification-id="site-callout:operator-message"] .dashboard-notification-link')
     );
     expect(navigationLink?.getAttribute('href')).toBe('#page-usage');
     expect(navigationLink?.textContent).toBe('View Usage');
     const dismiss = /** @type {HTMLButtonElement | null} */ (
-      rendered.querySelector('[data-site-callout="operator-message"] .site-callout-dismiss')
+      notices.querySelector('[data-notification-id="site-callout:operator-message"] .dashboard-notification-dismiss')
     );
+    const storageBeforeDismiss = { ...window.localStorage };
+    const sessionBeforeDismiss = { ...sessionStorage };
     expect(dismiss?.getAttribute('aria-label')).toBe('Dismiss Operator message');
     dismiss?.click();
-    expect(rendered.querySelector('[data-site-callout="operator-message"]')).toBeNull();
-    expect(window.localStorage).toHaveLength(0);
-    expect(sessionStorage).toHaveLength(0);
+    expect(notices.querySelector('[data-notification-id="site-callout:operator-message"]:not(.dashboard-notification-exit)')).toBeNull();
+    expect({ ...window.localStorage }).toEqual(storageBeforeDismiss);
+    expect({ ...sessionStorage }).toEqual(sessionBeforeDismiss);
 
     const rerendered = renderDashboard({ document, sources });
-    expect(rerendered.querySelector('[data-site-callout="operator-message"]')).toBeNull();
-    expect(rerendered.querySelector('[data-site-callout="rate-limit-message"]')).not.toBeNull();
+    disposeDashboard(rendered);
+    expect(notices.querySelector('[data-notification-id="site-callout:operator-message"]:not(.dashboard-notification-exit)')).toBeNull();
+    await vi.waitFor(() => expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]:not(.dashboard-notification-exit)')).not.toBeNull());
 
     const complete = renderDashboard({ document, sources: {} });
-    expect(complete.querySelector('[data-site-callout="rate-limit-message"]')).toBeNull();
+    disposeDashboard(rerendered);
+    await vi.waitFor(() => expect(notices.querySelector('[data-notification-id="site-callout:rate-limit-message"]:not(.dashboard-notification-exit)')).toBeNull());
+    disposeDashboard(complete);
   });
 
   it('collapses the sidebar to icons and restores the persisted display mode', () => {

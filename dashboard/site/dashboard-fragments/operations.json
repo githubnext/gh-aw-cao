@@ -313,58 +313,33 @@
       ]
     },
     {
-      "name": "indexing-daily-records",
-      "subject": "Aggregate records committed from CAO Activity by ingestion UTC day.",
-      "objective": "Expose the observed daily committed-record totals for ingestion diagnostics.",
-      "acceptance": "Each returned UTC day sums committedRecords from the selected ingestion transaction kinds; absent days or low totals alone do not establish missing source records.",
+      "name": "indexing-shard-dates",
+      "subject": "Read the activity date encoded in each retained transaction's shard filename.",
+      "objective": "Separate source shard dates from ingestion timestamps.",
+      "acceptance": "Keep every transaction and leave absent, invalid, or structural shard dates unknown; never substitute import time.",
       "from": "transactions",
-      "filter": {
-        "predicates": [
-          {
-            "field": "kind",
-            "in": [
-              "ingest-jsonl",
-              "ingest-normalized-jsonl"
-            ]
-          }
-        ]
-      },
       "compute": [
         {
-          "as": "day",
-          "function": "date-day",
-          "args": [
-            {
-              "field": "createdAt"
-            }
-          ]
-        }
-      ],
-      "aggregate": {
-        "by": [
-          "day"
-        ],
-        "values": [
-          {
-            "field": "committedRecords",
-            "as": "records",
-            "reducer": "sum"
-          }
-        ]
-      },
-      "order-by": [
+          "as": "shard-day",
+          "function": "activity-shard-day",
+          "args": [{ "field": "payloadScope" }]
+        },
         {
-          "field": "day",
-          "direction": "asc"
+          "as": "missing-shard-day",
+          "function": "equals-any",
+          "args": [{ "field": "shard-day" }, { "value": null }]
         }
       ]
     },
     {
       "name": "indexing-ingestion-runs",
-      "subject": "Show every retained ingestion transaction at its precise timestamp.",
-      "objective": "Compare reported run counts across individual ingestion operations.",
-      "acceptance": "Preserve every transaction, including coincident timestamps, all kinds, and zero counts, without grouping, limits, or page filters. Missing counts remain unavailable and use explicitly labeled zero-position placeholders, not measured zeroes.",
-      "from": "transactions",
+      "subject": "Show retained ingestion transactions at the activity date encoded in their shard filename.",
+      "objective": "Compare reported run counts by source shard activity date, independently of import time.",
+      "acceptance": "Preserve every dated transaction, including coincident dates, all kinds, and zero counts, without grouping, limits, or page filters. Omit missing or invalid shard dates; never substitute import time. Missing counts use labeled zero-position placeholders, not measured zeroes.",
+      "from": "indexing-shard-dates",
+      "filter": {
+        "predicates": [{ "field": "missing-shard-day", "equals": false }]
+      },
       "compute": [
         {
           "as": "workflow-runs",
@@ -390,13 +365,14 @@
         { "field": "id" },
         { "field": "kind" },
         { "field": "createdAt" },
+        { "field": "shard-day" },
         { "field": "rawRuns" },
         { "field": "workflow-runs" },
         { "field": "run-count-status" }
       ],
       "order-by": [
         {
-          "field": "createdAt",
+          "field": "shard-day",
           "direction": "asc"
         },
         {
@@ -507,7 +483,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "workflow runs"
+              "value": "runs"
             }
           ]
         }
@@ -537,7 +513,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "network domains"
+              "value": "domains"
             }
           ]
         }
@@ -567,7 +543,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "tool events"
+              "value": "tools"
             }
           ]
         }
@@ -597,7 +573,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "audit events"
+              "value": "audits"
             }
           ]
         }
@@ -627,7 +603,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "issue events"
+              "value": "issues"
             }
           ]
         }
@@ -657,7 +633,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "operational values"
+              "value": "operationalValues"
             }
           ]
         }
@@ -687,7 +663,7 @@
           "function": "literal",
           "args": [
             {
-              "value": "ingestion transactions"
+              "value": "transactions"
             }
           ]
         }
@@ -1333,20 +1309,170 @@
       }
     },
     {
-      "name": "eval-yes-no-status",
-      "subject": "Select explicit YES/NO eval answers while retaining unknown results only in the underlying evidence collection.",
-      "objective": "Expose explicitly answered eval observations for comparison with their underlying run evidence.",
-      "acceptance": "Return only recorded YES and NO answers; excluded unknowns must not be interpreted as NO, absent evals as YES, or an eval answer as a validated operational outcome.",
+      "name": "eval-status-ledger",
+      "subject": "Inspect every explicitly classified eval answer, including UNKNOWN.",
+      "objective": "Expose retained eval observations with their workflow, run evidence and observation time.",
+      "acceptance": "Keep recorded YES, NO and UNKNOWN answers distinct; unknown or absent evidence must not imply success or failure, and historical answers are not current verdicts or validated operational outcomes.",
       "from": "eval-observations",
+      "compute": [
+        { "as": "_recorded-run-href", "function": "link-href", "args": [{ "field": "evidence-link" }] },
+        { "as": "_eval-run-href", "function": "coalesce", "args": [{ "field": "_recorded-run-href" }, { "field": "evidence-link" }] },
+        { "as": "run-link", "function": "link", "args": [{ "field": "_eval-run-href" }, { "field": "run" }] }
+      ],
       "filter": {
-        "predicates": [{ "field": "eval-result", "in": ["YES", "NO"] }]
+        "predicates": [{ "field": "eval-result", "in": ["YES", "NO", "UNKNOWN"] }]
       }
     },
     {
+      "name": "eval-answer-counts",
+      "subject": "Count recorded YES, NO and UNKNOWN answers for each workflow-scoped eval.",
+      "objective": "Provide complete answer denominators before expanding each eval into three bars.",
+      "acceptance": "Keep canonical eval identities separate and count only explicitly classified observations. Select at most 33 complete eval groups, never truncate an answer group.",
+      "from": "eval-status-ledger",
+      "aggregate": {
+        "by": ["organization", "repository", "workflow", "eval"],
+        "values": [
+          { "field": "eval-result", "as": "answers", "reducer": "count" },
+          { "field": "eval-result", "as": "yes", "reducer": "count", "filter": { "predicates": [{ "field": "eval-result", "equals": "YES" }] } },
+          { "field": "eval-result", "as": "no", "reducer": "count", "filter": { "predicates": [{ "field": "eval-result", "equals": "NO" }] } },
+          { "field": "eval-result", "as": "unknown", "reducer": "count", "filter": { "predicates": [{ "field": "eval-result", "equals": "UNKNOWN" }] } }
+        ]
+      },
+      "order-by": [
+        { "field": "eval", "direction": "asc" },
+        { "field": "organization", "direction": "asc" },
+        { "field": "repository", "direction": "asc" },
+        { "field": "workflow", "direction": "asc" }
+      ],
+      "limit": 33
+    },
+    {
+      "name": "eval-yes-shares",
+      "subject": "Compute the YES share of each eval's recorded answers.",
+      "objective": "Expose recorded YES proportions for comparing answer categories without inferring verified operational outcomes.",
+      "acceptance": "Emit one YES row per retained canonical eval group, including zero YES counts; answer-share is yes / answers across recorded YES, NO and UNKNOWN observations. Do not count absent observations.",
+      "from": "eval-answer-counts",
+      "compute": [
+        { "as": "eval-result", "function": "literal", "args": [{ "value": "YES" }] },
+        { "as": "answer-order", "function": "literal", "args": [{ "value": 0 }] },
+        { "as": "answer-share", "function": "quotient", "args": [{ "field": "yes" }, { "field": "answers" }] }
+      ]
+    },
+    {
+      "name": "eval-no-shares",
+      "subject": "Compute the NO share of each eval's recorded answers.",
+      "objective": "Expose recorded NO proportions for comparing answer categories without treating historical answers as current verdicts.",
+      "acceptance": "Emit one NO row per retained canonical eval group, including zero NO counts; answer-share is no / answers across recorded YES, NO and UNKNOWN observations. Do not count absent observations.",
+      "from": "eval-answer-counts",
+      "compute": [
+        { "as": "eval-result", "function": "literal", "args": [{ "value": "NO" }] },
+        { "as": "answer-order", "function": "literal", "args": [{ "value": 1 }] },
+        { "as": "answer-share", "function": "quotient", "args": [{ "field": "no" }, { "field": "answers" }] }
+      ]
+    },
+    {
+      "name": "eval-unknown-shares",
+      "subject": "Compute the explicit UNKNOWN share of each eval's recorded answers.",
+      "objective": "Expose explicitly recorded UNKNOWN proportions without conflating absent observations with classified uncertainty.",
+      "acceptance": "Emit one UNKNOWN row per retained canonical eval group, including zero UNKNOWN counts; answer-share is unknown / answers across recorded YES, NO and UNKNOWN observations. Missing observations are not UNKNOWN answers.",
+      "from": "eval-answer-counts",
+      "compute": [
+        { "as": "eval-result", "function": "literal", "args": [{ "value": "UNKNOWN" }] },
+        { "as": "answer-order", "function": "literal", "args": [{ "value": 2 }] },
+        { "as": "answer-share", "function": "quotient", "args": [{ "field": "unknown" }, { "field": "answers" }] }
+      ]
+    },
+    {
+      "name": "eval-answer-distribution",
+      "subject": "Compare YES, NO and UNKNOWN percentages within each eval.",
+      "objective": "Show three horizontal bars per eval that together account for all recorded answers.",
+      "acceptance": "Emit all three answer categories, including zero shares; percentages sum to 100 per canonical eval. Missing observations are not UNKNOWN answers. Preserve workflow and repository attribution.",
+      "from": "eval-yes-shares",
+      "union": ["eval-no-shares", "eval-unknown-shares"],
+      "compute": [
+        { "as": "answer-percent", "function": "product", "args": [{ "field": "answer-share" }, { "value": 100 }] },
+        { "as": "eval-label", "function": "concat", "args": [{ "field": "eval" }, { "value": " | " }, { "field": "organization" }, { "value": "/" }, { "field": "repository" }, { "value": ":" }, { "field": "workflow" }] }
+      ],
+      "order-by": [
+        { "field": "eval-label", "direction": "asc" },
+        { "field": "answer-order", "direction": "asc" }
+      ]
+    },
+    {
+      "name": "grader-observed-maxima",
+      "subject": "Find each workflow-scoped grader's maximum retained value in the selected data.",
+      "objective": "Provide an observed normalization denominator without mixing grader identities or claiming a theoretical maximum.",
+      "acceptance": "Group by canonical grader identity, not display name; ignore missing values and preserve zero or negative maxima without substituting a denominator.",
+      "from": "grader-observations",
+      "aggregate": {
+        "by": ["grader-id"],
+        "values": [{ "field": "value", "as": "max-grader-value", "reducer": "max" }]
+      }
+    },
+    {
+      "name": "grader-normalized-observations",
+      "subject": "Normalize each grader observation by that grader's observed maximum.",
+      "objective": "Compare relative grader values over time while preserving native measurements and run provenance.",
+      "acceptance": "Compute value / max-grader-value without clamping or inverting lower-is-better measures; zero or missing denominators produce null, never a fabricated zero or infinity.",
+      "from": "grader-observations",
+      "joins": [
+        {
+          "source": "grader-observed-maxima",
+          "type": "left",
+          "on": [{ "left": "grader-id", "right": "grader-id" }],
+          "fields": [{ "field": "max-grader-value", "as": "max-grader-value" }]
+        }
+      ],
+      "compute": [
+        {
+          "as": "normalized-value",
+          "function": "quotient",
+          "args": [{ "field": "value" }, { "field": "max-grader-value" }]
+        },
+        {
+          "as": "_observation-time",
+          "function": "timestamp",
+          "args": [{ "field": "observed-at" }]
+        },
+        {
+          "as": "_unplottable-value",
+          "function": "equals-any",
+          "args": [{ "field": "normalized-value" }, { "value": null }]
+        },
+        {
+          "as": "_unplottable-time",
+          "function": "equals-any",
+          "args": [{ "field": "_observation-time" }, { "value": null }]
+        },
+        {
+          "as": "grader-series",
+          "function": "concat",
+          "args": [
+            { "field": "organization" }, { "value": "/" }, { "field": "repository" },
+            { "value": " / " }, { "field": "workflow" }, { "value": " / " }, { "field": "grader" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "grader-value-scatter",
+      "subject": "Plot timed grader observations with a defined value-to-observed-maximum ratio.",
+      "objective": "Show relative grader measurements at their recorded observation times.",
+      "acceptance": "Keep each eligible observation and its run link; omit missing ratios or observation times from the plot while retaining those records in the native-value ledger. Ratios are not eval answers or evidence of improvement.",
+      "from": "grader-normalized-observations",
+      "filter": {
+        "predicates": [
+          { "field": "_unplottable-value", "equals": false },
+          { "field": "_unplottable-time", "equals": false }
+        ]
+      },
+      "order-by": [{ "field": "observed-at", "direction": "asc" }]
+    },
+    {
       "name": "grader-status-ledger",
-      "subject": "Report explicit grader pass/fail observations without inferring current state from prior runs.",
-      "objective": "Distinguish explicit per-observation grader pass and fail verdicts from unknown statuses.",
-      "acceptance": "Map only pass/passed to YES and fail/failed to NO, leaving all other statuses unknown; preserve run-level evidence and do not infer current success, causation, or policy authority from a prior verdict.",
+      "subject": "Report grader measurements, units and explicit statuses without confusing them with binary eval answers.",
+      "objective": "Preserve numeric grader evidence and distinguish explicit per-observation pass and fail verdicts from unknown statuses.",
+      "acceptance": "Retain native grader values, units and statuses. Map only pass/passed to YES and fail/failed to NO in the auxiliary verdict field, leaving all other statuses unknown; never infer an eval answer, current success, causation or policy authority from a grader score.",
       "from": "grader-observations",
       "compute": [
         {
@@ -1587,12 +1713,21 @@
       "description": "Determine whether the evidence pipeline supports reliable CAO analysis.",
       "views": [
         {
+          "id": "ingestion-storage",
+          "title": "Data storage",
+          "objective": "Identify the configured storage engine and location. This source-free element reads deployment configuration, not activity evidence; a database query cannot identify the browser's storage configuration.",
+          "data": { "sources": [] },
+          "mark": "element",
+          "element": "storage-info",
+          "layout": "full"
+        },
+        {
           "id": "indexing-database-table-counts",
           "title": "Database table counts",
           "subject": "Compare retained row counts across dashboard database tables.",
           "objective": "Identify missing or unexpectedly sized data tables for ingestion review.",
           "acceptance": "Counts are used as ingestion diagnostics, not as proof of source completeness.",
-          "description": "Rows retained by dashboard database table, including ingestion transactions.",
+          "description": "Rows retained by canonical database table or object-store name, including transactions.",
           "data": {
             "source": "indexing-database-table-counts",
             "query-context": false,
@@ -1727,39 +1862,12 @@
           }
         },
         {
-          "id": "indexing-size",
-          "title": "Indexed data over time",
-          "subject": "Track new Activity records retained by the dashboard each day.",
-          "objective": "Spot changes in ingestion volume that may need investigation.",
-          "acceptance": "An apparent gap is checked against ingestion evidence before attributing it to missing source activity.",
-          "description": "New workflow runs and records retained from CAO Activity each day.",
-          "data": {
-            "source": "indexing-daily-records"
-          },
-          "mark": "chart",
-          "chart": "bar",
-          "layout": "full",
-          "empty-message": "No CAO Activity ingestion history has been retained.",
-          "encoding": {
-            "x": {
-              "field": "day",
-              "type": "nominal",
-              "title": "Indexed"
-            },
-            "y": {
-              "field": "records",
-              "type": "quantitative",
-              "title": "New records"
-            }
-          }
-        },
-        {
           "id": "indexing-workflow-runs",
           "title": "Runs per ingestion",
           "subject": "Track the reported run count of every retained ingestion entry.",
-          "objective": "Identify changes in run volume at the time of each ingestion operation.",
-          "acceptance": "Every transaction is represented at its precise timestamp; unavailable counts are labeled, not inferred as measured zeroes.",
-          "description": "Every retained ingestion entry, across all kinds. Missing run counts are labeled and shown at 0 as placeholders, not measured zeroes. Reported counts are input runs, not distinct retained runs.",
+          "objective": "Identify changes in run volume by the activity date encoded in each source shard filename, not its import time.",
+          "acceptance": "Every transaction with a valid shard activity date is represented without date bucketing or aggregation; unavailable dates are not replaced by import time and unavailable counts are labeled, not inferred as measured zeroes.",
+          "description": "Entries are positioned by the UTC activity date in the source shard filename, not when imported. Entries without a valid shard date are not plotted. Missing run counts are labeled and shown at 0 as placeholders, not measured zeroes. Reported counts are input runs, not distinct retained runs.",
           "data": {
             "source": "indexing-ingestion-runs",
             "query-context": false
@@ -1768,13 +1876,13 @@
           "chart": "scatter",
           "scatter": { "cluster": false },
           "layout": "full",
-          "empty-message": "No ingestion entries have been retained.",
+          "empty-message": "No ingestion entries with a valid shard activity date have been retained.",
           "encoding": {
             "x": {
-              "field": "createdAt",
+              "field": "shard-day",
               "type": "temporal",
               "format": "human-friendly-timestamp",
-              "title": "Ingested at"
+              "title": "Shard activity date"
             },
             "y": {
               "field": "workflow-runs",
@@ -2607,8 +2715,36 @@
           }
         },
         {
+          "id": "experiments-assignments",
+          "title": "Run assignments",
+          "description": "Explicit observed variants for retained runs. Assignments are not experiment outcomes or treatment effects.",
+          "data": {
+            "source": "experiment-assignments",
+            "order-by": [
+              { "field": "workflow", "direction": "asc" },
+              { "field": "assignment-at", "direction": "desc" }
+            ]
+          },
+          "mark": "table",
+          "controls": "interactive",
+          "lazy-list": true,
+          "layout": "full-view",
+          "empty-message": "No experiment assignments were observed.",
+          "encoding": {
+            "columns": [
+              { "field": "experiment", "type": "nominal", "title": "Experiment" },
+              { "field": "variant", "type": "nominal", "title": "Assigned variant" },
+              { "field": "workflow", "type": "nominal", "title": "Workflow" },
+              { "field": "repository", "type": "nominal", "title": "Repository" },
+              { "field": "run", "type": "nominal", "title": "Run" },
+              { "field": "assignment-at", "type": "temporal", "title": "Observed at", "format": "human-friendly-timestamp" },
+              { "field": "assignment-link", "type": "nominal", "title": "Evidence", "format": "workflow-run-url" }
+            ]
+          }
+        },
+        {
           "id": "experiments-definitions",
-          "title": "Experiments",
+          "disclosure": "supplemental",
           "description": "Experiment definitions discovered in run-level audit evidence. Missing campaign progress targets are not inferred.",
           "data": { "source": "experiments" },
           "mark": "table",
@@ -2637,13 +2773,38 @@
       "title": "Evals",
       "icon": "check-circle",
       "experimental": true,
-      "description": "Identify retained eval observations that require evidence review.",
+      "description": "Compare recorded YES, NO and UNKNOWN answer percentages for each eval, then inspect the retained evidence.",
       "views": [
+        {
+          "id": "evals-answer-distribution",
+          "title": "Eval answer distribution",
+          "subject": "Recorded answer percentages for each workflow-scoped eval.",
+          "objective": "Compare the YES, NO and UNKNOWN shares without conflating missing evidence with an unknown answer.",
+          "acceptance": "Show three bars per eval, including zero shares, whose values sum to 100%. Keep workflow identities separate and preserve the evidence ledger.",
+          "description": "Each eval has YES, NO and UNKNOWN bars totaling 100% of its recorded answers. Up to 33 evals are shown, ordered by name; Table view retains all observations. Missing observations are not counted as UNKNOWN.",
+          "data": {
+            "source": "eval-answer-distribution",
+            "order-by": [
+              { "field": "eval-label", "direction": "asc" }
+            ],
+            "limit": 99
+          },
+          "mark": "chart",
+          "chart": "horizontal-bar",
+          "layout": "full",
+          "empty-message": "No eval observations were retained.",
+          "encoding": {
+            "x": { "field": "eval-result", "type": "nominal", "title": "Answer" },
+            "section": { "field": "eval-label", "type": "nominal", "title": "Eval / Repository / Workflow" },
+            "y": { "field": "answer-percent", "type": "quantitative", "title": "Recorded answers", "unit": "percent" },
+            "color": { "field": "eval-result", "type": "nominal", "title": "Answer" }
+          }
+        },
         {
           "id": "evals-statuses",
           "title": "Observed eval answers by workflow",
           "data": {
-            "source": "eval-yes-no-status",
+            "source": "eval-status-ledger",
             "order-by": [
               { "field": "workflow", "direction": "asc" },
               { "field": "observed-at", "direction": "desc" }
@@ -2653,14 +2814,15 @@
           "controls": "interactive",
           "lazy-list": true,
           "layout": "full-view",
-          "empty-message": "No classified YES/NO eval observations were retained.",
+          "empty-message": "No eval observations were retained.",
           "encoding": {
             "columns": [
               { "field": "workflow", "type": "nominal", "title": "Workflow" },
               { "field": "eval", "type": "nominal", "title": "Eval" },
-              { "field": "eval-result", "type": "nominal", "title": "YES / NO" },
+              { "field": "repository", "type": "nominal", "title": "Repository" },
+              { "field": "eval-result", "type": "nominal", "title": "Answer" },
               { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
-              { "field": "run", "type": "nominal", "title": "Run", "display": "evidence-link" }
+              { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" }
             ]
           }
         }
@@ -2669,15 +2831,35 @@
     {
       "id": "graders",
       "kind": "custom",
-      "intent": "Inspect retained grader observations and their result provenance.",
+      "intent": "Compare normalized grader values over time and inspect their native evidence.",
       "subject": "Run-linked grader results and native metric evidence grouped by workflow.",
-      "objective": "Identify grading evidence requiring review without conflating graders and evals.",
-      "acceptance": "Preserve grader identity, native values/status, units when present and observation times; unknown is not pass/fail. Without a current-result pointer, historical observations are not current verdicts or verified gains.",
+      "objective": "Show each grader value relative to its observed maximum while keeping the native-value ledger available for evidence review.",
+      "acceptance": "Plot time against value divided by the maximum for that grader in the selected data; missing values and zero maxima do not produce points. Preserve grader identity, native values/status, units and times; unknown is not pass/fail. Historical observations are not current verdicts or verified gains.",
       "title": "Graders",
       "icon": "checklist",
       "experimental": true,
-      "description": "Identify retained grader observations that require evidence review.",
+      "description": "Compare grader values over time relative to each grader's observed maximum, then inspect native measurements in the ledger.",
       "views": [
+        {
+          "id": "graders-value-scatter",
+          "title": "Grader values relative to observed maximum",
+          "subject": "Timed grader observations normalized by each grader's maximum in the selected data.",
+          "objective": "Compare relative measurements and follow a point to its producing run.",
+          "acceptance": "Preserve each point's timestamp and value/max ratio without connecting or clamping values; omit missing ratios and zero maxima. Normalization is not an eval answer or proof of improvement.",
+          "description": "Each point is value / maximum observed value for the same grader and workflow. Zero or missing maxima are not plotted. Ratios are not eval answers or proof of improvement.",
+          "data": { "source": "grader-value-scatter" },
+          "mark": "chart",
+          "chart": "scatter",
+          "scatter": { "cluster": false },
+          "layout": "full",
+          "empty-message": "No timed grader values have a nonzero observed maximum. Native observations remain in the ledger below.",
+          "encoding": {
+            "x": { "field": "observed-at", "type": "temporal", "title": "Observed at", "format": "human-friendly-timestamp" },
+            "y": { "field": "normalized-value", "type": "quantitative", "title": "Value / observed maximum" },
+            "color": { "field": "grader-series", "type": "nominal", "title": "Grader" },
+            "href": { "field": "run-link", "type": "nominal" }
+          }
+        },
         {
           "id": "graders-statuses",
           "title": "Observed grader results by workflow",
@@ -2697,7 +2879,10 @@
             "columns": [
               { "field": "workflow", "type": "nominal", "title": "Workflow" },
               { "field": "grader", "type": "nominal", "title": "Grader" },
-              { "field": "verdict", "type": "nominal", "title": "YES / NO" },
+              { "field": "repository", "type": "nominal", "title": "Repository" },
+              { "field": "value", "type": "quantitative", "title": "Value" },
+              { "field": "unit", "type": "nominal", "title": "Unit" },
+              { "field": "status", "type": "nominal", "title": "Status" },
               { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
               { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" }
             ]

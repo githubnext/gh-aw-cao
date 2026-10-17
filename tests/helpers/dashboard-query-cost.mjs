@@ -36,6 +36,7 @@ import {
   DATABASE_VERSION,
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
 import { installSqliteIndexedDB } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
+import { dashboardBenchmarkQueries } from "./dashboard-benchmark-queries.mjs";
 
 const CAO_CLI = fileURLToPath(new URL("../../activity/cao.mjs", import.meta.url));
 
@@ -164,7 +165,14 @@ export async function openDeployedDatabase(databasePath) {
 
 /** @param {string} documentPath */
 export async function readDashboardDocument(documentPath) {
-  return (await loadDashboardSource(path.resolve(documentPath))).document;
+  const document = (await loadDashboardSource(path.resolve(documentPath))).document;
+  return {
+    ...document,
+    dashboard: {
+      ...document.dashboard,
+      queries: dashboardBenchmarkQueries(document.dashboard),
+    },
+  };
 }
 
 /**
@@ -306,7 +314,7 @@ export function measureDashboardQueryCost(definition, sources, defect) {
  */
 export async function benchmarkDashboardQueryCost({ databasePath, document, limit }) {
   const dashboard = /** @type {any} */ (document)?.dashboard;
-  const definitions = Array.isArray(dashboard?.queries) ? dashboard.queries : [];
+  const definitions = dashboardBenchmarkQueries(dashboard ?? { queries: [] });
   const { analysis, candidates } = selectCostlyQueries(document, limit ?? DEFAULT_QUERY_COST_CANDIDATES);
   const index = new Map(definitions
     .filter((query) => query && typeof query.name === "string")

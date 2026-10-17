@@ -1,0 +1,60 @@
+{
+  "campaigns": [],
+  "domains": [],
+  "tools": [],
+  "skills": [],
+  "friction": [],
+  "audits": [],
+  "operationalValues": [],
+  "marketplacePackages": [],
+  "repositories": [
+    { "id": "repo:owner/repo", "owner": "owner", "name": "repo", "observedAt": "2026-09-17T12:00:00Z" }
+  ],
+  "workflows": [
+    {
+      "id": "workflow:worker", "repositoryId": "repo:owner/repo",
+      "path": ".github/workflows/worker.md", "name": "Worker", "role": "worker",
+      "repositoryLink": { "href": "https://github.com/owner/repo", "label": "owner/repo" },
+      "observedAt": "2026-09-17T12:00:00Z"
+    },
+    {
+      "id": "workflow:idle", "repositoryId": "repo:owner/repo",
+      "path": ".github/workflows/idle.md", "name": "Idle", "role": "orchestrator",
+      "observedAt": "2026-09-17T12:00:00Z"
+    }
+  ],
+  "runs": [
+    {
+      "id": "run:42:1", "repositoryId": "repo:owner/repo", "workflowId": "workflow:worker",
+      "owner": "owner", "repository": "repo", "workflowPath": ".github/workflows/worker.md",
+      "githubRunId": "42", "attempt": 1, "title": "First attempt",
+      "status": "completed", "conclusion": "failure",
+      "startedAt": "2026-09-17T11:00:00Z", "createdAt": "2026-09-17T12:00:00Z",
+      "runLink": { "href": "https://github.com/owner/repo/actions/runs/42" }
+    },
+    {
+      "id": "run:42:2", "repositoryId": "repo:owner/repo", "workflowId": "workflow:worker",
+      "owner": "owner", "repository": "repo", "workflowPath": ".github/workflows/worker.md",
+      "githubRunId": "42", "attempt": 2, "title": "Current attempt",
+      "status": "completed", "conclusion": "success",
+      "startedAt": "2026-09-17T11:00:00Z", "createdAt": "2026-09-17T12:00:00Z",
+      "runLink": { "href": "https://github.com/owner/repo/actions/runs/42" }
+    }
+  ],
+  "issues": [
+    {
+      "id": "issue:old", "runId": "run:42:1", "sessionId": "session:42:1",
+      "source": "safe-output", "type": "safe_output.created", "summary": "Old issue",
+      "safeOutputType": "create_issue", "isPullRequest": false, "state": "OPEN",
+      "status": "created", "correlationId": "https://github.com/owner/repo/issues/6",
+      "sequence": 1, "timestamp": "2026-09-17T11:10:00Z", "observedAt": "2026-09-17T12:00:00Z"
+    },
+    {
+      "id": "issue:current", "runId": "run:42:2", "sessionId": "session:42:2",
+      "source": "safe-output", "type": "safe_output.created", "summary": "Current issue",
+      "safeOutputType": "create_issue", "isPullRequest": false, "state": "OPEN",
+      "status": "created", "correlationId": "https://github.com/owner/repo/issues/7",
+      "sequence": 1, "timestamp": "2026-09-17T11:20:00Z", "observedAt": "2026-09-17T12:00:00Z"
+    }
+  ]
+}

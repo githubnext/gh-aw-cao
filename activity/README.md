@@ -134,8 +134,34 @@ Schema-v5 cached logs are accepted alongside legacy v2/v4 shards.
 
 The canonical adapter prefers the unified timeline for agent, MCP, firewall,
 and skill events, without adding duplicate legacy events for those categories.
-Other run metadata, audit findings, safe outputs, and evaluation evidence still
-come from the enriched run. Runs without a published session retain the
+Experiment assignments, grader measurements and manifests, and binary eval
+answers also come from the unified session first. `experiment.state` contributes
+only the producing run's explicit assignments, never cumulative counts;
+`grader.result` and `eval.result` populate separate canonical evidence tables.
+Untimed evaluation records remain evidence without invented session timeline
+events. Missing session evidence falls back by category to the enriched run;
+evals can additionally be projected from an already-downloaded `evals.jsonl`,
+after repository, run, and attempt verification using `aw_info.json`. No extra
+GitHub download is introduced. Only allowlisted metadata is retained, never
+evaluation prompts, error bodies, or native payload copies.
+Direct artifact ingestion uses the same canonical eval classifier for a supplied
+`evals.jsonl` when session evals are absent, preserving run/attempt validation and
+audit references. The Evals ledger displays explicit `YES`, `NO`, and `UNKNOWN`
+answers; unknown evidence is neither dropped nor interpreted as a failed eval.
+The same session projection mines firewall decisions, methods, response bytes
+and latency; MCP calls, outcomes, RPC metadata and configuration; skills and
+model inventories; usage, routing and runtime metadata; execution, detection,
+guardrails, job results, safe-output results, plugin installations, rate limits,
+dynamic workflows and collection diagnostics. Metadata is allowlisted, and
+untimed records retain observation time without an invented native timestamp.
+Usage reports are preferred per phase and measurement over proxy copies and
+engine snapshots; repeated request IDs replace prior measurements, and
+cumulative AIC is never summed as per-request usage. Native MCP calls use the
+canonical call type consumed by dashboard queries; RPC-only sessions recover
+call/outcome pairs without counting both representations.
+Session runtime and safe-output evidence take precedence over cached copies.
+Derived audit findings and metadata not supplied by the session still come
+from the enriched run. Runs without a published session retain the
 existing cached-audit parser; `cao ingest --logs` likewise retains its raw
 agent/gateway/firewall parsers when `aw_session.jsonl` is absent. During Activity
 collection, invalid, unsupported, ambiguous, or incorrectly identified optional

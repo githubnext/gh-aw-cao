@@ -19,7 +19,7 @@ const debugDataOperations = createDebug('data-operations');
  * @typedef {Record<string, unknown>} Row
  * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }} Predicate
  * @typedef {{ op: 'filter', predicates?: Predicate[], search?: { fields: string[], query: string } }} FilterOperator
- * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'calendar-week-rhythm'|'latest-failure-streak'|'sum'|'mean'|'min'|'max'|'unique', filter?: { predicates: Predicate[] } }> }} SummarizeOperator
+ * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'calendar-week-rhythm'|'latest-failure-streak'|'sum'|'mean'|'min'|'max'|'unique'|'median'|'p75'|'p90'|'p95', filter?: { predicates: Predicate[] } }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
  * @typedef {{ op: 'slice', offset?: number, limit: number }} SliceOperator
  * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
@@ -28,7 +28,7 @@ const debugDataOperations = createDebug('data-operations');
  * @typedef {'linear'|'log'|'exp'|'pow'|'quad'|'poly'} PredictionMethod
  * @typedef {{ field: string, on: string|string[], method?: PredictionMethod, order?: number, groupby?: string[], as: string }} PredictedField
  * @typedef {{ op: 'predict', values: PredictedField[] }} PredictOperator
- * @typedef {{ field: string, as: string, operation: 'rolling'|'change', ['order-by']: Array<{ field: string, direction?: 'asc'|'desc' }>, groupby?: string[], frame?: number, reducer?: 'sum'|'mean'|'min'|'max', alignment?: 'trailing'|'centered', mode?: 'absolute'|'percentage'|'rate', ['time-field']?: string, unit?: 'second'|'minute'|'hour'|'day' }} WindowField
+ * @typedef {{ field: string, as: string, operation: 'rolling'|'change'|'previous'|'row-number', ['order-by']: Array<{ field: string, direction?: 'asc'|'desc' }>, groupby?: string[], frame?: number, reducer?: 'sum'|'mean'|'min'|'max', alignment?: 'trailing'|'centered', mode?: 'absolute'|'percentage'|'rate', ['time-field']?: string, unit?: 'second'|'minute'|'hour'|'day' }} WindowField
  * @typedef {{ op: 'window', values: WindowField[] }} WindowOperator
  * @typedef {{ op: 'select', fields: Array<{ field: string, as?: string }> }} SelectOperator
  * @typedef {import('./data/analytics/temporal-series.js').TemporalSeriesDefinition} TemporalSeriesDefinition
@@ -52,7 +52,10 @@ export const COMPUTE_FUNCTION_ARITY = {
   'replace-suffix': [3, 3],
   'url-encode': [1, 1],
   'date-day': [1, 1],
+  'activity-shard-day': [1, 1],
   timestamp: [1, 1],
+  'iso-timestamp': [1, 1],
+  sqrt: [1, 1],
   'date-bucket': [2, 2],
   'calendar-week-point': [3, 3],
   'dashboard-link': [3, 4],
@@ -75,11 +78,11 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'date-bucket', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'replace-suffix', 'url-encode', 'date-day', 'activity-shard-day', 'date-bucket', 'calendar-week-point', 'format-count', 'format-percent', 'failure-streak-point', 'link-href', 'iso-timestamp'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
-export const NUMERIC_COMPUTE_FUNCTIONS = ['timestamp', 'number', 'positive-integer', 'sum', 'difference', 'product', 'quotient', 'array-length'];
+export const NUMERIC_COMPUTE_FUNCTIONS = ['timestamp', 'number', 'positive-integer', 'sum', 'difference', 'product', 'quotient', 'array-length', 'sqrt'];
 
 /** Vega regression method names supported without an external model registry. */
 export const PREDICTION_METHODS = ['linear', 'log', 'exp', 'pow', 'quad', 'poly'];
@@ -153,6 +156,11 @@ function windowRows(rows, operator) {
         return left - right;
       });
       indices.forEach((index, position) => {
+        if (definition.operation === 'previous' || definition.operation === 'row-number') {
+          result[index][definition.as] = definition.operation === 'row-number' ? position + 1
+            : position > 0 ? result[indices[position - 1]][definition.field] ?? null : null;
+          return;
+        }
         const current = numericValue(result[index][definition.field]);
         let value = null;
         if (definition.operation === 'rolling') {
@@ -416,6 +424,19 @@ export function computeValue(row, definition) {
   }
   if (definition.function === 'url-encode') return encodeURIComponent(textValue(values[0]));
   if (definition.function === 'timestamp') return timestampMilliseconds(values[0]);
+  if (definition.function === 'iso-timestamp') {
+    const value = numericValue(values[0]);
+    return value === null || value < -62135596800000 || value > 253402300799999 ? null : new Date(value).toISOString();
+  }
+  if (definition.function === 'sqrt') {
+    const value = numericValue(values[0]);
+    return value === null || value < 0 ? null : Math.sqrt(value);
+  }
+  if (definition.function === 'activity-shard-day') {
+    const day = /^(?:[^?#]*\/)?([0-9]{4}-[0-9]{2}-[0-9]{2})-[0-9]{4,}-[a-fA-F0-9]{16}\.jsonl(?:[?#].*)?$/
+      .exec(textValue(values[0]))?.[1];
+    return day && timestampMilliseconds(`${day}T00:00:00Z`) !== null ? day : null;
+  }
   if (definition.function === 'date-day') {
     const timestamp = parseTimestamp(values[0]);
     return timestamp === null ? null : new Date(timestamp).toISOString().slice(0, 10);
@@ -657,6 +678,13 @@ function reduceValues(input, reducer) {
   const values = present.map(Number).filter(Number.isFinite);
   if (reducer === 'sum') return values.reduce((total, value) => total + value, 0);
   if (values.length === 0) return null;
+  const quantile = ({ median: 0.5, p75: 0.75, p90: 0.9, p95: 0.95 })[/** @type {'median'|'p75'|'p90'|'p95'} */ (reducer)];
+  if (quantile !== undefined) {
+    values.sort((left, right) => left - right);
+    const index = (values.length - 1) * quantile;
+    const lower = Math.floor(index);
+    return values[lower] + (values[Math.ceil(index)] - values[lower]) * (index - lower);
+  }
   if (reducer === 'mean') return values.reduce((total, value) => total + value, 0) / values.length;
   if (reducer === 'min') return Math.min(...values);
   return Math.max(...values);

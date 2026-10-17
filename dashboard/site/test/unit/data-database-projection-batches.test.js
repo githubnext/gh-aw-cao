@@ -24,7 +24,7 @@ const run = {
 function records(count, source) {
   return Array.from({ length: count }, (_, index) => ({
     id: `record:${index}`, runId: run.id, source,
-    type: 'tool.call', mcpTool: 'list_issues', mcpServer: 'github'
+    type: 'mcp.tool_call', mcpTool: 'list_issues', mcpServer: 'github'
   }));
 }
 

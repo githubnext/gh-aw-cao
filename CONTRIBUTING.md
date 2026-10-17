@@ -117,6 +117,87 @@ npm run check
 Workflow source changes must pass `npm run compile`. Run
 `npm run compile:locks` only when generated lock files should be updated.
 
+### Go extension development
+
+The root Go module is a scaffold for a native GitHub CLI extension, not a
+replacement for `cao.sh` or `activity/cao.mjs`. It is independent of the existing
+`server/` module. `make check` scopes Go checks to `cmd/` and `internal/`,
+excluding dashboard server tests and Go files inside npm dependencies.
+Use the Go version declared in `go.mod` or newer, GitHub CLI, and Make. For local
+extension installation, the checkout directory must be named `gh-cao`, even
+before the repository is renamed:
+
+```bash
+make check
+make build VERSION=dev
+gh extension install .
+gh cao --help
+gh cao version
+gh cao doctor
+```
+
+Build before installing locally: GitHub CLI links to the root `gh-cao`
+executable, and rebuilding updates that local installation. The extension is
+named `gh cao`; the Go module path and repository URLs remain
+`github.com/githubnext/gh-aw-cao` until the repository is renamed.
+In a differently named worktree, run `./gh-cao` directly instead.
+Remote installation under the `gh cao` name awaits the repository rename;
+release assets can be downloaded and run directly in the meantime.
+On Windows, build `gh-cao.exe` with
+`go build -o gh-cao.exe ./cmd/gh-cao`.
+
+| Path | Responsibility |
+| --- | --- |
+| `cmd/gh-cao/` | Process entry point, interrupt cancellation, exit status, and link-time version (`-X main.version=...`). |
+| `internal/cli/` | Cobra command construction, help, version, and read-only local diagnostics. |
+| `internal/ghcli/` | Context-aware GitHub CLI calls through `github.com/cli/go-gh/v2`, the same helper used by gh-aw. |
+| `go.mod`, `go.sum` | Pinned extension dependencies, separate from `server/go.mod`. |
+| `Makefile` | `build`, `release`, `fmt`, `lint` (gofmt and go vet), `test` (race detector), and `check`. |
+| `scripts/build-release.sh` | Cross-compile six extension binaries with the exact release tag embedded in `main.version`, then write SHA-256 checksums. |
+| `.github/workflows/go-extension.yml` | Path-scoped extension formatting, vet, tests, build, and smoke checks. |
+
+Reuse `github.com/github/gh-aw/pkg/logger` rather than implementing another
+logger. Enable its namespaces with `DEBUG=cao:*` and disable debug colors with
+`DEBUG_COLORS=0`. Log only non-sensitive metadata, never credentials, raw
+arguments, or subprocess payloads. Import small shared gh-aw utility packages
+as needed rather than its full CLI command implementation.
+
+Help and version work offline without GitHub authentication. `doctor` runs only
+`gh --version` with a five-second timeout; it does not check authentication,
+gh-aw, rollout policy, or operational readiness. Unsupported CAO commands fail
+instead of delegating to the shell or reporting success. Continue to use
+`./cao.sh` for all existing operations until parity is implemented separately.
+The extension does not alter installed runtimes, campaign manifests, policy,
+credentials, or distribution workflows.
+
+#### Release binaries
+
+Following the gh-aw release pattern, `make release VERSION=v1.2.3` writes
+standalone `darwin-amd64`, `darwin-arm64`, `linux-amd64`, `linux-arm64`,
+`windows-amd64.exe`, and `windows-arm64.exe` assets and `checksums.txt` under
+`dist/gh-cao/`. The version must be a stable `vMAJOR.MINOR.PATCH` tag, and the
+output directory must be empty to prevent stale assets from entering a release.
+For a different output directory, run:
+
+```bash
+bash scripts/build-release.sh v1.2.3 .tmp/extension-release
+```
+
+Builds disable CGO, trim source paths, and use
+`-ldflags="-s -w -X main.version=v1.2.3"`. Both `version` and `--version`
+report that exact tag. Verify downloaded assets with
+`sha256sum --check checksums.txt` on Linux or
+`shasum -a 256 --check checksums.txt` on macOS.
+
+The Release workflow runs extension checks and builds at the exact release SHA
+in a read-only job with Go caching disabled, then checks the embedded version
+before uploading its artifact. A separate source-free attachment job verifies
+the binary checksums and the existing attested runtime. Publication requires
+the exact nine-asset set before the release becomes an immutable prerelease;
+the highlights agent remains restricted to updating release notes.
+`node --test tests/unit/build-release.test.mjs tests/unit/release-workflow.test.mjs`
+checks the build contract and release gates.
+
 ### CI feedback and post-merge coverage
 
 Pull requests run the fast checks relevant to their changed paths: repository

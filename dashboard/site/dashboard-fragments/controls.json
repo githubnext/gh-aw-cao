@@ -288,7 +288,7 @@
         "predicates": [
           {
             "field": "event-type",
-            "equals": "audit.gateway_steering"
+            "equals": "firewall.steering"
           }
         ]
       },

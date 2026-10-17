@@ -41,6 +41,13 @@ const path = require("node:path");
 const args = process.argv.slice(2);
 fs.appendFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args) + "\\n");
 if (args[0] === "api") {
+  if (args[1] !== "rate_limit") {
+    process.stdout.write(JSON.stringify([{ workflows: [
+      { path: ".github/workflows/remote-experiment.lock.yml" },
+      { path: ".github/workflows/ci.yml" },
+    ] }]));
+    process.exit(0);
+  }
   process.stdout.write(JSON.stringify({ resources: {
     core: { limit: 5000, remaining: 5000, reset: 1791406800 },
   } }));
@@ -104,17 +111,23 @@ process.stderr.write("Fetched 1 run\\n");
     assert.match(collection.stdout, /Activity log collection: completed with exit code 0/);
     const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { env });
     const invocations = (await readFile(item.argumentsPath, "utf8")).trim().split("\n").map(JSON.parse);
-    assert.deepEqual(invocations.filter((args) => args[0] === "api"), [
+    assert.deepEqual(invocations.filter((args) => args[0] === "api" && args[1] === "rate_limit"), [
       ["api", "rate_limit"], ["api", "rate_limit"],
+    ]);
+    assert.deepEqual(invocations.filter((args) => args[0] === "api" && args[1] !== "rate_limit"), [
+      ["api", "repos/github/gh-aw/actions/workflows?per_page=100", "--paginate", "--slurp"],
+      ["api", "repos/githubnext/gh-aw-cao/actions/workflows?per_page=100", "--paginate", "--slurp"],
     ]);
     const logInvocations = invocations.filter((args) => args[0] === "aw");
     assert.equal(logInvocations.length, 2);
     const args = logInvocations[0];
     assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--audit"]);
+    assert.equal(args.at(-1), "github/gh-aw/.github/workflows/remote-experiment.lock.yml");
+    assert.equal(args.some((arg) => arg.endsWith("/ci.yml")), false);
     assert.equal(args.includes("--json"), false);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",
-      "usage",
+      "usage,experiment",
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
     const shardPrefix = path.join(item.root, "cache", "gh-aw-logs-shards", "github-gh-aw-logs-");
@@ -165,6 +178,10 @@ if (args[0] === "api" && args[1] === "rate_limit") {
   process.stdout.write(JSON.stringify({ resources: {
     core: { limit: 5000, remaining: 5000, reset: 1791406800 },
   } }));
+  process.exit(0);
+}
+if (args[0] === "api") {
+  process.stdout.write(JSON.stringify([{ workflows: [{ path: ".github/workflows/sample.lock.yml" }] }]));
   process.exit(0);
 }
 const output = args[args.indexOf("--output") + 1];
@@ -271,6 +288,10 @@ if (args[0] === "api" && args[1] === "rate_limit") {
   process.stdout.write(JSON.stringify({ resources: {
     core: { limit: 5000, remaining: 5000, reset: 1791406800 },
   } }));
+  process.exit(0);
+}
+if (args[0] === "api") {
+  process.stdout.write(JSON.stringify([{ workflows: [{ path: ".github/workflows/sample.lock.yml" }] }]));
   process.exit(0);
 }
 const repository = args[args.indexOf("--repo") + 1];

@@ -54,20 +54,27 @@ Actions and hosted collection SHALL prefer gh-aw's version-1
 repository, run ID, and attempt against `aw_info.json` before storing the safe
 projection as `run.cao_unified_session = { version: 1, path, events }`.
 Each projected event SHALL retain its source line, timestamp, source category,
-canonical type, and allowlisted metadata only. Message bodies, prompts, tool
+original AW `type` identifier, and allowlisted metadata only. Message bodies, prompts, tool
 inputs and outputs, raw errors, and native provenance SHALL NOT be persisted.
 The projection SHALL survive compaction and flow through ordinary canonical
 ingestion and normalized publication, not a second browser ingestion path.
 
-Agent messages and local tool execution events SHALL map to the existing agent
-timeline types. Tool execution starts with an explicit MCP server SHALL map to
-`mcp` / `tool.call`, preserving server, tool, and correlation identity; matching
-completions SHALL inherit that identity and map to `tool.result` or `tool.error`
-without inventing an outcome. Agent-qualified `<server>-` tool-name prefixes
+Agent messages and local tool execution events SHALL retain `user.message`,
+`assistant.message`, `assistant.reasoning`, `tool.execution_start`, and
+`tool.execution_complete`. Tool execution starts with an explicit MCP server
+SHALL use source `mcp` without changing their native type, preserving server,
+tool, and correlation identity; matching completions SHALL inherit that identity
+and retain the observed status without inventing an outcome.
+Agent-qualified `<server>-` tool-name prefixes
 SHALL be removed from the MCP tool identity. A correlated native `mcp.tool_call`
 SHALL supply the call observation instead of counting its agent start again.
-Native MCP calls SHALL use `tool.call`, not `tool_call`. Retained safe session
-projections SHALL receive the same normalization on ingestion, and ingestion
+Native MCP calls SHALL retain `mcp.tool_call`; RPC-only calls SHALL retain
+`mcp.rpc.request` and `mcp.rpc.response`. Firewall and skill records SHALL retain
+`firewall.http_access` and `skill.invoked`; allowed/denied and success/error are
+metadata, not alternate type IDs. Retained safe session projections using the
+historical CAO aliases SHALL be canonicalized to equivalent AW identifiers on
+ingestion, preserving identity and references. Native types SHALL NOT be
+rewritten. Ingestion
 and publication cache identities SHALL change when that mapping changes.
 Both `safeoutputs` and `safe_outputs` SHALL identify the internal server excluded
 from the MCP inventory, without excluding its records from the call evidence.
@@ -278,16 +285,17 @@ Enriched Runs SHALL emit these Audit records:
 | `working_set` exists | `workflow_run_working_set` |
 | `behavior_fingerprint` or `task_domain` exists | `workflow_run_behavior` |
 | Each `agentic_assessments[]` item | `workflow_run_assessment` |
-| Each `graders.results[]` item | `workflow_run_grader` |
+| Each `graders.results[]` item | `grader.result` |
 | `safe_items_count` exists | `workflow_run_safe_outputs` |
 | `comparison` exists | `workflow_run_comparison` |
-| Each `gateway_steering_events[]` item | `audit.gateway_steering` |
+| Each `gateway_steering_events[]` item | `firewall.steering` |
 
-Each `mcp_tool_usage.tool_calls[]` item SHALL emit a `tool.call` Tool record and
+Each `mcp_tool_usage.tool_calls[]` item SHALL emit a `mcp.tool_call` Tool record and
 a correlated outcome record. When the run-level projection is absent or empty,
 `audit.mcp_tool_usage.tool_calls[]` SHALL provide the tool calls. A `success`
-status SHALL emit `tool.result`; every other source status SHALL emit
-`tool.error` while preserving that status. Both records SHALL use source `mcp`
+status SHALL remain on a correlated `tool.execution_complete` record; missing or
+unknown status SHALL NOT become a success or failure merely from completion.
+Both records SHALL use source `mcp`
 and the source `tool_call_id` as `correlationId`. `input_size` or
 `request_size` SHALL map to `requestBytes`; `output_size` or `response_size`
 SHALL map to `responseBytes`.
@@ -314,14 +322,14 @@ retain the `audit.*` type only as the category and legacy fallback.
 
 Gateway steering warnings SHALL map to Audit records. `gateway_steering_events`,
 taken from the enriched Run when present and otherwise from
-`audit.gateway_steering_events`, SHALL emit one `audit.gateway_steering` record
+`audit.gateway_steering_events`, SHALL emit one `firewall.steering` record
 per item. Each record SHALL preserve the source item's `type`, such as
 `token_steering` or `timeout_steering`, as both its audit `code` and its event
 status, its `message` as the event summary, and its `timestamp` when available.
 Steering types SHALL NOT be restricted to a closed list, so a steering type that
 gh-aw adds later remains observable without a schema change.
 
-Each `safe_output_item` envelope SHALL emit `safe_output.created` with source
+Each `safe_output_item` envelope SHALL emit `safe_output.result` with source
 `safe-output` for its preceding `run` envelope with the
 same `run_id`. When no item envelopes are present for a Run, `safe_outputs[]`,
 or `audit.created_items[]` when `safe_outputs` is absent, SHALL provide the

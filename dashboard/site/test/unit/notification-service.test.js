@@ -39,7 +39,7 @@ describe('dashboard notification service', () => {
     handle.update({ message: 'Cancelling…', tone: 'warning', duration: 0 });
     expect(notification?.querySelector('.dashboard-notification-message')?.textContent).toBe('Cancelling…');
     expect(notification?.classList.contains('dashboard-notification-warning')).toBe(true);
-    expect(notification?.querySelector('button')).toBeNull();
+    expect(notification?.querySelector('.dashboard-notification-action')).toBeNull();
   });
 
   it('links the message to a dashboard page and preserves the link on updates', () => {
@@ -256,6 +256,115 @@ describe('dashboard notification service', () => {
 
     expect(document.querySelector('.dashboard-notifications')).toBeNull();
     expect(() => service.publish('Later')).toThrow('Notification service has been disposed.');
+  });
+
+  it('stops reactive rendering and timers when an owned notice is detached', async () => {
+    const service = createNotificationService(document);
+    const handle = service.publish({ id: 'detached', message: 'Pending.', duration: 1000 });
+    const element = document.querySelector('.dashboard-notification');
+    element?.remove();
+    await Promise.resolve();
+    handle.update({ message: 'Obsolete update.', duration: 5000 });
+    expect(element?.textContent).toContain('Pending.');
+    expect(vi.getTimerCount()).toBe(0);
+    service.publish({ id: 'detached', message: 'Replacement.', duration: 0 });
+    expect(document.querySelector('.dashboard-notification')?.textContent).toContain('Replacement.');
+    service.dispose();
+  });
+
+  it('updates keyed notices without duplicating them and ignores superseded owners', () => {
+    const service = createNotificationService(document);
+    const previous = service.publish({ id: 'loading', message: 'Loading.', duration: 0 });
+    const element = document.querySelector('.dashboard-notification');
+    const current = service.publish({ id: 'loading', message: 'Still loading.', duration: 0 });
+    service.publish({ id: 'storage', message: 'Storage unavailable.', duration: 0 });
+    expect(document.querySelectorAll('.dashboard-notification')).toHaveLength(2);
+    expect(document.querySelector('.dashboard-notification')).toBe(element);
+    previous.dismiss();
+    previous.update('Old result.');
+    expect(element?.textContent).toContain('Still loading.');
+    expect(element?.classList.contains('dashboard-notification-exit')).toBe(false);
+    current.dismiss();
+    vi.advanceTimersByTime(180);
+    expect(document.querySelectorAll('.dashboard-notification')).toHaveLength(1);
+  });
+
+  it('remembers user dismissal until the condition resolves without browser storage', () => {
+    const storage = vi.spyOn(Storage.prototype, 'setItem');
+    const service = createNotificationService(document);
+    const handle = service.publish({ id: 'stale', message: 'Data is stale.', duration: 0 });
+    const dismiss = /** @type {HTMLButtonElement} */ (document.querySelector('.dashboard-notification-dismiss'));
+    dismiss.focus();
+    expect(dismiss.getAttribute('aria-label')).toBe('Dismiss Data is stale.');
+    dismiss.click();
+    handle.update({ message: 'Still stale.', duration: 0 });
+    service.publish({ id: 'stale', message: 'Still stale.', duration: 0 });
+    vi.advanceTimersByTime(180);
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
+    expect(storage).not.toHaveBeenCalled();
+    service.resolve('stale');
+    service.publish({ id: 'stale', message: 'Stale again.', duration: 0 });
+    expect(document.querySelector('.dashboard-notification')?.textContent).toContain('Stale again.');
+    storage.mockRestore();
+  });
+
+  it('can republish during exit without an old timer removing the new notice', () => {
+    const service = createNotificationService(document);
+    const old = service.publish({ id: 'loading', message: 'Loading.', duration: 0 });
+    old.dismiss();
+    service.publish({ id: 'loading', message: 'New load.', duration: 0 });
+    vi.advanceTimersByTime(180);
+    expect(document.querySelectorAll('.dashboard-notification')).toHaveLength(1);
+    expect(document.querySelector('.dashboard-notification')?.textContent).toContain('New load.');
+  });
+
+  it('renders descriptions and separate navigation links in the shared notification', () => {
+    const service = createNotificationService(document);
+    const handle = service.publish({
+      id: 'stale', message: 'Data is stale.', description: 'Check ingestion.',
+      href: '#page-indexing', linkLabel: 'View Ingestion', duration: 0
+    });
+    const link = /** @type {HTMLAnchorElement} */ (document.querySelector('.dashboard-notification-link'));
+    expect(link.textContent).toBe('View Ingestion');
+    expect(link.getAttribute('href')).toBe('#page-indexing');
+    expect(document.querySelector('.dashboard-notification-description')?.textContent).toBe('Check ingestion.');
+    link.focus();
+    handle.update({ message: 'Data is still stale.', href: '#page-indexing', linkLabel: 'View Ingestion', duration: 0 });
+    expect(document.activeElement).toBe(link);
+    expect(document.querySelector('.dashboard-notification-description')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('preserves action focus while progress updates replace their callbacks', () => {
+    const service = createNotificationService(document);
+    const previous = vi.fn();
+    const current = vi.fn();
+    const handle = service.publish({
+      message: 'Loading.', duration: 0, action: { label: 'Cancel', run: previous }
+    });
+    const action = /** @type {HTMLButtonElement} */ (document.querySelector('.dashboard-notification-action'));
+    action.focus();
+    handle.update({ message: 'Still loading.', duration: 0, action: { label: 'Cancel', run: current } });
+    expect(document.activeElement).toBe(action);
+    action.click();
+    expect(previous).not.toHaveBeenCalled();
+    expect(current).toHaveBeenCalledOnce();
+  });
+
+  it('preserves declarative DOM provenance outside the dashboard root in debug mode', async () => {
+    const location = window.location.href;
+    const service = createNotificationService(document);
+    try {
+      history.replaceState(null, '', '?debug=1');
+      service.publish({ message: 'Notice.', jsonPath: '$.dashboard.callouts[0]', duration: 0 });
+      await vi.waitFor(() => {
+        const notice = document.querySelector('.dashboard-notification');
+        expect(notice?.getAttribute('data-json-path')).toBe('$.dashboard.callouts[0]');
+        expect(notice?.querySelector('button')?.getAttribute('data-json-path')).toBe('$.dashboard.callouts[0]');
+      });
+    } finally {
+      history.replaceState(null, '', location);
+      service.dispose();
+    }
   });
 
   it('gives the data worker a serializable notification channel', () => {

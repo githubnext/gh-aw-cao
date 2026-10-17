@@ -158,6 +158,7 @@ func auditCurationParents(t *testing.T, writer *Writer) {
 		{"$runs", model.Row{"id": "fallback", "workflowId": "workflow", "repositoryId": "repository", "status": "queued",
 			"conclusion": "failure", "classification": "", "failureKind": "", "createdAt": "2026-01-01T00:00:00Z", "completedAt": "2026-01-01T00:02:00Z"}},
 		{"$graders", model.Row{"id": "grader", "workflowId": "workflow"}},
+		{"$evals", model.Row{"id": "eval", "workflowId": "workflow"}},
 	} {
 		retimeAuditFixture(record.row, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
@@ -234,12 +235,16 @@ func TestAuditCurationPublish(t *testing.T) {
 	appendAudit("specific-finding", "audit", "audit.finding", "critical", "Firewall violation", model.Row{"code": "workflow_failed"}, true)
 	appendAudit("grader", "audit", "audit.grader", "critical", "Workflow Failed", nil, true)
 	appendAudit("eval", "audit", "audit.eval", "critical", "Workflow Failed", nil, true)
-	appendAudit("safe-output", "safe-outputs", "safe_output.created", "observed", "2 safe output items", nil, true)
+	appendAudit("safe-output", "safe-outputs", "safe_output.result", "observed", "2 safe output items", nil, true)
 	appendAudit("behavior", "gh-aw-logs", "workflow_run_behavior", "observed", "Workflow behavior measured", nil, true)
 	appendAudit("assessment", "gh-aw-logs", "workflow_run_assessment", "observed", "Workflow assessed", nil, true)
 	appendAudit("security", "security", "audit.finding", "critical", "Workflow Failed", model.Row{"code": "workflow_failed"}, true)
 	appendAudit("referenced", "agent", "agent.session", "completed", "", nil, true)
 	if err := writer.Append(t.Context(), "$graderObservations", model.Row{"id": "observation", "runId": "run", "graderId": "grader", "auditId": "referenced"}); err != nil {
+		t.Fatal(err)
+	}
+	appendAudit("eval-referenced", "agent", "agent.session", "completed", "", nil, true)
+	if err := writer.Append(t.Context(), "$evalObservations", model.Row{"id": "eval-observation", "runId": "run", "evalId": "eval", "auditId": "eval-referenced", "evalResult": "YES"}); err != nil {
 		t.Fatal(err)
 	}
 	for index, summary := range []string{"AIC NaN", "AIC Infinity", "AIC -1", "AIC -0", "AIC +4.5", "AIC 04.5", "AIC 4.6", "AIC 1e999", "AIC 1e9999999",

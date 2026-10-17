@@ -14,7 +14,7 @@ const queries = [{
 async function seed(ids) {
   const batch = normalize([]);
   batch.tools = ids.map((id) => ({
-    id, runId: 'run:fixture', source: 'mcp', type: 'tool.call',
+    id, runId: 'run:fixture', source: 'mcp', type: 'mcp.tool_call',
     timestamp: observedAt, observedAt
   }));
   await upsertCanonicalBatch(indexedDB, batch, { validateRelationships: false });

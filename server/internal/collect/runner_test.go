@@ -113,13 +113,12 @@ func writeFakeBinary(t *testing.T, directory, name, body string) string {
 
 func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	workspace := t.TempDir()
-	recordPath := filepath.Join(workspace, "gh-args")
 	nodeRecordPath := filepath.Join(workspace, "node-args")
 	catalogRoot := filepath.Join(workspace, "catalog")
 	writeValidCollectionCatalog(t, catalogRoot)
-	gh := writeFakeBinary(t, workspace, "gh",
-		`printf '%s\n' "$@" > `+recordPath+`; printf 'token=%s\n' "$GH_TOKEN" >> `+recordPath)
-	node := writeFakeBinary(t, workspace, "node", `printf '%s\n' "$@" >> `+nodeRecordPath)
+	gh := writeFakeBinary(t, workspace, "gh", `exit 99`)
+	node := writeFakeBinary(t, workspace, "node",
+		`printf '%s\n' "$@" >> `+nodeRecordPath+`; printf 'token=%s\n' "$GH_TOKEN" >> `+nodeRecordPath)
 	lake := Lake{Directory: filepath.Join(workspace, "lake")}
 	runner := Runner{
 		Lake: lake, CatalogRoot: catalogRoot,
@@ -134,13 +133,13 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	recorded, err := os.ReadFile(recordPath) // #nosec G304 -- the path is built from the test's own temporary directory.
+	recorded, err := os.ReadFile(nodeRecordPath) // #nosec G304 -- the path is built from the test's own temporary directory.
 	if err != nil {
 		t.Fatal(err)
 	}
 	arguments := string(recorded)
 	for _, expected := range []string{
-		"aw\nlogs\n--audit", "--repo\nocto/api", "--artifacts\nusage",
+		"activity/collect-workflow-logs.mjs\n" + gh + "\n--audit", "--repo\nocto/api", "--artifacts\nusage,experiment\n",
 		"--start-date\n-30d", "--cache-before\n-30d", "--count\n10000",
 		"--max-storage\n1200", "--prune-older-runs", "token=installation-token",
 	} {
@@ -154,14 +153,11 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	if !strings.Contains(arguments, filepath.Join(lake.ShardDirectory(), "octo-api-logs-")+"*") {
 		t.Fatalf("expected a repository-scoped shard prefix:\n%s", arguments)
 	}
-	nodeArguments, err := os.ReadFile(nodeRecordPath) // #nosec G304 -- test-owned temporary path.
-	if err != nil {
-		t.Fatal(err)
-	}
-	evidence := strings.Index(string(nodeArguments), "activity/session-evidence.mjs")
-	compaction := strings.Index(string(nodeArguments), "compact-jsonl")
-	if evidence < 0 || compaction <= evidence {
-		t.Fatal("expected unified session evidence to be persisted before compaction")
+	collection := strings.Index(arguments, "activity/collect-workflow-logs.mjs")
+	evidence := strings.Index(arguments, "activity/session-evidence.mjs")
+	compaction := strings.Index(arguments, "compact-jsonl")
+	if collection < 0 || evidence <= collection || compaction <= evidence {
+		t.Fatal("expected explicit workflow collection, then session evidence, then compaction")
 	}
 }
 

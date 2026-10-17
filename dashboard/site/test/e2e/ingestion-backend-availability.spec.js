@@ -10,7 +10,7 @@ const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const origin = 'http://ingestion-backend.dashboard.test';
 const asOf = '2026-09-24T00:00:00Z';
 const hash = 'a'.repeat(64);
-const shardName = `gh-aw-logs-runs/logs-${hash}-${'b'.repeat(16)}.jsonl`;
+const shardName = `gh-aw-logs-runs/2026-09-24-0000-${'b'.repeat(16)}.jsonl`;
 const contract = JSON.parse(readFileSync(join(siteRoot, 'test/fixtures/ingestion-backend-contract.json'), 'utf8'));
 const pageDefinition = authoritativeDashboard.dashboard.pages.find(
   (/** @type {{ id: string }} */ page) => page.id === contract.page
@@ -99,26 +99,27 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
     await route.fulfill({ status: 404, body: 'Not found' });
   });
   await page.goto(`${origin}/#page-runs`);
-  const banner = page.locator('[data-site-callout="stale-data"]');
+  const banner = page.locator('[data-notification-id="site-callout:stale-data"]');
   await expect(banner).toBeVisible();
   const bannerBounds = await banner.boundingBox();
-  const mainBounds = await page.locator('.app-main').boundingBox();
-  const noticesBounds = await page.getByRole('region', { name: 'Dashboard notices' }).boundingBox();
-  if (!bannerBounds || !mainBounds || !noticesBounds) {
-    throw new Error('The banner, dashboard content, and notices region must have visible bounds.');
+  const noticesBounds = await page.getByRole('region', { name: 'Notifications' }).boundingBox();
+  if (!bannerBounds || !noticesBounds) {
+    throw new Error('The notice and notification region must have visible bounds.');
   }
-  expect(bannerBounds.x).toBeCloseTo(mainBounds.x, 0);
-  expect(bannerBounds.width).toBeCloseTo(mainBounds.width, 0);
-  expect(bannerBounds.y).toBeCloseTo(noticesBounds.y, 0);
-  await expect(banner).toHaveCSS('border-radius', '0px');
+  expect(bannerBounds.x).toBeGreaterThanOrEqual(0);
+  expect(bannerBounds.x + bannerBounds.width).toBeLessThanOrEqual(viewport.width);
+  expect(noticesBounds.y + noticesBounds.height).toBeLessThanOrEqual(viewport.height);
+  await expect(banner).toHaveCSS('border-radius', '6px');
   await expect(banner).toContainText('24 hours');
   await banner.screenshot({ path: testInfo.outputPath('stale-data-banner.png') });
-  await testInfo.attach(`Full-width stale-data banner (${viewport.width}px)`, {
+  await testInfo.attach(`Managed stale-data notice (${viewport.width}px)`, {
     path: testInfo.outputPath('stale-data-banner.png'), contentType: 'image/png'
   });
   await expect(banner.getByRole('link', { name: 'View Ingestion' })).toHaveAttribute('href', '#page-indexing');
   await banner.getByRole('link', { name: 'View Ingestion' }).click();
   await expect(page.locator('#page-title')).toHaveText('Ingestion');
+  await expect(page.locator('[data-view-id="ingestion-storage"]')).toContainText('Browser-local storage (IndexedDB)');
+  await expect(page.getByRole('heading', { name: 'Indexed data over time' })).toHaveCount(0);
   await expect(page.locator('[data-view-id="indexing-database-table-counts"] [data-chart-widget="horizontal-bar"]')).toBeVisible();
   const shards = page.locator('[data-view-id="ingested-shards"]');
   await expect(shards).toContainText(shardName);
@@ -141,7 +142,11 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   });
   expect(ingestionRows.metadata.availability).toBe('available');
   expect(ingestionRows.rows.length).toBeGreaterThan(0);
-  await expect(scatter.locator('.scatter-chart-point')).toHaveCount(ingestionRows.rows.length);
+  expect(ingestionRows.rows.find((/** @type {any} */ row) => row['shard-day'])?.['shard-day']).toBe('2026-09-24');
+  await expect(scatter.locator('.scatter-chart-point')).toHaveCount(
+    ingestionRows.rows.filter((/** @type {any} */ row) => row['shard-day']).length
+  );
+  await expect(scatter).toContainText('UTC activity date in the source shard filename');
   await expect(scatter).toContainText('Missing run counts are labeled');
   await expect(page.locator('.first-load-overlay')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -152,7 +157,8 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   for (const id of contract.hostedViews) {
     await expect(page.locator(`[data-view-id="${id}"]`)).toHaveCount(0);
   }
-  const requests = await page.evaluate(() => /** @type {Window & { dashboardWorkerRequests?: Array<{ sourceNames?: string[] }> }} */ (window).dashboardWorkerRequests ?? []);
+  const requests = await page.evaluate(() => /** @type {Window & { dashboardWorkerRequests?: Array<{ operation: string, sourceNames?: string[] }> }} */ (window).dashboardWorkerRequests ?? []);
+  expect(requests.some((request) => request.operation === 'query-dashboard-callouts')).toBe(true);
   const sources = requests.flatMap((request) => request.sourceNames ?? []);
   for (const source of contract.hostedSources) expect(sources).not.toContain(source);
   expect(sources).not.toContain('collection-health');

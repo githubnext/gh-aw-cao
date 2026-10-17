@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js';
 import { DASHBOARD_QUERY_LIMITS, QUERY_MAX_JOINS } from '../../src/specification.js';
 import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
@@ -32,28 +33,39 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
-  it.each(['built-in', 'custom'])('validates optional %s page analysis contracts and their annotation budget', (kind) => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const page = document.dashboard.pages.find((/** @type {{ kind: string }} */ candidate) => candidate.kind === kind);
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    for (const field of ['intent', 'subject', 'objective', 'acceptance']) {
-      const original = page[field];
-      for (const invalid of ['', '   ', 42]) {
-        page[field] = invalid;
-        expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
-          ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining(`.${field}`) })])
-        });
-      }
-      page[field] = original;
-    }
-    page.subject = 's'.repeat(513);
-    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
-      ok: false, errors: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining('at most 512') })])
+  describe.each(['built-in', 'custom'])('%s page analysis contracts', (kind) => {
+    it('accepts omitted optional annotations', () => {
+      const document = JSON.parse(authoritativeDashboardSource);
+      const page = document.dashboard.pages.find((/** @type {{ kind: string }} */ candidate) => candidate.kind === kind);
+      for (const field of ['intent', 'subject', 'objective', 'acceptance']) delete page[field];
+      expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     });
-    page.subject = 'Evidence';
-    page.intent = 'i'.repeat(8001);
-    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
-      ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining('.intent') })])
+
+    it.each(['intent', 'subject', 'objective', 'acceptance'].flatMap((field) =>
+      ['', '   ', 42].map((invalid) => ({ field, invalid }))
+    ))('rejects $field = $invalid', ({ field, invalid }) => {
+      const document = JSON.parse(authoritativeDashboardSource);
+      const page = document.dashboard.pages.find((/** @type {{ kind: string }} */ candidate) => candidate.kind === kind);
+      page[field] = invalid;
+      expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+        ok: false, errors: expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining(`.${field}`) })])
+      });
+    });
+
+    it.each([
+      { field: 'subject', length: 513 },
+      { field: 'intent', length: 8001 }
+    ])('rejects $field annotations beyond their budget', ({ field, length }) => {
+      const document = JSON.parse(authoritativeDashboardSource);
+      const page = document.dashboard.pages.find((/** @type {{ kind: string }} */ candidate) => candidate.kind === kind);
+      page[field] = 'a'.repeat(length);
+      expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+        ok: false, errors: expect.arrayContaining([expect.objectContaining({
+          path: field === 'intent' ? expect.stringContaining('.intent')
+            : `$.dashboard.pages[${document.dashboard.pages.indexOf(page)}]`,
+          message: expect.stringContaining(`at most ${length - 1}`)
+        })])
+      });
     });
   });
 
@@ -738,8 +750,9 @@ describe('dashboard document validation', () => {
   });
 
   it('accepts supported dashboard CLI actions', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    document.dashboard['cli-actions'].push({
+    const document = parse(validDocument);
+    document.dashboard.pages = document.dashboard.pages.filter((/** @type {{ kind: string }} */ page) => page.kind === 'custom');
+    document.dashboard['cli-actions'] = [{
       id: 'compile-workflows',
       label: 'Compile workflows',
       description: 'Validate editable workflow sources.',
@@ -754,8 +767,8 @@ describe('dashboard document validation', () => {
         flag: '--pre-releases',
         default: false
       }]
-    });
-    const addedAction = document.dashboard['cli-actions'][document.dashboard['cli-actions'].length - 1];
+    }];
+    const addedAction = document.dashboard['cli-actions'][0];
     const actionArguments = addedAction.arguments;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     addedAction['copy-only'] = 'true';
@@ -5584,7 +5597,7 @@ describe('declarative query validation', () => {
           reducer: 'sum',
           filter: {
             predicates: [
-              { field: 'event-type', equals: 'firewall.request.blocked' },
+              { field: 'event-type', equals: 'firewall.http_access' },
               { field: 'event-source', in: ['firewall', 'gateway'] }
             ]
           }

@@ -718,7 +718,7 @@ describe('database table ingestion and queries', () => {
       'github:run:githubnext/gh-aw-cao:303'
     ]);
     expect(await queries.audits.forRun('github:run:githubnext/gh-aw-cao:303')).toEqual([
-      expect.objectContaining({ source: 'agent', type: 'agent_turn', sequence: 0 })
+      expect.objectContaining({ source: 'agent', type: 'user.message', sequence: 0 })
     ]);
   });
 
@@ -837,7 +837,7 @@ describe('database table ingestion and queries', () => {
       expect.arrayContaining([
         expect.objectContaining({
           source: 'mcp',
-          type: 'tool.call',
+          type: 'mcp.tool_call',
           correlationId: 'call-7',
           summary: 'github/get_file',
           mcpServer: 'github',
@@ -845,7 +845,7 @@ describe('database table ingestion and queries', () => {
         }),
         expect.objectContaining({
           source: 'mcp',
-          type: 'tool.result',
+          type: 'tool.execution_complete',
           correlationId: 'call-7',
           status: 'success'
         })
@@ -853,9 +853,9 @@ describe('database table ingestion and queries', () => {
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
-        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v10$/),
+        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v12$/),
         kind: 'ingest-jsonl',
-        ingestionVersion: 10,
+        ingestionVersion: 12,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       }),

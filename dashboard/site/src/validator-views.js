@@ -840,7 +840,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       ));
     }
     if (view.mark === 'element') {
-      if (!((view.element === 'query-editor' || view.element === 'command-terminal') && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
+      if (!(typeof view.element === 'string' && ['query-editor', 'command-terminal', 'storage-info'].includes(view.element) && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
         validateSourceSequence(view.data.sources, `${path}.data.sources`, errors);
       }
       if (view.data.source !== undefined) {
@@ -1743,6 +1743,11 @@ export function validatePageForm(form, formNode, path, errors) {
       }
     } else if (field.control === 'radio') {
       validateRadioField(field, getSequenceItemNode(getValueNodeByKey(formNode, 'fields'), index), fieldPath, errors);
+    } else if (field.control === 'text') {
+      if (typeof field.default !== 'string' || ['min', 'max', 'step', 'options'].some((key) => field[key] !== undefined)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+          'text fields require a string default and cannot declare numeric bounds or options.', fieldPath));
+      }
     }
   }
 }

@@ -3378,7 +3378,8 @@
             "type": "string"
           },
           "reducer": {
-            "type": "string"
+            "type": "string",
+            "description": "Includes median, p75, p90 and p95: continuous quantiles over known finite numeric values."
           },
           "filter": {
             "$ref": "#/components/schemas/Filter"
@@ -4987,7 +4988,7 @@
             "type": "string"
           }
         },
-        "description": "One observation-count rolling window or elapsed-time change operation, evaluated after aggregation and before temporal-series projection."
+        "description": "An ordered rolling, change, previous-value or row-number operation, evaluated after aggregation and before temporal-series projection. previous preserves scalar type; row-number is one-based."
       }
     },
     "securitySchemes": {

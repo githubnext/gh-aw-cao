@@ -5,9 +5,39 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import test from "node:test";
-import { readRunTimeline } from "../../dashboard/report/aic-usage.mjs";
+import { auditSummaryTimeline, readRunTimeline } from "../../dashboard/report/aic-usage.mjs";
 
 const execFileAsync = promisify(execFile);
+
+test("audit summary normalization preserves skill and friction evidence", () => {
+  const rows = auditSummaryTimeline({
+    skill_activations: [{
+      name: "dashboard-authoring", status: "loaded", source: "repository",
+      invocation_count: 3, failed_count: 1,
+    }],
+    friction: {
+      measurement_state: "measured", canonical_unit: "aic",
+      cost: {
+        aic: 1.25, tokens: { input: 10, output: 20, cache_read: 4, cache_write: 2, reasoning: 6, total: 42 },
+        turns: 2, tool_calls: 1, latency_ms: 500,
+      },
+      friction_ratio: 0.25,
+    },
+  }, "run:307", "2026-09-09T04:02:00Z");
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows[0], {
+    sourceId: "run:307:audit:skill:0", runId: "run:307", timestamp: "2026-09-09T04:02:00Z",
+    source: "audit", type: "audit.skill_activation", summary: "dashboard-authoring",
+    status: "loaded", name: "dashboard-authoring", invocationCount: 3, failedCount: 1,
+    activationSource: "repository",
+  });
+  assert.equal(rows[1].type, "workflow_run_friction");
+  assert.equal(rows[1].measurementState, "measured");
+  assert.equal(rows[1].aic, 1.25);
+  assert.equal(rows[1].inputTokens, 10);
+  assert.equal(rows[1].totalTokens, 42);
+  assert.equal(rows[1].frictionRatio, 0.25);
+});
 
 test("AI Credit usage collection processes the shared logs snapshot without invoking gh", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
@@ -102,7 +132,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
       timestamp: "2026-08-30T10:05:00Z",
     }]);
     assert.deepEqual(usage.securityRuns[0].timeline.map((event) => [event.source, event.type]), [
-      ["firewall", "net_allowed"],
+      ["firewall", "firewall.http_access"],
     ]);
   } finally {
     await rm(root, { recursive: true, force: true });

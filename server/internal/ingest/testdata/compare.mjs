@@ -15,7 +15,10 @@ const names = {
   graders: 'graders',
   graderObservations: 'grader-observations',
   evals: 'evals',
-  evalObservations: 'eval-observations'
+  evalObservations: 'eval-observations',
+  domains: 'domains',
+  tools: 'mcp-calls',
+  audits: 'audits'
 };
 
 for (const [phase, path] of [['runs', process.argv[2]], ['records', process.argv[3]]]) {

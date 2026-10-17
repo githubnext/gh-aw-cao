@@ -36,7 +36,7 @@ function collection(generation, toolRows) {
 const toolRows = [
   {
     run: '42', 'run-attempt': 1, event: 'event:tool-call',
-    'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
+    'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'mcp.tool_call',
     'event-summary': 'github.list_issues', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
   }
 ];

@@ -14,6 +14,7 @@ import {
 } from "../../dashboard/site/src/dashboard-chunks.js";
 import { scrollRenderedViewsIntoView } from "./dashboard-deployed-refresh-helpers.mjs";
 import { serverDashboardPageExclusionReason } from "./dashboard-server-page-coverage.mjs";
+import { createDashboardServerQueryBudget } from "./dashboard-server-query-budget.mjs";
 
 const SERVER_LOCAL_ONLY_PAGES = new Map([
   ["configuration", "configuration-policy is provided by the local preview fixture, not the PostgreSQL server"],
@@ -22,24 +23,22 @@ const SERVER_LOCAL_ONLY_PAGES = new Map([
 const accessToken = process.env.DASHBOARD_SERVER_ACCESS_TOKEN
   || "0123456789abcdef0123456789abcdef";
 
-let remainingQueryTokens = 30;
-let queryBudgetResetAt = 0;
+const queryBudget = createDashboardServerQueryBudget();
+let captureQueryResponse;
 
-test.beforeEach(async ({ context, page }) => {
-  context.on("response", (response) => {
-    if (new URL(response.url()).pathname !== "/api/v1/query") return;
-    const headers = response.headers();
-    remainingQueryTokens = Number(headers["ratelimit-remaining"] ?? 30);
-    queryBudgetResetAt = Date.now() + Number(headers["ratelimit-reset"] ?? 0) * 1000;
+test.beforeEach(async ({ context }) => {
+  captureQueryResponse = undefined;
+  await context.route("**/api/v1/query", async (route) => {
+    const capture = captureQueryResponse;
+    await queryBudget.run(async () => {
+      const response = await route.fetch();
+      capture?.({ ...captureDashboardQueryResponse(response), request: route.request() });
+      await route.fulfill({ response });
+      return response;
+    });
   });
-  await waitForQueryBudget(page);
+  await queryBudget.waitForBudget();
 });
-
-async function waitForQueryBudget(page) {
-  if (remainingQueryTokens >= 20) return;
-  await page.waitForTimeout(Math.max(0, queryBudgetResetAt - Date.now()) + 1000);
-  remainingQueryTokens = 30;
-}
 
 const populatedViews = [
   {
@@ -88,10 +87,10 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
   });
   expect(JSON.stringify(healthPayload)).not.toMatch(/redis:\/\/|password|credential/i);
 
-  const query = await context.request.post("/api/v1/query", {
+  const query = await queryBudget.run(() => context.request.post("/api/v1/query", {
     headers,
     data: { sourceNames: ["runs"], queries: [] },
-  });
+  }));
   expect(query.ok()).toBe(true);
   const queryPayload = await query.json();
   expect(queryPayload.sources.runs.rows).toEqual([
@@ -103,7 +102,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
   ]);
 
   for (const expected of populatedViews) {
-    await waitForQueryBudget(page);
+    await queryBudget.waitForBudget();
     await page.goto(`/#page-${expected.page}`);
     await expect(page.getByRole("heading", { name: expected.heading, exact: true, level: 1 })).toBeVisible();
     const tableMode = page.getByRole("button", { name: "Table", exact: true });
@@ -129,16 +128,11 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
 
     try {
       const initialQueryResponses = [];
-      const onInitialResponse = (response) => {
-        if (new URL(response.url()).pathname === "/api/v1/query") {
-          initialQueryResponses.push(captureDashboardQueryResponse(response));
-        }
-      };
-      page.on("response", onInitialResponse);
+      captureQueryResponse = (response) => initialQueryResponses.push(response);
       await page.goto(`/?access_token=${accessToken}`);
       await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute("content", "server-http");
       await expect(page.locator('[data-page-id="overview"]')).not.toHaveAttribute("aria-busy", "true", { timeout: 30_000 });
-      page.off("response", onInitialResponse);
+      captureQueryResponse = undefined;
       const dashboardResponse = await context.request.get("/dashboard.json");
       expect(dashboardResponse.ok()).toBe(true);
       const dashboard = await dashboardResponse.json();
@@ -167,14 +161,10 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         const queryResponses = definition.id === "overview" ? [...initialQueryResponses] : [];
         const browserErrors = [];
         const onPageError = (error) => browserErrors.push(error.message);
-        const onResponse = (response) => {
-          if (new URL(response.url()).pathname !== "/api/v1/query") return;
-          queryResponses.push(captureDashboardQueryResponse(response));
-        };
         page.on("pageerror", onPageError);
-        page.on("response", onResponse);
         try {
-          await waitForQueryBudget(page);
+          await queryBudget.waitForBudget();
+          captureQueryResponse = (response) => queryResponses.push(response);
           const exclusionReason = serverDashboardPageExclusionReason(definition);
           await page.evaluate((hash) => { window.location.hash = hash; },
             dashboardAssessmentPageHash(definition, dashboard));
@@ -230,7 +220,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
               timeout: 30_000,
             }).toBeGreaterThan(0);
           }
-          for (const { response, body } of queryResponses) {
+          for (const { response, body, request } of queryResponses) {
             result.queries += 1;
             if (!response.ok()) {
               result.errors.push(`Query HTTP ${response.status()}`);
@@ -242,9 +232,9 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
               result.errors.push("Query returned no sources object");
               continue;
             }
-            const request = response.request().postDataJSON();
-            const replaced = new Set(request.replacedSources ?? []);
-            for (const name of [...(request.sourceNames ?? []), ...(request.aliases ?? [])]) {
+            const input = request.postDataJSON();
+            const replaced = new Set(input.replacedSources ?? []);
+            for (const name of [...(input.sourceNames ?? []), ...(input.aliases ?? [])]) {
               if (!replaced.has(name) && !Object.hasOwn(payload.sources, name)) {
                 result.errors.push(`Query did not resolve source: ${name}`);
               }
@@ -254,8 +244,9 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
         } catch (error) {
           result.errors.push(error instanceof Error ? error.message : String(error));
         } finally {
+          await Promise.all(queryResponses.map(({ body }) => body));
+          captureQueryResponse = undefined;
           page.off("pageerror", onPageError);
-          page.off("response", onResponse);
         }
       }
     } catch (error) {

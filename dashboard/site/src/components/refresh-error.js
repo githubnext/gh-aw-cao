@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { formatMediumUtcDateTime, renderCloseButton, renderTooltip } from './ui-primitives.js';
+import { formatMediumUtcDateTime, renderTooltip } from './ui-primitives.js';
+import { publishNotification } from '../notification-service.js';
 import { createDebug } from '../debug.js';
 import { derived, effect, render, state } from '../reactive.js';
 import { dashboardDataStatus } from '../dashboard-data-status.js';
@@ -13,60 +14,23 @@ const debugRefreshError = createDebug('refresh-error');
 
 /**
  * @param {() => void} retry
- * @returns {HTMLElement}
+ * @param {{ snapshot?: { createdAt: string } | null }} [options]
  */
-export function renderRefreshError(retry, { hasCachedSnapshot = true } = {}) {
-  const element = h(
-    'section',
-    { className: 'source-refresh-error', role: 'alert' },
-    h(
-      'div',
-      { className: 'source-refresh-error-message' },
-      h('strong', null, 'Dashboard data could not be refreshed.'),
-      h('p', null, hasCachedSnapshot
-        ? 'Some views may be unavailable. You are seeing the most recent cached data.'
-        : 'A complete dashboard snapshot is not available yet.')
-    ),
-    h(
-      'div',
-      { className: 'source-refresh-actions' },
-      h(
-        'button',
-        {
-          type: 'button',
-          className: 'refresh-button source-refresh-retry',
-          onclick: () => {
-            debugRefreshError({ event: 'retry-requested' });
-            retry();
-          }
-        },
-        octicon('sync'),
-        h('span', null, 'Retry')
-      ),
-      renderCloseButton({
-        className: 'source-refresh-dismiss',
-        label: 'Dismiss partial data warning',
-        onClick: () => {
-          debugRefreshError({ event: 'dismissed' });
-          element.remove();
-        }
-      })
-    )
-  );
+export function notifyRefreshError(retry, { snapshot = null } = {}) {
   debugRefreshError({ event: 'shown' });
-  return element;
-}
-
-/**
- * @param {{ createdAt: string }} snapshot
- */
-export function renderDashboardSnapshotStatus(snapshot) {
-  const date = formatSnapshotDate(snapshot);
-  return h('p', {
-    className: 'dashboard-snapshot-status',
-    role: 'status',
-    'aria-live': 'polite'
-  }, `Dashboard refresh failed. Showing the last complete snapshot from ${date}.`);
+  return publishNotification({
+    id: 'dashboard:refresh-error',
+    message: 'Dashboard data could not be refreshed.',
+    description: snapshot
+      ? `Some views may be unavailable. Showing the most recent cached data: the last complete snapshot from ${formatSnapshotDate(snapshot)}.`
+      : 'A complete dashboard snapshot is not available yet.',
+    tone: 'error',
+    duration: 0,
+    action: { label: 'Retry', run: () => {
+      debugRefreshError({ event: 'retry-requested' });
+      retry();
+    } }
+  });
 }
 
 /**

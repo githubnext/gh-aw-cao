@@ -298,6 +298,10 @@ if (args[0] === 'api' && args[1] === 'rate_limit') {
   } }));
   process.exit(0);
 }
+if (args[0] === 'api' && args[1] === 'repos/githubnext/gh-aw-cao/actions/workflows?per_page=100') {
+  process.stdout.write(JSON.stringify([{ workflows: [{ path: '.github/workflows/dashboard.lock.yml' }] }]));
+  process.exit(0);
+}
 if (args[0] === 'aw' && args[1] === 'logs') {
   const shardPattern = args[args.indexOf('--cached-jsonl') + 1];
   const shardPath = shardPattern.replace(/\\*$/, '') + 'fixture.jsonl';

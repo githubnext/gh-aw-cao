@@ -128,6 +128,7 @@ func (q *cliCommandQueue) ListBefore(ctx context.Context, filter operational.CLI
 		if err != nil {
 			return err
 		}
+		defer func() { _ = rows.Close() }()
 		ids := make([]int64, 0, filter.Limit+1)
 		for rows.Next() {
 			var id int64

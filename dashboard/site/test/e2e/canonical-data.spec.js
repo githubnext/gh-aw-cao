@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -107,7 +108,7 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `event-${run}`,
           'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'agent',
-          'event-type': 'agent_turn', 'event-summary': 'Processed the dashboard request',
+          'event-type': 'user.message', 'event-summary': 'Processed the dashboard request',
           'observed-at': '2026-09-09T05:00:00Z'
         },
         {
@@ -122,7 +123,20 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     domains: {
-      rows: [],
+      rows: [
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, event: `firewall-allowed-${run}`, 'event-source': 'firewall',
+          'event-type': 'firewall.request.allowed', domain: 'api.github.com', decision: 'allowed', 'request-count': 4,
+          'event-timestamp': '2026-09-09T04:02:00Z', 'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, event: `firewall-blocked-${run}`, 'event-source': 'firewall',
+          'event-type': 'firewall.request.blocked', domain: 'api.github.com', decision: 'denied', 'request-count': 2,
+          'event-timestamp': '2026-09-09T04:02:01Z', 'observed-at': '2026-09-09T05:00:00Z'
+        }
+      ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     tools: {
@@ -131,112 +145,28 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `tool-call-${run}`,
           'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'mcp',
-          'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
+          'event-type': 'mcp.tool_call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
         },
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, session: `session-${run}`, event: `tool-result-${run}`,
           'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
-          'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': `call-${run}`,
+          'event-type': 'tool.execution_complete', 'event-status': 'success', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
         }
       ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     issues: {
-      rows: [],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'job-performance': {
-      rows: [{
-        organization: 'githubnext',
-        repository: 'gh-aw-cao',
-        workflow: '.github/workflows/dashboard.md',
-        run,
-        'run-attempt': 2,
-        'job-id': `${run}9`,
-        job: 'build',
-        'started-at': '2026-09-09T04:01:00Z'
-      }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'work-items': {
-      rows: [{
-        'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-        'lifecycle-state': 'blocked', reason: 'Build failed', 'observed-at': '2026-09-09T04:00:00Z'
-      }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'security-findings': {
       rows: [{
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-        'smell-observation-id': `threat-detection:${run}`, 'smell-id': 'threat-detection-secret-leak',
-        'smell-name': 'Secret leak detected', 'smell-severity': 'high',
-        'observed-at': '2026-09-09T04:01:00Z'
+        'run-attempt': 2, event: `report-${run}`, 'event-source': 'safe-output',
+        'event-type': 'safe_output.created', 'event-status': 'created',
+        'safe-output-type': 'create_issue', 'is-pull-request': false,
+        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/7',
+        'event-timestamp': '2026-09-09T04:03:00Z', 'observed-at': '2026-09-09T05:00:00Z'
       }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'firewall-observations': {
-      rows: [
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          domain: 'api.github.com', decision: 'allowed', 'decision-label': 'Allowed by policy',
-          'request-count': 4, engine: 'copilot', 'resolved-model': 'gpt-5.1',
-          'policy-domain-pattern': 'api.github.com', 'policy-rule-description': 'GitHub API access'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          domain: 'api.github.com', decision: 'denied', 'decision-label': 'Denied by policy',
-          'request-count': 2, engine: 'copilot', 'resolved-model': 'gpt-5.1',
-          'policy-domain-pattern': 'api.github.com', 'policy-rule-description': 'Unapproved request'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          domain: 'removed.example', decision: 'unknown', 'request-count': null
-        }
-      ],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'firewall-policy-rules': {
-      rows: [
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          action: 'allow', protocol: 'https', 'domain-pattern': 'api.github.com',
-          description: 'GitHub API access', 'hit-count': 4,
-          engine: 'copilot', 'resolved-model': 'gpt-5.1'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md', run,
-          action: 'deny', protocol: 'both', 'domain-pattern': 'all',
-          description: 'Default deny', 'hit-count': 2,
-          engine: 'copilot', 'resolved-model': 'gpt-5.1'
-        }
-      ],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    usage: {
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-        engine: 'copilot', 'engine-version': '1.2.3', 'requested-model': 'model-a',
-        'resolved-model': 'model-b', 'rollout-mode': 'review', aic: 17,
-        'observed-at': '2026-09-09T04:00:00Z',
-        'run-link': { href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}` }
-      }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    outcomes: {
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', 'safe-output': 'report-1' }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    'operational-values': {
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', 'operational-value': 1 }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     }
   });
@@ -244,21 +174,8 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
 
 function canonicalWarningSources() {
   const sources = databaseTables();
-  for (const sourceName of [
-    'usage',
-    'outcomes',
-    'work-items',
-    'security-findings',
-    'graders',
-    'experiments',
-    'evals',
-    'eval-observations',
-    'admissions',
-    'safe-output-performance'
-  ]) {
-    Reflect.deleteProperty(sources, sourceName);
-  }
   const issueRows = /** @type {Array<Record<string, unknown>>} */ (sources.issues.rows);
+  issueRows.length = 0;
   issueRows.push(
     {
       organization: 'githubnext',
@@ -270,7 +187,7 @@ function canonicalWarningSources() {
       event: 'safe-output-12345',
       'event-timestamp': '2026-09-09T04:03:00Z',
       'event-source': 'safe-output',
-      'event-type': 'safe_output.created',
+      'event-type': 'safe_output.result',
       'event-summary': 'Created issue',
       'event-status': 'created',
       'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/7',
@@ -292,6 +209,7 @@ function canonicalWarningSources() {
       'event-timestamp': '2026-09-09T04:04:00Z',
       'event-source': 'audit',
       'event-type': 'audit.finding',
+      code: 'prompt_injection_detected',
       'event-summary': 'Prompt injection detected',
       'event-status': 'high',
       'observed-at': '2026-09-09T05:00:00Z'
@@ -467,6 +385,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     const queries = createCanonicalQueries(indexedDB);
     return queries.runs.recentFailures();
   });
+
   expect(retained).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:12345' })]);
 
   const viewSources = await page.evaluate(async (sourceDocument) => {
@@ -509,17 +428,75 @@ test('native IndexedDB directly upserts and retains canonical data across reload
       availability: 'available'
     }
   });
-  expect(viewSources.repositories.rows).toMatchObject([{
-    organization: 'githubnext', repository: 'gh-aw-cao'
-  }]);
-  expect(viewSources.workflows.rows).toMatchObject([{
-    organization: 'githubnext', repository: 'gh-aw-cao',
-    workflow: '.github/workflows/dashboard.md'
-  }]);
-  expect(viewSources['job-performance'].rows).toMatchObject([{
-    organization: 'githubnext', repository: 'gh-aw-cao', run: '12345',
-    'run-attempt': 2, 'job-id': '123459', job: 'build'
-  }]);
+  expect(Object.keys(viewSources).sort()).toEqual(['failed-runs', 'runs']);
+});
+
+test('Evals renders persisted artifact answers from the real data worker after reload', async ({ page }) => {
+  await page.evaluate(async () => {
+    const { ingestGhAwLogs } = await import(`${location.origin}/src/data/ingest/coordinator.js`);
+    const observedAt = new Date().toISOString();
+    await ingestGhAwLogs(indexedDB, {
+      observedAt,
+      repository: { githubId: 1, owner: 'octo', name: 'api' },
+      workflow: { githubId: 2, name: 'Worker', path: '.github/workflows/worker.lock.yml' },
+      run: {
+        githubRunId: 303, attempt: 1, createdAt: observedAt,
+        url: 'https://github.com/octo/api/actions/runs/303'
+      },
+      files: [{
+        path: 'usage/evals.jsonl',
+        content: [
+          { id: 'quality', answer: 'YES', runid: '303' },
+          { id: 'correctness', answer: 'NO', runid: '303' },
+          { id: 'uncertain', answer: 'UNKNOWN', runid: '303' }
+        ].map((row) => JSON.stringify(row)).join('\n')
+      }]
+    });
+  });
+  await page.reload();
+  const counts = await page.evaluate(async () => {
+    const [{ readCanonicalBatch }, processor, presenter, document] = await Promise.all([
+      import(`${location.origin}/src/data/storage/indexeddb.js`),
+      import(`${location.origin}/src/data-processor.js`),
+      import(`${location.origin}/src/presenter.js`),
+      fetch(`${location.origin}/dashboard.json`).then((response) => response.json())
+    ]);
+    const dashboard = document.dashboard;
+    const evals = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'evals');
+    const sources = await processor.loadCanonicalDashboardPage(evals.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source), dashboard, undefined, {
+      pageId: 'evals'
+    });
+    window.document.body.append(presenter.renderDashboard({
+      document: { ...document, dashboard: {
+        ...dashboard, pages: [evals], navigation: [{ label: 'Evidence', pages: ['evals'] }]
+      } },
+      sources
+    }));
+    const batch = await readCanonicalBatch(indexedDB);
+    return { evals: batch.evals?.length, observations: batch.evalObservations?.length };
+  });
+  expect(counts).toEqual({ evals: 3, observations: 3 });
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
+  const view = page.locator('[data-view-id="evals-statuses"]');
+  await expect(view).toContainText('quality');
+  await expect(view).toContainText('correctness');
+  await expect(view).toContainText('uncertain');
+  await expect(view).toContainText('UNKNOWN');
+  await expect(view).toContainText('.github/workflows/worker.md');
+  await expect(view.locator('td[data-field="run"] a[href="https://github.com/octo/api/actions/runs/303"]')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Chart', exact: true }).click();
+  const chart = page.locator('[data-view-id="evals-answer-distribution"]');
+  await expect(chart.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(1);
+  await expect(chart.locator('.horizontal-bar-chart-section')).toHaveCount(3);
+  for (const section of await chart.locator('.horizontal-bar-chart-section').all()) {
+    await expect(section.locator('.horizontal-bar-chart-label')).toHaveText(['NO', 'UNKNOWN', 'YES']);
+    const values = await section.locator('.horizontal-bar-chart-value').allTextContents();
+    expect(values.reduce((sum, value) => sum + Number.parseFloat(value), 0)).toBe(100);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await chart.scrollIntoViewIfNeeded();
+  await expect(chart).toBeVisible();
+  expect(await chart.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
 test('data worker returns only the canonical payload requested by a view', async ({ page }) => {
@@ -593,11 +570,9 @@ test('workflow route queries return bounded records and subscribed aggregates th
   const input = databaseTables();
   input.workflows.rows.push({ ...input.workflows.rows[0], repository: 'unrelated' });
   input.runs.rows.push({ ...input.runs.rows[0], repository: 'unrelated', run: '999', 'aic-total': 999 });
-  input.usage.rows = [];
   const updated = databaseTables('updated-browser-generation', '12346');
   updated.runs.rows[0]['run-conclusion'] = 'success';
   updated.runs.rows[0]['aic-total'] = 23;
-  updated.usage.rows = [];
   await context.route('http://dashboard.test/element-sources.json', (route) => route.fulfill({
     contentType: 'application/json', body: JSON.stringify(input)
   }));
@@ -705,7 +680,7 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
 
   for (const payload of [result.initial, result.navigated]) {
     expect(Object.keys(payload).sort()).toEqual([...result.sourceNames].sort());
-    for (const name of result.sourceNames.filter((name) => !name.startsWith('data-health-'))) {
+    for (const name of result.sourceNames.filter((name) => !name.startsWith('data-health-') && !['security-findings', 'admissions'].includes(name))) {
       expect(payload[name].metadata.availability).not.toBe('unavailable');
     }
     // `outcomes` is derived from the `issues` database table, so deleting the
@@ -718,7 +693,14 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
       'outcome-category': 'issue'
     });
     expect(payload['security-findings'].rows).toEqual([]);
-    expect(payload['work-items'].rows).toEqual([]);
+    expect(payload['work-items'].rows).toEqual([
+      expect.objectContaining({ 'lifecycle-state': 'blocked' })
+    ]);
+    expect(payload['security-findings'].metadata.availability).toBe('unavailable');
+    expect(payload.admissions.metadata.availability).toBe('unavailable');
+    expect(payload['detection-observations'].rows).toEqual([
+      expect.objectContaining({ 'detection-signal': 'Prompt injection detected', 'detection-state': 'threat' })
+    ]);
     expect(payload['data-health-collections'].metadata.availability).toBe('unavailable');
     expect(payload['data-health-coverage'].metadata.availability).toBe('unavailable');
   }
@@ -822,7 +804,7 @@ test('data worker queries retained canonical data before downloading sources', a
   });
   expect(result.retained['overview-attention-domains']).toMatchObject({
     rows: [],
-    metadata: { availability: 'empty', 'source-kind': 'derived' }
+    metadata: { availability: 'unavailable', 'source-kind': 'derived' }
   });
   expect(result.refreshed.changed).toBe(false);
   expect(result.refreshed.sources['overview-attention-domains']).toBeDefined();
@@ -937,6 +919,76 @@ test('data worker returns the Models & agents run distribution on initial and na
     }],
     metadata: { 'source-kind': 'derived' }
   });
+});
+
+test('grader scatter subscriptions recompute value/max when new canonical observations arrive', async ({ page, context }) => {
+  /** @param {number} count */
+  const cached = (count) => Array.from({ length: count }, (_, index) => JSON.stringify(currentFixtureDates({
+    schema_version: 5, kind: 'run',
+    run: {
+      run_id: 501 + index, run_attempt: 1, organization: 'octo', repository: 'octo/api',
+      workflow_name: 'Worker', workflow_path: '.github/workflows/worker.lock.yml',
+      created_at: '2026-09-09T04:00:00Z', updated_at: `2026-09-09T04:0${index}:30Z`,
+      status: 'completed', conclusion: 'success',
+      graders: { results: [{ id: 'quality', value: 2 + index * 2, unit: 'score', status: 'observed' }] }
+    }
+  }))).join('\n');
+  for (const [name, count] of [['first', 1], ['next', 2]]) {
+    const shards = normalizedActivityShards(cached(Number(count)));
+    await context.route(`http://dashboard.test/${name}/**`, async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path.endsWith('/payload-hashes.json')) {
+        await route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+          [shardName]: createHash('sha256').update(shards.runs).digest('hex'),
+          [recordShardName]: createHash('sha256').update(shards.records).digest('hex')
+        }) });
+      } else if (path.endsWith(shardName) || path.endsWith(recordShardName)) {
+        await route.fulfill({
+          contentType: 'application/x-ndjson', body: shards[path.endsWith(shardName) ? 'runs' : 'records']
+        });
+      } else {
+        await route.fulfill({ status: 404, body: 'Not found' });
+      }
+    });
+  }
+  await page.goto('http://dashboard.test/?debug-eager-ingest=1');
+  const result = await page.evaluate(async () => {
+    const processor = await import(`${location.origin}/src/data-processor.js`);
+    const { dashboard } = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const sources = ['grader-value-scatter'];
+    const options = { pageId: 'graders', viewId: 'graders-value-scatter' };
+    const initial = await processor.loadCanonicalDashboardSources(
+      `${location.origin}/first/payload-hashes.json`, sources, dashboard, undefined, options
+    );
+    const lifetime = new AbortController();
+    /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput> | undefined} */
+    let subscribed;
+    try {
+      const refreshed = await new Promise((resolve, reject) => {
+        processor.subscribeCanonicalDashboardView('grader-scatter-live', sources, dashboard, (/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ payload) => {
+          const rows = Object.values(payload).flatMap((source) => source.rows);
+          if (!subscribed) {
+            subscribed = payload;
+            processor.refreshCanonicalDashboardSources(
+              `${location.origin}/next/payload-hashes.json`, sources, dashboard, undefined, options
+            ).catch(reject);
+          } else if (rows.length === 2) resolve(payload);
+        }, undefined, { ...options, signal: lifetime.signal, onError: reject });
+      });
+      return { initial, subscribed, refreshed };
+    } finally {
+      lifetime.abort();
+    }
+  });
+  for (const payload of [result.initial, result.subscribed]) {
+    expect(Object.values(payload).flatMap((source) => source.rows)).toMatchObject([
+      { value: 2, 'max-grader-value': 2, 'normalized-value': 1 }
+    ]);
+  }
+  expect(Object.values(result.refreshed).flatMap((source) => source.rows)).toMatchObject([
+    { value: 2, 'max-grader-value': 4, 'normalized-value': 0.5 },
+    { value: 4, 'max-grader-value': 4, 'normalized-value': 1 }
+  ]);
 });
 
 test('data worker returns MCP tool totals without safe outputs calls on initial and navigated requests', async ({ page }) => {
@@ -1086,7 +1138,7 @@ test('data worker queries firewall summaries on initial and navigated requests',
     return { initial, navigated };
   });
 
-  expect(Object.keys(result.initial)).toEqual([
+  expect(Object.keys(result.initial).sort()).toEqual([
     'firewall-domain-totals',
     'firewall-most-blocked-domains'
   ]);
@@ -1186,7 +1238,7 @@ test('data worker computes repository and campaign pages with request-scoped das
     rows: [{
       repository: 'githubnext/gh-aw-cao',
       workflows: 1,
-      reports: 1,
+      reports: null,
       runs: 0,
       aic: 0
     }],
@@ -1278,7 +1330,7 @@ test('campaign Reports retains producing-worker attribution after Activity inges
   expect(result['campaign-issue-tab-counts'].rows).toEqual([{ campaign: 'dashboard', items: 1 }]);
 });
 
-test('data worker serves work items and security findings without dedicated canonical stores', async ({ page }) => {
+test('data worker derives work items and refuses retired report sources', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -1292,7 +1344,8 @@ test('data worker serves work items and security findings without dedicated cano
     rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }]
   });
   expect(result['security-findings']).toMatchObject({
-    rows: [{ 'smell-observation-id': 'threat-detection:12345', 'smell-severity': 'high' }]
+    rows: [],
+    metadata: { availability: 'unavailable', error: expect.stringContaining('No canonical database query') }
   });
 });
 
@@ -1320,16 +1373,16 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
   expect(result.ingestion).toMatchObject({ updated: true });
   expect(result.runs[0].id).toBe('github:run:githubnext/gh-aw-cao:303');
   expect(result.domains.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
-    [0, 'firewall', 'net_allowed']
+    [0, 'firewall', 'firewall.http_access']
   ]);
   expect(result.tools.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
-    [0, 'gateway', 'tool_call'],
-    [1, 'agent', 'agent_tool_start'],
-    [2, 'agent', 'agent_tool_done']
+    [0, 'gateway', 'mcp.tool_call'],
+    [1, 'agent', 'tool.execution_start'],
+    [2, 'agent', 'tool.execution_complete']
   ]);
   expect(result.audits.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
-    [0, 'agent', 'agent_turn'],
-    [1, 'agent', 'assistant_message']
+    [0, 'agent', 'user.message'],
+    [1, 'agent', 'assistant.message']
   ]);
   expect(result.issues).toEqual([]);
 });

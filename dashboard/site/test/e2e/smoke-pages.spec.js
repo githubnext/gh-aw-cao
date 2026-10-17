@@ -118,7 +118,7 @@ test('mobile shell keeps Overview navigation in the hamburger menu', async ({ pa
 
 
 
-test('Ingestion shows CAO Activity status, size trend, and retained transactions', async ({ page }) => {
+test('Ingestion shows shard activity dates and retained transactions', async ({ page }) => {
   const documentModel = authoritativeDashboard;
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -162,19 +162,11 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
       }));
       const sources = {
         transactions: { source: 'transactions', rows, metadata },
-        'indexing-daily-records': {
-          source: 'indexing-daily-records',
-          rows: [
-            { day: '2026-09-11', records: 7050 },
-            { day: '2026-09-12', records: 7950 }
-          ],
-          metadata
-        },
         'indexing-ingestion-runs': {
           source: 'indexing-ingestion-runs',
           rows: [
-            { createdAt: '2026-09-11T01:00:00Z', 'workflow-runs': 6050, 'run-count-status': 'Reported run count' },
-            { createdAt: '2026-09-12T02:00:00Z', 'workflow-runs': 6950, 'run-count-status': 'Reported run count' }
+            { 'shard-day': '2026-09-11', 'workflow-runs': 6050, 'run-count-status': 'Reported run count' },
+            { 'shard-day': '2026-09-12', 'workflow-runs': 6950, 'run-count-status': 'Reported run count' }
           ],
           metadata
         },
@@ -217,7 +209,7 @@ test('Ingestion shows CAO Activity status, size trend, and retained transactions
   await expect(transactionsPage.locator('[data-view-id]')).toHaveCount(5);
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toHaveCount(0);
   await transactionsPage.locator('[data-view-id="indexing-workflow-runs"]').scrollIntoViewIfNeeded();
-  await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(1);
+  await expect(transactionsPage.locator('[data-chart-widget="bar"]')).toHaveCount(0);
   await expect(transactionsPage.locator('[data-chart-widget="scatter"] .scatter-chart-point')).toHaveCount(2);
   await expect(transactionsPage.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(1);
   await expect(transactionsPage.locator('[data-view-id="ingestion-queue-sizes"]')).toHaveCount(0);
@@ -661,7 +653,7 @@ test('Issues switches between its top-repository chart, table, and cards', async
         run: id,
         'run-attempt': 1,
         event: id,
-        'event-type': 'safe_output.created',
+        'event-type': 'safe_output.result',
         'event-summary': summary,
         'event-timestamp': observedAt,
         'safe-output-type': 'create_issue',
@@ -1151,6 +1143,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(experimentalSection).not.toHaveAttribute('open', '');
   await experimentalSection.locator('summary').click();
   await expect(experimentalSection.getByRole('link')).toHaveText([
+    'Model routing',
     'Skills',
     'Steering',
     'Simulators'

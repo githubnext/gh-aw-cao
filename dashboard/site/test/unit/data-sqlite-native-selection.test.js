@@ -166,9 +166,9 @@ describe('real SQLite native record selection', () => {
     vi.stubGlobal('IDBKeyRange', SqliteIDBKeyRange);
     const canonical = evidence();
     canonical.tools = [
-      { id: 'a', runId: 'run:42', summary: null, source: 'mcp', type: 'tool.call', mcpTool: 'missing-server' },
-      { id: 'b', runId: 'run:42', source: 'mcp', type: 'tool.call', mcpServer: null, mcpTool: 'missing-server' },
-      { id: 'c', runId: 'run:42', summary: '', source: 'mcp', type: 'tool.call', mcpServer: 'server', mcpTool: 'tool' }
+      { id: 'a', runId: 'run:42', summary: null, source: 'mcp', type: 'mcp.tool_call', mcpTool: 'missing-server' },
+      { id: 'b', runId: 'run:42', source: 'mcp', type: 'mcp.tool_call', mcpServer: null, mcpTool: 'missing-server' },
+      { id: 'c', runId: 'run:42', summary: '', source: 'mcp', type: 'mcp.tool_call', mcpServer: 'server', mcpTool: 'tool' }
     ];
     await upsertCanonicalBatch(factory, canonical);
     const database = await openCanonicalDatabase(factory);
@@ -179,7 +179,7 @@ describe('real SQLite native record selection', () => {
       const counts = await Promise.all([
         result(store.index('byQuerySummary').count()),
         result(store.index('byQuerySummary').count('[null]')),
-        result(store.index('byQueryMcpIdentity').count('["mcp","tool.call",null,"missing-server"]'))
+        result(store.index('byQueryMcpIdentity').count('["mcp","mcp.tool_call",null,"missing-server"]'))
       ]);
       expect(counts).toEqual([3, 2, 2]);
       await done;

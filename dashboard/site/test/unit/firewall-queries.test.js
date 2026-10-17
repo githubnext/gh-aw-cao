@@ -25,13 +25,13 @@ const runs = [
   { id: 'run:2', githubRunId: '2', owner: 'org', repository: 'other', workflowPath: 'other.md' }
 ];
 const records = [
-  { id: 'allowed', runId: 'run:1', type: 'net_allowed', decision: 'allowed', requestCount: 0 },
-  { id: 'blocked', runId: 'run:1', type: 'net_blocked', decision: 'denied', requestCount: 7 },
-  { id: 'null-count', runId: 'run:1', type: 'firewall.request.allowed', decision: 'allowed', requestCount: null },
-  { id: 'missing-count', runId: 'run:2', type: 'firewall.request.blocked', decision: 'denied' },
-  { id: 'other-source', runId: 'run:1', source: 'other', type: 'net_blocked', decision: 'denied', requestCount: 100 },
-  { id: 'other-type', runId: 'run:1', type: 'tool.call', decision: 'denied', requestCount: 100 },
-  { id: 'orphan', runId: 'missing', type: 'net_blocked', decision: 'denied', requestCount: 2 }
+  { id: 'allowed', runId: 'run:1', type: 'firewall.http_access', decision: 'allowed', requestCount: 0 },
+  { id: 'blocked', runId: 'run:1', type: 'firewall.http_access', decision: 'denied', requestCount: 7 },
+  { id: 'null-count', runId: 'run:1', type: 'firewall.http_access', decision: 'allowed', requestCount: null },
+  { id: 'missing-count', runId: 'run:2', type: 'firewall.http_access', decision: 'denied' },
+  { id: 'other-source', runId: 'run:1', source: 'other', type: 'firewall.http_access', decision: 'denied', requestCount: 100 },
+  { id: 'other-type', runId: 'run:1', type: 'mcp.tool_call', decision: 'denied', requestCount: 100 },
+  { id: 'orphan', runId: 'missing', type: 'firewall.http_access', decision: 'denied', requestCount: 2 }
 ].map((record) => ({
   source: 'firewall', domain: 'example.com', timestamp: '2026-10-15T00:00:00Z', ...record
 }));
@@ -45,7 +45,7 @@ async function seed(factory = indexedDB) {
       for (const row of runs) transaction.objectStore('runs').put(row);
       for (const row of records) transaction.objectStore('domains').put(row);
       transaction.objectStore('audits').put({
-        id: 'not-a-domain', runId: 'run:1', source: 'firewall', type: 'net_blocked',
+        id: 'not-a-domain', runId: 'run:1', source: 'firewall', type: 'firewall.http_access',
         domain: 'unrelated.example', decision: 'denied', requestCount: 999
       });
       transaction.oncomplete = () => resolve(undefined);
@@ -77,10 +77,10 @@ describe('Firewall query contract', () => {
       ...observation, name: 'domain-observations', from: 'domains', joins: undefined,
       filter: { predicates: [
         { field: 'event-source', equals: 'firewall' },
-        { field: 'event-type', in: ['firewall.request.allowed', 'firewall.request.blocked'] }
+        { field: 'event-type', in: ['firewall.http_access', 'firewall.http_access'] }
       ] },
       compute: [{ as: 'request-count-value', function: 'coalesce', args: [{ field: 'request-count' }, { value: 1 }] }],
-      select: observation?.select.map((field) => ({
+      select: observation?.select?.map((field) => ({
         ...field,
         field: field.field === 'id' ? 'event' : field.field === 'timestamp' ? 'event-timestamp' : field.field
       }))

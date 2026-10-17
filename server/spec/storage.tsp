@@ -148,9 +148,12 @@ model domains {
   decision?: string;
   domain?: string;
   id: string;
+  latencyMs?: decimal;
+  method?: string;
   observedAt?: utcDateTime;
   payloadRef?: string;
   requestCount?: int64;
+  responseBytes?: int64;
   @parent("runs")
   runId: string;
   source?: string;
@@ -269,6 +272,73 @@ model friction {
  */
 @runPartition
 model audits {
+  routingStage?: string;
+  routingSchema?: string;
+  routingStatus?: string;
+  routingGoal?: string;
+  routingConfiguredMode?: string;
+  routingMode?: string;
+  routingSelectedModel?: string;
+  routingSelectedEffort?: string;
+  routingRequestedModel?: string;
+  routingRequestedEffort?: string;
+  routingAppliedEffort?: string;
+  routingTaskType?: string;
+  routingScope?: string;
+  routingComplexity?: string;
+  routingPurpose?: string;
+  routingAgentName?: string;
+  routingAgentId?: string;
+  routingRouted?: string;
+  routingOutcome?: string;
+  routingRouterVersion?: string;
+  routingAwfVersion?: string;
+  routingClassifierModel?: string;
+  routingClassifierEffort?: string;
+  routingClassifierAttempts?: decimal;
+  routingLatencyMs?: decimal;
+  routingDegraded?: boolean;
+  routingDegradedReason?: string;
+  routingEnabled?: boolean;
+  routingSubstitution?: string;
+  routingEffectiveModel?: string;
+  routingSteeringType?: string;
+  routingSteeringThreshold?: decimal;
+  routingMaxCredits?: decimal;
+  routingSessionClock?: decimal;
+  routingDeviations?: string;
+  routingInventoryComplete?: boolean;
+  component?: string;
+  phase?: string;
+  `model`?: string;
+  provider?: string;
+  effort?: string;
+  durationMs?: decimal;
+  sourceEngine?: string;
+  exitCode?: int64;
+  httpStatus?: int64;
+  method?: string;
+  direction?: string;
+  requestBytes?: int64;
+  responseBytes?: int64;
+  premiumRequests?: decimal;
+  totalCostUsd?: decimal;
+  totalAic?: decimal;
+  errorsCount?: int64;
+  permissionDenialsCount?: int64;
+  resource?: string;
+  resetAt?: utcDateTime;
+  rateLimit?: int64;
+  remaining?: int64;
+  used?: int64;
+  requestAttempt?: int64;
+  delayMs?: decimal;
+  threshold?: decimal;
+  value?: decimal;
+  transport?: string;
+  required?: boolean;
+  scope?: string;
+  digest?: string;
   acceptedAt?: utcDateTime;
   activationSource?: string;
   actor?: string;
@@ -514,6 +584,7 @@ model evals {
 
 @runPartition
 model evalObservations {
+  auditId?: string;
   direction?: string;
   @parent("evals")
   evalId: string;

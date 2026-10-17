@@ -131,12 +131,6 @@ function propagateDashboardDomProvenance(node) {
 function annotateDashboardDom(root, document, getBuiltInPagePayload) {
   annotateDomTree(root, '$.dashboard');
 
-  const callouts = Array.isArray(document.dashboard.callouts) ? document.dashboard.callouts : [];
-  for (const element of root.querySelectorAll('[data-site-callout]')) {
-    const index = callouts.findIndex((callout) => callout.id === element.getAttribute('data-site-callout'));
-    if (index >= 0) annotateDomTree(element, `$.dashboard.callouts[${index}]`);
-  }
-
   const navLinks = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')];
   const pageElements = [...root.querySelectorAll('[data-page-id]')];
   document.dashboard.pages.forEach((page, pageIndex) => {
@@ -202,7 +196,7 @@ export function annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePay
  * @param {string} jsonPath
  * @param {string} [javascriptView]
  */
-function annotateDomTree(root, jsonPath, javascriptView) {
+export function annotateDomTree(root, jsonPath, javascriptView) {
   for (const element of [root, ...root.querySelectorAll('*')]) {
     element.setAttribute('data-json-path', jsonPath);
     if (javascriptView) {

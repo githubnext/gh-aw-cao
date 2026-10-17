@@ -2,6 +2,91 @@ import { DATABASE_NAME, authoritativeDashboard, buildPresenterModuleUrl, devices
 
 registerSmokeRoutes();
 
+test('managed notices follow explicit dashboard themes rather than the browser theme', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.evaluate(async ({ themeUrl, notificationUrl, stylesUrl }) => {
+    const [{ renderThemeControl }, { publishNotification }, { getPrimerStyles }] = await Promise.all([
+      import(themeUrl),
+      import(notificationUrl),
+      import(stylesUrl)
+    ]);
+    const style = document.createElement('style');
+    style.textContent = getPrimerStyles();
+    document.head.append(style);
+    const root = document.querySelector('#root');
+    if (!root) throw new Error('Dashboard root is missing.');
+    root.classList.add('dashboard-root');
+    root.append(renderThemeControl());
+    publishNotification({ id: 'theme-test', message: 'Theme-aware notice.', duration: 0 });
+  }, {
+    themeUrl: 'http://dashboard.test/src/components/theme-settings.js',
+    notificationUrl: 'http://dashboard.test/src/notification-service.js',
+    stylesUrl: 'http://dashboard.test/src/styles.js'
+  });
+  const notice = page.locator('[data-notification-id="theme-test"]');
+  await page.getByRole('button', { name: 'Dark', exact: true }).click();
+  await expect(notice).toHaveCSS('background-color', 'rgb(13, 17, 23)');
+  await page.getByRole('button', { name: 'Light', exact: true }).click();
+  await expect(notice).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.getByRole('button', { name: 'System', exact: true }).click();
+  await expect(notice).toHaveCSS('background-color', 'rgb(13, 17, 23)');
+});
+
+for (const width of [390, 1440]) {
+  test(`notification manager stacks, dismisses, and resolves concurrent notices at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    const moduleUrl = 'http://dashboard.test/src/notification-service.js';
+    await page.evaluate(async (url) => {
+      const { publishNotification } = await import(url);
+      publishNotification({ id: 'storage', message: 'Browser storage is unavailable.', tone: 'warning', duration: 0 });
+      publishNotification({ id: 'loading', message: 'Loading dashboard data.', duration: 0 });
+      publishNotification({
+        id: 'stale', message: 'Dashboard data is stale.', description: 'Review ingestion before relying on these results.',
+        href: '#page-indexing', linkLabel: 'View Ingestion', tone: 'warning', duration: 0
+      });
+      publishNotification({ id: 'loading', message: 'Refreshing dashboard data.', duration: 0 });
+    }, moduleUrl);
+    const region = page.getByRole('region', { name: 'Notifications' });
+    await expect(region.locator('.dashboard-notification')).toHaveCount(3);
+    await expect(region.locator('[data-notification-id="loading"]')).toContainText('Refreshing dashboard data.');
+    await expect(region.getByRole('link', { name: 'View Ingestion' })).toHaveAttribute('href', '#page-indexing');
+    const dismiss = region.getByRole('button', { name: 'Dismiss Browser storage is unavailable.' });
+    await dismiss.focus();
+    await page.keyboard.press('Enter');
+    await expect(region.locator('.dashboard-notification')).toHaveCount(2);
+    await page.evaluate(async (url) => {
+      const { publishNotification } = await import(url);
+      publishNotification({ id: 'storage', message: 'Browser storage is unavailable.', duration: 0 });
+    }, moduleUrl);
+    await expect(region.locator('.dashboard-notification')).toHaveCount(2);
+    await page.evaluate(async (url) => {
+      const { publishNotification, resolveNotification } = await import(url);
+      resolveNotification('loading');
+      resolveNotification('storage');
+      publishNotification({ id: 'storage', message: 'Browser storage is unavailable again.', duration: 0 });
+      for (let index = 0; index < 10; index++) {
+        publishNotification({
+          id: `notice-${index}`, message: `Notice ${index}`,
+          description: 'Several notices remain individually accessible without overflowing the viewport.',
+          duration: 0
+        });
+      }
+    }, moduleUrl);
+    await expect(region.locator('.dashboard-notification')).toHaveCount(12);
+    const bounds = await region.boundingBox();
+    expect(bounds).not.toBeNull();
+    if (!bounds) throw new Error('Notification region is not visible.');
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(844);
+    expect(await region.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    await region.getByRole('button', { name: 'Dismiss Notice 9', exact: true }).click();
+    await expect(region.locator('[data-notification-id="notice-9"]')).toHaveCount(0);
+  });
+}
+
 test('hosted rate-limit notice reacts to request recovery without duplicating alerts', async ({ page }) => {
   const moduleUrl = 'http://dashboard.test/src/rate-limit-notification.js';
   await page.evaluate(async ({ notifierUrl, statusUrl }) => {
@@ -13,7 +98,7 @@ test('hosted rate-limit notice reacts to request recovery without duplicating al
   }, { notifierUrl: moduleUrl, statusUrl: 'http://dashboard.test/src/components/refresh-error.js' });
   await expect(page.getByRole('alert')).toHaveCount(1);
   await expect(page.getByRole('alert')).toHaveText('Dashboard is rate limited. Please try again shortly.');
-  await expect(page.getByRole('button', { name: 'Dashboard is rate limited' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Dashboard is rate limited', exact: true })).toBeVisible();
   await expect(page.locator('.dashboard-current-status .octicon-stop')).toHaveCount(1);
   await expect(page.locator('.dashboard-current-status')).toHaveAttribute('data-tone', 'danger');
   await page.evaluate(async (url) => {

@@ -1,6 +1,7 @@
 package postgresx
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -20,6 +21,12 @@ func TestNormalizeProjectedFacts(t *testing.T) {
 		{"grader time", "$graderObservations", model.Row{"resultTimestamp": "2026-10-02T00:00:00Z"}, model.Row{"timestamp": "2026-10-02T00:00:00Z"}},
 		{"eval facts", "$evalObservations", model.Row{"resultTimestamp": nil, "answer": "UNKNOWN"}, model.Row{"timestamp": nil, "evalResult": "UNKNOWN"}},
 		{"equivalent time", "$evalObservations", model.Row{"timestamp": "2026-10-02T00:00:00.000Z", "resultTimestamp": "2026-10-02T00:00:00Z"}, model.Row{"timestamp": "2026-10-02T00:00:00.000Z"}},
+		{"legacy error", "$tools", model.Row{"type": "tool.error"}, model.Row{"type": "tool.execution_complete", "status": "error"}},
+		{"legacy firewall", "$domains", model.Row{"type": "net_blocked"}, model.Row{"type": "firewall.http_access", "decision": "denied"}},
+		{"explicit decision", "$domains", model.Row{"type": "net_blocked", "decision": "blocked"}, model.Row{"type": "firewall.http_access", "decision": "blocked"}},
+		{"explicit unknown status", "$tools", model.Row{"type": "tool.error", "status": nil}, model.Row{"type": "tool.execution_complete", "status": nil}},
+		{"numeric JSON status", "$audits", model.Row{"type": "firewall.event", "status": json.Number("200")}, model.Row{"type": "firewall.event", "status": "200"}},
+		{"numeric status", "$audits", model.Row{"type": "firewall.event", "status": float64(403)}, model.Row{"type": "firewall.event", "status": "403"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			original := model.Row{}
@@ -39,6 +46,33 @@ func TestNormalizeProjectedFacts(t *testing.T) {
 				t.Fatal("source record was mutated")
 			}
 		})
+	}
+}
+
+func TestSessionEventTypeAlignment(t *testing.T) {
+	for legacy, native := range legacySessionEventTypes {
+		for _, source := range []string{"$domains", "$tools", "$skills", "$audits", "$issues"} {
+			input := model.Row{"id": "stable", "type": legacy, "payloadRef": "aw_session.jsonl#L2"}
+			row, err := normalizeProjectedFacts(source, input)
+			if err != nil || row["type"] != native || row["id"] != "stable" || row["payloadRef"] != input["payloadRef"] {
+				t.Fatalf("%s %s: unexpected aligned record %v (%v)", source, legacy, row, err)
+			}
+			if input["type"] != legacy {
+				t.Fatal("source record was mutated")
+			}
+			if legacy == "tool.result" {
+				if _, present := row["status"]; present {
+					t.Fatal("legacy completion inferred an outcome")
+				}
+			}
+		}
+	}
+	for _, native := range []string{"mcp.tool_call", "tool.execution_complete", "future.event"} {
+		input := model.Row{"type": native, "status": "error"}
+		row, err := normalizeProjectedFacts("$tools", input)
+		if err != nil || !reflect.DeepEqual(row, input) {
+			t.Fatalf("native event changed: %v (%v)", row, err)
+		}
 	}
 }
 

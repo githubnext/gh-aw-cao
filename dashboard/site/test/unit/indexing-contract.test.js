@@ -19,7 +19,7 @@ const metadata = {
 };
 
 describe('indexing dashboard', () => {
-  it('projects daily records, individual ingestion run counts, and table counts through the worker', () => {
+  it('projects individual ingestion run counts and actual canonical table names through the worker', () => {
     const results = /** @type {Record<string, any>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: dashboard.queries,
@@ -30,6 +30,7 @@ describe('indexing dashboard', () => {
             {
               id: 'ingest-normalized-jsonl:one',
               kind: 'ingest-normalized-jsonl',
+              payloadScope: 'gh-aw-logs-runs/2026-09-20-0000-0123456789abcdef.jsonl',
               createdAt: '2026-09-23T00:00:00Z',
               records: 12,
               committedRecords: 10,
@@ -38,6 +39,7 @@ describe('indexing dashboard', () => {
             {
               id: 'ingest-normalized-jsonl:two',
               kind: 'ingest-normalized-jsonl',
+              payloadScope: 'gh-aw-logs-runs/2026-09-21-0000-0123456789abcdef.jsonl',
               createdAt: '2026-09-24T01:00:00Z',
               records: 8,
               committedRecords: 7,
@@ -46,6 +48,7 @@ describe('indexing dashboard', () => {
             {
               id: 'ingest-dashboard-sources:three',
               kind: 'ingest-dashboard-sources',
+              payloadScope: 'gh-aw-logs-records/2026-09-22-0000-0123456789abcdef.jsonl',
               createdAt: '2026-09-24T02:00:00Z',
               records: 99,
               committedRecords: 99,
@@ -65,36 +68,40 @@ describe('indexing dashboard', () => {
         'operational-values': { source: 'operational-values', rows: [], metadata }
       },
       sourceNames: [
-        'indexing-daily-records',
         'indexing-ingestion-runs',
         'indexing-database-table-counts'
       ]
     }));
 
-    expect(results['indexing-daily-records'].rows).toEqual([
-      { day: '2026-09-23', records: 10 },
-      { day: '2026-09-24', records: 7 }
-    ]);
     expect(results['indexing-ingestion-runs'].rows).toHaveLength(3);
-    expect(results['indexing-ingestion-runs'].rows.map((/** @type {any} */ row) => [row.createdAt, row.rawRuns]))
+    expect(results['indexing-ingestion-runs'].rows.map((/** @type {any} */ row) => [row['shard-day'], row.rawRuns]))
       .toEqual([
-        ['2026-09-23T00:00:00Z', 3],
-        ['2026-09-24T01:00:00Z', 2],
-        ['2026-09-24T02:00:00Z', 99]
+        ['2026-09-20', 3],
+        ['2026-09-21', 2],
+        ['2026-09-22', 99]
       ]);
     expect(results['indexing-database-table-counts'].rows).toEqual([
-      { table: 'ingestion transactions', records: 3 },
-      { table: 'workflow runs', records: 3 },
-      { table: 'audit events', records: 2 },
+      { table: 'runs', records: 3 },
+      { table: 'transactions', records: 3 },
+      { table: 'audits', records: 2 },
       { table: 'workflows', records: 2 },
       { table: 'campaigns', records: 1 },
-      { table: 'issue events', records: 1 },
+      { table: 'issues', records: 1 },
       { table: 'repositories', records: 1 },
-      { table: 'tool events', records: 1 }
+      { table: 'tools', records: 1 }
     ]);
     const tableLabels = results['indexing-database-table-counts'].rows.map((/** @type {any} */ row) => row.table);
-    expect(tableLabels).not.toContain('network domains');
-    expect(tableLabels).not.toContain('operational values');
+    expect(tableLabels).not.toContain('domains');
+    expect(tableLabels).not.toContain('operationalValues');
+  });
+
+  it('declares storage information without activity queries and removes the daily ingestion chart and its query', () => {
+    const page = dashboard.pages.find(/** @param {any} candidate */ (candidate) => candidate.id === 'indexing');
+    expect(page.views[0]).toMatchObject({
+      id: 'ingestion-storage', mark: 'element', element: 'storage-info', data: { sources: [] }
+    });
+    expect(page.views.some(/** @param {any} view */ (view) => view.id === 'indexing-size')).toBe(false);
+    expect(dashboard.queries.some(/** @param {any} query */ (query) => query.name === 'indexing-daily-records')).toBe(false);
   });
 
   describe('ingestion scatter worker contract', () => {
@@ -126,14 +133,22 @@ describe('indexing dashboard', () => {
 
     it('declares an unbucketed, unaggregated, unbounded scatter independent of page context', () => {
       const definition = dashboard.queries.find(/** @param {any} candidate */ (candidate) => candidate.name === source);
-      expect(definition.from).toBe('transactions');
-      for (const property of ['filter', 'aggregate', 'limit']) expect(definition[property]).toBeUndefined();
+      expect(definition.from).toBe('indexing-shard-dates');
+      expect(dashboard.queries.find(/** @param {any} candidate */ (candidate) => candidate.name === definition.from))
+        .toMatchObject({ from: 'transactions', compute: [
+          { as: 'shard-day', function: 'activity-shard-day', args: [{ field: 'payloadScope' }] },
+          { as: 'missing-shard-day', function: 'equals-any', args: [{ field: 'shard-day' }, { value: null }] }
+        ] });
+      for (const property of ['aggregate', 'limit']) expect(definition[property]).toBeUndefined();
+      expect(definition.filter).toEqual({
+        predicates: [{ field: 'missing-shard-day', equals: false }]
+      });
       expect(view).toMatchObject({
         chart: 'scatter',
         scatter: { cluster: false },
         data: { source, 'query-context': false },
         encoding: {
-          x: { field: 'createdAt', type: 'temporal' },
+          x: { field: 'shard-day', type: 'temporal', title: 'Shard activity date' },
           y: { field: 'workflow-runs', type: 'quantitative' },
           color: { field: 'run-count-status' }
         }
@@ -143,7 +158,7 @@ describe('indexing dashboard', () => {
       expect(view.data.limit).toBeUndefined();
     });
 
-    it('retains every kind, exact same-day and coincident timestamps, zeroes, and unavailable counts', async () => {
+    it('uses shard dates independently of import times, retaining every kind, coincident dates, zeroes, and unavailable counts', async () => {
       const entries = [
         { id: 'a', kind: 'ingest-jsonl', createdAt: '2020-01-01T01:00:00.123Z', rawRuns: 4 },
         { id: 'b', kind: 'ingest-normalized-jsonl', createdAt: '2020-01-01T02:00:00.456Z', rawRuns: 0 },
@@ -152,10 +167,14 @@ describe('indexing dashboard', () => {
         { id: 'e', kind: 'retention', createdAt: '2020-01-01T03:00:00.789Z', rawRuns: null },
         { id: 'f', kind: 'future-ingestion-kind', createdAt: '2020-01-01T04:00:00.999Z', rawRuns: 7 }
       ];
-      for (const entry of entries) await recordTransaction(indexedDB, entry);
+      for (const entry of entries) await recordTransaction(indexedDB, {
+        ...entry,
+        payloadScope: 'gh-aw-logs-runs/2019-12-31-0000-0123456789abcdef.jsonl'
+      });
       const results = await query();
       expect(results[source].rows).toEqual(entries.map((entry) => ({
         ...entry,
+        'shard-day': '2019-12-31',
         'workflow-runs': entry.rawRuns ?? 0,
         'run-count-status': entry.rawRuns == null
           ? 'Run count unavailable (shown at 0)' : 'Reported run count'
@@ -166,17 +185,33 @@ describe('indexing dashboard', () => {
       expect(aliases).toEqual({ aliases: [], queries: [], replacedSources: [] });
     });
 
+    it('does not fall back to import time for undated, structural, or invalid shard filenames', async () => {
+      const scopes = [
+        undefined, 'inventory-sources.json',
+        'gh-aw-logs-runs/0000-00-00-0000-0123456789abcdef.jsonl',
+        'gh-aw-logs-runs/2026-02-30-0000-0123456789abcdef.jsonl'
+      ];
+      for (const [index, payloadScope] of scopes.entries()) await recordTransaction(indexedDB, {
+        id: `undated-${index}`, kind: 'ingest-normalized-jsonl', payloadScope,
+        createdAt: '2026-09-24T01:00:00Z', rawRuns: 1
+      });
+      const result = await query();
+      expect(result[source].rows).toEqual([]);
+    });
+
     it('returns an honest empty result and picks up subsequent database entries without a row cap', async () => {
       expect((await query())[source].rows).toEqual([]);
       for (let index = 0; index < 125; index++) {
         await recordTransaction(indexedDB, {
           id: `entry-${index.toString().padStart(3, '0')}`, kind: 'ingest-normalized-jsonl',
+          payloadScope: 'gh-aw-logs-runs/2026-09-23-0000-0123456789abcdef.jsonl',
           createdAt: '2026-09-24T00:00:00.123Z', rawRuns: index
         });
       }
       expect((await query())[source].rows).toHaveLength(125);
       await recordTransaction(indexedDB, {
-        id: 'new-entry', kind: 'ingest-jsonl', createdAt: '2026-09-24T12:00:00.999Z', rawRuns: 8
+        id: 'new-entry', kind: 'ingest-jsonl', createdAt: '2026-09-24T12:00:00.999Z', rawRuns: 8,
+        payloadScope: 'gh-aw-logs-runs/2026-09-24-0000-0123456789abcdef.jsonl'
       });
       const updated = await query();
       expect(updated[source].rows).toHaveLength(126);
@@ -205,7 +240,7 @@ describe('indexing dashboard', () => {
     });
     expect(dashboard.queries.find(/** @param {any} query */ (query) => query.name === 'indexing-database-table-counts')['order-by'])
       .toEqual([{ field: 'records', direction: 'desc' }, { field: 'table', direction: 'asc' }]);
-    expect(page.views[0].id).toBe('indexing-database-table-counts');
+    expect(page.views[1].id).toBe('indexing-database-table-counts');
     expect(transactions).toMatchObject({
       mark: 'list',
       list: { style: 'entity-cards', card: 'ingestion-transaction' }
@@ -225,7 +260,7 @@ describe('indexing dashboard', () => {
       queryContext: { filters: { repository: ['example'] } }
     });
 
-    expect(page.views[0].data['query-context']).toBe(false);
+    expect(page.views.find(/** @param {any} view */ (view) => view.id === 'indexing-database-table-counts').data['query-context']).toBe(false);
     expect(payload).toEqual({ aliases: [], queries: [], replacedSources: [] });
   });
 

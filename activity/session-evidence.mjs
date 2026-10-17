@@ -1,11 +1,13 @@
 import { readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { parseUnifiedSession } from '../dashboard/site/src/data/adapters/unified-session.js';
-import { isSupportedGhAwJsonlSchemaVersion } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
+import { parseUnifiedSessionDocument } from '../dashboard/site/src/data/adapters/unified-session.js';
+import { experimentAssignmentArtifact, parseExperimentAssignments } from '../dashboard/site/src/data/adapters/experiment-evidence.js';
+import { classifiedEval, isSupportedGhAwJsonlSchemaVersion } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
+import { runId as canonicalRunId } from '../dashboard/site/src/data/model/ids.js';
 import { readJsonlRecords } from './jsonl.mjs';
 
-async function sessionFile(directory) {
+async function artifactFile(directory, filename) {
   let entries;
   try {
     entries = await readdir(directory, { withFileTypes: true });
@@ -14,9 +16,16 @@ async function sessionFile(directory) {
     throw error;
   }
   const candidates = entries.flatMap((entry) => {
-    if (entry.isFile() && entry.name === 'aw_session.jsonl') return [path.join(directory, entry.name)];
-    if (entry.isDirectory() && /(^|-)usage$/.test(entry.name)) {
-      return [path.join(directory, entry.name, 'aw_session.jsonl')];
+    if (entry.isFile() && entry.name === filename) return [path.join(directory, entry.name)];
+    if (entry.isDirectory() && (/(^|-)usage$/.test(entry.name)
+        || (filename === 'evals.jsonl' && /(^|-)evals$/.test(entry.name)))) {
+      if (filename === 'assignments.json') {
+        return [path.join(directory, entry.name, 'experiment', filename)];
+      }
+      return [path.join(directory, entry.name, filename)];
+    }
+    if (filename === 'assignments.json' && entry.isDirectory() && /(^|-)experiments?$/.test(entry.name)) {
+      return [path.join(directory, entry.name, filename)];
     }
     return [];
   });
@@ -28,19 +37,83 @@ async function sessionFile(directory) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
-  if (found.length > 1) throw new TypeError('Multiple unified sessions found for one run');
+  if (filename === 'assignments.json') {
+    const file = experimentAssignmentArtifact(found.map((file) => ({
+      ...file, path: path.relative(directory, file.path).split(path.sep).join('/')
+    })));
+    return file ? { ...file, path: path.join(directory, file.path) } : null;
+  }
+  if (found.length > 1) throw new TypeError('Multiple evidence artifacts found for one run');
   return found[0] ?? null;
 }
 
 async function sessionIdentity(runDirectory, sessionPath) {
-  for (const directory of new Set([path.dirname(sessionPath), runDirectory])) {
+  const artifactDirectory = path.dirname(sessionPath);
+  const directories = [artifactDirectory];
+  if (/(^|-)experiments?$/.test(path.basename(artifactDirectory))) {
+    directories.push(path.dirname(artifactDirectory));
+  }
+  directories.push(runDirectory);
+  for (const directory of new Set(directories)) {
     try {
       return JSON.parse(await readFile(path.join(directory, 'aw_info.json'), 'utf8'));
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
+  if (/(^|-)experiments?$/.test(path.basename(artifactDirectory))) {
+    const file = await artifactFile(runDirectory, 'aw_info.json');
+    if (file) return JSON.parse(file.content);
+  }
   return null;
+}
+
+async function experimentEvidence(runDirectory, runId, attempt, repository) {
+  try {
+    const file = await artifactFile(runDirectory, 'assignments.json');
+    if (!file) return null;
+    const info = await sessionIdentity(runDirectory, file.path);
+    if (!info || String(info.run_id) !== String(runId)
+        || String(info.repository).toLowerCase() !== repository.toLowerCase()
+        || !Number.isInteger(Number(info.run_attempt)) || Number(info.run_attempt) < 1) {
+      throw new TypeError('Experiment artifact identity unavailable or mismatched');
+    }
+    if (Number(info.run_attempt) !== Number(attempt)) return null;
+    return parseExperimentAssignments(file.content, file.path);
+  } catch (error) {
+    if (!(error instanceof SyntaxError) && !(error instanceof TypeError)) throw error;
+    console.warn(`Skipping invalid experiment evidence for run ${runId}`);
+    return null;
+  }
+}
+
+async function evalEvidence(runDirectory, runId, attempt, repository, observedAt) {
+  try {
+    const file = await artifactFile(runDirectory, 'evals.jsonl');
+    if (!file) return null;
+    const info = await sessionIdentity(runDirectory, file.path);
+    if (!info || String(info.run_id) !== String(runId)
+        || String(info.repository).toLowerCase() !== repository.toLowerCase()
+        || !Number.isInteger(Number(info.run_attempt)) || Number(info.run_attempt) < 1) {
+      throw new TypeError('Eval artifact identity unavailable or mismatched');
+    }
+    if (Number(info.run_attempt) !== Number(attempt)) return null;
+    const [owner, name] = repository.split('/');
+    return file.content.split(/\r?\n/).filter((line) => line.trim()).map((line) => {
+      const candidate = JSON.parse(line);
+      const result = classifiedEval(candidate, String(runId), canonicalRunId(owner, name, runId), observedAt, attempt);
+      if (!result) throw new TypeError('Invalid eval artifact record');
+      return {
+        id: result.name, answer: result.answer, runId: String(runId), timestamp: result.eventAt,
+        ...(typeof candidate.experimentId === 'string' ? { experimentId: candidate.experimentId } : {}),
+        ...(typeof candidate.variant === 'string' ? { variant: candidate.variant } : {})
+      };
+    });
+  } catch (error) {
+    if (!(error instanceof SyntaxError) && !(error instanceof TypeError)) throw error;
+    console.warn(`Skipping invalid eval evidence for run ${runId}`);
+    return null;
+  }
 }
 
 /**
@@ -52,6 +125,8 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
   const prefix = path.basename(shardPrefix);
   const names = (await readdir(directory)).filter((name) => name.startsWith(prefix) && name.endsWith('.jsonl')).sort();
   const sessions = new Map();
+  const evals = new Map();
+  const experiments = new Map();
   let enriched = 0;
   for (const name of names) {
     const filename = path.join(directory, name);
@@ -70,7 +145,7 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
           const runDirectory = path.join(logDirectory, `run-${runId}`);
           let evidence = null;
           try {
-            const file = await sessionFile(runDirectory);
+            const file = await artifactFile(runDirectory, 'aw_session.jsonl');
             if (file) {
               // The download directory is keyed by run ID, not attempt. Verify
               // attempt identity before associating retained artifacts with a rerun.
@@ -81,7 +156,12 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
               }
               if (Number(info.run_attempt) === Number(run.run_attempt ?? 1)) {
                 const relativePath = path.relative(runDirectory, file.path).split(path.sep).join('/');
-                evidence = { version: 1, path: relativePath, events: parseUnifiedSession(file.content, relativePath) };
+                evidence = {
+                  version: 1, path: relativePath,
+                  ...parseUnifiedSessionDocument(file.content, relativePath, {
+                    runId: String(runId), attempt: Number(run.run_attempt ?? 1)
+                  })
+                };
               } else if (!Number.isInteger(Number(info.run_attempt)) || Number(info.run_attempt) < 1) {
                 throw new TypeError(`Unified session attempt identity unavailable for run ${runId}`);
               }
@@ -93,14 +173,39 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
           sessions.set(key, evidence);
         }
         const evidence = sessions.get(key);
+        if (!evidence?.experiments && !experiments.has(key)) {
+          experiments.set(key, await experimentEvidence(
+            path.join(logDirectory, `run-${runId}`), runId, run.run_attempt ?? 1, repository
+          ));
+        }
+        const observedAt = run.updated_at ?? run.created_at;
+        if (!evidence?.evals && !evals.has(key)) {
+          evals.set(key, await evalEvidence(
+            path.join(logDirectory, `run-${runId}`), runId, run.run_attempt ?? 1, repository, observedAt
+          ));
+        }
+        let runChanged = false;
+        const assignments = evidence?.experiments ? null : experiments.get(key);
+        if (assignments && JSON.stringify(assignments) !== JSON.stringify(run.experiments)) {
+          run.experiments = assignments;
+          changed = true;
+          runChanged = true;
+        }
         if (evidence) {
           const previous = JSON.stringify(run.cao_unified_session);
           run.cao_unified_session = evidence;
           if (JSON.stringify(evidence) !== previous) {
             changed = true;
-            enriched += 1;
+            runChanged = true;
           }
         }
+        const answers = evidence?.evals ? null : evals.get(key);
+        if (answers && JSON.stringify(answers) !== JSON.stringify(run.evals)) {
+          run.evals = answers;
+          changed = true;
+          runChanged = true;
+        }
+        if (runChanged) enriched += 1;
       }
       output.push(JSON.stringify(envelope));
     }

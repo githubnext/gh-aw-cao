@@ -1,0 +1,43 @@
+{
+  "experiments": {
+    "query": "experiment-assignments",
+    "view": "experiments-assignments",
+    "fields": ["experiment", "variant", "workflow", "repository", "run", "assignment-at", "assignment-link"],
+    "coverage": {
+      "query": "experiment-assignment-coverage",
+      "view": "experiments-assignment-chart"
+    },
+    "definitions": {
+      "query": "experiments",
+      "view": "experiments-definitions"
+    }
+  },
+  "graders": {
+    "query": "grader-status-ledger",
+    "view": "graders-statuses",
+    "fields": ["workflow", "grader", "repository", "value", "unit", "status", "observed-at", "run"],
+    "scatter": {
+      "query": "grader-value-scatter",
+      "view": "graders-value-scatter",
+      "x": "observed-at",
+      "y": "normalized-value",
+      "color": "grader-series",
+      "href": "run-link"
+    }
+  },
+  "evals": {
+    "query": "eval-status-ledger",
+    "view": "evals-statuses",
+    "runDisplay": "run-link",
+    "fields": ["workflow", "eval", "repository", "eval-result", "observed-at", "run"],
+    "distribution": {
+      "query": "eval-answer-distribution",
+      "view": "evals-answer-distribution",
+      "chart": "horizontal-bar",
+      "x": "eval-result",
+      "y": "answer-percent",
+      "section": "eval-label",
+      "answers": ["YES", "NO", "UNKNOWN"]
+    }
+  }
+}

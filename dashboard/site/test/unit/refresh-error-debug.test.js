@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 afterEach(() => {
+  document.body.replaceChildren();
   vi.doUnmock('../../src/debug.js');
   vi.resetModules();
 });
@@ -28,11 +29,11 @@ describe('refresh error debug logging', () => {
   it('is disabled by default (no debug output) when the debug query is absent', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '');
-    const { renderRefreshError } = await import('../../src/components/refresh-error.js');
+    const { notifyRefreshError } = await import('../../src/components/refresh-error.js');
 
-    const error = renderRefreshError(vi.fn());
-    error.querySelector('.source-refresh-retry')?.dispatchEvent(new MouseEvent('click'));
-    error.querySelector('.source-refresh-dismiss')?.dispatchEvent(new MouseEvent('click'));
+    notifyRefreshError(vi.fn());
+    document.querySelector('.dashboard-notification-action')?.dispatchEvent(new MouseEvent('click'));
+    document.querySelector('.dashboard-notification-dismiss')?.dispatchEvent(new MouseEvent('click'));
 
     expect(debugFn).not.toHaveBeenCalled();
   });
@@ -40,9 +41,9 @@ describe('refresh error debug logging', () => {
   it('logs a shown event under its predictable category when the banner is rendered', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=refresh-error');
-    const { renderRefreshError } = await import('../../src/components/refresh-error.js');
+    const { notifyRefreshError } = await import('../../src/components/refresh-error.js');
 
-    renderRefreshError(vi.fn());
+    notifyRefreshError(vi.fn());
 
     expect(debugFn).toHaveBeenCalledWith('[cao:refresh-error]', { event: 'shown' });
   });
@@ -50,39 +51,38 @@ describe('refresh error debug logging', () => {
   it('logs a retry-requested event when the retry button is clicked', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=refresh-error');
-    const { renderRefreshError } = await import('../../src/components/refresh-error.js');
+    const { notifyRefreshError } = await import('../../src/components/refresh-error.js');
     const retry = vi.fn();
 
-    const error = renderRefreshError(retry);
-    const retryButton = /** @type {HTMLButtonElement | null} */ (error.querySelector('.source-refresh-retry'));
+    notifyRefreshError(retry);
+    const retryButton = /** @type {HTMLButtonElement | null} */ (document.querySelector('.dashboard-notification-action'));
     retryButton?.click();
 
     expect(retry).toHaveBeenCalledOnce();
     expect(debugFn).toHaveBeenCalledWith('[cao:refresh-error]', { event: 'retry-requested' });
   });
 
-  it('logs a dismissed event when the dismiss button is clicked', async () => {
+  it('delegates dismissal logging to the shared manager', async () => {
     const debugFn = vi.fn();
-    mockDebugModule(debugFn, '?debug=refresh-error');
-    const { renderRefreshError } = await import('../../src/components/refresh-error.js');
+    mockDebugModule(debugFn, '?debug=notification-service');
+    const { notifyRefreshError } = await import('../../src/components/refresh-error.js');
 
-    const error = renderRefreshError(vi.fn());
-    document.body.append(error);
-    const dismissButton = /** @type {HTMLButtonElement | null} */ (error.querySelector('.source-refresh-dismiss'));
+    notifyRefreshError(vi.fn());
+    const dismissButton = /** @type {HTMLButtonElement | null} */ (document.querySelector('.dashboard-notification-dismiss'));
     dismissButton?.click();
+    document.querySelector('.dashboard-notification')?.dispatchEvent(new Event('transitionend'));
 
-    expect(debugFn).toHaveBeenCalledWith('[cao:refresh-error]', { event: 'dismissed' });
+    expect(debugFn).toHaveBeenCalledWith('[cao:notification-service]', { event: 'dismissed', tone: 'error', activeCount: 0 });
   });
 
   it('never logs record content, only scalar metadata', async () => {
     const debugFn = vi.fn();
     mockDebugModule(debugFn, '?debug=refresh-error');
-    const { renderRefreshError } = await import('../../src/components/refresh-error.js');
+    const { notifyRefreshError } = await import('../../src/components/refresh-error.js');
 
-    const error = renderRefreshError(vi.fn());
-    document.body.append(error);
-    error.querySelector('.source-refresh-retry')?.dispatchEvent(new MouseEvent('click'));
-    error.querySelector('.source-refresh-dismiss')?.dispatchEvent(new MouseEvent('click'));
+    notifyRefreshError(vi.fn());
+    document.querySelector('.dashboard-notification-action')?.dispatchEvent(new MouseEvent('click'));
+    document.querySelector('.dashboard-notification-dismiss')?.dispatchEvent(new MouseEvent('click'));
 
     for (const call of debugFn.mock.calls) {
       const [, payload] = call;

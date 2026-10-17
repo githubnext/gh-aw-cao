@@ -46,7 +46,7 @@ function batch(events) {
         runId: event.runId ?? 'github:run:githubnext/gh-aw-cao:1',
         timestamp: event.timestamp,
         source: 'agent',
-        type: 'agent_turn'
+        type: 'user.message'
       }
     }))
   ]);

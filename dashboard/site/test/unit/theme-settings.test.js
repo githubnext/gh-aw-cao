@@ -46,6 +46,26 @@ describe('dashboard theme settings reactive state', () => {
     expect(control.querySelector('[data-theme-value="dark"]')?.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('keeps document-owned notifications in sync with explicit and system themes', async () => {
+    const { renderThemeControl } = await import('../../src/components/theme-settings.js');
+    const { createNotificationService } = await import('../../src/notification-service.js');
+    const dashboardRoot = Object.assign(document.createElement('div'), { className: 'dashboard-root' });
+    document.body.replaceChildren(dashboardRoot);
+    const service = createNotificationService(document);
+    service.publish({ message: 'Storage is temporary.', duration: 0 });
+    const container = document.querySelector('.dashboard-notifications');
+    const control = renderThemeControl();
+    dashboardRoot.append(control);
+    try {
+      for (const value of ['dark', 'light', 'system']) {
+        /** @type {HTMLButtonElement} */ (control.querySelector(`[data-theme-value="${value}"]`)).click();
+        expect(container?.getAttribute('data-theme')).toBe(value === 'system' ? null : value);
+      }
+    } finally {
+      service.dispose();
+    }
+  });
+
   it('retains the in-session selection across Settings navigation when storage rejects writes', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.theme', 'light');
     const { renderThemeControl } = await import('../../src/components/theme-settings.js');

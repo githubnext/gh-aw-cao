@@ -47,7 +47,7 @@ function evidence(history = 2) {
     organization: run.organization, repository: run.repository, workflow: run.workflow,
     run: run.run, 'run-attempt': run['run-attempt'], event: `${index}-${event}`,
     'safe-output-url': `https://github.com/org/${run.repository}/issues/${index * 4 + event + 1}`,
-    'event-timestamp': '2026-10-07T09:00:00Z', 'event-source': 'fixture', 'event-type': 'tool.call'
+    'event-timestamp': '2026-10-07T09:00:00Z', 'event-source': 'fixture', 'event-type': 'mcp.tool_call'
   })));
   return {
     repositories: input('repositories', [

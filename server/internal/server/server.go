@@ -1707,7 +1707,7 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 		return
 	}
 	html := string(content)
-	injections := `<meta name="dashboard-data-backend" content="server-http">`
+	injections := `<meta name="dashboard-data-backend" content="server-http"><meta name="dashboard-storage-backend" content="postgres">`
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
 		if a.hostedCLI != nil {

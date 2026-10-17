@@ -81,6 +81,15 @@ describe('unified session ingestion', () => {
     expect(events[1].fields.status).toBe('error');
   });
 
+  it('projects numeric firewall metadata statuses as canonical strings', () => {
+    const content = session([
+      { type: 'firewall.event', data: { event: 'response', status: 200 } }
+    ]);
+    expect(parseUnifiedSession(content, 'aw_session.jsonl')[0].fields.status).toBe('200');
+    expect(adaptGhAwTimelineFiles([{ path: 'aw_session.jsonl', content }], 'run:1'))
+      .toMatchObject([{ kind: 'audit', data: { type: 'firewall.event', status: '200' } }]);
+  });
+
   it('normalizes MCP executions, inherits completion identity, and leaves local tools alone', () => {
     const events = parseUnifiedSession(session([
       { type: 'tool.execution_start', data: { mcpServerName: 'github', toolName: 'github-actions_list', toolCallId: 'call-1' } },
@@ -92,9 +101,9 @@ describe('unified session ingestion', () => {
       { type: 'mcp.guard.blocked', data: { serverName: 'github', toolName: 'issue_read' } }
     ]), 'aw_session.jsonl');
     expect(events.map((event) => [event.source, event.type])).toEqual([
-      ['mcp', 'tool.call'], ['mcp', 'tool.result'],
-      ['mcp', 'tool.call'], ['mcp', 'tool.error'],
-      ['agent', 'agent_tool_start'], ['mcp', 'difc_filtered'], ['mcp', 'guard_blocked']
+      ['mcp', 'tool.execution_start'], ['mcp', 'tool.execution_complete'],
+      ['mcp', 'tool.execution_start'], ['mcp', 'tool.execution_complete'],
+      ['agent', 'tool.execution_start'], ['mcp', 'mcp.difc.filtered'], ['mcp', 'mcp.guard.blocked']
     ]);
     expect(events[0].fields).toMatchObject({ mcpServer: 'github', mcpTool: 'actions_list', summary: 'github/actions_list' });
     expect(events[1].fields).toMatchObject({ mcpServer: 'github', mcpTool: 'actions_list', status: 'success' });
@@ -107,10 +116,10 @@ describe('unified session ingestion', () => {
     const native = { type: 'mcp.tool_call', data: { serverName: 'github', toolName: 'issue_read', toolCallId: 'same-call', inputSize: 4, outputSize: 8 } };
     for (const records of [[start, native], [native, start]]) {
       const events = parseUnifiedSession(session(records), 'aw_session.jsonl');
-      expect(events.filter((event) => event.type === 'tool.call')).toMatchObject([{
+      expect(events.filter((event) => event.type === 'mcp.tool_call')).toMatchObject([{
         source: 'mcp', fields: { mcpTool: 'issue_read', requestBytes: 4, responseBytes: 8 }
       }]);
-      expect(events.filter((event) => event.type === 'agent_tool_start')).toHaveLength(1);
+      expect(events.filter((event) => event.type === 'tool.execution_start')).toHaveLength(1);
       expect(normalizeSessionMcpEvents(events)).toEqual(events);
     }
   });
@@ -135,7 +144,7 @@ describe('unified session ingestion', () => {
     expect(adaptGhAwTimelineFiles([{
       path: 'copilot-session-state/abc/events.jsonl', content
     }], 'run:1')).toMatchObject([{
-      kind: 'tool', data: { type: 'agent_tool_start', correlationId: 'legacy-call' }
+      kind: 'tool', data: { type: 'tool.execution_start', correlationId: 'legacy-call' }
     }]);
   });
 });
@@ -165,9 +174,9 @@ describe('unified session MCP view boundary', () => {
         const fields = { ...event.fields };
         if (fields.toolName && event.source === 'mcp') {
           delete fields.mcpTool;
-          return { ...event, source: 'agent', type: event.type === 'tool.call' ? 'agent_tool_start' : 'agent_tool_done', fields };
+          return { ...event, source: 'agent', type: event.type === 'tool.execution_start' ? 'agent_tool_start' : 'agent_tool_done', fields };
         }
-        return event.type === 'tool.call' ? { ...event, type: 'tool_call' } : event;
+        return event.type === 'mcp.tool_call' ? { ...event, type: 'tool_call' } : event;
       });
       const now = Date.parse('2026-10-15T10:05:00Z');
       await ingestCachedGhAwJsonl(indexedDB, JSON.stringify({

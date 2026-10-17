@@ -157,24 +157,20 @@ describe('indexed run-owned event aggregates at the production worker boundary',
       }
     });
 
-    const attributions = {
-      source: 'attributions', metadata,
-      rows: [{ ...identity, campaign: 'activity' }, { ...identity, campaign: 'activity' }]
-    };
+    const [workflow] = (await readCollections(indexedDB, ['workflows'])).workflows;
+    await put({ workflows: [{ ...workflow, id: `${String(workflow.id)}:duplicate` }] });
     const buckets = /** @type {import('../../src/data/queries/declarative.js').DashboardQuery} */ ({
       ...queries.find((query) => query.name === 'audit-event-summary-buckets'),
       name: 'renamed-buckets', from: 'tools', union: undefined,
       joins: [{
-        source: 'attributions', type: 'left',
+        source: 'workflows', type: 'left',
         on: [{ left: 'workflow', right: 'workflow' }],
         fields: [{ field: 'campaign', as: 'campaign' }]
       }]
     });
     const definitions = [countQuery, buckets];
-    const logical = { ...sources, attributions };
-    const canonical = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ ({
-      ...await queryDatabaseSources(indexedDB, logical, ['tools']), attributions
-    });
+    const logical = sources;
+    const canonical = await queryDatabaseSources(indexedDB, logical, ['tools', 'workflows']);
     expect(canonical.tools.rows[0]['event-type']).toBe('audit.finding');
     const expected = executeDashboardQueries(definitions, canonical, definitions.map((query) => query.name));
     const native = await queryIndexedDatabaseSources(indexedDB, logical, definitions, definitions.map((query) => query.name));
@@ -204,7 +200,7 @@ describe('indexed run-owned event aggregates at the production worker boundary',
       aggregate: { by: ['campaign'], values: [{ field: 'event', as: 'events', reducer: 'distinct-count' }] }
     };
     expect(await queryIndexedDatabaseSources(indexedDB, logical, [distinctEvents], ['distinct-events'])).toEqual({});
-    const unique = { ...canonical, attributions: { ...attributions, rows: [attributions.rows[0]] } };
+    const unique = { ...canonical, workflows: { ...canonical.workflows, rows: [canonical.workflows.rows[0]] } };
     expect(executeDashboardQueries([{
       ...distinctEvents, select: [{ field: 'campaign' }, { field: 'events' }], 'order-by': undefined
     }], unique, ['distinct-events'])['distinct-events'].rows)

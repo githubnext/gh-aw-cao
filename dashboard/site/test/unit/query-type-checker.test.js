@@ -172,7 +172,7 @@ describe('dashboard query type checker', () => {
         name: 'safe-output-items',
         from: 'issues',
         union: ['audits'],
-        filter: { predicates: [{ field: 'event-type', equals: 'safe_output.created' }] }
+        filter: { predicates: [{ field: 'event-type', equals: 'safe_output.result' }] }
       }),
       query({
         name: 'issue-safe-outputs',
