@@ -1,0 +1,23 @@
+{
+  "action": "edited",
+  "changes": {
+    "field_value": {
+      "field_type": "single_select",
+      "field_node_id": "PVTSSF_example_status_field"
+    }
+  },
+  "projects_v2_item": {
+    "id": 1001,
+    "node_id": "PVTI_example_item",
+    "project_node_id": "PVT_example_project",
+    "content_node_id": "I_example_issue",
+    "content_type": "Issue",
+    "creator": { "id": 1002, "login": "example-bot", "type": "Bot" },
+    "created_at": "2026-10-17T12:00:00Z",
+    "updated_at": "2026-10-17T12:05:00Z",
+    "archived_at": null
+  },
+  "organization": { "id": 12, "login": "approved" },
+  "installation": { "id": 10 },
+  "sender": { "id": 1002, "login": "example-bot", "type": "Bot" }
+}

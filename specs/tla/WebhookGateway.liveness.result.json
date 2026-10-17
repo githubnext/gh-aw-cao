@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "rfc": "RFC-033",
+  "status": "passed",
+  "checked_at_utc": "2026-10-17T19:55:26Z",
+  "elapsed_seconds": 6.665,
+  "command": [
+    "java",
+    "-Djava.io.tmpdir=$TLC_WORK_DIR",
+    "-XX:+UseParallelGC",
+    "-Xmx768m",
+    "-cp",
+    "$TLA2TOOLS_JAR",
+    "tlc2.TLC",
+    "-workers",
+    "2",
+    "-fp",
+    "0",
+    "-seed",
+    "33",
+    "-metadir",
+    "$TLC_WORK_DIR/states",
+    "-config",
+    "specs/tla/WebhookGateway.liveness.cfg",
+    "specs/tla/WebhookGateway.tla"
+  ],
+  "command_is_template": true,
+  "reproduce_command": "python3 scripts/check-webhook-gateway-model.py --jar \"$TLA2TOOLS_JAR\" --config specs/tla/WebhookGateway.liveness.cfg",
+  "tool": {
+    "release": "v1.7.4",
+    "url": "https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar",
+    "sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+    "version_line": "TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)"
+  },
+  "inputs": {
+    "specs/tla/WebhookGateway.tla": "0b1236b4c855f78c62f1dec9133dd7dbdfb39a3c7d46d8514a7e73536cca1fc3",
+    "specs/tla/WebhookGateway.liveness.cfg": "64ebb86cef2e00b4a8373cead5dd658af64006ce7a174431590704c98e970f76"
+  },
+  "bounds": {
+    "jobs": 2,
+    "workers": 2,
+    "capacity": 2,
+    "max_time": 1,
+    "max_generation": 1
+  },
+  "specification": "LivenessSpec",
+  "invariants": [
+    "TypeOK",
+    "BoundedQueue",
+    "AcceptedNeverRetried",
+    "SuccessRequiresAcceptance",
+    "ObservedChangeBlocksNewClaims",
+    "DispatchRequiresCheck"
+  ],
+  "action_properties": [
+    "TerminalStable",
+    "FencedMutations",
+    "GenerationMonotonic",
+    "NoDispatchReservationAfterObservation"
+  ],
+  "temporal_properties": [
+    "EventualSettlement"
+  ],
+  "fairness_assumptions": [
+    "WF_vars(Tick)",
+    "for each job: WF_vars(Reap(job))",
+    "for each job: WF_vars(Expire(job))"
+  ],
+  "states_generated": 424801,
+  "distinct_states": 61528,
+  "states_remaining": 0,
+  "stdout_sha256": "d60ee0832367a3af578c399beddf467cc3d50b95bb3f2734684130f4afe3947f",
+  "evidence": [
+    "Model checking completed. No error has been found.",
+    "  Estimates of the probability that TLC did not check all reachable states",
+    "  because two distinct states had the same fingerprint:",
+    "  calculated (optimistic):  val = 1.2E-9",
+    "  based on the actual fingerprints:  val = 4.3E-11",
+    "424801 states generated, 61528 distinct states found, 0 states left on queue.",
+    "The depth of the complete state graph search is 19.",
+    "The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 11 and the 95th percentile is 3).",
+    "Finished in 06s at (2026-10-17 19:55:25)"
+  ],
+  "temporal_check_evidence": [
+    "Checking 2 branches of temporal properties for the current state space with 71834 total distinct states at (2026-10-17 19:55:22)",
+    "Finished checking temporal properties in 00s at 2026-10-17 19:55:23",
+    "Checking 2 branches of temporal properties for the complete state space with 123056 total distinct states at (2026-10-17 19:55:25)",
+    "Finished checking temporal properties in 00s at 2026-10-17 19:55:25"
+  ],
+  "limitations": [
+    "Finite model; no unbounded proof or implementation conformance claim.",
+    "Settlement liveness requires the listed clock/maintenance fairness; success is not guaranteed.",
+    "Unobserved authorization changes may race with external acceptance."
+  ]
+}

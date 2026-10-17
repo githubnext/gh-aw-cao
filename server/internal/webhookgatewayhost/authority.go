@@ -1,0 +1,268 @@
+// Package webhookgatewayhost composes gateway infrastructure without giving the
+// receiving HTTP process access to either App's private key.
+package webhookgatewayhost
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"time"
+
+	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+)
+
+const proofLifetime = 30 * time.Second
+
+type AuthorityAPI interface {
+	WebhookGatewayInstallation(context.Context, int64) (githubapp.GatewayInstallation, githubquota.ResponseQuota, error)
+	WebhookGatewayRepository(context.Context, int64, int64, ...func(githubquota.ResponseQuota)) (githubapp.GatewayRepository, githubquota.ResponseQuota, error)
+}
+
+type ProjectAuthority interface {
+	WebhookGatewayProjects(context.Context, int64, int64, []string) error
+}
+
+type PolicyLoader interface {
+	Load(context.Context) (gateway.PolicySnapshot, error)
+}
+
+type RevisionApplier interface {
+	ApplyRevision(context.Context, gateway.QueueRevision) error
+}
+
+type LiveAuthority struct {
+	Loader              PolicyLoader
+	Queue               RevisionApplier
+	Receiving, Dispatch AuthorityAPI
+	State               operational.StateStore
+}
+
+type ReceiveAuthority struct {
+	Loader PolicyLoader
+	Queue  RevisionApplier
+	State  operational.StateStore
+}
+
+func currentSubscription(policy gateway.PolicySnapshot, job gateway.Job) (gateway.Subscription, gateway.Revision, error) {
+	if !policy.Revision.Enabled || policy.Revision != job.QueueRevision {
+		return gateway.Subscription{}, gateway.Revision{}, gateway.ErrUnauthorized
+	}
+	for _, subscription := range policy.Subscriptions {
+		if subscription.ID != job.Subscription.ID {
+			continue
+		}
+		revision := policy.Revisions[subscription.ID]
+		expected, err := json.Marshal(subscription)
+		if err != nil {
+			return gateway.Subscription{}, gateway.Revision{}, err
+		}
+		actual, err := json.Marshal(job.Subscription)
+		if err != nil || !bytes.Equal(expected, actual) || revision.Digest != job.SubscriptionDigest {
+			return gateway.Subscription{}, gateway.Revision{}, gateway.ErrUnauthorized
+		}
+		return subscription, revision, nil
+	}
+	return gateway.Subscription{}, gateway.Revision{}, gateway.ErrUnauthorized
+}
+
+func proofKey(id string) string {
+	return "webhook-gateway:authority:" + gateway.MetadataDigest([]byte(id))
+}
+
+func bind(snapshot gateway.AuthorizationSnapshot, job gateway.Job) gateway.AuthorizationSnapshot {
+	snapshot.JobID = job.ID
+	snapshot.Fence = job.Fence
+	snapshot.Attempt = job.Attempt + 1
+	return snapshot
+}
+
+// Authorize uses bounded-freshness evidence produced by the isolated dispatch
+// role; the receiving process holds only the HMAC secret and database access.
+func (a ReceiveAuthority) Authorize(ctx context.Context, job gateway.Job) (gateway.AuthorizationSnapshot, error) {
+	policy, err := a.Loader.Load(ctx)
+	if err != nil {
+		return gateway.AuthorizationSnapshot{}, err
+	}
+	if err := a.Queue.ApplyRevision(ctx, policy.Revision); err != nil {
+		return gateway.AuthorizationSnapshot{}, err
+	}
+	_, revision, err := currentSubscription(policy, job)
+	if err != nil {
+		return gateway.AuthorizationSnapshot{}, err
+	}
+	data, err := a.State.OperationalState(ctx, proofKey(job.Subscription.ID))
+	if err != nil {
+		return gateway.AuthorizationSnapshot{}, gateway.ErrUnavailable
+	}
+	var proof gateway.AuthorizationSnapshot
+	now := time.Now().UTC()
+	if json.Unmarshal(data, &proof) != nil || !proof.Complete || proof.CurrentRevision != revision ||
+		proof.CheckedAt.After(now) || now.Sub(proof.CheckedAt) >= proofLifetime || !now.Before(proof.ExpiresAt) {
+		return gateway.AuthorizationSnapshot{}, gateway.ErrUnavailable
+	}
+	proof.Grant = policy.Grants[job.Subscription.ID]
+	return bind(proof, job), nil
+}
+
+// Authorize performs fresh GitHub installation and immutable-repository checks
+// for every attempt. No cached evidence is used at egress.
+func (a LiveAuthority) Authorize(ctx context.Context, job gateway.Job) (gateway.AuthorizationSnapshot, error) {
+	policy, err := a.Loader.Load(ctx)
+	if err != nil {
+		return gateway.AuthorizationSnapshot{}, err
+	}
+	if err := a.Queue.ApplyRevision(ctx, policy.Revision); err != nil {
+		return gateway.AuthorizationSnapshot{}, err
+	}
+	subscription, revision, err := currentSubscription(policy, job)
+	if err != nil {
+		return gateway.AuthorizationSnapshot{}, err
+	}
+	now := time.Now().UTC()
+	proof := gateway.AuthorizationSnapshot{
+		CheckedAt: now, ExpiresAt: now.Add(proofLifetime),
+		SourceInstallationID: subscription.Source.InstallationID,
+		SourceRepositoryID:   subscription.Source.RepositoryID, SourceOrganizationID: subscription.Source.OrganizationID,
+		ReceivingInstallationID:   subscription.Source.InstallationID,
+		DestinationInstallationID: subscription.Destination.InstallationID,
+		DestinationRepositoryID:   subscription.Destination.RepositoryID,
+		CurrentRevision:           revision, Grant: policy.Grants[subscription.ID],
+	}
+	proof, err = a.check(ctx, policy, subscription, proof)
+	if err != nil {
+		return gateway.AuthorizationSnapshot{}, err
+	}
+	if a.State != nil {
+		data, marshalErr := json.Marshal(proof)
+		if marshalErr != nil {
+			return gateway.AuthorizationSnapshot{}, marshalErr
+		}
+		if err := a.State.SetOperationalState(ctx, proofKey(subscription.ID), data); err != nil {
+			return gateway.AuthorizationSnapshot{}, gateway.ErrUnavailable
+		}
+	}
+	return bind(proof, job), nil
+}
+
+func permissionsAllow(actual, required map[string]string) bool {
+	for permission, level := range required {
+		got := actual[permission]
+		if got != "write" && (got != "read" || level != "read") {
+			return false
+		}
+	}
+	return true
+}
+
+func authorityFailure(proof gateway.AuthorizationSnapshot, err error) (gateway.AuthorizationSnapshot, error) {
+	var response *githubapp.GatewayAPIError
+	if errors.Is(err, gateway.ErrUnauthorized) ||
+		(errors.As(err, &response) && (response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusUnprocessableEntity)) {
+		proof.Complete = true
+		proof.SourceAccessible, proof.DestinationAccessible = false, false
+		return proof, nil
+	}
+	return proof, gateway.ErrUnavailable
+}
+
+func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot, subscription gateway.Subscription, proof gateway.AuthorizationSnapshot) (gateway.AuthorizationSnapshot, error) {
+	receiver, _, err := a.Receiving.WebhookGatewayInstallation(ctx, subscription.Source.InstallationID)
+	if err != nil {
+		return authorityFailure(proof, err)
+	}
+	dispatcher, _, err := a.Dispatch.WebhookGatewayInstallation(ctx, subscription.Destination.InstallationID)
+	if err != nil {
+		return authorityFailure(proof, err)
+	}
+	if receiver.AppID != policy.Policy.ReceivingAppID || dispatcher.AppID != policy.Policy.DispatchAppID {
+		return proof, gateway.ErrUnauthorized
+	}
+	proof.Complete = true
+	proof.SourceAccessible = !receiver.Suspended
+	proof.DestinationAccessible = !dispatcher.Suspended
+	proof.SourcePermissionsOK = permissionsAllow(receiver.Permissions, subscription.Source.RequiredPermissions) &&
+		receiver.Permissions["actions"] != "write" && receiver.Permissions["contents"] != "write"
+	if len(subscription.Source.ProjectIDs) > 0 {
+		projects, supported := a.Receiving.(ProjectAuthority)
+		if !supported || subscription.Source.OrganizationID <= 0 {
+			return proof, gateway.ErrUnavailable
+		}
+		if err := projects.WebhookGatewayProjects(ctx, subscription.Source.InstallationID, subscription.Source.OrganizationID, subscription.Source.ProjectIDs); err != nil {
+			if !errors.Is(err, gateway.ErrUnauthorized) {
+				return proof, gateway.ErrUnavailable
+			}
+			proof.SourceAccessible = false
+		}
+	}
+	required := "actions"
+	if subscription.Destination.Kind == "repository_dispatch" {
+		required = "contents"
+	}
+	proof.DispatchPermissionsOK = dispatcher.Permissions[required] == "write"
+	if subscription.Source.OrganizationID > 0 {
+		proof.SourceAccessible = proof.SourceAccessible && receiver.AccountType == "Organization" &&
+			receiver.AccountID == subscription.Source.OrganizationID
+		if subscription.Source.RepositoryID == 0 {
+			proof.SourceAccessible = proof.SourceAccessible && policy.OwnerAllowed(receiver.AccountLogin)
+		}
+		// Organization webhook records are restricted data even when the
+		// organization's profile happens to be public.
+		proof.SourceVisibility = "private"
+	}
+	if subscription.Source.RepositoryID > 0 {
+		source, _, sourceErr := a.Receiving.WebhookGatewayRepository(ctx, subscription.Source.InstallationID, subscription.Source.RepositoryID)
+		if sourceErr != nil {
+			return authorityFailure(proof, sourceErr)
+		}
+		proof.SourceAccessible = proof.SourceAccessible && source.ID == subscription.Source.RepositoryID &&
+			!source.Disabled && !source.Archived && policy.RepositoryAllowed(source.FullName) &&
+			source.OwnerID == receiver.AccountID
+		if subscription.Source.OrganizationID > 0 && source.OwnerID != subscription.Source.OrganizationID {
+			proof.SourceAccessible = false
+		}
+		proof.SourceVisibility = source.Visibility
+	}
+	destination, _, err := a.Dispatch.WebhookGatewayRepository(ctx, subscription.Destination.InstallationID, subscription.Destination.RepositoryID)
+	if err != nil {
+		return authorityFailure(proof, err)
+	}
+	proof.DestinationAccessible = proof.DestinationAccessible && destination.ID == subscription.Destination.RepositoryID &&
+		!destination.Disabled && !destination.Archived && policy.RepositoryAllowed(destination.FullName) &&
+		destination.OwnerID == dispatcher.AccountID
+	proof.DestinationVisibility = destination.Visibility
+	return proof, nil
+}
+
+// Refresh primes receiver evidence even while the queue is empty. Inventory is
+// bounded by the reviewed policy, and failures never retain proof indefinitely.
+func (a LiveAuthority) Refresh(ctx context.Context) error {
+	policy, err := a.Loader.Load(ctx)
+	if err != nil {
+		return err
+	}
+	if err := a.Queue.ApplyRevision(ctx, policy.Revision); err != nil {
+		return err
+	}
+	if !policy.Revision.Enabled {
+		return nil
+	}
+	var failures []error
+	for _, subscription := range policy.Subscriptions {
+		job := gateway.Job{
+			Subscription: subscription, SubscriptionDigest: policy.Revisions[subscription.ID].Digest,
+			QueueRevision: policy.Revision,
+		}
+		if _, err := a.Authorize(ctx, job); err != nil {
+			failures = append(failures, errors.New("gateway authority refresh incomplete"))
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+	}
+	return errors.Join(failures...)
+}

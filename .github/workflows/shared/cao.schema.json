@@ -461,6 +461,61 @@
         }
       }
     },
+    "webhookGateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "enabled", "revision", "receivingAppId", "dispatchAppId", "namespace", "artifacts", "grants", "workers"],
+      "properties": {
+        "version": { "const": 1 },
+        "enabled": { "type": "boolean", "default": false },
+        "revision": { "type": "integer", "minimum": 1 },
+        "receivingAppId": { "type": "integer", "minimum": 1 },
+        "dispatchAppId": { "type": "integer", "minimum": 1 },
+        "namespace": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+        "workers": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256", "repositoryId", "commitSha", "compilerId"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "repositoryId": { "type": "integer", "minimum": 1 },
+              "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+              "compilerId": { "type": "string", "minLength": 1, "maxLength": 128 }
+            }
+          }
+        },
+        "grants": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["subscriptionId", "digest", "sourceInstallationId", "sourceRepositoryId", "sourceOrganizationId", "receivingInstallationId", "destinationInstallationId", "destinationRepositoryId", "dispatchKind", "expiresAt"],
+            "properties": {
+              "subscriptionId": { "type": "string", "minLength": 1 },
+              "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "sourceInstallationId": { "type": "integer", "minimum": 1 },
+              "sourceRepositoryId": { "type": "integer", "minimum": 0 },
+              "sourceOrganizationId": { "type": "integer", "minimum": 0 },
+              "projectIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+              "receivingInstallationId": { "type": "integer", "minimum": 1 },
+              "destinationInstallationId": { "type": "integer", "minimum": 1 },
+              "destinationRepositoryId": { "type": "integer", "minimum": 1 },
+              "dispatchKind": { "enum": ["workflow_dispatch", "repository_dispatch"] },
+              "allowVisibilityTransfer": { "type": "boolean", "default": false },
+              "expiresAt": { "type": "string", "format": "date-time" },
+              "revoked": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "queue": { "type": "object", "description": "Strict bounded QueueOptions contract validated by the gateway at startup; see RFC-033." }
+      }
+    },
     "controlPlane": {
       "type": "object",
       "additionalProperties": false,
@@ -472,7 +527,8 @@
         "defaults": { "$ref": "#/$defs/defaults" },
         "campaigns": { "$ref": "#/$defs/controlCampaigns" },
         "publishing": { "$ref": "#/$defs/publishing" },
-        "marketplace": { "$ref": "#/$defs/marketplace" }
+        "marketplace": { "$ref": "#/$defs/marketplace" },
+        "webhook-gateway": { "$ref": "#/$defs/webhookGateway" }
       }
     },
     "targetCampaign": {

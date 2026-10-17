@@ -1,0 +1,678 @@
+# RFC-033: Policy-governed webhook gateway
+
+**Status:** design and bounded-model validation; not an implementation or deployment claim.  
+**Scope:** a shared GitHub App webhook receiver and durable dispatcher for explicitly approved workflow subscriptions.  
+**Safety default:** disabled, fail closed, no inferred repository authority.
+
+The key words MUST, MUST NOT, SHOULD, and MAY are normative requirements for a
+future conforming implementation. Existing CAO rollout policy and gh-aw execution
+capabilities remain independent ceilings. This RFC does not enable an operation,
+grant a permission, or authorize any target.
+
+Persisted/wire state values are lowercase: `ready`, `claimed`, `dispatching`,
+`succeeded`, `expired`, `rejected`, `cancelled`, `failed`, and `ambiguous`.
+Capitalized state names in prose and tables denote those same values.
+
+## 1. Problem and goals
+
+A control repository needs to react to selected GitHub events without installing
+an independently privileged event router in every target repository. The gateway
+authenticates deliveries, evaluates bounded declarative subscriptions, and
+requests an approved workflow dispatch in an approved control repository.
+It MUST preserve source confidentiality, explicit enrollment, bounded durable
+work, and explainable dispatch outcomes across replicas and crashes.
+
+Goals are reusable event routing, compiler-declared subscriptions, immutable
+identity, grants checked in both phases, and truthful uncertainty reporting.
+Non-goals include general event forwarding, executing payload-supplied code,
+arbitrary HTTP destinations, target writes, event-sourced dashboard queries,
+exactly-once workflow execution, and immediate global revocation guarantees.
+
+## 2. Architecture and trust boundaries
+
+```text
+GitHub -- signed bytes --> receive deployment -- atomic admission --> PostgreSQL
+trusted revision approval ---------> subscription registry             |
+                                                                      v
+GitHub <-- bounded workflow_dispatch -- dispatch deployment <-- fenced claims
+```
+
+The receiver verifies, bounds, and projects ephemeral events; it does not execute workflows.
+The dispatcher claims durable jobs, refreshes authorization, and makes only the
+approved dispatch request. The registry separates discovered metadata from
+trusted approvals. Operational storage is not canonical dashboard storage.
+Neither payload repository names, workflow contents, compiler metadata, OAuth
+sessions, nor credential reach alone confer dispatch authority.
+
+## 3. Immutable identities and tenancy
+
+Namespace keys MUST contain deployment/tenant identity and the GitHub host.
+Source identity comprises App ID, installation ID, repository database ID, and,
+where needed, immutable organization/account ID. Destination identity comprises
+subscriber installation ID, repository ID, workflow identity, approved commit
+SHA, and immutable subscription ID/revision. A delivery key also includes the
+signed receiver/App identity and `X-GitHub-Delivery`.
+
+Owner/repository names and workflow paths are display/routing locators, not
+authority keys. Resolve a locator back to its approved IDs before use. A rename
+MAY update a verified locator; transfer, reinstall, visibility change, or workflow
+replacement MUST trigger authorization reevaluation. Repository deletion and
+name reuse MUST NOT rebind an existing subscription.
+
+The durable admission identity is `(namespace, receiver App ID, delivery ID)`;
+its atomic job batch binds stable subscription IDs and exact approved revisions.
+Per-job identity MUST NOT change merely because mutable policy or approval
+revisions change. Revision changes do not make a duplicate delivery new work.
+Deliberate administrator
+redrive uses a separately audited identity and MUST NOT erase the original
+terminal record.
+
+## 4. Subscription metadata v1
+
+The compiler-facing interchange document is a bounded JSON object with
+`schemaVersion: "gh-aw.webhook-subscription/v1"`, required `provider: "github"`,
+`id`, `tenantId`, `appId`,
+`source`, optional `filter`, `destination`, and `delivery`. Source declares
+trusted route and immutable installation/repository/organization constraints;
+destination explicitly declares transport kind and bounded field mapping.
+The trusted artifact/approval wrapper binds compiler identity, repository ID,
+source commit SHA, metadata path, and exact digest; those are not self-asserted
+activation authority in the subscription.
+Only the explicit GitHub provider is supported; a missing or unknown provider
+MUST reject validation. `Source.ID` independently identifies the configured
+trusted ingress route and MUST NOT be substituted for provider identity.
+Unknown versions, properties outside the versioned schema, invalid IDs, oversized
+documents, noncanonical hashes, and unsupported predicate operations fail closed.
+
+Metadata v1 is **untrusted discovery data**, even when generated by a compiler.
+It MUST NOT activate itself, widen an existing approval, or supply credentials.
+Its digest MUST bind the complete normalized subscription and the compiler
+version, workflow revision, dispatch mapping, and declared source/project scope.
+The dispatcher MUST load the immutable approved snapshot, not mutable branch
+metadata. Event content MUST NOT choose an input name, workflow, ref, destination,
+subscription revision, or permission.
+
+## 5. Trusted revision approval and lifecycle
+
+A separately authenticated administrator or reviewed control-repository policy
+approves the exact metadata digest and source commit SHA, immutable subscriber
+identity, permitted source installations/repositories, visibility ceiling, event
+types, input bounds, expiry, and operating mode. Approval authority MUST itself
+be checked against the control repository's reviewed policy.
+
+Lifecycle is `Discovered -> Approved -> Active -> Suspended|Removed|Superseded`.
+Only a trusted approval creates Active authority. Updates create a new revision;
+there is no silent approval inheritance. Removal immediately blocks local new
+admissions and cancels ready/claimed work after observation. Approval expiry,
+compiler trust removal, and policy narrowing behave like revocation.
+Already accepted remote requests cannot be recalled by changing registry state.
+
+The queue persists `QueueRevision { Revision: int64, Digest: string,
+Enabled: bool }` separately from each exact compiler `SubscriptionDigest`;
+`PolicyRevision` MAY be an alias, not a second revision domain. Jobs carry
+`Job.QueueRevision`; `JobDimensions(job)` derives App, Tenant, Source,
+Destination, and Workflow budget dimensions from immutable subscription identity.
+Admission carries `Admission.Revision`. The
+attempt-bound wrapper is `Authorization { Revision QueueRevision;
+ApprovedSubscriptionDigest string; Snapshot AuthorizationSnapshot }`; the
+snapshot MUST NOT carry a conflicting duplicate revision field.
+`ValidateDispatchAuthorization(job, authorization, now)` is the pure validation
+gate used before `Queue.BeginDispatch(ctx, fence, authorization)`.
+`ApplyRevision` rejects lower revisions and equal revisions whose
+digest or enabled flag differs, treats an identical tuple as a no-op, and
+atomically applies higher revisions while conservatively cancelling every older
+ready/claimed job. Dispatching jobs retain only fenced completion/recovery.
+Admission and BeginDispatch require exact equality with the current persisted,
+enabled policy; BeginDispatch also checks the job and fresh authorization agree.
+
+## 6. Compiler dependency and workflow identity
+
+The compiler MUST emit the versioned subscription declaration and a stable
+binding to the dispatchable workflow artifact and its source revision. This RFC
+does not assume the installed gh-aw compiler provides this feature. The local
+compiler has no subscription metadata emitter; upstream verification was blocked
+by SAML access, so an upstream implementation cannot be asserted here. Until an
+official emitter/schema and revision-binding contract exist, production
+activation of compiler-declared subscriptions is blocked by that dependency.
+A local hand-authored fixture is not a production compiler integration.
+
+Workflow dispatch accepts a branch or tag ref, not an arbitrary guarantee of
+execution at the metadata SHA. Use a protected, policy-approved revision
+locator whose resolved commit is rechecked before send; generated workflows MUST
+verify their expected approved revision before privileged work. Ref mutation
+between verification and GitHub processing is another external race: a ref alone
+does not prove immutable execution. Where that trust cannot be established,
+dispatch MUST remain disabled. Do not claim this RFC solves mutable-ref pinning.
+
+## 7. Event subscriptions and generic filters
+
+Subscriptions declare event family, optional action, and a bounded typed
+predicate tree. Supported primitives SHOULD be exact equality, membership in
+bounded literal sets, existence, and boolean conjunction/disjunction/negation.
+Only versioned allowlisted payload paths and normalized identity fields are
+readable. Missing required fields, type mismatches, unknown operators, excessive
+depth/node count, and exceeded evaluation budget MUST reject the match.
+
+No JavaScript, shell, templates with evaluation, network lookup, unbounded regex,
+or payload-driven destination selection is allowed. Event/action names are data
+in the registry, not special-case dispatch branches. Source repositories MUST
+already be explicitly enrolled; filters only narrow the authorized envelope.
+Fanout is deterministically bounded and paginated against one registry snapshot;
+partial admission MUST be reported and safely resumable without duplicate jobs.
+
+## 8. Projects and cross-repository identity constraints
+
+Project-related events MUST use compiler-declared project constraints, not
+hardcoded project event names as an authorization shortcut. A constraint binds
+GitHub host, immutable project node/database identity as applicable, owning
+organization/user identity, allowed item/content repository IDs, and permitted
+visibility. Account-level installation or project access does not imply access
+to every item repository.
+
+Validate payload identities against fresh authenticated API evidence where
+necessary. A project item referencing another repository MUST NOT widen source
+scope; inaccessible, redacted, draft, deleted, or unverifiable content fails
+closed unless the approved declaration explicitly supports a metadata-only
+case that discloses no unauthorized content. Public project visibility does not
+make private issue content public. Capability and event availability vary by
+GitHub deployment; unsupported subscriptions remain inactive.
+For a `projects_v2_item` payload, the containing project's identity is
+`projects_v2_item.project_node_id`; `projects_v2_item.node_id` identifies the
+item and MUST NOT be substituted for the project. Compiler-declared field
+bindings and typed identity validation enforce this distinction rather than
+event-name-specific authority branches.
+The corresponding generic compiler identity-constraint JSON Pointer is
+`/projects_v2_item/project_node_id`, never `/projects_v2_item/node_id`.
+Current host authorization additionally checks the exact approved nodes through
+the receiving App's authenticated GraphQL transport: each must be a ProjectV2
+with the same node ID and owning Organization database ID. The initial
+implementation supports organization-owned projects only; user-owned or
+unverifiable nodes fail closed. The query fetches identity/ownership only, not
+project contents, item fields, or missing filter operands. Every response
+participates in shared GraphQL quota accounting.
+`Source.ProjectIDs` and `AdminGrant.ProjectIDs` are opaque GraphQL node-ID
+strings such as `PVT_...`, not numeric database IDs. Repository, organization,
+and installation IDs remain numeric. A nonempty projectIds declaration MUST
+have a generic identity constraint whose approved string or string-array value
+is exactly the same project-ID set; declaring projects without an event
+identity constraint MUST fail closed. The generic predicate supports exact
+scalar equality or membership in that declared string set, without hardcoded
+Projects authorization branches.
+
+Proposed source-constraint fixture fragment only—not a complete subscription
+and not output from a real compiler:
+
+```json
+{
+  "projectIds": ["PVT_APPROVED_PROJECT_NODE_ID"],
+  "identityConstraints": [
+    {
+      "path": "/projects_v2_item/project_node_id",
+      "value": "PVT_APPROVED_PROJECT_NODE_ID"
+    }
+  ]
+}
+```
+
+The actual Projects v2 item edited webhook schema limits
+`changes.field_value` to `field_node_id` and `field_type`, with the latter drawn
+from `single_select`, `date`, `number`, `text`, and `iteration`; that object has
+`additionalProperties: false`. It does **not** carry selected status names,
+labels, or `from`/`to` transition values there. Realistic fixtures MAY filter
+`/changes/field_value/field_node_id` and `/changes/field_value/field_type`,
+together with `/projects_v2_item/project_node_id`. They MUST NOT invent status,
+label, or transition fields that the webhook does not supply.
+
+A requested status-name, label, or transition filter whose operand is absent
+evaluates Unknown/nonmatch, including beneath negation; it MUST NOT trigger a
+fallback API fetch or fabricate an enriched payload. Such a subscription cannot
+claim to implement the requested intent without compiler evidence that the
+actual event contract supplies the needed fields. This limitation is separate
+from the unsupported compiler bridge and remains true even with a valid grant.
+
+## 9. Grants at admission and immediately before dispatch
+
+Admission MUST validate receiver/source installation activity, source repository
+membership, applicable event permissions, trusted active subscription revision,
+subscriber/destination installation activity and dispatch capability, source and
+destination immutable identities, visibility/confidentiality policy, and the
+control repository's reviewed rollout policy. These form an intersection, not a
+union. A source installation grant never authorizes a subscriber implicitly.
+Root allowed-repository and allowed-owner restrictions apply by intersection,
+not union. Root-scope changes MUST bump the gateway revision because its
+effective policy digest changes; same-revision digest changes conflict.
+The isolated receiver has no App private key: the dispatch role delegates
+admission evidence through a 30-second authorization proof in the existing
+operational StateStore, at one bounded fixed subscription-ID key. Receive accepts
+only fresh, complete evidence bound to the exact trusted revision and current
+policy. The proof primer runs even with no queued jobs. Such a proof is bounded
+observation, not an instantaneous guarantee against external GitHub revocation.
+
+The worker MUST independently refresh the same grants before Dispatching and
+check any intervening local invalidation before reserving dispatch. A stale cache,
+unavailable authorization API, inaccessible policy SHA, or missing evidence
+means defer until a bounded deadline or reject, never assume permission.
+Known revocation, subscription removal, or disallowed visibility means Cancelled for ready/claimed work.
+`AuthorizationSnapshot.Complete = FALSE` is incomplete evidence and MUST defer,
+not infer cancellation from default false fields. With Complete true, observed
+inaccessibility or disallowed visibility yields a cancellation decision.
+Snapshots bind `JobID`, the exact claim `Fence`, and the next dispatch
+`Attempt = job.Attempt + 1`, as well as checked-at/expiry and both grants.
+Do not fall back to another installation, broader token, anonymous access, or a
+new destination.
+
+GitHub provides no transaction spanning authorization lookup and dispatch.
+Revocation/visibility changes that have not yet been observed can race with
+send and acceptance. The gateway guarantees **no new send after a relevant
+local invalidation is observed**, not “no send after remote revocation.”
+Observation and send reservation MUST serialize locally. This cannot undo a
+request already in flight or an accepted workflow.
+Here “send” means the irreversible local send reservation at BeginDispatch,
+not the instant bytes reach GitHub. A request handed off earlier can still
+arrive or be accepted after local observation. Implementations MUST NOT advertise
+a stronger wire-level guarantee or hold a database transaction open throughout
+the remote request to pretend this race has disappeared.
+
+## 10. Isolated receive and dispatch deployments
+
+Receive and dispatch MUST be independently deployable processes with separate
+secrets, network policy, health checks, concurrency budgets, and database roles.
+The receiver holds current/previous webhook verification material and no App
+private keys. It obtains admission evidence only from fresh trusted proofs.
+The dispatcher alone loads both receiver-App and dispatcher-App private keys:
+the former supports fresh source authorization reads, the latter approved
+destination dispatch. Every egress authorization independently rechecks live
+source/destination installation and repository access, current root-policy
+scope, exact approved revision, and grant; it MUST NOT reuse an admission proof
+as authority to send. The dispatcher owns token minting and dispatch egress,
+not public webhook ingress.
+Both CLI roles are explicit and an unset role fails closed. Receive startup
+rejects either App-key file environment variable; dispatch startup rejects
+current/previous webhook-secret variables. Plain HTTP receive listeners are
+permitted only on numeric loopback; non-loopback listeners require explicit
+TLS certificate/key flags.
+The receive listener has `GET /healthz` returning 204 and `GET /readyz`
+returning 204 only for current valid enabled policy, applied queue revision,
+and reachable queue depth, otherwise 503. Health routes bypass the webhook
+semaphore. A shared 64-handler limit rejects excess webhook requests with 503
+before any body read; admitted handlers have an 8-second context deadline.
+HTTP read/write timeouts are both 10 seconds. These bounds are not queue
+admission or authorization and MUST NOT bypass either gate.
+
+Each App key rotates independently through its mounted secret file plus
+dispatch-role restart. Webhook HMAC rollover is separate: update current and
+bounded previous secrets, restart receive, then remove previous material and
+restart receive when overlap ends. Rotation MUST NOT widen approved App IDs,
+installation reach, grants, or scope.
+Deployment MAY use the dedicated `webhook-gateway-runtime` Docker target, which
+has no Node/dashboard dependency and runs as nonroot UID 65532. It does not
+change the Dockerfile's default final dashboard target.
+
+Ingress authenticates exact raw bytes with the configured webhook secret,
+constant-time signature comparison, body/time limits, and bounded parsing before
+admission. HTTPS and secret rotation with bounded overlap are required.
+Unsigned health checks cannot enqueue work. The dispatcher exposes no public
+arbitrary dispatch endpoint. A verified receiver authenticates messages, not
+their authority to execute arbitrary instructions.
+
+## 11. Durable queue record and capacity
+
+Every job stores immutable identity/digest, approved subscription snapshot,
+payload-free EventIdentity, bounded compiled dispatch request, receive and
+expiry times, state, not-before, attempt count, owner, generation, lease deadline,
+outcome classification, and bounded diagnostics. Credentials and raw tokens
+MUST NOT enter records. Raw source payloads MUST NOT persist, whether matched
+or filtered. After HMAC verification, ingress evaluates filters and identity
+constraints on ephemeral raw bytes, builds only allowlisted output plus reserved
+provenance, and discards the source body. `Job.Event` contains SourceID,
+DeliveryID, Name, Action, and numeric InstallationID, RepositoryID, and
+OrganizationID, with no Payload. `Job.Payload` is the complete compiled outbound
+request, not an event body.
+
+The worker validates stored EventIdentity, exact immutable approved subscription
+digest, fresh grants, and the compiled request's shape/keys/limits, then sends
+the stored projected request unchanged. It MUST NOT ParseEvent or rerun source
+filters on compiled dispatch JSON. The admission DeliveryDigest remains the hash
+of the original authenticated delivery; it is independent of projected payload
+bytes and MUST NOT be compared as if both byte sequences were identical.
+Projected approved leaf data still requires protected database access,
+deployment-provided encryption at rest, strict byte/retention bounds, and no
+body-level logging. Database time is authoritative for leases and expiry.
+
+Admission atomically reserves both job and byte capacity and creates the dedup
+marker plus Ready record. Capacity failure rolls back all three; it MUST NOT
+consume delivery identity. Bound pending, leased, delayed, terminal/tombstone,
+payload bytes, attempts, fanout, and per-tenant budgets separately. No eviction of
+accepted pending work is allowed. Pruning a terminal record MUST retain a dedup
+tombstone through the configured redelivery horizon; admission age limits prevent
+older deliveries from becoming executable again. GitHub webhook requests have no
+universal signed timestamp, so header freshness alone MUST NOT be invented as
+replay protection. Expired tombstone redrive needs explicit policy.
+
+## 12. State machine, leases, fences, and crash recovery
+
+| From | Guard/event | To |
+| --- | --- | --- |
+| Absent | authorized atomic admission | Ready |
+| Absent | known policy denial, bounded diagnostic | Rejected |
+| Ready | eligible claim, available capacity | Claimed |
+| Claimed | refreshed grants, fenced owner, live lease, quota | Dispatching |
+| Claimed | lease expires before possible send | Ready, Expired, or Failed |
+| Ready | dispatch deadline expires | Expired |
+| Ready/Claimed | observed invalidation or newer policy revision | Cancelled |
+| Dispatching | accepted response durably recorded | Succeeded |
+| Dispatching | proven nonacceptance, exact current policy, budget/deadline remain | Ready |
+| Dispatching | proven nonacceptance, current policy invalidated | Cancelled |
+| Dispatching | proven nonacceptance, no retry budget | Failed |
+| Dispatching | uncertain outcome, crash, or lease expiry | Ambiguous |
+
+Claim increments a monotonically increasing generation and binds owner and
+deadline. All worker check/start/send/result writes MUST compare owner,
+generation, and live lease; reapers atomically compare the generation/deadline
+they inspected. Recovery MUST NOT race a replacement lease. Generation numbers
+MUST NOT wrap or be reused. Result updates from stale workers are ignored and
+audited, including after another worker claims the same job.
+
+Persist Dispatching before making a network request. A crash after that commit
+but before any bytes leave is conservatively Ambiguous if nonacceptance cannot
+be proven. Expired Dispatching MUST NOT become Ready. All terminal states are
+immutable; operator reconciliation is a new audited action, not an overwrite.
+An in-flight request may outlive its lease: fencing protects local writes, not
+the remote GitHub API.
+Dispatching is the irreversible reservation boundary: later policy invalidation
+does not cancel it or prove nonacceptance, even when physical transmission has
+not yet started. Fresh grants, exact enabled policy, and hierarchical shared
+quota reservations MUST all be committed before that boundary without holding
+the transaction open for HTTP.
+
+## 13. Delivery semantics, retries, and expiration
+
+Succeeded means the dispatch endpoint accepted the request, not that an Actions
+run started, completed, was authorized internally, or achieved operational value.
+The endpoint has no transactional gateway idempotency key. Pin and test the REST
+API version: current `2026-03-10` documentation specifies HTTP 200 containing
+`workflow_run_id`, `run_url`, and `html_url`, while older supported API versions
+may return 204 without a body. The adapter explicitly pins
+`githubapp.WebhookGatewayAPIVersion = "2026-03-10"` on both dispatch transports,
+overriding go-github v66's older default; tests verify the outbound header.
+Its safe outcome retains accepted HTTP status and a validated numeric
+WorkflowRunID when available, never the raw success body or unrestricted run
+URLs. A bodyless legacy response need not have a run ID and MUST NOT fabricate
+one. These observations still mean acceptance only, not successful execution.
+A lost
+response after external acceptance MUST become Ambiguous even when an unreceived
+successful response would have contained the run ID.
+Ambiguous is terminal by default and MUST NOT be automatically replayed.
+
+Each subscription explicitly selects workflow_dispatch or repository_dispatch;
+neither is an implicit fallback for the other. The latter has a different
+contract: HTTP 204, at most 10 top-level
+`client_payload` properties, `event_type` at most 100 characters, and payload
+under 64 KiB. Selecting it requires separately approved compiler metadata,
+input/trigger validation, and endpoint tests; do not reuse workflow_dispatch's
+25-input or run-ID response assumptions.
+The gateway itself deliberately caps both transports at 10 total properties
+and 64 KiB **after** reserved provenance injection, even though current GitHub
+workflow_dispatch supports 25 inputs. This leaves at most nine ordinary mapped
+properties when the mandatory reserved property is present.
+These gateway bounds MUST NOT be widened merely to match the upstream maximum.
+workflow_dispatch accepts its documented HTTP 200 and legacy 204 contracts;
+repository_dispatch accepts HTTP 204, not an undocumented 202 response.
+
+The runtime alone creates reserved `_gateway` provenance with
+`version: "cao.webhook/v1"`, trusted `sourceId`, `deliveryId`, `subscriptionId`,
+and the complete approved Revision. This provenance version is distinct from
+the subscription metadata schema version. repository_dispatch carries it as
+the object `client_payload._gateway`; workflow_dispatch carries the same
+document as a JSON string in `inputs._gateway`.
+For workflow dispatch, approved compiler metadata MUST explicitly declare
+`destination.gatewayInput: true`, asserting that the compiled workflow declares
+the reserved input. Absence of that contract fails closed without dispatch.
+User mappings MUST NOT overwrite or supply `_gateway`; collisions and
+post-injection byte/property overflows fail closed. The upstream emitter is
+still unavailable, so local gatewayInput declarations remain proposed contract
+fixtures, not proof that a real compiler produced the workflow input.
+
+Retry is allowed only on positively classified known-safe nonacceptance, with
+bounded attempts, persisted backoff/jitter, not-before, and a fixed original
+deadline. A local quota refusal before send is safe to defer. A documented
+explicit refusal MAY be retried according to its semantics. Generic 5xx,
+connection resets, partial writes, and timeouts are not proof of nonacceptance.
+If retry classification is uncertain, choose Ambiguous.
+An explicit HTTP 429 rate-limit refusal is a concrete known-nonacceptance retry
+case: honor Retry-After and original expiry, bound attempts, and persist backoff.
+It MUST NOT be conflated with a lost response or generic 5xx. In the model this
+is Send with `accept = FALSE` followed by Result with `known = TRUE`; uncertainty
+uses `known = FALSE`, while lease recovery always produces Ambiguous.
+Finish MUST recheck current persisted enabled policy and exact revision in the
+same transaction before scheduling a safe retry. If authority changed while the
+attempt was Dispatching, known nonacceptance becomes Cancelled rather than an
+obsolete-policy Ready job. An accepted or uncertain old in-flight attempt can
+still finalize Succeeded or Ambiguous; revocation cannot undo its handoff.
+
+Duplicate deliveries, concurrent receivers, and worker restarts MUST preserve
+one durable identity. This gives at-most-one possible acceptance per identity
+under the modeled safe-failure assumption, not exactly-once workflow execution.
+Receiving a duplicate does not create a new deadline or renew approval.
+
+## 14. PostgreSQL extension and existing service reuse
+
+Extend `server/internal/operational/` with a focused optional gateway queue/
+subscription contract and capability, rather than reusing collection jobs or
+CLI commands with incompatible state semantics. PostgreSQL is the initial
+durable provider. Construction MUST reject missing, volatile, or process-scoped
+capabilities for the isolated gateway topology. Redis/memory MUST report
+unsupported until they implement the complete contract and conformance suite;
+there is no automatic fallback or dual write.
+
+The PostgreSQL adapter owns namespace-isolated `cao_operational_*` gateway
+tables, immutable registry revisions, jobs, dedup tombstones, capacity accounting,
+and atomic conditional transitions. Use transactions and row/CAS locking for
+claims, concurrent invalidation, retries, and reclamation; bounded
+`SKIP LOCKED` selection MAY avoid unrelated-job contention. Admission and
+maintenance must follow existing protected-state budgets and cancellation rules.
+Operational migrations remain separate from dashboard entity/schema generation.
+Policy MUST be read fresh, while compiler metadata MAY be cached only by its
+exact immutable approved digest. Adding source routes or changing App IDs,
+namespace, queue options, or worker count requires role restart; incompatible
+cache changes fail closed instead of hot-reconfiguring authority/topology.
+
+Reuse `server/internal/githubapp/` for existing App authentication and governed
+API transports, adding explicitly scoped dispatch functionality without silently
+upgrading the read-only collector App. Reuse `githubquota` and focused operational
+quota services across replicas; unavailable quota storage blocks sending.
+Production composition MUST provide `Worker.Budget`, whose focused contract is
+`Acquire(context.Context, Job) (release func(), err error)`, before durable
+BeginDispatch, in addition to the queue's atomic hierarchical reservation.
+The shell permits nil Budget only for isolated pure-test composition; production
+MUST NOT omit it. Acquisition denial leaves the job claimed without consuming a
+dispatch attempt, and the acquired callback MUST be released on every exit.
+The production paired budget gate/dispatcher owns actual response-based quota
+reconciliation. A reconciliation failure MUST NOT overwrite a known HTTP
+acceptance or prevent durable fenced Finish from recording it, and MUST NOT
+cause a replay. There is no separate DispatchQuota/DispatchReservation API.
+Reuse existing logger/telemetry factories and application lifecycle: cancel
+polling, stop/join workers, then close storage. Do not create a second credentials,
+quota, logging, or canonical-data framework.
+
+## 15. Rate limits, health, and operational telemetry
+
+Reserve per-installation/API-resource and deployment-wide request capacity
+before send. Respect Retry-After, primary/secondary limits, and bounded
+concurrency. Quota unavailability means no send; waiting does not bypass expiry.
+Do not hold a database transaction during GitHub calls or backoff.
+
+Expose bounded counters for admission outcomes, queue state, age, capacity,
+claim/reap, safe retries, stale fences, grant denials, quota deferral, dispatch
+acceptance, and ambiguity. Structured logs/traces MUST NOT contain event bodies,
+credentials, raw URLs with secrets, private titles, or unrestricted payload
+attributes. Hash/correlate sensitive identities only under approved diagnostics
+policy; avoid unbounded metric labels. Health distinguishes receiver readiness,
+durable storage, registry freshness, worker capacity, and quota/auth degradation.
+Dashboard reporting consumes authorized derived evidence, not live queue state
+as browser authority.
+The gateway defaults `OTEL_SERVICE_NAME` to `cao-webhook-gateway` when unset;
+operators MAY select role-specific names without changing bounded metric labels.
+The approved dispatch trace may include `cao_webhookgateway.accepted_status`
+and numeric `cao_webhookgateway.workflow_run_id`, alongside delivery/job trace
+identities. These are not metric labels and do not authorize subsequent work.
+
+## 16. Threat model and security controls
+
+Threats include forged/replayed webhooks, malicious repository metadata,
+cross-tenant delivery collisions, repository transfer/name reuse, private data
+exfiltration through inputs, removed grants, stale workers, duplicate dispatch,
+unbounded fanout, quota exhaustion, and compromised ingress credentials.
+Mitigations are signed-byte validation, immutable IDs, trusted revision approval,
+both-phase grant checks, allowlisted minimized input mapping, strict bounds,
+durable dedup, generation fencing, isolated deployments, and terminal ambiguity.
+
+Do not forward raw payloads, user-controlled refs, callback URLs, or repository
+content as trusted instructions. Inputs MUST carry only approved bounded data
+and an opaque correlation/job identity. Destination workflows must treat all
+event-derived input as untrusted and reapply normal CAO policy/safe-output
+controls. Review mode remains the default; the gateway cannot promote to live.
+Retain only approved projected leaf data, encrypted with narrowly scoped access
+and short approved retention, never raw source events. Deleting projected
+payloads must not delete replay protection or falsify audit outcomes.
+
+## 17. Formal model, checked properties, and limitations
+
+[`tla/WebhookGateway.tla`](tla/WebhookGateway.tla) and its base configuration model two
+jobs, two distinct workers, one durable pending slot, two time steps, and two
+claim generations. Jobs abstract immutable dedup tuples; authorization abstracts
+the conjunction of grants, approved revision, and visibility. Remote authority
+can change to Revoked, Removed, or Hidden before local observation. Time,
+worker crashes/restarts, rate availability, safe nonacceptance, external
+acceptance, and lost outcomes are nondeterministic. Records survive crashes.
+
+The additional concurrent configuration uses two pending slots, two jobs, two
+workers, one time step, and one claim generation. Unlike the one-slot contention
+configuration, it explores two distinct jobs being claimed/dispatching
+simultaneously. Both configurations are required: the first checks contention
+and safe retry/reclaim generations; the second checks concurrent queue entries.
+
+TLC checks TypeOK, BoundedQueue, AcceptedNeverRetried,
+SuccessRequiresAcceptance, ObservedChangeBlocksNewClaims, and DispatchRequiresCheck.
+Action properties check immutable terminals, fenced worker mutations,
+monotonically increasing generations, and
+NoDispatchReservationAfterObservation. Stale tickets remain available to competing workers;
+incorrect owner/generation/lease candidates cannot transition. Duplicate arrival
+is an explicit stuttering action. Ambiguous outcomes cannot retry. A remote
+change between Check and Send deliberately remains reachable; claiming an
+instantaneous remote-revocation invariant would be false.
+BeginDispatch is the irreversible local reservation; Send abstracts the eventual
+possible external outcome, and Result separately models observing or losing
+that outcome. Observation cancels ready/claimed work, not already-reserved
+dispatching work. The latter can still be externally accepted after observation.
+It is not a distributed atomic transaction with GitHub. The model abstracts one
+monotonic policy invalidation rather than the concrete int64 revision arithmetic,
+which requires adapter conformance tests. Local observation/reservation ordering
+must be implemented by the focused storage protocol and cannot stop an earlier
+reservation from reaching GitHub afterward.
+
+The finite model is exhaustive within its bounds, not an unbounded proof,
+implementation test, cryptographic proof, database durability proof, fairness/
+liveness guarantee without the assumptions below, or verification of GitHub.
+Time and backoff are abstracted;
+rate unavailability represents safe deferral, not rate-counter arithmetic.
+Permanent outages may prevent successful dispatch. Safe-failure classification and atomic
+database transitions are assumptions that implementation tests must validate.
+The model does not prove exact workflow revision execution or exactly-once runs.
+
+Run the official [TLC v1.7.4 release](https://github.com/tlaplus/tlaplus/releases/tag/v1.7.4)
+with an existing Java runtime:
+
+```sh
+python3 scripts/check-webhook-gateway-model.py --jar /path/to/tla2tools.jar
+python3 scripts/check-webhook-gateway-model.py --jar /path/to/tla2tools.jar \
+  --config specs/tla/WebhookGateway.concurrent.cfg
+python3 scripts/check-webhook-gateway-model.py --jar /path/to/tla2tools.jar \
+  --config specs/tla/WebhookGateway.liveness.cfg
+```
+
+The runner fixes two TLC workers, breadth-first exhaustive exploration, finite
+bounds, fingerprint polynomial, and seed; it fails unless TLC reports success
+and an empty exploration queue. It writes model/config/tool digests, command,
+state counts, summary evidence, and limitations to
+[`tla/WebhookGateway.result.json`](tla/WebhookGateway.result.json).
+The concurrent run writes
+[`tla/WebhookGateway.concurrent.result.json`](tla/WebhookGateway.concurrent.result.json).
+Downloaded tools, extracted standard modules, logs, and state files belong in
+an automatically cleaned external work directory by default; `--work-dir` accepts
+an explicit override outside the checkout as well. They MUST NOT be committed.
+The recorded
+result is evidence for the exact input hashes only.
+
+`LivenessSpec` adds explicit weak fairness for Tick and, for each job, Reap and
+Expire. The separate liveness configuration retains two workers/two jobs and
+two pending slots, with a one-tick horizon and one claim generation to keep complete temporal cycle
+checking small. `EventualSettlement` requires every admitted pending job
+eventually to reach some terminal outcome. This is expiration/recovery
+settlement, **not** eventual successful execution. It assumes clock advancement
+and durable maintenance continue even while GitHub or worker processes are
+unavailable. No fairness of sending, rate availability, or successful GitHub
+responses is assumed. An unfair scheduler, stopped database maintenance, or
+stalled clock invalidates this liveness argument.
+[`tla/WebhookGateway.liveness.result.json`](tla/WebhookGateway.liveness.result.json)
+records the actual bounded temporal check and its fairness assumptions.
+The runner derives checked invariant/property names from each configuration,
+not from an independent hardcoded list.
+
+## 18. Implementation and validation gates
+
+Sequence is design and executed TLC first; then provider-neutral contracts and
+PostgreSQL conformance; then receiver and subscription approval; then isolated
+dispatch with fresh grant checks; finally real compiler integration and opt-in
+deployment. No queue implementation is authorized by a merely written model.
+Changes to states, retry rules, fences, or invalidation ordering require model
+updates and a fresh exhaustive result before persistence changes proceed.
+
+Required tests include concurrent duplicate admission/capacity rollback; two
+workers/two connections; stale result fencing; lease expiry and process restart;
+all terminal states; safe retry and expiration; quota/auth unavailability;
+revocation, removal, visibility changes and observation races; rename/transfer/
+ID reuse; project cross-repository confidentiality; invalid metadata/approval;
+cross-tenant isolation; signature/body bounds; and accepted-but-response-lost
+ambiguity. PostgreSQL restart tests must use real persistence, not an in-memory
+stub. Grant-race tests must document the guarantee they cannot establish.
+
+A real end-to-end claim requires signed GitHub delivery, actual compiler-produced
+metadata at an approved revision, real isolated deployments and PostgreSQL,
+scoped installation credentials, a real workflow dispatch, and correlated
+observations of acceptance/run behavior. Local fixtures, mocked API responses,
+TLC, and compile success MUST NOT be presented as that end-to-end test.
+This design/model change makes no such claim.
+
+## 19. References and open dependencies
+
+- [GitHub webhook validation](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries).
+- [Webhook best practices](https://docs.github.com/en/webhooks/using-webhooks/best-practices):
+  quick response, delivery identity, and asynchronous processing.
+- [Webhook redelivery](https://docs.github.com/en/webhooks/testing-and-troubleshooting-webhooks/redelivering-webhooks):
+  no assumption of automatic redelivery after every failed response.
+- [Workflow dispatch REST API](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event):
+  endpoint permissions, ref, input contract, and versioned response. Retrieved
+  2026-10-17: current documentation describes API `2026-03-10`, 25 input
+  properties, and HTTP 200 with run identity; do not apply that contract silently
+  to clients pinned to older API versions.
+- [GitHub App installation tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token).
+- [Webhook event payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads).
+- [Projects v2 item webhook payload](https://docs.github.com/en/webhooks/webhook-events-and-payloads#projects_v2_item):
+  distinguish `project_node_id` from the item's `node_id`.
+- [Actual Projects v2 item edited schema](https://raw.githubusercontent.com/octokit/webhooks/main/payload-schemas/api.github.com/projects_v2_item/edited.schema.json):
+  `changes.field_value` has only `field_type` and `field_node_id`, not status
+  names or transition values (verified 2026-10-17).
+- [Repository dispatch REST API](https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event):
+  a separate HTTP 204 transport with different event/payload limits.
+- [GitHub App rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
+- [Existing operational contracts](server-operational-storage.md),
+  [ingestion boundaries](server-ingestion.md), and
+  [control architecture](control-architecture.md).
+
+Open dependencies are an official compiler metadata emitter/schema and revision
+binding; approved App permissions and supported project-event capabilities on
+each GitHub host; a trustworthy dispatch-ref execution contract; operational
+retention/SLO budgets; and real deployment acceptance evidence. Absence of any
+required dependency disables affected subscriptions rather than substituting
+handwritten production metadata or broader authority.

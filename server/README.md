@@ -174,6 +174,246 @@ a disposable local PostgreSQL database for shared adapter conformance and
 cross-connection durability, isolation, cancellation, and capacity checks.
 Tests create random namespaces and remove their operational state afterward.
 
+## Webhook gateway operations
+
+The [RFC-033 contract and executed queue model](../specs/rfc-033-webhook-gateway.md)
+describe a separate, opt-in gateway, not the dashboard collector's webhook
+endpoint. It is disabled by default. This change does **not** activate the
+gateway in the root policy, enroll repositories, approve subscriptions, or grant
+Actions write access.
+
+Run two isolated deployments of `server/cmd/cao-webhook-gateway`: a public
+receive role and a private dispatch role. Each uses an absolute path to its
+reviewed `cao.json` and the same durable PostgreSQL operational namespace. The
+commands below show separate process roles; they are not evidence that a live
+deployment or compiler integration was tested:
+
+Before starting either role, provision the policy's exact namespace with
+`cao-dashboard database bootstrap --store operational --namespace NAMESPACE`
+and apply `postgres/operational-grants.sql` as described in [POSTGRES.md](POSTGRES.md).
+The gateway opens existing storage with default operational capacity settings;
+bootstrap that namespace with the same defaults. Both roles must use runtime
+database credentials, never the schema owner's credentials or
+`CAO_DATABASE_ADMIN_URL`. Startup does not create or migrate storage.
+
+```bash
+# Receive deployment only: webhook ingress; no private App keys.
+go -C server run ./cmd/cao-webhook-gateway \
+  --role=receive --policy=/etc/cao/cao.json
+
+# Separate dispatch deployment: source-read and destination dispatch credentials.
+go -C server run ./cmd/cao-webhook-gateway \
+  --role=dispatch --policy=/etc/cao/cao.json
+```
+
+The role has no permissive default: an unset role fails closed. For a lean
+container without Node or dashboard assets, build the dedicated nonroot
+(UID 65532) target; the Dockerfile's default final dashboard image is unchanged:
+
+```bash
+docker build -f server/Dockerfile --target webhook-gateway-runtime \
+  -t cao-webhook-gateway .
+```
+
+Mount the reviewed policy and role-specific secrets read-only in independently
+configured receive/dispatch deployments. Plain HTTP ingress is allowed only on
+a numeric loopback listener; non-loopback receive listeners require both
+`--tls-cert` and `--tls-key`. Do not assume a public plaintext listener or
+forwarded headers satisfy this requirement.
+
+The receive listener exposes `GET /healthz` (204) and `GET /readyz` (204 only
+when the current policy is valid/enabled, its revision is applied, and queue
+depth is reachable; otherwise 503). These routes do not consume webhook-handler
+slots. A shared limit of 64 simultaneous webhook handlers rejects excess work
+with 503 **before reading the body**. Accepted handlers have an 8-second context
+deadline; HTTP ReadTimeout and WriteTimeout are both 10 seconds.
+
+Keep `CAO_POSTGRES_URL` in each deployment's secret environment. Give only the
+receive deployment `CAO_GATEWAY_WEBHOOK_SECRET` and, during bounded rotation overlap,
+`CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET`. Give only the dispatch deployment
+`CAO_GATEWAY_RECEIVE_KEY_FILE` and `CAO_GATEWAY_DISPATCH_KEY_FILE`.
+The receive process MUST NOT have either private App key.
+Startup rejects either App key-file environment variable in receive mode and
+rejects current/previous webhook secrets in dispatch mode.
+Key-file variables point to mounted secret
+files; never put key contents or webhook secrets in policy. Receiving and
+dispatch App IDs come from reviewed policy (`receivingAppId` and
+`dispatchAppId`), not a `CAO_GATEWAY_RECEIVE_APP_ID` environment override.
+The dispatch process uses the receiver App only for narrowly scoped source
+authorization reads and the dispatch App for approved destination dispatches.
+Rotate each private key independently by replacing its mounted secret file and
+restarting the dispatch role; do not combine private-key rotation with webhook
+HMAC rotation. For webhook rollover, install the new current secret and bounded
+previous-secret overlap in the receive deployment, restart that role, then remove
+the previous secret after the approved overlap and restart again.
+
+The dispatch role publishes short-lived authorization proofs (30 seconds) to
+the existing operational `StateStore`, using one bounded fixed key per
+subscription ID. Its proof primer runs even when the queue is empty. Receive
+admits only with a fresh proof bound to the exact trusted subscription revision;
+missing, expired, mismatched, or incomplete proofs fail closed. No private key is
+delegated to ingress. Before each outbound attempt, dispatch always performs
+fresh live installation/repository checks for both source and destination,
+current root-policy scope checks, and grant validation; admission proofs are not
+an egress authorization cache.
+
+The queue stores only payload-free `Job.Event` identity and bounded compiled
+`Job.Payload` dispatch JSON, never original matched or filtered event bodies.
+Ingress evaluates filters/constraints on ephemeral authenticated bytes, builds
+the approved leaf allowlist plus reserved provenance, then discards raw input.
+Workers authorize against stored identity and immutable approved metadata and
+send the compiled request unchanged; they never parse it as a source event.
+The original delivery hash remains admission dedup evidence, independent of
+projected payload bytes. Restrict database access, require deployment-provided
+encryption at rest, and enforce reviewed byte/retention bounds. Raw events must
+never be persisted, forwarded, or logged.
+Gateway output is capped at 10 total properties and 64 KiB for either transport,
+including reserved provenance injected by the runtime,
+intentionally stricter than GitHub's current 25-input workflow-dispatch limit.
+`client_payload._gateway` is an object for repository dispatch;
+`inputs._gateway` is a JSON string for workflow dispatch. It carries
+`version: "cao.webhook/v1"`, source/delivery/subscription IDs, and the complete
+approved Revision. Workflow metadata must declare `destination.gatewayInput: true`,
+asserting the compiled workflow has that reserved input; otherwise the
+worker fails closed. `_gateway` collisions are rejected, and at most nine
+ordinary mapped properties remain under the total cap.
+Both dispatch endpoints explicitly pin REST API `2026-03-10`; workflow acceptance
+supports HTTP 200 and legacy 204. Safe queue outcomes retain accepted HTTP status and a validated numeric
+workflow-run ID when returned, not the raw response body or run URLs. A
+bodyless legacy response need not provide an ID; acceptance is not execution
+success.
+Production workers must receive the shared-quota `Budget` adapter even though
+the shell allows it to be absent in pure tests. Its acquire/release lifecycle
+wraps durable dispatch reservation; the paired dispatcher reconciles actual
+GitHub response quota without changing a known accepted dispatch into a retry.
+
+The reviewed `control-plane.webhook-gateway` section binds enabled state,
+monotonic revision, App identities, namespace, queue/worker bounds, explicit
+administrator grants, and approved compiler artifacts. Each artifact is pinned
+by its exact SHA-256 digest plus repository identity, commit SHA, and compiler
+identity. Discovered metadata is untrusted and cannot approve itself. Source,
+destination, workflow, visibility, and project constraints must agree with the
+reviewed grant and immutable subscription revision. Repository names and event
+names do not create authority.
+Root `control-plane.scope.allowed-repositories` and `allowed-owners` constrain
+gateway scope by **intersection**, never union. Recognizing the gateway in the
+shared policy loader/schema does not enable it. Root-scope changes must also
+bump the gateway revision; changing the effective digest at the same revision
+conflicts rather than silently replacing authority.
+Subscription metadata requires explicit `provider: "github"`; missing or
+unsupported providers are rejected. The configured source route ID is separate
+from provider identity.
+Project IDs are GraphQL node-ID strings (`projectIds: ["PVT_..."]`), not numeric
+IDs; compiler-declared generic constraints must bind the exact approved set to
+`/projects_v2_item/project_node_id`, not the item's `node_id`.
+Current authenticated GraphQL authorization checks exact project identity and
+organization ownership only, without fetching project content or enriching
+missing filter values. User-owned/unverifiable project nodes fail closed.
+For Projects item edited events, actual `changes.field_value` supplies only
+`field_node_id` and `field_type`, not selected status names, labels, or from/to
+values. Missing status/label/transition operands are Unknown/nonmatch; do not
+invent fixture fields or fetch missing values to make a subscription match.
+
+Read policy afresh for every ingress/dispatch decision. Metadata may be cached
+only as immutable bytes bound to its exact approved digest; cached metadata
+does not replace fresh policy/grant checks.
+Adding source routes or changing namespace, App IDs, queue capacity options, or
+worker count requires a role restart. The immutable configuration cache fails
+closed on incompatible changes; do not expect a hot reload to rebuild topology.
+Missing, changed, invalid, inaccessible, disabled, or unsupported configuration
+fails closed; there is no last-known-good authority fallback. Apply the loaded
+`QueueRevision` through the durable queue's `ApplyRevision` before admission or
+worker action. Database comparison rejects older revisions and conflicting
+equal revisions, so a stale replica cannot revert an already-applied
+revocation. A newer revision conservatively cancels older ready/claimed jobs.
+External GitHub revocation is observed only through authorization calls; a
+30-second admission proof and even a fresh egress check cannot eliminate the
+remote check-to-send race. Do not promise immediate global revocation.
+Dispatching is an irreversible local reservation: it cannot be recalled by a
+later revoke, and unknown outcomes become terminal `ambiguous`, not a replay.
+Only positively known nonacceptance, including an explicit rate-limit refusal,
+can retry within the original deadline and bounded attempts.
+
+### Gateway observability and alerts
+
+Reuse the server's existing OpenTelemetry setup:
+`OTEL_EXPORTER_OTLP_ENDPOINT` (or signal-specific endpoints), role-specific
+`OTEL_SERVICE_NAME`, and the existing collector/export pipeline. An absent
+endpoint or `OTEL_SDK_DISABLED=true` means no exported telemetry; instrumentation
+alone does not establish monitoring. When unset, `OTEL_SERVICE_NAME` defaults to
+`cao-webhook-gateway`; deployments MAY override it to distinguish roles.
+The gateway's actual OTel instrument names
+are:
+
+- `cao_webhookgateway.operation.count` and
+  `cao_webhookgateway.operation.duration` (seconds), labeled by
+  `cao_webhookgateway.stage`, `cao_webhookgateway.event_family`, and
+  `cao_webhookgateway.outcome`;
+- `cao_webhookgateway.queue.age` (seconds);
+- `cao_webhookgateway.queue.depth`;
+- `cao_webhookgateway.retry.count`.
+
+When the queue provides aggregate `QueueStatsProvider` observations, the worker
+also emits `cao_webhookgateway.queue.retained.rows`,
+`cao_webhookgateway.queue.retained.bytes`,
+`cao_webhookgateway.queue.oldest_age` (seconds),
+`cao_webhookgateway.workers.active`,
+`cao_webhookgateway.workers.utilization` (ratio), and
+`cao_webhookgateway.tenant.utilization` (ratio histogram without tenant labels).
+Bounded maintenance reports feed `cao_webhookgateway.lease.expiration.count`
+and `cao_webhookgateway.queue.recovered.count`,
+`cao_webhookgateway.queue.expired.count`,
+`cao_webhookgateway.queue.ambiguous.count`, and
+`cao_webhookgateway.queue.deleted.count`. Metrics/observer failures do not widen
+authority or change durable dispatch outcomes.
+
+Spans use `cao_webhookgateway.<stage>`, including `ingress`, `signature`,
+`matching`, `admission_authorization`, `admission`, `worker`, `claim`, `authorization`,
+`quota`, `renewal`, `begin_dispatch`, `dispatch`, and `finish`.
+For Prometheus, export these through the existing OTel Collector pipeline and
+confirm its dot/underscore and counter-suffix normalization before writing
+PromQL; do not assume a new gateway `/metrics` listener exists.
+Queue depth is emitted only when the composed queue implements optional
+`QueueStatsProvider` or `QueueDepthProvider`; absent samples are not a zero-depth
+guarantee.
+
+Alert on any `operation.count` increase with stage `finish` and outcome
+`ambiguous`; investigate before any manually approved redrive. Alert on sustained
+error outcomes in authorization, quota, admission, or dispatch, increasing retry
+count, queue depth approaching the reviewed capacity, and queue-age histogram
+tails approaching the original job expiry. Also alert on absent telemetry or
+unhealthy role/storage dependencies, rather than interpreting missing samples
+as an empty queue. Queue age is sampled on work observation, not a proof that
+every stalled job is being measured. Keep delivery/job identities in approved
+traces only, never metric labels; never export webhook bodies, secrets, tokens,
+private titles, or arbitrary payload attributes.
+Also investigate sustained `auth_denied`, `auth_deferred`, `capacity`, and
+`unavailable` outcomes. These are operational recommendations; this change does
+not install Prometheus alert rules or other alert resources.
+
+### Compiler bridge and validation limits
+
+The local gh-aw compiler has no subscription metadata emitter, and upstream
+verification was blocked by SAML access. Compiler-produced metadata/revision
+binding and live end-to-end subscription activation remain an explicit pending
+dependency. Fixtures, typed contracts, local API simulations, and the exhaustive
+TLC safety result are **not** proof of a real frontmatter compile or signed
+GitHub delivery-to-workflow execution. Keep production activation disabled
+until those dependencies and deployment acceptance gates are satisfied.
+
+The host demonstration uses real PostgreSQL, signed HMAC ingress, and mock
+GitHub HTTP—not live GitHub or a real subscription compiler. Its targeted command
+is:
+
+```bash
+# Set POSTGRES_URL to a disposable local PostgreSQL database first.
+go -C server test ./internal/webhookgatewayhost \
+  -run '^TestProjectsV2GatewayPostgresDemonstration$'
+```
+
+The command is an operational recipe, not a claim that this documentation change
+ran the demonstration or established production end-to-end readiness.
+
 ## Offline query validation
 
 From `server/`, run `go run ./cmd/cao-dashboard compile-queries` to check every
