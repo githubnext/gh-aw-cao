@@ -60,7 +60,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, err
 	}
 	query := url.Values{}
-	for _, pragma := range []string{"busy_timeout(10000)", "journal_mode(WAL)", "foreign_keys(1)", "synchronous(FULL)"} {
+	for _, pragma := range []string{"busy_timeout(1000)", "journal_mode(WAL)", "foreign_keys(1)", "synchronous(FULL)"} {
 		query.Add("_pragma", pragma)
 	}
 	query.Set("_txlock", "immediate")

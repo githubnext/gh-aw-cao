@@ -64,7 +64,9 @@ TypeOK ==
                              writeAtAdmission : BOOLEAN,
                              writeAtStart : BOOLEAN,
                              verified : BOOLEAN,
-                             cancelWrite : BOOLEAN]]
+                             cancelWrite : BOOLEAN,
+                             admissionAudited : BOOLEAN,
+                             cancelAudited : BOOLEAN]]
     /\ tok \in [Tokens -> [state : TokenStates,
                            repo : Repos \cup {NoRepo},
                            holder : Commands \cup {NoCommand},
@@ -78,7 +80,8 @@ Init ==
     /\ cmd = [c \in Commands |-> [state |-> "absent", actor |-> NoUser, repo |-> NoRepo,
                                   token |-> NoToken, admittedFresh |-> FALSE,
                                   writeAtAdmission |-> FALSE, writeAtStart |-> FALSE,
-                                  verified |-> FALSE, cancelWrite |-> FALSE]]
+                                  verified |-> FALSE, cancelWrite |-> FALSE,
+                                  admissionAudited |-> FALSE, cancelAudited |-> FALSE]]
     /\ tok = [t \in Tokens |-> [state |-> "unminted", repo |-> NoRepo, holder |-> NoCommand,
                                 vetted |-> FALSE]]
     /\ usedBy = [t \in Tokens |-> {}]
@@ -127,26 +130,34 @@ LoseWrite(u, r) ==
 -----------------------------------------------------------------------------
 (* serve-hosted admission *)
 
-Admit(u, c, r) ==
+\* Enqueue (including an explicitly authorized retry) and the hash-chain
+\* append share one transaction. A failed/timed-out transaction stutters;
+\* loss of the response after commit leaves both durable, never just queued.
+Admit(u, c, r, auditOK) ==
     /\ Enabled
     /\ cmd[c].state = "absent"
     /\ AdminAssured(u)
     /\ canWrite[u][r]
-    /\ cmd' = [cmd EXCEPT ![c] = [state |-> "queued", actor |-> u, repo |-> r,
+    /\ cmd' = IF auditOK THEN [cmd EXCEPT ![c] = [state |-> "queued", actor |-> u, repo |-> r,
                                   token |-> NoToken, admittedFresh |-> AdminAssured(u),
                                   writeAtAdmission |-> canWrite[u][r],
                                   writeAtStart |-> FALSE, verified |-> FALSE,
-                                  cancelWrite |-> FALSE]]
+                                  cancelWrite |-> FALSE, admissionAudited |-> TRUE,
+                                  cancelAudited |-> FALSE]]
+              ELSE cmd
     /\ UNCHANGED <<now, session, canWrite, tok, usedBy>>
 
 \* Cancellation is an administrator mutation: it requires step-up and the
 \* requester's write access to the command's repository.
-Cancel(u, c) ==
+Cancel(u, c, auditOK) ==
     /\ Enabled
     /\ AdminAssured(u)
     /\ cmd[c].state \in {"queued", "running"}
     /\ canWrite[u][cmd[c].repo]
-    /\ cmd' = [cmd EXCEPT ![c].state = "canceled", ![c].cancelWrite = canWrite[u][cmd[c].repo]]
+    /\ cmd' = IF auditOK THEN [cmd EXCEPT ![c].state = "canceled",
+                                  ![c].cancelWrite = canWrite[u][cmd[c].repo],
+                                  ![c].cancelAudited = TRUE]
+              ELSE cmd
     /\ UNCHANGED <<now, session, canWrite, tok, usedBy>>
 
 -----------------------------------------------------------------------------
@@ -229,8 +240,8 @@ Next ==
     \/ \E u \in Users : \/ \E a \in BOOLEAN : Login(u, a)
                         \/ Logout(u)
                         \/ \E r \in Repos : LoseWrite(u, r)
-    \/ \E u \in Users, c \in Commands, r \in Repos : Admit(u, c, r)
-    \/ \E u \in Users, c \in Commands : Cancel(u, c)
+    \/ \E u \in Users, c \in Commands, r \in Repos, ok \in BOOLEAN : Admit(u, c, r, ok)
+    \/ \E u \in Users, c \in Commands, ok \in BOOLEAN : Cancel(u, c, ok)
     \/ \E t \in Tokens, c \in Commands : Prefetch(t, c)
     \/ \E c \in Commands, t \in Tokens : Acquire(c, t)
     \/ \E c \in Commands : \/ Verify(c)
@@ -274,6 +285,11 @@ WorkTokenOnlyAfterVerification ==
 CancelAuthorized ==
     \A c \in Commands : cmd[c].state = "canceled" => cmd[c].cancelWrite
 
+\* No observable queue mutation precedes its durable audit event.
+QueueMutationsAudited ==
+    /\ \A c \in Commands : cmd[c].state # "absent" => cmd[c].admissionAudited
+    /\ \A c \in Commands : cmd[c].state = "canceled" => cmd[c].cancelAudited
+
 \* A token is handed to at most one command, ever.
 TokenSingleUse ==
     \A t \in Tokens : Cardinality(usedBy[t]) <= 1
@@ -305,6 +321,7 @@ Safety ==
     /\ ExecutionRechecked
     /\ WorkTokenOnlyAfterVerification
     /\ CancelAuthorized
+    /\ QueueMutationsAudited
     /\ TokenSingleUse
     /\ TokenScopedToRepository
     /\ HeldOnlyByActiveCommand

@@ -26,30 +26,41 @@ func validAuditEvent(event operational.AuditEvent) error {
 // serializes appends, so sequence numbers are gap-free and each record chains
 // to its committed predecessor.
 func (s *Store) AppendAudit(ctx context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
-	if err := validAuditEvent(event); err != nil {
-		return operational.AuditEvent{}, err
+	if ctx == nil {
+		return operational.AuditEvent{}, invalid("nil context")
 	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	err := s.transact(ctx, func(t *transaction) error {
-		prev := operational.AuditGenesis()
-		var last int64
-		err := t.tx.QueryRowContext(ctx, `SELECT sequence,hash FROM cao_operational_audit_events WHERE namespace=$1 ORDER BY sequence DESC LIMIT 1`, t.namespace).Scan(&last, &prev)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		event.Sequence = last + 1
-		event.OccurredAt = t.now
-		record, err := operational.CanonicalAuditRecord(event)
-		if err != nil {
-			return invalid(err.Error())
-		}
-		_, err = t.tx.ExecContext(ctx, `INSERT INTO cao_operational_audit_events(namespace,sequence,occurred_at,event,outcome,actor,record,prev_hash,hash) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-			t.namespace, event.Sequence, event.OccurredAt, event.Event, event.Outcome, event.Actor, string(record), prev, operational.AuditChainHash(prev, record))
+		var err error
+		event, err = t.appendAudit(event)
 		return err
 	})
 	if err != nil {
 		return operational.AuditEvent{}, err
 	}
 	return event, nil
+}
+
+func (t *transaction) appendAudit(event operational.AuditEvent) (operational.AuditEvent, error) {
+	if err := validAuditEvent(event); err != nil {
+		return operational.AuditEvent{}, err
+	}
+	prev := operational.AuditGenesis()
+	var last int64
+	err := t.tx.QueryRowContext(t.ctx, `SELECT sequence,hash FROM cao_operational_audit_events WHERE namespace=$1 ORDER BY sequence DESC LIMIT 1`, t.namespace).Scan(&last, &prev)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return operational.AuditEvent{}, err
+	}
+	event.Sequence = last + 1
+	event.OccurredAt = t.now
+	record, err := operational.CanonicalAuditRecord(event)
+	if err != nil {
+		return operational.AuditEvent{}, invalid(err.Error())
+	}
+	_, err = t.tx.ExecContext(t.ctx, `INSERT INTO cao_operational_audit_events(namespace,sequence,occurred_at,event,outcome,actor,record,prev_hash,hash) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+		t.namespace, event.Sequence, event.OccurredAt, event.Event, event.Outcome, event.Actor, string(record), prev, operational.AuditChainHash(prev, record))
+	return event, err
 }
 
 // ListAudit returns events in ascending sequence order.

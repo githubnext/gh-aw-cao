@@ -99,8 +99,12 @@ func (q *cliCommandQueue) Settle(ctx context.Context, lease operational.CLIComma
 }
 
 func (q *cliCommandQueue) Cancel(ctx context.Context, id int64) (operational.CLICommand, error) {
+	return q.cancel(ctx, id, nil)
+}
+
+func (q *cliCommandQueue) cancel(ctx context.Context, id int64, event *operational.AuditEvent) (operational.CLICommand, error) {
 	var command operational.CLICommand
-	err := q.transact(ctx, true, func(t *transaction, _ cliQueueState) error {
+	err := q.mutateCommand(ctx, &command, event, func(t *transaction, _ cliQueueState) error {
 		var err error
 		command, err = q.detail(t, id)
 		if err != nil || command.Status.Terminal() {

@@ -252,14 +252,38 @@ a subprocess starts.
 3. Every event MUST also be mirrored as one JSON line with `"audit":"cao"`,
    `event`, `outcome`, `stored`, and, when stored, `sequence`. The mirror goes
    to standard error, or to the file named by `CAO_AUDIT_LOG`, opened for
-   append with mode `0600`, for SIEM forwarding.
+   append with mode `0600`, for SIEM forwarding. Waiting for and writing the
+   mirror MUST return within a separate 250-millisecond budget. Writers MUST
+   share a single in-flight slot across logger copies: a stalled writer MUST
+   NOT cause unbounded background writes or indefinitely block audit callers
+   or shutdown.
+   An arbitrary `io.Writer` cannot be forcibly canceled; at most one write
+   may remain blocked until the sink resumes or the process exits. No retry
+   queue is retained. A timeout, short write, or writer failure MUST return
+   `ErrMirrorUnavailable` and increment `cao_audit.mirror.count` with a
+   credential-free outcome. Mirror errors MUST NOT be represented as durable
+   append failures or trigger compensation. A hosted mutation whose durable
+   commit succeeded MUST report its committed command ID and state even when
+   mirror confirmation fails; same-key replay MUST NOT duplicate or cancel it.
 4. Enabling hosted CLI actions, in either process, MUST fail unless the
    operational store provides the audit table. Privileged steps MUST fail
    closed when their event cannot be stored: a minted token is revoked and not
    used; a command is failed before it runs when `cli_command.started` cannot
-   be stored; and admission, cancel, and retry return `503`, canceling any
-   command they just queued. Denials and completion events are best-effort, and
-   a storage failure still appears in the mirror with `stored:false`.
+   be stored. Admission, retry, and cancellation MUST commit the queue mutation
+   and its hash-chained event in the same transaction, in both PostgreSQL and
+   SQLite. Hosted enablement MUST require `AuditedCLICommandQueue`; a separate
+   enqueue followed by append and compensating cancellation is prohibited.
+   Append failure MUST roll back the mutation, idempotency reservation, queue
+   revision, and capacity accounting. A failed or uncertain commit returns
+   `503` without compensation: either both records committed or neither did.
+   The response MUST tell the requester to inspect the queue and reuse the
+   original idempotency key, not infer that execution was prevented. Repeating
+   a nonempty key with the same invocation and retry ancestry MUST return the
+   same retained command, and MUST atomically audit the repeated request; a different
+   invocation or retry ancestor MUST conflict. Audit failure on a replay MUST
+   NOT cancel a previously committed command. Denials and completion events
+   are best-effort, and a storage failure still appears in the mirror with
+   `stored:false` (unconfirmed, not proof that no durable event exists).
 5. The web process MUST record `admin.denied` with the reason
    (`step_up_required` or `not_admin`), the method, and the path for every
    refused administrator request. It MUST record `cli_command.admitted`,
@@ -292,6 +316,18 @@ a subprocess starts.
     an OTLP log record named `cao.audit.<event>`, with severity `ERROR` for
     `failure`, `WARN` for `denied`, and `INFO` otherwise. Audit events recorded
     inside a span MUST carry `trace_id` and `span_id` in the stored record.
+11. Durable audit writes MUST have a finite five-second budget, including
+    connection acquisition, namespace locking, append, and commit. Cleanup
+    auditing MAY detach from caller cancellation, but MUST acquire a fresh
+    deadline; it MUST NOT use an unbounded `WithoutCancel` context for storage.
+    Atomic administrator mutations MUST also honor earlier caller deadlines
+    and cancellation. PostgreSQL MUST bound transaction-local lock, statement,
+    and idle-in-transaction waits before acquiring the namespace lock. SQLite
+    MUST bound its busy wait to one second. Deadline and storage failures MUST
+    remain observable and MUST NOT be interpreted as confirmed rollback.
+    PostgreSQL MUST preserve any stricter nonzero session timeout rather than
+    replacing an operator's ceiling with a longer caller budget; limits MUST
+    be transaction-local and MUST NOT change subsequent session defaults.
 
 ## 7a. Telemetry
 
@@ -312,6 +348,7 @@ Actors are joined from the audit trail by command ID.
 | UpDownCounter | `cao_hostedcli.lease.held` | none |
 | Counter | `cao_audit.event.count` | event, outcome, stored |
 | Histogram (s) | `cao_audit.append.duration` | stored |
+| Counter | `cao_audit.mirror.count` | outcome (`success`, `timeout`, `error`) |
 
 Span status descriptions MUST be generic. The executor MUST pass only a W3C
 `TRACEPARENT` for the command span to the subprocess and MUST NOT forward
@@ -319,6 +356,7 @@ baggage, trace state, or exporter configuration.
 
 Operators SHOULD alert when `pending_revocations` stays above zero, when
 `cao_audit.event.count{stored="false"}` increases, on any
+`cao_audit.mirror.count{outcome="timeout"}` or `outcome="error"`, on any
 `audit.verify_failed` event, on spikes in `admin.denied`, and when
 `lease.held` is zero while commands are queued.
 
@@ -336,6 +374,16 @@ this specification or the corresponding implementation changes.
   refresh non-extension, and the `401` and `403` responses.
 - `server/internal/server/hosted_cli_test.go`: flag gating, admission order,
   and requester permission.
+- `server/internal/server/hosted_cli_atomic_test.go`: real SQLite admission,
+  retry and cancellation rollback, lost commit acknowledgements, same-key
+  recovery, and rejection of non-atomic queues.
+- `server/internal/operational/cli_command_audit*_test.go`: both
+  store implementations, using independent executor handles and database
+  triggers that pause/fail the actual audit insert; concurrent claims cannot
+  pass uncommitted admission, rollback preserves queue and hash-chain state,
+  repeated requests do not duplicate commands, cancellation retains execution
+  claims, process/connection loss cannot leave partial admission, and
+  namespace/statement contention cannot block persistence forever.
 - `server/internal/hostedcli`: broker single use, revocation and retry, pool
   bounds, executor recheck, isolation, redaction, and audit events without
   secrets.
