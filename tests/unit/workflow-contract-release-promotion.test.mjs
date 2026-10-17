@@ -21,8 +21,8 @@ function fixture() {
     published_at: "2026-10-17T00:00:00Z", target_commitish: revision, body: "Reviewed highlights",
   };
   const assets = [`cao-runtime-${revision}.tgz`, `cao-runtime-${revision}.tgz.sha256`,
-    "darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64",
-    "windows-amd64.exe", "windows-arm64.exe", "checksums.txt"].map((name, id) =>
+    "gh-cao-darwin-amd64", "gh-cao-darwin-arm64", "gh-cao-linux-amd64", "gh-cao-linux-arm64",
+    "gh-cao-windows-amd64.exe", "gh-cao-windows-arm64.exe", "checksums.txt"].map((name, id) =>
     ({ id: id + 1, name, state: "uploaded", size: 100, digest: `sha256:${"c".repeat(64)}` }));
   const analyses = codeqlCategories.map((category, i) => ({
     id: 200 + i, category, error: "", commit_sha: revision, ref: "refs/heads/main",
@@ -73,6 +73,12 @@ function fixture() {
 
 test("only an approved immutable prerelease transitions to latest without replacing assets or tag", async () => {
   const f = fixture();
+  const source = readFileSync(new URL("../../.github/workflows/release.md", import.meta.url), "utf8");
+  const publisher = parse(/^---\n([\s\S]*?)\n---/.exec(source)[1]).jobs["publish-release"]
+    .steps.find(({ name }) => name === "Publish verified draft as prerelease").with.script;
+  for (const { name } of f.assets.slice(2)) {
+    assert.ok(publisher.includes(`'${name}'`), `promotion fixture must match the published asset ${name}`);
+  }
   const approved = await collectPromotionEvidence(f.request, f.context, "v0.2.0");
   assert.ok(f.calls.every(({ route }) => route.startsWith("GET ")));
   assert.equal(approved.revision, f.revision);
@@ -109,6 +115,9 @@ const rejected = [
   ["rollback", (f) => { f.data["releases/latest"].tag_name = "v0.3.0"; }],
   ["repromotion", (f) => { f.data["releases/latest"].tag_name = "v0.2.0"; }],
   ["missing asset", (f) => { f.assets.pop(); }],
+  ["legacy binary asset names", (f) => {
+    for (const asset of f.assets) asset.name = asset.name.replace(/^gh-cao-/, "");
+  }],
   ["missing digest", (f) => { delete f.assets[0].digest; }],
   ["unfinished preparation", (f) => { f.data["actions/workflows/release.lock.yml/runs"].workflow_runs[0].conclusion = null; }],
   ["wrong preparation branch", (f) => { f.data["actions/workflows/release.lock.yml/runs"].workflow_runs[0].head_branch = "untrusted"; }],

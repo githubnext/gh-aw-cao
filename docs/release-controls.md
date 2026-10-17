@@ -26,7 +26,8 @@ gh workflow run release-promote.yml --ref main -f tag=vX.Y.Z
 The workflow does not create a release, rebuild its assets, or move its tag.
 It requires an existing immutable, published prerelease whose tag and
 `target_commitish` identify the same full commit SHA reachable from the default
-branch. All nine runtime/binary assets must have immutable SHA-256 digests,
+branch. The runtime archive and its checksum, six `gh-cao-OS-ARCH` binaries
+(`.exe` on Windows), and `checksums.txt` must all have immutable SHA-256 digests,
 and the exact-SHA prerelease preparation/highlights workflow must have succeeded.
 The candidate must advance the current stable semantic version; rollback,
 repromotion, and first-stable bootstrapping are not supported by this workflow.

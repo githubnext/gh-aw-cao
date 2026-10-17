@@ -36,11 +36,12 @@ func addPolicyCommands(root *cobra.Command, gh ghExecutor) {
 		},
 	})
 	campaigns := &cobra.Command{
-		Use: "campaigns", Short: "Control campaign policy modes and workflow enablement", Args: cobra.NoArgs,
+		Use: "campaigns", Short: "Install campaigns and control their policy modes and workflows", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
-			return fmt.Errorf("campaigns requires mode, enable, or disable")
+			return fmt.Errorf("campaigns requires add, mode, enable, or disable")
 		},
 	}
+	campaigns.AddCommand(addCampaignCommand(gh))
 	campaigns.AddCommand(&cobra.Command{
 		Use: "mode (live|preview) CAMPAIGN...", Short: "Set campaign policy mode without widening repository scope", Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -121,21 +122,32 @@ func initializePolicy(ctx context.Context, gh ghExecutor) (map[string]any, error
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
+	policy, version, err := newPolicy(ctx, gh)
+	if err != nil {
+		return nil, err
+	}
+	if err := writePolicy(policy, true); err != nil {
+		return nil, err
+	}
+	return map[string]any{"command": "init", "policy": policyPath, "gh-aw-version": version}, nil
+}
+
+func newPolicy(ctx context.Context, gh ghExecutor) (map[string]any, string, error) {
 	stdout, stderr, err := gh(ctx, "aw", "version")
 	if err != nil {
-		return nil, commandError("unable to determine gh-aw version", stderr, err)
+		return nil, "", commandError("unable to determine gh-aw version", stderr, err)
 	}
 	version := versionPattern.FindString(stdout + "\n" + stderr)
 	if version == "" {
-		return nil, errors.New(`unable to determine gh-aw version from "gh aw version" output`)
+		return nil, "", errors.New(`unable to determine gh-aw version from "gh aw version" output`)
 	}
 	stdout, stderr, err = gh(ctx, "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
 	if err != nil {
-		return nil, commandError("unable to determine control repository; run gh cao init from a GitHub repository checkout with a configured remote", stderr, err)
+		return nil, "", commandError("unable to determine control repository; run gh cao init from a GitHub repository checkout with a configured remote", stderr, err)
 	}
 	repository := strings.TrimSpace(stdout)
 	if !repositoryPattern.MatchString(repository) {
-		return nil, errors.New("unable to determine control repository: expected exact OWNER/REPO")
+		return nil, "", errors.New("unable to determine control repository: expected exact OWNER/REPO")
 	}
 	policy := map[string]any{
 		"$schema": schemaURL, "version": 1, "gh-aw-version": version,
@@ -151,10 +163,7 @@ func initializePolicy(ctx context.Context, gh ghExecutor) (map[string]any, error
 			"campaigns": map[string]any{},
 		},
 	}
-	if err := writePolicy(policy, true); err != nil {
-		return nil, err
-	}
-	return map[string]any{"command": "init", "policy": policyPath, "gh-aw-version": version}, nil
+	return policy, version, nil
 }
 
 func readPolicy() (map[string]any, error) {
@@ -190,7 +199,7 @@ func readPolicy() (map[string]any, error) {
 	return document, nil
 }
 
-func writePolicy(document map[string]any, create bool) error {
+func writePolicy(document map[string]any, create bool) (err error) {
 	var original []byte
 	if !create {
 		var err error
@@ -210,10 +219,13 @@ func writePolicy(document map[string]any, create bool) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(file.Name())
+	defer func() {
+		if removeErr := os.Remove(file.Name()); !errors.Is(removeErr, os.ErrNotExist) {
+			err = errors.Join(err, removeErr)
+		}
+	}()
 	if _, err := file.Write(append(content, '\n')); err != nil {
-		file.Close()
-		return err
+		return errors.Join(err, file.Close())
 	}
 	if err := file.Close(); err != nil {
 		return err

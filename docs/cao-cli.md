@@ -27,16 +27,39 @@ reference. Request command-specific help with `gh cao COMMAND --help`.
 
 ## GitHub CLI extension
 
-Build with `make build` and use `./gh-cao` directly, or follow the
+Once a release containing extension binaries is promoted to latest, install
+or upgrade the precompiled extension:
+
+```bash
+gh extension install githubnext/gh-aw-cao
+gh aw-cao --version
+# For an existing installation:
+gh extension upgrade aw-cao
+```
+
+GitHub CLI derives `gh aw-cao` from this repository's name; use it in place of
+`gh cao` in the examples below. Release binaries use the
+`gh-cao-OS-ARCH` naming convention, with `.exe` for Windows, and cover Linux,
+macOS, and Windows on amd64 and arm64. `checksums.txt` contains their SHA-256
+digests. An unpinned install selects the latest stable release, not a prerelease.
+After the latest stable release has extension assets, select a particular
+release (including a prerelease) with
+`gh extension install githubnext/gh-aw-cao --pin vX.Y.Z`.
+GitHub CLI also checks the latest stable release to detect binary extensions,
+so pinning alone cannot bypass a latest stable release without binaries.
+
+For local development, build with `make build` and use `./gh-cao` directly, or follow the
 [local extension installation guide](https://github.com/githubnext/gh-aw-cao/blob/main/CONTRIBUTING.md#go-extension-development)
 to invoke it as `gh cao`.
 
 | Surface | Commands | Execution |
 | --- | --- | --- |
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
-| Onboarding and lifecycle | `setup`, `quickstart`, `setup-auth github-app\|enterprise-app\|token`, `add`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
+| Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
+| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Unified Go command/argument hierarchy with the installed production CAO Node runtime. |
+| Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Same installed runtime and canonical query engine as the dashboard and existing CLI. |
-| Local diagnostics | `doctor`, `version` | Native Go. `doctor` checks only the local `gh` executable. |
+| Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Remain in `./cao.sh` / `activity/cao.mjs`; not migrated to the extension. |
 
 The extension is **not yet a Node-free replacement** for the domain runtime.
@@ -49,7 +72,12 @@ or policy authority, and never downloads code implicitly.
 
 ```bash
 gh cao init
-gh cao add githubnext/gh-aw-cao/dependabot
+gh cao setup
+gh cao setup auth github-app --help
+gh cao setup auth enterprise-app --help
+gh cao setup auth token --help
+gh cao campaigns add githubnext/gh-aw-cao/dependabot
+gh cao repos add acme/example-service
 gh cao campaigns mode preview dependabot
 gh cao campaigns enable dependabot
 gh cao campaigns disable dependabot
@@ -62,14 +90,58 @@ All help works offline, including `gh cao quickstart --help` and
 `gh cao campaigns --help`. Campaign controls are available only under
 `campaigns` in the extension; `./cao.sh mode`, `./cao.sh enable`, and
 `./cao.sh disable` keep their existing syntax.
-`gh cao setup-auth token --help` also works offline. `add` and `update` retain
+Repository enrollment uses `gh cao repos add OWNER/REPO`; the extension has no
+root-level `add` command. `./cao.sh add CAMPAIGN` and
+`./cao.sh add --repository OWNER/REPO` retain their existing syntax.
+Authentication is grouped under `gh cao setup auth`; there is no root-level
+`gh cao setup-auth` command. Run `gh cao setup` without a subcommand for guided
+control-plane setup, or configure credentials independently with
+`gh cao setup auth github-app`, `gh cao setup auth enterprise-app`, or
+`gh cao setup auth token`. Each authentication profile retains its existing
+options, dry-run behavior, credential prompts, and separate read/write scope.
+`./cao.sh setup` and `./cao.sh setup-auth PROFILE` retain their existing syntax.
+The runtime JSON result for authentication retains `command: "setup-auth"`.
+`gh cao setup auth token --help` also works offline. `campaigns add` and `update` retain
 gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
 secret prompts, and validator exit codes retain their existing contracts.
 There is no `gh cao run`: workflow execution still belongs to gh-aw.
 
+Campaign installation fetches only the installed package's full `resolvedCommit`
+SHA from the official catalog, or copies only Git-tracked campaign files from a
+local catalog checkout. It replaces the selected campaign's resources, refreshes
+its intelligence metadata, and merges declared workers while preserving existing
+enablement, mode ceilings, campaign settings, and repository scope. It does not
+reinstall the control-plane runtime or plugin. Missing policy is initialized for
+the exact current control repository. Install the root package with `install.sh`,
+not `gh cao campaigns add`; review and commit generated workflows and policy together.
+
 `gh cao doctor` is deliberately **not** `./cao.sh doctor`: use the latter for
 the existing SQLite snapshot check/repair operation. Neither Activity nor
 Dashboard Actions is switched to the Go executable.
+
+### Diagnose the installation
+
+Run `gh cao doctor` from the control repository root, or use
+`gh cao doctor --json` for machine-readable results. No Node.js runtime is
+required. Checks cover:
+
+- The GitHub CLI executable and installed gh-aw version.
+- Authentication reported by `gh auth status`, which may contact GitHub.
+- The local `.github/workflows/cao.json` file's basic structure and exact
+  `gh-aw-version` pin, including agreement with the installed compiler.
+
+Text output labels each check `PASS`, `FAIL`, or `SKIP` and provides remediation
+for failures. JSON output contains `command`, `ok`, and `checks`; each check has
+`name`, `status`, `message`, and optional `remediation`. Results are still emitted
+when checks fail; the command exits nonzero on any failed or skipped check.
+External checks have a 15-second timeout (the local GitHub CLI version probe
+has a shorter five-second limit). Cancellation stops the diagnostic.
+
+The command is read-only: it does not install extensions, log in, modify policy,
+repair databases, or change remote settings. Raw authentication output and
+subprocess errors are not included in reports. A passing basic policy check
+does not establish rollout authority or full schema validity; use
+`gh cao validate` for production policy and workflow validation.
 
 CAO and gh-aw have separate jobs:
 

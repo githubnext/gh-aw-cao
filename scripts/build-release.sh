@@ -41,7 +41,7 @@ for platform in "${platforms[@]}"; do
   if [[ "$goos" == windows ]]; then
     suffix=".exe"
   fi
-  asset="${platform}${suffix}"
+  asset="gh-cao-${platform}${suffix}"
   echo "Building gh-cao ${version} for ${platform}"
   CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build \
     -mod=readonly \
