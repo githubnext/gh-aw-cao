@@ -1,4 +1,7 @@
 import { processDashboardCallouts } from '../data-processor.js';
+import { createDebug, diagnosticErrorName } from '../debug.js';
+
+const debugCallouts = createDebug('data:callouts');
 
 /**
  * Keeps declarative callout evaluation subscribed to evidence and wall-clock
@@ -24,9 +27,13 @@ export function subscribeCalloutVisibility(callouts, sources, loader, signal, on
     const current = request;
     const inputs = Object.fromEntries(names.flatMap((name) => latest[name] ? [[name, latest[name]]] : []));
     void processDashboardCallouts(callouts, inputs, current.signal).then((result) => {
-      if (!current.signal.aborted && !signal.aborted) onUpdate(result);
+      if (current.signal.aborted || signal.aborted) return;
+      debugCallouts({ event: 'evaluated', status: 'ok', calloutCount: result.length });
+      onUpdate(result);
     }).catch((error) => {
-      if (!current.signal.aborted && !signal.aborted) onError(error);
+      if (current.signal.aborted || signal.aborted) return;
+      debugCallouts({ event: 'evaluation-failed', errorName: diagnosticErrorName(error) });
+      onError(error);
     });
   };
   const update = (/** @type {typeof sources} */ next) => {
@@ -48,6 +55,7 @@ export function subscribeCalloutVisibility(callouts, sources, loader, signal, on
       .catch((error) => {
         if (signal.aborted) return;
         subscriptionFailed = true;
+        debugCallouts({ event: 'subscription-failed', errorName: diagnosticErrorName(error) });
         request.abort();
         onError(error);
       });
