@@ -6,7 +6,12 @@ const maximumSize = 256 * 1024;
 const maximumLines = 3000;
 const imageExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".webp"]);
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
-const excludedFiles = new Set(["dashboard/site/dashboard.json"]);
+// Aggregated documents are generated from independently size-checked fragments.
+const excludedFiles = new Set([
+  "dashboard/site/dashboard.json",
+  "dashboard/site/src/agent/catalog.generated.json",
+  "dashboard/site/src/agent/queries.generated.json",
+]);
 const lineCountExclusions = new Set([
   "dashboard/site/test/unit/data-view.test.js",
   "dashboard/site/test/unit/presenter.test.js",
