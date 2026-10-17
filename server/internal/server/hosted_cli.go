@@ -76,6 +76,9 @@ func (a *App) EnableHostedCLIActions(ctx context.Context, config HostedCLIConfig
 			return errors.New("open hosted CLI command queue failed")
 		}
 	}
+	if !a.config.Audit.Durable() {
+		return errors.New("hosted CLI actions require the postgres operational audit table")
+	}
 	a.hostedCLI = &hostedCLI{
 		queue: queue, catalog: config.Catalog, context: templateContext, control: config.ControlRepository,
 		reposURL: strings.TrimSuffix(a.oauth.config.UserURL, "user") + "repos/",
@@ -141,7 +144,7 @@ func (a *App) authorizeHostedCLI(response http.ResponseWriter, request *http.Req
 
 // auditCLICommand records an administrator's queue mutation together with the
 // step-up assurance that authorized it.
-func (a *App) auditCLICommand(request *http.Request, session oauthSession, event string, command operational.CLICommand, extra ...slog.Attr) {
+func (a *App) auditCLICommand(request *http.Request, session oauthSession, event string, command operational.CLICommand, extra ...slog.Attr) error {
 	attrs := append([]slog.Attr{
 		slog.String("actor", session.Login),
 		slog.Int64("command_id", command.ID),
@@ -151,7 +154,20 @@ func (a *App) auditCLICommand(request *http.Request, session oauthSession, event
 		slog.Any("assurance", session.Assurance),
 		slog.Time("authenticated_at", session.AuthenticatedAt),
 	}, extra...)
-	a.config.Audit.Record(request.Context(), event, audit.Success, attrs...)
+	return a.config.Audit.Record(request.Context(), event, audit.Success, attrs...)
+}
+
+// auditUnavailable fails a queue mutation closed when its audit record could
+// not be stored. A newly queued command is canceled so it never runs unaudited.
+func (a *App) auditUnavailable(response http.ResponseWriter, request *http.Request, queued int64) {
+	if queued != 0 {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(request.Context()), 10*time.Second)
+		defer cancel()
+		if _, err := a.hostedCLI.queue.Cancel(ctx, queued); err != nil {
+			a.config.Logger.Printf("hosted CLI command %d could not be canceled after an audit failure: %v", queued, err)
+		}
+	}
+	writeHostedCLIError(response, cliFailure(http.StatusServiceUnavailable, "The audit trail is unavailable. Try again later."))
 }
 
 func (a *App) auditCLIRejected(request *http.Request, session oauthSession, action string, err error) {
@@ -164,7 +180,7 @@ func (a *App) auditCLIRejected(request *http.Request, session oauthSession, acti
 	case errors.As(err, &failure):
 		status = failure.status
 	}
-	a.config.Audit.Record(request.Context(), "cli_command.rejected", audit.Denied,
+	_ = a.config.Audit.Record(request.Context(), "cli_command.rejected", audit.Denied,
 		slog.String("actor", session.Login), slog.String("action", action), slog.Int("http_status", status))
 }
 
@@ -252,7 +268,10 @@ func (a *App) hostedCLIEnqueue(response http.ResponseWriter, request *http.Reque
 		return
 	}
 	hostedCLILog.Printf("hosted CLI command queued id=%d action=%s", command.ID, command.ActionID)
-	a.auditCLICommand(request, session, "cli_command.admitted", command)
+	if err := a.auditCLICommand(request, session, "cli_command.admitted", command); err != nil {
+		a.auditUnavailable(response, request, command.ID)
+		return
+	}
 	writeJSON(response, http.StatusAccepted, hostedCLICommandJSON(command))
 }
 
@@ -346,7 +365,10 @@ func (a *App) hostedCLICancel(response http.ResponseWriter, request *http.Reques
 		var command operational.CLICommand
 		if command, err = a.hostedCLI.queue.Cancel(request.Context(), id); err == nil {
 			hostedCLILog.Printf("hosted CLI command cancel requested id=%d", id)
-			a.auditCLICommand(request, session, "cli_command.cancel_requested", command)
+			if err := a.auditCLICommand(request, session, "cli_command.cancel_requested", command); err != nil {
+				a.auditUnavailable(response, request, 0)
+				return
+			}
 			writeJSON(response, http.StatusOK, hostedCLICommandJSON(command))
 			return
 		}
@@ -388,7 +410,10 @@ func (a *App) hostedCLIRetry(response http.ResponseWriter, request *http.Request
 			if retried.RetryOf != id {
 				err = cliFailure(http.StatusConflict, "Retry idempotency key conflicts with another command.")
 			} else {
-				a.auditCLICommand(request, session, "cli_command.retried", retried, slog.Int64("retry_of", id))
+				if err := a.auditCLICommand(request, session, "cli_command.retried", retried, slog.Int64("retry_of", id)); err != nil {
+					a.auditUnavailable(response, request, retried.ID)
+					return
+				}
 				writeJSON(response, http.StatusAccepted, hostedCLICommandJSON(retried))
 				return
 			}

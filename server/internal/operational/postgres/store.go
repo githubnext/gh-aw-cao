@@ -325,7 +325,7 @@ func (t *transaction) json(k key, target any) (bool, error) {
 func (s *Store) Capabilities() operational.Capabilities {
 	c := operational.Capability{Scope: operational.ScopeDeployment, Persistence: operational.PersistenceRestart}
 	return operational.Capabilities{Cache: c, RequestLimits: c, Sessions: c, Revocations: c,
-		GitHubQuota: c, Collection: c, Coordination: c, Diagnostics: c, CLICommands: c}
+		GitHubQuota: c, Collection: c, Coordination: c, Diagnostics: c, CLICommands: c, Audit: c}
 }
 
 func (s *Store) OperationalServices() operational.OperationalServices {
@@ -334,7 +334,7 @@ func (s *Store) OperationalServices() operational.OperationalServices {
 		SessionInvalidator: s, Revocations: s, Leases: s, State: s,
 		Deliveries: s, Queue: s, Admission: s, Collection: s,
 		GitHubQuota: s, RateLimits: s, Health: s, IngestionMetrics: s,
-		CLICommands: s,
+		CLICommands: s, Audit: s,
 	}
 }
 
@@ -370,6 +370,9 @@ func (s *Store) Maintain(ctx context.Context) error {
 			}
 		}
 		if err := t.maintainCLICommands(); err != nil {
+			return err
+		}
+		if err := t.maintainAudit(); err != nil {
 			return err
 		}
 		_, err = t.tx.ExecContext(ctx, `DELETE FROM cao_operational_cache WHERE namespace=$1 AND key IN (SELECT key FROM cao_operational_cache WHERE namespace=$1 AND expires_at<=$2 LIMIT 512)`, s.namespace, t.now)

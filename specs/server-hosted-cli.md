@@ -163,23 +163,46 @@ step-up. Retry MUST create a new admission subject to the same checks.
 
 ## 7. Audit trail
 
-1. The web and executor processes MUST emit append-only JSON audit events,
-   one per line, each with `"audit":"cao"`, `event`, `outcome`
-   (`success`, `denied`, or `failure`), and a timestamp. Events go to
-   standard error, or to the file named by `CAO_AUDIT_LOG`, which is opened
-   for append with mode `0600`.
-2. The web process MUST record `admin.denied` with the reason
+1. The authoritative audit trail is the PostgreSQL operational table
+   `cao_operational_audit_events`. Each row has a per-namespace, gap-free
+   `sequence`, a database-clock `occurred_at`, `event`, `outcome`
+   (`success`, `denied`, or `failure`), `actor`, and the exact canonical JSON
+   `record` that was hashed. `hash = SHA-256(prev_hash || record)` chains each
+   row to its predecessor; the first row uses 32 zero bytes. Appends MUST
+   serialize on the namespace row so the chain has no forks.
+2. The table MUST be append-only. A trigger MUST reject `UPDATE`, and MUST
+   reject `DELETE` except for retention maintenance and namespace removal.
+   Retention MUST keep at least 400 days, MUST remove only a contiguous oldest
+   prefix in bounded batches, and MUST always keep the newest row so sequences
+   never restart. `VerifyAudit` MUST recompute the chain over retained rows and
+   report a gap, broken link, hash mismatch, or column that differs from the
+   hashed record as `ErrAuditTampered`. The chain detects tampering by anyone
+   who cannot also rewrite every later hash; operators who need protection
+   against a database superuser MUST also forward the mirror (item 3) to
+   write-once storage.
+3. Every event MUST also be mirrored as one JSON line with `"audit":"cao"`,
+   `event`, `outcome`, `stored`, and, when stored, `sequence`. The mirror goes
+   to standard error, or to the file named by `CAO_AUDIT_LOG`, opened for
+   append with mode `0600`, for SIEM forwarding.
+4. Enabling hosted CLI actions, in either process, MUST fail unless the
+   operational store provides the audit table. Privileged steps MUST fail
+   closed when their event cannot be stored: a minted token is revoked and not
+   used; a command is failed before it runs when `cli_command.started` cannot
+   be stored; and admission, cancel, and retry return `503`, canceling any
+   command they just queued. Denials and completion events are best-effort, and
+   a storage failure still appears in the mirror with `stored:false`.
+5. The web process MUST record `admin.denied` with the reason
    (`step_up_required` or `not_admin`), the method, and the path for every
    refused administrator request. It MUST record `cli_command.admitted`,
    `cli_command.rejected`, `cli_command.cancel_requested`, and
    `cli_command.retried`. Each admitted event carries the actor, action,
    repository, assurance factors, and step-up time.
-3. The executor MUST record `token.minted`, `token.revoked`, and
+6. The executor MUST record `token.minted`, `token.revoked`, and
    `token.revoke_failed`. It MUST also record `cli_command.started`,
    `cli_command.permission_denied`, and `cli_command.finished`, with the
    actor, repository, installation, granted permissions, control revision,
    status, and exit code.
-4. Events MUST NOT contain tokens, keys, or OAuth credentials. Token events
+7. Events MUST NOT contain tokens, keys, or OAuth credentials. Token events
    MUST identify the token by `hashed_token`, the Base64 SHA-256 digest that
    GitHub uses in its audit log. Operators can then join CAO events to
    GitHub's audit-log entries for the App's actions.
@@ -203,7 +226,13 @@ this specification or the corresponding implementation changes.
   secrets.
 - `server/internal/githubapp/scoped_token_test.go`: over-broad grants are
   revoked and rejected, and `hashed_token` matches GitHub's format.
-- `server/internal/audit`: event shape and append-only `0600` file output.
+- `server/internal/audit`: event shape, store mapping, failure mirroring, and
+  append-only `0600` file output.
+- `server/internal/operational/postgres/audit_test.go`: gap-free chain, rejected
+  `UPDATE`/`DELETE`, tamper detection, retention suffix, and namespace cascade.
+- `server/internal/server/hosted_cli_test.go` and
+  `server/internal/hostedcli/executor_test.go`: hosted CLI requires the table,
+  and unaudited admission, cancel, token mint, and command start fail closed.
 - `tests/unit/setup-hosted-cli-app.test.mjs`: least-privilege App manifest and
   helper safety.
 

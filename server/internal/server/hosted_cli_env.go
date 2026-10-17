@@ -123,10 +123,15 @@ func newHostedCLIExecutor(ctx context.Context, store operational.Store, client *
 		return nil, err
 	}
 	workRoot := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_WORK_ROOT"))
+	auditStore := store.OperationalServices().Audit
+	if auditStore == nil {
+		return nil, errors.New("hosted CLI execution requires the postgres operational audit table")
+	}
 	auditLog, err := audit.FromEnv()
 	if err != nil {
 		return nil, err
 	}
+	auditLog = auditLog.WithStore(auditStore)
 	broker := hostedcli.NewBroker(client, hostedcli.BrokerOptions{MaxPooled: options.MaxPooledTokens, Audit: auditLog})
 	return hostedcli.NewExecutor(queue, broker, client, hostedcli.ExecRunner{}, hostedcli.Options{
 		Owner:               options.Owner,

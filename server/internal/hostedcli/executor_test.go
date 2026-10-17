@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -680,5 +681,47 @@ func TestExecutorAuditsRevokedRequesterPermission(t *testing.T) {
 	}
 	if !strings.Contains(buffer.String(), `"event":"cli_command.permission_denied","outcome":"denied"`) {
 		t.Fatalf("permission denial must be audited: %s", buffer.String())
+	}
+}
+
+// failingAuditStore rejects appends of one event name.
+type failingAuditStore struct{ event string }
+
+func (f failingAuditStore) AppendAudit(_ context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
+	if event.Event == f.event {
+		return operational.AuditEvent{}, errors.New("audit table unavailable")
+	}
+	return event, nil
+}
+func (failingAuditStore) ListAudit(context.Context, operational.AuditFilter) ([]operational.AuditEvent, error) {
+	return nil, nil
+}
+func (failingAuditStore) VerifyAudit(context.Context) (operational.AuditVerification, error) {
+	return operational.AuditVerification{}, nil
+}
+
+func TestBrokerWithholdsTokensThatCannotBeAudited(t *testing.T) {
+	minter := newFakeMinter()
+	broker := NewBroker(minter, BrokerOptions{MaxPooled: 2, Audit: audit.New(io.Discard).WithStore(failingAuditStore{event: "token.minted"})})
+	if _, err := broker.Acquire(context.Background(), 1, testScope, time.Now().Add(15*time.Minute)); !errors.Is(err, audit.ErrUnavailable) {
+		t.Fatalf("acquire err = %v", err)
+	}
+	if minter.liveCount() != 0 || len(minter.revoked) != 1 {
+		t.Fatalf("an unaudited token must be revoked: live=%d revoked=%d", minter.liveCount(), len(minter.revoked))
+	}
+}
+
+func TestExecutorDoesNotRunCommandsThatCannotBeAudited(t *testing.T) {
+	queue, minter := newFakeQueue(), newFakeMinter()
+	runner := &fakeRunner{minter: minter}
+	startExecutorWith(t, queue, minter, fakeGitHub{permission: "write"}, runner, func(options *Options) {
+		options.Audit = audit.New(io.Discard).WithStore(failingAuditStore{event: "cli_command.started"})
+	})
+	command := queue.waitSettled(t, enqueue(t, queue, "gh aw upgrade --repo octo/app --create-pull-request", "octo/app", "mona"))
+	if command.Status != operational.CLICommandFailed || !strings.Contains(command.Error, "audit trail is unavailable") {
+		t.Fatalf("unaudited command = %+v", command)
+	}
+	if len(runner.processes) != 0 || minter.liveCount() != 0 {
+		t.Fatalf("unaudited command ran (%d) or left tokens live (%d)", len(runner.processes), minter.liveCount())
 	}
 }

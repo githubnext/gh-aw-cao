@@ -91,7 +91,11 @@ func TestAdminStepUpIsNotExtendedByTokenRefresh(t *testing.T) {
 	app := newAzureTestApp(t, github.URL)
 	app.database = integrationDatabase(t)
 	sessionCookie, csrfCookie := callbackSession(t, app)
-	original := storedSession(t, app, sessionCookie)
+	// Read raw records: storedSession would itself refresh the expired token.
+	original, err := app.oauth.loadSession(t.Context(), sessionCookie.Value)
+	if err != nil || original.AccessToken != "access-old" {
+		t.Fatalf("original session = %q, %v", original.AccessToken, err)
+	}
 
 	refreshed := httptest.NewRecorder()
 	request := azureRequest(t, http.MethodPost, "/api/v1/refresh")
@@ -102,7 +106,10 @@ func TestAdminStepUpIsNotExtendedByTokenRefresh(t *testing.T) {
 	if refreshed.Code != http.StatusOK {
 		t.Fatalf("refresh returned %d: %s", refreshed.Code, refreshed.Body.String())
 	}
-	after := storedSession(t, app, sessionCookie)
+	after, err := app.oauth.loadSession(t.Context(), sessionCookie.Value)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if after.AccessToken == original.AccessToken {
 		t.Fatal("refresh did not rotate the access token")
 	}

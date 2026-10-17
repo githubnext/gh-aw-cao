@@ -164,6 +164,9 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	if err := operational.ValidateOperationalServices(capabilities, services, requirements); err != nil {
 		return nil, fmt.Errorf("operational services: %w", err)
 	}
+	if services.Audit != nil && !config.Audit.Durable() {
+		config.Audit = config.Audit.WithStore(services.Audit)
+	}
 	if capabilities.Collection.Persistence == operational.PersistenceVolatile &&
 		capabilities.Collection.Scope != operational.ScopeUnsupported {
 		if !config.AllowVolatile || !config.SingleReplicaConfirmed ||
@@ -1025,7 +1028,7 @@ func (a *App) writeAdminDenied(response http.ResponseWriter, request *http.Reque
 		if ok && a.adminListed(session) {
 			reason = "step_up_required"
 		}
-		a.config.Audit.Record(request.Context(), "admin.denied", audit.Denied,
+		_ = a.config.Audit.Record(request.Context(), "admin.denied", audit.Denied,
 			slog.String("actor", session.Login), slog.String("reason", reason),
 			slog.String("method", request.Method), slog.String("path", request.URL.Path))
 		if reason == "step_up_required" {

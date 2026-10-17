@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -113,8 +114,44 @@ func (q *hostedCLITestQueue) Output(_ context.Context, id, after int64, limit in
 }
 func (q *hostedCLITestQueue) Retain(context.Context) (int64, error) { return 0, nil }
 
+// memoryAuditLog is an in-process stand-in for the postgres audit table.
+type memoryAuditLog struct {
+	mutex  sync.Mutex
+	events []operational.AuditEvent
+	fail   bool
+}
+
+func (m *memoryAuditLog) AppendAudit(_ context.Context, event operational.AuditEvent) (operational.AuditEvent, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	if m.fail {
+		return operational.AuditEvent{}, errors.New("audit table unavailable")
+	}
+	event.Sequence = int64(len(m.events) + 1)
+	event.OccurredAt = time.Now()
+	m.events = append(m.events, event)
+	return event, nil
+}
+
+func (m *memoryAuditLog) ListAudit(context.Context, operational.AuditFilter) ([]operational.AuditEvent, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return append([]operational.AuditEvent(nil), m.events...), nil
+}
+
+func (m *memoryAuditLog) VerifyAudit(context.Context) (operational.AuditVerification, error) {
+	return operational.AuditVerification{}, nil
+}
+
+func (m *memoryAuditLog) setFail(fail bool) {
+	m.mutex.Lock()
+	m.fail = fail
+	m.mutex.Unlock()
+}
+
 type hostedCLIFixture struct {
 	app     *App
+	audit   *memoryAuditLog
 	queue   *hostedCLITestQueue
 	session *http.Cookie
 	csrf    *http.Cookie
@@ -149,6 +186,8 @@ func newHostedCLIFixture(t *testing.T, admins []string) *hostedCLIFixture {
 	t.Cleanup(github.Close)
 	fixture.app = memoryOAuthApp(t, github.URL)
 	fixture.app.config.AdminUsers = admins
+	fixture.audit = &memoryAuditLog{}
+	fixture.app.config.Audit = fixture.app.config.Audit.WithStore(fixture.audit)
 	catalog, err := hostedcli.LoadCatalog(filepath.Join("..", "..", "..", "dashboard", "site", "dashboard.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -373,7 +412,7 @@ func TestHostedCLIExecutorRequiresDedicatedApp(t *testing.T) {
 func TestHostedCLIAuditsAdminDecisionsWithoutCredentials(t *testing.T) {
 	var buffer bytes.Buffer
 	fixture := newHostedCLIFixture(t, []string{"octocat"})
-	fixture.app.config.Audit = audit.New(&buffer)
+	fixture.app.config.Audit = audit.New(&buffer).WithStore(fixture.audit)
 	if response := fixture.do(t, http.MethodPost, "/__cli_commands", hostedUpgradeRequest, true); response.Code != http.StatusAccepted {
 		t.Fatalf("enqueue = %d", response.Code)
 	}
@@ -406,5 +445,49 @@ func TestHostedCLIAuditsAdminDecisionsWithoutCredentials(t *testing.T) {
 	}
 	if strings.Contains(buffer.String(), "access-token") || strings.Contains(buffer.String(), "refresh-token") {
 		t.Fatal("audit events must not contain OAuth credentials")
+	}
+	if admitted["stored"] != true {
+		t.Fatalf("mirrored event must report durable storage: %v", admitted)
+	}
+	stored, _ := fixture.audit.ListAudit(t.Context(), operational.AuditFilter{})
+	names := make([]string, 0, len(stored))
+	for _, event := range stored {
+		names = append(names, event.Event)
+	}
+	if len(stored) != 3 || stored[0].Event != "cli_command.admitted" || stored[0].Actor != "octocat" ||
+		stored[0].Attributes["repository"] != "octo/app" || stored[2].Event != "admin.denied" {
+		t.Fatalf("audit table = %v", names)
+	}
+}
+
+func TestHostedCLIRequiresDurableAuditTable(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	app := memoryOAuthApp(t, github.URL)
+	catalog, err := hostedcli.ParseCatalog([]byte(`{"dashboard":{"cli-actions":[]}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = app.EnableHostedCLIActions(t.Context(), HostedCLIConfig{Catalog: catalog, ControlRepository: "octo/cao", Queue: newHostedCLITestQueue()})
+	if err == nil || !strings.Contains(err.Error(), "audit table") {
+		t.Fatalf("hosted CLI enabled without a durable audit table: %v", err)
+	}
+}
+
+func TestHostedCLIMutationsFailClosedWithoutAudit(t *testing.T) {
+	fixture := newHostedCLIFixture(t, []string{"octocat"})
+	if response := fixture.do(t, http.MethodPost, "/__cli_commands", hostedUpgradeRequest, true); response.Code != http.StatusAccepted {
+		t.Fatalf("enqueue = %d", response.Code)
+	}
+	fixture.audit.setFail(true)
+	if response := fixture.do(t, http.MethodPost, "/__cli_commands", hostedUpgradeRequest, true); response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unaudited enqueue = %d: %s", response.Code, response.Body.String())
+	}
+	if response := fixture.do(t, http.MethodPost, "/__cli_commands/1/cancel", `{}`, true); response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unaudited cancel = %d: %s", response.Code, response.Body.String())
+	}
+	fixture.queue.mutex.Lock()
+	defer fixture.queue.mutex.Unlock()
+	if status := fixture.queue.commands[2].Status; status != operational.CLICommandCanceled {
+		t.Fatalf("unaudited command left %s", status)
 	}
 }

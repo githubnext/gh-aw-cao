@@ -88,6 +88,17 @@ the original lease, in one atomic transition. Delay MUST NOT block unrelated
 ready work. Enrollment changes MUST serialize and preserve current ownership
 when repositories transfer between installations.
 
+The PostgreSQL adapter also provides the `AuditLog` service in
+`cao_operational_audit_events`. Appends MUST serialize on the namespace row,
+assign a gap-free per-namespace sequence, and chain
+`hash = SHA-256(prev_hash || record)` over the exact stored canonical record. A
+trigger MUST reject updates and MUST reject deletes except retention and
+namespace removal. Audit rows are not charged to protected-record capacity;
+retention maintenance MUST keep at least 400 days, delete at most 512 rows per
+pass as a contiguous oldest prefix, and always keep the newest row. Redis and
+volatile memory do not provide this service, so hosted CLI actions require
+PostgreSQL. `specs/server-hosted-cli.md` §7 defines the events.
+
 ## Durable CLI command queue service
 
 `OperationalServices.CLICommands` exposes `CLICommandQueues`, whose

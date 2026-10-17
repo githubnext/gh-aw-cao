@@ -668,15 +668,22 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   `CAO_HOSTED_CLI_APP_ID` and `CAO_HOSTED_CLI_PRIVATE_KEY` or its `_FILE` or
   `_BASE64` variant, available only to `execute-cli`.
 
-- **Audit trail**: both processes write append-only JSON audit events
-  (`"audit":"cao"`) to standard error or to `CAO_AUDIT_LOG`, which is opened
-  for append with mode `0600`. The events cover admin denials (with the
+- **Audit trail**: both processes append audit events to the PostgreSQL
+  table `cao_operational_audit_events`. Rows carry a gap-free sequence and a
+  SHA-256 hash chain, a trigger rejects updates and deletes outside retention
+  (at least 400 days), and `VerifyAudit` detects edits, gaps, and reordering.
+  Hosted CLI actions refuse to start without the table, and admission, cancel,
+  retry, token minting, and command start fail closed when their event cannot
+  be stored. Every event is mirrored as a JSON line (`"audit":"cao"`) to
+  standard error or to `CAO_AUDIT_LOG`, opened for append with mode `0600`,
+  for SIEM forwarding. The events cover admin denials (with the
   step-up or not-admin reason), admission, rejection, cancel, retry, token
   mint and revocation, the command's start, permission denial, and finish.
   They carry the actor, repository, assurance, and control revision, but no
   credentials. Tokens appear only as `hashed_token`, in GitHub's audit-log
   format, so CAO events join GitHub's record of the App's actions. Forward
-  the events to a SIEM with retention that meets your compliance policy.
+  the mirror to write-once SIEM storage when you need protection against a
+  database superuser rewriting the whole chain.
 
 The executor's authorization and token lifecycle are model-checked in
 [`specs/tla/HostedCLIActions.tla`](../specs/tla/README.md#hosted-cli-actions-model).

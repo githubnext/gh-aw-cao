@@ -259,7 +259,7 @@ components:
     responsibility: opt-in (--hosted-cli-actions) admission of catalog-declared actions by step-up administrators and an execute-cli drain that rechecks live write permission and runs each command isolated with a single-use, repository-scoped, revoked-on-completion GitHub App installation token from a bounded broker pool; reject and revoke over-broad grants
   security_audit:
     path: server/internal/audit/
-    responsibility: append-only credential-free JSON audit events for admin denials, hosted CLI admission and execution, and token lifecycle; identify tokens only by GitHub's hashed_token digest
+    responsibility: credential-free audit events for admin denials, hosted CLI admission and execution, and token lifecycle, stored in the hash-chained append-only cao_operational_audit_events table and mirrored as JSON lines; privileged steps fail closed when storage fails; identify tokens only by GitHub's hashed_token digest
   cli_executor:
     path: dashboard/cli-actions.mjs
     responsibility: execute the existing validated CLI mechanism with bounded output and process-tree termination

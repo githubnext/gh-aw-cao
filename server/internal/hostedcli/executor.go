@@ -326,7 +326,9 @@ func (e *Executor) execute(ctx context.Context, lease operational.CLICommandLeas
 	if exitCode != nil {
 		attrs = append(attrs, slog.Int("exit_code", *exitCode))
 	}
-	e.options.Audit.Record(ctx, "cli_command.finished", outcome, attrs...)
+	if err := e.options.Audit.Record(ctx, "cli_command.finished", outcome, attrs...); err != nil {
+		e.options.Logger.Printf("hosted CLI command %d finish could not be audited: %v", command.ID, err)
+	}
 }
 
 func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink *outputSink) (*int, operational.CLICommandStatus, failure) {
@@ -365,7 +367,7 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 		return nil, operational.CLICommandFailed, "The requester's repository permission could not be verified."
 	}
 	if permission != "admin" && permission != "write" {
-		e.options.Audit.Record(ctx, "cli_command.permission_denied", audit.Denied,
+		_ = e.options.Audit.Record(ctx, "cli_command.permission_denied", audit.Denied,
 			slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
 			slog.String("repository", plan.Repository), slog.String("permission", permission))
 		return nil, operational.CLICommandFailed, "The requester no longer has write access to the target repository."
@@ -374,12 +376,14 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 	if err != nil {
 		return nil, operational.CLICommandFailed, "The GitHub App identity could not be resolved."
 	}
-	e.options.Audit.Record(ctx, "cli_command.started", audit.Success,
+	if err := e.options.Audit.Record(ctx, "cli_command.started", audit.Success,
 		slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
 		slog.String("repository", plan.Repository), slog.String("app_identity", identity.Name),
 		slog.Int64("installation_id", installationID), slog.Any("permissions", plan.Permissions),
 		slog.Bool("control_checkout", plan.ControlCheckout), slog.String("control_revision", e.options.ControlRevision),
-		slog.String("hashed_token", token.Hashed()), slog.Time("token_expires_at", token.ExpiresAt))
+		slog.String("hashed_token", token.Hashed()), slog.Time("token_expires_at", token.ExpiresAt)); err != nil {
+		return nil, operational.CLICommandFailed, "The audit trail is unavailable, so the command was not run."
+	}
 	//nolint:contextcheck // the sink carries the command context; OutputFunc callbacks have no context parameter.
 	sink.notice(fmt.Sprintf("Running as %s for %s with a single-use token scoped to %s (%s).\n",
 		identity.Name, command.Actor, plan.Repository, describePermissions(plan.Permissions)))

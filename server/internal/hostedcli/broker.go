@@ -251,12 +251,16 @@ func (b *Broker) mint(ctx context.Context, installationID int64, scope githubapp
 	b.mutex.Lock()
 	b.stats.Minted++
 	b.mutex.Unlock()
-	b.options.Audit.Record(ctx, "token.minted", audit.Success,
+	if err := b.options.Audit.Record(ctx, "token.minted", audit.Success,
 		slog.Int64("installation_id", installationID),
 		slog.Any("repositories", scope.Repositories),
 		slog.Any("permissions", scope.Permissions),
 		slog.String("hashed_token", token.Hashed()),
-		slog.Time("expires_at", token.ExpiresAt))
+		slog.Time("expires_at", token.ExpiresAt)); err != nil {
+		// A credential without a durable audit record is never handed out.
+		_ = b.revoke(ctx, token)
+		return githubapp.ScopedToken{}, err
+	}
 	return token, nil
 }
 
@@ -274,9 +278,9 @@ func (b *Broker) revoke(ctx context.Context, token githubapp.ScopedToken) error 
 	b.mutex.Unlock()
 	if err != nil {
 		brokerLog.Printf("scoped token revocation failed; will retry")
-		b.options.Audit.Record(ctx, "token.revoke_failed", audit.Failure, slog.String("hashed_token", token.Hashed()))
+		_ = b.options.Audit.Record(ctx, "token.revoke_failed", audit.Failure, slog.String("hashed_token", token.Hashed()))
 	} else {
-		b.options.Audit.Record(ctx, "token.revoked", audit.Success, slog.String("hashed_token", token.Hashed()))
+		_ = b.options.Audit.Record(ctx, "token.revoked", audit.Success, slog.String("hashed_token", token.Hashed()))
 	}
 	return err
 }

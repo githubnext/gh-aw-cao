@@ -86,3 +86,38 @@ CREATE TABLE IF NOT EXISTS cao_operational_cli_output (
     PRIMARY KEY (namespace, queue, command_id, sequence),
     FOREIGN KEY (namespace, queue, command_id) REFERENCES cao_operational_cli_commands(namespace, queue, id) ON DELETE CASCADE
 );
+
+-- Security audit trail. Rows are append-only: a trigger rejects UPDATE and
+-- permits DELETE only for retention or namespace removal. Each row carries the
+-- exact canonical JSON that was hashed, and hash = sha256(prev_hash || record),
+-- so edits, reordering, and gaps are detectable by VerifyAudit.
+CREATE TABLE IF NOT EXISTS cao_operational_audit_events (
+    namespace TEXT NOT NULL REFERENCES cao_operational_namespaces(namespace) ON DELETE CASCADE,
+    sequence BIGINT NOT NULL CHECK (sequence > 0),
+    occurred_at TIMESTAMPTZ NOT NULL,
+    event TEXT NOT NULL,
+    outcome TEXT NOT NULL CHECK (outcome IN ('success','denied','failure')),
+    actor TEXT NOT NULL DEFAULT '',
+    record TEXT NOT NULL,
+    prev_hash BYTEA NOT NULL CHECK (octet_length(prev_hash) = 32),
+    hash BYTEA NOT NULL CHECK (octet_length(hash) = 32),
+    PRIMARY KEY (namespace, sequence)
+);
+CREATE INDEX IF NOT EXISTS cao_operational_audit_time
+    ON cao_operational_audit_events(namespace, occurred_at);
+CREATE INDEX IF NOT EXISTS cao_operational_audit_actor
+    ON cao_operational_audit_events(namespace, actor, sequence);
+
+CREATE OR REPLACE FUNCTION cao_operational_audit_append_only() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE' AND (pg_trigger_depth() > 1 OR current_setting('cao.audit_retention', true) = 'on') THEN
+        RETURN OLD;
+    END IF;
+    RAISE EXCEPTION 'cao_operational_audit_events is append-only' USING ERRCODE = 'insufficient_privilege';
+END;
+$$;
+DROP TRIGGER IF EXISTS cao_operational_audit_append_only ON cao_operational_audit_events;
+CREATE TRIGGER cao_operational_audit_append_only
+    BEFORE UPDATE OR DELETE ON cao_operational_audit_events
+    FOR EACH ROW EXECUTE FUNCTION cao_operational_audit_append_only();
