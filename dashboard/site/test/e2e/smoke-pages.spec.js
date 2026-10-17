@@ -1091,7 +1091,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Operational Value', 'Friction', 'Models & Agents', 'Model routing', 'Firewall', 'MCPs', 'Memory']);
+  await expect(data.getByRole('link')).toHaveText(['Campaigns', 'Repositories', 'Workflows', 'Runs', 'Issues', 'Cost', 'Operational Value', 'Friction', 'Models & Agents', 'Firewall', 'MCPs', 'Memory']);
   await expect(data.getByRole('link', { name: 'Operational Value', exact: true })).toHaveCount(1);
   await expect(data.getByRole('link', { name: 'Friction', exact: true })).toHaveCount(1);
   await expect(evolutionSection.locator('summary')).toHaveText('Evolution');
@@ -1143,6 +1143,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(experimentalSection).not.toHaveAttribute('open', '');
   await experimentalSection.locator('summary').click();
   await expect(experimentalSection.getByRole('link')).toHaveText([
+    'Model routing',
     'Skills',
     'Steering',
     'Simulators'

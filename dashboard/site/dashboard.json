@@ -1172,7 +1172,6 @@
           "operational-value",
           "friction",
           "engines-models",
-          "model-routing",
           "firewall",
           "mcps",
           "memory"
@@ -1182,6 +1181,7 @@
         "label": "Experimental",
         "experimental": true,
         "pages": [
+          "model-routing",
           "skills",
           "steering",
           "simulators"
