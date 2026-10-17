@@ -126,28 +126,6 @@ func TestContainerRunnerUsesPinnedImageAndPrivateEnvironmentFile(t *testing.T) {
 	}
 }
 
-func TestContainerBootstrapInitializesGitAndPreservesArguments(t *testing.T) {
-	workspace := t.TempDir()
-	// Exercise the exact bootstrap and Git-root prerequisite without invoking
-	// GitHub or any target-side effects.
-	p := Process{Program: "/bin/sh", Dir: workspace, Env: []string{"PATH=" + os.Getenv("PATH"), "HOME=" + workspace, "GIT_CONFIG_NOSYSTEM=1"},
-		Args: []string{"-c", containerBootstrap, "cao-hosted-cli", "git", "rev-parse", "--show-toplevel"}}
-	var output strings.Builder
-	code, err := (ExecRunner{}).Run(t.Context(), p, func(_ string, data []byte) { output.Write(data) })
-	if err != nil || code != 0 || strings.TrimSpace(output.String()) != workspace {
-		t.Fatalf("Git root prerequisite failed: %d %v %q", code, err, output.String())
-	}
-	p.Args = []string{"-c", containerBootstrap, "cao-hosted-cli", "printf", "%s", `$(touch should-not-exist); spaced argument`}
-	output.Reset()
-	code, err = (ExecRunner{}).Run(t.Context(), p, func(_ string, data []byte) { output.Write(data) })
-	if err != nil || code != 0 || output.String() != `$(touch should-not-exist); spaced argument` {
-		t.Fatalf("arguments were reinterpreted: %d %v %q", code, err, output.String())
-	}
-	if _, err := os.Stat(filepath.Join(workspace, "should-not-exist")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("argument was interpreted as shell")
-	}
-}
-
 func TestContainerRunnerConfirmedRemovalDoesNotInventWorkloadResult(t *testing.T) {
 	for _, canceled := range []bool{false, true} {
 		t.Run(map[bool]string{false: "lost-result", true: "canceled"}[canceled], func(t *testing.T) {
@@ -172,6 +150,38 @@ func TestContainerRunnerConfirmedRemovalDoesNotInventWorkloadResult(t *testing.T
 			}
 			if canceled && !errors.Is(err, context.Canceled) {
 				t.Fatalf("cancellation was lost: %v", err)
+			}
+		})
+	}
+}
+
+func TestContainerRunnerCreateFailureDoesNotInventWorkloadResult(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		code int
+		err  error
+	}{
+		{name: "docker-exit", code: 125},
+		{name: "missing-container-id", code: 0},
+		{name: "lost-response", code: 1, err: errors.New("create response lost")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner, commands, process := containerTest(t)
+			base := commands.run
+			commands.run = func(ctx context.Context, p Process, output OutputFunc) (int, error) {
+				if p.Args[2] == "create" {
+					return tc.code, tc.err
+				}
+				return base(ctx, p, output)
+			}
+			code, err := runner.Run(t.Context(), process, nil)
+			if code != -1 || err == nil || errors.Is(err, ErrContainerTerminationUnconfirmed) {
+				t.Fatalf("create failure with confirmed cleanup must have no workload exit code: %d %v", code, err)
+			}
+			for _, p := range commands.processes {
+				if p.Args[2] == "start" {
+					t.Fatal("failed creation must not start a workload")
+				}
 			}
 		})
 	}

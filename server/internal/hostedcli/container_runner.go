@@ -138,7 +138,7 @@ func (r *ContainerRunner) Run(ctx context.Context, process Process, output Outpu
 		if cleanupErr != nil {
 			return -1, fmt.Errorf("hosted CLI container could not be created or removed: %w", cleanupErr)
 		}
-		return createCode, errors.New("hosted CLI container could not be created")
+		return -1, errors.New("hosted CLI container could not be created")
 	}
 	code, runErr := r.Commands.Run(ctx, Process{
 		Program: r.DockerBinary, Args: []string{"--context", "default", "start", "--attach", name},
