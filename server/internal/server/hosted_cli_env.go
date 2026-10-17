@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -158,14 +157,17 @@ func newHostedCLIExecutor(ctx context.Context, queues operational.CLICommandQueu
 	}
 	auditLog = auditLog.WithStore(auditStore)
 	broker := hostedcli.NewBroker(client, hostedcli.BrokerOptions{MaxPooled: options.MaxPooledTokens, Audit: auditLog})
-	return hostedcli.NewExecutor(queue, broker, client, hostedcli.ExecRunner{}, hostedcli.Options{
+	image := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_CONTAINER_IMAGE"))
+	dockerBinary := strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_DOCKER"))
+	runner, err := hostedcli.NewContainerRunner(image, dockerBinary, hostedcli.ExecRunner{})
+	if err != nil {
+		return nil, err
+	}
+	return hostedcli.NewExecutor(queue, broker, client, runner, hostedcli.Options{
 		Owner:               options.Owner,
 		ControlRepository:   control,
-		ControlRevision:     strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_CONTROL_REVISION")),
+		ContainerImage:      runner.Image,
 		GitHubHost:          host,
-		GitHubBinary:        strings.TrimSpace(os.Getenv("CAO_HOSTED_CLI_GH")),
-		Path:                os.Getenv("PATH"),
-		DataHome:            dataHome(),
 		WorkRoot:            workRoot,
 		CommandTimeout:      queueOptions.Timeout,
 		Prefetch:            options.Prefetch,
@@ -189,18 +191,6 @@ func gitHubHost(apiURL string) (string, error) {
 		return "github.com", nil
 	}
 	return strings.TrimPrefix(host, "api."), nil
-}
-
-// dataHome locates the operator's installed gh extensions (gh-aw); each
-// command receives a private copy alongside its ephemeral HOME.
-func dataHome() string {
-	if value := strings.TrimSpace(os.Getenv("XDG_DATA_HOME")); value != "" {
-		return value
-	}
-	if home, err := os.UserHomeDir(); err == nil {
-		return filepath.Join(home, ".local", "share")
-	}
-	return ""
 }
 
 // privateKeyFromEnv prefers PREFIX_FILE, then PREFIX_BASE64, then the inline

@@ -12,35 +12,30 @@ type Kind string
 
 const (
 	KindGhAwUpgrade Kind = "gh-aw-upgrade"
+	KindGhAwUpdate  Kind = "gh-aw-update"
 	KindWorkflowRun Kind = "workflow-run"
-	KindCAOUpdate   Kind = "cao-update"
 )
 
 // ErrNotHosted reports a declared command that hosted execution refuses.
 var ErrNotHosted = errors.New("CLI action is not supported by hosted execution")
 
 var (
-	commitRevision   = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 	targetRepository = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
 	workflowInput    = regexp.MustCompile(`(?s)^[A-Za-z_][A-Za-z0-9_-]*=.*$`)
-	campaignSlug     = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 	workflowName     = regexp.MustCompile(`^[A-Za-z0-9_.][A-Za-z0-9_./-]*$`)
 	gitRef           = regexp.MustCompile(`^[A-Za-z0-9_.][A-Za-z0-9_./-]*$`)
+	campaignPackage  = regexp.MustCompile(`^https://github\.com/githubnext/gh-aw-cao/[a-z0-9]+(?:-[a-z0-9]+)*$`)
 )
 
 // Plan is a validated hosted execution: the argv to run, the single
 // repository the credential is scoped to, and the least-privilege grant.
 type Plan struct {
 	Kind Kind
-	// Program is "gh" or "cao"; "cao" runs ./cao.sh from a control-repository
-	// checkout.
+	// Program selects a fixed executable in the gh-aw container.
 	Program     string
 	Args        []string
 	Repository  string
 	Permissions map[string]string
-	// ControlCheckout requests a fresh clone of Repository as the working
-	// directory before Program runs.
-	ControlCheckout bool
 }
 
 // Name returns the repository name without its owner.
@@ -112,10 +107,10 @@ func PlanCommand(command, controlRepository string) (Plan, error) {
 	switch {
 	case hasPrefix(tokens, "gh", "aw", "upgrade"):
 		return planUpgrade(tokens[3:])
+	case hasPrefix(tokens, "gh", "aw", "update"):
+		return planUpdate(tokens[3:], controlRepository)
 	case hasPrefix(tokens, "gh", "workflow", "run"):
 		return planWorkflowRun(tokens[3:], controlRepository)
-	case hasPrefix(tokens, "./cao.sh", "update"):
-		return planCAOUpdate(tokens[2:], controlRepository)
 	case hasPrefix(tokens, "gh", "agent-task"):
 		return Plan{}, errors.New("agent tasks require the requesting user's identity and must run locally")
 	case hasPrefix(tokens, "./cao.sh"):
@@ -185,8 +180,44 @@ func planUpgrade(args []string) (Plan, error) {
 		return Plan{}, errors.New("hosted gh aw upgrade requires --repo OWNER/REPOSITORY")
 	}
 	return Plan{
-		Kind: KindGhAwUpgrade, Program: "gh", Args: append([]string{"aw", "upgrade"}, args...),
+		Kind: KindGhAwUpgrade, Program: "gh-aw", Args: append([]string{"upgrade"}, args...),
 		Repository: repository, Permissions: clonePermissions(publishingPermissions),
+	}, nil
+}
+
+func planUpdate(args []string, controlRepository string) (Plan, error) {
+	if !targetRepository.MatchString(controlRepository) {
+		return Plan{}, errors.New("hosted gh aw update requires a configured control repository")
+	}
+	if len(args) == 0 || !campaignPackage.MatchString(args[0]) {
+		return Plan{}, errors.New("hosted gh aw update requires a CAO campaign package URL")
+	}
+	values, err := publishingOptions(args[1:],
+		map[string]bool{"--create-pull-request": true, "--auto-merge": true, "--pre-releases": true},
+		map[string]bool{"--repo": true, "--pr-message": true})
+	if err != nil {
+		return Plan{}, err
+	}
+	if !strings.EqualFold(values["--repo"], controlRepository) {
+		return Plan{}, errors.New("hosted gh aw update must target the configured control repository")
+	}
+	normalized := []string{"update", args[0], "--repo", controlRepository}
+	for _, option := range []string{"--pr-message"} {
+		if value := values[option]; value != "" {
+			normalized = append(normalized, option, value)
+		}
+	}
+	for _, option := range []string{"--pre-releases", "--create-pull-request", "--auto-merge"} {
+		for _, argument := range args[1:] {
+			if argument == option {
+				normalized = append(normalized, option)
+				break
+			}
+		}
+	}
+	return Plan{
+		Kind: KindGhAwUpdate, Program: "gh-aw", Args: normalized,
+		Repository: controlRepository, Permissions: clonePermissions(publishingPermissions),
 	}, nil
 }
 
@@ -239,25 +270,6 @@ func planWorkflowRun(args []string, controlRepository string) (Plan, error) {
 	return Plan{
 		Kind: KindWorkflowRun, Program: "gh", Args: normalized, Repository: repository,
 		Permissions: map[string]string{"actions": "write", "contents": "read", "metadata": "read"},
-	}, nil
-}
-
-func planCAOUpdate(args []string, controlRepository string) (Plan, error) {
-	if !targetRepository.MatchString(controlRepository) {
-		return Plan{}, errors.New("hosted CAO commands require a configured control repository")
-	}
-	values, err := publishingOptions(args,
-		map[string]bool{"--create-pull-request": true, "--auto-merge": true, "--pre-releases": true},
-		map[string]bool{"--campaign": true, "--pr-message": true})
-	if err != nil {
-		return Plan{}, err
-	}
-	if !campaignSlug.MatchString(values["--campaign"]) {
-		return Plan{}, errors.New("hosted CAO update requires --campaign with a safe campaign slug")
-	}
-	return Plan{
-		Kind: KindCAOUpdate, Program: "cao", Args: append([]string{"update"}, args...),
-		Repository: controlRepository, Permissions: clonePermissions(publishingPermissions), ControlCheckout: true,
 	}, nil
 }
 

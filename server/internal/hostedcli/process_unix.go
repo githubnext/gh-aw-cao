@@ -4,6 +4,7 @@ package hostedcli
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
@@ -24,4 +25,8 @@ func terminateProcessTree(process *os.Process) error {
 		return os.ErrProcessDone
 	}
 	return err
+}
+
+func hostContainerUser() string {
+	return fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())
 }

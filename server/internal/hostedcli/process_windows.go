@@ -15,3 +15,5 @@ func terminateProcessTree(process *os.Process) error {
 	}
 	return process.Kill()
 }
+
+func hostContainerUser() string { return "" }

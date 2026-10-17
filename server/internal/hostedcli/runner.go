@@ -13,11 +13,12 @@ import (
 // Process is one subprocess invocation. Env is the complete environment; the
 // runner never inherits the server's environment.
 type Process struct {
-	Dir     string
-	Program string
-	Args    []string
-	Env     []string
-	Stdin   string
+	Dir       string
+	Workspace string
+	Program   string
+	Args      []string
+	Env       []string
+	Stdin     string
 }
 
 // OutputFunc receives subprocess output in arrival order.

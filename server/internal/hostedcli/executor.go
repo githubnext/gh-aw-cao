@@ -41,22 +41,12 @@ type GitHub interface {
 type Options struct {
 	// Owner names this executor's queue lease.
 	Owner string
-	// ControlRepository is the OWNER/REPOSITORY cloned for ./cao.sh commands.
+	// ControlRepository is the OWNER/REPOSITORY targeted by CAO package updates.
 	ControlRepository string
-	// ControlRevision is the operator-reviewed commit SHA of the control
-	// repository at which ./cao.sh runs. The default branch is never executed:
-	// without a revision, control-checkout commands fail closed.
-	ControlRevision string
+	// ContainerImage is the digest-pinned gh-aw image used for command execution.
+	ContainerImage string
 	// GitHubHost is the GitHub hostname; empty selects github.com.
 	GitHubHost string
-	// GitHubBinary is the gh executable; empty resolves "gh" from Path.
-	GitHubBinary string
-	// Path is the PATH given to subprocesses.
-	Path string
-	// DataHome is the operator's XDG_DATA_HOME. Its gh extensions (such as
-	// gh-aw) are copied into each command's workspace so a command cannot
-	// alter the extensions later commands run.
-	DataHome string
 	// WorkRoot holds per-command ephemeral workspaces; empty uses os.TempDir.
 	WorkRoot string
 	// CommandTimeout must match the queue's Timeout; it sizes token lifetime
@@ -83,15 +73,14 @@ func (o Options) resolve() (Options, error) {
 	if o.ControlRepository != "" && !targetRepository.MatchString(o.ControlRepository) {
 		return o, errors.New("hosted CLI control repository must be OWNER/REPOSITORY")
 	}
-	o.ControlRevision = strings.ToLower(strings.TrimSpace(o.ControlRevision))
-	if o.ControlRevision != "" && !commitRevision.MatchString(o.ControlRevision) {
-		return o, errors.New("hosted CLI control revision must be a full commit SHA")
-	}
 	if o.GitHubHost == "" {
 		o.GitHubHost = "github.com"
 	}
-	if o.GitHubBinary == "" {
-		o.GitHubBinary = "gh"
+	if o.ContainerImage == "" {
+		o.ContainerImage = DefaultContainerImage
+	}
+	if !containerImagePattern.MatchString(o.ContainerImage) {
+		return o, errors.New("hosted CLI container image must be a digest-pinned OCI image reference")
 	}
 	if o.CommandTimeout <= 0 {
 		o.CommandTimeout = 15 * time.Minute
@@ -383,9 +372,6 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 	if command.Actor == "" || !strings.EqualFold(command.Repository, plan.Repository) {
 		return nil, operational.CLICommandFailed, "Hosted execution requires an authenticated requester and a matching target repository."
 	}
-	if plan.ControlCheckout && e.options.ControlRevision == "" {
-		return nil, operational.CLICommandFailed, "Hosted execution of control repository commands requires CAO_HOSTED_CLI_CONTROL_REVISION."
-	}
 	deadline := e.now().Add(e.options.CommandTimeout)
 	if command.Deadline != nil {
 		deadline = *command.Deadline
@@ -425,7 +411,7 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 		slog.Int64("command_id", command.ID), slog.String("actor", command.Actor),
 		slog.String("repository", plan.Repository), slog.String("app_identity", identity.Name),
 		slog.Int64("installation_id", installationID), slog.Any("permissions", plan.Permissions),
-		slog.Bool("control_checkout", plan.ControlCheckout), slog.String("control_revision", e.options.ControlRevision),
+		slog.String("container_image", e.options.ContainerImage),
 		slog.String("hashed_token", token.Hashed()), slog.Time("token_expires_at", token.ExpiresAt)); err != nil {
 		return nil, operational.CLICommandFailed, "The audit trail is unavailable, so the command was not run."
 	}
@@ -446,39 +432,8 @@ func (e *Executor) run(ctx context.Context, command operational.CLICommand, sink
 			return nil, operational.CLICommandFailed, "The ephemeral workspace could not be created."
 		}
 	}
-	if err := copyExtensions(e.options.DataHome, data); err != nil {
-		executorLog.Printf("gh extensions copy failed id=%d: %v", command.ID, err)
-		return nil, operational.CLICommandFailed, "The gh extensions could not be prepared for the command."
-	}
-	environment := append(e.environment(home, data, token, identity), traceEnvironment(runCtx)...)
-	directory := work
-	program, args := e.options.GitHubBinary, plan.Args
-	if plan.ControlCheckout {
-		checkout := filepath.Join(work, "control")
-		code, err := e.runner.Run(runCtx, Process{
-			Dir: work, Program: e.options.GitHubBinary, Env: environment,
-			Args: []string{"repo", "clone", plan.Repository, checkout, "--", "--filter=blob:none", "--no-tags", "--no-checkout"},
-		}, sink.write)
-		if status, reason, done := classify(runCtx, ctx, canceled, code, err); done || code != 0 {
-			if !done {
-				reason = "The control repository could not be cloned."
-			}
-			return &code, status, reason
-		}
-		// Run only the operator-reviewed revision, never the live default branch.
-		code, err = e.runner.Run(runCtx, Process{
-			Dir: checkout, Program: "git", Env: environment,
-			Args: []string{"-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", e.options.ControlRevision},
-		}, sink.write)
-		if status, reason, done := classify(runCtx, ctx, canceled, code, err); done || code != 0 {
-			if !done {
-				reason = "The reviewed control repository revision could not be checked out."
-			}
-			return &code, status, reason
-		}
-		directory, program, args = checkout, "sh", append([]string{"./cao.sh"}, plan.Args...)
-	}
-	code, err := e.runner.Run(runCtx, Process{Dir: directory, Program: program, Args: args, Env: environment}, sink.write)
+	environment := append(e.environment(token, identity), traceEnvironment(runCtx)...)
+	code, err := e.runner.Run(runCtx, Process{Dir: work, Workspace: workspace, Program: plan.Program, Args: plan.Args, Env: environment}, sink.write)
 	status, reason, _ := classify(runCtx, ctx, canceled, code, err)
 	return &code, status, reason
 }
@@ -530,12 +485,11 @@ func (e *Executor) watchCancellation(ctx context.Context, cancel context.CancelF
 	}
 }
 
-func (e *Executor) environment(home, data string, token githubapp.ScopedToken, identity githubapp.BotIdentity) []string {
+func (e *Executor) environment(token githubapp.ScopedToken, identity githubapp.BotIdentity) []string {
 	environment := []string{
-		"HOME=" + home,
-		"XDG_CONFIG_HOME=" + filepath.Join(home, ".config"),
-		"XDG_CACHE_HOME=" + filepath.Join(home, ".cache"),
-		"PATH=" + e.options.Path,
+		"HOME=/workspace/home",
+		"XDG_CONFIG_HOME=/workspace/home/.config",
+		"XDG_CACHE_HOME=/workspace/home/.cache",
 		"LANG=C.UTF-8",
 		"NO_COLOR=1",
 		"GH_PROMPT_DISABLED=1",
@@ -548,12 +502,12 @@ func (e *Executor) environment(home, data string, token githubapp.ScopedToken, i
 		"GIT_CONFIG_KEY_0=credential.helper",
 		"GIT_CONFIG_VALUE_0=",
 		"GIT_CONFIG_KEY_1=credential.helper",
-		"GIT_CONFIG_VALUE_1=!" + e.options.GitHubBinary + " auth git-credential",
+		"GIT_CONFIG_VALUE_1=!gh auth git-credential",
 		"GIT_AUTHOR_NAME=" + identity.Name,
 		"GIT_AUTHOR_EMAIL=" + identity.Email,
 		"GIT_COMMITTER_NAME=" + identity.Name,
 		"GIT_COMMITTER_EMAIL=" + identity.Email,
-		"XDG_DATA_HOME=" + data,
+		"XDG_DATA_HOME=/workspace/data",
 	}
 	if !strings.EqualFold(e.options.GitHubHost, "github.com") {
 		environment = append(environment, "GH_HOST="+e.options.GitHubHost, "GH_ENTERPRISE_TOKEN="+token.Secret())
