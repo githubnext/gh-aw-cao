@@ -14,7 +14,7 @@ func TestCommands(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"root help", nil, "command parity is future work"},
+		{"root help", nil, "Configure and operate Central Agentic Ops"},
 		{"help flag", []string{"--help"}, "gh cao [command]"},
 		{"version flag", []string{"--version"}, "gh cao version test\n"},
 		{"version command", []string{"version"}, "gh cao version test\n"},
@@ -45,7 +45,7 @@ func TestCommands(t *testing.T) {
 
 func TestInvalidCommands(t *testing.T) {
 	for _, args := range [][]string{
-		{"setup"},
+		{"setup", "extra"},
 		{"--unknown"},
 		{"version", "extra"},
 		{"doctor", "extra"},

@@ -13,14 +13,63 @@ using the CLI should follow the
 [`cao-cli` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md);
 agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md).
-Run the wrapper from the repository root:
+The Go extension exposes the operator-facing command surface as `gh cao`.
+The repository-local wrapper remains compatible, including the pipeline
+commands used by Actions. Run either interface from the control repository root:
 
 ```bash
+gh cao --help
 ./cao.sh --help
 ```
 
 Command failures exit nonzero and report the error without printing the command
-reference. Request `./cao.sh --help` explicitly when needed.
+reference. Request command-specific help with `gh cao COMMAND --help`.
+
+## GitHub CLI extension
+
+Build with `make build` and use `./gh-cao` directly, or follow the
+[local extension installation guide](https://github.com/githubnext/gh-aw-cao/blob/main/CONTRIBUTING.md#go-extension-development)
+to invoke it as `gh cao`.
+
+| Surface | Commands | Execution |
+| --- | --- | --- |
+| Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
+| Onboarding and lifecycle | `setup`, `quickstart`, `setup-auth github-app\|enterprise-app\|token`, `add`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
+| Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Same installed runtime and canonical query engine as the dashboard and existing CLI. |
+| Local diagnostics | `doctor`, `version` | Native Go. `doctor` checks only the local `gh` executable. |
+| Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Remain in `./cao.sh` / `activity/cao.mjs`; not migrated to the extension. |
+
+The extension is **not yet a Node-free replacement** for the domain runtime.
+Shared-runtime commands require Node.js 24+ and the installed CAO root campaign.
+The extension finds `activity/cao.mjs` in the current checkout (without crossing
+its Git boundary), or beside the extension executable. Set `CAO_RUNTIME_ROOT`
+to select another installed runtime explicitly; an invalid override fails
+without fallback. Selecting runtime code does not change the current directory
+or policy authority, and never downloads code implicitly.
+
+```bash
+gh cao init
+gh cao add githubnext/gh-aw-cao/dependabot
+gh cao campaigns mode preview dependabot
+gh cao campaigns enable dependabot
+gh cao campaigns disable dependabot
+gh cao validate --json
+gh cao pages --json
+gh cao query campaign-runs --param campaign=dependabot
+```
+
+All help works offline, including `gh cao quickstart --help` and
+`gh cao campaigns --help`. Campaign controls are available only under
+`campaigns` in the extension; `./cao.sh mode`, `./cao.sh enable`, and
+`./cao.sh disable` keep their existing syntax.
+`gh cao setup-auth token --help` also works offline. `add` and `update` retain
+gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
+secret prompts, and validator exit codes retain their existing contracts.
+There is no `gh cao run`: workflow execution still belongs to gh-aw.
+
+`gh cao doctor` is deliberately **not** `./cao.sh doctor`: use the latter for
+the existing SQLite snapshot check/repair operation. Neither Activity nor
+Dashboard Actions is switched to the Go executable.
 
 CAO and gh-aw have separate jobs:
 

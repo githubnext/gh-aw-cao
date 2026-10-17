@@ -119,9 +119,8 @@ Workflow source changes must pass `npm run compile`. Run
 
 ### Go extension development
 
-The root Go module is a scaffold for a native GitHub CLI extension, not a
-replacement for `cao.sh` or `activity/cao.mjs`. It is independent of the existing
-`server/` module. `make check` scopes Go checks to `cmd/` and `internal/`,
+The root Go module provides the operator-facing `gh cao` GitHub CLI extension.
+It is independent of the existing `server/` module. `make check` scopes Go checks to `cmd/` and `internal/`,
 excluding dashboard server tests and Go files inside npm dependencies.
 Use the Go version declared in `go.mod` or newer, GitHub CLI, and Make. For local
 extension installation, the checkout directory must be named `gh-cao`, even
@@ -149,8 +148,9 @@ On Windows, build `gh-cao.exe` with
 | Path | Responsibility |
 | --- | --- |
 | `cmd/gh-cao/` | Process entry point, interrupt cancellation, exit status, and link-time version (`-X main.version=...`). |
-| `internal/cli/` | Cobra command construction, help, version, and read-only local diagnostics. |
+| `internal/cli/` | Cobra operator commands, native policy initialization/modes and workflow enablement, help, version, and local diagnostics. |
 | `internal/ghcli/` | Context-aware GitHub CLI calls through `github.com/cli/go-gh/v2`, the same helper used by gh-aw. |
+| `internal/runtimecli/` | Explicit installed-runtime discovery and cancellation-aware Node process/stdio/exit-status boundary for shared domain services. |
 | `go.mod`, `go.sum` | Pinned extension dependencies, separate from `server/go.mod`. |
 | `Makefile` | `build`, `release`, `fmt`, `lint` (gofmt and go vet), `test` (race detector), and `check`. |
 | `scripts/build-release.sh` | Cross-compile six extension binaries with the exact release tag embedded in `main.version`, then write SHA-256 checksums. |
@@ -162,13 +162,26 @@ logger. Enable its namespaces with `DEBUG=cao:*` and disable debug colors with
 arguments, or subprocess payloads. Import small shared gh-aw utility packages
 as needed rather than its full CLI command implementation.
 
-Help and version work offline without GitHub authentication. `doctor` runs only
+Help for every operator command and version work offline without GitHub authentication. `doctor` runs only
 `gh --version` with a five-second timeout; it does not check authentication,
-gh-aw, rollout policy, or operational readiness. Unsupported CAO commands fail
-instead of delegating to the shell or reporting success. Continue to use
-`./cao.sh` for all existing operations until parity is implemented separately.
-The extension does not alter installed runtimes, campaign manifests, policy,
-credentials, or distribution workflows.
+gh-aw, rollout policy, or operational readiness. `init`, `campaigns mode`,
+`campaigns enable`, and `campaigns disable` run in Go without Node; the other
+operator commands require Node.js 24+ and an installed root CAO runtime.
+Runtime discovery checks the working
+directory and its ancestors without crossing a Git repository boundary, then
+the extension executable's directory. `CAO_RUNTIME_ROOT` explicitly selects a
+runtime and fails rather than falling back if invalid. Discovery selects code,
+not policy or working directory: run mutations from the control checkout root.
+No code is downloaded or installed implicitly by the bridge.
+
+Preserve production onboarding, authentication, policy validation, and query
+semantics through this shared-runtime boundary rather than reimplementing them
+in a second engine. Argument vectors and stdin/stdout/stderr pass directly to
+Node without a shell; validation exit codes and interactive secret prompts are
+preserved. `add` and `update` pass evolving gh-aw options unchanged.
+Activity/Dashboard pipeline commands are deliberately not registered in Go;
+their Actions, Node command modules, runtime ownership, and `cao.sh` remain
+unchanged. See [the operator migration table](docs/cao-cli.md#github-cli-extension).
 
 #### Release binaries
 
