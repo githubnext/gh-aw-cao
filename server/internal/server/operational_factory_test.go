@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 )
 
@@ -57,6 +58,14 @@ func TestOperationalPostgresPolicyAndFactory(t *testing.T) {
 	}
 	host.OperationalPostgresURL = dsn
 	host.OperationalNamespace = "operational-factory-" + t.Name()
+	if _, _, err := newOperationalStore(t.Context(), host); err == nil {
+		t.Fatal("runtime factory bootstrapped a missing namespace")
+	}
+	provisioned, err := postgres.New(t.Context(), dsn, host.OperationalNamespace, postgres.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = provisioned.Close() }()
 	store, _, err := newOperationalStore(t.Context(), host)
 	if err != nil {
 		t.Fatal(err)

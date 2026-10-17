@@ -18,9 +18,12 @@ func OpenAuditStore(ctx context.Context, sqlitePath string) (operational.AuditLo
 		}
 		return store, store.Close, nil
 	}
-	store, err := StoreFromEnv(ctx)
+	_, store, err := NewOperationalDiagnosticsFromEnv(ctx)
 	if err != nil {
 		return nil, nil, err
+	}
+	if store == nil {
+		return nil, nil, errors.New("the audit table requires the postgres operational store or --sqlite")
 	}
 	auditStore := store.OperationalServices().Audit
 	if auditStore == nil {

@@ -103,6 +103,12 @@ constructing an empty store. See the [normative operational contract](../specs/s
 
 ## PostgreSQL operational storage
 
+**Provision before startup.** Production and local PostgreSQL entrypoints open
+existing state without DDL. Follow [PostgreSQL privilege separation and rollout](POSTGRES.md)
+to run owner-only `database bootstrap`, apply runtime/evidence/retention grants,
+and schedule separate canonical partition and audit-retention jobs. Do not mount
+owner credentials in runtime processes. SQLite hosted-CLI debugging is unchanged.
+
 PostgreSQL is the default when a reviewed host has no backend selector or legacy
 `redis` configuration. Coolify selects it explicitly. No Redis connection or
 volatile-memory acknowledgement is required:
@@ -1614,8 +1620,8 @@ matching UTC Monday-to-Monday PostgreSQL RANGE partitions. `run_at` uses the
 run's `createdAt`, then `startedAt`, `completedAt`, or `updatedAt`; records
 without any of these use ingestion time. Linked records inherit their run's
 partition timestamp. PostgreSQL routes parent-table inserts; missing weeks
-fail closed rather than creating partitions during ingestion. At startup and
-every 24 hours while the process is running, maintenance checks existing
+fail closed rather than creating partitions during ingestion. The separately
+scheduled owner-run `database maintain --store canonical` checks existing
 partitions, creates any missing current and four future weeks first, and removes complete
 run weeks older than `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30, allowed 7–3650).
 Run-linked tables (audits, domains, eval observations, experiment assignments,
@@ -1624,15 +1630,19 @@ complete weekly shards older than `CAO_POSTGRES_LINKED_RETENTION_DAYS` (default 
 allowed 7 up to the run retention). A partial week remains until the entire
 shard is past its cutoff. Maintenance detaches and drops linked shards before
 expired run shards, updating affected source counts and revisions. Repeated maintenance
-is a no-op when partitions are already present and none have expired; a restart
-reruns maintenance to catch up after downtime. Choose a window
+is a no-op when partitions are already present and none have expired. Run it
+at least daily and before restarting after downtime; runtime startup checks the
+full provisioned window but never repairs it. Alert on missed maintenance before
+the four-week runway expires. Choose a window
 that covers all authoritative run timestamps before ingestion; historical linked
 records outside the linked window are skipped while their retained runs are
 still ingested.
 
-Startup initializes this fresh schema and its partitions. There is no old-layout detection,
+Owner-run `database bootstrap --store canonical` initializes the schema and its
+partitions. Runtime opens it without DDL. There is no old-layout detection,
 conversion, backfill, or backward-compatible import. Use a new database and
-re-ingest authoritative inputs when changing the physical contract.
+re-ingest authoritative inputs when changing the physical contract; never drop
+operational audit/queue state if it shares the old database.
 Redis remains namespaced operational storage for caches, queues, sessions, and
 it does not hold dashboard entity rows or query indexes.
 Neither store grants control-plane authority. Credentials stay server-side.

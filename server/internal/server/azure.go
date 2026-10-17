@@ -296,7 +296,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 	if databaseNamespace == "" {
 		databaseNamespace = "hosted-dashboard"
 	}
-	database, err := postgresx.NewWithNamespace(ctx, postgresURL, databaseNamespace)
+	database, err := postgresx.OpenWithNamespace(ctx, postgresURL, databaseNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("connect to dashboard Postgres: %w", err)
 	}

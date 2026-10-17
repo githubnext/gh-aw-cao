@@ -865,8 +865,12 @@ Recommended next steps, in priority order:
    around the command container.
 2. Keep the App private key in a KMS or HSM that signs the App JWT, and rotate
    it on a schedule.
-3. Use separate database roles: `INSERT` and `SELECT` on the audit table for
-   the web and executor processes, retention only for a maintenance role.
+3. Deploy the [PostgreSQL privilege boundary](POSTGRES.md): owner-only bootstrap
+   and canonical partition maintenance, runtime audit `INSERT`/`SELECT`, a
+   separate retention-function executor, and SELECT-only evidence access.
+   Runtime startup performs no schema/trigger DDL or audit retention. Apply
+   the shipped grants, remove owner credentials from services, and schedule
+   maintenance; code changes alone do not establish deployed role isolation.
 4. Forward audit records to write-once storage or a SIEM, and schedule
    `audit verify` with external anchors.
 5. Propagate the admission trace context into the queued command.

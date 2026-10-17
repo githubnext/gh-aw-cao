@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
+	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
@@ -64,6 +65,14 @@ func TestServeWithExistingPostgresOperationalTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := operational.Close(); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CAO_OPERATIONAL_NAMESPACE", namespace)
+	canonical, err := postgresx.NewWithNamespace(t.Context(), parsed.String(), namespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := canonical.Close(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -800,7 +809,7 @@ func TestActionsEnvironmentPresentReportsPresenceNotValues(t *testing.T) {
 }
 
 func TestRootCommandRegistersEverySubcommand(t *testing.T) {
-	want := []string{"audit", "backfill", "benchmark-queries", "collect", "compile-queries", "doctor", "execute-cli", "hosted-cli", "ingest", "otel-smoke", "serve", "serve-hosted", "simulate-api", "simulate-webhooks"}
+	want := []string{"audit", "backfill", "benchmark-queries", "collect", "compile-queries", "database", "doctor", "execute-cli", "hosted-cli", "ingest", "otel-smoke", "serve", "serve-hosted", "simulate-api", "simulate-webhooks"}
 	root := newRootCommand()
 
 	got := make([]string, 0, len(want))
