@@ -583,6 +583,8 @@ Computed fields use only the following typed, deterministic functions with the s
 | `format-count`, `format-percent` | 1 | locale-stable display text |
 | `number` | 1 | finite number or null |
 | `timestamp` | 1 | UTC epoch milliseconds for valid RFC 3339 timestamp text with an explicit zone, or null; rejects invalid calendar dates, relative expressions and non-text values, and never reads the clock |
+| `iso-timestamp` | 1 | UTC ISO timestamp text from finite epoch milliseconds in years 0001 through 9999; missing or out-of-range values produce null |
+| `sqrt` | 1 | Square root of a known finite nonnegative numeric value; negative or unknown input produces null |
 | `sum`, `product` | 2–8 | finite number or null |
 | `difference`, `quotient` | 2 | finite number or null |
 
@@ -663,15 +665,20 @@ The transform preserves source-row order and measure declaration or map-property
 #### 5.5.4 Observation Windows
 
 A query may declare a `window` sequence after `aggregate` and `predict`. Each
-entry appends one numeric field without changing the number or order of rows.
+entry appends one field without changing the number or order of rows.
 Entries execute in declaration order, so a later entry can refer to a prior
 entry's output. An entry names its input `field`, unique output `as`, an
-`operation` (`rolling` or `change`), an ascending or descending `order-by`
+`operation` (`rolling`, `change`, `previous`, or `row-number`), an ascending or descending `order-by`
 sequence, and optional `groupby` dimensions. Each group is independent. Sort
 ties retain input order; authors who need ingestion-order-independent results
 should provide a unique final ordering key. Windows operate over **observations**,
 not calendar durations; bucket and aggregate first when the desired input is
 one observation per day.
+
+`previous` preserves the preceding observation's scalar type, including text,
+and returns null for the first observation of each group. `row-number` returns
+the one-based observation position within each group. Neither accepts rolling
+frames, reducers, alignment, change modes, or time-unit options.
 
 `rolling` takes a positive integer `frame` (the number of observations), a
 `reducer` of `mean` (default), `sum`, `min`, or `max`, and an `alignment` of
@@ -731,7 +738,7 @@ return the untransformed observations.
 - **DLS-QUERY-027:** `parameters`, when present, **MUST** be a non-empty sequence of mappings containing exactly a unique canonical `name` and a `type` of `number`, `string`, or `boolean`. A parameter reference **MUST** contain exactly `parameter` naming one parameter declared by the same query. Version 0.1.0 permits parameter references as query predicate `equals`, `gte`, or `lt` operands and as computed-field arguments. A parameter **MUST NOT** alter query topology or output schema.
 - **DLS-QUERY-028:** Before query execution, the presenter **MUST** resolve every parameter reference to one finite number, string, or Boolean value supplied by the active page form. A computed-field parameter reference resolves as a literal computed argument. A missing, structured, non-finite, undeclared, or type-incompatible value **MUST** fail the page projection closed and **MUST NOT** execute a broader query with the predicate or computation removed.
 - **DLS-QUERY-029:** A named-query agent transport **MAY** invoke a parameterized query by identifier with explicitly supplied scalar operands. It **MUST** discover parameter declarations through the query's transitive dependencies, validate each supplied value against its declared type and any bound page-form constraints, reject missing or unexpected operands, and substitute only scalar values into the reviewed query before executing through the bounded query engine. Parameter input **MUST NOT** alter query topology or execute authored scripts. A synthetic input such as `simulation-days` **MUST** remain labeled as modeled rather than measured evidence.
-- **DLS-QUERY-030:** A `window` **MUST** contain one to eight entries with unique `as` names and valid numeric input fields; each entry **MUST** declare `operation`, `field`, `as`, and a non-empty `order-by`, and **MAY** declare `groupby`. The available fields of each entry include outputs of earlier entries but not later ones. Rolling entries **MUST** specify a positive integer `frame`, **MAY** specify `reducer` and `alignment`, and **MUST NOT** specify change-only fields. Change entries **MAY** specify `mode`; `rate` **MUST** specify a temporal `time-field` and a valid `unit`, and other change modes **MUST NOT** specify these fields.
+- **DLS-QUERY-030:** A `window` **MUST** contain one to eight entries with unique `as` names and valid input fields; `rolling` and `change` require numeric inputs, while `previous` and `row-number` accept scalar inputs; each entry **MUST** declare `operation`, `field`, `as`, and a non-empty `order-by`, and **MAY** declare `groupby`. The available fields of each entry include outputs of earlier entries but not later ones. Rolling entries **MUST** specify a positive integer `frame`, **MAY** specify `reducer` and `alignment`, and **MUST NOT** specify change-only fields. Change entries **MAY** specify `mode`; `rate` **MUST** specify a temporal `time-field` and a valid `unit`, and other change modes **MUST NOT** specify these fields.
 - **DLS-QUERY-031:** Window evaluation **MUST** follow the Section 5.5.4 observation, partition, stable ordering, alignment, missing-value, division-by-zero, and elapsed-time rules. It **MUST** preserve input row order and count, and append only finite numbers or null. Window calculations **MUST** execute within the same cancellation and row-operation budgets as other declarative queries.
 
 ### 5.6 Parameterized Page Forms
@@ -825,7 +832,7 @@ the URL or persistent browser storage.
 ```
 
 - **DLS-FORM-001:** `form` **MUST** contain a non-empty `fields` sequence and **MAY** contain non-empty `title` and `description` strings and one `update` mapping. Field IDs **MUST** be unique canonical identifiers and **MUST** name a parameter declared by a dashboard query.
-- **DLS-FORM-002:** A form field **MUST** declare a non-empty `label`, one `control` of `slider`, `checkbox`, or `radio`, and a typed `default`. `slider` **MUST** declare finite numeric `min`, `max`, and positive `step`, with `min < max` and `default` inside the inclusive range. `checkbox` **MUST** have a Boolean default. `radio` **MUST** declare 2 to 12 uniquely valued, consistently typed scalar options and a default matching one option.
+- **DLS-FORM-002:** A form field **MUST** declare a non-empty `label`, one `control` of `slider`, `checkbox`, `radio`, or `text`, and a typed `default`. `text` requires a string default and MUST NOT declare numeric bounds or options; its debounced scalar value is bound to a query parameter, never interpreted as query code. `slider` **MUST** declare finite numeric `min`, `max`, and positive `step`, with `min < max` and `default` inside the inclusive range. `checkbox` **MUST** have a Boolean default. `radio` **MUST** declare 2 to 12 uniquely valued, consistently typed scalar options and a default matching one option.
 - **DLS-FORM-003:** Form fields **MUST** render in declaration order in an automatic responsive layout. Authors **MUST NOT** declare coordinates, columns, or breakpoints. Every control **MUST** expose its label, description when present, current value or checked state, keyboard operation, and native accessibility semantics.
 - **DLS-FORM-004:** `update.strategy` **MUST** be `debounce` or `throttle`; `delay-ms` **MUST** be an integer from 50 through 2000. The defaults are `debounce` and 250 milliseconds. Rapid updates **MUST** coalesce at the declared cadence, preserve the latest complete form state, cancel superseded requests or subscriptions, and prevent stale results from replacing newer results.
 - **DLS-FORM-005:** Form interaction code **MUST NOT** query data, filter rows, compute business state, or reconstruct relationships. It may own typed form state and DOM synchronization only. Query substitution and execution **MUST** remain inside the canonical page projection and data-worker boundary.
@@ -982,7 +989,7 @@ Every request contains `data`, a sequence of row mappings, and `operators`, an o
 | `select` | required `fields` | Projects and optionally renames fields. |
 | `slice` | `limit` and optional `offset` | Retains the requested contiguous range. |
 
-The `summarize` reducers are `count`, `distinct-count`, `distinct-list`, `sum`, `mean`, `min`, and `max`, with the semantics in Section 7.3 and Section 5.5.3. Within `summarize`, each aggregate-local filter executes after grouping and before its reducer. A missing or null filter field does not match a concrete literal; the explicit text value `unknown` matches a missing or null field. A matching row whose measure is missing, null, or empty is ignored by the reducer. An empty filtered input yields zero for `count`, `distinct-count`, and `sum`, and `null` for `mean`, `min`, and `max`; an observed numeric zero remains a contributing value. Thus zero and an absent aggregate result remain distinct. Operators execute from first to last; therefore a conforming compilation places query-level filtering before summarization, prediction, arrangement, and slicing.
+The `summarize` reducers include `count`, `distinct-count`, `distinct-list`, `unique`, `sum`, `mean`, `min`, `max`, `median`, `p75`, `p90`, and `p95`, with the semantics in Section 7.3 and Section 5.5.3. Quantiles ignore missing numeric values, return null for no known values, and use continuous linear interpolation at position `(n - 1) * p` in ascending order. Within `summarize`, each aggregate-local filter executes after grouping and before its reducer. A missing or null filter field does not match a concrete literal; the explicit text value `unknown` matches a missing or null field. A matching row whose measure is missing, null, or empty is ignored by the reducer. An empty filtered input yields zero for `count`, `distinct-count`, and `sum`, and `null` for `mean`, `min`, and `max`; an observed numeric zero remains a contributing value. Thus zero and an absent aggregate result remain distinct. Operators execute from first to last; therefore a conforming compilation places query-level filtering before summarization, prediction, arrangement, and slicing.
 
 ```json
 {

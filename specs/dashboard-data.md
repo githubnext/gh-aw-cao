@@ -20,6 +20,47 @@ should read `docs/dashboard-data-model.md` first, then this specification and
 the production boundary under `dashboard/site/src/data/`. Computation changes
 must also follow `specs/computations.md`.
 
+### Model routing evidence
+
+Model routing analytics SHALL read metadata projected from `usage/aw_session.jsonl`
+into the canonical Audit collection, not native logs, cumulative run totals or
+agent-written routing summaries. Audit retains typed routing identifiers,
+classifier labels, request identities, sub-agent ownership, token classes,
+per-response AIC and collection receipts. It MUST NOT retain prompts, bodies,
+free-form errors/reasons, raw tool payloads or content-derived hashes.
+Canonical schema 31 and IndexedDB version 41 invalidate older browser projections;
+hosted PostgreSQL deployments require a fresh schema with the generated Audit
+columns.
+
+Dashboard Language queries SHALL resolve proxy-first routing state, choose one
+accounting source per phase, and attribute each response to one exclusive bucket.
+Engine request correlation requires a complete model/token quartet and ordered
+one-to-one matching; exact ownership takes precedence. Unknown AIC SHALL remain
+unknown, with known/unknown coverage beside recorded lower bounds. Complete-cost
+quantiles require collection receipts, known response AIC and accounted or
+provably local-zero requests. Classifier cost belongs to agent-phase totals;
+detection and evals remain separate. Sparse comparisons default to a minimum of
+ten complete runs and SHALL be described as observational, not causal.
+
+Headerless sessions SHALL be marked legacy. Unsupported format versions SHALL
+retain format coverage only, never interpret subsequent records as supported.
+Unidentified sessions and untimed evidence SHALL remain visible in coverage,
+but unidentified sessions SHALL NOT contribute to routing-state denominators.
+The format observation SHALL carry the earliest valid clock across all matching
+source records, including messages and tools, without copying their contents.
+Bounded time filters SHALL exclude wholly untimed sessions rather than substituting
+the GitHub run's creation or ingestion time.
+
+The Model routing page currently provides adoption, objective/classifier
+dimensions, label-to-pick counts, workflow stability, exclusive AIC/token
+attribution, complete-cost distributions and observational baselines, deviation
+shares, failure facts, agent-job Wilson intervals and a run drill-down. It does
+not yet implement candidate ranking, inventory/router change context, alias
+moves, prioritized deviation causes, failure clustering, or the full
+safe-output/grader/delayed-outcome comparison surfaces of the upstream analytics
+specification. Absent producer fields and these unimplemented analyses MUST NOT
+be represented as zero or successful outcomes.
+
 ### Canvas query authoring boundary
 
 The canvas-only query editor SHALL submit a complete Dashboard Language document
@@ -476,8 +517,8 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 30 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 40 | Eighteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
+| Canonical model | 31 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 41 | Eighteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
 | Local SQLite projection | IndexedDB 38 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
 | Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
@@ -2354,7 +2395,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 40 SHALL define:
+IndexedDB version 41 SHALL define:
 
 ```text
 campaigns

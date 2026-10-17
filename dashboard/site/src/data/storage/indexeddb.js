@@ -18,7 +18,7 @@ import {
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 40;
+export const DATABASE_VERSION = 41;
 /** @type {Set<(versions: { oldVersion: number, newVersion: number }) => void>} */
 const upgradeListeners = new Set();
 

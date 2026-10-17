@@ -42,10 +42,10 @@ export function validateQueryWindow(definitions, windowNode, path, errors, helpe
     validateStringField(entry.field, `${entryPath}.field`, true, errors);
     validateStringField(entry.as, `${entryPath}.as`, true, errors);
     requireField(entry.field, `${entryPath}.field`);
-    requireSchemaType(entry.field, `${entryPath}.field`, 'numeric');
-    if (entry.operation !== 'rolling' && entry.operation !== 'change') {
+    requireSchemaType(entry.field, `${entryPath}.field`, ['previous', 'row-number'].includes(String(entry.operation)) ? 'scalar' : 'numeric');
+    if (!['rolling', 'change', 'previous', 'row-number'].includes(String(entry.operation))) {
       debugQueryWindow({ event: 'operation-rejected', operation: typeof entry.operation === 'string' ? entry.operation : typeof entry.operation });
-      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'window operation must be rolling or change.', `${entryPath}.operation`));
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'window operation must be rolling, change, previous or row-number.', `${entryPath}.operation`));
     }
     if (!Array.isArray(entry['order-by']) || entry['order-by'].length === 0 || entry['order-by'].length > 8) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'window order-by must contain 1 to 8 fields.', `${entryPath}.order-by`));
@@ -108,6 +108,10 @@ export function validateQueryWindow(definitions, windowNode, path, errors, helpe
         }
       } else if (entry['time-field'] !== undefined || entry.unit !== undefined) {
         errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'time-field and unit require rate mode.', entry['time-field'] !== undefined ? `${entryPath}.time-field` : `${entryPath}.unit`));
+      }
+    } else if (entry.operation === 'previous' || entry.operation === 'row-number') {
+      if (['frame', 'reducer', 'alignment', 'mode', 'time-field', 'unit'].some((field) => entry[field] !== undefined)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'previous and row-number accept no frame, reducer, alignment, mode, time-field or unit.', entryPath));
       }
     }
     declareField(entry.as, `${entryPath}.as`);

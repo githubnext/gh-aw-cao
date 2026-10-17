@@ -256,7 +256,7 @@ function usesNativeSource(view, sourceName, predicates, queryContext, definition
   const data = isPlainObject(view) && isPlainObject(view.data) ? view.data : null;
   if (declared && isPlainObject(view) && view.mark !== 'element' && view.controls !== 'filter-only' && view.chart !== 'treemap' && data?.['query-context'] === false && predicates.length === 0
       && !(queryContext?.search?.query.trim()) && !(queryContext?.orderBy?.length)
-      && !hasRelativeQueryTime(sourceName, definitions)) return true;
+      && !requiresContextualQuery(sourceName, definitions)) return true;
   return isPlainObject(view)
     && view.mark === 'list'
     && view['lazy-list'] !== true
@@ -267,7 +267,7 @@ function usesNativeSource(view, sourceName, predicates, queryContext, definition
 }
 
 /** @param {string} name @param {unknown} definitions */
-function hasRelativeQueryTime(name, definitions) {
+function requiresContextualQuery(name, definitions) {
   const byName = new Map(Array.isArray(definitions)
     ? definitions.filter(isPlainObject).map((definition) => [definition.name, definition])
     : []);
@@ -280,6 +280,7 @@ function hasRelativeQueryTime(name, definitions) {
     const definition = byName.get(current);
     if (!definition) continue;
     if (isPlainObject(definition.time) && typeof definition.time.range === 'string') return true;
+    if (Array.isArray(definition.parameters) && definition.parameters.length > 0) return true;
     pending.push(...[
       definition.from,
       ...(Array.isArray(definition.union) ? definition.union : []),

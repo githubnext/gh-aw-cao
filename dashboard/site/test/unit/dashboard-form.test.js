@@ -6,6 +6,20 @@ beforeEach(() => {
   document.body.replaceChildren();
 });
 
+it('debounces text parameters without deriving or querying data', () => {
+  const onChange = vi.fn();
+  const form = renderDashboardForm({
+    fields: [{ id: 'workflow', label: 'Workflow', control: 'text', default: '', description: 'Exact workflow identifier.' }]
+  }, undefined, onChange);
+  document.body.append(form);
+  const input = /** @type {HTMLInputElement} */ (form.querySelector('input[type="text"]'));
+  expect(form.querySelector('label')?.htmlFor).toBe(input.id);
+  input.value = 'worker';
+  input.dispatchEvent(new Event('input'));
+  vi.advanceTimersByTime(250);
+  expect(onChange).toHaveBeenCalledWith({ workflow: 'worker' });
+});
+
 it('renders accessible slider, checkbox, and radio fields in declaration order', () => {
   const form = renderDashboardForm({
     title: 'Performance simulator',

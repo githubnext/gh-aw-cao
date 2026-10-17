@@ -34,7 +34,8 @@ afterEach(() => vi.unstubAllGlobals());
 describe('unified evaluation evidence', () => {
   it('retains untimed typed evidence, enriches grader metadata and never stores private bodies', () => {
     const parsed = projection();
-    expect(parsed.events).toEqual([]);
+    expect(parsed.events).toMatchObject([{ type: 'session.format', fields: { status: 'supported' } }]);
+    expect(parsed.events[0].timestamp).toBeUndefined();
     expect(parsed).toMatchObject({
       experiments: { assignments: { prompt: 'candidate' } },
       graders: { results: [{

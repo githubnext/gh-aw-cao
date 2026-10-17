@@ -129,7 +129,7 @@ func computeArity(function string) (int, int, bool) {
 		"equals-any": {2, 8}, "greater-than": {2, 2}, "if": {3, 3}, "format-count": {1, 1},
 		"format-percent": {1, 1}, "array-length": {1, 1}, "failure-streak-point": {3, 3},
 		"number": {1, 1}, "positive-integer": {2, 2}, "sum": {2, 8}, "difference": {2, 2},
-		"product": {2, 8}, "quotient": {2, 2},
+		"product": {2, 8}, "quotient": {2, 2}, "iso-timestamp": {1, 1}, "sqrt": {1, 1},
 	}
 	arity, ok := arities[function]
 	return arity[0], arity[1], ok
@@ -138,7 +138,7 @@ func computeArity(function string) (int, int, bool) {
 func supportedReducer(reducer string) bool {
 	switch reducer {
 	case "count", "distinct-count", "distinct-list", "distinct-values", "calendar-week-rhythm",
-		"latest-failure-streak", "sum", "mean", "min", "max", "unique":
+		"latest-failure-streak", "sum", "mean", "min", "max", "unique", "median", "p75", "p90", "p95":
 		return true
 	default:
 		return false

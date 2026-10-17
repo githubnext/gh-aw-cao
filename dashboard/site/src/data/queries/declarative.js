@@ -36,7 +36,7 @@ const debugQuery = createDebug('data:query');
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }>, search?: { fields: string[], query: string } },
  *   compute?: import('../../data-operations.js').ComputedField[],
  *   ['temporal-series']?: import('../../data-operations.js').TemporalSeriesDefinition,
- *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max'|'unique', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
+ *    aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max'|'unique'|'median'|'p75'|'p90'|'p95', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
  *   predict?: import('../../data-operations.js').PredictedField[],
  *   window?: import('../../data-operations.js').WindowField[],
  *   select?: Array<{ field: string, as?: string }>,
@@ -457,7 +457,7 @@ function queryStructuralDefect(definition) {
     const outputs = new Set();
     for (const entry of definition.window) {
       if (!isPlainObject(entry) || typeof entry.field !== 'string' || typeof entry.as !== 'string'
-          || (entry.operation !== 'rolling' && entry.operation !== 'change')
+          || !['rolling', 'change', 'previous', 'row-number'].includes(String(entry.operation))
           || !Array.isArray(entry['order-by']) || entry['order-by'].length === 0 || entry['order-by'].length > 8
           || entry['order-by'].some((clause) => !isPlainObject(clause) || typeof clause.field !== 'string'
             || (clause.direction !== undefined && clause.direction !== 'asc' && clause.direction !== 'desc'))
@@ -469,12 +469,15 @@ function queryStructuralDefect(definition) {
               || (entry.alignment !== undefined && !['trailing', 'centered'].includes(String(entry.alignment)))
               || (entry.alignment === 'centered' && Number(entry.frame) % 2 !== 1)
               || entry.mode !== undefined || entry['time-field'] !== undefined || entry.unit !== undefined
-            : entry.frame !== undefined || entry.reducer !== undefined || entry.alignment !== undefined
+            : ['previous', 'row-number'].includes(String(entry.operation))
+              ? entry.frame !== undefined || entry.reducer !== undefined || entry.alignment !== undefined
+                || entry.mode !== undefined || entry['time-field'] !== undefined || entry.unit !== undefined
+              : entry.frame !== undefined || entry.reducer !== undefined || entry.alignment !== undefined
               || (entry.mode !== undefined && !['absolute', 'percentage', 'rate'].includes(String(entry.mode)))
               || (entry.mode === 'rate'
                 ? typeof entry['time-field'] !== 'string' || !['second', 'minute', 'hour', 'day'].includes(String(entry.unit))
                 : entry['time-field'] !== undefined || entry.unit !== undefined))) {
-        return 'window entries require bounded ordered rolling or change definitions';
+        return 'window entries require ordered rolling, change, previous or row-number definitions';
       }
       if (outputs.has(entry.as)) return 'window output names must be unique';
       outputs.add(entry.as);

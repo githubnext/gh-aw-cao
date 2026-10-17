@@ -1,3 +1,5 @@
+import { routingMetadata } from './model-routing.js';
+
 /** @param {unknown} value */
 function object(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -92,6 +94,8 @@ const DYNAMIC_EVENTS = new Set([
  * @returns {{ fields: Record<string, unknown>, key?: string }[]}
  */
 function metadata(type, data) {
+  const routing = routingMetadata(type, data);
+  if (routing) return routing;
   if (type === 'mcp.configuration') {
     return (Array.isArray(data.servers) ? data.servers : []).flatMap((candidate, index) => {
       const server = object(candidate);

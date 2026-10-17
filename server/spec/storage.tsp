@@ -272,6 +272,42 @@ model friction {
  */
 @runPartition
 model audits {
+  routingStage?: string;
+  routingSchema?: string;
+  routingStatus?: string;
+  routingGoal?: string;
+  routingConfiguredMode?: string;
+  routingMode?: string;
+  routingSelectedModel?: string;
+  routingSelectedEffort?: string;
+  routingRequestedModel?: string;
+  routingRequestedEffort?: string;
+  routingAppliedEffort?: string;
+  routingTaskType?: string;
+  routingScope?: string;
+  routingComplexity?: string;
+  routingPurpose?: string;
+  routingAgentName?: string;
+  routingAgentId?: string;
+  routingRouted?: string;
+  routingOutcome?: string;
+  routingRouterVersion?: string;
+  routingAwfVersion?: string;
+  routingClassifierModel?: string;
+  routingClassifierEffort?: string;
+  routingClassifierAttempts?: decimal;
+  routingLatencyMs?: decimal;
+  routingDegraded?: boolean;
+  routingDegradedReason?: string;
+  routingEnabled?: boolean;
+  routingSubstitution?: string;
+  routingEffectiveModel?: string;
+  routingSteeringType?: string;
+  routingSteeringThreshold?: decimal;
+  routingMaxCredits?: decimal;
+  routingSessionClock?: decimal;
+  routingDeviations?: string;
+  routingInventoryComplete?: boolean;
   component?: string;
   phase?: string;
   `model`?: string;

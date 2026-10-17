@@ -53,6 +53,13 @@ func TestSQLComputedFunctionsInPostgres(t *testing.T) {
 		{"timestamp", []Argument{{Value: "now"}}, "null"},
 		{"timestamp", []Argument{{Value: "2026-02-30T00:00:00Z"}}, "null"},
 		{"timestamp", []Argument{{Value: 123}}, "null"},
+		{"iso-timestamp", []Argument{{Value: 1792166400123}}, "2026-10-16T16:00:00.123Z"},
+		{"iso-timestamp", []Argument{{Value: -1}}, "1969-12-31T23:59:59.999Z"},
+		{"iso-timestamp", []Argument{{Value: -62135596800000}}, "0001-01-01T00:00:00.000Z"},
+		{"iso-timestamp", []Argument{{Value: 253402300799999}}, "9999-12-31T23:59:59.999Z"},
+		{"iso-timestamp", []Argument{{Value: 253402300800000}}, "null"},
+		{"sqrt", []Argument{{Value: 4}}, "2.000000000000000"},
+		{"sqrt", []Argument{{Value: -1}}, "null"},
 		{"link", []Argument{{Value: "https://example.com"}, {Value: "example"}}, `{"href": "https://example.com", "label": "example"}`},
 		{"failure-streak-point", []Argument{field("observed"), field("run"), field("failed")}, "[1790186400000, \"r1\", true]"},
 		{"calendar-week-point", []Argument{field("observed"), {Value: "2026-09-24T00:00:00Z"}, {Value: "success"}}, "[1790186400000, 1790208000000, true]"},
@@ -86,6 +93,80 @@ func TestSQLComputedFunctionsInPostgres(t *testing.T) {
 			}
 		})
 	}
+	for _, quantile := range []struct {
+		reducer string
+		want    float64
+	}{{"median", 15}, {"p75", 22.5}, {"p90", 27}, {"p95", 28.5}} {
+		t.Run(quantile.reducer, func(t *testing.T) {
+			definitions := []Definition{{Name: "quantiles", From: "facts",
+				Aggregate: &Aggregate{Values: []AggregateValue{{Field: "value", As: "result", Reducer: quantile.reducer}}}}}
+			plan, err := CompileSQL(definitions, []string{"quantiles"}, func(string) (SQLRelation, error) {
+				return SQLRelation{SQL: "(VALUES (0::numeric), (10), (NULL), (20), (30)) AS facts(value)", Order: "value",
+					Columns: map[string]SQLColumn{"value": {Expression: "value", Presence: "TRUE", Kind: SQLNumber}}}, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			statement, args, _, err := plan.OutputStatement("quantiles", 0, 10)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var result float64
+			var present bool
+			if err := db.QueryRowContext(t.Context(), statement, args...).Scan(&result, &present); err != nil {
+				t.Fatal(err)
+			}
+			if !present || result-quantile.want > 1e-12 || quantile.want-result > 1e-12 {
+				t.Fatalf("quantile = %v, want %v", result, quantile.want)
+			}
+		})
+	}
+	t.Run("scalar predecessor and row number", func(t *testing.T) {
+		definitions := []Definition{{Name: "ordered", From: "facts", Window: []WindowField{
+			{Operation: "previous", Field: "label", As: "prior", GroupBy: []string{"owner"}, OrderBy: []OrderField{{Field: "ordinal"}}},
+			{Operation: "row-number", Field: "label", As: "position", GroupBy: []string{"owner"}, OrderBy: []OrderField{{Field: "ordinal"}}},
+		}, Select: []SelectedField{{Field: "prior"}, {Field: "position"}}}}
+		plan, err := CompileSQL(definitions, []string{"ordered"}, func(string) (SQLRelation, error) {
+			return SQLRelation{SQL: "(VALUES (1, 'a'::text, 'one'::text), (2, 'z', 'two'), (3, 'b', 'one')) AS facts(ordinal,label,owner)", Order: "ordinal",
+				Columns: map[string]SQLColumn{
+					"ordinal": {Expression: "ordinal", Presence: "TRUE", Kind: SQLNumber},
+					"label":   {Expression: "label", Presence: "TRUE", Kind: SQLText},
+					"owner":   {Expression: "owner", Presence: "TRUE", Kind: SQLText},
+				}}, nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		statement, args, _, err := plan.OutputStatement("ordered", 0, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows, err := db.QueryContext(t.Context(), statement, args...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = rows.Close() }()
+		count := 0
+		for rows.Next() {
+			var prior sql.NullString
+			var position int
+			var priorPresent, positionPresent bool
+			if err := rows.Scan(&position, &positionPresent, &prior, &priorPresent); err != nil {
+				t.Fatal(err)
+			}
+			want := count == 2
+			if prior.Valid != want || (want && prior.String != "a") || position != []int{1, 1, 2}[count] || !positionPresent {
+				t.Fatalf("row %d: prior=%+v, position=%d", count, prior, position)
+			}
+			count++
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		if count != 3 {
+			t.Fatalf("rows = %d", count)
+		}
+	})
 	for _, reducer := range []string{"calendar-week-rhythm", "latest-failure-streak"} {
 		t.Run(reducer, func(t *testing.T) {
 			function := "failure-streak-point"

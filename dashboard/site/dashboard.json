@@ -1172,6 +1172,7 @@
           "operational-value",
           "friction",
           "engines-models",
+          "model-routing",
           "firewall",
           "mcps",
           "memory"
@@ -1221,6 +1222,7 @@
     "dashboard-fragments/campaign-insights.json",
     "dashboard-fragments/inventory.json",
     "dashboard-fragments/operations.json",
+    "dashboard-fragments/model-routing.json",
     "dashboard-fragments/simulators.json",
     "dashboard-fragments/overview.json",
     "dashboard-fragments/overview-attention.json",

@@ -8,6 +8,7 @@
 import { createDebug } from '../../debug.js';
 import { matchesSessionRun, sessionMetadata, sessionRunMetadata } from './unified-session-telemetry.js';
 import { alignSessionEventRecord } from '../model/session-types.js';
+import { normalizeLegacyRouting } from './model-routing.js';
 
 const debugUnifiedSession = createDebug('unified-session');
 
@@ -62,10 +63,12 @@ export function normalizeSessionMcpEvents(events) {
  * tool inputs/outputs, raw errors, or native provenance.
  * @param {string} content
  * @param {string} path
+ * @param {boolean} [allowLegacy]
  */
-function sessionRecords(content, path) {
-  const records = content.split(/\r?\n/).flatMap((line, index) => {
-    if (!line.trim()) return [];
+function sessionRecords(content, path, allowLegacy = false) {
+  const records = [];
+  for (const [index, line] of content.split(/\r?\n/).entries()) {
+    if (!line.trim()) continue;
     let record;
     try {
       record = object(JSON.parse(line));
@@ -75,14 +78,18 @@ function sessionRecords(content, path) {
     if (!record || typeof record.type !== 'string' || !object(record.data)) {
       throw new TypeError(`${path}:${index + 1} must contain a unified session event`);
     }
-    return [{ record, line: index + 1 }];
-  });
-  if (records[0]?.record.type !== 'session.format'
-      || object(records[0].record.data)?.version !== 1) {
+    records.push({ record, line: index + 1 });
+    if (records.length === 1 && record.type === 'session.format' && object(record.data)?.version !== 1) break;
+  }
+  if (!records.length || (!allowLegacy && (records[0]?.record.type !== 'session.format'
+      || object(records[0].record.data)?.version !== 1))) {
     debugUnifiedSession({ event: 'format-rejected', records: records.length });
     throw new TypeError(`${path} must declare unified session format version 1`);
   }
-  return records;
+  if (records[0]?.record.type === 'session.format' && object(records[0].record.data)?.version !== 1) {
+    return records.slice(0, 1);
+  }
+  return normalizeLegacyRouting(records);
 }
 
 /** @param {ReturnType<typeof sessionRecords>} records @param {boolean} [includeUntimed] @param {{ runId: string, attempt: number }} [context] */
@@ -227,7 +234,8 @@ function timeline(records, includeUntimed = false, context) {
         return sessionMetadata(String(record.type), data).map((entry) => ({
           line, timestamp, source: 'session', type: String(record.type), ...entry,
           fields: Object.fromEntries(Object.entries({
-            ...entry.fields, component: provenance?.component, phase: provenance?.phase
+            ...entry.fields, component: entry.fields.component ?? provenance?.component,
+            phase: entry.fields.phase ?? provenance?.phase
           }).filter(([, value]) => typeof value === 'string' || typeof value === 'boolean'
             || (typeof value === 'number' && Number.isFinite(value))))
         }));
@@ -252,7 +260,7 @@ export function parseUnifiedSession(content, path) {
  * @param {{ runId: string, attempt: number }} context
  */
 export function parseUnifiedSessionDocument(content, path, context) {
-  const records = sessionRecords(content, path);
+  const records = sessionRecords(content, path, true);
   /** @type {Record<string, unknown>} */
   const evidence = {};
   /** @type {Map<string, Record<string, unknown>>} */
@@ -269,12 +277,14 @@ export function parseUnifiedSessionDocument(content, path, context) {
     .map((field) => [field, value[field]]));
   const graderFields = ['id', 'name', 'status', 'value', 'score', 'unit', 'passed', 'direction',
     'threshold', 'source', 'digest', 'experimentId', 'experiment_id', 'variant'];
+  let sessionClock = Infinity;
   for (const { record, line } of records) {
     const data = /** @type {Record<string, unknown>} */ (record.data);
     const clock = object(record.provenance)?.timestampMs ?? record.timestamp;
     const milliseconds = typeof clock === 'number' ? clock : typeof clock === 'string' ? Date.parse(clock) : NaN;
     const timestamp = Number.isFinite(milliseconds) && Math.abs(milliseconds) <= 8640000000000000
       ? new Date(milliseconds).toISOString() : undefined;
+    if (timestamp && matchesSessionRun(data, context)) sessionClock = Math.min(sessionClock, milliseconds);
     const observation = { ...(timestamp ? { timestamp } : {}), sessionPayloadRef: `${path}#L${line}` };
     switch (record.type) {
       case 'experiment.state':
@@ -345,5 +355,12 @@ export function parseUnifiedSessionDocument(content, path, context) {
       return { ...fields, sessionPayloadRef: `${path}#L${sessionLine}` };
     });
   }
-  return { events: timeline(records, true, context), run, ...evidence };
+  const events = timeline(records, true, context);
+  if (records[0]?.record.type !== 'session.format') {
+    events.unshift({ line: records[0].line, source: 'session', type: 'session.format',
+      key: 'legacy-format', fields: { status: 'legacy' } });
+  }
+  const format = events.find((event) => event.type === 'session.format');
+  if (format && Number.isFinite(sessionClock)) format.fields.routingSessionClock = sessionClock;
+  return { events, run, ...evidence };
 }

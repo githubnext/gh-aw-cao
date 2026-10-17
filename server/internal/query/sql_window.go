@@ -152,6 +152,10 @@ func classifyWindowEntry(entry WindowField, outputs map[string]bool) windowRejec
 		if !isValidChangeWindow(entry) {
 			return windowRejectionStageChange
 		}
+	case "previous", "row-number":
+		if entry.Frame != nil || entry.Reducer != "" || entry.Alignment != "" || entry.Mode != "" || entry.TimeField != "" || entry.Unit != "" {
+			return windowRejectionStageOperation
+		}
 	default:
 		return windowRejectionStageOperation
 	}
@@ -307,7 +311,12 @@ func (c *sqlCompiler) window(input SQLRelation, entry WindowField, name string) 
 	over += "ORDER BY " + strings.Join(order, ",")
 	numeric := sqlFinite(sqlNumeric(value))
 	var result string
-	if entry.Operation == "rolling" {
+	kind := SQLNumber
+	if entry.Operation == "previous" {
+		result, kind = "lag("+value.Expression+") OVER ("+over+")", value.Kind
+	} else if entry.Operation == "row-number" {
+		result = "row_number() OVER (" + over + ")"
+	} else if entry.Operation == "rolling" {
 		reducer := entry.Reducer
 		if reducer == "" || reducer == "mean" {
 			reducer = "avg"
@@ -346,7 +355,10 @@ func (c *sqlCompiler) window(input SQLRelation, entry WindowField, name string) 
 	for field, column := range input.Columns {
 		columns[field] = column
 	}
-	columns[entry.As] = SQLColumn{Expression: sqlFinite(result), Presence: "TRUE", Kind: SQLNumber}
+	if kind == SQLNumber {
+		result = sqlFinite(result)
+	}
+	columns[entry.As] = SQLColumn{Expression: result, Presence: "TRUE", Kind: kind}
 	weight := 32
 	if entry.Operation == "rolling" {
 		weight += *entry.Frame

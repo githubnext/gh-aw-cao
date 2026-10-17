@@ -371,7 +371,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
     for (const [index, entry] of query.window.entries()) {
       if (!isRecord(entry)) continue;
       const entryPath = `${path}.window[${index}]`;
-      requireField(entry.field, `${entryPath}.field`, 'numeric');
+      requireField(entry.field, `${entryPath}.field`, ['previous', 'row-number'].includes(String(entry.operation)) ? 'scalar' : 'numeric');
       if (Array.isArray(entry['order-by'])) entry['order-by'].forEach((clause, clauseIndex) => {
         if (isRecord(clause)) requireField(clause.field, `${entryPath}.order-by[${clauseIndex}].field`, 'scalar');
       });
@@ -379,7 +379,8 @@ function compileQuery(query, index, symbols, compiled, errors) {
         requireField(field, `${entryPath}.groupby[${groupIndex}]`, 'scalar');
       });
       if (entry.mode === 'rate') requireField(entry['time-field'], `${entryPath}.time-field`, 'temporal');
-      declareField(entry.as, 'numeric', `${entryPath}.as`);
+      declareField(entry.as, entry.operation === 'previous' && typeof entry.field === 'string'
+        ? fields?.get(entry.field) ?? 'unknown' : 'numeric', `${entryPath}.as`);
     }
   }
 

@@ -164,12 +164,20 @@ cao doctor \
 
 ## Browser data pipeline
 
+The unified-session adapter retains only metadata needed for model-routing
+analytics: safe identifiers, explicit classifier labels, request ownership,
+per-response token/AIC observations and source receipts. It accepts headerless
+legacy sessions and records their format coverage. Unsupported session versions
+retain the header only. Source-receipt phases take precedence over the collection
+event's conclusion-phase provenance. Prompts, bodies, free-form reasons/errors
+and content-derived hashes are not projected into routing facts.
+
 The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic Domain, Tool, Audit, and Issue records owned directly by those Runs. `github_api_rate_limit` envelopes create Audits only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 30. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 40. Its canonical stores are
+The canonical model is version 31. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 41. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,

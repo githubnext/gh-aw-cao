@@ -52,9 +52,9 @@ export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer', 'filter'];
 export const QUERY_AGGREGATE_FILTER_PREDICATE_KEYS = ['field', 'equals', 'in'];
 export const QUERY_PREDICT_KEYS = ['field', 'on', 'method', 'order', 'groupby', 'as'];
 export const QUERY_WINDOW_KEYS = ['field', 'as', 'operation', 'order-by', 'groupby', 'frame', 'reducer', 'alignment', 'mode', 'time-field', 'unit'];
-export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'distinct-values', 'calendar-week-rhythm', 'latest-failure-streak', 'sum', 'mean', 'min', 'max', 'unique'];
+export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'distinct-values', 'calendar-week-rhythm', 'latest-failure-streak', 'sum', 'mean', 'min', 'max', 'unique', 'median', 'p75', 'p90', 'p95'];
 export const QUERY_SELECT_KEYS = ['field', 'as'];
-export const QUERY_NUMERIC_REDUCER_VALUES = ['sum', 'mean', 'min', 'max'];
+export const QUERY_NUMERIC_REDUCER_VALUES = ['sum', 'mean', 'min', 'max', 'median', 'p75', 'p90', 'p95'];
 export const INFERRED_FIELD_NAMES = ['campaign-link'];
 export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, PREDICTION_METHODS, TEXT_COMPUTE_FUNCTIONS } from './data-operations.js';
 export { DASHBOARD_QUERY_LIMITS };
@@ -73,7 +73,7 @@ export const PAGE_FORM_KEYS = ['title', 'description', 'update', 'fields'];
 export const PAGE_FORM_UPDATE_KEYS = ['strategy', 'delay-ms'];
 export const PAGE_FORM_UPDATE_STRATEGY_VALUES = ['debounce', 'throttle'];
 export const PAGE_FORM_FIELD_KEYS = ['id', 'label', 'description', 'control', 'default', 'min', 'max', 'step', 'options'];
-export const PAGE_FORM_CONTROL_VALUES = ['slider', 'checkbox', 'radio'];
+export const PAGE_FORM_CONTROL_VALUES = ['slider', 'checkbox', 'radio', 'text'];
 export const PAGE_FORM_OPTION_KEYS = ['value', 'label'];
 export const PAGE_FORM_MIN_DELAY_MS = 50;
 export const PAGE_FORM_MAX_DELAY_MS = 2000;
@@ -190,7 +190,7 @@ export const RELATION_LINK_FIELD_RELATIONS = {
   'external-link': 'external'
 };
 export const LINK_FIELD_NAMES = Object.keys(RELATION_LINK_FIELD_RELATIONS);
-export const DASHBOARD_LINK_FIELD_NAMES = ['campaign-dashboard-link', 'repository-dashboard-link', 'workflow-dashboard-link', 'command-dashboard-link'];
+export const DASHBOARD_LINK_FIELD_NAMES = ['campaign-dashboard-link', 'repository-dashboard-link', 'workflow-dashboard-link', 'command-dashboard-link', 'routing-dashboard-link'];
 export const DATASET_METADATA_KEYS = [
   'source-id',
   'source-kind',
@@ -541,6 +541,20 @@ export const TABLE_FIELDS = {
   'control-plane-smells': ['smell-observation-id', 'smell-id', 'smell-name', 'smell-category', 'smell-severity', 'smell-summary', 'smell-evidence', 'smell-recommendation', 'organization', 'repository', 'workflow', 'run', 'observed-at', 'evidence-link', 'repository-link', 'workflow-link', 'run-link'],
   'evidence-records': ['evidence-id', 'evidence-class', 'evidence-kind', 'work-item-id', 'objective', 'claim', 'verification-state', 'provenance-state', 'source-revision', 'observed-at', 'evidence-link', 'repository-link', 'run-link']
 };
+
+TABLE_FIELDS.audits.push(
+  'routing-stage', 'routing-schema', 'routing-status', 'routing-goal', 'routing-configured-mode',
+  'routing-mode', 'routing-selected-model', 'routing-selected-effort', 'routing-requested-model',
+  'routing-requested-effort', 'routing-applied-effort', 'routing-task-type', 'routing-scope',
+  'routing-complexity', 'routing-purpose', 'routing-agent-name', 'routing-agent-id', 'routing-routed',
+  'routing-outcome', 'routing-router-version', 'routing-awf-version', 'routing-classifier-model',
+  'routing-classifier-effort', 'routing-classifier-attempts', 'routing-latency-ms', 'routing-degraded',
+  'routing-degraded-reason', 'routing-enabled', 'routing-substitution', 'routing-effective-model',
+  'routing-steering-type', 'routing-steering-threshold', 'routing-max-credits', 'routing-session-clock',
+  'routing-deviations', 'routing-inventory-complete',
+  'component', 'phase', 'telemetry-model', 'provider', 'effort', 'telemetry-engine',
+  'duration-ms', 'exit-code', 'http-status', 'threshold', 'required'
+);
 
 export const ROLLOUT_MODE_VALUES = ['review', 'live', 'unknown'];
 export const DETECTION_STATE_VALUES = ['clean', 'threat', 'degraded', 'tooling-failure', 'skipped', 'unknown'];

@@ -164,7 +164,6 @@ test('invalid optional sessions are skipped without altering the shard or loggin
   const cases = {
     'malformed JSON': { session: `${session}\nSECRET_INVALID_JSON` },
     'invalid event': { session: `${session}\nnull` },
-    'unsupported format': { session: session.replace('"version":1', '"version":2') },
     'empty session': { session: '' },
     'missing identity': { info: undefined },
     'malformed identity': { info: 'SECRET_INVALID_JSON' },
@@ -220,7 +219,7 @@ test('bad optional evidence does not block valid runs and warnings are deduplica
   assert.equal(result.stderr.trim(), 'Skipping invalid unified session evidence for run 303');
   const rows = (await readFile(f.shard, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   assert.equal(rows[0].run.cao_unified_session, undefined);
-  assert.equal(rows[1].run.cao_unified_session.events.length, 3);
+  assert.equal(rows[1].run.cao_unified_session.events.length, 4);
   assert.equal(await readFile(secondShard, 'utf8'), original);
   assert.doesNotMatch(await readFile(f.shard, 'utf8'), /SECRET_/);
 });
@@ -347,5 +346,17 @@ test('invalid optional sessions do not prevent valid eval enrichment and vice ve
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
   await writeFile(path.join(f.usage, 'evals.jsonl'), 'SECRET_INVALID_JSON');
   assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
-  assert.equal(JSON.parse(await readFile(f.shard, 'utf8')).run.cao_unified_session.events.length, 3);
+  assert.equal(JSON.parse(await readFile(f.shard, 'utf8')).run.cao_unified_session.events.length, 4);
+});
+
+test('unsupported formats retain only coverage metadata and never parse their payloads', async (t) => {
+  const f = await fixture(t);
+  await writeFile(path.join(f.usage, 'aw_session.jsonl'),
+    '{"type":"session.format","data":{"version":2}}\nSECRET_INVALID_V2_PAYLOAD');
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  const enriched = JSON.parse(await readFile(f.shard, 'utf8')).run.cao_unified_session;
+  assert.deepEqual(enriched.events, [
+    { line: 1, source: 'session', type: 'session.format', fields: { status: 'unsupported' } }
+  ]);
+  assert.doesNotMatch(JSON.stringify(enriched), /SECRET_|INVALID_V2/);
 });
