@@ -184,7 +184,7 @@ describe('dashboard view query contracts', () => {
     const assignmentEncoding = /** @type {{ columns: { field: string }[] }} */ (assignments?.encoding);
     expect(assignmentEncoding.columns.map((column) => column.field))
       .toEqual(evaluationContract.experiments.fields);
-    expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals'))[0])
+    expect(viewsOf(dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'evals')).find((view) => view.id === evaluationContract.evals.view))
       .toMatchObject({
         data: { source: evaluationContract.evals.query },
         encoding: { columns: expect.arrayContaining([{ field: 'run', type: 'nominal', title: 'Run', display: evaluationContract.evals.runDisplay }]) }
@@ -213,6 +213,21 @@ describe('dashboard view query contracts', () => {
           color: { field: scatter.color }, href: { field: scatter.href }
         }
       });
+  });
+
+  it('declares three percentage bars per eval above the evidence ledger', () => {
+    const distribution = evaluationContract.evals.distribution;
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'evals');
+    expect(viewsOf(page)[0]).toMatchObject({
+      id: distribution.view, mark: 'chart', chart: distribution.chart,
+      data: { source: distribution.query, limit: 99 },
+      encoding: {
+        x: { field: distribution.x },
+        y: { field: distribution.y, unit: 'percent' },
+        section: { field: distribution.section },
+        color: { field: distribution.x }
+      }
+    });
   });
 
   it('keeps all eval answers and run links distinct from auxiliary grader verdicts', () => {

@@ -29,6 +29,15 @@
     "query": "eval-status-ledger",
     "view": "evals-statuses",
     "runDisplay": "run-link",
-    "fields": ["workflow", "eval", "repository", "eval-result", "observed-at", "run"]
+    "fields": ["workflow", "eval", "repository", "eval-result", "observed-at", "run"],
+    "distribution": {
+      "query": "eval-answer-distribution",
+      "view": "evals-answer-distribution",
+      "chart": "horizontal-bar",
+      "x": "eval-result",
+      "y": "answer-percent",
+      "section": "eval-label",
+      "answers": ["YES", "NO", "UNKNOWN"]
+    }
   }
 }

@@ -463,9 +463,8 @@ test('Evals renders persisted artifact answers from the real data worker after r
     ]);
     const dashboard = document.dashboard;
     const evals = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'evals');
-    const view = evals.views[0];
-    const sources = await processor.loadCanonicalDashboardPage([view.data.source], dashboard, undefined, {
-      pageId: 'evals', viewId: view.id
+    const sources = await processor.loadCanonicalDashboardPage(evals.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source), dashboard, undefined, {
+      pageId: 'evals'
     });
     window.document.body.append(presenter.renderDashboard({
       document: { ...document, dashboard: {
@@ -477,6 +476,7 @@ test('Evals renders persisted artifact answers from the real data worker after r
     return { evals: batch.evals?.length, observations: batch.evalObservations?.length };
   });
   expect(counts).toEqual({ evals: 3, observations: 3 });
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
   const view = page.locator('[data-view-id="evals-statuses"]');
   await expect(view).toContainText('quality');
   await expect(view).toContainText('correctness');
@@ -484,6 +484,19 @@ test('Evals renders persisted artifact answers from the real data worker after r
   await expect(view).toContainText('UNKNOWN');
   await expect(view).toContainText('.github/workflows/worker.md');
   await expect(view.locator('td[data-field="run"] a[href="https://github.com/octo/api/actions/runs/303"]')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Chart', exact: true }).click();
+  const chart = page.locator('[data-view-id="evals-answer-distribution"]');
+  await expect(chart.locator('[data-chart-widget="horizontal-bar"]')).toHaveCount(1);
+  await expect(chart.locator('.horizontal-bar-chart-section')).toHaveCount(3);
+  for (const section of await chart.locator('.horizontal-bar-chart-section').all()) {
+    await expect(section.locator('.horizontal-bar-chart-label')).toHaveText(['NO', 'UNKNOWN', 'YES']);
+    const values = await section.locator('.horizontal-bar-chart-value').allTextContents();
+    expect(values.reduce((sum, value) => sum + Number.parseFloat(value), 0)).toBe(100);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await chart.scrollIntoViewIfNeeded();
+  await expect(chart).toBeVisible();
+  expect(await chart.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
 test('data worker returns only the canonical payload requested by a view', async ({ page }) => {

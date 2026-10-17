@@ -149,8 +149,8 @@ describe('unified evaluation evidence', () => {
     const dashboard = authoritativeDashboard.dashboard;
     const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
       await processDataRequest({
-        operation: 'query-canonical-dashboard', sourceNames: [contract.evals.query],
-        pageId: 'evals', viewId: contract.evals.view,
+        operation: 'query-canonical-dashboard', sourceNames: [contract.evals.query, contract.evals.distribution.query],
+        pageId: 'evals',
         context: { queries: dashboard.queries, pages: dashboard.pages }
       })
     );
@@ -173,10 +173,85 @@ describe('unified evaluation evidence', () => {
       expect(view?.textContent).toContain('.github/workflows/worker.md');
       expect(view?.textContent).toContain('api');
       expect(view?.querySelector('a[href="https://github.com/octo/api/actions/runs/303"]')).not.toBeNull();
+      const chart = rendered.querySelector(`[data-view-id="${contract.evals.distribution.view}"]`);
+      expect(chart?.querySelector('[data-chart-widget="horizontal-bar"]')).not.toBeNull();
+      const sections = chart?.querySelectorAll('.horizontal-bar-chart-section');
+      expect(sections).toHaveLength(3);
+      for (const section of sections ?? []) {
+        expect([...section.querySelectorAll('.horizontal-bar-chart-label')].map((label) => label.textContent))
+          .toEqual([...contract.evals.distribution.answers].sort());
+        expect([...section.querySelectorAll('.horizontal-bar-chart-value')].map((value) => Number.parseFloat(value.textContent ?? '')))
+          .toEqual(expect.arrayContaining([100, 0, 0]));
+      }
     } finally {
       disposeDashboard(rendered);
       rendered.remove();
       resetSourceStore();
+    }
+  });
+
+  it('computes complete per-eval percentages through the canonical worker without merging workflows', async () => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    vi.stubGlobal('IDBKeyRange', IDBKeyRange);
+    for (const [index, answer] of ['YES', 'YES', 'NO', 'UNKNOWN'].entries()) {
+      const input = artifactInput([{
+        path: 'usage/evals.jsonl',
+        content: JSON.stringify({ id: 'quality', answer })
+      }]);
+      input.run.githubRunId = 400 + index;
+      await ingestGhAwLogs(indexedDB, input, { now: Date.parse('2026-10-16T00:00:00Z') });
+    }
+    const other = artifactInput([{
+      path: 'usage/evals.jsonl', content: JSON.stringify({ id: 'quality', answer: 'NO' })
+    }]);
+    other.run.githubRunId = 500;
+    other.workflow = { githubId: 3, name: 'Other', path: '.github/workflows/other.lock.yml' };
+    await ingestGhAwLogs(indexedDB, other, { now: Date.parse('2026-10-16T00:00:00Z') });
+    const dashboard = authoritativeDashboard.dashboard;
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      await processDataRequest({
+        operation: 'query-canonical-dashboard', sourceNames: [contract.evals.distribution.query],
+        context: { queries: dashboard.queries, pages: dashboard.pages }
+      })
+    );
+    const rows = sources[contract.evals.distribution.query].rows;
+    expect(rows).toHaveLength(6);
+    const labels = new Set(rows.map((row) => row['eval-label']));
+    expect(labels.size).toBe(2);
+    for (const label of labels) {
+      const group = rows.filter((row) => row['eval-label'] === label);
+      expect(group.map((row) => row['eval-result'])).toEqual(contract.evals.distribution.answers);
+      expect(group.reduce((sum, row) => sum + Number(row['answer-percent']), 0)).toBeCloseTo(100);
+      expect(group.map((row) => row['answer-percent'])).toEqual(
+        String(group[0].workflow).includes('other') ? [0, 100, 0] : [50, 25, 25]
+      );
+    }
+  });
+
+  it('limits complete eval groups rather than truncating their three answer bars', async () => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    vi.stubGlobal('IDBKeyRange', IDBKeyRange);
+    await ingestGhAwLogs(indexedDB, artifactInput([{
+      path: 'usage/evals.jsonl',
+      content: Array.from({ length: 40 }, (_, index) => JSON.stringify({
+        id: `quality-${String(index).padStart(2, '0')}`, answer: 'UNKNOWN'
+      })).join('\n')
+    }]), { now: Date.parse('2026-10-16T00:00:00Z') });
+    const dashboard = authoritativeDashboard.dashboard;
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      await processDataRequest({
+        operation: 'query-canonical-dashboard', sourceNames: [contract.evals.distribution.query],
+        context: { queries: dashboard.queries, pages: dashboard.pages }
+      })
+    );
+    const rows = sources[contract.evals.distribution.query].rows;
+    expect(rows).toHaveLength(99);
+    const labels = new Set(rows.map((row) => row['eval-label']));
+    expect(labels.size).toBe(33);
+    for (const label of labels) {
+      const group = rows.filter((row) => row['eval-label'] === label);
+      expect(group.map((row) => row['eval-result'])).toEqual(contract.evals.distribution.answers);
+      expect(group.map((row) => row['answer-percent'])).toEqual([0, 0, 100]);
     }
   });
 
