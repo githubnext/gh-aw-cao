@@ -253,7 +253,7 @@ jobs:
           RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
         run: |
           set -euo pipefail
-          test "$("$RUNNER_TEMP/release-binaries/linux-amd64" --version)" = "gh cao version ${RELEASE_TAG}"
+          test "$("$RUNNER_TEMP/release-binaries/gh-cao-linux-amd64" --version)" = "gh cao version ${RELEASE_TAG}"
       - name: Upload extension release binaries
         uses: actions/upload-artifact@v7.0.1
         with:
@@ -330,20 +330,30 @@ jobs:
 
           binary_dir="${RUNNER_TEMP}/release-binaries"
           binary_assets=(
-            darwin-amd64 darwin-arm64 linux-amd64 linux-arm64
-            windows-amd64.exe windows-arm64.exe checksums.txt
+            gh-cao-darwin-amd64 gh-cao-darwin-arm64 gh-cao-linux-amd64 gh-cao-linux-arm64
+            gh-cao-windows-amd64.exe gh-cao-windows-arm64.exe checksums.txt
           )
-          [[ "$(find "${binary_dir}" -mindepth 1 -maxdepth 1 | wc -l)" -eq "${#binary_assets[@]}" ]]
+          binary_paths=()
+          if [[ "$(find "${binary_dir}" -mindepth 1 -maxdepth 1 | wc -l)" -ne "${#binary_assets[@]}" ]]; then
+            echo "Extension release artifacts must contain exactly six binaries and checksums.txt." >&2
+            exit 1
+          fi
           for asset in "${binary_assets[@]}"; do
-            [[ -s "${binary_dir}/${asset}" && ! -L "${binary_dir}/${asset}" ]]
+            if [[ ! -s "${binary_dir}/${asset}" || -L "${binary_dir}/${asset}" ]]; then
+              echo "Extension release asset is missing, empty, or a symbolic link: ${asset}" >&2
+              exit 1
+            fi
+            binary_paths+=("${binary_dir}/${asset}")
           done
           (
             cd "${binary_dir}"
             expected_checksums="$(printf '%s\n' "${binary_assets[@]:0:6}" | sort)"
             actual_checksums="$(awk '{print $2}' checksums.txt | sort)"
-            [[ "${actual_checksums}" == "${expected_checksums}" ]]
+            if [[ "${actual_checksums}" != "${expected_checksums}" || "$(wc -l < checksums.txt)" -ne 6 ]]; then
+              echo "Extension checksums must name exactly the six release binaries." >&2
+              exit 1
+            fi
             sha256sum --check --strict checksums.txt
-            [[ "$(wc -l < checksums.txt)" -eq 6 ]]
           )
 
           release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
@@ -366,7 +376,7 @@ jobs:
           [[ "${type}" == commit && "${sha}" == "${REVISION}" ]]
 
           gh release upload "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
-            "${archive}" "${checksum}" "${binary_dir}/"*
+            "${archive}" "${checksum}" "${binary_paths[@]}"
 
           assets="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100")"
           jq -e \
@@ -374,16 +384,16 @@ jobs:
             --arg checksum "${runtime_name}.tgz.sha256" \
             'length == 9
               and (map(.name) | sort) == ([
-                $archive, $checksum, "darwin-amd64", "darwin-arm64",
-                "linux-amd64", "linux-arm64", "windows-amd64.exe",
-                "windows-arm64.exe", "checksums.txt"
+                $archive, $checksum, "gh-cao-darwin-amd64", "gh-cao-darwin-arm64",
+                "gh-cao-linux-amd64", "gh-cao-linux-arm64", "gh-cao-windows-amd64.exe",
+                "gh-cao-windows-arm64.exe", "checksums.txt"
               ] | sort)
               and all(.[]; .state == "uploaded" and .size > 0)' \
             <<< "${assets}" >/dev/null
 
           echo "runtime_archive=${runtime_name}.tgz" >> "${GITHUB_OUTPUT}"
           {
-            echo "## Runtime assets attached"
+            echo "## Runtime and extension assets attached"
             echo
             echo "- Draft release: ${RELEASE_TAG}"
             echo "- Source revision: ${REVISION}"
@@ -391,6 +401,7 @@ jobs:
             echo "- Extension binaries: Linux, macOS, Windows (amd64 and arm64), version ${RELEASE_TAG}"
             echo
             echo "The workflow will now publish this draft as a prerelease before applying release highlights."
+            echo "After maintainer review and promotion to latest, install with gh extension install ${GITHUB_REPOSITORY}."
           } >> "${GITHUB_STEP_SUMMARY}"
 
   publish-release:
@@ -464,8 +475,8 @@ jobs:
             });
             const expectedAssets = [
               expectedArchive, `${expectedArchive}.sha256`,
-              'darwin-amd64', 'darwin-arm64', 'linux-amd64', 'linux-arm64',
-              'windows-amd64.exe', 'windows-arm64.exe', 'checksums.txt',
+              'gh-cao-darwin-amd64', 'gh-cao-darwin-arm64', 'gh-cao-linux-amd64', 'gh-cao-linux-arm64',
+              'gh-cao-windows-amd64.exe', 'gh-cao-windows-arm64.exe', 'checksums.txt',
             ].sort();
             const actualAssets = assets.map(({ name }) => name).sort();
             if (

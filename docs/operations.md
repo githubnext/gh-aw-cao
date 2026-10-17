@@ -522,19 +522,28 @@ If shared authentication or shared control caused the incident, perform the cont
 Dispatch the private **Release** workflow from `main` with a patch, minor, or
 major bump. The workflow creates the version tag and a draft release, waits for
 the successful exact-SHA `cao-runtime.yml` push build, verifies its checksum and
-GitHub-hosted signed provenance, attaches the runtime archive and checksum, and
+GitHub-hosted signed provenance, attaches the runtime archive and checksum plus
+six version-stamped `gh-cao-OS-ARCH` extension binaries (`.exe` on Windows) and
+their `checksums.txt`, and
 publishes that exact release as an immutable prerelease with an explicit
 `vX.Y.Z` tag. It verifies the release ID, tag, source revision, assets, and
 immutable state before adding human-friendly release highlights.
 
 Do not publish the draft manually. After the complete Release workflow succeeds,
 review the generated notes, confirm the tag targets the intended `main` commit,
-and confirm both runtime assets are present. Then remove the prerelease
+and confirm both runtime assets, all six extension binaries, and the binary
+checksums are present. Then remove the prerelease
 designation and mark it as the latest release. The workflow's prerelease
 publication makes the tag and assets immutable; no workflow can add, replace, or
 remove release assets afterward. A failure before publication leaves the draft
 unpublished; a later failure leaves a correctly tagged prerelease for diagnosis,
 never a stable release that quickstart or update can select.
+
+Promotion to latest also enables `gh extension install githubnext/gh-aw-cao`
+(installed command: `gh aw-cao`). GitHub CLI detects binary extensions from the
+latest stable release; uploading binaries only to a prerelease does not make a
+repository installable when its latest stable release has no binaries, even
+with `--pin`. See [the CLI reference](cao-cli.md#github-cli-extension).
 
 ## Update CAO
 

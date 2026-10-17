@@ -1,7 +1,20 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, delimiter, join } from "node:path";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
+import { parse } from "yaml";
 
 import { generatedJobs, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
+
+const releaseConfig = parse(/^---\n([\s\S]*?)\n---/.exec(workflow("release.md"))[1]);
+const extensionAssets = [
+  "gh-cao-darwin-amd64", "gh-cao-darwin-arm64", "gh-cao-linux-amd64", "gh-cao-linux-arm64",
+  "gh-cao-windows-amd64.exe", "gh-cao-windows-arm64.exe", "checksums.txt",
+];
 
 test("tag and version-named draft exist before runtime assets are attached", () => {
   const source = workflow("release.md");
@@ -47,8 +60,9 @@ test("release attaches an exact-SHA attested runtime before publishing", () => {
   assert.match(attach, /length == 9/);
   assert.match(attach, /sha256sum --check --strict checksums\.txt/);
   assert.match(attach, /actual_checksums.*expected_checksums/);
-  assert.match(attach, /"\$\{archive\}" "\$\{checksum\}" "\$\{binary_dir\}\/"\*/);
-  for (const asset of ["darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64", "windows-amd64.exe", "windows-arm64.exe", "checksums.txt"]) {
+  assert.match(attach, /"\$\{archive\}" "\$\{checksum\}" "\$\{binary_paths\[@\]\}"/);
+  assert.match(attach, /binary_paths\+=\("\$\{binary_dir\}\/\$\{asset\}"\)/);
+  for (const asset of extensionAssets) {
     assert.ok(attach.includes(`"${asset}"`), `release must require ${asset}`);
   }
   assert.deepEqual(jobs.get("attach-runtime-assets")?.needs, ["build-extension", "prepare-release"]);
@@ -70,7 +84,7 @@ test("release builds versioned binaries read-only from the exact authorized sour
   assert.match(stepBlock(source, "Check extension"), /make lint test/);
   assert.match(stepBlock(source, "Build extension release binaries"), /RELEASE_TAG: \$\{\{ needs.resolve-version.outputs.release_tag \}\}/);
   assert.match(stepBlock(source, "Build extension release binaries"), /bash scripts\/build-release\.sh "\$RELEASE_TAG" "\$RUNNER_TEMP\/release-binaries"/);
-  assert.match(stepBlock(source, "Verify embedded release version"), /linux-amd64" --version\)" = "gh cao version \$\{RELEASE_TAG\}"/);
+  assert.match(stepBlock(source, "Verify embedded release version"), /\/gh-cao-linux-amd64" --version\)" = "gh cao version \$\{RELEASE_TAG\}"/);
   const upload = stepBlock(source, "Upload extension release binaries");
   const download = stepBlock(source, "Download extension release binaries");
   assert.match(upload, /name: release-binaries-\$\{\{ github.run_id \}\}/);
@@ -94,7 +108,7 @@ test("release publishes the completed draft under the exact version tag", () => 
   assert.match(publish, /github\.rest\.git\.getRef/);
   assert.match(publish, /releaseRef\.object\.sha !== revision/);
   assert.match(publish, /listReleaseAssets/);
-  for (const asset of ["darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64", "windows-amd64.exe", "windows-arm64.exe", "checksums.txt"]) {
+  for (const asset of extensionAssets) {
     assert.ok(publish.includes(`'${asset}'`), `publication must require ${asset}`);
   }
   assert.match(publish, /github\.rest\.repos\.updateRelease/);
@@ -146,4 +160,149 @@ test("agent consumes and verifies the published prerelease identity", () => {
   assert.match(fetchReleaseContext, /test "\$RUNTIME_ARCHIVE" = "cao-runtime-\$\{GITHUB_SHA\}\.tgz"/);
   assert.match(source, /- `tag`: `\$\{\{ needs\.publish-release\.outputs\.release_tag \}\}`/);
   assert.doesNotMatch(source, /safeoutputs\/publish_release/);
+});
+
+test("release uploads all verified binaries as individual release assets, not only Actions artifacts", async (t) => {
+  for (const scenario of ["complete", "missing", "empty", "symlink", "corrupt", "unexpected", "bad manifest"]) {
+    await t.test(scenario, (t) => {
+      const directory = mkdtempSync(join(tmpdir(), "cao-release-assets-"));
+      t.after(() => rmSync(directory, { recursive: true, force: true }));
+      const revision = "a".repeat(40);
+      const archive = `cao-runtime-${revision}.tgz`;
+      const bin = join(directory, "bin");
+      const binaries = join(directory, "release-binaries");
+      const runtime = join(directory, "release-runtime");
+      for (const path of [bin, binaries, runtime]) mkdirSync(path);
+      const digest = (content) => createHash("sha256").update(content).digest("hex");
+      writeFileSync(join(runtime, archive), "runtime archive");
+      writeFileSync(join(runtime, `${archive}.sha256`), `${digest("runtime archive")}  ${archive}\n`);
+      for (const asset of extensionAssets.slice(0, -1)) writeFileSync(join(binaries, asset), asset);
+      writeFileSync(join(binaries, "checksums.txt"), extensionAssets.slice(0, -1)
+        .map((asset) => `${digest(asset)}  ${asset}\n`).join(""));
+      if (scenario === "missing") rmSync(join(binaries, extensionAssets[0]));
+      if (scenario === "empty") writeFileSync(join(binaries, extensionAssets[0]), "");
+      if (scenario === "symlink") {
+        const target = join(directory, "linked-binary");
+        writeFileSync(target, extensionAssets[0]);
+        rmSync(join(binaries, extensionAssets[0]));
+        symlinkSync(target, join(binaries, extensionAssets[0]));
+      }
+      if (scenario === "corrupt") writeFileSync(join(binaries, extensionAssets[0]), "corrupt");
+      if (scenario === "unexpected") writeFileSync(join(binaries, "extra-file"), "unexpected");
+      if (scenario === "bad manifest") {
+        writeFileSync(join(binaries, "checksums.txt"), extensionAssets.slice(0, -1)
+          .map(() => `${digest(extensionAssets[0])}  ${extensionAssets[0]}\n`).join(""));
+      }
+      const uploads = join(directory, "uploads.json");
+      writeFileSync(join(bin, "gh"), `#!/usr/bin/env node
+import { basename } from "node:path";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
+const args = process.argv.slice(2);
+const { REVISION, RELEASE_TAG, TEST_UPLOADS } = process.env;
+if (args[0] === "api") {
+  const endpoint = args[1];
+  if (endpoint.includes("/actions/workflows/")) console.log("42");
+  else if (endpoint.endsWith("/releases/123/assets?per_page=100")) {
+    const paths = JSON.parse(readFileSync(TEST_UPLOADS, "utf8"));
+    console.log(JSON.stringify(paths.map(path => ({name: basename(path), state: "uploaded", size: statSync(path).size}))));
+  } else if (endpoint.endsWith("/releases/123")) {
+    console.log(JSON.stringify({draft: true, prerelease: false, tag_name: RELEASE_TAG, target_commitish: REVISION, assets: []}));
+  } else if (endpoint.includes("/git/ref/tags/")) console.log("commit\\t" + REVISION);
+  else throw new Error("Unexpected API request: " + endpoint);
+} else if (args[0] === "release" && args[1] === "upload") {
+  if (args[2] !== RELEASE_TAG || args[3] !== "--repo" || args[4] !== "acme/gh-aw-cao") throw new Error("Unexpected upload");
+  writeFileSync(TEST_UPLOADS, JSON.stringify(args.slice(5)));
+} else if (!(args[0] === "run" && args[1] === "download") && !(args[0] === "attestation" && args[1] === "verify")) {
+  throw new Error("Unexpected gh command: " + args.join(" "));
+}
+`, { mode: 0o755 });
+      const step = releaseConfig.jobs["attach-runtime-assets"].steps.find(({ id }) => id === "attach");
+      const result = spawnSync("bash", ["-c", step.run], {
+        encoding: "utf8",
+        timeout: 10_000,
+        env: {
+          ...process.env,
+          PATH: `${bin}${delimiter}${process.env.PATH}`,
+          GH_TOKEN: "",
+          GITHUB_REPOSITORY: "acme/gh-aw-cao",
+          GITHUB_OUTPUT: join(directory, "outputs"),
+          GITHUB_STEP_SUMMARY: join(directory, "summary"),
+          RUNNER_TEMP: directory,
+          REVISION: revision,
+          RELEASE_TAG: "v1.2.3",
+          RELEASE_ID: "123",
+          TEST_UPLOADS: uploads,
+        },
+      });
+      if (scenario !== "complete") {
+        assert.notEqual(result.status, 0, "invalid binaries must prevent release uploads");
+        assert.equal(existsSync(uploads), false);
+        return;
+      }
+      assert.equal(result.status, 0, result.stderr);
+      assert.deepEqual(
+        JSON.parse(readFileSync(uploads, "utf8")).map((path) => basename(path)).sort(),
+        [archive, `${archive}.sha256`, ...extensionAssets].sort(),
+      );
+      assert.equal(readFileSync(join(directory, "outputs"), "utf8"), `runtime_archive=${archive}\n`);
+    });
+  }
+});
+
+test("publication refuses incomplete or unusable extension release assets", async (t) => {
+  const revision = "a".repeat(40);
+  const archive = `cao-runtime-${revision}.tgz`;
+  const expectedAssets = [archive, `${archive}.sha256`, ...extensionAssets]
+    .map((name) => ({ name, state: "uploaded", size: 123 }));
+  const step = releaseConfig.jobs["publish-release"].steps.find(({ id }) => id === "publish");
+  const release = {
+    id: 123, tag_name: "v1.2.3", name: "v1.2.3", target_commitish: revision,
+    draft: true, prerelease: false,
+  };
+  const ref = { object: { type: "commit", sha: revision } };
+  const scenarios = [
+    ["complete", expectedAssets],
+    ...extensionAssets.map((asset) => [`missing ${asset}`, expectedAssets.filter(({ name }) => name !== asset)]),
+    ["legacy filenames", expectedAssets.map((asset) => ({ ...asset, name: asset.name.replace(/^gh-cao-/, "") }))],
+    ["empty binary", expectedAssets.map((asset) => ({ ...asset, size: asset.name === extensionAssets[0] ? 0 : asset.size }))],
+    ["incomplete upload", expectedAssets.map((asset) => ({ ...asset, state: asset.name === extensionAssets[0] ? "new" : asset.state }))],
+  ];
+  for (const [name, assets] of scenarios) {
+    await t.test(name, async () => {
+      const updates = [];
+      const published = { ...release, draft: false, prerelease: true, immutable: true };
+      const execute = () => runInNewContext(`(async () => { ${step.with.script} })()`, {
+        process: { env: { RELEASE_ID: "123", RELEASE_TAG: "v1.2.3", RUNTIME_ARCHIVE: archive, REVISION: revision } },
+        context: { repo: { owner: "acme", repo: "gh-aw-cao" } },
+        github: {
+          paginate: async () => assets,
+          rest: {
+            repos: {
+              getRelease: async () => ({ data: updates.length ? published : release }),
+              getReleaseByTag: async () => ({ data: published }),
+              listReleaseAssets() {},
+              updateRelease: async (update) => { updates.push(update); },
+            },
+            git: { getRef: async () => ({ data: ref }) },
+          },
+        },
+        core: {
+          setOutput() {},
+          summary: {
+            addHeading() { return this; }, addRaw() { return this; },
+            addEOL() { return this; }, addLink() { return this; }, async write() {},
+          },
+        },
+      });
+      if (name === "complete") {
+        await execute();
+        assert.equal(updates.length, 1);
+        assert.equal(updates[0].prerelease, true);
+        assert.equal(updates[0].make_latest, "false");
+      } else {
+        await assert.rejects(execute, /does not contain the verified runtime and extension assets/);
+        assert.equal(updates.length, 0, "invalid assets must keep the release unpublished");
+      }
+    });
+  }
 });
