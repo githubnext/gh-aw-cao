@@ -38,7 +38,7 @@ func newCommand(version string, ghVersion func(context.Context) (string, error),
 Campaign installation, policy initialization, campaign modes, and workflow enablement run in Go.
 Other operator commands use the installed CAO runtime (Node.js 24 or newer).
 Activity and Dashboard Actions pipeline commands remain in ./cao.sh.
-Help, version, and the local doctor diagnostic do not load the CAO runtime.`,
+Help, version, and the read-only doctor diagnostic do not load the CAO runtime.`,
 		Version:       version,
 		Args:          cobra.NoArgs,
 		SilenceErrors: true,
@@ -62,19 +62,7 @@ Help, version, and the local doctor diagnostic do not load the CAO runtime.`,
 				return err
 			},
 		},
-		&cobra.Command{
-			Use:   "doctor",
-			Short: "Check the local GitHub CLI executable without accessing GitHub",
-			Args:  cobra.NoArgs,
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				installedVersion, err := ghVersion(cmd.Context())
-				if err != nil {
-					return err
-				}
-				_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n\nLocal executable check only; authentication, gh-aw, and CAO policy were not checked.\n", installedVersion)
-				return err
-			},
-		},
+		doctorCommand(ghVersion, gh),
 	)
 	addPolicyCommands(root, gh)
 	root.AddCommand(repositoryCommands(runtime))

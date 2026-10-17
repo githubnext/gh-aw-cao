@@ -453,9 +453,13 @@ preserves failure/validation statuses and cancellation, and never fetches code
 implicitly. `CAO_RUNTIME_ROOT` explicitly selects code; otherwise discovery stays
 within the current repository before checking beside the extension executable.
 Runtime selection never changes the working directory or grants policy authority.
-All command help and version work without Node or GitHub access. The existing
-Go `doctor` remains a bounded local `gh --version` diagnostic, not the Node
-snapshot-repair command. Activity and Dashboard Actions, pipeline commands,
+All command help and version work without Node or GitHub access. Native Go
+`doctor` performs bounded read-only GitHub CLI, gh-aw version, authentication,
+and basic local policy structure/compiler-pin checks, with text or JSON results
+and nonzero status for failed or skipped checks. Authentication may contact
+GitHub; raw authentication output and subprocess errors are never reported.
+Doctor does not replace production policy/workflow validation, grant authority,
+or invoke the Node snapshot-repair command. Activity and Dashboard Actions, pipeline commands,
 `cao.sh`, canonical installation paths, and runtime ownership remain unchanged.
 From the repository root, `make build` creates the ignored local extension
 binary and `make check` runs formatting checks, `go vet`, race-enabled unit
