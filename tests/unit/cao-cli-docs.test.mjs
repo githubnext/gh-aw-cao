@@ -4,7 +4,49 @@ import test from "node:test";
 
 const docs = readFileSync("docs/cao-cli.md", "utf8");
 const help = `${readFileSync("activity/cao.mjs", "utf8")}\n${readFileSync("activity/cli-usage.mjs", "utf8")}`;
-const quickstart = readFileSync("docs/setup-quickstarts.md", "utf8");
+const gettingStarted = readFileSync("docs/setup-quickstarts.md", "utf8");
+const quickstart = readFileSync("docs/repo-assist-quickstart.md", "utf8");
+
+test("getting started reaches monitoring before optional campaign execution", () => {
+  const optional = gettingStarted.indexOf("## Optional: add automation later");
+  assert.ok(optional > 0);
+  const monitoring = gettingStarted.slice(0, optional);
+  const commands = [
+    "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash",
+    "./cao.sh setup",
+    "./cao.sh validate",
+    'git commit -m "Set up CAO monitoring"',
+    "git push",
+    "gh workflow run cao-activity.yml",
+  ];
+  let previous = -1;
+  for (const command of commands) {
+    const index = monitoring.indexOf(command);
+    assert.ok(index > previous, `${command} should follow the preceding stage`);
+    previous = index;
+  }
+  assert.deepEqual([...monitoring.matchAll(/^## \d\. (.+)$/gm)].map((match) => match[1]), [
+    "Install CAO",
+    "Connect one repository",
+    "Publish your configuration",
+    "Open your dashboard",
+  ]);
+  assert.ok(gettingStarted.trim().split(/\s+/).length < 1000, "first-run guide should stay concise");
+  assert.doesNotMatch(monitoring, /--quickstart|gh aw run|cao\.sh (?:add|enable|quickstart)|AI credits/);
+  assert.match(monitoring, /setup installs no campaign and runs no workflow/i);
+  assert.match(monitoring, /does not commit or push/);
+  assert.match(monitoring, /control-plane\.campaigns` is `\{\}`/);
+  assert.match(monitoring, /empty dashboard is expected/);
+  assert.match(monitoring, /not every ordinary Actions job/);
+  assert.match(monitoring, /does \*\*not\*\* guarantee a\s+private Pages site/);
+  assert.match(monitoring, /including its Pages deployment/);
+  assert.match(monitoring, /headless setup only\s+supports the exact current public control repository/);
+  assert.match(gettingStarted.slice(optional), /repo-assist-quickstart\.md/);
+  assert.match(gettingStarted.slice(optional), /Installation is not execution/);
+  assert.match(gettingStarted.slice(optional), /\*\*review\*\* mode with \*\*one\s+repository\*\*/);
+  assert.match(quickstart, /monitor existing[\s\S]*?\[Set Up CAO\]\(setup-quickstarts\.md\)/);
+  assert.match(docs, /\[Repo Assist walkthrough\]\(repo-assist-quickstart\.md\)/);
+});
 
 test("CAO command guide covers the operator-facing command surface", () => {
   for (const command of [

@@ -12,7 +12,7 @@
     </div>
     <div class="terminal-line result" style="--line-delay: 550ms">
       <span class="result-mark">✓</span>
-      <span>Installed CAO with a review-safe policy</span>
+      <span>CAO installed · no campaign added</span>
     </div>
     <div class="terminal-line command" style="--line-delay: 1100ms">
       <span class="prompt">$</span>
@@ -24,21 +24,14 @@
     </div>
     <div class="terminal-line command" style="--line-delay: 2200ms">
       <span class="prompt">$</span>
-      <code><span class="syntax-command">./cao.sh</span> add githubnext/gh-aw-cao/<span class="syntax-placeholder">CAMPAIGN</span></code>
+      <code><span class="syntax-command">./cao.sh</span> validate<span class="cursor" aria-hidden="true"></span></code>
     </div>
     <div class="terminal-line result" style="--line-delay: 2750ms">
       <span class="result-mark">✓</span>
-      <span>Campaign installed · mode review · max repositories 1</span>
+      <span>Ready to review and publish · no agentic work started</span>
     </div>
-    <div class="terminal-line command current" style="--line-delay: 3300ms">
-      <span class="prompt">$</span>
-      <code class="multiline-command">
-        <span><span class="syntax-command">gh</span> aw run <span class="syntax-placeholder">CAMPAIGN</span> <span class="syntax-option">--ref</span> <span class="syntax-placeholder">BRANCH</span> <span class="continuation">\</span></span>
-        <span class="command-continuation"><span class="syntax-option">--raw-field</span> target_repo="<span class="syntax-placeholder">OWNER/TARGET_REPOSITORY</span>" <span class="continuation">\</span></span>
-        <span class="command-continuation"><span class="syntax-option">--raw-field</span> max_repos=<span class="syntax-string">"1"</span> <span class="continuation">\</span></span>
-        <span class="command-continuation"><span class="syntax-option">--raw-field</span> rollout_percent=<span class="syntax-string">"100"</span> <span class="continuation">\</span></span>
-        <span class="command-continuation"><span class="syntax-option">--raw-field</span> safe_output_mode=<span class="syntax-string">"review"</span><span class="cursor" aria-hidden="true"></span></span>
-      </code>
+    <div class="terminal-line result" style="--line-delay: 3300ms">
+      <a href="/gh-aw-cao/setup-quickstarts/#3-publish-your-configuration">Next: publish and open your dashboard →</a>
     </div>
   </div>
 </div>
@@ -59,7 +52,6 @@
     --terminal-syntax-command: #0550ae;
     --terminal-syntax-option: #8250df;
     --terminal-syntax-string: #116329;
-    --terminal-syntax-placeholder: #953800;
     --terminal-syntax-operator: #57606a;
     --terminal-shadow: rgba(31, 35, 40, 0.12);
     overflow: hidden;
@@ -88,7 +80,6 @@
     --terminal-syntax-command: #d2eeff;
     --terminal-syntax-option: #f6dcff;
     --terminal-syntax-string: #d0ffd6;
-    --terminal-syntax-placeholder: #ffa657;
     --terminal-syntax-operator: #d0d7de;
     --terminal-shadow: rgba(0, 0, 0, 0.24);
   }
@@ -154,15 +145,6 @@
     overflow-wrap: anywhere;
   }
 
-  .multiline-command {
-    display: grid;
-    gap: 0.1rem;
-  }
-
-  .command-continuation {
-    padding-inline-start: 1rem;
-  }
-
   .prompt {
     flex: 0 0 auto;
     color: var(--terminal-prompt);
@@ -186,25 +168,12 @@
     color: var(--terminal-syntax-option);
   }
 
-  .terminal-line code .syntax-string {
-    color: var(--terminal-syntax-string);
-  }
-
-  .terminal-line code .syntax-placeholder {
-    color: var(--terminal-syntax-placeholder);
-    font-weight: 700;
-  }
-
   .terminal-line code .syntax-url {
     color: var(--terminal-syntax-string);
   }
 
   .terminal-line code .syntax-operator {
     color: var(--terminal-syntax-operator);
-  }
-
-  .continuation {
-    color: var(--terminal-muted);
   }
 
   .cursor {
