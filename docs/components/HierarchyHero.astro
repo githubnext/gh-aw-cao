@@ -16,7 +16,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
   <div class="hero-visual">
     <span class="hero-callout callout-health" aria-hidden="true">
-      <span class="callout-card">Campaign health<br />at a glance</span>
+      <span class="callout-card">Workflow health<br />at a glance</span>
       <span class="callout-line"></span>
     </span>
     <span class="hero-callout callout-attention" aria-hidden="true">
@@ -44,17 +44,17 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 </div>
 
 <section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal>
-  <p class="section-eyebrow">One goal, many repositories</p>
-  <h2 id="dispatch-title">Agentic Campaigns dispatch work at scale.</h2>
+  <p class="section-eyebrow">From one repository to enterprise hyperscale</p>
+  <h2 id="dispatch-title">Run governed workflows across repositories and organizations.</h2>
   <p>
-    Each campaign turns a defined operation into bounded work across an explicitly enrolled set of repositories. A
-    dispatcher resolves reviewed rollout policy, then launches namespaced workers in parallel—one authorized target
-    per worker, across organizations. Teams gain centralized scale and a shared operating rhythm without giving any
-    worker open-ended repository reach.
+    Start with one workflow in one repository, then expand to an explicitly enrolled set of repositories across
+    organizations. CAO coordinates that work: a dispatcher resolves reviewed rollout policy, then launches
+    namespaced workers in parallel—one authorized target per worker. Keep execution bounded and rollout staged as
+    your use case grows, without giving any worker open-ended repository reach.
   </p>
   <figure class="dispatch-illustration" aria-describedby="dispatch-description">
     <figcaption id="dispatch-description" class="visually-hidden">
-      Central Agentic Ops configures campaigns, runs dispatchers followed by namespaced workers in GitHub Actions,
+      Central Agentic Ops configures workflows, runs dispatchers followed by namespaced workers in GitHub Actions,
       and sends each worker to one explicitly enrolled external repository.
     </figcaption>
     <DispatchIllustration />
@@ -63,34 +63,38 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
 <section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal>
   <div class="product-story-copy">
-    <p class="section-eyebrow">From one control repo to many campaigns</p>
-    <h2 id="terminal-title">Coordinate campaigns from one control plane.</h2>
+    <p class="section-eyebrow">Reusable workflows, central Ops</p>
+    <h2 id="terminal-title">Reuse what works.</h2>
     <p>
-      Install multiple operational campaigns, assign explicit repositories to each, and expand them through
-      controlled cohorts. CAO resolves shared policy before orchestrators select work and dispatch bounded workers.
+      Build on versioned workflows and shared components instead of starting over for every repository. Sharing a
+      workflow definition and running it centrally are separate choices. CAO gives centrally coordinated work a home
+      in your control repository, with reviewed scope and rollout policy.
     </p>
     <ul class="story-points">
-      <li>Run each operation across its intended repositories.</li>
-      <li>Control scope, mode, credentials, and rollout limits in reviewed policy.</li>
-      <li>Keep every worker fixed to one explicitly authorized target.</li>
+      <li>Reuse proven workflow definitions and common building blocks.</li>
+      <li>Review version updates before expanding their reach.</li>
+      <li>Keep source ownership separate from permission to run against a target.</li>
     </ul>
+    <p><a href="https://github.github.com/gh-aw/practices/sharing-workflows/">Explore workflow sharing practices →</a></p>
   </div>
   <TerminalDemo />
 </section>
 
 <section class="product-story runs-story" aria-labelledby="runs-title" data-reveal>
   <div class="product-story-copy">
-    <p class="section-eyebrow">Many runs, one operating picture</p>
-    <h2 id="runs-title">See every campaign. Focus where it diverges.</h2>
+    <p class="section-eyebrow">Local workflows, central visibility</p>
+    <h2 id="runs-title">Monitor what runs.</h2>
     <p>
-      CAO connects each run to its campaign, workflow revision, target, and outcome. Instead of visiting repositories
-      one by one, operators can identify shared patterns and spend attention on the exceptions that need judgment.
+      Monitor Agentic Workflows running in your repositories alongside centrally coordinated Ops. CAO brings collected
+      run evidence, health, cost, and outcomes into one dashboard. Whether you follow a single workflow or a fleet,
+      identify shared patterns and focus on the exceptions that need judgment instead of visiting repositories one by one.
     </p>
     <ul class="story-points">
-      <li>Compare campaigns and their repositories across the same time horizon.</li>
-      <li>Separate cross-campaign patterns from isolated target issues.</li>
+      <li>Track workflow runs across explicitly enrolled repositories.</li>
+      <li>Read reliability, cost, and accepted outcomes as distinct signals over time.</li>
       <li>Drill from aggregate health into the exact run and evidence.</li>
     </ul>
+    <p><a href="https://github.github.com/gh-aw/practices/measuring-impact/">Explore impact measurement practices →</a></p>
   </div>
   <figure class="product-frame product-shot product-shot-mobile product-shot-runs">
     <ThemeImage
@@ -107,17 +111,19 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
 <section class="product-story value-story reverse" aria-labelledby="value-title" data-reveal>
   <div class="product-story-copy">
-    <p class="section-eyebrow">Scale what works</p>
-    <h2 id="value-title">Prove value before multiplying work.</h2>
+    <p class="section-eyebrow">Earn trust before expanding autonomy</p>
+    <h2 id="value-title">Roll out safely.</h2>
     <p>
-      Campaign-specific measures combine cost, reliability, and repository outcomes into comparable evidence. Use
-      that evidence to expand a cohort, pause an operation, or improve it before it reaches more repositories.
+      Start with reports and review proposed actions before allowing live changes. When previews are not enough,
+      validate the real write path against a safe non-production target. Expand autonomy and repository scope only
+      through explicit policy decisions informed by evidence.
     </p>
     <ul class="story-points">
-      <li>Define success in the operation instead of inferring it from completed runs.</li>
-      <li>Compare cohorts without hiding missing or incomplete evidence.</li>
-      <li>Promote, revise, or stop work based on observed operational value.</li>
+      <li>Distinguish a proposed action from a safely tested write.</li>
+      <li>Do not mistake a successful run for an accepted outcome.</li>
+      <li>Use reliability, cost, and outcome trends to expand, revise, or pause Ops.</li>
     </ul>
+    <p><a href="https://github.github.com/gh-aw/practices/safe-rollout/">Explore safe rollout practices →</a></p>
   </div>
   <figure class="product-frame product-shot product-shot-mobile product-shot-value">
     <ThemeImage

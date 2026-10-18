@@ -106,6 +106,35 @@ for (const { name, viewport } of [
   { name: "mobile", viewport: { width: 390, height: 844 } },
 ]) {
   for (const colorScheme of ["light", "dark"]) {
+    test(`landing ${name} explains CAO capabilities and scale in ${colorScheme} mode`, async ({ page }) => {
+      await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
+      await page.emulateMedia({ colorScheme });
+      await page.setViewportSize(viewport);
+      expect((await page.goto("./"))?.ok()).toBe(true);
+
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+        "Monitor and Run Agentic Workflows.From One Workflow to Hyperscale.",
+      );
+      const tagline = page.locator(".docs-hero-intro .tagline");
+      await expect(tagline).toBeVisible();
+      await expect(tagline).toContainText("control plane for GitHub Agentic Workflows");
+      await expect(tagline).toContainText("monitor workflows in your repositories");
+      await expect(tagline).toContainText("run governed workflows across repositories and organizations");
+      await expect(tagline).toContainText("Start small. Roll out safely. Reuse what works.");
+      await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Reuse what works.", exact: true })).toBeAttached();
+      for (const practice of ["measuring-impact", "safe-rollout", "sharing-workflows"]) {
+        await expect(page.locator(`.product-story a[href="https://github.github.com/gh-aw/practices/${practice}/"]`))
+          .toBeAttached();
+      }
+      for (const story of await page.locator(".product-story-copy, .dispatch-story").all()) {
+        await expect(story).not.toContainText(/campaign/i);
+      }
+      expect(await page.locator("html").evaluate((element) => element.scrollWidth))
+        .toBeLessThanOrEqual(viewport.width);
+    });
+
     test(`landing ${name} product story renders in ${colorScheme} mode`, async ({ page }) => {
       await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
       await page.emulateMedia({ colorScheme });

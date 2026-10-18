@@ -1,6 +1,6 @@
 ---
 title: Central Agentic Ops (CAO)
-description: Coordinate multiple GitHub Agentic Workflow campaigns and their repositories from one governed control plane.
+description: Central Agentic Ops is a control plane to monitor and run GitHub Agentic Workflows, from one workflow to enterprise hyperscale across repositories and organizations.
 template: splash
 editUrl: false
 prev: false
@@ -9,8 +9,8 @@ agent:
   type: overview
   prominent: true
 hero:
-  title: Hyperscale Agentic Campaigns.<br />Centralized Control Planes.
-  tagline: CAO coordinates Agentic Campaigns, each across its explicitly enrolled repositories—shared policy, staged rollout, bounded execution, cross-campaign evidence, and human decisions about what scales next.
+  title: Monitor and Run Agentic Workflows.<br />From One Workflow to Hyperscale.
+  tagline: Your control plane for GitHub Agentic Workflows—monitor workflows in your repositories and run governed workflows across repositories and organizations. Start small. Roll out safely. Reuse what works.
   actions:
     - text: Explore CAO
       link: /gh-aw-cao/architecture-at-a-glance/
