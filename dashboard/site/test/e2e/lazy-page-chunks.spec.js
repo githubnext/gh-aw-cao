@@ -262,7 +262,9 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
       value: await response.json(),
     };
   });
-  expect(core.textLength).toBeLessThan(76000);
+  // Query definitions stay in page chunks; core keeps each page stub's source index so sources can
+  // load before the chunk arrives. Model-resolution views (#18626) add 386 characters of source names.
+  expect(core.textLength).toBeLessThan(76500);
   expect(core.value.dashboard.pages.some((/** @type {Record<string, unknown>} */ entry) =>
     ['intent', 'subject', 'objective', 'acceptance'].some((field) => field in entry))).toBe(false);
   expect(core.value.dashboard.pages.some((/** @type {{ views?: unknown[] }} */ entry) => Array.isArray(entry.views))).toBe(false);
