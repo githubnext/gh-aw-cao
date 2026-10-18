@@ -108,7 +108,7 @@ The explicit `generic` HTTP target with `listener: external` that lets a separat
 
 ## gh cao
 
-The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries. All operator commands run natively in Go without Node.js. Actions pipeline commands, SQLite snapshot repair, and hosted-CLI App setup remain owned by `./cao.sh`; migrated operator commands are rejected there. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All operator commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot doctor, and hosted-CLI App setup remain owned by `./cao.sh`; migrated operator commands are rejected there. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
 
 ## GitHub quota service
 
