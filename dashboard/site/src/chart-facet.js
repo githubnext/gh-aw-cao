@@ -2,6 +2,10 @@
  * Shared declarative facet vocabulary. Partitioning belongs to the query engine.
  */
 
+import { createDebug } from './debug.js';
+
+const debugChartFacet = createDebug('chart-facet');
+
 export const MAX_CHART_FACETS = 64;
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
@@ -14,6 +18,20 @@ function mapping(value) {
  * @returns {{ field?: Record<string, unknown>, row?: Record<string, unknown>, column?: Record<string, unknown> } | null}
  */
 export function chartFacet(view) {
+  const facet = resolveChartFacet(view);
+  debugChartFacet({
+    event: 'facet-resolved',
+    status: facet ? 'faceted' : 'none',
+    shape: facet?.field ? 'field' : facet ? 'row-column' : 'none'
+  });
+  return facet;
+}
+
+/**
+ * @param {Record<string, unknown>} view
+ * @returns {{ field?: Record<string, unknown>, row?: Record<string, unknown>, column?: Record<string, unknown> } | null}
+ */
+function resolveChartFacet(view) {
   const encoding = mapping(view.encoding) ? view.encoding : {};
   const facet = view.facet ?? encoding.facet;
   if (mapping(facet)) {
