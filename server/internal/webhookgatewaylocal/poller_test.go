@@ -39,6 +39,7 @@ type pollRig struct {
 	rejectAdmission atomic.Bool
 	payloadVersion  atomic.Int32
 	lateEvent       atomic.Bool
+	nullFeed        atomic.Bool
 }
 
 func newPollRig(t *testing.T, total int) *pollRig {
@@ -65,6 +66,12 @@ func newPollRig(t *testing.T, total int) *pollRig {
 			w.Header().Set("X-Poll-Interval", "120")
 			if r.Header.Get("If-None-Match") == `"feed"` {
 				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+			if rig.nullFeed.Load() {
+				if _, err := fmt.Fprint(w, "null"); err != nil {
+					t.Error(err)
+				}
 				return
 			}
 			page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -277,6 +284,27 @@ func TestPollingFailsClosedWithoutReadableReceipts(t *testing.T) {
 				t.Fatal("unavailable receipts advanced polling progress", result, err)
 			}
 		})
+	}
+}
+
+func TestPollingRejectsNullFeedWithoutAdvancingETag(t *testing.T) {
+	rig := newPollRig(t, 1)
+	rig.poller.etag = `"previous"`
+	rig.nullFeed.Store(true)
+	result, err := rig.poller.Poll(t.Context())
+	if err == nil || result.Delivered != 0 || rig.poller.etag != `"previous"` {
+		t.Fatal("null feed was accepted or advanced polling progress", result, err)
+	}
+	if depth, err := rig.queue.QueueDepth(t.Context()); err != nil || depth != 0 {
+		t.Fatal("invalid feed created work", depth, err)
+	}
+}
+
+func TestPollingAcceptsEmptyFeed(t *testing.T) {
+	rig := newPollRig(t, 0)
+	result, err := rig.poller.Poll(t.Context())
+	if err != nil || result.Seen != 0 || result.Unchanged || rig.poller.etag != `"feed"` {
+		t.Fatal("empty feed was not accepted", result, err)
 	}
 }
 

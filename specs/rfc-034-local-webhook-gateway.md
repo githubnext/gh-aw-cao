@@ -48,6 +48,9 @@ ingress's reserved provenance into durable dispatch JSON.
 visibly without skipping failed admissions. The host MUST join the polling
 worker before closing SQLite. One-shot mode MUST report retained deferred work
 as incomplete, not successful completion.
+Rate-budget exhaustion MUST retain deferred work without stopping the continuous
+host; it MUST wait before retrying. One-shot exhaustion MUST still emit the
+simulated outcome counts and report incomplete.
 
 The initial CLI profile deliberately uses a generated fixture, not arbitrary
 production subscription artifacts. Custom filters, Projects authorization, and
@@ -65,6 +68,8 @@ except numeric-loopback HTTP test servers. Redirects MUST NOT be followed.
 **LG-P02** A poll MUST read at most three pages of 100 events and bound each
 response to 8 MiB. Only explicitly supported, selected event families MAY be
 adapted. Unselected/unsupported feed events MUST be counted as ignored.
+An Events API response MUST be a JSON array; `null` MUST NOT be treated as an
+empty successful feed or advance its ETag.
 The adapter MUST NOT invent missing action/filter operands, project identities,
 status transitions, or relationship data.
 

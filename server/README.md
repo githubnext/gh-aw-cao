@@ -231,7 +231,10 @@ This is a delayed, bounded, best-effort feed, **not a lossless webhook journal**
 It cannot recover feed gaps or simulate Projects v2 webhooks. Missing actions,
 filter operands, or transition data are not invented. Supported families are
 listed in RFC-034; one-shot mode reports deferred leased/rate-limited work as
-incomplete rather than claiming it was dispatched.
+incomplete rather than claiming it was dispatched. Continuous mode waits for
+rate-budget recovery instead of stopping the host on normal backpressure.
+Malformed feeds, including JSON `null` instead of an array, do not advance
+polling progress.
 
 ### Isolated production roles
 

@@ -22,7 +22,13 @@ type localOptions struct {
 	once                     bool
 }
 
-func runLocal(ctx context.Context, options localOptions, output io.Writer) error {
+func runLocal(ctx context.Context, options localOptions, output io.Writer) (err error) {
+	// SQLite can surface a driver interruption instead of the cancellation.
+	defer func(parent context.Context) {
+		if err != nil && parent.Err() != nil {
+			err = parent.Err()
+		}
+	}(ctx)
 	if !filepath.IsAbs(options.path) || options.interval < time.Second {
 		return errors.New("local simulation requires an absolute SQLite path and a polling interval of at least one second")
 	}
@@ -71,6 +77,9 @@ func runLocal(ctx context.Context, options localOptions, output io.Writer) error
 		for range policy.Policy.Queue.MaxRows {
 			worked, err := worker.RunOnce(ctx)
 			if err != nil {
+				if errors.Is(err, wg.ErrCapacity) {
+					break
+				}
 				return err
 			}
 			if !worked {
@@ -89,12 +98,12 @@ func runLocal(ctx context.Context, options localOptions, output io.Writer) error
 	defer ticker.Stop()
 	for {
 		worked, err := worker.RunOnce(ctx)
-		if err != nil {
+		if err != nil && !errors.Is(err, wg.ErrCapacity) {
 			cancel()
 			<-polled
 			return err
 		}
-		if worked {
+		if err == nil && worked {
 			select {
 			case err := <-polled:
 				cancel()

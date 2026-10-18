@@ -315,7 +315,7 @@ function validateWebhookGateway(gateway) {
     for (const key of ["sourceRepositoryId", "sourceOrganizationId"]) assertInteger(grant[key], `${path}.grants.${key}`, 0);
     if (!grant.sourceRepositoryId && !grant.sourceOrganizationId) throw new PolicyError(`${path}.grants requires an explicit source`);
     if (grant.sourceInstallationId !== grant.receivingInstallationId) throw new PolicyError(`${path}.grants receiving installation mismatch`);
-    if ("projectIds" in grant) assertUniqueStrings(grant.projectIds, `${path}.grants.projectIds`, /^[A-Za-z0-9_=-]{1,200}$/);
+    if ("projectIds" in grant) assertUniqueStrings(grant.projectIds, `${path}.grants.projectIds`, /^[A-Za-z0-9_+/=-]{1,256}$/);
     assertOneOf(grant.dispatchKind, `${path}.grants.dispatchKind`, ["workflow_dispatch", "repository_dispatch"]);
     for (const key of ["allowVisibilityTransfer", "revoked"]) if (key in grant) assertBoolean(grant[key], `${path}.grants.${key}`);
     assertString(grant.expiresAt, `${path}.grants.expiresAt`, /^\d{4}-\d{2}-\d{2}T/);

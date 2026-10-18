@@ -94,8 +94,8 @@ func (p *Poller) Poll(ctx context.Context) (PollResult, error) {
 			result.Unchanged = true
 			return result, nil
 		}
-		if len(batch) > 100 {
-			return result, errors.New("local GitHub feed exceeds page bounds")
+		if batch == nil || len(batch) > 100 {
+			return result, errors.New("local GitHub feed is invalid or exceeds page bounds")
 		}
 		events = append(events, batch...)
 		if len(batch) < 100 {

@@ -39,6 +39,21 @@ test("control policy recognizes an isolated, opt-in webhook gateway without enab
   assert.equal(result.status, 0, result.stderr);
   assert.equal(parsePolicy(JSON.stringify(document))["control-plane"]["webhook-gateway"].enabled, false);
   assert.equal(schema.$defs.controlPlane.properties["webhook-gateway"].$ref, "#/$defs/webhookGateway");
+  const projects = structuredClone(document);
+  const projectIds = ["PVT_base64+/=", "a".repeat(256)];
+  projects["control-plane"]["webhook-gateway"].grants.push({
+    subscriptionId: "projects", digest: "a".repeat(64), projectIds,
+    sourceInstallationId: 1, sourceRepositoryId: 0, sourceOrganizationId: 7,
+    receivingInstallationId: 1, destinationInstallationId: 2, destinationRepositoryId: 42,
+    dispatchKind: "repository_dispatch", expiresAt: "2027-01-01T00:00:00Z",
+  });
+  const approved = validate(JSON.stringify(projects));
+  assert.equal(approved.status, 0, approved.stderr);
+  for (const ids of [["a".repeat(257)], ["PVT_bad!"], ["PVT_duplicate", "PVT_duplicate"]]) {
+    const invalid = structuredClone(projects);
+    invalid["control-plane"]["webhook-gateway"].grants[0].projectIds = ids;
+    assert.notEqual(validate(JSON.stringify(invalid)).status, 0);
+  }
   for (const mutate of [
     (gateway) => { gateway.dispatchAppId = gateway.receivingAppId; },
     (gateway) => { gateway.enabled = "live"; },
