@@ -95,10 +95,9 @@ export function isReadOnlyCliAction(action) {
   const allowed = Boolean(tokens && (
     tokens[0] === 'gh' && tokens[1] === 'aw'
       && ['status', 'list', 'logs', 'version'].includes(tokens[2]) && tokens.length === 3
-    || tokens[0] === './cao.sh' && (
-      tokens[1] === 'status' && tokens.length === 2
-      || ['query', 'query-info', 'prompt'].includes(tokens[1])
-        && tokens.length === 3 && IDENTIFIER_PATTERN.test(tokens[2])
+    || tokens[0] === 'gh' && tokens[1] === 'cao' && (
+      ['query', 'query-info', 'prompt'].includes(tokens[2])
+        && tokens.length === 4 && IDENTIFIER_PATTERN.test(tokens[3])
     )
   ));
   debugActionValidator({ event: 'read-only-cli-check', status: allowed ? 'allowed' : 'rejected', tokenCount: tokens?.length ?? 0 });

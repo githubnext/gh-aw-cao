@@ -9,7 +9,7 @@ metadata:
 
 ## Deterministic boundary
 
-Use `gh run view`, `gh aw logs`, `./cao.sh validate --json`, and existing CAO
+Use `gh run view`, `gh aw logs`, `gh cao validate --json`, and existing CAO
 query or diagnostic commands to collect structured evidence. Do not reconstruct
 run metadata, package identity, policy validity, or query results manually. The
 agent owns boundary classification, falsifiable hypotheses, evidence

@@ -16,7 +16,6 @@ const executeFile = promisify(execFile);
 const campaignJsonUrl = new URL("../../package.json", import.meta.url);
 const campaignJson = JSON.parse(await readFile(campaignJsonUrl, "utf8"));
 const cao = fileURLToPath(new URL(campaignJson.bin.cao, campaignJsonUrl));
-const caoShell = fileURLToPath(new URL("../../cao.sh", import.meta.url));
 
 test("materialized Go agent artifacts match the dashboard source", async () => {
   const [catalog, dashboard, generatedCatalog, generatedDashboard] = await Promise.all([
@@ -90,10 +89,10 @@ test("cao query-info exposes authored semantic annotations", async () => {
   assert.match(text, /objective: Identify campaigns/);
 });
 
-test("cao.sh prompt renders a named query using the dashboard prompt template without a snapshot", async () => {
+test("Node parity prompt renders a named query using the dashboard prompt template without a snapshot", async () => {
   const cwd = await mkdtemp(path.join(tmpdir(), "cao-agent-prompt-"));
   try {
-    const { stdout } = await executeFile(caoShell, ["prompt", "cost-by-campaign"], { cwd });
+    const { stdout } = await executeFile(process.execPath, [cao, "prompt", "cost-by-campaign"], { cwd });
     assert.match(stdout, /^Improve CAO by increasing ROI/);
     assert.match(stdout, /Query: cost-by-campaign/);
     assert.match(stdout, /Focus on this query's objective and acceptance/);

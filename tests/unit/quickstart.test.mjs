@@ -326,7 +326,7 @@ test('quickstart with explicit target installs and pauses without dispatching or
   assert.equal(result.step, 'install');
   assert.equal(result.status, 'installed');
   assert.equal(result.paused, true);
-  assert.equal(result.nextCommand, './cao.sh quickstart --step run');
+  assert.equal(result.nextCommand, 'gh cao quickstart --step run');
   assert.match(formatQuickstartSummary(result), /No work was dispatched/);
   assert.match(formatQuickstartSummary(result), /Control repository: https:\/\/github\.com\/acme\/cao/);
   assert.match(formatQuickstartSummary(result), /Target: https:\/\/github\.com\/acme\/project/);
@@ -516,7 +516,7 @@ for (const state of ['activity-pending', 'activity-failed', 'activity-empty', 's
     const result = await runCaoQuickstart({ ...fixture.options, step: 'dashboard', collectActivityStats });
     assert.equal(result.status, 'pending');
     assert.equal(result.dashboard, undefined);
-    assert.equal(result.nextCommand, './cao.sh quickstart --step dashboard');
+    assert.equal(result.nextCommand, 'gh cao quickstart --step dashboard');
     const workflow = state.startsWith('dashboard-') ? 'cao-dashboard.yml' : 'cao-activity.yml';
     assert.ok(result.actionsUrl.endsWith(`/actions/workflows/${workflow}`));
     assert.ok(result.inspectCommand.endsWith(`--workflow ${workflow}`));

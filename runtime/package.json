@@ -39,6 +39,7 @@
     "activity/normalized-phase.mjs",
     "activity/normalized-shards.mjs",
     "activity/operational-value.mjs",
+    "activity/pipeline-cli.mjs",
     "activity/problem-clustering.mjs",
     "activity/quickstart.mjs",
     "activity/repository-memory.mjs",

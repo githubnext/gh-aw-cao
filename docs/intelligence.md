@@ -55,28 +55,28 @@ GitHub during evaluation.
 Download or refresh the deployed snapshot:
 
 ```bash
-./cao.sh download
+gh cao download
 ```
 
 Evaluate the complete portfolio:
 
 ```bash
-./cao.sh computation runtime-health
-./cao.sh computation intelligence
+gh cao computation runtime-health
+gh cao computation intelligence
 ```
 
 Narrow either computation to one Campaign:
 
 ```bash
-./cao.sh computation runtime-health --campaign dependabot
-./cao.sh computation intelligence --campaign dependabot
+gh cao computation runtime-health --campaign dependabot
+gh cao computation intelligence --campaign dependabot
 ```
 
 Each command writes JSON to standard output. Diagnostics and runtime warnings
 stay on standard error, so the result can be redirected safely:
 
 ```bash
-./cao.sh computation intelligence > intelligence.json
+gh cao computation intelligence > intelligence.json
 ```
 
 See [CAO Commands](cao-cli.md) for common CLI options.

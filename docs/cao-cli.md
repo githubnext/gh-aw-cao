@@ -1,21 +1,21 @@
 ---
 title: CAO Commands
-description: Configure, control, inspect, and evolve a CAO control plane from its repository-local CLI.
+description: Configure and inspect CAO with the Go extension, and prepare evidence with the repository-local pipeline CLI.
 agent:
   type: cli-reference
   prominent: true
 ---
 
 Use this reference when operating CAO or adding a CLI command. The installer
-adds an executable `./cao.sh` wrapper to the control repository; command
-implementation lives under `activity/cao.mjs` and its focused modules. Agents
+downloads the compiled Go extension as `gh cao` and adds `./cao.sh` for the
+Node.js Activity and Dashboard pipeline. Agents
 using the CLI should follow the
 [`cao-cli` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md);
 agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md).
 The Go extension exposes the operator-facing command surface as `gh cao`.
-The repository-local wrapper remains compatible, including the pipeline
-commands used by Actions. Run either interface from the control repository root:
+Operator commands are no longer accepted by `./cao.sh`; it reports the matching
+Go command instead. Run policy commands from the control repository root:
 
 ```bash
 gh cao --help
@@ -27,26 +27,29 @@ reference. Request command-specific help with `gh cao COMMAND --help`.
 
 ## GitHub CLI extension
 
-Once a release containing extension binaries is promoted to latest, install
-or upgrade the precompiled extension:
+Install or refresh the extension together with the control-plane runtime:
 
 ```bash
-gh extension install githubnext/gh-aw-cao
-gh aw-cao --version
-# For an existing installation:
-gh extension upgrade aw-cao
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash
+gh cao --version
 ```
 
-GitHub CLI derives `gh aw-cao` from this repository's name; use it in place of
-`gh cao` in the examples below. Release binaries use the
+The installer registers `gh cao` directly in GitHub CLI's data directory,
+following the gh-aw installer pattern, without requiring Go or a repository
+rename. It honors `XDG_DATA_HOME` and Windows `LOCALAPPDATA`, defaulting to
+`~/.local/share/gh/extensions/gh-cao`. Rerun the installer to update this
+manually installed extension; `gh extension upgrade` does not manage it.
+Linked/source installations are not overwritten. Release binaries use the
 `gh-cao-OS-ARCH` naming convention, with `.exe` for Windows, and cover Linux,
 macOS, and Windows on amd64 and arm64. `checksums.txt` contains their SHA-256
-digests. An unpinned install selects the latest stable release, not a prerelease.
-After the latest stable release has extension assets, select a particular
-release (including a prerelease) with
-`gh extension install githubnext/gh-aw-cao --pin vX.Y.Z`.
-GitHub CLI also checks the latest stable release to detect binary extensions,
-so pinning alone cannot bypass a latest stable release without binaries.
+digests. Downloads fail closed unless the asset's exact checksum and embedded
+version match. Verification finishes before replacing an existing binary.
+An explicit catalog source `githubnext/gh-aw-cao@vX.Y.Z` selects the same
+extension tag, including a published prerelease with that tag; otherwise the
+installer selects the latest stable CAO release. Main/SHA and local catalog
+sources still select their own runtime revision independently.
+Node.js 24+ remains required for installing the repository's pipeline runtime,
+but not for running the Go operator commands afterward.
 
 For local development, build with `make build` and use `./gh-cao` directly, or follow the
 [local extension installation guide](https://github.com/githubnext/gh-aw-cao/blob/main/CONTRIBUTING.md#go-extension-development)
@@ -61,6 +64,7 @@ to invoke it as `gh cao`.
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Remain in `./cao.sh` / `activity/cao.mjs`; not migrated to the extension. |
+| Node-only administration | `./cao.sh doctor`, `./cao.sh setup-auth hosted-cli` | SQLite check/repair and dedicated hosted-executor App creation; neither has an equivalent Go command. |
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
@@ -94,18 +98,16 @@ gh cao query campaign-runs --param campaign=dependabot
 
 All help works offline, including `gh cao quickstart --help` and
 `gh cao campaigns --help`. Campaign controls are available only under
-`campaigns` in the extension; `./cao.sh mode`, `./cao.sh enable`, and
-`./cao.sh disable` keep their existing syntax.
+`campaigns` in the extension.
 Repository enrollment uses `gh cao repos add OWNER/REPO`; the extension has no
-root-level `add` command. `./cao.sh add CAMPAIGN` and
-`./cao.sh add --repository OWNER/REPO` retain their existing syntax.
+root-level `add` command.
 Authentication is grouped under `gh cao setup auth`; there is no root-level
 `gh cao setup-auth` command. Run `gh cao setup` without a subcommand for guided
 control-plane setup, or configure credentials independently with
 `gh cao setup auth github-app`, `gh cao setup auth enterprise-app`, or
 `gh cao setup auth token`. Each authentication profile retains its existing
 options, dry-run behavior, credential prompts, and separate read/write scope.
-`./cao.sh setup` and `./cao.sh setup-auth PROFILE` retain their existing syntax.
+Only the Node-only `./cao.sh setup-auth hosted-cli` profile remains in the wrapper.
 The runtime JSON result for authentication retains `command: "setup-auth"`.
 `gh cao setup auth token --help` also works offline. `campaigns add` and `update` retain
 gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
@@ -151,7 +153,8 @@ does not establish rollout authority or full schema validity; use
 
 CAO and gh-aw have separate jobs:
 
-- **`./cao.sh`** configures CAO policy, authentication, installed campaigns, workflow enablement, and operational data.
+- **`gh cao`** configures CAO policy, authentication, installed campaigns, workflow enablement, and queries evidence.
+- **`./cao.sh`** prepares pipeline data and runs the retained Node-only tools.
 - **`gh aw run`** starts a compiled agentic workflow.
 - **`gh run`** lists, watches, and inspects the resulting GitHub Actions runs.
 
@@ -159,11 +162,11 @@ CAO and gh-aw have separate jobs:
 
 ```bash
 # Add a campaign and merge its workers into CAO policy.
-./cao.sh add githubnext/gh-aw-cao/dependabot
+gh cao campaigns add githubnext/gh-aw-cao/dependabot
 
 # Keep the campaign review-only and enable its workflows.
-./cao.sh mode preview dependabot
-./cao.sh enable dependabot
+gh cao campaigns mode preview dependabot
+gh cao campaigns enable dependabot
 
 # Review and commit the workflow and policy changes together.
 git diff -- .github
@@ -179,31 +182,31 @@ gh aw run dependabot --ref main \
   --raw-field safe_output_mode="review"
 ```
 
-`cao mode preview` writes `mode: review` to `.github/workflows/cao.json`. The word *preview* distinguishes this operator command from a live promotion; campaign execution still reports `review` mode.
+`gh cao campaigns mode preview` writes `mode: review` to `.github/workflows/cao.json`. The word *preview* distinguishes this operator command from a live promotion; campaign execution still reports `review` mode.
 
 ## Configure the Control Plane
 
 | Command | Use it to |
 | --- | --- |
-| `./cao.sh quickstart --target OWNER/REPO` | Explicitly select the public target, install and commit the review-only control plane, and leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
-| `./cao.sh quickstart --step run` | Dispatch one bounded Repo Assist review using existing policy, then pause the orchestrator and return an Actions link. |
-| `./cao.sh quickstart --step collect` | Dispatch Activity collection and return without waiting. Use after the maintenance outcome is available. |
-| `./cao.sh quickstart --step dashboard` | Check Activity evidence and dashboard deployment read-only; repeat if pending. |
-| `./cao.sh quickstart --wait --target OWNER/REPO` | Explicitly select the target and opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
-| `./cao.sh setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
-| `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
-| `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
-| `./cao.sh setup-auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
+| `gh cao quickstart --target OWNER/REPO` | Explicitly select the public target, install and commit the review-only control plane, and leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
+| `gh cao quickstart --step run` | Dispatch one bounded Repo Assist review using existing policy, then pause the orchestrator and return an Actions link. |
+| `gh cao quickstart --step collect` | Dispatch Activity collection and return without waiting. Use after the maintenance outcome is available. |
+| `gh cao quickstart --step dashboard` | Check Activity evidence and dashboard deployment read-only; repeat if pending. |
+| `gh cao quickstart --wait --target OWNER/REPO` | Explicitly select the target and opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
+| `gh cao setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
+| `gh cao init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
+| `gh cao setup auth github-app ...` | Configure organization-owned read and write Apps. |
+| `gh cao setup auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
 | `./cao.sh setup-auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
-| `./cao.sh setup-auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
-| `./cao.sh add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
-| `./cao.sh add --repository OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
-| `./cao.sh update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
-| `./cao.sh update --campaign SLUG` | Update exactly one installed campaign, retaining runtime materialization and worker-declaration refresh. Use `root` for the CAO root package. |
-| `./cao.sh upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
+| `gh cao setup auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
+| `gh cao campaigns add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
+| `gh cao repos add OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
+| `gh cao update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
+| `gh cao update --campaign SLUG` | Update exactly one installed campaign, retaining runtime materialization and worker-declaration refresh. Use `root` for the CAO root package. |
+| `gh cao upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
 
 Omit `--campaign` to update all installed CAO packages. Selection also works with
-refs and update options, for example `./cao.sh update main --campaign dependabot`.
+refs and update options, for example `gh cao update main --campaign dependabot`.
 The slug is the last component of the installed package name (`root` for
 `githubnext/gh-aw-cao`). Unknown, ambiguous, empty, unsafe, or repeated selections
 fail before updates or gh-aw upgrades. Campaign selection does not narrow a
@@ -211,7 +214,7 @@ required gh-aw compiler upgrade, which may refresh shared workflow files.
 
 The canvas Updates page exposes **Add repository** beside Repositories. Its
 debounced GitHub search only selects a target; execution still requires fresh
-approval of the exact `./cao.sh add --repository OWNER/REPO` command. Enrollment
+approval of the exact `gh cao repos add OWNER/REPO` command. Enrollment
 requires existing exact owner and repository allowlists and does not rewrite a
 broad discovery policy. An already enrolled repository is unchanged. New targets
 stay in review mode even when a campaign defaults to live. The command neither
@@ -219,7 +222,7 @@ commits nor pushes, enables campaigns, changes rollout limits, configures
 credentials, nor expands an explicitly narrowed Activity scope. Review and commit
 the policy before activation at a reviewed workflow SHA.
 
-Use `./cao.sh quickstart --target OWNER/REPO` only immediately after verified installation in a
+Use `gh cao quickstart --target OWNER/REPO` only immediately after verified installation in a
 clean public or private control repository on its default branch. Existing
 commits are allowed; the install stage adds one bounded CAO commit and pauses
 Repo Assist without dispatching it. Continue with `--step run`, inspect its
@@ -235,16 +238,16 @@ or collect requests new work. The run stage can consume
 up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
 + 400 output checking; configured output-check limits may differ),
 with each stage owning only its documented effects in the
-[Repo Assist walkthrough](repo-assist-quickstart.md). Use `./cao.sh setup` for
+[Repo Assist walkthrough](repo-assist-quickstart.md). Use `gh cao setup` for
 review-before-apply configuration. The individual `setup-auth` commands remain
 available for manual and non-interactive administration.
 
-Without an interactive terminal or when `CI` is set, `./cao.sh setup` applies
+Without an interactive terminal or when `CI` is set, `gh cao setup` applies
 only the agent-safe public profile: exact current-repository read and Activity
 scope, no campaigns, public Actions-backed Pages, and repository
 `GITHUB_TOKEN` (`workflow-token`) authentication. It refuses private/internal
 control repositories, broader existing policy, or installed campaigns.
-`./cao.sh setup --json` returns the applied profile with
+`gh cao setup --json` returns the applied profile with
 `"nonInteractive": true`. Bare installation remains usable before setup with
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
@@ -267,37 +270,43 @@ fail-closed.
 
 ```bash
 # Map the campaign to review mode in policy.
-./cao.sh mode preview dependabot
+gh cao campaigns mode preview dependabot
 
 # Promote only after review and explicit approval.
-./cao.sh mode live dependabot
+gh cao campaigns mode live dependabot
 
 # Enable or disable every installed workflow declared by the campaign.
-./cao.sh enable dependabot
-./cao.sh disable dependabot
+gh cao campaigns enable dependabot
+gh cao campaigns disable dependabot
 ```
 
 These commands accept multiple campaign slugs:
 
 ```bash
-./cao.sh disable dependabot repo-assist
+gh cao campaigns disable dependabot repo-assist
 ```
 
 `mode live` does not widen repository scope, grant target consent, or create credential access. Complete the [live rollout gates](rollout-and-routing.md) separately.
-It also checks whether the control repository has a selected GitHub App or PAT with write credentials configured. If CI can confirm they are missing, it suggests `./cao.sh setup`; lack of permission to inspect Actions settings does not block the mode change. This check does not verify installation access or token permissions.
+It also checks whether the control repository has a selected GitHub App or PAT with write credentials configured. If CI can confirm they are missing, it suggests `gh cao setup`; lack of permission to inspect Actions settings does not block the mode change. This check does not verify installation access or token permissions.
 
 `disable` prevents new starts for the campaign's installed workflows. It does not cancel an active run or replace the [control-plane emergency stop](operations.md#emergency-stop).
 
 ## Validate the Control Plane
 
-Run the same read-only validator locally and in CI:
+Run read-only validation locally with the native Go extension:
 
 ```bash
-./cao.sh validate
-./cao.sh validate --json
+gh cao validate
+gh cao validate --json
 ```
 
 Validation checks the policy with the production resolver, the installed gh-aw compiler version, strict compilation and generated workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. GitHub workflow state is reported as unknown when API access is unavailable. Warnings do not fail by default; use `--strict-warnings` to make them fail.
+
+`gh cao validate` runs natively in Go. Actions use the shipped JavaScript runtime
+at the installed revision instead, with
+`node activity/cao.mjs validate --json`. CI does not build or download the Go
+extension or require consumer npm metadata. Both implementations preserve the
+structured report and exit-code contract; `cao.sh` does not expose validation.
 
 Strict compilation runs against a committed temporary snapshot of the current
 workflow files. Normal uncommitted local edits are still validated, but they do
@@ -370,7 +379,7 @@ workflow and SQLite debugging limitation.
 
 For a single-worker development loop without a dispatcher, use
 [Local Worker Debugging](local-debugging.md). Its request-only `debug` mode
-is not a `cao mode` command or a campaign configuration.
+is not a `gh cao campaigns mode` command or a campaign configuration.
 
 CLI failures print one actionable message by default. Set `CAO_DEBUG=1` only
 when diagnosing the CLI itself and an internal stack trace is needed.
@@ -380,7 +389,7 @@ when diagnosing the CLI itself and an internal stack trace is needed.
 First download the JSONL shards and SQLite snapshot published by your deployed CAO dashboard:
 
 ```bash
-./cao.sh download --url https://OWNER.github.io/CONTROL_REPO/cao/payload-hashes.json
+gh cao download --url https://OWNER.github.io/CONTROL_REPO/cao/payload-hashes.json
 ```
 
 The download remains local under `.cao/`. It is derived evidence, not rollout authority.
@@ -388,20 +397,20 @@ The download remains local under `.cao/`. It is derived evidence, not rollout au
 Use the gh-like query surface for common questions:
 
 ```bash
-./cao.sh gh runs --repo OWNER/REPOSITORY --status failure --limit 20
-./cao.sh gh issues --repo OWNER/REPOSITORY --since 2026-09-01
-./cao.sh gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --limit 10
+gh cao gh runs --repo OWNER/REPOSITORY --status failure --limit 20
+gh cao gh issues --repo OWNER/REPOSITORY --since 2026-09-01
+gh cao gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --limit 10
 ```
 
 Check runtime health or query canonical records:
 
 ```bash
-./cao.sh computation intelligence
-./cao.sh computation intelligence --campaign dependabot --previous prior-intelligence.json --feedback decision-feedback.json
-./cao.sh computation runtime-health --campaign dependabot
-./cao.sh computation runtime-health --campaign dependabot --diagnose
+gh cao computation intelligence
+gh cao computation intelligence --campaign dependabot --previous prior-intelligence.json --feedback decision-feedback.json
+gh cao computation runtime-health --campaign dependabot
+gh cao computation runtime-health --campaign dependabot --diagnose
 
-./cao.sh query \
+gh cao query \
   --collection runs \
   --where conclusion=failure \
   --limit 20
@@ -448,8 +457,8 @@ authority.
 Render a named dashboard query as an editable agent prompt with the same template as the UI:
 
 ```bash
-./cao.sh prompt cost-by-campaign
-./cao.sh prompt campaign-runs --param campaign=dependabot --database .cao/gh-aw-logs.sqlite
+gh cao prompt cost-by-campaign
+gh cao prompt campaign-runs --param campaign=dependabot --database .cao/gh-aw-logs.sqlite
 ```
 
 Without `--database`, the command needs no downloaded snapshot and includes no evidence rows. With `--database FILE`, it executes the named query against that existing snapshot and includes a bounded preview; this does not grant rollout authority. Use `--dashboard FILE` to experiment with a different dashboard definition.
@@ -473,7 +482,7 @@ Data-pipeline and dashboard-maintainer commands are listed by `./cao.sh --help`.
 
 ## Review What Each Command Changed
 
-`init`, `add`, `update`, `upgrade-gh-aw`, and `mode` can change checked-in control-plane files. Review those changes and commit workflow sources, generated locks, and `.github/workflows/cao.json` together:
+`init`, `campaigns add`, `update`, `upgrade-gh-aw`, and `campaigns mode` can change checked-in control-plane files. Review those changes and commit workflow sources, generated locks, and `.github/workflows/cao.json` together:
 
 ```bash
 git status --short

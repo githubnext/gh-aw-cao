@@ -103,7 +103,7 @@ usage() {
     '--quickstart requires explicit --target OWNER/REPO for an accessible public repository and pins the latest stable CAO release.' \
     'Use a clean connected control checkout, or explicitly request --create-repo [OWNER/NAME]; no owner or repository is suggested.' \
     'It configures and commits the review-only control plane, then stops with Repo Assist paused; no campaign or Activity run is dispatched.' \
-    'Continue with ./cao.sh quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
+    'Continue with gh cao quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
     'Starting Repo Assist can use up to 1,250 AI credits under default limits; proposals are optional, not requirements for using CAO.' \
     'The default budget includes 250 orchestration + 600 maintenance + 400 output checking; configured output-check limits may differ.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
@@ -405,10 +405,81 @@ resolve_latest_cao_release() {
   fi
   printf '%s\n' \
     'Unable to resolve the latest stable CAO release with a vX.Y.Z tag.' \
-    'Retry after GitHub release access is restored, or pass an explicit source such as githubnext/gh-aw-cao@main.' \
+    'Retry after GitHub release access is restored, or pass an explicit published tag such as githubnext/gh-aw-cao@vX.Y.Z.' \
     'No CAO files were written.' >&2
   return 1
 }
+
+install_cao_extension() (
+  set -euo pipefail
+  local release="$1"
+  local os arch suffix="" data_dir asset directory staged binary expected actual installed_version
+  case "$(uname -s)" in
+    Linux) os=linux ;;
+    Darwin) os=darwin ;;
+    MINGW*|MSYS*|CYGWIN*) os=windows; suffix=.exe ;;
+    *) printf 'Unsupported CAO extension operating system.\n' >&2; exit 1 ;;
+  esac
+  case "$(uname -m)" in
+    x86_64|amd64) arch=amd64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) printf 'Unsupported CAO extension architecture.\n' >&2; exit 1 ;;
+  esac
+  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
+    data_dir="$XDG_DATA_HOME/gh"
+  elif [[ "$os" == windows && -n "${LOCALAPPDATA:-}" ]]; then
+    data_dir="$LOCALAPPDATA/GitHub CLI"
+  else
+    data_dir="${HOME:?HOME is required to install gh cao}/.local/share/gh"
+  fi
+  directory="$data_dir/extensions/gh-cao"
+  if [[ -L "$directory" || -e "$directory/.git" ]]; then
+    printf 'Refusing to replace a linked or source-installed gh cao extension at %s.\n' "$directory" >&2
+    exit 1
+  fi
+  if [[ -L "$directory/gh-cao$suffix" || -d "$directory/gh-cao$suffix" ]]; then
+    printf 'Refusing to replace a linked or non-file gh cao executable at %s.\n' "$directory/gh-cao$suffix" >&2
+    exit 1
+  fi
+  mkdir -p "$directory"
+  staged="$(mktemp -d "$directory/.install.XXXXXX")"
+  binary="$staged/gh-cao$suffix"
+  trap 'rm -f "$binary" "$staged/checksums.txt"; rmdir "$staged"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  asset="gh-cao-$os-$arch$suffix"
+  info "Downloading gh cao $release for $os-$arch..."
+  local base_url="https://github.com/githubnext/gh-aw-cao/releases/download/$release"
+  curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 120 \
+    "$base_url/$asset" -o "$binary"
+  curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 60 \
+    "$base_url/checksums.txt" -o "$staged/checksums.txt"
+  expected="$(awk -v asset="$asset" '$2 == asset { print $1 }' "$staged/checksums.txt")"
+  if [[ ! "$expected" =~ ^[0-9a-f]{64}$ ]]; then
+    printf 'Release checksums must contain exactly one SHA-256 digest for %s.\n' "$asset" >&2
+    exit 1
+  fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual="$(sha256sum "$binary" | awk '{print $1}')"
+  elif command -v shasum >/dev/null 2>&1; then
+    actual="$(shasum -a 256 "$binary" | awk '{print $1}')"
+  else
+    printf 'Installing gh cao requires sha256sum or shasum for checksum verification.\n' >&2
+    exit 1
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    printf 'CAO extension checksum verification failed for %s.\n' "$asset" >&2
+    exit 1
+  fi
+  chmod +x "$binary"
+  installed_version="$("$binary" --version)"
+  if [[ "$installed_version" != "gh cao version $release" ]]; then
+    printf 'CAO extension version verification failed; expected %s.\n' "$release" >&2
+    exit 1
+  fi
+  mv -f "$binary" "$directory/gh-cao$suffix"
+  success "Installed gh cao $release."
+)
 
 # Asks on the controlling terminal before reinstalling an installed gh-aw. A
 # declined prompt stops successfully with manual-upgrade guidance; no usable
@@ -464,6 +535,7 @@ main() {
   local authentication_status
   local quickstart_status
   local quickstart_release
+  local extension_release=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -638,6 +710,12 @@ main() {
     note "Quickstart selected stable CAO release $quickstart_release."
   fi
 
+  if [[ "$catalog_source" =~ ^githubnext/gh-aw-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+    extension_release="${BASH_REMATCH[1]}"
+  elif ! extension_release="$(resolve_latest_cao_release)"; then
+    return 1
+  fi
+
   if [[ -d "$catalog_source" ]]; then
     catalog_source="$(cd "$catalog_source" && pwd)"
   fi
@@ -662,6 +740,7 @@ main() {
   else
     note "Using gh-aw $current_gh_aw."
   fi
+  install_cao_extension "$extension_release"
 
   if [[ -n "$create_repository" ]]; then
     if [[ "$create_repository_in_place" == true ]]; then
@@ -737,7 +816,7 @@ main() {
     if ! run_quiet_command \
       "Initializing the CAO policy..." \
       "CAO policy initialized." \
-      "$cao_command" init; then
+      gh cao init; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi
@@ -747,9 +826,9 @@ main() {
   success "CAO installed and verified."
   if [[ "$setup" == true ]]; then
     if terminal_available; then
-      "$cao_command" setup < /dev/tty
+      gh cao setup < /dev/tty
     else
-      "$cao_command" setup
+      gh cao setup
     fi
   elif [[ "$quickstart" == true ]]; then
     local -a quickstart_arguments=(quickstart)
@@ -758,16 +837,16 @@ main() {
     fi
     if [[ -d "$catalog_source" ]]; then
       quickstart_arguments+=(--campaign "$catalog_source/repo-assist")
-      run_cao_quickstart "$cao_command" "${quickstart_arguments[@]}"
+      run_cao_quickstart gh cao "${quickstart_arguments[@]}"
     else
-      run_cao_quickstart "$cao_command" "${quickstart_arguments[@]}"
+      run_cao_quickstart gh cao "${quickstart_arguments[@]}"
     fi
   fi
   if [[ -n "$create_repository" && "$create_repository_in_place" == false ]]; then
     printf 'Open the new checkout: cd %q\n' "$directory"
   fi
   if [[ "$setup" == false && "$quickstart" == false ]]; then
-    next_step "Next: ./cao.sh setup"
+    next_step "Next: gh cao setup"
   fi
 }
 

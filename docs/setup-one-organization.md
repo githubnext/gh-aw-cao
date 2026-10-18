@@ -44,11 +44,11 @@ private GitHub Apps** in guided setup. Keys are entered only at hidden prompts.
 Otherwise create a pair:
 
 ```bash
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo "$CONTROL_REPO" \
   --dry-run
 
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo "$CONTROL_REPO"
 ```
 

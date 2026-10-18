@@ -90,7 +90,7 @@ func nativeSetupAuth(cmd *cobra.Command, gh ghExecutor) error {
 		if len(repositories["read"]) == 1 {
 			noun = "repository"
 		}
-		_, err := fmt.Fprintf(cmd.OutOrStdout(), "✓ Fine-grained PAT authentication configured for %s.\n  Read scope: %d %s across %s\n  Write scope: %s\n  Authentication mode: pat\n\nExisting GitHub App credentials, if present, are inactive while PAT mode is selected.\nNext: run ./cao.sh validate, then validate a bounded review workflow before removing App credentials.\n",
+		_, err := fmt.Fprintf(cmd.OutOrStdout(), "✓ Fine-grained PAT authentication configured for %s.\n  Read scope: %d %s across %s\n  Write scope: %s\n  Authentication mode: pat\n\nExisting GitHub App credentials, if present, are inactive while PAT mode is selected.\nNext: run gh cao validate, then validate a bounded review workflow before removing App credentials.\n",
 			options.repo, len(repositories["read"]), noun, strings.Join(nativeSetupUnique(owners, false), ", "), strings.Join(writeRepositories, ", "))
 		return err
 	}

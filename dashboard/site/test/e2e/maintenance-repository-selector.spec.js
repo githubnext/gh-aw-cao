@@ -211,7 +211,7 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       await option.focus();
       await page.keyboard.press('Enter');
       await expect(option).toHaveAttribute('aria-pressed', 'true');
-      await expect(dialog.locator('.cli-action-command')).toHaveText(/^(?:bash )?\.\/cao\.sh add --repository octo\/example$/);
+      await expect(dialog.locator('.cli-action-command')).toHaveText('gh cao repos add octo/example');
       if (crowded) {
         expect(await results.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
         const bounds = await dialog.boundingBox();
@@ -228,7 +228,7 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       const consoleView = page.getByRole('region', { name: 'Command console log', exact: true });
       await expect(consoleView).toBeVisible();
       await expect(consoleView.getByRole('status')).toContainText('completed');
-      expect(approvals).toEqual(['./cao.sh add --repository octo/example']);
+      expect(approvals).toEqual(['gh cao repos add octo/example']);
       expect(executions).toEqual(approvals);
       await page.getByRole('button', { name: 'Back to Commands', exact: true }).click();
       await page.goto(`${preview.url}/#page-maintenance`);

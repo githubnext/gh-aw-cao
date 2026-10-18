@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,6 +55,16 @@ func TestNativeStandaloneBinary(t *testing.T) {
 				t.Fatalf("standalone query unavailable: %s", output)
 			}
 		})
+	}
+	validation := exec.Command(binary, "validate", "--json")
+	validation.Dir = working
+	validation.Env = append(os.Environ(), "PATH=", "CAO_RUNTIME_ROOT=/not-an-installed-runtime")
+	output, err := validation.CombinedOutput()
+	var exit *exec.ExitError
+	var report nativeValidationReport
+	if !errors.As(err, &exit) || exit.ExitCode() != 1 || json.Unmarshal(output, &report) != nil ||
+		len(report.Findings) != 1 || report.Findings[0].ID != "missing-cao-policy" {
+		t.Fatalf("standalone validation: %v\n%s", err, output)
 	}
 	files, err := os.ReadDir(working)
 	if err != nil {

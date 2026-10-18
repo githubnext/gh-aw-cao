@@ -56,7 +56,7 @@ prints before continuing.
 ## 2. Connect one repository
 
 ```bash
-./cao.sh setup
+gh cao setup
 ```
 
 Follow **Repositories → Connections → Review and apply**:
@@ -80,7 +80,7 @@ supports the exact current public control repository, not an external target.
 Validate and inspect the installed files:
 
 ```bash
-./cao.sh validate
+gh cao validate
 git status --short
 git diff -- .github
 ```
@@ -134,7 +134,7 @@ browse the [campaign catalog](https://githubnext.github.io/gh-aw-cao/catalog/).
 Install a chosen campaign with:
 
 ```bash
-./cao.sh add githubnext/gh-aw-cao/CAMPAIGN
+gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN
 ```
 
 Installation is not execution. Review and commit its workflows and policy

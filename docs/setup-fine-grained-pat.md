@@ -43,13 +43,13 @@ In `.github/workflows/cao.json`, add only the required owners and exact reposito
 ## Configure the Tokens
 
 ```bash
-./cao.sh setup-auth token \
+gh cao setup auth token \
   --repo "$CONTROL_REPO" \
   --write-repository "$CONTROL_REPO" \
   --expires-in 30 \
   --dry-run
 
-./cao.sh setup-auth token \
+gh cao setup auth token \
   --repo "$CONTROL_REPO" \
   --write-repository "$CONTROL_REPO" \
   --expires-in 30

@@ -74,7 +74,7 @@ for (const width of [1440, 390]) {
       await expect(terminal).toHaveCSS('border-right-width', '0px');
       await expect(terminal).toHaveCSS('border-bottom-width', '0px');
       await expect(terminal).toHaveCSS('border-left-width', '0px');
-      await expect(page.locator('#page-title')).toHaveText('./cao.sh add --repository octo/example');
+      await expect(page.locator('#page-title')).toHaveText('gh cao repos add octo/example');
       const subtitle = page.locator('.overview-header [data-page-description]');
       await expect(subtitle).toBeVisible();
       await expect(subtitle).toContainText('running');
@@ -151,7 +151,7 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/#page-commands$/);
       expect(cancellations).toBe(0);
       finish?.();
-      const command = page.getByRole('link', { name: './cao.sh add --repository octo/example', exact: true });
+      const command = page.getByRole('link', { name: 'gh cao repos add octo/example', exact: true });
       await command.click();
       await expect(consoleView.getByRole('status')).toContainText('completed');
       await expect(subtitle).toContainText('completed');
@@ -178,7 +178,7 @@ for (const width of [1440, 390]) {
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Starting repository setup');
       await consoleView.getByRole('button', { name: 'Copy command output', exact: true }).click();
       const copied = await page.evaluate(() => navigator.clipboard.readText());
-      expect(copied).toContain('$ ./cao.sh add --repository octo/example');
+      expect(copied).toContain('$ gh cao repos add octo/example');
       expect(copied).toContain('Starting repository setup');
       expect(copied).not.toContain('\x1b');
       await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'Starting repository setup' }))

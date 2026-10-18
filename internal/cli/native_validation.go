@@ -45,7 +45,7 @@ func nativeNewFinding(id, severity, category, title string, files []string, expe
 	if files == nil {
 		files = []string{}
 	}
-	return nativeFinding{id, severity, category, title, nil, files, expected, observed, remediation, "./cao.sh validate"}
+	return nativeFinding{id, severity, category, title, nil, files, expected, observed, remediation, "gh cao validate"}
 }
 
 func nativeValidate(cmd *cobra.Command, gh ghExecutor) error {
@@ -103,7 +103,7 @@ func nativeValidateRepository(ctx context.Context, gh ghExecutor, run nativeVali
 		}
 	}()
 	fail := func(err error) nativeValidationReport {
-		report.Findings = append(report.Findings, nativeNewFinding("validator-failure", "error", "infrastructure", "CAO validator failed", nil, nil, err.Error(), "Verify the checkout, runtime, and validator configuration, then rerun ./cao.sh validate"))
+		report.Findings = append(report.Findings, nativeNewFinding("validator-failure", "error", "infrastructure", "CAO validator failed", nil, nil, err.Error(), "Verify the checkout, runtime, and validator configuration, then rerun gh cao validate"))
 		report.ExitCode = 2
 		return report
 	}
@@ -112,7 +112,7 @@ func nativeValidateRepository(ctx context.Context, gh ghExecutor, run nativeVali
 	}
 	policySource, err := os.ReadFile(policyPath)
 	if errors.Is(err, os.ErrNotExist) {
-		report.Findings = append(report.Findings, nativeNewFinding("missing-cao-policy", "error", "policy", "CAO policy is missing", []string{policyPath}, "A checked-in CAO policy", policyPath+" does not exist", "./cao.sh init"))
+		report.Findings = append(report.Findings, nativeNewFinding("missing-cao-policy", "error", "policy", "CAO policy is missing", []string{policyPath}, "A checked-in CAO policy", policyPath+" does not exist", "gh cao init"))
 		return report
 	}
 	if err != nil {
@@ -148,7 +148,7 @@ func nativeValidateRepository(ctx context.Context, gh ghExecutor, run nativeVali
 		if err != nil {
 			observed = err.Error()
 		}
-		report.Findings = append(report.Findings, nativeNewFinding("invalid-cao-policy", "error", "policy", "CAO policy is invalid", []string{policyPath}, "Policy passes the production parser and resolver", observed, "Fix "+policyPath+" and run ./cao.sh validate"))
+		report.Findings = append(report.Findings, nativeNewFinding("invalid-cao-policy", "error", "policy", "CAO policy is invalid", []string{policyPath}, "Policy passes the production parser and resolver", observed, "Fix "+policyPath+" and run gh cao validate"))
 	} else {
 		installed, err = nativeValidationDeclarations()
 		if err != nil {
@@ -384,7 +384,7 @@ func nativeValidateEnablement(ctx context.Context, gh ghExecutor, installed []na
 		err = json.Unmarshal([]byte(stdout), &workflows)
 	}
 	if err != nil {
-		return append(findings, nativeNewFinding("github-enablement-state-unavailable", "warning", "configuration", "GitHub workflow enablement state is unavailable", nil, "GitHub Actions workflow states can be enumerated", nativeCommandDiagnostic(stdout, stderr, err), "Authenticate gh with Actions read access and rerun ./cao.sh validate"))
+		return append(findings, nativeNewFinding("github-enablement-state-unavailable", "warning", "configuration", "GitHub workflow enablement state is unavailable", nil, "GitHub Actions workflow states can be enumerated", nativeCommandDiagnostic(stdout, stderr, err), "Authenticate gh with Actions read access and rerun gh cao validate"))
 	}
 	states := map[string]string{}
 	for _, workflow := range workflows {
@@ -420,7 +420,7 @@ func nativeValidateEnablement(ctx context.Context, gh ghExecutor, installed []na
 			if active*2 >= len(statuses) {
 				action = "enable"
 			}
-			finding := nativeNewFinding("campaign-partially-disabled", "warning", "configuration", "Campaign workflows have inconsistent enablement", paths, "All campaign workflows share one enablement state", strings.Join(observed, ", "), "./cao.sh "+action+" "+item.name)
+			finding := nativeNewFinding("campaign-partially-disabled", "warning", "configuration", "Campaign workflows have inconsistent enablement", paths, "All campaign workflows share one enablement state", strings.Join(observed, ", "), "gh cao campaigns "+action+" "+item.name)
 			finding.Campaign = item.name
 			findings = append(findings, finding)
 		}

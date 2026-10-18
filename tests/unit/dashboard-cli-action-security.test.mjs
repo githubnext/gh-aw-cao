@@ -18,7 +18,7 @@ async function fixture(options) {
       "cli-actions": [
         { id: "compile", label: "Compile", icon: "play", command: "gh aw compile" },
         { id: "create-task", label: "Start task", icon: "copilot", command: "gh agent-task create --from-file -" },
-        { id: "add-repository", label: "Add repository", icon: "plus", command: "./cao.sh add --repository {{repository}}",
+        { id: "add-repository", label: "Add repository", icon: "plus", command: "gh cao repos add {{repository}}",
           selector: { label: "Repository", "debounce-ms": 300,
             query: { command: "gh search repos", fields: ["fullName", "description"], limit: 20 },
             mapping: { value: "fullName", label: "fullName", description: "description", target: "repository" } } },
@@ -117,8 +117,8 @@ test("selected repository is bound to fresh trusted approval before cao add runs
     const response = await testCase.post({ id: "add-repository", values: { repository: "octo/repo" } });
     assert.equal(response.status, 200);
     await response.text();
-    assert.equal(approvals[0].command, "./cao.sh add --repository octo/repo");
-    assert.deepEqual(executions, ["./cao.sh add --repository octo/repo"]);
+    assert.equal(approvals[0].command, "gh cao repos add octo/repo");
+    assert.deepEqual(executions, ["gh cao repos add octo/repo"]);
     assert.equal((await testCase.post({ id: "add-repository", values: { repository: "octo/repo;evil" } })).status, 400);
     assert.equal(executions.length, 1);
   } finally { await testCase.close(); }

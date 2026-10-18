@@ -8,7 +8,7 @@ catalog, or its role is ambiguous.
 The normal setup creates or reuses a repository whose installed CAO runtime,
 policy, credentials, and campaign records operate on explicitly enrolled remote
 repositories. Prefer a private repository. Use the installer and interactive
-`./cao.sh setup` flow.
+`gh cao setup` flow.
 
 ## Source-managed control repository
 

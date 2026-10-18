@@ -1019,7 +1019,7 @@
         "label": "Switch to live",
         "description": "Switch this campaign's workflows to live mode.",
         "icon": "play",
-        "command": "./cao.sh mode live {{campaign}}",
+        "command": "gh cao campaigns mode live {{campaign}}",
         "placement": "row"
       },
       {
@@ -1028,7 +1028,7 @@
         "label": "Switch to preview",
         "description": "Switch this campaign's workflows to preview mode.",
         "icon": "eye",
-        "command": "./cao.sh mode preview {{campaign}}",
+        "command": "gh cao campaigns mode preview {{campaign}}",
         "placement": "row"
       },
       {
@@ -1037,7 +1037,7 @@
         "label": "Activate campaign",
         "description": "Activate this campaign's orchestrator and worker workflows.",
         "icon": "play",
-        "command": "./cao.sh enable {{campaign}}",
+        "command": "gh cao campaigns enable {{campaign}}",
         "placement": "row"
       },
       {
@@ -1046,7 +1046,7 @@
         "label": "Deactivate",
         "description": "Deactivate future campaign workflow runs. Active runs continue until separately cancelled on GitHub.",
         "icon": "pause",
-        "command": "./cao.sh disable {{campaign}}",
+        "command": "gh cao campaigns disable {{campaign}}",
         "placement": "row"
       },
       {
@@ -1064,7 +1064,7 @@
         "label": "Add",
         "description": "Copy the canonical CAO add command for this package. The dashboard does not install packages.",
         "icon": "plus",
-        "command": "./cao.sh add {{package-source}}",
+        "command": "gh cao campaigns add {{package-source}}",
         "placement": "row",
         "copy-only": true
       },
@@ -1074,7 +1074,7 @@
         "label": "Add repository",
         "description": "Stage one exact repository in local CAO policy in review mode. Review and commit the policy change before activation; credential access is configured separately.",
         "icon": "plus",
-        "command": "./cao.sh add --repository {{repository}}",
+        "command": "gh cao repos add {{repository}}",
         "placement": "view",
         "selector": {
           "label": "Repository",

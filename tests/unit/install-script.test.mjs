@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import fs from "node:fs";
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -130,6 +130,12 @@ if [[ "$*" == "--version" ]]; then
   echo "gh version \${FAKE_GH_VERSION:-${supportedGh}} (fake)"
   exit 0
 fi
+if [[ "\${1:-}" == cao ]]; then
+  shift
+  executable="$XDG_DATA_HOME/gh/extensions/gh-cao/gh-cao"
+  [[ ! -f "$executable.exe" ]] || executable="$executable.exe"
+  exec "$executable" "$@"
+fi
 if [[ "$*" == "auth status" ]]; then
   [[ -z "\${FAKE_AUTH_DELAY:-}" ]] || sleep "$FAKE_AUTH_DELAY"
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
@@ -253,6 +259,46 @@ exit 2
 
 // Serves gh-aw's install script, which records the requested version as installed.
 const fakeCurl = `#!/usr/bin/env bash
+set -euo pipefail
+url=""
+output=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o) output="$2"; shift 2 ;;
+    https://*) url="$1"; shift ;;
+    *) shift ;;
+  esac
+done
+if [[ "$url" == https://github.com/githubnext/gh-aw-cao/releases/download/* ]]; then
+  echo "$url" >> "$FAKE_CAO_DOWNLOADS"
+  [[ -z "\${FAKE_CAO_BINARY_FAILURE:-}" ]] || { echo "binary download failed" >&2; exit 22; }
+  asset="\${url##*/}"
+  release="\${url%/*}"
+  release="\${release##*/}"
+  if [[ "$asset" == checksums.txt ]]; then
+    node --input-type=module -e '
+      import { readFileSync } from "node:fs";
+      import { createHash } from "node:crypto";
+      const mode = process.env.FAKE_CAO_CHECKSUM_MODE;
+      const digest = mode === "corrupt" ? "0".repeat(64) : createHash("sha256").update(readFileSync(process.argv[1])).digest("hex");
+      if (mode !== "missing") for (const os of ["darwin", "linux", "windows"]) for (const arch of ["amd64", "arm64"]) {
+        const line = digest + "  gh-cao-" + os + "-" + arch + (os === "windows" ? ".exe" : "");
+        console.log(line);
+        if (mode === "duplicate") console.log(line);
+      }
+    ' "$(find "$(dirname "$output")" -name 'gh-cao*' -type f -print -quit)" > "$output"
+  else
+    cat > "$output" <<EOF
+#!/usr/bin/env bash
+if [[ "\\$*" == --version ]]; then
+  echo "gh cao version \${FAKE_CAO_BINARY_VERSION:-$release}"
+else
+  exec node activity/cao.mjs "\\$@"
+fi
+EOF
+  fi
+  exit 0
+fi
 echo "curl" >> "$FAKE_COMMAND_LOG"
 if [[ -n "\${FAKE_INSTALL_FAILURE:-}" ]]; then
   echo "curl: (22) The requested URL returned error: 503" >&2
@@ -307,6 +353,8 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     FAKE_COMMAND_LOG: log,
     FAKE_GH_AW_INSTALLED: ghAwInstalled,
     FAKE_CONTROL_REPOSITORY: repository,
+    XDG_DATA_HOME: path.join(root, "data"),
+    FAKE_CAO_DOWNLOADS: path.join(root, "cao-downloads.log"),
   };
   return {
     root,
@@ -576,7 +624,7 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.doesNotMatch(result.stdout, /Making the CAO launcher executable/);
   assert.match(result.stdout, /Initializing the CAO policy/);
   assert.match(result.stdout, /CAO installed and verified/);
-  assert.match(result.stdout, /Next: \.\/cao\.sh setup/);
+  assert.match(result.stdout, /Next: gh cao setup/);
   assert.doesNotMatch(result.stdout, /Continue to guided setup/);
   assert.doesNotMatch(installerSource, /--silent|curl -s/);
 });
@@ -1028,7 +1076,7 @@ test("interactive bare installation stops cleanly with an explicit setup next st
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.doesNotMatch(result.stdout, /Continue to guided setup|Repositories CAO should read/);
-  assert.match(result.stdout, /Next: \.\/cao\.sh setup/);
+  assert.match(result.stdout, /Next: gh cao setup/);
   assert.equal(await log(), "add\n");
   await assertCompleteInstall(consumer, env, supportedGhAw, repository);
 });
@@ -1281,11 +1329,11 @@ test("quickstart preserves an explicit main source", async (t) => {
     CI: "1",
     FAKE_ADD_FAILURE: "1",
     FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@main",
-    FAKE_LATEST_CAO_RELEASE_FAILURE: "1",
   }, ["githubnext/gh-aw-cao@main", "--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
   assert.doesNotMatch(result.stdout + result.stderr, /Unable to resolve the latest stable CAO release/);
+  assert.doesNotMatch(result.stdout, /Quickstart selected stable CAO release/);
   assert.equal(await log(), "add\n");
 });
 
@@ -1303,6 +1351,120 @@ test("quickstart fails closed when no stable CAO release can be resolved", async
   assert.equal(await log(), "");
   await assertNothingInstalled(consumer);
 });
+
+test("an explicit release downloads the matching Go binary without a latest-release lookup", async (t) => {
+  const { consumer, env } = await createConsumer(t, supportedGhAw);
+  await streamInstaller(consumer, { ...env, FAKE_LATEST_CAO_RELEASE_FAILURE: "1" }, ["githubnext/gh-aw-cao@v2.3.4"]);
+  const downloads = await readFile(env.FAKE_CAO_DOWNLOADS, "utf8");
+  assert.match(downloads, /\/v2\.3\.4\/gh-cao-(?:darwin|linux|windows)-(?:amd64|arm64)(?:\.exe)?\n/);
+  assert.match(downloads, /\/v2\.3\.4\/checksums\.txt\n/);
+  const version = await executeFile("gh", ["cao", "--version"], { cwd: consumer, env });
+  assert.equal(version.stdout.trim(), "gh cao version v2.3.4");
+});
+
+for (const [name, override, message] of [
+  ["download failure", { FAKE_CAO_BINARY_FAILURE: "1" }, /binary download failed/],
+  ["checksum mismatch", { FAKE_CAO_CHECKSUM_MODE: "corrupt" }, /checksum verification failed/],
+  ["missing checksum", { FAKE_CAO_CHECKSUM_MODE: "missing" }, /exactly one SHA-256 digest/],
+  ["duplicate checksum", { FAKE_CAO_CHECKSUM_MODE: "duplicate" }, /exactly one SHA-256 digest/],
+  ["embedded version mismatch", { FAKE_CAO_BINARY_VERSION: "v0.0.1" }, /version verification failed/],
+]) {
+  test(`Go extension installation preserves an existing binary on ${name}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+    const directory = path.join(env.XDG_DATA_HOME, "gh", "extensions", "gh-cao");
+    const binary = path.join(directory, process.platform === "win32" ? "gh-cao.exe" : "gh-cao");
+    await mkdir(directory, { recursive: true });
+    await writeFile(binary, "previous verified executable");
+    const result = await runStreamed(consumer, { ...env, ...override });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, message);
+    assert.equal(await readFile(binary, "utf8"), "previous verified executable");
+    assert.equal(await log(), "");
+    assert.deepEqual((await fs.promises.readdir(directory)).sort(), [path.basename(binary)]);
+    await assertNothingInstalled(consumer);
+  });
+}
+
+async function runExtensionInstaller(consumer, env) {
+  const extensionInstaller = installerSource.match(/^install_cao_extension\(\) \([\s\S]*?^\)/m)?.[0];
+  assert.ok(extensionInstaller, "the production extension installer is available");
+  return executeFile("bash", [
+    "-c",
+    `set -euo pipefail\ninfo() { :; }\nsuccess() { :; }\n${extensionInstaller}\ninstall_cao_extension v1.2.3`,
+  ], { cwd: consumer, env, timeout });
+}
+
+for (const [system, machine, asset] of [
+  ["Linux", "x86_64", "linux-amd64"],
+  ["Linux", "aarch64", "linux-arm64"],
+  ["Darwin", "x86_64", "darwin-amd64"],
+  ["Darwin", "arm64", "darwin-arm64"],
+  ["MINGW64_NT-10.0", "x86_64", "windows-amd64.exe"],
+  ["MSYS_NT-10.0", "aarch64", "windows-arm64.exe"],
+]) {
+  test(`Go extension selects and installs the published ${asset} asset`, async (t) => {
+    const { root, consumer, env } = await createConsumer(t, supportedGhAw);
+    await writeFile(path.join(root, "bin", "uname"), `#!/usr/bin/env bash\nif [[ "$1" == -s ]]; then echo "${system}"; else echo "${machine}"; fi\n`, { mode: 0o755 });
+    const useLocalAppData = system.startsWith("MSYS");
+    const useHome = system === "Darwin" && machine === "x86_64";
+    const installEnv = {
+      ...env,
+      HOME: path.join(root, "home"),
+      LOCALAPPDATA: path.join(root, "local-app-data"),
+      ...((useLocalAppData || useHome) ? { XDG_DATA_HOME: "" } : {}),
+    };
+    await runExtensionInstaller(consumer, installEnv);
+    const downloads = (await readFile(env.FAKE_CAO_DOWNLOADS, "utf8")).trim().split("\n");
+    assert.deepEqual(downloads, [
+      `https://github.com/githubnext/gh-aw-cao/releases/download/v1.2.3/gh-cao-${asset}`,
+      "https://github.com/githubnext/gh-aw-cao/releases/download/v1.2.3/checksums.txt",
+    ]);
+    const extensionRoot = useLocalAppData
+      ? path.join(installEnv.LOCALAPPDATA, "GitHub CLI")
+      : useHome ? path.join(installEnv.HOME, ".local", "share", "gh") : path.join(env.XDG_DATA_HOME, "gh");
+    const binary = path.join(extensionRoot, "extensions", "gh-cao", `gh-cao${asset.endsWith(".exe") ? ".exe" : ""}`);
+    const { stdout } = await executeFile("bash", [binary, "--version"], { env: installEnv });
+    assert.equal(stdout.trim(), "gh cao version v1.2.3");
+  });
+}
+
+for (const [system, machine, message] of [
+  ["FreeBSD", "x86_64", /Unsupported CAO extension operating system/],
+  ["Linux", "riscv64", /Unsupported CAO extension architecture/],
+]) {
+  test(`Go extension rejects unsupported ${system}/${machine} before downloading`, async (t) => {
+    const { root, consumer, env } = await createConsumer(t, supportedGhAw);
+    await writeFile(path.join(root, "bin", "uname"), `#!/usr/bin/env bash\nif [[ "$1" == -s ]]; then echo "${system}"; else echo "${machine}"; fi\n`, { mode: 0o755 });
+    await assert.rejects(runExtensionInstaller(consumer, env), (error) => {
+      assert.match(error.stderr, message);
+      return true;
+    });
+    assert.equal(fs.existsSync(env.FAKE_CAO_DOWNLOADS), false);
+    assert.equal(fs.existsSync(env.XDG_DATA_HOME), false);
+  });
+}
+
+for (const kind of ["source", "linked", "non-file"]) {
+  test(`Go extension refuses to overwrite a ${kind} installation`, async (t) => {
+    const { root, consumer, env } = await createConsumer(t, supportedGhAw);
+    const directory = path.join(env.XDG_DATA_HOME, "gh", "extensions", "gh-cao");
+    await mkdir(path.dirname(directory), { recursive: true });
+    if (kind === "linked") {
+      const source = path.join(root, "linked-source");
+      await mkdir(source);
+      await symlink(source, directory, "junction");
+    } else {
+      await mkdir(directory);
+      if (kind === "source") await writeFile(path.join(directory, ".git"), "gitdir: source\n");
+      else await mkdir(path.join(directory, `gh-cao${process.platform === "win32" ? ".exe" : ""}`));
+    }
+    await assert.rejects(runExtensionInstaller(consumer, env), (error) => {
+      assert.match(error.stderr, /Refusing to replace/);
+      return true;
+    });
+    assert.equal(fs.existsSync(env.FAKE_CAO_DOWNLOADS), false);
+  });
+}
 
 test("quickstart rejects a prerelease as the implicit stable source", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);

@@ -209,6 +209,27 @@ destination set.
 
 ### 4.3 Lifecycle entry points
 
+The root installer MUST download the compiled `gh-cao-OS-ARCH` release asset
+and `checksums.txt` for the current supported platform (Linux, Darwin or Windows;
+amd64 or arm64). It MUST verify exactly one matching SHA-256 entry and the
+embedded version before atomically replacing the binary in GitHub CLI's
+`gh-cao` extension data directory. It MUST honor `XDG_DATA_HOME` and Windows
+`LOCALAPPDATA`, refuse linked/source installations, and preserve an existing
+binary on verification failure. An explicit `githubnext/gh-aw-cao@vX.Y.Z`
+source MUST select that extension release; other sources MUST use the latest
+stable extension. Runtime revision selection remains independent.
+The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
+removed shell equivalents. `cao.sh` MUST reject migrated operator commands
+with migration guidance and expose only pipeline tools, SQLite `doctor`,
+and `setup-auth hosted-cli`. Actions MAY invoke internal Node modules directly.
+Operator-facing `gh cao validate` MUST remain native Go. The validation workflow
+MUST execute the shipped JavaScript runtime directly with
+`node activity/cao.mjs validate --json` at its installed revision, using the
+production policy resolver. It MUST NOT build or download the Go extension or
+require consumer npm metadata. Both implementations MUST preserve the structured
+report and exit-code contract. CI MUST keep its report under `RUNNER_TEMP`, not
+in the repository working tree.
+
 The supported root CAO installer MUST materialize the root runtime after gh-aw
 has resolved the root package record. For a main or SHA source, the
 materializer MUST wait at most five minutes when the exact runtime build is

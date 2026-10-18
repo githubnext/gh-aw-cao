@@ -90,9 +90,9 @@ function validWorkflowDispatchArguments(args) {
 
 const allowedCommandPrefixes = [
   {
-    tokens: ["./cao.sh"],
+    tokens: ["gh", "cao"],
     minimumArguments: 1,
-    usage: "./cao.sh <command>",
+    usage: "gh cao <command>",
   },
   {
     tokens: ["gh", "aw"],
@@ -394,8 +394,8 @@ export async function executeDashboardCommand({
     signal,
   });
   const isGhAwCommand = tokens[0] === "gh" && tokens[1] === "aw";
-  const isCaoCommand = tokens[0] === "./cao.sh";
-  const commandExecutable = isCaoCommand ? tokens[0] : ghExecutable;
+  const isCaoCommand = tokens[0] === "gh" && tokens[1] === "cao";
+  const commandExecutable = ghExecutable;
   const commandArguments = tokens.slice(1);
   let gitIdentity;
   if (isGhAwCommand || isCaoCommand) {

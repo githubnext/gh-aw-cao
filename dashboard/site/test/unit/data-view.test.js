@@ -223,28 +223,28 @@ describe('data view renderer', () => {
         id: 'set-campaign-live',
         label: 'Switch to live',
         icon: 'play',
-        command: './cao.sh mode live {{campaign}}',
+        command: 'gh cao campaigns mode live {{campaign}}',
         placement: 'row'
       },
       {
         id: 'set-campaign-preview',
         label: 'Switch to preview',
         icon: 'eye',
-        command: './cao.sh mode preview {{campaign}}',
+        command: 'gh cao campaigns mode preview {{campaign}}',
         placement: 'row'
       },
       {
         id: 'enable-campaign',
         label: 'Enable',
         icon: 'play',
-        command: './cao.sh enable {{campaign}}',
+        command: 'gh cao campaigns enable {{campaign}}',
         placement: 'row'
       },
       {
         id: 'disable-campaign',
         label: 'Disable',
         icon: 'stop',
-        command: './cao.sh disable {{campaign}}',
+        command: 'gh cao campaigns disable {{campaign}}',
         placement: 'row'
       }
     ], { canExecute: false });
@@ -344,8 +344,8 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).toContain('Disable');
     expect([...rendered?.querySelectorAll('.cli-action-command') ?? []].map((element) => element.textContent)).toEqual(
       expect.arrayContaining([
-        './cao.sh enable remote-agent',
-        './cao.sh disable ci-doctor'
+        'gh cao campaigns enable remote-agent',
+        'gh cao campaigns disable ci-doctor'
       ])
     );
     expect(rendered?.textContent).not.toContain('update-available');
@@ -599,14 +599,14 @@ describe('data view renderer', () => {
         id: 'enable-campaign',
         label: 'Activate campaign',
         icon: 'play',
-        command: './cao.sh enable {{campaign}}',
+        command: 'gh cao campaigns enable {{campaign}}',
         placement: 'row'
       },
       {
         id: 'disable-campaign',
         label: 'Deactivate',
         icon: 'pause',
-        command: './cao.sh disable {{campaign}}',
+        command: 'gh cao campaigns disable {{campaign}}',
         placement: 'row'
       },
       {
@@ -668,8 +668,8 @@ describe('data view renderer', () => {
     expect(actionLabels(cards[0])).toEqual(['Deactivate']);
     expect(actionLabels(cards[1])).toEqual(['Activate campaign']);
     expect(actionLabels(cards[2])).toEqual(['Deactivate', 'Update']);
-    expect(rendered?.textContent).toContain('./cao.sh enable current');
-    expect(rendered?.textContent).toContain('./cao.sh disable outdated');
+    expect(rendered?.textContent).toContain('gh cao campaigns enable current');
+    expect(rendered?.textContent).toContain('gh cao campaigns disable outdated');
     expect(cards[0]?.querySelector('.issue-list-labels .status-success')?.textContent).toBe('Active');
     expect(cards[0]?.querySelector('.issue-list-card-meta .status-muted')?.textContent).toBe('unknown');
     expect(cards[1]?.querySelector('.issue-list-card-meta .status-success')?.textContent).toBe('current');

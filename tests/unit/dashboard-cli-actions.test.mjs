@@ -69,7 +69,7 @@ if (args.includes("--help") || args[0] === "api") {
     await writeFile(filename, script);
     await chmod(filename, 0o755);
   }
-  for (const command of ["gh aw compile", "./cao.sh update"]) {
+  for (const command of ["gh aw compile", "gh cao update"]) {
     for (const streaming of [false, true]) {
       const output = { stdout: "", stderr: "" };
       const result = await executeDashboardCommand({
@@ -218,8 +218,8 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
 
 test("CLI actions parse CAO helper commands without a shell", () => {
   assert.deepEqual(
-    parseDashboardCommand("./cao.sh add githubnext/gh-aw-cao/dependabot"),
-    ["./cao.sh", "add", "githubnext/gh-aw-cao/dependabot"],
+    parseDashboardCommand("gh cao campaigns add githubnext/gh-aw-cao/dependabot"),
+    ["gh", "cao", "campaigns", "add", "githubnext/gh-aw-cao/dependabot"],
   );
 });
 
@@ -228,7 +228,7 @@ test("CLI actions reject commands outside supported GitHub CLI commands", () => 
     () => parseDashboardCommand("gh api user"),
     {
       message:
-        'CLI action command must be an explicit "./cao.sh <command>" or "gh aw <command>" or "gh workflow run <workflow>" or "gh agent-task create --from-file -" invocation.',
+        'CLI action command must be an explicit "gh cao <command>" or "gh aw <command>" or "gh workflow run <workflow>" or "gh agent-task create --from-file -" invocation.',
     },
   );
   assert.throws(() => parseDashboardCommand("gh workflow view"), /must be an explicit/);
@@ -262,7 +262,7 @@ test("CLI actions accept only stdin-backed agent task creation", () => {
 test("CLI actions execute the CAO helper with the approved token and Git identity", async () => {
   const calls = [];
   const result = await executeDashboardCommand({
-    command: "./cao.sh update --major",
+    command: "gh cao update --major",
     workingDirectory: "/workspace",
     githubToken: "token-value",
     execute: async (...args) => {
@@ -280,8 +280,8 @@ test("CLI actions execute the CAO helper with the approved token and Git identit
 
   assert.equal(result.ok, true);
   assert.deepEqual(calls[2].slice(0, 2), [
-    "./cao.sh",
-    ["update", "--major"],
+    "gh",
+    ["cao", "update", "--major"],
   ]);
   assert.equal(calls[2][2].cwd, "/workspace");
   assert.equal(calls[2][2].env.GH_TOKEN, "token-value");

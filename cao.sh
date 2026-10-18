@@ -9,4 +9,4 @@ if [ ! -f "$cli" ]; then
   exit 1
 fi
 
-exec node "$cli" "$@"
+exec node "$cli" --pipeline "$@"

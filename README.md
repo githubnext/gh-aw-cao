@@ -23,13 +23,13 @@ curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.s
 Connect one repository and configure authentication:
 
 ```bash
-./cao.sh setup
+gh cao setup
 ```
 
 Validate, review, and publish your configuration:
 
 ```bash
-./cao.sh validate
+gh cao validate
 git status --short
 git diff -- .github
 git add .github activity dashboard cao.sh
@@ -81,19 +81,18 @@ work and planned improvements.
 
 ### GitHub CLI extension
 
-The `gh cao` Go extension exposes the operator commands for setup,
-authentication, campaigns, validation, and read-only evidence analysis.
-Run `make build` to produce `./gh-cao`, then try `./gh-cao --help`.
-Once a release containing extension binaries is promoted to latest, install
-without building Go locally:
+The installer downloads and verifies the compiled `gh cao` Go extension for
+setup, authentication, campaigns, validation, and read-only evidence analysis.
+No local Go build is needed:
 
 ```bash
-gh extension install githubnext/gh-aw-cao
-gh aw-cao --help
+gh cao --help
+gh cao --version
 ```
 
-GitHub CLI derives the installed command `gh aw-cao` from the repository name.
-The local development installation can expose the same executable as `gh cao`.
+The installer registers the binary as `gh cao`, independently of the catalog
+repository name. Rerun the installer to refresh it. For local development,
+`make build` produces `./gh-cao`.
 
 Use `gh cao setup` for guided configuration or
 `gh cao setup auth github-app|enterprise-app|token` for authentication only.
@@ -105,8 +104,10 @@ reads canonical SQLite snapshots directly; use `--dashboard FILE` to select
 an explicit dashboard document. Run policy mutations from the control repository root.
 Help, version, and catalog discovery work offline.
 
-Activity and Dashboard Actions retain their Node CLI and pipeline commands;
-`cao.sh` and the installer remain compatible. Releases include version-stamped
+Activity and Dashboard Actions retain their Node CLI and pipeline commands.
+`cao.sh` no longer accepts migrated operator commands; use `gh cao` instead.
+SQLite snapshot repair and hosted-CLI App setup remain Node-only.
+Releases include version-stamped
 binaries named `gh-cao-OS-ARCH` (`.exe` on Windows) for Linux, macOS, and Windows
 (amd64 and arm64), plus SHA-256 checksums.
 See [the command reference](docs/cao-cli.md#github-cli-extension) for the migration
@@ -205,9 +206,9 @@ The dashboard workflow remains manual and does not enable Pages automatically.
 ## Agent analysis
 
 Central Agentic Ops can give an agent its dashboard data without a browser or
-shell. Install CAO, run `cao download`, and then either query the snapshot from
-a shell with `cao pages`, `cao queries`, and `cao query QUERY_ID`, or start the
-read-only MCP server with `cao mcp` and let an agent call `cao_catalog` and
+shell. Install CAO, run `gh cao download`, and then either query the snapshot from
+a shell with `gh cao pages`, `gh cao queries`, and `gh cao query QUERY_ID`, or start the
+read-only MCP server with `gh cao mcp` and let an agent call `cao_catalog` and
 `cao_query`. See [Agent analysis](docs/agent-analysis.md) for the GitHub Actions
 bootstrap.
 

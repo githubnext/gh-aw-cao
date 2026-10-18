@@ -8,7 +8,7 @@ const selector = {
   query: { command: "gh search repos", fields: ["fullName", "description"], limit: 20 },
   mapping: { value: "fullName", label: "fullName", description: "description", target: "repository" },
 };
-const action = { command: "./cao.sh add --repository {{repository}}", selector };
+const action = { command: "gh cao repos add {{repository}}", selector };
 
 test("selector runs only declared read-only argv and maps results declaratively", async () => {
   const options = await lookupDialogOptions(action, "--help; $(echo untrusted)", {

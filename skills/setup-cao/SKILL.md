@@ -7,8 +7,9 @@ metadata:
 
 # Set Up Central Agentic Ops
 
-Create or reuse one bare CAO control plane. Setup leaves the runtime (including
-`./cao.sh`), exact repository scope and compatible authentication installed,
+Create or reuse one bare CAO control plane. Setup leaves the compiled `gh cao`
+extension, runtime (including the pipeline-only `./cao.sh`), exact repository
+scope and compatible authentication installed,
 `control-plane.campaigns` as an empty object, and no user-facing campaign installed or enabled, no live rollout, and no workflow
 dispatch.
 
@@ -16,7 +17,7 @@ Campaign discovery and installation are a separate task for `add-cao-campaign`.
 
 ## Deterministic boundary
 
-Use the repository-local `./cao.sh setup` and `./cao.sh validate` commands for
+Use `gh cao setup` and `gh cao validate` from the control checkout for
 policy construction, authentication setup, external checks, mutation, and
 postcondition validation. The agent owns topology clarification, exact scope,
 tradeoff explanation, approval, and diff review. Do not recreate setup logic or
@@ -55,9 +56,9 @@ control repository or selecting a non-public target.
 
 ## Preferred human flow
 
-For a separate control repository, prefer repository-local interactive setup.
+For a separate control repository, prefer interactive setup.
 For a new repository, use the review-before-apply [setup quickstart](https://github.com/githubnext/gh-aw-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
-The installer's `--setup` flag enters `./cao.sh setup` directly.
+The installer's `--setup` flag enters `gh cao setup` directly.
 
 ```bash
 curl --fail --silent --show-error --location \
@@ -81,7 +82,7 @@ runtime copying.
    canonical name, owner, and visibility.
 3. With approval, install the runtime in a separate control repository when
    absent; do not run the installer over source-managed workflows.
-4. Prefer `./cao.sh setup`. Read
+4. Prefer `gh cao setup`. Read
    [authentication](references/authentication.md) only when selecting or
    troubleshooting an authentication profile.
 5. If interaction is unavailable, read
@@ -91,7 +92,7 @@ runtime copying.
 6. Validate policy and repository state:
 
    ```bash
-   ./cao.sh validate
+   gh cao validate
    gh aw doctor --repo OWNER/CONTROL_REPOSITORY --dir .
    git diff --check
    ```

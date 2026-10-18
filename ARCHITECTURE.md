@@ -561,8 +561,20 @@ and basic local policy structure/compiler-pin checks, with text or JSON results
 and nonzero status for failed or skipped checks. Authentication may contact
 GitHub; raw authentication output and subprocess errors are never reported.
 Doctor does not replace production policy/workflow validation, grant authority,
-or invoke the Node snapshot-repair command. Activity and Dashboard Actions, pipeline commands,
-`cao.sh`, canonical installation paths, and runtime ownership remain unchanged.
+or invoke the Node snapshot-repair command. `cao.sh` exposes only Node-owned
+pipeline commands, SQLite snapshot `doctor`, and the unmigrated
+`setup-auth hosted-cli` profile. Migrated operator commands are rejected with
+their `gh cao` replacement. Internal Node implementations remain available for
+Actions and parity tests, not as wrapper operator commands.
+Operator-facing `gh cao validate` remains native Go. In Actions, control-plane
+validation intentionally runs the shipped JavaScript runtime directly as
+`node activity/cao.mjs validate --json`, using the installed runtime revision
+and production policy resolver. It does not build or download the Go extension
+or require consumer npm metadata. Native and runtime tests preserve the report
+and exit-code contracts. The JSON report remains under `RUNNER_TEMP`, outside
+the checkout, so creating it cannot trigger a dirty-working-tree warning.
+Dashboard CAO actions and marketplace copy commands use the Go hierarchy;
+their executor launches `gh cao` without invoking repository shell scripts.
 From the repository root, `make build` creates the ignored local extension
 binary and `make check` runs formatting checks, `go vet`, race-enabled unit
 tests, and a build. Go checks are scoped to `cmd/`, `internal/`, and the root
@@ -573,6 +585,15 @@ Linux, macOS, and Windows binaries for amd64 and arm64 with CGO disabled and the
 exact stable release tag embedded in `main.version`, then creates SHA-256
 checksums. `make release VERSION=vX.Y.Z` writes these assets to an empty
 `dist/gh-cao/` directory.
+The root installer downloads the matching platform asset and `checksums.txt`,
+requires one exact SHA-256 entry and the expected embedded version, then
+atomically replaces the binary in GitHub CLI's `gh-cao` extension data directory.
+It honors `XDG_DATA_HOME` and Windows `LOCALAPPDATA`, refuses linked/source
+installations, and never replaces a working binary on download or verification
+failure. An explicit stable-format catalog tag selects the same extension
+release; other catalog refs use the latest stable extension independently of
+the runtime revision. Initialization, setup and quickstart invoke `gh cao`;
+Node.js remains an installation/pipeline prerequisite, not an operator dependency.
 
 Campaign manifests are the catalog's source of truth for installed workflows and
 the trusted materializer bootstrap. The materializer copies executable resources
@@ -622,7 +643,7 @@ artifact/attestation access, not npm.
 The materializer installs only owned canonical destinations from the archive
 and does not replace consumer-owned root package metadata. Installed control
 repositories keep the
-repository-local operator CLI, collection and query runtime, local preview,
+repository-local pipeline CLI, collection and query runtime, local preview,
 dashboard production sources, build inputs, and dependency manifests. Tests,
 fixtures, screenshots, contributor tooling, and catalog-only component
 manifests stay in the catalog. Dashboard workflow builds install production
@@ -667,7 +688,7 @@ registry access, but does not create credentials or dispatch workflows.
 readiness before installing or upgrading anything. Repository creation and
 cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
 existing clone directories are never overwritten. Bare installation ends with
-the explicit `./cao.sh setup` next step. `--setup` attaches guided setup directly
+the explicit `gh cao setup` next step. `--setup` attaches guided setup directly
 to the controlling terminal after verified materialization when one is
 available. Without a terminal or when `CI` is set, setup applies only an exact
 public-control-repository profile: self-only read and Activity scope, no

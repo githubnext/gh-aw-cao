@@ -36,15 +36,16 @@ describe('action validation helpers', () => {
 
   it('keeps read-only commands restricted to the existing allowlist without extra arguments', () => {
     for (const command of [
-      'gh aw status', 'gh aw list', 'gh aw logs', 'gh aw version', './cao.sh status',
-      './cao.sh query recent-runs', './cao.sh query-info recent-runs', './cao.sh prompt recent-runs'
+      'gh aw status', 'gh aw list', 'gh aw logs', 'gh aw version',
+      'gh cao query recent-runs', 'gh cao query-info recent-runs', 'gh cao prompt recent-runs'
     ]) {
       expect(isReadOnlyCliAction({ command })).toBe(true);
       expect(isReadOnlyCliAction({ command, arguments: [{}] })).toBe(false);
     }
     for (const command of [
-      'gh aw run ci', 'gh aw status --extra', './cao.sh add campaign',
-      './cao.sh query invalid/name', './cao.sh query recent-runs extra', 'gh aw logs "'
+      'gh aw run ci', 'gh aw status --extra', 'gh cao campaigns add campaign',
+      'gh cao query invalid/name', 'gh cao query recent-runs extra', 'gh aw logs "',
+      './cao.sh status', './cao.sh query recent-runs'
     ]) {
       expect(isReadOnlyCliAction({ command })).toBe(false);
     }

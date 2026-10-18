@@ -29,20 +29,20 @@ For the normative computation model, see the
 ## Run it
 
 ```bash
-./cao.sh download
-./cao.sh computation runtime-health
+gh cao download
+gh cao computation runtime-health
 ```
 
 Evaluate one Campaign:
 
 ```bash
-./cao.sh computation runtime-health --campaign dependabot
+gh cao computation runtime-health --campaign dependabot
 ```
 
 Include bounded diagnostic evidence for one Campaign:
 
 ```bash
-./cao.sh computation runtime-health --campaign dependabot --diagnose
+gh cao computation runtime-health --campaign dependabot --diagnose
 ```
 
 `--diagnose` requires `--campaign`. Use `--database FILE` and

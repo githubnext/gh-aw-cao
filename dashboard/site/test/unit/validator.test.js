@@ -778,7 +778,7 @@ describe('dashboard document validation', () => {
     addedAction['copy-only'] = true;
 
     delete addedAction.arguments;
-    addedAction.command = './cao.sh update';
+    addedAction.command = 'gh cao update';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     addedAction.command = 'gh workflow run maintenance.yml --repo {{repository}}';
@@ -820,7 +820,7 @@ describe('dashboard document validation', () => {
     expect(rejected.ok).toBe(false);
     expect(rejected.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        message: 'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".'
+        message: 'CLI action command must start with "gh cao", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".'
       })
     ]));
 
@@ -829,7 +829,7 @@ describe('dashboard document validation', () => {
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({
-          message: 'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".'
+          message: 'CLI action command must start with "gh cao", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".'
         })
       ])
     });

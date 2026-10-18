@@ -350,7 +350,7 @@ async function executeCaoQuickstart({
   await ui.step?.('Configuring the public-read workflow token profile and dashboard Pages');
   const pages = configurePages({ repository: controlRepository, execute });
   if (!pages.public) {
-    throw new Error('CAO quickstart requires public GitHub Pages; use ./cao.sh setup for a private dashboard profile');
+    throw new Error('CAO quickstart requires public GitHub Pages; use gh cao setup for a private dashboard profile');
   }
   run(execute, 'gh', [
     'variable', 'set', 'GH_AW_GITHUB_AUTH_MODE',
@@ -386,7 +386,7 @@ async function executeCaoQuickstart({
       guide,
       checkpoint: `Open ${policyPath} and confirm the target, review mode, maintenance-only workers, and control-only Activity scope. Inspect installed workflows in .github/workflows/ before requesting a run.`,
       context: 'Installed review-only maintenance and public dashboard infrastructure. No work was dispatched. Repo Assist schedules are paused; the next stage explicitly requests one review.',
-      nextCommand: './cao.sh quickstart --step run',
+      nextCommand: 'gh cao quickstart --step run',
     };
     ui.finish?.('Install stage complete; no workflows dispatched.');
     return result;
@@ -649,7 +649,7 @@ async function executeQuickstartStage({
       context: 'One bounded review was requested (up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 configurable output checking). Inspect the orchestrator and completed maintenance proposal or no-op before collecting evidence. No target changes are applied.',
       inspectCommand: inspectCommand(REPO_ASSIST_WORKER),
       checkpoint: 'In Actions, inspect the completed orchestrator and any maintenance worker, then read the control review issue and artifact or its no-op/incomplete reason. Do not repeat run as a status check.',
-      nextCommand: './cao.sh quickstart --step collect',
+      nextCommand: 'gh cao quickstart --step collect',
     };
   }
   if (step === 'collect') {
@@ -668,7 +668,7 @@ async function executeQuickstartStage({
       context: 'Activity collects workflow evidence; a successful workflow alone does not prove an accepted improvement. Inspect this snapshot before checking its dashboard deployment.',
       inspectCommand: inspectCommand(ACTIVITY_WORKFLOW),
       checkpoint: 'Inspect CAO Activity in Actions and its data artifact. After collection finishes, use the read-only dashboard step; do not repeat collect just to check progress.',
-      nextCommand: './cao.sh quickstart --step dashboard',
+      nextCommand: 'gh cao quickstart --step dashboard',
     };
   }
   ui.note?.([
@@ -681,7 +681,7 @@ async function executeQuickstartStage({
     ui.finish?.(message);
     return {
       ...base, status: 'pending', context: message, actionsUrl: actionsUrl(workflow),
-      inspectCommand: inspectCommand(workflow), nextCommand: './cao.sh quickstart --step dashboard',
+      inspectCommand: inspectCommand(workflow), nextCommand: 'gh cao quickstart --step dashboard',
       checkpoint: 'Inspect the linked workflow and resolve failures before retrying this read-only check. Do not restart run or collect merely to check status.',
     };
   };

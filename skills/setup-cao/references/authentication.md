@@ -28,7 +28,7 @@ prompt, never files, chat, arguments, workflow inputs, or commits.
 
 Prefer reusing an approved private read/write App pair before registering new
 Apps or offering a PAT fallback. Guided setup offers **Reuse approved private
-GitHub Apps**; the direct command is `./cao.sh setup-auth github-app --repo
+GitHub Apps**; the direct command is `gh cao setup auth github-app --repo
 OWNER/CONTROL --read-client-id READ-ID --write-client-id WRITE-ID`, with
 `--dry-run` for preview. It authenticates each App with a hidden key prompt and
 verifies selected-repository membership without organization-wide installation

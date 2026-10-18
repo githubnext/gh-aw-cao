@@ -148,7 +148,7 @@ for (const width of [1440, 390]) {
       if (width <= 700) await page.getByRole('button', { name: 'Select view', exact: true }).click();
       await activity.click();
       await expect(page).toHaveURL(/#page-commands$/);
-      const command = history.getByRole('link', { name: './cao.sh add --repository octo/example', exact: true }).first();
+      const command = history.getByRole('link', { name: 'gh cao repos add octo/example', exact: true }).first();
       await expect(command).toBeVisible();
       const queuedTime = history.locator('time').first();
       await expect(queuedTime).toBeVisible();
@@ -179,7 +179,7 @@ for (const width of [1440, 390]) {
       await expect(terminal).toBeVisible();
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');
       await expect(terminal.locator('.xterm-accessibility-tree [role="listitem"]').first())
-        .toHaveText('$ ./cao.sh add --repository octo/example');
+        .toHaveText('$ gh cao repos add octo/example');
       const resultLink = consoleView.getByRole('link', { name: 'Open pull request', exact: true });
       await expect(resultLink).toHaveAttribute('href', 'https://ghe.example.test:8443/github/octo/example/pull/42');
       await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(preview.url).origin });
@@ -200,7 +200,7 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/#page-commands$/);
       await expect(consoleView).not.toBeVisible();
       await expect(history).toContainText('completed');
-      await history.getByRole('link', { name: './cao.sh add --repository octo/example', exact: true }).first().click();
+      await history.getByRole('link', { name: 'gh cao repos add octo/example', exact: true }).first().click();
       await expect(consoleView).toBeVisible();
       await back.click();
       await expect(page).toHaveURL(/#page-commands$/);

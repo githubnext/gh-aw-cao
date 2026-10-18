@@ -80,7 +80,7 @@ const inventory = {
       readme: '# Dependabot\n\nKeeps dependency updates moving.\n',
       'readme-path': 'dependabot/README.md',
       source: `githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
-      'add-command': `./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
+      'add-command': `gh cao campaigns add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
     }, ...['aw-optimization', 'cao-evolution'].map((path, index) => ({
       id: `official:githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
       'registry-id': 'official',
@@ -100,7 +100,7 @@ const inventory = {
       readme: `# ${path}\n`,
       'readme-path': `${path}/README.md`,
       source: `githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
-      'add-command': `./cao.sh add githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
+      'add-command': `gh cao campaigns add githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
       'observed-at': '2026-09-15T10:00:00Z',
     })), {
       id: `official:githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
@@ -121,7 +121,7 @@ const inventory = {
       readme: '# aw-optimization\n',
       'readme-path': 'aw-optimization/README.md',
       source: `githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
-      'add-command': `./cao.sh add githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      'add-command': `gh cao campaigns add githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
       'observed-at': '2026-09-14T10:00:00Z',
     }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
@@ -480,7 +480,7 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await dashboardRoot.evaluate((root) => root.setAttribute('data-theme', 'light'));
   await add.click();
   await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
-    `bash ./cao.sh add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`
+    `gh cao campaigns add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`
   );
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');

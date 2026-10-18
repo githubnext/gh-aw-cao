@@ -28,20 +28,20 @@ The current measure contract is:
 ## Run it
 
 ```bash
-./cao.sh download
-./cao.sh computation intelligence
+gh cao download
+gh cao computation intelligence
 ```
 
 Evaluate one Campaign:
 
 ```bash
-./cao.sh computation intelligence --campaign dependabot
+gh cao computation intelligence --campaign dependabot
 ```
 
 Replay a prior result and apply operator feedback:
 
 ```bash
-./cao.sh computation intelligence \
+gh cao computation intelligence \
   --previous prior-intelligence.json \
   --feedback decision-feedback.json
 ```

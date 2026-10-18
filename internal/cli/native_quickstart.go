@@ -291,7 +291,7 @@ func nativeQuickstartInstall(cmd *cobra.Command, gh ghExecutor) (map[string]any,
 			"paused": true, "guide": guide,
 			"checkpoint":  "Open " + policyPath + " and confirm the target, review mode, maintenance-only workers, and control-only Activity scope. Inspect installed workflows before requesting a run.",
 			"context":     "Installed review-only maintenance and public dashboard infrastructure. No work was dispatched. Repo Assist schedules are paused; the next stage explicitly requests one review.",
-			"nextCommand": "./cao.sh quickstart --step run",
+			"nextCommand": "gh cao quickstart --step run",
 		}, nil
 	}
 	result, err := nativeQuickstartWait(cmd, gh, repo, branch, target.Repository, pages)
@@ -589,7 +589,7 @@ func nativeQuickstartStage(cmd *cobra.Command, gh ghExecutor, step string) (map[
 		base["inspectCommand"] = "gh run list --repo " + repo + " --branch '" + strings.ReplaceAll(branch, "'", "'\\''") + "' --workflow " + nativeQuickstartWorker
 		base["context"] = "One bounded review was requested (up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 configurable output checking). Inspect the orchestrator and maintenance proposal or no-op before collecting evidence. No target changes are applied."
 		base["checkpoint"] = "Inspect the completed orchestrator and maintenance worker, then read the control review issue and artifact or its no-op/incomplete reason. Do not repeat run as a status check."
-		base["nextCommand"] = "./cao.sh quickstart --step collect"
+		base["nextCommand"] = "gh cao quickstart --step collect"
 		return base, nil
 	}
 	if step == "collect" {
@@ -610,13 +610,13 @@ func nativeQuickstartStage(cmd *cobra.Command, gh ghExecutor, step string) (map[
 		workflowInfo(nativeQuickstartActivity)
 		base["context"] = "Activity collects workflow evidence; a successful workflow alone does not prove an accepted improvement. Inspect this snapshot before checking its dashboard deployment."
 		base["checkpoint"] = "Inspect CAO Activity in Actions and its data artifact. After collection finishes, use the read-only dashboard step; do not repeat collect just to check progress."
-		base["nextCommand"] = "./cao.sh quickstart --step dashboard"
+		base["nextCommand"] = "gh cao quickstart --step dashboard"
 		return base, nil
 	}
 	pending := func(message, workflow string) (map[string]any, error) {
 		base["status"], base["context"] = "pending", message
 		workflowInfo(workflow)
-		base["nextCommand"] = "./cao.sh quickstart --step dashboard"
+		base["nextCommand"] = "gh cao quickstart --step dashboard"
 		base["checkpoint"] = "Inspect the linked workflow and resolve failures before retrying this read-only check. Do not restart run or collect merely to check status."
 		return base, nil
 	}

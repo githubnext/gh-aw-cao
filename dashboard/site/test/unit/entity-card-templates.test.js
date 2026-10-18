@@ -94,7 +94,7 @@ describe('entity card templates', () => {
     )).toMatchObject({
       label: 'Add',
       icon: 'plus',
-      command: './cao.sh add {{package-source}}',
+      command: 'gh cao campaigns add {{package-source}}',
       placement: 'row',
       'copy-only': true
     });

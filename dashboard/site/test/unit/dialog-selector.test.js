@@ -16,7 +16,7 @@ const definition = /** @type {import('../../src/dialog-selector.js').DialogSelec
 });
 const action = {
   id: 'add-repository', level: /** @type {const} */ ('operate'), label: 'Add repository', icon: 'plus',
-  command: './cao.sh add --repository {{repository}}', placement: /** @type {const} */ ('view'), selector: definition
+  command: 'gh cao repos add {{repository}}', placement: /** @type {const} */ ('view'), selector: definition
 };
 const option = { value: 'octo/repo', label: 'octo/repo', description: 'Example repository' };
 const response = (options = [option]) => ({ ok: true, json: async () => ({ options }) });
@@ -210,7 +210,7 @@ describe('declarative external dialog selector', () => {
     await vi.advanceTimersByTimeAsync(300);
     root.querySelector('.dialog-selector-option')?.dispatchEvent(new MouseEvent('click'));
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(root.querySelector('.cli-action-command')?.textContent).toBe('./cao.sh add --repository octo/repo');
+    expect(root.querySelector('.cli-action-command')?.textContent).toBe('gh cao repos add octo/repo');
     expect(confirm.textContent).toBe('Add repository');
     expect(confirm.disabled).toBe(false);
     confirm.click();

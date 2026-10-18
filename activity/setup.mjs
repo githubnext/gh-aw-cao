@@ -236,7 +236,7 @@ async function setupNonInteractivePublicControl({
   output.write('Applying non-interactive setup defaults for the current public control repository.\n');
   const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
   if (auth.error || auth.status !== 0) {
-    throw new UsageError(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}. Run gh auth login, then ./cao.sh setup again.`);
+    throw new UsageError(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}. Run gh auth login, then gh cao setup again.`);
   }
 
   const controlRepository = resolveControlRepository(execute);
@@ -244,7 +244,7 @@ async function setupNonInteractivePublicControl({
   if (control.visibility !== 'public') {
     throw new UsageError(
       `Non-interactive setup requires a public control repository; ${control.repository} is ${control.visibility}. `
-      + 'Run ./cao.sh setup from an interactive terminal for a private or internal repository.',
+      + 'Run gh cao setup from an interactive terminal for a private or internal repository.',
     );
   }
 
@@ -252,8 +252,8 @@ async function setupNonInteractivePublicControl({
   try {
     policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
   } catch (error) {
-    if (error.code === 'ENOENT') throw new UsageError('CAO policy is missing. Run ./cao.sh init, then ./cao.sh setup.');
-    if (error instanceof SyntaxError) throw new UsageError('CAO policy contains invalid JSON. Fix the policy file, then rerun ./cao.sh setup.');
+    if (error.code === 'ENOENT') throw new UsageError('CAO policy is missing. Run gh cao init, then gh cao setup.');
+    if (error instanceof SyntaxError) throw new UsageError('CAO policy contains invalid JSON. Fix the policy file, then rerun gh cao setup.');
     throw error;
   }
   const controlPlane = policy?.['control-plane'];
@@ -279,7 +279,7 @@ async function setupNonInteractivePublicControl({
     if (!exactScope) {
       throw new UsageError(
         'Non-interactive setup refuses to replace existing repository scope; '
-        + 'run ./cao.sh setup from an interactive terminal to review it',
+        + 'run gh cao setup from an interactive terminal to review it',
       );
     }
   }
@@ -294,7 +294,7 @@ async function setupNonInteractivePublicControl({
     if (!exactActivity) {
       throw new UsageError(
         'Non-interactive setup refuses to replace existing Activity scope; '
-        + 'run ./cao.sh setup from an interactive terminal to review it',
+        + 'run gh cao setup from an interactive terminal to review it',
       );
     }
   }
@@ -403,7 +403,7 @@ export async function setupCaoControlPlane({
     interactive.step?.('Checking GitHub sign-in and this checkout');
     const auth = execute('gh', ['auth', 'status'], { encoding: 'utf8' });
     if (auth.error || auth.status !== 0) {
-      throw new UsageError(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}. Run gh auth login, then ./cao.sh setup again.`);
+      throw new UsageError(`GitHub CLI authentication check failed: ${commandFailureMessage(auth, 'gh auth status failed')}. Run gh auth login, then gh cao setup again.`);
     }
 
     const controlRepository = resolveControlRepository(execute);
@@ -412,8 +412,8 @@ export async function setupCaoControlPlane({
     try {
       policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
     } catch (error) {
-      if (error.code === 'ENOENT') throw new UsageError('CAO policy is missing. Run ./cao.sh init, then ./cao.sh setup.');
-      if (error instanceof SyntaxError) throw new UsageError('CAO policy contains invalid JSON. Fix the policy file, then rerun ./cao.sh setup.');
+      if (error.code === 'ENOENT') throw new UsageError('CAO policy is missing. Run gh cao init, then gh cao setup.');
+      if (error instanceof SyntaxError) throw new UsageError('CAO policy contains invalid JSON. Fix the policy file, then rerun gh cao setup.');
       throw error;
     }
     const campaigns = policy?.['control-plane']?.campaigns;
@@ -598,17 +598,17 @@ export async function setupCaoControlPlane({
     if (error instanceof SetupCancelled) {
       if (applyStage === 'public dashboard consent') return declinePublicPages();
       interactive.cancel?.(policySaved
-        ? 'Configuration was saved before cancellation. Run ./cao.sh validate, then review the installed files.'
+        ? 'Configuration was saved before cancellation. Run gh cao validate, then review the installed files.'
         : applyStage
-        ? 'Setup cancelled. The local policy is unchanged; Pages settings or credentials may have changed. Rerun ./cao.sh setup to finish.'
+        ? 'Setup cancelled. The local policy is unchanged; Pages settings or credentials may have changed. Rerun gh cao setup to finish.'
         : 'Setup cancelled. Policy, credentials, and Pages settings are unchanged.');
       return { command: 'setup', cancelled: true };
     }
     interactive.failure?.();
     if (applyStage) {
       const recovery = policySaved
-        ? 'Configuration was saved, but completion could not be displayed. Run ./cao.sh validate, then review the installed files.'
-        : `Setup stopped during ${applyStage}; the local policy was not changed. Pages settings or credentials may already have changed. Fix the reported problem and rerun ./cao.sh setup; existing settings will be inspected again.`;
+        ? 'Configuration was saved, but completion could not be displayed. Run gh cao validate, then review the installed files.'
+        : `Setup stopped during ${applyStage}; the local policy was not changed. Pages settings or credentials may already have changed. Fix the reported problem and rerun gh cao setup; existing settings will be inspected again.`;
       throw new UsageError(`${error.message}\n${recovery}`, { cause: error });
     }
     if (ownsPrompt && !(error instanceof UsageError)) throw new UsageError(error.message, { cause: error });

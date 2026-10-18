@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { formatSetupAuthenticationSummary } from './authentication.mjs';
 import { runCli } from './cli/run.mjs';
 import { formatQuickstartSummary } from './quickstart.mjs';
+import { checkPipelineCommand } from './pipeline-cli.mjs';
 
 export { setupCaoControlPlane } from './setup.mjs';
 export { formatSetupAuthenticationSummary } from './authentication.mjs';
@@ -23,6 +24,14 @@ export { runCli } from './cli/run.mjs';
 
 async function main() {
   const arguments_ = process.argv.slice(2);
+  if (arguments_[0] === '--pipeline') {
+    arguments_.shift();
+    const help = checkPipelineCommand(arguments_);
+    if (help) {
+      process.stdout.write(`${help}\n`);
+      return;
+    }
+  }
   const controller = new AbortController();
   let terminationSignal;
   const terminate = (signal) => {
@@ -50,7 +59,7 @@ async function main() {
     }
     if (typeof output === 'object' && output?.command === 'setup' && !arguments_.includes('--json')) {
       if (!output.cancelled) {
-        process.stdout.write('Next: ./cao.sh validate\nThen review git diff and git status, commit, and push the installed files.\nAdd your first campaign separately with ./cao.sh add githubnext/gh-aw-cao/CAMPAIGN.\n');
+        process.stdout.write('Next: gh cao validate\nThen review git diff and git status, commit, and push the installed files.\nAdd your first campaign separately with gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN.\n');
       }
       return;
     }
