@@ -65,10 +65,8 @@ if (args.includes("--help") || args[0] === "api") {
   process.stderr.write("\\x1b[38;2;10;20;30mProgress\\x1b[0m\\n");
 }
 `;
-  for (const filename of [executable, join(directory, "cao.sh")]) {
-    await writeFile(filename, script);
-    await chmod(filename, 0o755);
-  }
+  await writeFile(executable, script);
+  await chmod(executable, 0o755);
   for (const command of ["gh aw compile", "gh cao update"]) {
     for (const streaming of [false, true]) {
       const output = { stdout: "", stderr: "" };

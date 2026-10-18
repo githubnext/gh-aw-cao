@@ -684,7 +684,7 @@ enable them, run the web server with both `--experimental` and
 PostgreSQL operational store and OAuth. Then run a separate executor:
 
 ```bash
-./cao.sh setup-auth hosted-cli --repo OWNER/CONTROL \
+node activity/cao.mjs setup-auth hosted-cli --repo OWNER/CONTROL \
   --target-repository OWNER/TARGET --private-key-out ./hosted-cli.pem
 cao-dashboard serve-hosted --experimental --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
@@ -744,7 +744,7 @@ resumes. This provides at-most-once dispatch, not exactly-once external effects.
 The executor plans commands in Go and runs only `gh` or the native Go `gh-aw`
 CLI inside the digest-pinned `ghcr.io/github/gh-aw` container. The campaign
 update action is translated to `gh-aw update`; the server never invokes
-`cao.sh` or checks out and executes control-repository scripts. The executor
+repository shell scripts or checks out and executes control-repository code. The executor
 requires a local Docker daemon using its `default` context. Each container has a
 read-only root filesystem, no added capabilities, and only its per-command
 workspace mounted writable. A temporary mode-`0600` environment file passes the

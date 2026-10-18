@@ -56,7 +56,7 @@ repository and a full 40-character `resolvedCommit`, downloads that immutable
 archive, and copies a bounded resource set to identical repository-relative
 paths. Tag-only and legacy records fail closed rather than resolving mutable
 provenance at installation time. Root materialization owns `activity/`,
-`dashboard/`, `cao.sh`, the local runtime verification and gh-aw setup
+`dashboard/`, the local runtime verification and gh-aw setup
 actions, and `.github/cao/instructions.md`. If exact focused Activity or Dashboard package
 records coexist with the root record, their revisions retain ownership of
 their respective directories and are preflighted before any destination is

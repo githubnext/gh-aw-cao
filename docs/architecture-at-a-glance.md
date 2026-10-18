@@ -75,7 +75,7 @@ This makes CAO suitable for work that must be automated without making agent aut
 
 ## One Operator Interface
 
-The installer downloads the compiled `gh cao` extension. Operators use it to add and update campaigns, configure authentication, switch between preview and live policy, enable or disable campaign workflows, inspect runtime health, and query activity evidence. The repository-local `./cao.sh` is reserved for Node.js pipeline tools, SQLite snapshot repair, and hosted-CLI App setup.
+The installer downloads the compiled `gh cao` extension. Operators use it to add and update campaigns, configure authentication, switch between preview and live policy, enable or disable campaign workflows, inspect runtime health, and query activity evidence. The repository-local `node activity/cao.mjs` is reserved for Node.js pipeline tools, SQLite snapshot repair, and hosted-CLI App setup.
 
 Workflow execution remains with gh-aw: use `gh aw run` to start a campaign and `gh run` to watch it. See [CAO Commands](cao-cli.md) for the complete operator loop.
 

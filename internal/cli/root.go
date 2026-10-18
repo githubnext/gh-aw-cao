@@ -34,7 +34,7 @@ func newCommand(version string, ghVersion func(context.Context) (string, error),
 
 All operator commands run natively in Go; Node.js is not required.
 The binary embeds the reviewed dashboard catalog and reads canonical SQLite snapshots.
-Activity and Dashboard Actions pipeline commands remain in ./cao.sh.
+Activity and Dashboard Actions invoke node activity/cao.mjs directly.
 Help, version, and catalog discovery work offline.`,
 		Version:       version,
 		Args:          cobra.NoArgs,

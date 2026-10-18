@@ -252,7 +252,7 @@ async function installCampaign(source) {
 function assertInstalledBootstrap(repository, ghAwVersion, controlRepository) {
   const policy = ".github/workflows/cao.json";
   const control = ".github/workflows/shared/control.mjs";
-  run("./cao.sh", ["--help"], repository);
+  run(process.execPath, ["activity/cao.mjs", "--help"], repository);
   for (const bundle of ["activity", "dashboard"]) {
     run(process.execPath, [".github/workflows/shared/materialize-cao.mjs", "verify", bundle], repository);
   }
@@ -322,7 +322,7 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
     });
     assertInstalledBootstrap(consumer, ghAwVersion, controlRepository);
 
-    run("git", ["add", ".github", "activity", "dashboard", "cao.sh"], consumer);
+    run("git", ["add", ".github", "activity", "dashboard"], consumer);
     run("git", [
       "-c", "user.name=CAO installer test",
       "-c", "user.email=cao-installer-test@example.invalid",

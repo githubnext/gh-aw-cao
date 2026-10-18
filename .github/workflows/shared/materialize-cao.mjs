@@ -1,4 +1,4 @@
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -12,7 +12,6 @@ const runtimeWaitArray = new Int32Array(new SharedArrayBuffer(4));
 const rootResources = [
   'activity',
   'dashboard',
-  'cao.sh',
   '.github/actions/setup-cao-runtime',
   '.github/actions/setup-gh-aw',
   '.github/cao/instructions.md',
@@ -20,6 +19,19 @@ const rootResources = [
   '.github/workflows/shared/control.md',
   '.github/workflows/shared/review-bundle.md',
 ];
+const retiredLauncherDigests = new Set([
+  'c55be5e923b46a247eeee6d8c2f0926883f469e9577b4ac4b99d7171972e4c4d',
+  'f186ab9735fb4d2a44333a81eac9ed18638ae2c4304af37ab351cc39ecf983c3'
+]);
+
+function removeRetiredLauncher(repositoryRoot) {
+  const filename = path.join(repositoryRoot, 'cao.sh');
+  const entry = lstatSync(filename, { throwIfNoEntry: false });
+  if (!entry?.isFile()) return;
+  const digest = createHash('sha256').update(readFileSync(filename)).digest('hex');
+  if (retiredLauncherDigests.has(digest)) rmSync(filename);
+}
+
 function validateCampaign(campaign) {
   if (!/^(?:root|activity|dashboard|[a-z0-9-]+)$/.test(campaign)) {
     throw new Error(`Invalid CAO campaign name: ${campaign}`);
@@ -334,7 +346,7 @@ export function validateCaoRuntimeArtifact(sourceRoot, revision) {
     throw new Error('CAO runtime artifact file inventory does not match its contents');
   }
   for (const file of files) {
-    if (!rootResources.some((resource) => file === resource || file.startsWith(`${resource}/`))) {
+    if (file !== 'cao.sh' && !rootResources.some((resource) => file === resource || file.startsWith(`${resource}/`))) {
       throw new Error(`CAO runtime artifact contains an unowned path: ${file}`);
     }
     const digest = createHash('sha256').update(readFileSync(path.join(sourceRoot, file))).digest('hex');
@@ -427,7 +439,8 @@ export function materializeCaoFromSource(campaign, sourceRoot, repositoryRoot) {
   } else {
     for (const resource of resources) copyTrackedResource(sourceRoot, repositoryRoot, resource);
   }
-  if (campaign !== 'root') materializeCampaignIntelligence(campaign, repositoryRoot);
+  if (campaign === 'root') removeRetiredLauncher(repositoryRoot);
+  else materializeCampaignIntelligence(campaign, repositoryRoot);
   return resources;
 }
 
@@ -488,7 +501,8 @@ export async function materializeCao(campaign = 'root', repositoryRoot = process
     for (const plan of plans) {
       for (const resource of plan.resources) copyResource(plan.sourceRoot, repositoryRoot, resource);
     }
-    if (campaign !== 'root') materializeCampaignIntelligence(campaign, repositoryRoot);
+    if (campaign === 'root') removeRetiredLauncher(repositoryRoot);
+    else materializeCampaignIntelligence(campaign, repositoryRoot);
     return {
       campaign,
       revision: plans[0].revision,

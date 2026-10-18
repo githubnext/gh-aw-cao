@@ -150,7 +150,7 @@ export async function runJourney(t, {
       },
     });
     const policy = JSON.parse(await readFile(policyPath, "utf8"));
-    assert.equal(await readFile(path.join(fixture.consumer, "cao.sh"), "utf8").then(Boolean), true);
+    assert.equal(await readFile(path.join(fixture.consumer, "activity/cao.mjs"), "utf8").then(Boolean), true);
     assert.deepEqual(policy["control-plane"].scope["allowed-repositories"], [
       controlRepository,
       ...selectedRepositories,

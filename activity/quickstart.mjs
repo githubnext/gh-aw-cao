@@ -16,7 +16,6 @@ const DASHBOARD_WORKFLOW = 'cao-dashboard.yml';
 const QUICKSTART_DIRECTORIES = ['.github', 'activity', 'dashboard', 'repo-assist'];
 const QUICKSTART_PATHS = [
   ...QUICKSTART_DIRECTORIES,
-  'cao.sh',
   '.gitattributes',
   '.vscode/settings.json',
 ];
@@ -217,7 +216,7 @@ async function executeCaoQuickstart({
   const initialStatus = run(execute, 'git', ['status', '--porcelain=v1', '--untracked-files=all']).stdout
     .split(/\r?\n/)
     .filter(Boolean);
-  initialStatus.map(repositoryPathFromStatus).forEach(assertQuickstartPath);
+  initialStatus.filter((line) => line !== ' D cao.sh').map(repositoryPathFromStatus).forEach(assertQuickstartPath);
   if (initialStatus.some((line) => ![' ', '?'].includes(line[0]))) {
     throw new Error('CAO quickstart refuses pre-staged changes; unstage them and retry');
   }
@@ -256,7 +255,7 @@ async function executeCaoQuickstart({
     {
       title: '2/5 · Install the campaign components',
       details: [
-        'The verified root installation supplies cao.sh, the activity/ and dashboard/ runtimes, and shared control code.',
+        'The verified root installation supplies the activity/ and dashboard/ runtimes and shared control code.',
         'Core workflows: cao-validate.yml checks configuration; cao-activity.yml collects evidence; cao-dashboard.yml builds and publishes it.',
         'Repo Assist adds an orchestrator (repo-assist.lock.yml) that selects and dispatches work.',
         'Its maintenance worker (repo-assist-maintenance.lock.yml) analyzes one target and prepares a review proposal or an honest no-op.',
@@ -363,11 +362,11 @@ async function executeCaoQuickstart({
     .split(/\r?\n/)
     .filter(Boolean);
   if (status.length === 0) throw new Error('Quickstart produced no files to commit');
-  status.map(repositoryPathFromStatus).forEach(assertQuickstartPath);
+  status.filter((line) => line !== ' D cao.sh').map(repositoryPathFromStatus).forEach(assertQuickstartPath);
 
   explain(4);
   await ui.step?.('Committing and pushing the bounded control-plane configuration');
-  run(execute, 'git', ['add', '--', ...QUICKSTART_PATHS]);
+  run(execute, 'git', ['add', '--', ...QUICKSTART_PATHS, ...(status.includes(' D cao.sh') ? ['cao.sh'] : [])]);
   run(execute, 'git', ['diff', '--cached', '--check']);
   if (!hasHead) run(execute, 'git', ['branch', '-M', branch]);
   run(execute, 'git', [

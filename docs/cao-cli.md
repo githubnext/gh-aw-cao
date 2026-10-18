@@ -7,19 +7,20 @@ agent:
 ---
 
 Use this reference when operating CAO or adding a CLI command. The installer
-downloads the compiled Go extension as `gh cao` and adds `./cao.sh` for the
-Node.js Activity and Dashboard pipeline. Agents
+downloads the compiled Go extension as `gh cao` and installs the Node.js runtime
+for Activity and Dashboard Actions. Invoke it explicitly as
+`node activity/cao.mjs <command>`; there is no shell launcher. Agents
 using the CLI should follow the
 [`cao-cli` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md);
 agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md).
 The Go extension exposes the operator-facing command surface as `gh cao`.
-Operator commands are no longer accepted by `./cao.sh`; it reports the matching
-Go command instead. Run policy commands from the control repository root:
+Internal Node implementations remain for Actions and parity tests, not as an
+alternative operator surface. Run policy commands from the control repository root:
 
 ```bash
 gh cao --help
-./cao.sh --help
+node activity/cao.mjs --help
 ```
 
 Command failures exit nonzero and report the error without printing the command
@@ -63,9 +64,9 @@ to invoke it as `gh cao`.
 | Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
-| Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Remain in `./cao.sh` / `activity/cao.mjs`; not migrated to the extension. |
+| Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
 | Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
-| Node-only administration | `./cao.sh doctor`, `./cao.sh setup-auth hosted-cli` | SQLite check/repair and dedicated hosted-executor App creation; neither has an equivalent Go command. |
+| Node-only administration | `node activity/cao.mjs doctor`, `node activity/cao.mjs setup-auth hosted-cli` | SQLite check/repair and dedicated hosted-executor App creation; neither has an equivalent Go command. |
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
@@ -108,7 +109,8 @@ control-plane setup, or configure credentials independently with
 `gh cao setup auth github-app`, `gh cao setup auth enterprise-app`, or
 `gh cao setup auth token`. Each authentication profile retains its existing
 options, dry-run behavior, credential prompts, and separate read/write scope.
-Only the Node-only `./cao.sh setup-auth hosted-cli` profile remains in the wrapper.
+The dedicated hosted-executor App profile remains Node-only:
+`node activity/cao.mjs setup-auth hosted-cli`.
 The runtime JSON result for authentication retains `command: "setup-auth"`.
 `gh cao setup auth token --help` also works offline. `campaigns add` and `update` retain
 gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
@@ -124,7 +126,7 @@ reinstall the control-plane runtime or plugin. Missing policy is initialized for
 the exact current control repository. Install the root package with `install.sh`,
 not `gh cao campaigns add`; review and commit generated workflows and policy together.
 
-`gh cao doctor` is deliberately **not** `./cao.sh doctor`: use the latter for
+`gh cao doctor` is deliberately **not** `node activity/cao.mjs doctor`: use the latter for
 the existing SQLite snapshot check/repair operation. Neither Activity nor
 Dashboard Actions is switched to the Go executable.
 
@@ -155,7 +157,7 @@ does not establish rollout authority or full schema validity; use the
 CAO and gh-aw have separate jobs:
 
 - **`gh cao`** configures CAO policy, authentication, installed campaigns, workflow enablement, and queries evidence.
-- **`./cao.sh`** prepares pipeline data and runs the retained Node-only tools.
+- **`node activity/cao.mjs`** prepares pipeline data and runs the retained Node-only tools.
 - **`gh aw run`** starts a compiled agentic workflow.
 - **`gh run`** lists, watches, and inspects the resulting GitHub Actions runs.
 
@@ -198,7 +200,7 @@ gh aw run dependabot --ref main \
 | `gh cao init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `gh cao setup auth github-app ...` | Configure organization-owned read and write Apps. |
 | `gh cao setup auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
-| `./cao.sh setup-auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
+| `node activity/cao.mjs setup-auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
 | `gh cao setup auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
 | `gh cao campaigns add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
 | `gh cao repos add OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
@@ -307,7 +309,7 @@ Validation checks the policy with the production resolver, the installed gh-aw c
 
 The workflow invokes `node activity/cao.mjs validate --json` from the shipped
 JavaScript runtime at the installed revision. This is the sole implementation;
-neither `gh cao` nor `cao.sh` exposes `validate`. CI does not build or download
+`gh cao` does not expose `validate`. CI does not build or download
 the Go extension or require consumer npm metadata. The internal runtime command
 retains `--strict-warnings` for Actions callers that require warnings to fail.
 
@@ -465,7 +467,7 @@ gh cao prompt campaign-runs --param campaign=dependabot --database .cao/gh-aw-lo
 
 Without `--database`, the command needs no downloaded snapshot and includes no evidence rows. With `--database FILE`, it executes the named query against that existing snapshot and includes a bounded preview; this does not grant rollout authority. Use `--dashboard FILE` to experiment with a different dashboard definition.
 
-Run `./cao.sh doctor` to validate and repair the downloaded SQLite snapshot. This is different from `gh aw doctor`, which validates the workflow installation and repository setup.
+Run `node activity/cao.mjs doctor` to validate and repair the downloaded SQLite snapshot. This is different from `gh aw doctor`, which validates the workflow installation and repository setup.
 
 ## Evaluate and Evolve
 
@@ -473,14 +475,14 @@ The CLI also exposes evidence used to improve campaigns:
 
 | Command | Purpose |
 | --- | --- |
-| `./cao.sh operational-value` | Compute campaign-specific value evidence from the canonical snapshot. |
-| `./cao.sh cluster-problems` | Cluster bounded problem evidence emitted by installed campaigns. |
-| `./cao.sh dashboard-complexity --input FILE [--database FILE]` | Rank Dashboard Language queries by estimated computation pressure. |
-| `./cao.sh prune-dashboard --input FILE` | Report reusable, redundant, and unreferenced dashboard queries and views. |
+| `node activity/cao.mjs operational-value` | Compute campaign-specific value evidence from the canonical snapshot. |
+| `node activity/cao.mjs cluster-problems` | Cluster bounded problem evidence emitted by installed campaigns. |
+| `node activity/cao.mjs dashboard-complexity --input FILE [--database FILE]` | Rank Dashboard Language queries by estimated computation pressure. |
+| `node activity/cao.mjs prune-dashboard --input FILE` | Report reusable, redundant, and unreferenced dashboard queries and views. |
 
 Without `--database`, `dashboard-complexity` normalizes every canonical database table to weight one. With `--database FILE`, it weights tables by their deployed row counts (normalized to the largest table) read from that downloaded snapshot, giving a more realistic computation-pressure ranking.
 
-Data-pipeline and dashboard-maintainer commands are listed by `./cao.sh --help`. For the full data workflow, see [Dashboard data ingestion](dashboard-data-ingestion.md#use-local-sqlite).
+Data-pipeline and dashboard-maintainer commands are listed by `node activity/cao.mjs --help`. For the full data workflow, see [Dashboard data ingestion](dashboard-data-ingestion.md#use-local-sqlite).
 
 ## Review What Each Command Changed
 

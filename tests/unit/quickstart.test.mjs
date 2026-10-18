@@ -151,7 +151,7 @@ progress.finish('Dashboard ready');
 });
 
 async function quickstartFixture(t, {
-  status = '?? .github/workflows/cao.json\n?? cao.sh\n?? .gitattributes\n?? .vscode/settings.json\n',
+  status = '?? .github/workflows/cao.json\n?? .gitattributes\n?? .vscode/settings.json\n',
   headStatus = 128,
   visibility = 'PRIVATE',
   currentBranch = 'main',
@@ -733,7 +733,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   }
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run repo-assist.lock.yml')));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run cao-activity.yml')));
-  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard repo-assist cao.sh .gitattributes .vscode/settings.json'));
+  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard repo-assist .gitattributes .vscode/settings.json'));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('git -c user.name=octocat -c user.email=1+octocat@users.noreply.github.com commit --no-gpg-sign')));
   const compileIndex = fixture.calls.findIndex((call) => call.join(' ') === 'gh aw compile --strict --no-check-update --schedule-seed githubnext/gh-aw-cao');
   const stageIndex = fixture.calls.findIndex((call) => call[0] === 'git' && call[1] === 'add');
@@ -751,6 +751,29 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.ok(progress.includes('Waiting for a Repo Assist maintenance proposal or no-op'));
   assert.ok(progress.some((message) => message.includes('up to 1,250 AI credits: 250 orchestration + 600 maintenance + 400 output checking')));
   assert.ok(progress.some((message) => message.includes('proposals are optional, not requirements for CAO')));
+});
+
+test('quickstart stages an existing retired launcher deletion without dispatching', async (t) => {
+  const fixture = await quickstartFixture(t, { status: ' M .github/workflows/cao.json\n D cao.sh\n', headStatus: 0 });
+  const policyPath = await fixture.policyPath();
+  const result = await runCaoQuickstart({
+    targetRepository: 'acme/project',
+    policyPath,
+    execute: fixture.execute,
+    resolveRootRevision: () => 'a'.repeat(40),
+    async addCampaign() {
+      const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+      policy['control-plane'].campaigns['repo-assist'] = {
+        workers: { maintenance: { workflow: 'repo-assist-maintenance' } },
+      };
+      await writeFile(policyPath, JSON.stringify(policy));
+    },
+    configurePages: () => ({ public: true, url: 'https://acme.github.io/cao/' }),
+    progress: {},
+  });
+  assert.equal(result.status, 'installed');
+  assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard repo-assist .gitattributes .vscode/settings.json cao.sh'));
+  assert.ok(!fixture.calls.some((call) => call[0] === 'gh' && call[1] === 'workflow' && call[2] === 'run'));
 });
 
 test('quickstart runs maintenance on an explicit ordinary repository without workflow-inventory preflight', async (t) => {
@@ -798,6 +821,9 @@ for (const [name, status, message] of [
   ['unrelated files', '?? secrets.txt\n', /refuses to commit unrelated path: secrets\.txt/],
   ['descendants of owned root files', '?? .gitattributes/secret\n', /refuses to commit unrelated path: \.gitattributes\/secret/],
   ['other editor settings', '?? .vscode/extensions.json\n', /refuses to commit unrelated path: \.vscode\/extensions\.json/],
+  ['new legacy launcher', '?? cao.sh\n', /refuses to commit unrelated path: cao\.sh/],
+  ['modified legacy launcher', ' M cao.sh\n', /refuses to commit unrelated path: cao\.sh/],
+  ['pre-staged launcher deletion', 'D  cao.sh\n', /refuses to commit unrelated path: cao\.sh/],
   ['pre-staged files', 'A  .github/workflows/cao.json\n', /refuses pre-staged changes/],
 ]) {
   test(`quickstart refuses to commit ${name}`, async (t) => {

@@ -56,7 +56,6 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "quickstart",
     "setup auth github-app",
     "setup auth enterprise-app",
-    "setup-auth hosted-cli",
     "setup auth token",
     "campaigns add OWNER/REPO/CAMPAIGN",
     "update",
@@ -72,13 +71,30 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "gh runs",
     "gh issues",
     "gh prs",
-    "operational-value",
-    "cluster-problems",
   ]) {
-    assert.match(docs, new RegExp(`cao(?:\\.sh)? ${command.replaceAll("-", "\\-")}`));
+    assert.match(docs, new RegExp(`gh cao ${command.replaceAll("-", "\\-")}`));
     const legacy = command.replace(/^campaigns /, "").replace(/^setup auth /, "setup-auth ");
     assert.match(help, new RegExp(`cao ${legacy.split(" ")[0]}`));
   }
+});
+
+test("Node-only command documentation uses explicit runtime entry points without a shell launcher", () => {
+  for (const command of [
+    "setup-auth hosted-cli",
+    "doctor",
+    "operational-value",
+    "cluster-problems",
+    "dashboard-complexity",
+    "prune-dashboard",
+    "validate --json",
+  ]) {
+    assert.ok(docs.includes(`node activity/cao.mjs ${command}`), command);
+  }
+  assert.doesNotMatch(docs, /cao\.sh/);
+  const demo = readFileSync("docs/components/TerminalDemo.astro", "utf8");
+  assert.match(demo, /gh cao<\/span> setup/);
+  assert.match(demo, /gh cao<\/span> doctor/);
+  assert.doesNotMatch(demo, /cao\.sh|<\/span> validate/);
 });
 
 test("CAO command guide explains the workflow execution boundary", () => {

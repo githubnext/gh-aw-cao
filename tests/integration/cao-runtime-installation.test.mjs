@@ -66,7 +66,7 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
     }
     writeFileSync(path.join(installed, ".github/workflows/cao.json"), JSON.stringify(minimalPolicy(manifest["min-version"], "example/control")));
     run("git", ["init", "--quiet"], installed);
-    run("git", ["add", ".github", "activity", "dashboard", "cao.sh"], installed);
+    run("git", ["add", ".github", "activity", "dashboard"], installed);
     run("git", ["diff", "--cached", "--check"], installed);
     assert.equal(run("git", ["ls-files", "--others", "--exclude-standard"], installed), "");
     run("git", [
@@ -79,7 +79,7 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
       run(process.execPath, [".github/workflows/shared/materialize-cao.mjs", "verify", bundle], checkout);
     }
     run(process.execPath, ["activity/cao.mjs", "--help"], checkout);
-    if (process.platform !== "win32") run("./cao.sh", ["--help"], checkout);
+    assert.equal(existsSync(path.join(checkout, "cao.sh")), false);
     const { parseDocuments } = await import(pathToFileURL(path.join(checkout, "dashboard/site/src/validator-dashboard.js")));
     const errors = [];
     const documents = parseDocuments("example: true\n", errors);

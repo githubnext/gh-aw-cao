@@ -32,10 +32,13 @@ Check the installation, review, and publish your configuration:
 gh cao doctor
 git status --short
 git diff -- .github
-git add .github activity dashboard cao.sh
+git add .github activity dashboard
 git commit -m "Set up CAO monitoring"
 git push
 ```
+
+On upgrades, also review and stage the retired shell launcher's deletion if Git
+reports it. Only known shipped launchers are removed; consumer-owned scripts are preserved.
 
 In Actions, check **CAO validation**, then wait for **CAO Activity** and **CAO Dashboard**,
 including its Pages deployment, then open **Settings → Pages**.
@@ -104,8 +107,8 @@ reads canonical SQLite snapshots directly; use `--dashboard FILE` to select
 an explicit dashboard document. Run policy mutations from the control repository root.
 Help, version, and catalog discovery work offline.
 
-Activity and Dashboard Actions retain their Node CLI and pipeline commands.
-`cao.sh` no longer accepts migrated operator commands; use `gh cao` instead.
+Activity and Dashboard Actions invoke `node activity/cao.mjs <command>` directly;
+operator commands use `gh cao`. There is no shell launcher.
 SQLite snapshot repair and hosted-CLI App setup remain Node-only.
 Releases include version-stamped
 binaries named `gh-cao-OS-ARCH` (`.exe` on Windows) for Linux, macOS, and Windows

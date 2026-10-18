@@ -262,7 +262,7 @@ isolated workspace with a single-use, repository-scoped GitHub App installation
 token that is revoked on completion. A bounded broker pre-mints tokens for
 backlog.
 The Go planner translates the hosted CAO package-update action into a native
-`gh-aw update`; it never invokes `cao.sh` or executes control-repository scripts.
+`gh-aw update`; it never executes control-repository shell scripts.
 The executor runs only `gh` or the Go `gh-aw` CLI in the official digest-pinned
 gh-aw container by default, mounting only command-owned workspace and egress
 relay/socket resources and passing the
@@ -561,17 +561,21 @@ and basic local policy structure/compiler-pin checks, with text or JSON results
 and nonzero status for failed or skipped checks. Authentication may contact
 GitHub; raw authentication output and subprocess errors are never reported.
 Doctor does not replace production policy/workflow validation, grant authority,
-or invoke the Node snapshot-repair command. `cao.sh` exposes only Node-owned
-pipeline commands, SQLite snapshot `doctor`, and the unmigrated
-`setup-auth hosted-cli` profile. Migrated operator commands are rejected with
-their `gh cao` replacement. Internal Node implementations remain available for
-Actions and parity tests, not as wrapper operator commands.
+or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
+`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `doctor`
+and the unmigrated `setup-auth hosted-cli` profile. There is no shell launcher.
+Internal Node implementations remain available for Actions and parity tests,
+not as an alternative operator surface. Root runtime upgrades remove only
+content-verified retired launchers; consumer-owned files, links, and directories
+are preserved. Verified older archives may contain the retired launcher but
+never install it. Quickstart stages its deletion only when present, never a
+nonexistent launcher on a fresh installation.
 User-facing commands belong in the Go extension; Actions execution support
 belongs in the shipped JavaScript runtime. Control-plane validation is
 Actions-only, with one implementation invoked directly as
 `node activity/cao.mjs validate --json`, using the installed runtime revision
-and production policy resolver. Neither the extension nor `cao.sh` exposes a
-`validate` command. Native policy parsing still guards operator construction
+and production policy resolver. The extension exposes no `validate` command.
+Native policy parsing still guards operator construction
 and mutation; it is not a second control-plane validator. The workflow does not
 build or download the Go extension or require consumer npm metadata. Runtime
 tests preserve report and exit-code contracts. The JSON report remains under `RUNNER_TEMP`, outside

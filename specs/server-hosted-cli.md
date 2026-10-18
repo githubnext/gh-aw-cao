@@ -322,7 +322,7 @@ to the executor's App-only credential for requester authorization.
    remote contexts MUST NOT be used because the command's workspace is a
    host-local bind mount.
 7. The Go planner MUST accept only fixed `gh` and `gh-aw` container entrypoints.
-   It MUST NOT execute `cao.sh`, arbitrary shell commands, or control-repository
+   It MUST NOT execute repository shell scripts, arbitrary shell commands, or control-repository
    scripts. A fixed in-container bootstrap MUST initialize an empty private Git
    repository before invoking the planned entrypoint: the pinned `gh-aw update`
    and `upgrade --repo` implementations require a Git root before cloning their

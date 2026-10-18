@@ -1,18 +1,32 @@
 import assert from "node:assert/strict";
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { parse } from "yaml";
 import {
-  downloadCaoRuntimeArtifact, extractCaoArchive, materializeCao, validateCaoRuntimeArtifact,
+  downloadCaoRuntimeArtifact, extractCaoArchive, materializeCao, planCaoMaterialization, validateCaoRuntimeArtifact,
 } from "../../.github/workflows/shared/materialize-cao.mjs";
 import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
 import { setupTerminalFixture, walkSetupTerminal } from "../helpers/setup-terminal.mjs";
 
 const catalog = path.resolve(import.meta.dirname, "../..");
 const revision = "1".repeat(40);
+const retiredLauncher = `#!/bin/sh
+set -eu
+
+root="$(CDPATH='' cd -P "$(dirname "$0")" && pwd)"
+
+cli="$root/activity/cao.mjs"
+if [ ! -f "$cli" ]; then
+  echo "cao CLI is unavailable; install the Central Agentic Ops root campaign." >&2
+  exit 1
+fi
+
+exec node "$cli" --pipeline "$@"
+`;
 const temporary = mkdtempSync(path.join(tmpdir(), "cao-runtime-artifact-"));
 const artifact = buildCaoRuntime(catalog, path.join(temporary, "built"), revision);
 test.after(() => rmSync(temporary, { recursive: true, force: true }));
@@ -121,6 +135,23 @@ test("producer archives are reproducible across temporary build directories", ()
   assert.deepEqual(readFileSync(rebuilt.archive), readFileSync(artifact.archive));
 });
 
+test("verified older inventories may include a retired launcher without making it a root resource", (t) => {
+  const root = unpack(t);
+  const filename = path.join(root, "cao.sh");
+  writeFileSync(filename, "#!/bin/sh\nexit 0\n");
+  const metadataPath = path.join(root, "cao-runtime.json");
+  const metadata = JSON.parse(readFileSync(metadataPath, "utf8"));
+  metadata.files["cao.sh"] = createHash("sha256").update(readFileSync(filename)).digest("hex");
+  writeFileSync(metadataPath, JSON.stringify(metadata));
+  validateCaoRuntimeArtifact(root, revision);
+  const [plan] = planCaoMaterialization([{
+    name: "githubnext/gh-aw-cao", record: { resolvedCommit: revision },
+  }], "root");
+  assert.equal(plan.resources.includes("cao.sh"), false);
+  writeFileSync(filename, "tampered");
+  assert.throws(() => validateCaoRuntimeArtifact(root, revision), /checksum mismatch: cao\.sh/);
+});
+
 test("the prebuilt archive runs keyboard setup without consumer npm dependencies", { skip: process.platform === "win32" }, async (t) => {
   const root = unpack(t);
   const fixture = setupTerminalFixture(t, path.join(root, "activity/setup.mjs"));
@@ -205,8 +236,10 @@ for (const [description, options] of [
     mkdirSync(path.join(consumer, "activity"));
     const existing = path.join(consumer, "activity/existing.mjs");
     writeFileSync(existing, "existing");
+    writeFileSync(path.join(consumer, "cao.sh"), retiredLauncher);
     await assert.rejects(materializeCao("root", consumer), /No successful, unexpired|invalid signature or source digest/);
     assert.equal(readFileSync(existing, "utf8"), "existing");
+    assert.equal(readFileSync(path.join(consumer, "cao.sh"), "utf8"), retiredLauncher);
     assert.equal(commands().some((args) => args[0] === "release"), false);
   });
 }
@@ -224,8 +257,10 @@ test("a missing focused revision leaves an already validated root runtime untouc
   mkdirSync(path.join(consumer, "activity"));
   const existing = path.join(consumer, "activity/existing.mjs");
   writeFileSync(existing, "existing");
+  writeFileSync(path.join(consumer, "cao.sh"), retiredLauncher);
   await assert.rejects(materializeCao("root", consumer), /No successful, unexpired/);
   assert.equal(readFileSync(existing, "utf8"), "existing");
+  assert.equal(readFileSync(path.join(consumer, "cao.sh"), "utf8"), retiredLauncher);
   assert.equal(existsSync(path.join(consumer, "dashboard")), false);
 });
 
@@ -239,12 +274,11 @@ test("remote materialization consumes the prebuilt package and does not invoke n
   const npm = path.join(root, "npm");
   writeFileSync(npm, "#!/bin/sh\nexit 99\n");
   chmodSync(npm, 0o755);
+  writeFileSync(path.join(consumer, "cao.sh"), retiredLauncher);
   await materializeCao("root", consumer);
-  if (process.platform !== "win32") {
-    assert.ok(statSync(path.join(consumer, "cao.sh")).mode & 0o100);
-    await materializeCao("root", consumer);
-    assert.ok(statSync(path.join(consumer, "cao.sh")).mode & 0o100, "updates must keep the launcher executable");
-  }
+  assert.equal(existsSync(path.join(consumer, "cao.sh")), false);
+  await materializeCao("root", consumer);
+  assert.equal(existsSync(path.join(consumer, "cao.sh")), false);
   assert.deepEqual(readFileSync(path.join(consumer, "activity/cao.mjs")), readFileSync(path.join(catalog, "activity/cao.mjs")));
   assert.equal(existsSync(path.join(consumer, "package.json")), false);
   assert.equal(existsSync(path.join(consumer, "cao-runtime.json")), false);

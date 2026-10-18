@@ -23,7 +23,7 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
 
 ## Deterministic boundary
 
-Use `gh cao download`, `./cao.sh audit-jsonl`, `./cao.sh doctor`, and reviewed `gh cao query`
+Use `gh cao download`, `node activity/cao.mjs audit-jsonl`, `node activity/cao.mjs doctor`, and reviewed `gh cao query`
 commands for acquisition, validation, filtering, and projection. The agent
 chooses the question and interprets availability, freshness, completeness, and
 results. Do not reproduce Dashboard Language queries or filter canonical rows
@@ -51,7 +51,7 @@ Without a shell, the workflow has already installed CAO, downloaded the snapshot
 and started the read-only MCP server; call `cao_catalog` and `cao_query` instead of
 running commands. See [Agent analysis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/agent-analysis.md).
 
-1. Verify `gh cao --version`. Use the [CAO installer](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md#github-cli-extension) if the extension is unavailable. The retained `./cao.sh` audit and snapshot-repair tools additionally need the installed Node.js runtime.
+1. Verify `gh cao --version`. Use the [CAO installer](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md#github-cli-extension) if the extension is unavailable. The retained `node activity/cao.mjs` audit and snapshot-repair tools additionally need the installed Node.js runtime.
 2. Download the current published activity snapshot:
 
    ```bash
@@ -69,7 +69,7 @@ running commands. See [Agent analysis](https://github.com/githubnext/gh-aw-cao/b
 4. Check source coverage before treating the snapshot as complete:
 
    ```bash
-   ./cao.sh audit-jsonl
+   node activity/cao.mjs audit-jsonl
    ```
 
    Pass `--input FILE` only when auditing a non-default JSONL path.
@@ -126,7 +126,7 @@ running commands. See [Agent analysis](https://github.com/githubnext/gh-aw-cao/b
 10. If database health is in doubt, run:
 
    ```bash
-   ./cao.sh doctor
+   node activity/cao.mjs doctor
    ```
 
    Use `--ttl-days all` only for intentional historical backfills.

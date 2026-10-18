@@ -26,7 +26,7 @@ const (
 )
 
 var nativeQuickstartDirectories = []string{".github", "activity", "dashboard", "repo-assist"}
-var nativeQuickstartPaths = []string{".github", "activity", "dashboard", "repo-assist", "cao.sh", ".gitattributes", ".vscode/settings.json"}
+var nativeQuickstartPaths = []string{".github", "activity", "dashboard", "repo-assist", ".gitattributes", ".vscode/settings.json"}
 
 func nativeQuickstartPause(ctx context.Context, duration time.Duration) error {
 	timer := time.NewTimer(duration)
@@ -131,7 +131,7 @@ func nativeQuickstartCheckPaths(status string, initial bool) error {
 			}
 			path = unquoted
 		}
-		allowed := false
+		allowed := line == " D cao.sh"
 		for _, candidate := range nativeQuickstartPaths {
 			allowed = allowed || path == candidate
 		}
@@ -264,7 +264,11 @@ func nativeQuickstartInstall(cmd *cobra.Command, gh ghExecutor) (map[string]any,
 	if err := nativeQuickstartCheckPaths(status, false); err != nil {
 		return nil, err
 	}
-	if _, err := nativeQuickstartGit(cmd, append([]string{"add", "--"}, nativeQuickstartPaths...)...); err != nil {
+	stagePaths := append([]string{"add", "--"}, nativeQuickstartPaths...)
+	if strings.Contains("\n"+status+"\n", "\n D cao.sh\n") {
+		stagePaths = append(stagePaths, "cao.sh")
+	}
+	if _, err := nativeQuickstartGit(cmd, stagePaths...); err != nil {
 		return nil, err
 	}
 	if _, err := nativeQuickstartGit(cmd, "diff", "--cached", "--check"); err != nil {
@@ -341,7 +345,7 @@ func nativeQuickstartGuide(repo, target, branch, source, visibility string, wait
 			"Repo Assist package: " + source + ". The default uses the installed root CAO revision.",
 		}},
 		{"title": "2/5 · Install the campaign components", "details": []string{
-			"The verified root installation supplies cao.sh, activity/, dashboard/ and shared control code.",
+			"The verified root installation supplies activity/, dashboard/ and shared control code.",
 			"Core: cao-validate.yml checks configuration; cao-activity.yml collects evidence; cao-dashboard.yml publishes it.",
 			"Repo Assist adds repo-assist.lock.yml and repo-assist-maintenance.lock.yml. Issue triage, issue fix and PR upkeep workers remain disabled.",
 		}},

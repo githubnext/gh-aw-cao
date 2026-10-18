@@ -1513,7 +1513,7 @@ Presenters recognize `gh cao ...`, `gh aw ...`, `gh workflow run <workflow> ...`
 `gh cao <command>` is a first-class cli-actions command, not a shell alias.
 Local and Copilot hosts MUST launch the configured GitHub CLI executable with
 an argument vector beginning with `cao`, preserving the approved subcommand and
-arguments. They MUST NOT rewrite it to `cao.sh` or a Node.js operator command.
+arguments. They MUST NOT rewrite it to a repository shell script or a Node.js operator command.
 Native CAO actions use the same declaration resolution, per-invocation approval,
 durable queue, output streaming, cancellation, and retry protocol as other CLI
 actions. Recognizing the prefix MUST NOT widen the experimental

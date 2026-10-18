@@ -64,7 +64,6 @@ const archiveResources = [
   "activity",
   "dashboard",
   "runtime/package.json",
-  "cao.sh",
   "skills",
   "plugin.json",
   "com.github.copilot/extensions/cao-dashboard",
@@ -415,10 +414,6 @@ async function exists(file) {
   }
 }
 
-async function assertExecutable(file) {
-  if (process.platform !== "win32") assert.notEqual((await stat(file)).mode & 0o111, 0);
-}
-
 async function assertCompleteInstall(consumer, env, ghAwVersion, repository, { activity = false } = {}) {
   const policy = JSON.parse(await readFile(path.join(consumer, policyPath), "utf8"));
   assert.equal(policy.version, 1);
@@ -445,9 +440,8 @@ async function assertCompleteInstall(consumer, env, ghAwVersion, repository, { a
     },
     campaigns: {},
   });
-  await assertExecutable(path.join(consumer, "cao.sh"));
-  const launcher = process.platform === "win32" ? ["bash", ["./cao.sh", "--help"]] : ["./cao.sh", ["--help"]];
-  await executeFile(...launcher, { cwd: consumer, env, timeout });
+  assert.equal(await exists(path.join(consumer, "cao.sh")), false);
+  await executeFile(process.execPath, ["activity/cao.mjs", "--help"], { cwd: consumer, env, timeout });
   for (const bundle of ["activity", "dashboard"]) {
     await executeFile(process.execPath, [materializer, "verify", bundle], { cwd: consumer, env, timeout });
   }
@@ -595,7 +589,7 @@ test("documented staging preserves the complete curated runtime in a fresh check
   const { root, consumer, repository, env } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
   await executeFile("git", ["init", "--quiet"], { cwd: consumer });
-  await executeFile("git", ["add", ".github", "activity", "dashboard", "cao.sh"], { cwd: consumer });
+  await executeFile("git", ["add", ".github", "activity", "dashboard"], { cwd: consumer });
   const { stdout: untracked } = await executeFile("git", ["ls-files", "--others", "--exclude-standard"], { cwd: consumer });
   assert.equal(untracked, "", "the documented commit must include every installed resource");
   await executeFile("git", [
@@ -746,7 +740,7 @@ for (const { name, initialVersion, answer, environment = {}, manifest, expectedL
   });
 }
 
-test("install.sh reruns restore missing policy and launcher mode without replacing consumer policy", async (t) => {
+test("install.sh reruns restore missing policy without replacing consumer policy or requiring a launcher", async (t) => {
   const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await runFile(consumer, env);
   assert.equal(await log(), "add\n");
@@ -761,11 +755,10 @@ test("install.sh reruns restore missing policy and launcher mode without replaci
   const { FAKE_CONTROL_REPOSITORY: _, ...withoutLookup } = env;
   const customPolicy = '{"version":1,"gh-aw-version":"v9.9.9","control-plane":{"campaigns":{"custom":{}}}}\n';
   await writeFile(path.join(consumer, policyPath), customPolicy);
-  await chmod(path.join(consumer, "cao.sh"), 0o644);
   await streamInstaller(consumer, withoutLookup);
   assert.equal(await log(), "add\n");
   assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
-  await assertExecutable(path.join(consumer, "cao.sh"));
+  assert.equal(await exists(path.join(consumer, "cao.sh")), false);
 
   await runFile(consumer, withoutLookup, ["githubnext/gh-aw-cao@v1.2.3"]);
   assert.equal(await log(), "add\nadd-force\n");

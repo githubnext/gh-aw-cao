@@ -193,8 +193,9 @@ Guided onboarding runs as `gh cao setup`; independent authentication profiles
 are grouped under `gh cao setup auth github-app|enterprise-app|token`, not a
 root-level `setup-auth` command. These native commands preserve the setup and
 setup-auth JSON result contracts and secure credential prompts.
-`./cao.sh` accepts only pipeline commands, SQLite `doctor`, and
-`setup-auth hosted-cli`; migrated operator commands fail with Go migration guidance.
+Actions and Node-only tools invoke `node activity/cao.mjs <command>` directly,
+including SQLite `doctor` and `setup-auth hosted-cli`. There is no shell launcher;
+retained internal Node implementations serve Actions and parity tests, not operators.
 `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure
 and compiler pin without loading Node.js. Authentication may contact GitHub.
 Every operator command runs in Go without Node.js or an installed JavaScript

@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -25,6 +27,59 @@ import {
 
 const sourceRoot = path.resolve(import.meta.dirname, "..", "..");
 const runtimeManifest = JSON.parse(readFileSync(path.join(sourceRoot, "runtime", "package.json"), "utf8"));
+const retiredLauncher = `#!/bin/sh
+set -eu
+
+root="$(CDPATH='' cd -P "$(dirname "$0")" && pwd)"
+
+cli="$root/activity/cao.mjs"
+if [ ! -f "$cli" ]; then
+  echo "cao CLI is unavailable; install the Central Agentic Ops root campaign." >&2
+  exit 1
+fi
+
+exec node "$cli" --pipeline "$@"
+`;
+
+for (const [name, contents, removed] of [
+  ["pipeline launcher", retiredLauncher, true],
+  ["older launcher", retiredLauncher.replace(" --pipeline ", " "), true],
+  ["consumer script", "#!/bin/sh\necho consumer-owned\n", false],
+  ["directory", null, false],
+  ["symlink", null, false],
+]) {
+  test(`root materialization ${removed ? "retires" : "preserves"} ${name}`, {
+    skip: name === "symlink" && process.platform === "win32",
+  }, (t) => {
+    const destination = mkdtempSync(path.join(tmpdir(), "cao-retired-launcher-"));
+    t.after(() => rmSync(destination, { recursive: true, force: true }));
+    const filename = path.join(destination, "cao.sh");
+    if (name === "directory") mkdirSync(filename);
+    else if (name === "symlink") {
+      writeFileSync(path.join(destination, "consumer-script"), retiredLauncher);
+      symlinkSync("consumer-script", filename);
+    } else writeFileSync(filename, contents);
+    materializeCaoFromSource("root", sourceRoot, destination);
+    assert.equal(existsSync(filename), !removed);
+    if (name === "consumer script") assert.equal(readFileSync(filename, "utf8"), contents);
+    if (name === "directory") assert.ok(lstatSync(filename).isDirectory());
+    if (name === "symlink") {
+      assert.ok(lstatSync(filename).isSymbolicLink());
+      assert.equal(readFileSync(filename, "utf8"), retiredLauncher);
+    }
+  });
+}
+
+test("focused materialization and failed root preflight preserve a retired launcher", (t) => {
+  const destination = mkdtempSync(path.join(tmpdir(), "cao-retired-launcher-scope-"));
+  t.after(() => rmSync(destination, { recursive: true, force: true }));
+  const filename = path.join(destination, "cao.sh");
+  writeFileSync(filename, retiredLauncher);
+  materializeCaoFromSource("dependabot", sourceRoot, destination);
+  assert.equal(readFileSync(filename, "utf8"), retiredLauncher);
+  assert.throws(() => materializeCaoFromSource("root", destination, destination), /missing|incomplete/i);
+  assert.equal(readFileSync(filename, "utf8"), retiredLauncher);
+});
 
 function filesBelow(root, prefix = "") {
   return readdirSync(path.join(root, prefix)).flatMap((name) => {
@@ -72,12 +127,12 @@ test("native extraction preserves executable bits without restoring special or w
   const archive = path.join(destination, "cao.tar.gz");
   try {
     writeFileSync(archive, tarArchive([
-      { name: "package/cao.sh", content: "#!/bin/sh\n", mode: 0o6757 },
+      { name: "package/tool.sh", content: "#!/bin/sh\n", mode: 0o6757 },
       { name: "package/data.json", content: "{}", mode: 0o666 },
     ]));
     extractCaoArchive(archive, destination, true);
     if (process.platform !== "win32") {
-      assert.equal(statSync(path.join(destination, "package/cao.sh")).mode & 0o7777, 0o755);
+      assert.equal(statSync(path.join(destination, "package/tool.sh")).mode & 0o7777, 0o755);
       assert.equal(statSync(path.join(destination, "package/data.json")).mode & 0o7777, 0o644);
     }
   } finally {
@@ -168,7 +223,7 @@ test("CAO materialization preserves canonical production paths without installin
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "activity-cache.md")));
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "control.md")));
     assert.ok(existsSync(path.join(destination, ".github", "workflows", "shared", "review-bundle.md")));
-    assert.match(readFileSync(path.join(destination, "cao.sh"), "utf8"), /activity\/cao\.mjs/);
+    assert.equal(existsSync(path.join(destination, "cao.sh")), false);
     const trackedDashboardFiles = spawnSync(
       "git",
       ["-C", sourceRoot, "ls-files", "--", ...runtimeManifest.files.filter((file) => file.startsWith("dashboard/"))],
@@ -333,7 +388,6 @@ test("root materialization preserves exact focused package revisions", () => {
         revision: rootRevision,
         resources: [
           "dashboard",
-          "cao.sh",
           ".github/actions/setup-cao-runtime",
           ".github/actions/setup-gh-aw",
           ".github/cao/instructions.md",

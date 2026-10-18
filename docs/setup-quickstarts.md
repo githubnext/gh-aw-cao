@@ -92,7 +92,7 @@ public dashboard.
 Commit the CAO files and push to the control repository's default branch:
 
 ```bash
-git add .github activity dashboard cao.sh
+git add .github activity dashboard
 git commit -m "Set up CAO monitoring"
 git push
 ```

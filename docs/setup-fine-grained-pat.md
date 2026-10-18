@@ -77,7 +77,7 @@ git diff --check
 Review the diff. After explicit approval:
 
 ```bash
-git add .github activity dashboard cao.sh
+git add .github activity dashboard
 git commit -m "Install Central Agentic Ops control plane"
 git push --set-upstream origin HEAD
 ```

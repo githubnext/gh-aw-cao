@@ -8,7 +8,7 @@ metadata:
 # Set Up Central Agentic Ops
 
 Create or reuse a bare CAO control plane with the compiled `gh cao` extension,
-runtime (including pipeline-only `./cao.sh`), exact scope and compatible
+runtime, exact scope and compatible
 authentication. Leave `control-plane.campaigns` as an empty object, with
 no user-facing campaign installed or enabled, no live rollout, and no workflow
 dispatch.

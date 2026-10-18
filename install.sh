@@ -509,7 +509,6 @@ upgrade_gh_aw() {
 main() {
   local policy_path=".github/workflows/cao.json"
   local cao_cli="activity/cao.mjs"
-  local cao_command="./cao.sh"
   local control_runtime=".github/workflows/shared/control.mjs"
   local materializer=".github/workflows/shared/materialize-cao.mjs"
   local runtime_action=".github/actions/setup-cao-runtime/action.yml"
@@ -767,7 +766,7 @@ main() {
 
   # gh-aw's markdown scanner rejects the GitHub App manifest page embedded in
   # .github/workflows/shared/setup-github-apps.mjs, so catalog installs skip it.
-  if [[ ! -f "$cao_cli" || ! -f "$cao_command" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
+  if [[ ! -f "$cao_cli" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
     note "Installs 3 workflows, 5 shared control plane resources, and project settings."
     if ! run_quiet_command \
       "Installing control plane components..." \
@@ -805,11 +804,6 @@ main() {
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi
-  fi
-
-  if ! chmod +x "$cao_command"; then
-    printf 'Unable to make %s executable.\n' "$cao_command" >&2
-    return 1
   fi
 
   if [[ ! -f "$policy_path" ]]; then

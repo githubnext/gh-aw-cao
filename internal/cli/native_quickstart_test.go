@@ -70,12 +70,12 @@ func TestNativeQuickstartPolicySafety(t *testing.T) {
 }
 
 func TestNativeQuickstartBoundedCommitPaths(t *testing.T) {
-	for _, status := range []string{"?? .github/workflows/cao.json\n M activity/run.mjs\n", "?? .vscode/settings.json\n", " R old.txt -> repo-assist/new.txt\n", " M \"dashboard/a\\tb\"\n"} {
+	for _, status := range []string{"?? .github/workflows/cao.json\n M activity/run.mjs\n", "?? .vscode/settings.json\n", " R old.txt -> repo-assist/new.txt\n", " M \"dashboard/a\\tb\"\n", " D cao.sh\n"} {
 		if err := nativeQuickstartCheckPaths(status, true); err != nil {
 			t.Fatalf("rejected allowed status %q: %v", status, err)
 		}
 	}
-	for _, status := range []string{"M  .github/workflows/cao.json\n", "?? unrelated.txt\n", "?? .github-backup/token\n", "?? .vscode/launch.json\n"} {
+	for _, status := range []string{"M  .github/workflows/cao.json\n", "?? unrelated.txt\n", "?? .github-backup/token\n", "?? .vscode/launch.json\n", "?? cao.sh\n", " M cao.sh\n", "D  cao.sh\n"} {
 		if err := nativeQuickstartCheckPaths(status, true); err == nil {
 			t.Fatalf("accepted unsafe status %q", status)
 		}
@@ -427,9 +427,9 @@ func TestNativeQuickstartConfiguredPolicyValidation(t *testing.T) {
 }
 
 func TestNativeQuickstartInstallAndWait(t *testing.T) {
-	for _, scenario := range []string{"install", "wait", "artifact", "empty", "malformed", "different-latest"} {
+	for _, scenario := range []string{"install", "retired-launcher", "wait", "artifact", "empty", "malformed", "different-latest"} {
 		t.Run(scenario, func(t *testing.T) {
-			wait := scenario != "install"
+			wait := scenario != "install" && scenario != "retired-launcher"
 			root := nativeSetupTestDirectory(t)
 			nativeSetupTestSave(t, nativeSetupTestPolicy())
 			revision := strings.Repeat("a", 40)
@@ -455,8 +455,19 @@ func TestNativeQuickstartInstallAndWait(t *testing.T) {
 				case "branch --show-current":
 					return "main", nil
 				case "status --porcelain=v1 --untracked-files=all":
+					if scenario == "retired-launcher" {
+						return " M .github/workflows/cao.json\n?? repo-assist/cao.json\n D cao.sh\n", nil
+					}
 					return " M .github/workflows/cao.json\n?? repo-assist/cao.json\n", nil
-				case "add -- .github activity dashboard repo-assist cao.sh .gitattributes .vscode/settings.json", "diff --cached --check", "push --set-upstream origin HEAD":
+				case "add -- .github activity dashboard repo-assist .gitattributes .vscode/settings.json", "diff --cached --check", "push --set-upstream origin HEAD":
+					if strings.HasPrefix(call, "add ") && scenario == "retired-launcher" {
+						t.Fatal("retired launcher deletion was not staged")
+					}
+					return "", nil
+				case "add -- .github activity dashboard repo-assist .gitattributes .vscode/settings.json cao.sh":
+					if scenario != "retired-launcher" {
+						t.Fatal("fresh installation staged a nonexistent launcher")
+					}
 					return "", nil
 				default:
 					if strings.HasPrefix(call, "-c user.name=operator -c user.email=123+operator@users.noreply.github.com commit --no-gpg-sign -m ") {

@@ -452,7 +452,7 @@ describe('CLI actions', () => {
       id: 'update-repository',
       label: 'Update all',
       icon: 'sync',
-      command: './.github/aw/cao.sh update --repo {{repository}}',
+      command: './scripts/update.sh update --repo {{repository}}',
       arguments: [{
         id: 'create-pull-request',
         label: 'Create pull request',
@@ -468,11 +468,11 @@ describe('CLI actions', () => {
 
     rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
     expect(rendered?.querySelector('.cli-action-command')?.textContent)
-      .toBe('bash ./.github/aw/cao.sh update --repo octo/example --create-pull-request');
+      .toBe('bash ./scripts/update.sh update --repo octo/example --create-pull-request');
     rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(
-      'bash ./.github/aw/cao.sh update --repo octo/example --create-pull-request'
+      'bash ./scripts/update.sh update --repo octo/example --create-pull-request'
     ));
   });
 
