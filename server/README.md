@@ -578,11 +578,20 @@ compiler declaration can select multiple source repositories:
 
 ```yaml
 on:
-  security-alerts:
-    repos:
-      - bar/baz
-      - foo/*
+  gateway:
+    security-alerts:
+      repos:
+        - bar/baz
+        - foo/*
 ```
+
+The upstream authoring migration places special events under `on.gateway`:
+`projects-items` and `security-alerts`. It requires `"webhook-gateway": true`
+in the compiler's `aw.json`. Old flat Projects/security trigger spellings and
+the old `webhook-triggers` opt-in are rejected by the migrated compiler.
+This authoring change leaves the normalized lock manifest and closed v2
+dispatch envelope unchanged; the runtime conformance pin below does not claim
+compiler emission of the migrated syntax.
 
 Selectors are lowercase, sorted, unique exact names or literal-owner `/*`
 patterns, intersected with reviewed `discovery.repositories` and root scope.

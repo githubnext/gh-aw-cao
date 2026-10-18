@@ -315,16 +315,22 @@ source selection such as:
 
 ```yaml
 on:
-  security-alerts:
-    repos:
-      - bar/baz
-      - foo/*
+  gateway:
+    security-alerts:
+      repos:
+        - bar/baz
+        - foo/*
 ```
 
-The upstream compiler accepts plural `security-alerts` as an alias of singular
-`security-alert`, but not both together. A repos-only declaration selects its
-supported Dependabot and code-scanning sources; explicit sources remain
-authoritative. CAO consumes the compiled manifest, not this YAML.
+The upstream authoring migration places special events under `on.gateway`,
+using `projects-items` and `security-alerts`, and requires
+`"webhook-gateway": true` in the compiler's `aw.json`. The migrated compiler
+rejects old flat Projects/security spellings and the old `webhook-triggers`
+opt-in. A repos-only declaration selects supported Dependabot and code-scanning
+sources; explicit sources remain authoritative. CAO consumes the compiled
+manifest, not this YAML. The normalized manifest and closed v2 wire contract
+are unchanged; the pinned runtime interoperability evidence does not establish
+compiler emission of the migrated authoring syntax.
 
 **SR-01** A present `repos` MUST be a nonempty bounded array of lowercase, sorted,
 unique strings. Each selector MUST be an exact `owner/repository` or a literal
