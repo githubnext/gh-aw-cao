@@ -327,6 +327,9 @@ CREATE TABLE IF NOT EXISTS audits (
   routing_session_clock NUMERIC,
   routing_deviations TEXT,
   routing_inventory_complete BOOLEAN,
+  resolution_role TEXT,
+  resolution_configured_model TEXT,
+  resolution_resolved_model TEXT,
   component TEXT,
   phase TEXT,
   model TEXT,
@@ -429,7 +432,7 @@ CREATE TABLE IF NOT EXISTS audits (
 
   PRIMARY KEY (namespace, id, run_at),
   UNIQUE (namespace, ordinal, run_at),
-  CHECK (bit_length(present_fields) = 134),
+  CHECK (bit_length(present_fields) = 137),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
   CHECK (run_id IS NOT NULL AND run_id <> ''),
   FOREIGN KEY (namespace, run_id, run_at) REFERENCES runs(namespace, id, run_at) DEFERRABLE INITIALLY DEFERRED

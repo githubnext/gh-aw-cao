@@ -9,7 +9,7 @@
       "filter": { "predicates": [{ "field": "event-type", "in": [
         "session.format", "workflow.info", "workflow.job_result", "agent.execution",
         "firewall.model_routing", "firewall.token_usage", "usage.report", "firewall.steering",
-        "firewall.event", "firewall.upstream_error", "model.config", "model.inventory",
+        "firewall.event", "firewall.upstream_error", "model.config", "model.inventory", "model.resolution",
         "model_routing.outcome", "model_endpoint.mismatch", "session.collection", "session.collection_warning",
         "subagent.request", "subagent.started", "subagent.configured", "subagent.completed",
         "subagent.failed", "subagent.model_unavailable"
@@ -975,6 +975,249 @@
         { "field": "display-low", "as": "wilson-low" }, { "field": "display-high", "as": "wilson-high" },
         { "field": "display-cost", "as": "cost-per-success" }
       ]
+    },
+    {
+      "name": "routing-resolutions", "from": "routing-session-events",
+      "subject": "Read runner-written configured-model resolutions for scoped routing runs.",
+      "objective": "Explain what each workflow role's configured model resolved to before the engine launched.",
+      "acceptance": "Only model.resolution facts from latest scoped attempts contribute; missing or unsafe values and failed null resolutions remain unknown.",
+      "joins": [{ "source": "routing-runs", "type": "inner", "on": [{ "left": "routing-run-key", "right": "routing-run-key" }],
+        "fields": [{ "field": "run-clock", "as": "run-clock" }, { "field": "observed-at", "as": "run-observed-at" },
+          { "field": "full-repository", "as": "full-repository" }, { "field": "routing-dashboard-link", "as": "routing-dashboard-link" },
+          { "field": "routing-state", "as": "run-routing-state" }] }],
+      "filter": { "predicates": [{ "field": "event-type", "equals": "model.resolution" }] },
+      "compute": [
+        { "as": "resolution-engine", "function": "coalesce", "args": [{ "field": "telemetry-engine" }, { "value": "unknown" }] },
+        { "as": "resolution-role-label", "function": "coalesce", "args": [{ "field": "resolution-role" }, { "value": "unknown" }] },
+        { "as": "configured-model", "function": "coalesce", "args": [{ "field": "resolution-configured-model" }, { "value": "unknown" }] },
+        { "as": "resolved-model-label", "function": "coalesce", "args": [{ "field": "resolution-resolved-model" }, { "value": "unknown" }] },
+        { "as": "resolution-provider", "function": "coalesce", "args": [{ "field": "provider" }, { "value": "unknown" }] },
+        { "as": "resolution-status", "function": "coalesce", "args": [{ "field": "event-status" }, { "value": "unknown" }] },
+        { "as": "failed-resolution", "function": "equals-any", "args": [{ "field": "event-status" }, { "value": "failed" }] },
+        { "as": "failure-cause", "function": "coalesce", "args": [{ "field": "code" }, { "value": "unknown" }] },
+        { "as": "resolution-cause", "function": "if", "args": [{ "field": "failed-resolution" }, { "field": "failure-cause" }, { "field": "code" }] },
+        { "as": "unknown-resolved-model", "function": "equals-any", "args": [{ "field": "resolution-resolved-model" }, { "value": null }] },
+        { "as": "untimed", "function": "equals-any", "args": [{ "field": "run-clock" }, { "value": null }] },
+        { "as": "configured-to-resolved", "function": "concat", "args": [{ "field": "configured-model" }, { "value": " → " }, { "field": "resolved-model-label" }] },
+        { "as": "workflow-key", "function": "concat", "args": [{ "field": "full-repository" }, { "value": ":" }, { "field": "workflow" }] },
+        { "as": "resolution-actor", "function": "concat", "args": [{ "field": "resolution-engine" }, { "value": "/" }, { "field": "resolution-role-label" }, { "value": "/" }, { "field": "resolution-provider" }] },
+        { "as": "resolution-series", "function": "concat", "args": [{ "field": "workflow-key" }, { "value": " | " }, { "field": "resolution-actor" }, { "value": " | " }, { "field": "configured-model" }] }
+      ]
+    },
+    {
+      "name": "routing-resolution-status", "from": "routing-resolutions",
+      "subject": "Count configured-model resolution outcomes by event engine and role.",
+      "objective": "Show resolved, exact and failed resolutions without multiplying runs by roles.",
+      "acceptance": "Runs are distinct run identities; records count individual role resolutions.",
+      "aggregate": { "by": ["resolution-engine", "resolution-role-label", "resolution-status"], "values": [
+        { "field": "routing-run-key", "as": "runs", "reducer": "distinct-count" },
+        { "field": "event", "as": "records", "reducer": "count" }
+      ] },
+      "order-by": [{ "field": "resolution-engine", "direction": "asc" }, { "field": "resolution-role-label", "direction": "asc" }, { "field": "resolution-status", "direction": "asc" }]
+    },
+    {
+      "name": "routing-resolution-run-counts", "from": "routing-resolutions",
+      "subject": "Count resolution records per scoped run.",
+      "objective": "Attach configured-model resolution evidence to run-level coverage.",
+      "acceptance": "Several roles in one run remain one covered run.",
+      "aggregate": { "by": ["routing-run-key"], "values": [
+        { "field": "event", "as": "resolution-records", "reducer": "count" },
+        { "field": "event", "as": "failed-records", "reducer": "count", "filter": { "predicates": [{ "field": "resolution-status", "equals": "failed" }] } }
+      ] }
+    },
+    {
+      "name": "routing-resolution-run-coverage", "from": "routing-runs",
+      "subject": "Classify each scoped run's configured-model resolution evidence.",
+      "objective": "Separate covered runs, positively routed runs and runs lacking evidence.",
+      "acceptance": "Absence never establishes routing or failure; routed state comes only from routing evidence.",
+      "joins": [{ "source": "routing-resolution-run-counts", "type": "left", "on": [{ "left": "routing-run-key", "right": "routing-run-key" }],
+        "fields": [{ "field": "resolution-records", "as": "resolution-records" }, { "field": "failed-records", "as": "failed-records" }] }],
+      "compute": [
+        { "as": "resolution-record-count", "function": "coalesce", "args": [{ "field": "resolution-records" }, { "value": 0 }] },
+        { "as": "failed-record-count", "function": "coalesce", "args": [{ "field": "failed-records" }, { "value": 0 }] },
+        { "as": "has-resolution", "function": "greater-than", "args": [{ "field": "resolution-record-count" }, { "value": 0 }] },
+        { "as": "has-failed-resolution", "function": "greater-than", "args": [{ "field": "failed-record-count" }, { "value": 0 }] },
+        { "as": "is-routed", "function": "equals-any", "args": [{ "field": "routing-state" }, { "value": "selected" }, { "value": "selection_failed" }, { "value": "harness_reported" }, { "value": "configured_unrecorded" }] },
+        { "as": "absent-state", "function": "if", "args": [{ "field": "is-routed" }, { "value": "routed" }, { "value": "missing" }] },
+        { "as": "resolution-coverage-state", "function": "if", "args": [{ "field": "has-resolution" }, { "value": "covered" }, { "field": "absent-state" }] }
+      ]
+    },
+    {
+      "name": "routing-resolution-coverage-totals", "from": "routing-resolution-run-coverage",
+      "subject": "Count scoped runs by configured-model resolution coverage.",
+      "objective": "Keep denominators explicit for covered, routed and missing evidence.",
+      "acceptance": "Routed runs without resolution are expected absence, not missing evidence.",
+      "aggregate": { "values": [
+        { "field": "routing-run-key", "as": "runs", "reducer": "count" },
+        { "field": "routing-run-key", "as": "resolution-runs", "reducer": "count", "filter": { "predicates": [{ "field": "has-resolution", "equals": true }] } },
+        { "field": "routing-run-key", "as": "routed-runs", "reducer": "count", "filter": { "predicates": [{ "field": "is-routed", "equals": true }] } },
+        { "field": "routing-run-key", "as": "routed-without-resolution", "reducer": "count", "filter": { "predicates": [{ "field": "resolution-coverage-state", "equals": "routed" }] } },
+        { "field": "routing-run-key", "as": "missing-resolution", "reducer": "count", "filter": { "predicates": [{ "field": "resolution-coverage-state", "equals": "missing" }] } },
+        { "field": "routing-run-key", "as": "failed-runs", "reducer": "count", "filter": { "predicates": [{ "field": "has-failed-resolution", "equals": true }] } },
+        { "field": "resolution-record-count", "as": "resolution-records", "reducer": "sum" }
+      ] }
+    },
+    {
+      "name": "routing-resolution-coverage", "from": "routing-resolution-coverage-totals",
+      "subject": "Show configured-model resolution coverage with its denominators.",
+      "objective": "Distinguish expected routed absence from missing resolution evidence.",
+      "acceptance": "A zero denominator produces no share.",
+      "compute": [
+        { "as": "non-routed-runs", "function": "difference", "args": [{ "field": "runs" }, { "field": "routed-runs" }] },
+        { "as": "resolution-share", "function": "quotient", "args": [{ "field": "resolution-runs" }, { "field": "runs" }] }
+      ]
+    },
+    {
+      "name": "routing-resolution-observations", "from": "routing-resolutions",
+      "subject": "Retain resolutions with a known resolved model.",
+      "objective": "Build alias history without treating failed or unsafe values as a model.",
+      "acceptance": "Failed null resolutions and unsafe resolved values never enter alias history.",
+      "filter": { "predicates": [{ "field": "unknown-resolved-model", "equals": false }] }
+    },
+    {
+      "name": "routing-resolution-timeline", "from": "routing-resolution-observations",
+      "subject": "Order timed resolutions within each workflow, engine, role, provider and configured model.",
+      "objective": "Compare only chronologically adjacent resolutions of the same alias series.",
+      "acceptance": "Untimed runs cannot establish a transition or a first or last observation.",
+      "filter": { "predicates": [{ "field": "run-clock", "gte": 0 }] },
+      "window": [
+        { "operation": "previous", "field": "resolved-model-label", "as": "previous-resolved-model", "groupby": ["resolution-series"],
+          "order-by": [{ "field": "run-clock", "direction": "asc" }, { "field": "run", "direction": "asc" }] },
+        { "operation": "row-number", "field": "run", "as": "series-first-position", "groupby": ["resolution-series"],
+          "order-by": [{ "field": "run-clock", "direction": "asc" }, { "field": "run", "direction": "asc" }] },
+        { "operation": "row-number", "field": "run", "as": "series-last-position", "groupby": ["resolution-series"],
+          "order-by": [{ "field": "run-clock", "direction": "desc" }, { "field": "run", "direction": "desc" }] },
+        { "operation": "row-number", "field": "run", "as": "model-first-position", "groupby": ["resolution-series", "resolved-model-label"],
+          "order-by": [{ "field": "run-clock", "direction": "asc" }, { "field": "run", "direction": "asc" }] },
+        { "operation": "row-number", "field": "run", "as": "model-last-position", "groupby": ["resolution-series", "resolved-model-label"],
+          "order-by": [{ "field": "run-clock", "direction": "desc" }, { "field": "run", "direction": "desc" }] }
+      ]
+    },
+    {
+      "name": "routing-resolution-transitions", "from": "routing-resolution-timeline",
+      "subject": "Mark adjacent resolved-model changes within an alias series.",
+      "objective": "Count observed alias moves without claiming why they happened.",
+      "acceptance": "First observations are not changes; equal adjacent models are stable.",
+      "compute": [
+        { "as": "first-resolution", "function": "equals-any", "args": [{ "field": "previous-resolved-model" }, { "value": null }] },
+        { "as": "same-resolution", "function": "equals-any", "args": [{ "field": "previous-resolved-model" }, { "field": "resolved-model-label" }] },
+        { "as": "resolution-pair", "function": "if", "args": [{ "field": "first-resolution" }, { "value": 0 }, { "value": 1 }] },
+        { "as": "resolution-changed", "function": "if", "args": [{ "field": "same-resolution" }, { "value": 0 }, { "field": "resolution-pair" }] },
+        { "as": "is-transition", "function": "greater-than", "args": [{ "field": "resolution-changed" }, { "value": 0 }] },
+        { "as": "transition-label", "function": "concat", "args": [{ "field": "previous-resolved-model" }, { "value": " → " }, { "field": "resolved-model-label" }] },
+        { "as": "resolution-transition", "function": "if", "args": [{ "field": "is-transition" }, { "field": "transition-label" }, { "value": null }] }
+      ]
+    },
+    {
+      "name": "routing-alias-model-runs", "from": "routing-resolution-transitions",
+      "subject": "Identify the first and last timed run for each resolved model of a series.",
+      "objective": "Link alias history rows to their contributing runs.",
+      "acceptance": "Only timed runs identify first and last observations.",
+      "aggregate": { "by": ["resolution-series", "resolved-model-label"], "values": [
+        { "field": "run", "as": "first-run", "reducer": "unique", "filter": { "predicates": [{ "field": "model-first-position", "equals": 1 }] } },
+        { "field": "run", "as": "last-run", "reducer": "unique", "filter": { "predicates": [{ "field": "model-last-position", "equals": 1 }] } },
+        { "field": "routing-dashboard-link", "as": "first-run-link", "reducer": "unique", "filter": { "predicates": [{ "field": "model-first-position", "equals": 1 }] } }
+      ] }
+    },
+    {
+      "name": "routing-alias-history-totals", "from": "routing-resolution-observations",
+      "subject": "Count runs and recorded clocks for each resolved model of an alias series.",
+      "objective": "Expose resolved-model history per workflow, engine, role, provider and configured model.",
+      "acceptance": "Distinct runs are counted once; untimed runs remain counted with unknown time.",
+      "aggregate": { "by": ["resolution-series", "full-repository", "workflow", "resolution-engine", "resolution-role-label", "resolution-provider", "configured-model", "resolved-model-label"], "values": [
+        { "field": "routing-run-key", "as": "runs", "reducer": "distinct-count" },
+        { "field": "routing-run-key", "as": "untimed-runs", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "untimed", "equals": true }] } },
+        { "field": "run", "as": "contributing-runs", "reducer": "distinct-list" },
+        { "field": "run-clock", "as": "first-clock", "reducer": "min" },
+        { "field": "run-clock", "as": "last-clock", "reducer": "max" }
+      ] }
+    },
+    {
+      "name": "routing-alias-history", "from": "routing-alias-history-totals",
+      "subject": "Show the observed resolved-model history of each alias series.",
+      "objective": "Support investigation of alias moves with first and last observed runs.",
+      "acceptance": "History rows are observations, not proof that the model was served.",
+      "joins": [{ "source": "routing-alias-model-runs", "type": "left",
+        "on": [{ "left": "resolution-series", "right": "resolution-series" }, { "left": "resolved-model-label", "right": "resolved-model-label" }],
+        "fields": [{ "field": "first-run", "as": "first-run" }, { "field": "last-run", "as": "last-run" }, { "field": "first-run-link", "as": "routing-dashboard-link" }] }],
+      "compute": [
+        { "as": "first-seen", "function": "iso-timestamp", "args": [{ "field": "first-clock" }] },
+        { "as": "last-seen", "function": "iso-timestamp", "args": [{ "field": "last-clock" }] }
+      ],
+      "order-by": [{ "field": "resolution-series", "direction": "asc" }, { "field": "first-clock", "direction": "asc" }, { "field": "resolved-model-label", "direction": "asc" }]
+    },
+    {
+      "name": "routing-alias-sequences", "from": "routing-resolution-transitions",
+      "subject": "Summarize timed resolved-model changes for each alias series.",
+      "objective": "Identify the earliest and latest resolved model and the observed transitions.",
+      "acceptance": "Transitions require adjacent recorded run clocks.",
+      "aggregate": { "by": ["resolution-series"], "values": [
+        { "field": "resolution-changed", "as": "changes", "reducer": "sum" },
+        { "field": "resolution-pair", "as": "pairs", "reducer": "sum" },
+        { "field": "resolution-transition", "as": "transitions", "reducer": "distinct-list" },
+        { "field": "resolved-model-label", "as": "first-model", "reducer": "unique", "filter": { "predicates": [{ "field": "series-first-position", "equals": 1 }] } },
+        { "field": "resolved-model-label", "as": "latest-model", "reducer": "unique", "filter": { "predicates": [{ "field": "series-last-position", "equals": 1 }] } },
+        { "field": "run", "as": "first-run", "reducer": "unique", "filter": { "predicates": [{ "field": "series-first-position", "equals": 1 }] } },
+        { "field": "run", "as": "last-run", "reducer": "unique", "filter": { "predicates": [{ "field": "series-last-position", "equals": 1 }] } },
+        { "field": "routing-dashboard-link", "as": "last-run-link", "reducer": "unique", "filter": { "predicates": [{ "field": "series-last-position", "equals": 1 }] } }
+      ] }
+    },
+    {
+      "name": "routing-alias-move-totals", "from": "routing-resolution-observations",
+      "subject": "Count runs and distinct resolved models for each alias series.",
+      "objective": "Provide one change-summary row per series, including stable aliases.",
+      "acceptance": "Engine, role and provider stay part of the series so unrelated resolutions cannot manufacture a move.",
+      "aggregate": { "by": ["resolution-series", "full-repository", "workflow", "resolution-engine", "resolution-role-label", "resolution-provider", "configured-model"], "values": [
+        { "field": "routing-run-key", "as": "runs", "reducer": "distinct-count" },
+        { "field": "routing-run-key", "as": "untimed-runs", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "untimed", "equals": true }] } },
+        { "field": "resolved-model-label", "as": "distinct-models", "reducer": "distinct-count" },
+        { "field": "resolved-model-label", "as": "resolved-models", "reducer": "distinct-list" },
+        { "field": "run-clock", "as": "first-clock", "reducer": "min" },
+        { "field": "run-clock", "as": "last-clock", "reducer": "max" }
+      ] }
+    },
+    {
+      "name": "routing-alias-moves", "from": "routing-alias-move-totals",
+      "subject": "Highlight alias series whose resolved model changed between timed runs.",
+      "objective": "Investigate aliases moving to newer models without claiming cause or served-model evidence.",
+      "acceptance": "Exactly one row per series; only adjacent timed runs establish a move and unordered changes stay distinct.",
+      "joins": [{ "source": "routing-alias-sequences", "type": "left", "on": [{ "left": "resolution-series", "right": "resolution-series" }],
+        "fields": [{ "field": "changes", "as": "changes" }, { "field": "pairs", "as": "pairs" }, { "field": "transitions", "as": "transitions" },
+          { "field": "first-model", "as": "first-model" }, { "field": "latest-model", "as": "latest-model" },
+          { "field": "first-run", "as": "first-run" }, { "field": "last-run", "as": "last-run" }, { "field": "last-run-link", "as": "routing-dashboard-link" }] }],
+      "compute": [
+        { "as": "change-count", "function": "coalesce", "args": [{ "field": "changes" }, { "value": 0 }] },
+        { "as": "moved", "function": "greater-than", "args": [{ "field": "change-count" }, { "value": 0 }] },
+        { "as": "several-models", "function": "greater-than", "args": [{ "field": "distinct-models" }, { "value": 1 }] },
+        { "as": "unmoved-state", "function": "if", "args": [{ "field": "several-models" }, { "value": "order unknown" }, { "value": "stable" }] },
+        { "as": "alias-change", "function": "if", "args": [{ "field": "moved" }, { "value": "alias moved" }, { "field": "unmoved-state" }] },
+        { "as": "move-label", "function": "concat", "args": [{ "field": "first-model" }, { "value": " → " }, { "field": "latest-model" }] },
+        { "as": "model-change", "function": "if", "args": [{ "field": "moved" }, { "field": "move-label" }, { "value": null }] },
+        { "as": "first-seen", "function": "iso-timestamp", "args": [{ "field": "first-clock" }] },
+        { "as": "last-seen", "function": "iso-timestamp", "args": [{ "field": "last-clock" }] }
+      ],
+      "order-by": [{ "field": "change-count", "direction": "desc" }, { "field": "resolution-series", "direction": "asc" }]
+    },
+    {
+      "name": "routing-resolution-failure-records", "from": "routing-resolutions",
+      "subject": "Retain failed configured-model resolutions with their runs.",
+      "objective": "Link each failed resolution to its contributing run.",
+      "acceptance": "Failed resolved models stay unknown; causes are never inferred.",
+      "filter": { "predicates": [{ "field": "resolution-status", "equals": "failed" }] },
+      "order-by": [{ "field": "run-clock", "direction": "desc" }, { "field": "run", "direction": "desc" }]
+    },
+    {
+      "name": "routing-resolution-failures", "from": "routing-resolution-failure-records",
+      "subject": "Group failed resolutions by configured model and cause.",
+      "objective": "Keep model_unavailable and catalog_unavailable distinct with engine and role context.",
+      "acceptance": "Affected runs are distinct run identities; a single-run group links to that run.",
+      "aggregate": { "by": ["configured-model", "resolution-cause", "resolution-engine", "resolution-role-label", "resolution-provider"], "values": [
+        { "field": "routing-run-key", "as": "affected-runs", "reducer": "distinct-count" },
+        { "field": "event", "as": "records", "reducer": "count" },
+        { "field": "run", "as": "runs", "reducer": "distinct-list" },
+        { "field": "routing-dashboard-link", "as": "routing-dashboard-link", "reducer": "unique" }
+      ] },
+      "order-by": [{ "field": "affected-runs", "direction": "desc" }, { "field": "configured-model", "direction": "asc" }, { "field": "resolution-cause", "direction": "asc" }]
     }
   ],
   "pages": [
@@ -1188,6 +1431,70 @@
             { "field": "wilson-low", "title": "95% Wilson lower" }, { "field": "wilson-high", "title": "95% Wilson upper" },
             { "field": "sample-status", "title": "Evidence" }, { "field": "cost-per-success", "title": "Complete AIC / successful jobs", "unit": "aic" }, { "field": "complete-cost-count", "title": "Complete cost runs" }
           ] }, "empty-message": "No identified sessions with routing outcome evidence are available."
+        },
+        {
+          "id": "routing-resolution-coverage", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "description": "Runner-written configured-model resolution before engine launch. Denominator is scoped runs; routed runs are counted separately and their absence of resolution is expected. Absence alone never establishes routing or failure.",
+          "data": { "source": "routing-resolution-coverage", "query-context": false },
+          "encoding": { "columns": [
+            { "field": "runs", "title": "Scoped runs" }, { "field": "resolution-runs", "title": "With resolution" }, { "field": "resolution-share", "title": "Resolution share" },
+            { "field": "routed-runs", "title": "Routed runs" }, { "field": "routed-without-resolution", "title": "Routed without resolution" }, { "field": "non-routed-runs", "title": "Non-routed runs" },
+            { "field": "missing-resolution", "title": "Non-routed without resolution" }, { "field": "failed-runs", "title": "Runs with failed resolution" }, { "field": "resolution-records", "title": "Resolution records" }
+          ] }, "empty-message": "No scoped routing runs are available."
+        },
+        {
+          "id": "routing-resolution-status", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "description": "Runs are distinct runs; records are individual role resolutions. resolved means alias resolution against the live catalog; exact means the configured value passed through. Resolution does not prove which model was served.",
+          "data": { "source": "routing-resolution-status", "query-context": false },
+          "encoding": { "columns": [
+            { "field": "resolution-engine", "title": "Engine" }, { "field": "resolution-role-label", "title": "Role" }, { "field": "resolution-status", "title": "Status", "type": "nominal", "display": "status" },
+            { "field": "runs", "title": "Runs" }, { "field": "records", "title": "Records" }
+          ] }, "empty-message": "No configured-model resolution was recorded for the scoped runs; missing evidence is not a failure."
+        },
+        {
+          "id": "routing-alias-moves", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "description": "One row per repository, workflow, engine, role, provider and configured model. A move needs adjacent runs with recorded session clocks; untimed runs never establish a transition. Changes are observations, not causes or served-model evidence.",
+          "data": { "source": "routing-alias-moves", "limit": 100, "query-context": false },
+          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
+            { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" }, { "field": "resolution-engine", "title": "Engine" },
+            { "field": "resolution-role-label", "title": "Role" }, { "field": "resolution-provider", "title": "Provider" }, { "field": "configured-model", "title": "Configured model" },
+            { "field": "alias-change", "title": "Change", "type": "nominal", "display": "status" }, { "field": "model-change", "title": "Earliest → latest" }, { "field": "transitions", "title": "Observed transitions" },
+            { "field": "resolved-models", "title": "Resolved models" }, { "field": "changes", "title": "Changes" }, { "field": "runs", "title": "Runs" },
+            { "field": "untimed-runs", "title": "Untimed runs" }, { "field": "first-run", "title": "First run" }, { "field": "first-seen", "title": "First seen", "type": "temporal", "format": "human-friendly-timestamp" },
+            { "field": "last-run", "title": "Last run" }, { "field": "last-seen", "title": "Last seen", "type": "temporal", "format": "human-friendly-timestamp" }
+          ] }, "empty-message": "No resolved configured models were recorded for the scoped runs."
+        },
+        {
+          "id": "routing-alias-history", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "description": "Observed resolved models per alias series with first and last timed runs. Untimed runs are counted but cannot order history.",
+          "data": { "source": "routing-alias-history", "limit": 200, "query-context": false },
+          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
+            { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" }, { "field": "resolution-engine", "title": "Engine" },
+            { "field": "resolution-role-label", "title": "Role" }, { "field": "resolution-provider", "title": "Provider" }, { "field": "configured-model", "title": "Configured model" },
+            { "field": "resolved-model-label", "title": "Resolved model" }, { "field": "runs", "title": "Runs" }, { "field": "contributing-runs", "title": "Contributing runs" },
+            { "field": "untimed-runs", "title": "Untimed runs" },
+            { "field": "first-run", "title": "First run" }, { "field": "first-seen", "title": "First seen", "type": "temporal", "format": "human-friendly-timestamp" }, { "field": "last-run", "title": "Last run" },
+            { "field": "last-seen", "title": "Last seen", "type": "temporal", "format": "human-friendly-timestamp" }
+          ] }, "empty-message": "No resolved configured models were recorded for the scoped runs."
+        },
+        {
+          "id": "routing-resolution-failures", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "description": "Failed configured-model resolutions grouped by configured model and cause with engine and role context. Affected runs are distinct runs.",
+          "data": { "source": "routing-resolution-failures", "limit": 100, "query-context": false },
+          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
+            { "field": "configured-model", "title": "Configured model" }, { "field": "resolution-cause", "title": "Cause" }, { "field": "resolution-engine", "title": "Engine" },
+            { "field": "resolution-role-label", "title": "Role" }, { "field": "resolution-provider", "title": "Provider" }, { "field": "affected-runs", "title": "Affected runs" },
+            { "field": "records", "title": "Records" }, { "field": "runs", "title": "Runs" }
+          ] }, "empty-message": "No failed configured-model resolution was recorded; missing evidence does not establish success."
+        },
+        {
+          "id": "routing-resolution-failure-runs", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "data": { "source": "routing-resolution-failure-records", "limit": 100, "query-context": false },
+          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
+            { "field": "run", "title": "Run" }, { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" },
+            { "field": "resolution-engine", "title": "Engine" }, { "field": "resolution-role-label", "title": "Role" }, { "field": "configured-model", "title": "Configured model" },
+            { "field": "resolved-model-label", "title": "Resolved model" }, { "field": "resolution-cause", "title": "Cause" }
+          ] }, "empty-message": "No failed configured-model resolution was recorded; missing evidence does not establish success."
         }
       ]
     },
@@ -1258,6 +1565,16 @@
             { "field": "code", "title": "Code" }, { "field": "event-status", "title": "Status" }, { "field": "name", "title": "Source / job" },
             { "field": "run-link", "title": "Actions run", "type": "nominal", "format": "workflow-run-url" }
           ] }, "empty-message": "No retained routing evidence is available for this run."
+        },
+        {
+          "id": "routing-run-resolutions", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "description": "Runner-written configured-model resolution for each role before engine launch. Resolution records carry no timestamp of their own.",
+          "data": { "source": "routing-resolutions", "route-field": "routing-run-key", "order-by": [{ "field": "source-sequence", "direction": "asc" }], "limit": 100, "query-context": false },
+          "encoding": { "columns": [
+            { "field": "resolution-role-label", "title": "Role" }, { "field": "configured-to-resolved", "title": "Configured → resolved" }, { "field": "resolution-status", "title": "Status", "type": "nominal", "display": "status" },
+            { "field": "resolution-cause", "title": "Cause" }, { "field": "resolution-engine", "title": "Engine" }, { "field": "resolution-provider", "title": "Provider" },
+            { "field": "source-sequence", "title": "Sequence" }
+          ] }, "empty-message": "No configured-model resolution was recorded for this run. Routed or older sessions may not record it; absence is not a failure."
         }
       ]
     }

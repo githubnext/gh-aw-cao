@@ -308,6 +308,9 @@ model audits {
   routingSessionClock?: decimal;
   routingDeviations?: string;
   routingInventoryComplete?: boolean;
+  resolutionRole?: string;
+  resolutionConfiguredModel?: string;
+  resolutionResolvedModel?: string;
   component?: string;
   phase?: string;
   `model`?: string;

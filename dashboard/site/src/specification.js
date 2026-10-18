@@ -552,6 +552,7 @@ TABLE_FIELDS.audits.push(
   'routing-degraded-reason', 'routing-enabled', 'routing-substitution', 'routing-effective-model',
   'routing-steering-type', 'routing-steering-threshold', 'routing-max-credits', 'routing-session-clock',
   'routing-deviations', 'routing-inventory-complete',
+  'resolution-role', 'resolution-configured-model', 'resolution-resolved-model',
   'component', 'phase', 'telemetry-model', 'provider', 'effort', 'telemetry-engine',
   'duration-ms', 'exit-code', 'http-status', 'threshold', 'required'
 );
