@@ -49,7 +49,7 @@ Use `dashboard/site/src/reactive.js` for state-driven updates:
 - Keep asynchronous rendering race-safe: ignore or abort stale work and never update a detached or superseded element.
 - Preserve focus, scroll position, and control state across reactive updates. Replace only the smallest owned subtree.
 - Publish transient user feedback through `dashboard/site/src/notification-service.js`. Do not create view-specific toast containers or duplicate their lifecycle, accessibility, or responsive behavior.
-- Data-worker code may call `publishWorkerNotification`; keep worker notifications serializable and let the main-thread notification service own presentation and actions.
+- Data-worker code may call `publishWorkerNotification` from `dashboard/site/src/ingestion-progress.js`; keep worker notifications serializable and let the main-thread notification service own presentation and actions.
 
 ## Styles and Primer
 
