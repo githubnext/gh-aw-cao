@@ -572,13 +572,36 @@ older scans, including repeated hints on already-dirty records.
 
 With gateway enablement and `activateSecurity: true`, valid **batch-capable v2**
 discovered `dependabot_alert` and `code_scanning_alert` declarations
-become same-repository subscriptions with bounded expiring grants and
-workflow-specific compiler dispatch routes. The receiving App needs contents-read
+become subscriptions with bounded expiring grants and workflow-specific compiler
+dispatch routes. Without `repos`, activation remains same-repository. An explicit
+compiler declaration can select multiple source repositories:
+
+```yaml
+on:
+  security-alerts:
+    repos:
+      - bar/baz
+      - foo/*
+```
+
+Selectors are lowercase, sorted, unique exact names or literal-owner `/*`
+patterns, intersected with reviewed `discovery.repositories` and root scope.
+They never enroll repositories or broaden authority. Both source and workflow
+repository need fresh private inventories; an authenticated source inventory
+may have no workflows. Each source receives an independent grant and batch
+route to the declaring workflow, expiring at the earlier inventory bound.
+Omitted sources in the upstream repos-only syntax select both supported
+security families; CAO reads only the compiled manifest.
+
+The receiving App needs contents-read
 and the corresponding security-event read permission; the independent dispatch
 App needs contents-write. Each projected security payload contains only its
 canonical GitHub API `url`, never raw alerts or secret values. The bridge checks
 the signed source identity at ingress and binds every URL to the authenticated
-current destination repository before dispatch. API origins other than
+current source repository before dispatch, and reapplies selectors. Cross-source
+events never share one batch. Source preflight uses the receiving App while
+the destination's approved workflow artifact uses the dispatch App; source or
+destination access loss blocks sending. API origins other than
 `https://api.github.com` are not supported. Both compiler byte limits apply to
 the complete framed request before deduplication.
 
@@ -586,8 +609,9 @@ Declaration v2 must specify `dispatch.batch:{mode:"same-event",
 deduplicate_by:"delivery_id"}` and the fixed context paths in RFC-033 §6.1.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`4a619f186575901a2dbd7cb0196e94f562458c69`; an optional interoperability test
-executes that commit's actual runtime validator/normalizer. An installed
+`156495e5eded7afd423f753c61b34f830497939f`; optional interoperability tests
+execute that commit's actual runtime validator/normalizer, including exact and
+wildcard source selection and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not
 supported by that compiler and do not autoactivate. See RFC-033 §13.1 for the
 wire contract, test reproduction, and bounded TLA+ result.

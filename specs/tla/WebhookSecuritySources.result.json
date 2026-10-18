@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "rfc": "RFC-033",
+  "status": "passed",
+  "checked_at_utc": "2026-10-18T05:56:12Z",
+  "elapsed_seconds": 6.056,
+  "command": [
+    "java",
+    "-Djava.io.tmpdir=$TLC_WORK_DIR",
+    "-XX:+UseParallelGC",
+    "-Xmx768m",
+    "-cp",
+    "$TLA2TOOLS_JAR",
+    "tlc2.TLC",
+    "-workers",
+    "2",
+    "-fp",
+    "0",
+    "-seed",
+    "33",
+    "-metadir",
+    "$TLC_WORK_DIR/states",
+    "-config",
+    "specs/tla/WebhookSecuritySources.cfg",
+    "specs/tla/WebhookSecuritySources.tla"
+  ],
+  "command_is_template": true,
+  "reproduce_command": "python3 scripts/check-webhook-gateway-model.py --jar \"$TLA2TOOLS_JAR\" --model specs/tla/WebhookSecuritySources.tla --config specs/tla/WebhookSecuritySources.cfg",
+  "tool": {
+    "release": "v1.7.4",
+    "url": "https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar",
+    "sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+    "version_line": "TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)"
+  },
+  "inputs": {
+    "specs/tla/WebhookSecuritySources.tla": "606e88837af94fa4422a58e17a79887240242ebd62c7e54eec0b00a20e1d580c",
+    "specs/tla/WebhookSecuritySources.cfg": "857977e33b67fe823b54c6a443d995bc5762a03c98b71acb21451aa183427897"
+  },
+  "bounds": {
+    "sources": 2,
+    "max_time": 1,
+    "max_version": 2,
+    "fresh_window": 1
+  },
+  "specification": "Spec",
+  "invariants": [
+    "TypeOK",
+    "NoUnenrolledDispatch",
+    "NoStaleReady",
+    "AcceptedNeverRetried"
+  ],
+  "action_properties": [
+    "FreshSourceAndDestinationReservation",
+    "SelectorsNeverGrantAuthority"
+  ],
+  "temporal_properties": [],
+  "fairness_assumptions": [],
+  "states_generated": 17661,
+  "distinct_states": 6300,
+  "states_remaining": 0,
+  "stdout_sha256": "d877f18997a09e9c62b411bf24c90d9d4311a9ea713ff5897dbd1e348002a68f",
+  "evidence": [
+    "Model checking completed. No error has been found.",
+    "  Estimates of the probability that TLC did not check all reachable states",
+    "  because two distinct states had the same fingerprint:",
+    "  calculated (optimistic):  val = 3.9E-12",
+    "17661 states generated, 6300 distinct states found, 0 states left on queue.",
+    "The depth of the complete state graph search is 12.",
+    "The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 6 and the 95th percentile is 3).",
+    "Finished in 05s at (2026-10-17 22:56:11)"
+  ],
+  "temporal_check_evidence": [],
+  "limitations": [
+    "Finite model; no unbounded proof or implementation conformance claim.",
+    "Settlement liveness requires the listed clock/maintenance fairness; success is not guaranteed.",
+    "Unobserved authorization changes may race with external acceptance."
+  ]
+}

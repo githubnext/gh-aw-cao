@@ -56,6 +56,7 @@ type CompilerDispatch struct {
 type CompilerTrigger struct {
 	SchemaVersion int                   `json:"schema_version"`
 	Event         string                `json:"event"`
+	Repos         []string              `json:"repos,omitempty"`
 	Types         []string              `json:"types"`
 	Conditions    []CompilerCondition   `json:"conditions"`
 	AnyOf         [][]CompilerCondition `json:"any_of,omitempty"`
@@ -122,6 +123,11 @@ func ParseWorkflowManifest(data []byte, workflow string, limits Limits) ([]Workf
 	}
 	for _, item := range items {
 		declaration := item.(map[string]any)
+		if repos, exists := declaration["repos"]; exists {
+			if list, ok := repos.([]any); !ok || len(list) == 0 {
+				return nil, ErrInvalid
+			}
+		}
 		if _, ok := declaration["conditions"].([]any); !ok {
 			return nil, ErrInvalid
 		}
@@ -153,6 +159,9 @@ func ParseWorkflowManifest(data []byte, workflow string, limits Limits) ([]Workf
 }
 
 func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) error {
+	if validateCompilerRepos(t, l) != nil {
+		return ErrInvalid
+	}
 	d := t.Dispatch
 	context := CompilerContext{Envelope: "github.event.client_payload", Event: "github.event.client_payload.event",
 		Payload: "github.event.client_payload.payload", DeliveryID: "github.event.client_payload.delivery_id"}

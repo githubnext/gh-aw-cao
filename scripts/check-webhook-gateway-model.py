@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--model", default="specs/tla/WebhookGateway.tla",
                         choices=("specs/tla/WebhookGateway.tla",
                                                  "specs/tla/WebhookDispatchBatch.tla",
+                                                 "specs/tla/WebhookSecuritySources.tla",
                                                  "specs/tla/WebhookSubscriptionRegistry.tla"))
     parser.add_argument("--config", help="configuration (defaults beside model)")
     parser.add_argument("--result", help="result JSON (defaults beside configuration)")
@@ -82,7 +83,7 @@ def run_model(args, work):
         for arg in command
     ]
     bounds = {}
-    for key, name in (("jobs", "Jobs"), ("workers", "Workers")):
+    for key, name in (("jobs", "Jobs"), ("workers", "Workers"), ("sources", "Sources")):
         match = re.search(rf"{name}\s*=\s*\{{([^}}]+)\}}", config_text)
         if match:
             bounds[key] = len(match[1].split(","))

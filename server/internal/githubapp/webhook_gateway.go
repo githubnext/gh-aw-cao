@@ -138,8 +138,10 @@ func webhookGatewayRepositoryWithClient(ctx context.Context, client *github.Clie
 // WebhookGatewayDispatcher must be constructed with the dispatch App's client,
 // independently of the receiving process and its credentials.
 type WebhookGatewayDispatcher struct {
-	Client       *Client
-	ObserveQuota func(context.Context, int64, githubquota.ResponseQuota) error
+	Client                *Client
+	Receiving             *Client
+	ObserveQuota          func(context.Context, int64, githubquota.ResponseQuota) error
+	ObserveReceivingQuota func(context.Context, int64, githubquota.ResponseQuota) error
 }
 
 func (d WebhookGatewayDispatcher) Dispatch(ctx context.Context, subscription webhookgateway.Subscription, payload json.RawMessage) webhookgateway.DispatchResponse {
@@ -216,7 +218,7 @@ func (d WebhookGatewayDispatcher) dispatchWithQuota(ctx context.Context, subscri
 		return result, quota
 	}
 	if subscription.Compiler != nil {
-		if webhookgateway.CompilerBatchRepository(subscription, payload, repository.FullName) != nil {
+		if d.compilerSourcePreflight(ctx, subscription, payload, repository) != nil {
 			return result, quota
 		}
 		head, digest, err := gatewayCurrentWorkflow(ctx, client, repository, subscription.Compiler.Dispatch.Workflow, observe)

@@ -593,12 +593,25 @@ cancel old ready/claimed work, while timestamp-only refreshes retain the queue
 revision. Reviewed control revisions remain a separate monotonic ceiling.
 
 Explicit `activateSecurity` delegates only compiler-supported Dependabot and
-code-scanning repository events with batch-capable declaration v2 to same-repository compiler
+code-scanning repository events with batch-capable declaration v2 to compiler
 routes, with private-only live checks,
 event/contents-read permission checks, bounded grants expiring at inventory
 freshness, and URL-only security projections. Canonical HTTPS api.github.com
 alert URLs must agree with signed source repository/number at ingress and
-authenticated current repository at egress; other API origins are unsupported.
+authenticated current source repository at egress; other API origins are unsupported.
+Optional declaration `repos` is a nonempty bounded lowercase/sorted/unique list
+of exact `owner/repo` or literal `owner/*` selectors. It intersects reviewed
+enrollment and root scope without enumerating App inventory or granting
+authority; omission preserves same-repository activation. Both source and
+declaring workflow need clean fresh private inventories. A missing workflow
+directory may count as an empty source-only inventory only after authenticated
+private repository checks and successful initial/final head checks. Each source
+has its own tenant, receiving installation, subscription, grant and batch;
+destination installation/repository and approved head/lock digest remain the
+declaring workflow's. Grants expire at the earlier inventory freshness bound.
+Source selectors and URL identity are checked again against live receiving-App
+access; workflow revision approval uses the dispatch App and destination
+identity. Invalidating either inventory fences affected queued authority.
 Secret-scanning declarations are not emitted/supported by this compiler contract.
 Missing/invalid/dirty/expired inventories cannot remain active. Both receiving
 authority and independent final egress preflight re-fetch the current head and
@@ -607,13 +620,14 @@ across a subsequent remote mutation; deployment must establish trust in the
 reviewed/protected default branch. `projectAssignments` binds each project node
 and organization to one enrolled repository and constrains separately approved
 subscriptions; discovery does not autoactivate Projects. Hand-authored fixtures,
-mock GitHub tests, and separate bounded registry and dispatch-batch TLA+ models
+mock GitHub tests, and separate bounded registry, source-selection and dispatch-batch TLA+ models
 demonstrate local contracts, not installed-compiler or live GitHub acceptance.
 Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
-context paths, same-event/delivery-ID batch policy and alert-URL projection
-match github/gh-aw#69772 commit 4a619f1. Optional runtime interoperability executes
-that source's actual validator/normalizer, not a hosted workflow or an installed
-compiler.
+context paths, same-event/delivery-ID batch policy and alert-URL projection,
+with optional source selectors, match github/gh-aw#69772 commit 156495e.
+Optional runtime interoperability executes that source's actual validator/
+normalizer, including exact/wildcard sources and whole-batch selector rejection,
+not a hosted workflow or an installed compiler.
 
 ## Source tree
 

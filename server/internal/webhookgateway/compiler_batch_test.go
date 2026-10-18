@@ -3,6 +3,7 @@ package webhookgateway
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -23,10 +24,17 @@ func compilerBatchJobs(t *testing.T, deliveries ...string) []Job {
 			subscription = candidate
 		}
 	}
-	body := []byte(`{"action":"created","installation":{"id":10},"organization":{"id":12},
-		"repository":{"id":11,"private":true,"full_name":"approved/exact"},"alert":{"number":42,
-		"url":"https://api.github.com/repos/approved/exact/dependabot/alerts/42",
-		"secret":"MUST-NOT-PERSIST","security_advisory":{"severity":"critical"}}}`)
+	return compilerSecurityJobs(t, policy, subscription, "approved/exact", deliveries...)
+}
+
+func compilerSecurityJobs(t *testing.T, policy PolicySnapshot, subscription Subscription, repository string, deliveries ...string) []Job {
+	t.Helper()
+	body := []byte(fmt.Sprintf(`{"action":"created","installation":{"id":%d},"organization":{"id":%d},
+		"repository":{"id":%d,"private":true,"full_name":%q},"alert":{"number":42,
+		"url":"https://api.github.com/repos/%s/dependabot/alerts/42",
+		"secret":"MUST-NOT-PERSIST","security_advisory":{"severity":"critical"}}}`,
+		subscription.Source.InstallationID, subscription.Source.OrganizationID,
+		subscription.Source.RepositoryID, repository, repository))
 	jobs := make([]Job, 0, len(deliveries))
 	for _, delivery := range deliveries {
 		event, err := ParseEvent(delivery, subscription.Source.Event, body, DefaultLimits())
@@ -185,5 +193,57 @@ assert.throws(() => validateWebhook({...event, client_payload:{...request.client
 	command.Stdin = bytes.NewReader(payload)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("compiler runtime interoperability: %v\n%s", err, output)
+	}
+}
+
+func TestCompilerSelectedSourceRuntimeInteroperability(t *testing.T) {
+	if os.Getenv("WEBHOOK_COMPILER_RUNTIME_DIR") == "" {
+		t.Skip("WEBHOOK_COMPILER_RUNTIME_DIR must point to a selector-capable gh-aw runtime")
+	}
+	base, registry := multiRepositoryRegistry(t)
+	policy, err := RegistryPolicy(base, registry, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, subscription := range policy.Subscriptions {
+		if subscription.Source.Event != "dependabot_alert" || subscription.Source.RepositoryID == 23 {
+			continue
+		}
+		repository := map[int64]string{21: "bar/baz", 22: "foo/one"}[subscription.Source.RepositoryID]
+		t.Run(repository, func(t *testing.T) {
+			payload, err := BuildDispatchBatch(compilerSecurityJobs(t, policy, subscription, repository, "one", "two"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			declarations, err := json.Marshal([]CompilerTrigger{*subscription.Compiler})
+			if err != nil {
+				t.Fatal(err)
+			}
+			const script = `
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const {validateWebhook} = require(path.join(process.env.WEBHOOK_COMPILER_RUNTIME_DIR, 'validate_webhook.cjs'));
+const {normalizeWebhookContext} = require(path.join(process.env.WEBHOOK_COMPILER_RUNTIME_DIR, 'webhook_context.cjs'));
+const request = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+const event = {action: request.event_type, client_payload: request.client_payload};
+assert.deepEqual(validateWebhook(event).delivery_ids, ['one', 'two']);
+const context = normalizeWebhookContext(request.client_payload.aw_context);
+assert.equal(context.items.length, 1);
+assert.equal(context.items[0].repo, process.env.EXPECTED_SOURCE_REPOSITORY);
+for (const repository of ['bar/other', 'foobar/one', 'unselected/repo']) {
+  const rejected = JSON.parse(JSON.stringify(event));
+  rejected.client_payload.aw_context.webhook.deliveries[1].payload.url =
+    'https://api.github.com/repos/' + repository + '/dependabot/alerts/42';
+  assert.throws(() => validateWebhook(rejected));
+}
+`
+			command := exec.CommandContext(t.Context(), "node", "-e", script)
+			command.Env = append(os.Environ(), "GITHUB_EVENT_NAME=repository_dispatch", "GITHUB_API_URL=https://api.github.com",
+				"GH_AW_WEBHOOK_SUBSCRIPTIONS="+string(declarations), "EXPECTED_SOURCE_REPOSITORY="+repository)
+			command.Stdin = bytes.NewReader(payload)
+			if output, err := command.CombinedOutput(); err != nil {
+				t.Fatalf("compiler source-selection interoperability: %v\n%s", err, output)
+			}
+		})
 	}
 }

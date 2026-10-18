@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -133,6 +134,12 @@ func (c *Client) DiscoverWebhookSubscriptions(ctx context.Context, binding gatew
 	result := gateway.RepositoryInventory{RepositoryID: repository.ID, OwnerID: repository.OwnerID,
 		OwnerType: repository.OwnerType, Visibility: repository.Visibility, CommitSHA: head}
 	data, err := gatewayRead(ctx, client, prefix+"/contents/.github/workflows?ref="+url.QueryEscape(head), 2<<20, false, observe)
+	var apiError *GatewayAPIError
+	if errors.As(err, &apiError) && apiError.StatusCode == http.StatusNotFound {
+		// A selected source need not contain workflows. The repository/private
+		// access check and final head recheck still gate this empty inventory.
+		data, err = []byte("[]"), nil
+	}
 	if err != nil {
 		return gateway.RepositoryInventory{}, err
 	}

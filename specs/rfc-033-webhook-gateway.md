@@ -130,7 +130,7 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`4a619f186575901a2dbd7cb0196e94f562458c69`, defines a batch-v2 discovery interchange in
+`156495e5eded7afd423f753c61b34f830497939f`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
@@ -160,7 +160,8 @@ headers MUST reject the inventory without emitting a partial mapping.
 Manifest `version: 1` carries `webhook_subscriptions`. Its omission or an empty
 array denotes no webhook subscriptions; native triggers MUST NOT be inferred
 as webhook routes. Explicit null is invalid. Each declaration uses numeric
-`schema_version: 1` or `2`, `event`, `types`, `conditions`, optional `any_of`, and
+`schema_version: 1` or `2`, `event`, `types`, `conditions`, optional `any_of`,
+optional v2 security `repos` (section 6.2.1), and
 `dispatch`. Unrelated top-level manifest fields are permitted; unknown
 declaration, condition, dispatch, or context properties MUST fail closed.
 Duplicate JSON keys, repeated events in one workflow, conflicting workflow
@@ -246,7 +247,7 @@ bind each `repository` name to its immutable `repositoryId`,
 unique; there MUST be 1–64 entries. Each entry MUST intersect both root allowlists
 when both are present. Credential reach MUST NOT enroll additional repositories.
 The required boolean `activateSecurity` delegates activation only of
-`dependabot_alert`, `code_scanning_alert`, and `secret_scanning_alert`. Its absence,
+compiler-supported `dependabot_alert` and `code_scanning_alert`. Its absence,
 null, or invalid type is invalid; false permits discovery without activation.
 No checked-in rollout is enabled merely by implementing this profile.
 
@@ -268,9 +269,12 @@ permits at most 128 compiled locks, 8 MiB per lock, and 16 MiB total fetched loc
 bytes. Only validated compiler metadata, immutable identity, commit, digest,
 and refresh state may be retained. The combined durable registry is limited
 to 1 MiB or the operational record ceiling, whichever is smaller.
-An inaccessible/missing directory, permission loss, invalid header, or exceeded
-bound MUST suspend that repository, not preserve last-known-good active routes.
-An authenticated empty directory inventory withdraws its prior routes.
+A missing workflow directory (HTTP 404) MAY produce an empty workflow inventory
+only after successful authenticated private repository and initial head checks,
+and MUST still pass the final head recheck. This permits source-only enrolled
+repositories without workflows. Access loss, permission loss, invalid headers,
+and exceeded bounds MUST suspend that repository, not preserve last-known-good
+active routes. An authenticated empty inventory withdraws its prior workflows.
 
 The fixed HMAC-authenticated `/webhooks/compiler` route MUST exist even before
 backfill discovers any subscriptions. The receiving App SHOULD subscribe to
@@ -297,11 +301,61 @@ the registry. No new dashboard schema or operational table is required.
 Only clean private inventories checked no more than twice their configured
 interval ago may activate. Future timestamps fail closed. Derived grants MUST
 expire at that same freshness bound, and 30-second admission proofs MUST NOT
-outlive it. Automatically activated security subscriptions MUST dispatch only
-to the same immutable repository using the compiler's workflow-specific
-repository-dispatch route. They require contents-read and event-specific
-receiving permissions, and independent contents-write dispatch capability.
+outlive it. Automatically activated security subscriptions MUST use the
+declaring workflow repository's compiler-specific repository-dispatch route.
+They require contents-read and event-specific receiving permissions on each
+selected source, and independent contents-write dispatch capability on that
+workflow repository.
 Project declarations MUST NOT autoactivate through this security delegation.
+
+#### 6.2.1. Security source repository selectors
+
+Compiler declaration v2 MAY include top-level `repos`, emitted for security
+source selection such as:
+
+```yaml
+on:
+  security-alerts:
+    repos:
+      - bar/baz
+      - foo/*
+```
+
+The upstream compiler accepts plural `security-alerts` as an alias of singular
+`security-alert`, but not both together. A repos-only declaration selects its
+supported Dependabot and code-scanning sources; explicit sources remain
+authoritative. CAO consumes the compiled manifest, not this YAML.
+
+**SR-01** A present `repos` MUST be a nonempty bounded array of lowercase, sorted,
+unique strings. Each selector MUST be an exact `owner/repository` or a literal
+`owner/*`. Wildcard owners, prefix globs, URLs, expressions and exclusions MUST
+be rejected. Only compiler-v2 supported security declarations may select
+repositories. Absence MUST remain absent; it preserves CAO's prior
+same-repository activation and does not implicitly add every enrolled source.
+
+**SR-02** Explicit selectors MUST intersect reviewed `discovery.repositories`
+and root scope. Wildcards MUST NOT enumerate App inventory, discover additional
+repositories, create enrollment, grant permissions or enable live rollout.
+Both the source and declaring workflow repository MUST have clean, fresh,
+private inventories. Source-only inventories MAY contain no workflows.
+Missing, dirty, expired, future-dated or out-of-scope source inventory MUST NOT
+produce a route. An unavailable declaring workflow inventory MUST withdraw all
+its routes, regardless of the source inventories.
+
+**SR-03** Each matching immutable source MUST receive its own subscription and
+grant, binding that source's tenant, receiving installation, repository and
+organization. The destination installation/repository, approved head and
+whole-lock digest MUST remain the declaring workflow's. The grant MUST expire
+at the earlier source/destination inventory bound. Cross-source events MUST
+NOT share a dispatch batch; section 13.1's source-identity boundary is unchanged.
+Existing invalidation and queue-epoch fencing MUST apply to both inventories.
+
+**SR-04** Ingress MUST check the signed source repository against explicit
+selectors before projecting each original delivery. Egress MUST bind every
+projected alert URL to the authenticated current **source**, not the destination,
+and enforce the selectors again. Live source access MUST use the receiving App;
+workflow artifact approval MUST use the dispatch App and destination
+installation/repository. Missing either capability MUST block dispatch.
 
 Security dispatch context MUST use section 13.1's compiler-v2 envelope.
 The current compiler supports Dependabot and code-scanning alerts, not
@@ -311,7 +365,8 @@ HTTPS `api.github.com/repos/OWNER/REPO/{dependabot|code-scanning}/alerts/NUMBER`
 URL with no credentials, query, fragment, or encoded path. At ingress its
 repository and alert number MUST agree with the signed source event; final
 preflight MUST bind every URL's repository to the authenticated current
-destination identity. Enterprise API origins are not supported by this bridge.
+source identity, including explicitly selected cross-repository routes.
+Enterprise API origins are not supported by this bridge.
 Private source identities and predicates are checked before projection, and
 original activity/immutable IDs remain separate durable event identity.
 Raw alerts, secret values, titles, bodies, and sender provenance MUST NOT persist.
@@ -325,7 +380,7 @@ or invalid/mismatched evidence MUST block sending; generic dispatch MUST NOT
 bypass compiler preflight. Durable provenance remains mandatory and immutable.
 
 The receiving-side authority check and independent final dispatch preflight
-MUST re-fetch the current default head and whole-lock digest. A changed head,
+MUST re-fetch the destination's current default head and whole-lock digest. A changed head,
 removed workflow, or changed artifact MUST block the POST. This is not immutable
 workflow execution: repository dispatch runs GitHub's default-branch workflow,
 and mutation after preflight remains an external race. Operators MUST establish
@@ -342,6 +397,18 @@ freshness, and reservation invariants; it does not model an atomic GitHub
 check-to-send operation, prove installed-compiler support, or replace live
 deployment acceptance.
 
+The selector, independent-authority and real PostgreSQL signed-ingress/worker
+cases derive from SR-01–SR-04. They cover exact/wildcard intersection, distinct
+receiving installations, source-only inventories, URL-only two-delivery batches
+per source, source invalidation and destination withdrawal.
+`WebhookSecuritySources.tla` separately abstracts selector matching as a set of
+sources and exhaustively checks its intersection with enrollment/private state,
+source/destination freshness at reservation, queue-epoch fencing and accepted
+job stability. Its two sources, one destination, two revisions and one clock
+advance produced 6,300 distinct states with none left. Enrollment/visibility
+are fixed per trace but range over every initial subset; dynamic GitHub
+revocation and atomic remote check-to-send are not proved by this model.
+
 Reproduce the separately bounded registry check with the existing evidence
 runner (official TLC v1.7.4 JAR); its retained result records input hashes,
 configuration bounds, and checked properties:
@@ -349,6 +416,8 @@ configuration bounds, and checked properties:
 ```bash
 python3 scripts/check-webhook-gateway-model.py --jar "$TLA2TOOLS_JAR" \
   --model specs/tla/WebhookSubscriptionRegistry.tla
+python3 scripts/check-webhook-gateway-model.py --jar "$TLA2TOOLS_JAR" \
+  --model specs/tla/WebhookSecuritySources.tla
 ```
 
 ## 7. Event subscriptions and generic filters
@@ -816,10 +885,12 @@ Set `POSTGRES_URL` to a disposable local database to execute PostgreSQL cases;
 without it they skip. Package serialization avoids owner-bootstrap DDL contention
 on the shared test database. This suite is local conformance, not live acceptance.
 Set `WEBHOOK_COMPILER_RUNTIME_DIR` to `actions/setup/js/` from the inspected
-upstream commit to execute `TestCompilerBatchRuntimeInteroperability`; without
-it that optional test skips. It passes production-built batches through the
-actual compiler validator/normalizer and checks two distinct deliveries yield
-one unique affected item. It does not demonstrate a hosted workflow run.
+upstream commit to execute `TestCompilerBatchRuntimeInteroperability` and
+`TestCompilerSelectedSourceRuntimeInteroperability`; without it these optional
+tests skip. They pass production-built batches through the actual compiler
+validator/normalizer and check that two distinct deliveries yield one unique
+affected item, and that any out-of-selector URL rejects the complete batch.
+They do not demonstrate a hosted workflow run.
 
 ## 14. PostgreSQL extension and existing service reuse
 

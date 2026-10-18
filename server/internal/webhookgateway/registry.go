@@ -109,60 +109,80 @@ func RegistryPolicy(base PolicySnapshot, registry RegistrySnapshot, now time.Tim
 	if !base.Revision.Enabled {
 		return base, nil
 	}
-	seen := make(map[int64]bool)
+	bindings := make(map[int64]DiscoveryRepository)
+	for _, binding := range config.Repositories {
+		bindings[binding.RepositoryID] = binding
+	}
+	available := make(map[int64]RepositoryInventory)
 	for _, record := range registry.Records {
-		if seen[record.RepositoryID] {
-			return PolicySnapshot{}, ErrInvalid
-		}
-		seen[record.RepositoryID] = true
-		if record.Dirty || record.CheckedAt.IsZero() || record.CheckedAt.After(now) ||
-			!now.Before(record.CheckedAt.Add(time.Duration(2*config.Interval())*time.Second)) {
+		if !freshInventory(record, now, config.Interval()) {
 			continue
 		}
-		var binding *DiscoveryRepository
-		for i := range config.Repositories {
-			if config.Repositories[i].RepositoryID == record.RepositoryID {
-				binding = &config.Repositories[i]
-			}
-		}
-		if binding == nil || !base.RepositoryAllowed(binding.Repository) || record.Visibility != "private" ||
+		binding, enrolled := bindings[record.RepositoryID]
+		if !enrolled || !base.RepositoryAllowed(binding.Repository) || record.Visibility != "private" ||
 			record.OwnerID <= 0 || (record.OwnerType != "Organization" && record.OwnerType != "User") {
 			return PolicySnapshot{}, ErrUnauthorized
+		}
+		available[record.RepositoryID] = record
+	}
+	for _, binding := range config.Repositories {
+		record, found := available[binding.RepositoryID]
+		if !found {
+			continue
 		}
 		for _, workflow := range record.Workflows {
 			for _, trigger := range workflow.Triggers {
 				if !config.ActivateSecurity || trigger.SchemaVersion != 2 || SecurityEventPermission(trigger.Event) == "" {
 					continue
 				}
-				subscription, revision, grant, err := discoveredSecuritySubscription(base.Policy, *binding, record, workflow, trigger)
-				if err != nil {
-					return PolicySnapshot{}, err
+				for _, source := range config.Repositories {
+					if trigger.Repos == nil && source.RepositoryID != binding.RepositoryID ||
+						!base.RepositoryAllowed(source.Repository) || !CompilerRepositoryMatches(trigger, source.Repository) {
+						continue
+					}
+					sourceRecord, found := available[source.RepositoryID]
+					if !found {
+						continue
+					}
+					subscription, revision, grant, err := discoveredSecuritySubscription(base.Policy, source, sourceRecord, binding, record, workflow, trigger)
+					if err != nil {
+						return PolicySnapshot{}, err
+					}
+					if base.Revisions[subscription.ID].Digest != "" || len(base.Subscriptions) >= 1024 {
+						return PolicySnapshot{}, ErrCapacity
+					}
+					base.Subscriptions = append(base.Subscriptions, subscription)
+					base.Revisions[subscription.ID], base.Grants[subscription.ID] = revision, grant
 				}
-				if base.Revisions[subscription.ID].Digest != "" || len(base.Subscriptions) >= 1024 {
-					return PolicySnapshot{}, ErrCapacity
-				}
-				base.Subscriptions = append(base.Subscriptions, subscription)
-				base.Revisions[subscription.ID], base.Grants[subscription.ID] = revision, grant
 			}
 		}
 	}
 	return base, nil
 }
 
-func discoveredSecuritySubscription(policy GatewayPolicy, binding DiscoveryRepository, record RepositoryInventory,
+func freshInventory(record RepositoryInventory, now time.Time, interval int64) bool {
+	return !record.Dirty && !record.CheckedAt.IsZero() && !record.CheckedAt.After(now) &&
+		now.Before(record.CheckedAt.Add(time.Duration(2*interval)*time.Second))
+}
+
+func discoveredSecuritySubscription(policy GatewayPolicy, source DiscoveryRepository, sourceRecord RepositoryInventory,
+	binding DiscoveryRepository, record RepositoryInventory,
 	workflow DiscoveredWorkflow, trigger CompilerTrigger,
 ) (Subscription, Revision, AdminGrant, error) {
 	id := "compiler." + strconv.FormatInt(binding.RepositoryID, 10) + "." + MetadataDigest([]byte(workflow.Path))[:24] + "." + trigger.Event
+	if source.RepositoryID != binding.RepositoryID {
+		id += ".source." + strconv.FormatInt(source.RepositoryID, 10)
+	}
 	organization := int64(0)
-	if record.OwnerType == "Organization" {
-		organization = record.OwnerID
+	if sourceRecord.OwnerType == "Organization" {
+		organization = sourceRecord.OwnerID
 	}
 	ttl := min(int64(3600), int64(policy.Queue.MaxAge/time.Second))
 	s := Subscription{
 		SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", ID: id,
-		TenantID: "repo." + strconv.FormatInt(binding.RepositoryID, 10), AppID: policy.DispatchAppID,
-		Source: Source{ID: CompilerSourceID, Event: trigger.Event, InstallationID: binding.ReceivingInstallationID,
-			RepositoryID: binding.RepositoryID, OrganizationID: organization,
+		TenantID: "repo." + strconv.FormatInt(source.RepositoryID, 10), AppID: policy.DispatchAppID,
+		Source: Source{ID: CompilerSourceID, Event: trigger.Event, InstallationID: source.ReceivingInstallationID,
+			RepositoryID: source.RepositoryID, OrganizationID: organization,
 			RequiredPermissions: map[string]string{"contents": "read", SecurityEventPermission(trigger.Event): "read"}},
 		Destination: Destination{Kind: "repository_dispatch", InstallationID: binding.DispatchInstallationID,
 			RepositoryID: binding.RepositoryID, EventType: trigger.Dispatch.EventType},
@@ -174,11 +194,15 @@ func discoveredSecuritySubscription(policy GatewayPolicy, binding DiscoveryRepos
 	if trigger.Dispatch.Workflow != workflow.Path || ValidateSubscription(s, DefaultLimits()) != nil || !validRevision(revision) {
 		return Subscription{}, Revision{}, AdminGrant{}, ErrInvalid
 	}
+	expires := record.CheckedAt.Add(time.Duration(2*policy.Discovery.Interval()) * time.Second)
+	if sourceExpiry := sourceRecord.CheckedAt.Add(time.Duration(2*policy.Discovery.Interval()) * time.Second); sourceExpiry.Before(expires) {
+		expires = sourceExpiry
+	}
 	grant := AdminGrant{SubscriptionID: id, Digest: revision.Digest,
-		SourceInstallationID: binding.ReceivingInstallationID, SourceRepositoryID: binding.RepositoryID,
-		SourceOrganizationID: organization, ReceivingInstallationID: binding.ReceivingInstallationID,
+		SourceInstallationID: source.ReceivingInstallationID, SourceRepositoryID: source.RepositoryID,
+		SourceOrganizationID: organization, ReceivingInstallationID: source.ReceivingInstallationID,
 		DestinationInstallationID: binding.DispatchInstallationID, DestinationRepositoryID: binding.RepositoryID,
-		DispatchKind: "repository_dispatch", ExpiresAt: record.CheckedAt.Add(time.Duration(2*policy.Discovery.Interval()) * time.Second)}
+		DispatchKind: "repository_dispatch", ExpiresAt: expires}
 	return s, revision, grant, nil
 }
 

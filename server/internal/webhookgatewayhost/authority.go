@@ -263,6 +263,9 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 			proof.SourceAccessible = false
 		}
 		proof.SourceVisibility = source.Visibility
+		if subscription.Compiler != nil && !gateway.CompilerRepositoryMatches(*subscription.Compiler, source.FullName) {
+			proof.SourceAccessible = false
+		}
 	}
 	destination, _, err := a.Dispatch.WebhookGatewayRepository(ctx, subscription.Destination.InstallationID, subscription.Destination.RepositoryID)
 	if err != nil {
@@ -274,16 +277,16 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 		destination.OwnerID == dispatcher.AccountID
 	proof.DestinationVisibility = destination.Visibility
 	if subscription.Compiler != nil && proof.SourceAccessible && proof.DestinationAccessible {
-		workflows, ok := a.Receiving.(WorkflowAuthority)
+		workflows, ok := a.Dispatch.(WorkflowAuthority)
 		if !ok {
 			return proof, gateway.ErrUnavailable
 		}
 		var quotaErr error
-		head, digest, err := workflows.WebhookGatewayWorkflowRevision(ctx, subscription.Source.InstallationID,
-			subscription.Source.RepositoryID, subscription.Compiler.Dispatch.Workflow, func(response githubquota.ResponseQuota) {
+		head, digest, err := workflows.WebhookGatewayWorkflowRevision(ctx, subscription.Destination.InstallationID,
+			subscription.Destination.RepositoryID, subscription.Compiler.Dispatch.Workflow, func(response githubquota.ResponseQuota) {
 				if a.Quota != nil {
 					quotaErr = errors.Join(quotaErr, ObserveQuota(ctx, a.Quota,
-						strconv.FormatInt(policy.Policy.ReceivingAppID, 10), subscription.Source.InstallationID, response))
+						strconv.FormatInt(policy.Policy.DispatchAppID, 10), subscription.Destination.InstallationID, response))
 				}
 			})
 		if quotaErr != nil {

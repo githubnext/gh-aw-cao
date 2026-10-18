@@ -27,7 +27,7 @@ func gatewayManifestLock(t *testing.T) []byte {
 }
 
 func TestPrivateDefaultBranchSubscriptionDiscovery(t *testing.T) {
-	for _, scenario := range []string{"valid", "empty", "public", "internal", "archived", "symlink", "bad-manifest", "moved", "oversized-file", "missing-permission", "duplicate", "too-many-files"} {
+	for _, scenario := range []string{"valid", "empty", "no-workflow-directory", "directory-disappeared-access", "public", "internal", "archived", "symlink", "bad-manifest", "moved", "oversized-file", "missing-permission", "duplicate", "too-many-files"} {
 		t.Run(scenario, func(t *testing.T) {
 			lock := gatewayManifestLock(t)
 			headReads, rawReads, observations := 0, 0, 0
@@ -46,6 +46,10 @@ func TestPrivateDefaultBranchSubscriptionDiscovery(t *testing.T) {
 						scenario != "public", visibility, scenario == "archived")
 				case "/repos/current/renamed/git/ref/heads/main":
 					headReads++
+					if scenario == "directory-disappeared-access" && headReads == 2 {
+						w.WriteHeader(http.StatusNotFound)
+						return
+					}
 					head := strings.Repeat("a", 40)
 					if scenario == "moved" && headReads == 2 {
 						head = strings.Repeat("b", 40)
@@ -56,6 +60,9 @@ func TestPrivateDefaultBranchSubscriptionDiscovery(t *testing.T) {
 						t.Error("listing did not use an immutable SHA")
 					}
 					switch scenario {
+					case "no-workflow-directory", "directory-disappeared-access":
+						w.WriteHeader(http.StatusNotFound)
+						return
 					case "empty":
 						_, _ = w.Write([]byte("[]"))
 						return
@@ -96,7 +103,7 @@ func TestPrivateDefaultBranchSubscriptionDiscovery(t *testing.T) {
 			result, err := client.DiscoverWebhookSubscriptions(t.Context(), gateway.DiscoveryRepository{
 				Repository: "current/renamed", RepositoryID: 42, ReceivingInstallationID: 7, DispatchInstallationID: 8,
 			}, func(githubquota.ResponseQuota) { observations++ })
-			if scenario != "valid" && scenario != "empty" {
+			if scenario != "valid" && scenario != "empty" && scenario != "no-workflow-directory" {
 				if err == nil {
 					t.Fatal("incomplete or unauthorized inventory accepted")
 				}
@@ -110,7 +117,7 @@ func TestPrivateDefaultBranchSubscriptionDiscovery(t *testing.T) {
 				result.Workflows[0].SHA256 != gateway.MetadataDigest(lock) || rawReads != 1 || observations != 6) {
 				t.Fatalf("lost mapping, digest or quota observations: %+v observations=%d", result, observations)
 			}
-			if scenario == "empty" && len(result.Workflows) != 0 {
+			if (scenario == "empty" || scenario == "no-workflow-directory") && len(result.Workflows) != 0 {
 				t.Fatal("deleted workflow directory retained subscriptions")
 			}
 		})

@@ -95,14 +95,19 @@ func validateCompilerBatch(s Subscription, payload json.RawMessage, l Limits) er
 		if err != nil || !ok || len(object) != 1 || !validCompilerAlertURL(s.Source.Event, object["url"]) {
 			return ErrInvalid
 		}
+		parts := strings.Split(strings.TrimPrefix(object["url"].(string), "https://api.github.com/repos/"), "/")
+		if len(parts) != 5 || !CompilerRepositoryMatches(*s.Compiler, parts[0]+"/"+parts[1]) {
+			return ErrInvalid
+		}
 	}
 	return nil
 }
 
 // CompilerBatchRepository binds URL-only projections to the freshly resolved
-// destination identity, not a sender-provided repository name.
+// source identity, not a sender-provided repository name.
 func CompilerBatchRepository(s Subscription, payload json.RawMessage, repository string) error {
-	if s.Compiler == nil || ValidateBatchDispatchPayload(s, payload, DefaultLimits()) != nil {
+	if s.Compiler == nil || !CompilerRepositoryMatches(*s.Compiler, repository) ||
+		ValidateBatchDispatchPayload(s, payload, DefaultLimits()) != nil {
 		return ErrInvalid
 	}
 	var request compilerBatchRequest

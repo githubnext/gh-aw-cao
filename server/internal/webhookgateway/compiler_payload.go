@@ -12,7 +12,7 @@ func validateCompilerSubscription(s Subscription, l Limits) error {
 	id := strings.TrimSuffix(strings.TrimPrefix(t.Dispatch.Workflow, ".github/workflows/"), ".lock.yml")
 	if t.SchemaVersion != 2 || !identifier(id) || t.Dispatch.Workflow != ".github/workflows/"+id+".lock.yml" ||
 		s.Source.ID != CompilerSourceID || SecurityEventPermission(t.Event) == "" || t.Event != s.Source.Event ||
-		s.Source.RepositoryID <= 0 || s.Source.RepositoryID != s.Destination.RepositoryID ||
+		s.Source.RepositoryID <= 0 || t.Repos == nil && s.Source.RepositoryID != s.Destination.RepositoryID ||
 		s.Destination.Kind != "repository_dispatch" || s.Destination.EventType != t.Dispatch.EventType ||
 		len(s.Destination.Fields) != 0 || len(s.Source.ProjectIDs) != 0 ||
 		s.Source.RequiredPermissions[SecurityEventPermission(t.Event)] != "read" ||
@@ -77,6 +77,7 @@ func buildCompilerDispatchPayload(s Subscription, event Event, root any, l Limit
 	number, _ := lookup(root, "/alert/number", l)
 	family := strings.TrimSuffix(strings.ReplaceAll(event.Name, "_", "-"), "-alert")
 	if repositoryName, ok := repository.(string); !ok ||
+		!CompilerRepositoryMatches(*s.Compiler, repositoryName) ||
 		payload["url"] != "https://api.github.com/repos/"+repositoryName+"/"+family+"/alerts/"+string(number.(json.Number)) {
 		return nil, ErrInvalid
 	}

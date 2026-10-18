@@ -353,7 +353,10 @@ func dispatch(ctx context.Context, policy gateway.PolicySnapshot, loader, baseLo
 	}
 	for i := range policy.Policy.Workers {
 		gate := &webhookgatewayhost.QuotaGate{Service: quota, Reader: dispatcher, AppID: policy.Policy.DispatchAppID,
-			Dispatcher: githubapp.WebhookGatewayDispatcher{Client: dispatcher,
+			Dispatcher: githubapp.WebhookGatewayDispatcher{Client: dispatcher, Receiving: receiver,
+				ObserveReceivingQuota: func(ctx context.Context, installation int64, response githubquota.ResponseQuota) error {
+					return webhookgatewayhost.ObserveQuota(ctx, quota, strconv.FormatInt(policy.Policy.ReceivingAppID, 10), installation, response)
+				},
 				ObserveQuota: func(ctx context.Context, installation int64, response githubquota.ResponseQuota) error {
 					return webhookgatewayhost.ObserveQuota(ctx, quota, strconv.FormatInt(policy.Policy.DispatchAppID, 10), installation, response)
 				}},
