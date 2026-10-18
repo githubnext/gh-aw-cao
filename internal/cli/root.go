@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-aw-cao/internal/ghcli"
-	"github.com/githubnext/gh-aw-cao/internal/runtimecli"
 )
 
 var log = logger.New("cao:cli")
@@ -18,9 +17,7 @@ func NewRootCommand(version string) *cobra.Command {
 }
 
 func newRootCommand(version string, ghVersion func(context.Context) (string, error)) *cobra.Command {
-	return newCommand(version, ghVersion, ghcli.Exec, func(cmd *cobra.Command, args []string) error {
-		return runtimecli.Execute(cmd.Context(), args, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr())
-	})
+	return newCommand(version, ghVersion, ghcli.Exec, nativeOperator(ghcli.Exec))
 }
 
 type ghExecutor func(context.Context, ...string) (string, string, error)
@@ -35,10 +32,10 @@ func newCommand(version string, ghVersion func(context.Context) (string, error),
 		},
 		Long: `Configure and operate Central Agentic Ops from a control repository.
 
-Campaign installation, policy initialization, campaign modes, and workflow enablement run in Go.
-Other operator commands use the installed CAO runtime (Node.js 24 or newer).
+All operator commands run natively in Go; Node.js is not required.
+The binary embeds the reviewed dashboard catalog and reads canonical SQLite snapshots.
 Activity and Dashboard Actions pipeline commands remain in ./cao.sh.
-Help, version, and the read-only doctor diagnostic do not load the CAO runtime.`,
+Help, version, and catalog discovery work offline.`,
 		Version:       version,
 		Args:          cobra.NoArgs,
 		SilenceErrors: true,

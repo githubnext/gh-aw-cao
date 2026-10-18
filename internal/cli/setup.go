@@ -12,7 +12,7 @@ func setupCommand(execute runtimeExecutor) *cobra.Command {
 
 Run without a subcommand for guided setup, or use auth to configure credentials
 independently. Non-interactive setup applies only the bounded public profile.
-Setup uses the installed CAO runtime (Node.js 24 or newer); help works offline.`
+Setup and authentication run natively in Go; help works offline.`
 	auth := &cobra.Command{
 		Use: "auth", Short: "Configure read and write authentication", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
@@ -20,7 +20,7 @@ Setup uses the installed CAO runtime (Node.js 24 or newer); help works offline.`
 		},
 	}
 	authenticate := func(cmd *cobra.Command, args []string) error {
-		// Keep the production runtime's setup-auth contract behind the Go hierarchy.
+		// Preserve the setup-auth result contract behind the Go command hierarchy.
 		return execute(cmd, append([]string{"setup-auth"}, args[2:]...))
 	}
 	common := []operatorFlag{

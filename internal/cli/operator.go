@@ -132,7 +132,7 @@ func operatorCommand(use, short string, args cobra.PositionalArgs, flags []opera
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		arguments := commandWords(cmd)
 		arguments = append(arguments, args...)
-		// Send explicit values only; defaults belong to the production domain runtime.
+		// Send explicit values only; each native handler owns its defaults.
 		cmd.Flags().Visit(func(flag *pflag.Flag) {
 			if flag.Name == "help" {
 				return
@@ -158,7 +158,7 @@ func operatorCommand(use, short string, args cobra.PositionalArgs, flags []opera
 // gh-aw update options evolve independently; retain their exact order and values.
 func passthroughCommand(use, short string, execute runtimeExecutor) *cobra.Command {
 	cmd := &cobra.Command{Use: use, Short: short, DisableFlagParsing: true}
-	cmd.Long = short + ".\n\nOptions are passed unchanged to the installed CAO runtime and gh-aw.\nUse --campaign SLUG with update."
+	cmd.Long = short + ".\n\nOptions are passed unchanged to gh-aw after native CAO validation.\nUse --campaign SLUG with update."
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		for _, arg := range args {
 			if arg == "--" {

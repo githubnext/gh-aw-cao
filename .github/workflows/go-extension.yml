@@ -9,13 +9,18 @@ on:
       - .golangci.yml
       - cmd/**
       - internal/**
+      - dashboard/catalog.go
       - go.mod
       - go.sum
+      - package.json
+      - package-lock.json
       - Makefile
       - scripts/build-release.sh
       - tests/unit/build-release.test.mjs
       - activity/**
       - dashboard/site/src/agent/**
+      - dashboard/site/src/data/**
+      - dashboard/site/src/semantic-view-prompt.js
       - dashboard/site/dashboard.json
       - dashboard/site/dashboard-fragments/**
       - dashboard/report/bundle-dashboards.mjs
@@ -28,13 +33,18 @@ on:
       - .golangci.yml
       - cmd/**
       - internal/**
+      - dashboard/catalog.go
       - go.mod
       - go.sum
+      - package.json
+      - package-lock.json
       - Makefile
       - scripts/build-release.sh
       - tests/unit/build-release.test.mjs
       - activity/**
       - dashboard/site/src/agent/**
+      - dashboard/site/src/data/**
+      - dashboard/site/src/semantic-view-prompt.js
       - dashboard/site/dashboard.json
       - dashboard/site/dashboard-fragments/**
       - dashboard/report/bundle-dashboards.mjs
@@ -64,24 +74,26 @@ jobs:
       - name: Check formatting
         shell: bash
         run: |
-          golangci-lint fmt --diff ./cmd/... ./internal/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"
+          golangci-lint fmt --diff ./cmd/... ./internal/... ./dashboard | tee "$RUNNER_TEMP/go-extension-fmt.diff"
           test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"
       - name: Lint
-        run: golangci-lint run ./cmd/... ./internal/...
+        run: golangci-lint run ./cmd/... ./internal/... ./dashboard
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
+      - name: Install JavaScript parity-oracle dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check extension
         run: make check
-      - name: Check foreground terminal inheritance
-        env:
-          CAO_REQUIRE_TTY_TEST: "1"
+      - name: Check standalone execution without Node.js
         run: |
-          go test -c -o "$RUNNER_TEMP/cao-runtimecli.test" ./internal/runtimecli
+          binary="$PWD/gh-cao"
           cd "$RUNNER_TEMP"
-          # Keep stdin open while the foreground reader consumes the fixture.
-          { printf 'terminal-input\n'; sleep 1; } | script --quiet --return --command \
-            './cao-runtimecli.test -test.run "^TestForegroundTerminal$" -test.count=1 -test.v' /dev/null
+          PATH="" "$binary" version
+          PATH="" "$binary" pages --json > /dev/null
+          PATH="" "$binary" queries --json > /dev/null
+          PATH="" "$binary" query-info campaign-runs --json > /dev/null
+          PATH="" "$binary" query --database explicit.sqlite --collection runs
       - name: Smoke test extension
         run: |
           ./gh-cao --help

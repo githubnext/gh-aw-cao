@@ -9,14 +9,14 @@ release:
 	bash scripts/build-release.sh "$(VERSION)"
 
 fmt:
-	gofmt -w cmd internal
+	gofmt -w cmd internal dashboard/catalog.go
 
 lint:
-	@test -z "$$(gofmt -l cmd internal)" || (gofmt -l cmd internal; exit 1)
-	go vet ./cmd/... ./internal/...
+	@test -z "$$(gofmt -l cmd internal dashboard/catalog.go)" || (gofmt -l cmd internal dashboard/catalog.go; exit 1)
+	go vet ./cmd/... ./internal/... ./dashboard
 
 test:
-	go test -race ./cmd/... ./internal/...
+	go test -race ./cmd/... ./internal/... ./dashboard
 
 test-doctor:
 	go test -race -run '^TestDoctorUnit' ./internal/cli

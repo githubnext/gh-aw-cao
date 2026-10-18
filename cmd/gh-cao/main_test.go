@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/internal/runtimecli"
+	"github.com/githubnext/gh-aw-cao/internal/cli"
 )
 
 func TestReportError(t *testing.T) {
@@ -18,10 +18,10 @@ func TestReportError(t *testing.T) {
 	}{
 		{"success", nil, 0, ""},
 		{"input failure", errors.New("invalid argument"), 1, "error: invalid argument\n"},
-		{"validation failure", &runtimecli.ExitError{Code: 1}, 1, ""},
-		{"incomplete validation", &runtimecli.ExitError{Code: 2}, 2, ""},
-		{"interrupted runtime", &runtimecli.ExitError{Code: 130}, 130, ""},
-		{"terminated runtime", &runtimecli.ExitError{Code: 143}, 143, ""},
+		{"validation failure", &cli.ExitError{Code: 1}, 1, ""},
+		{"incomplete validation", &cli.ExitError{Code: 2}, 2, ""},
+		{"interrupted command", &cli.ExitError{Code: 130}, 130, ""},
+		{"terminated command", &cli.ExitError{Code: 143}, 143, ""},
 		{"canceled", context.Canceled, 130, ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
