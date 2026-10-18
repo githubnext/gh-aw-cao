@@ -3,6 +3,34 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-18T04:55:15Z",
+      "worker_run_id": 39098564028,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39098418776,
+        39098225465,
+        39097762970,
+        39097049499,
+        39096898089,
+        39095680386,
+        39095041909,
+        39094496186,
+        39093661749,
+        39093499218,
+        39092174005,
+        39091537097,
+        39090370845,
+        39088640464,
+        39087924678,
+        39087832789,
+        39086764911,
+        39086658333,
+        39084759712,
+        39084613320
+      ],
+      "outcome": "Incomplete evaluation for category \"Astro documentation generation\" on source SHA 6394ae3db0534eada9c0881ef1db971a8ddb3bce. In the latest 20 completed docs.yml runs from 2026-10-18T00:56:19Z through 2026-10-18T04:49:34Z, 15 runs concluded success, 5 concluded skipped, 0 concluded failure, and 0 were cancelled. All observed runs used unchanged workflow source at 6394ae3db0534eada9c0881ef1db971a8ddb3bce, but none of the successful runs executed the build job; the window contains only schedule freshness checks and workflow_run callbacks that skipped build and deploy because the deployed docs and dashboard were already current. The mission requires at least 5 comparable successful build-bearing runs before evaluating a build-time improvement, so no actionable Astro-generation recommendation was assessed in this run and next_category remains unchanged until a later authorized run has enough comparable evidence."
+    },
+    {
       "evaluated_at": "2026-10-18T04:43:50Z",
       "worker_run_id": 39097855162,
       "category": "Astro documentation generation",
@@ -813,34 +841,6 @@
         39011704428
       ],
       "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T06:55:28Z through 2026-10-17T10:21:15Z, 17 runs concluded success, 2 concluded skipped, 1 concluded action_required, and none failed or were cancelled. All 20 runs shared the same head SHA, but only 2 successful runs executed both docs build and deploy (39011796811 and 39018733048). The other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
-    },
-    {
-      "evaluated_at": "2026-10-17T09:53:08Z",
-      "worker_run_id": 39022614407,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39022363324,
-        39021573078,
-        39020868386,
-        39019546432,
-        39018733048,
-        39018718063,
-        39018141339,
-        39017379499,
-        39017223028,
-        39015843426,
-        39014860602,
-        39014114830,
-        39013971286,
-        39013428151,
-        39012230962,
-        39011796811,
-        39011704428,
-        39010353731,
-        39010197711,
-        39008430574
-      ],
-      "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T06:02:25Z through 2026-10-17T09:46:07Z, 17 runs concluded success, 2 concluded skipped, 1 concluded action_required, and none failed or were cancelled. All 20 runs shared the same head SHA, but only 2 successful runs executed both docs build and deploy (39018733048, 39011796811). The other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
     }
   ]
 }
