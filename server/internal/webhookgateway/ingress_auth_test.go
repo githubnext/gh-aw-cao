@@ -43,6 +43,7 @@ func TestIngressRequestBounds(t *testing.T) {
 		r.Header.Set("X-Hub-Signature-256", signWebhook([]byte(body), []byte("key")))
 		return r
 	}
+
 	for _, size := range []int{MaxWebhookBodyBytes, MaxWebhookBodyBytes + 1} {
 		_, err := readWebhook(httptest.NewRecorder(), newRequest(strings.Repeat("x", size)))
 		if (err == nil) != (size == MaxWebhookBodyBytes) {
@@ -63,5 +64,47 @@ func TestIngressRequestBounds(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if _, err := readWebhook(httptest.NewRecorder(), r); err == nil {
 		t.Fatal("non-JSON body accepted")
+	}
+}
+
+type discoveryObservation struct {
+	calls int
+	err   error
+}
+
+func (d *discoveryObservation) Observe(context.Context, Event) (bool, error) {
+	d.calls++
+	return true, d.err
+}
+
+func TestDiscoveryHintsRequireHMACAndCommittedInvalidation(t *testing.T) {
+	for _, tc := range []struct {
+		signed bool
+		err    error
+		status int
+		calls  int
+	}{
+		{false, nil, http.StatusUnauthorized, 0},
+		{true, ErrUnavailable, http.StatusServiceUnavailable, 1},
+		{true, ErrUnauthorized, http.StatusForbidden, 1},
+		{true, nil, http.StatusAccepted, 1},
+	} {
+		observer := &discoveryObservation{err: tc.err}
+		handler := &Ingress{SourceID: CompilerSourceID, Secrets: shellSecrets{}, Policies: shellPolicy{},
+			Queue: &shellQueue{}, Authorizer: &shellAuthorizer{}, Discovery: observer}
+		body := `{"installation":{"id":10},"repository":{"id":11},"commits":[]}`
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhooks/compiler", strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("X-GitHub-Delivery", "delivery")
+		request.Header.Set("X-GitHub-Event", "push")
+		request.Header.Set("X-Hub-Signature-256", signWebhook([]byte(body), []byte("wrong")))
+		if tc.signed {
+			request.Header.Set("X-Hub-Signature-256", signWebhook([]byte(body), []byte("current")))
+		}
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != tc.status || observer.calls != tc.calls {
+			t.Fatalf("signed=%v status=%d calls=%d want=%d/%d", tc.signed, response.Code, observer.calls, tc.status, tc.calls)
+		}
 	}
 }

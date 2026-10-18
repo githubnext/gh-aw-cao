@@ -15,6 +15,10 @@ type PolicyProvider interface {
 	Load(context.Context) (PolicySnapshot, error)
 }
 
+type DiscoveryObserver interface {
+	Observe(context.Context, Event) (bool, error)
+}
+
 // Authorizer supplies fresh evidence for a specific immutable job and claim.
 // An incomplete observation is not revocation and must never authorize dispatch.
 type Authorizer interface {
@@ -119,6 +123,9 @@ func buildGatewayDispatchPayload(subscription Subscription, event Event, revisio
 	payload, err := json.Marshal(request)
 	if err != nil || len(payload) > resolved.MaxDispatchBytes ||
 		(propertyKey == "client_payload" && len(payload) >= 65536) {
+		return nil, ErrInvalid
+	}
+	if subscription.Compiler != nil && !compilerPayloadFits(subscription, payload, properties, resolved) {
 		return nil, ErrInvalid
 	}
 	return payload, nil

@@ -19,6 +19,7 @@ type Ingress struct {
 	Queue      Queue
 	Authorizer Authorizer
 	Limits     Limits
+	Discovery  DiscoveryObserver
 
 	mu       sync.Mutex
 	revision QueueRevision
@@ -119,6 +120,24 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	event.SourceID = h.SourceID
 	traceGatewayIdentity(ctx, event.DeliveryID, "")
+	if h.Discovery != nil {
+		handled, err := h.Discovery.Observe(ctx, event)
+		if handled {
+			switch {
+			case errors.Is(err, ErrUnauthorized):
+				respond(http.StatusForbidden, "auth_denied")
+			case err != nil:
+				respond(http.StatusServiceUnavailable, "unavailable")
+			default:
+				respond(http.StatusAccepted, "discovery")
+			}
+			return
+		}
+		if err != nil {
+			respond(http.StatusServiceUnavailable, "unavailable")
+			return
+		}
+	}
 	snapshot, err := h.Policies.Load(ctx)
 	if err != nil {
 		respond(http.StatusServiceUnavailable, "unavailable")

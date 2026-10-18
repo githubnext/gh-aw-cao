@@ -95,23 +95,27 @@ func (q *webhookQueue) ApplyRevision(ctx context.Context, next wg.PolicyRevision
 		return wg.ErrInvalid
 	}
 	return q.transact(ctx, func(t *transaction) error {
-		current, err := q.policy(t)
-		if err != nil {
-			return err
-		}
-		if next.Revision < current.Revision || (next.Revision == current.Revision && next != current) {
-			return wg.ErrConflict
-		}
-		if next == current {
-			return nil
-		}
-		if _, err := t.tx.ExecContext(ctx, `UPDATE cao_operational_webhook_queues SET policy_revision=$3,policy_digest=$4,enabled=$5 WHERE namespace=$1 AND name=$2`,
-			t.namespace, q.name, next.Revision, next.Digest, next.Enabled); err != nil {
-			return err
-		}
-		_, err = t.tx.ExecContext(ctx, `UPDATE cao_operational_webhook_jobs SET state='cancelled',version=version+1,fence=fence+1,owner='',lease_until=NULL,terminal_at=$3,retain_until=greatest(retain_until,$4),reason='policy-revision-changed' WHERE namespace=$1 AND queue=$2 AND state IN ('ready','claimed')`, t.namespace, q.name, t.now, t.now.Add(q.options.TerminalRetention))
-		return err
+		return q.applyRevision(t, next)
 	})
+}
+
+func (q *webhookQueue) applyRevision(t *transaction, next wg.PolicyRevision) error {
+	current, err := q.policy(t)
+	if err != nil {
+		return err
+	}
+	if next.Revision < current.Revision || (next.Revision == current.Revision && next != current) {
+		return wg.ErrConflict
+	}
+	if next == current {
+		return nil
+	}
+	if _, err := t.tx.ExecContext(t.ctx, `UPDATE cao_operational_webhook_queues SET policy_revision=$3,policy_digest=$4,enabled=$5 WHERE namespace=$1 AND name=$2`,
+		t.namespace, q.name, next.Revision, next.Digest, next.Enabled); err != nil {
+		return err
+	}
+	_, err = t.tx.ExecContext(t.ctx, `UPDATE cao_operational_webhook_jobs SET state='cancelled',version=version+1,fence=fence+1,owner='',lease_until=NULL,terminal_at=$3,retain_until=greatest(retain_until,$4),reason='policy-revision-changed' WHERE namespace=$1 AND queue=$2 AND state IN ('ready','claimed')`, t.namespace, q.name, t.now, t.now.Add(q.options.TerminalRetention))
+	return err
 }
 
 func (q *webhookQueue) detail(t *transaction, id string) (wg.Job, error) {

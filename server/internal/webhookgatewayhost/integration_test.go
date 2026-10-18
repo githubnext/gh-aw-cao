@@ -80,6 +80,10 @@ func TestProjectsV2GatewayPostgresDemonstration(t *testing.T) {
 	namespace := fmt.Sprintf("gateway-demo-%d", time.Now().UnixNano())
 	policy := gateway.GatewayPolicy{Version: 1, Enabled: true, Revision: 1, ReceivingAppID: 1, DispatchAppID: 2,
 		Namespace: namespace, Workers: 1,
+		Discovery: &gateway.DiscoveryPolicy{ActivateSecurity: false, Repositories: []gateway.DiscoveryRepository{
+			{Repository: "approved/destination", RepositoryID: 21, ReceivingInstallationID: 10, DispatchInstallationID: 20},
+		}},
+		ProjectAssignments: []gateway.ProjectAssignment{{ProjectID: "PVT_example_project", OrganizationID: 12, RepositoryID: 21}},
 		Artifacts: []gateway.CompiledArtifact{{Path: "subscription.json", SHA256: digest, RepositoryID: 21,
 			CommitSHA: strings.Repeat("a", 40), CompilerID: "contract-fixture-not-upstream-compiler"}},
 		Grants: []gateway.AdminGrant{{SubscriptionID: subscription.ID, Digest: digest, SourceInstallationID: 10,

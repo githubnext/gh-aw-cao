@@ -117,8 +117,8 @@ func run(ctx context.Context, args []string) error {
 		return runLocal(ctx, localOptions{repository: *repository, path: *sqlitePath, events: strings.Split(*events, ","),
 			interval: *interval, once: *once, apiURL: *apiURL}, os.Stdout)
 	}
-	loader := gateway.NewPolicyLoader(*policyPath)
-	policy, err := loader.Load(ctx)
+	baseLoader := gateway.NewPolicyLoader(*policyPath)
+	policy, err := baseLoader.Load(ctx)
 	if err != nil {
 		return err
 	}
@@ -145,14 +145,20 @@ func run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := queue.ApplyRevision(ctx, policy.Revision); err != nil {
+	registry, ok := queue.(gateway.RegistryStore)
+	if !ok {
+		return gateway.ErrUnavailable
+	}
+	loader := webhookgatewayhost.RegistryLoader{Base: baseLoader, Store: registry}
+	policy, err = loader.Load(ctx)
+	if err != nil {
 		return err
 	}
 	if *role == "receive" {
 		return serve(ctx, *listen, *cert, *key, policy, loader, queue,
 			webhookgatewayhost.ReceiveAuthority{Loader: loader, Queue: queue, State: store})
 	}
-	return dispatch(ctx, policy, loader, queue, store)
+	return dispatch(ctx, policy, loader, baseLoader, queue, store)
 }
 
 func validateRoleCredentials(role string) error {
@@ -175,7 +181,7 @@ func validateRoleCredentials(role string) error {
 	return nil
 }
 
-func serve(ctx context.Context, address, certificate, privateKey string, policy gateway.PolicySnapshot, loader gateway.PolicyLoader, queue gateway.Queue, authorizer gateway.Authorizer) error {
+func serve(ctx context.Context, address, certificate, privateKey string, policy gateway.PolicySnapshot, loader gateway.PolicyProvider, queue gateway.Queue, authorizer gateway.Authorizer) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	if certificate == "" || privateKey == "" {
@@ -218,6 +224,17 @@ func serve(ctx context.Context, address, certificate, privateKey string, policy 
 	})
 	sources := make(map[string]bool)
 	slots := make(chan struct{}, 64)
+	if policy.Policy.Discovery != nil {
+		managed, ok := loader.(webhookgatewayhost.RegistryLoader)
+		if !ok {
+			return gateway.ErrUnavailable
+		}
+		sources[gateway.CompilerSourceID] = true
+		mux.Handle("/webhooks/"+gateway.CompilerSourceID, boundedIngress(slots, &gateway.Ingress{
+			SourceID: gateway.CompilerSourceID, Secrets: secrets, Policies: loader, Queue: queue, Authorizer: authorizer,
+			Discovery: webhookgatewayhost.DiscoveryHints{Policies: managed.Base, Registry: managed.Store},
+		}))
+	}
 	for _, subscription := range policy.Subscriptions {
 		source := subscription.Source.ID
 		if sources[source] {
@@ -270,7 +287,7 @@ func boundedIngress(slots chan struct{}, next http.Handler) http.Handler {
 	})
 }
 
-func dispatch(ctx context.Context, policy gateway.PolicySnapshot, loader gateway.PolicyLoader, queue gateway.Queue, store *postgres.Store) error {
+func dispatch(ctx context.Context, policy gateway.PolicySnapshot, loader, baseLoader gateway.PolicyProvider, queue gateway.Queue, store *postgres.Store) error {
 	receiverKey, err := loadKey(os.Getenv("CAO_GATEWAY_RECEIVE_KEY_FILE"))
 	if err != nil {
 		return err
@@ -306,6 +323,14 @@ func dispatch(ctx context.Context, policy gateway.PolicySnapshot, loader gateway
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var workers sync.WaitGroup
+	if policy.Policy.Discovery != nil {
+		registry, ok := queue.(gateway.RegistryStore)
+		if !ok {
+			return gateway.ErrUnavailable
+		}
+		discovery := &webhookgatewayhost.DiscoveryWorker{Policies: baseLoader, Registry: registry, GitHub: receiver, Quota: quota}
+		workers.Go(func() { _ = discovery.Run(ctx) })
+	}
 	workers.Go(func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
@@ -322,6 +347,8 @@ func dispatch(ctx context.Context, policy gateway.PolicySnapshot, loader gateway
 	})
 	hostname, err := os.Hostname()
 	if err != nil {
+		cancel()
+		workers.Wait()
 		return errors.New("gateway worker identity is unavailable")
 	}
 	for i := range policy.Policy.Workers {

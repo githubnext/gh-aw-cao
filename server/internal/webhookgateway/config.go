@@ -28,16 +28,18 @@ type CompiledArtifact struct {
 }
 
 type GatewayPolicy struct {
-	Version        int                `json:"version"`
-	Enabled        bool               `json:"enabled"`
-	Revision       int64              `json:"revision"`
-	ReceivingAppID int64              `json:"receivingAppId"`
-	DispatchAppID  int64              `json:"dispatchAppId"`
-	Namespace      string             `json:"namespace"`
-	Artifacts      []CompiledArtifact `json:"artifacts"`
-	Grants         []AdminGrant       `json:"grants"`
-	Queue          QueueOptions       `json:"queue"`
-	Workers        int                `json:"workers"`
+	Version            int                 `json:"version"`
+	Enabled            bool                `json:"enabled"`
+	Revision           int64               `json:"revision"`
+	ReceivingAppID     int64               `json:"receivingAppId"`
+	DispatchAppID      int64               `json:"dispatchAppId"`
+	Namespace          string              `json:"namespace"`
+	Artifacts          []CompiledArtifact  `json:"artifacts"`
+	Grants             []AdminGrant        `json:"grants"`
+	Queue              QueueOptions        `json:"queue"`
+	Workers            int                 `json:"workers"`
+	Discovery          *DiscoveryPolicy    `json:"discovery,omitempty"`
+	ProjectAssignments []ProjectAssignment `json:"projectAssignments,omitempty"`
 }
 
 type PolicySnapshot struct {
@@ -127,6 +129,15 @@ func (l PolicyLoader) Load(ctx context.Context) (PolicySnapshot, error) {
 	if err := strictDecode(document.ControlPlane.Gateway, &policy); err != nil {
 		return PolicySnapshot{}, err
 	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(document.ControlPlane.Gateway, &fields) != nil {
+		return PolicySnapshot{}, ErrInvalid
+	}
+	for _, name := range []string{"discovery", "projectAssignments"} {
+		if bytes.Equal(bytes.TrimSpace(fields[name]), []byte("null")) {
+			return PolicySnapshot{}, ErrInvalid
+		}
+	}
 	if policy.Queue == (QueueOptions{}) {
 		policy.Queue = defaultGatewayQueueOptions()
 	}
@@ -146,13 +157,21 @@ func (l PolicyLoader) Load(ctx context.Context) (PolicySnapshot, error) {
 		Grants: make(map[string]AdminGrant), Revisions: make(map[string]Revision),
 		AllowedOwners: document.ControlPlane.Scope.Owners, AllowedRepos: document.ControlPlane.Scope.Repos,
 	}
+	if policy.Discovery != nil {
+		for _, repository := range policy.Discovery.Repositories {
+			if !result.RepositoryAllowed(repository.Repository) {
+				return PolicySnapshot{}, errors.New("gateway discovery repository is outside reviewed scope")
+			}
+		}
+	}
 	if l.cache != nil {
 		l.cache.Lock()
 		defer l.cache.Unlock()
 		existing := l.cache.snapshot.Policy
 		if l.cache.snapshot.Revision.Revision > 0 &&
 			(existing.Namespace != policy.Namespace || existing.ReceivingAppID != policy.ReceivingAppID ||
-				existing.DispatchAppID != policy.DispatchAppID || existing.Queue != policy.Queue || existing.Workers != policy.Workers) {
+				existing.DispatchAppID != policy.DispatchAppID || existing.Queue != policy.Queue || existing.Workers != policy.Workers ||
+				(existing.Discovery == nil) != (policy.Discovery == nil)) {
 			return PolicySnapshot{}, errors.New("gateway deployment identity or capacity change requires restart")
 		}
 		if l.cache.snapshot.Revision == result.Revision {
@@ -178,6 +197,9 @@ func (l PolicyLoader) Load(ctx context.Context) (PolicySnapshot, error) {
 		subscription, revision, err := loadArtifact(root, artifact)
 		if err != nil {
 			return PolicySnapshot{}, err
+		}
+		if subscription.Compiler != nil || subscription.Source.ID == CompilerSourceID {
+			return PolicySnapshot{}, errors.New("gateway compiler subscriptions require the managed registry")
 		}
 		if subscription.AppID != policy.DispatchAppID {
 			return PolicySnapshot{}, errors.New("gateway subscription dispatch identity is not approved")
@@ -220,6 +242,9 @@ func validateGatewayPolicy(p GatewayPolicy) error {
 		p.Workers < 1 || p.Workers > 32 ||
 		len(p.Artifacts) > 1024 || len(p.Grants) > 1024 {
 		return errors.New("invalid gateway identity, version, or operational limits")
+	}
+	if err := ValidateDiscoveryPolicy(p); err != nil {
+		return err
 	}
 	return ValidateQueueOptions(p.Queue)
 }

@@ -38,6 +38,7 @@ type GatewayInstallation struct {
 type GatewayRepository struct {
 	ID, OwnerID                 int64
 	FullName, Visibility        string
+	DefaultBranch, OwnerType    string
 	Private, Archived, Disabled bool
 	Permissions                 map[string]bool
 }
@@ -130,6 +131,7 @@ func webhookGatewayRepositoryWithClient(ctx context.Context, client *github.Clie
 		ID: repository.GetID(), OwnerID: repository.GetOwner().GetID(), FullName: repository.GetFullName(),
 		Visibility: visibility, Private: repository.GetPrivate(), Archived: repository.GetArchived(),
 		Disabled: repository.GetDisabled(), Permissions: repository.Permissions,
+		DefaultBranch: repository.GetDefaultBranch(), OwnerType: repository.GetOwner().GetType(),
 	}, quota, nil
 }
 
@@ -146,7 +148,8 @@ func (d WebhookGatewayDispatcher) Dispatch(ctx context.Context, subscription web
 }
 
 // DispatchWithQuota sends the complete envelope produced by BuildDispatchPayload.
-// It performs no workflow preflight and never retries a POST.
+// Compiler routes recheck the current default head and whole-lock digest.
+// This adapter never retries a POST.
 // Quota observation failures cannot overwrite a known dispatch outcome.
 func (d WebhookGatewayDispatcher) DispatchWithQuota(ctx context.Context, subscription webhookgateway.Subscription, payload json.RawMessage) (webhookgateway.DispatchResponse, githubquota.ResponseQuota) {
 	destination := subscription.Destination
@@ -189,12 +192,23 @@ func (d WebhookGatewayDispatcher) DispatchWithQuota(ctx context.Context, subscri
 		return result, quota
 	}
 	repository, quota, err := webhookGatewayRepositoryWithClient(ctx, client, destination.RepositoryID, observe)
-	if err != nil || repository.Disabled || repository.Archived {
+	if err != nil || repository.Disabled || repository.Archived || !repository.Private || repository.Visibility != "private" {
 		return result, quota
 	}
 	owner, name, valid := strings.Cut(repository.FullName, "/")
 	if !valid || owner == "" || name == "" || strings.Contains(name, "/") {
 		return result, quota
+	}
+	if subscription.Compiler != nil {
+		revision, err := webhookgateway.DispatchRevision(subscription, payload)
+		if err != nil {
+			return result, quota
+		}
+		head, digest, err := gatewayCurrentWorkflow(ctx, client, repository, subscription.Compiler.Dispatch.Workflow, observe)
+		if err != nil || head != revision.CommitSHA || digest != revision.Digest ||
+			revision.RepositoryID != destination.RepositoryID || revision.MetadataPath != subscription.Compiler.Dispatch.Workflow {
+			return result, quota
+		}
 	}
 	path := "repos/" + url.PathEscape(owner) + "/" + url.PathEscape(name)
 	if destination.Kind == "workflow_dispatch" {

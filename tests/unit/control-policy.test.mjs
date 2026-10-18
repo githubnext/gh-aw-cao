@@ -67,6 +67,44 @@ test("control policy recognizes an isolated, opt-in webhook gateway without enab
   }
 });
 
+test("webhook discovery is explicitly scoped and projects bind one enrolled repository", () => {
+  const document = {
+    version: 1, "gh-aw-version": "v0.92.5",
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/private"] },
+      "webhook-gateway": {
+        version: 1, enabled: false, revision: 1, receivingAppId: 1, dispatchAppId: 2,
+        namespace: "gateway", workers: 1, artifacts: [], grants: [],
+        discovery: { activateSecurity: true, intervalSeconds: 300, repositories: [
+          { repository: "acme/private", repositoryId: 42, receivingInstallationId: 7, dispatchInstallationId: 8 },
+        ] },
+        projectAssignments: [{ projectId: "PVT_project", organizationId: 99, repositoryId: 42 }],
+      },
+    },
+  };
+  const parsed = parsePolicy(JSON.stringify(document));
+  assert.equal(parsed["control-plane"]["webhook-gateway"].enabled, false);
+  assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateSecurity, true);
+  for (const mutate of [
+    g => { delete g.discovery.activateSecurity; },
+    g => { g.discovery.activateSecurity = null; },
+    g => { g.discovery.intervalSeconds = 0; },
+    g => { g.discovery.repositories = []; },
+    g => { g.discovery.repositories[0].repository = "unapproved/private"; },
+    g => { g.discovery.repositories[0].repository = "acme/other"; },
+    g => { g.discovery.repositories[0].receivingInstallationId = 0; },
+    g => { g.discovery.repositories.push({ ...g.discovery.repositories[0] }); },
+    g => { g.projectAssignments[0].repositoryId = 100; },
+    g => { g.projectAssignments.push({ ...g.projectAssignments[0] }); },
+    g => { g.projectAssignments[0].projectId = "PVT_bad!"; },
+    g => { g.discovery.extraAuthority = true; },
+  ]) {
+    const invalid = structuredClone(document);
+    mutate(invalid["control-plane"]["webhook-gateway"]);
+    assert.throws(() => parsePolicy(JSON.stringify(invalid)), undefined, String(mutate));
+  }
+});
+
 function effective(policy, {
   campaignName = "dependabot",
   role = "orchestrator",

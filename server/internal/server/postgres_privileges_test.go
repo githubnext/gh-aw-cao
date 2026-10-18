@@ -230,6 +230,16 @@ func testWebhookRuntime(t *testing.T, f postgresRoles) {
 	if _, err := queue.Maintain(ctx, 100); err != nil {
 		t.Fatal(err)
 	}
+	registry := queue.(gateway.RegistryStore)
+	bound, err := registry.BindRegistry(ctx, next)
+	if err != nil {
+		t.Fatal("restricted runtime could not bind subscription registry", err)
+	}
+	published, err := registry.ReplaceRegistry(ctx, next, bound.Version,
+		[]gateway.RepositoryInventory{{RepositoryID: 42, Dirty: true}})
+	if err != nil || published.Version <= bound.Version {
+		t.Fatal("restricted runtime could not atomically invalidate subscription inventory", err)
+	}
 }
 
 func testCanonicalRuntime(t *testing.T, f postgresRoles) {

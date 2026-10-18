@@ -33,6 +33,10 @@ type ProjectAuthority interface {
 	WebhookGatewayProjectsWithQuota(context.Context, int64, int64, []string, func(githubquota.ResponseQuota)) error
 }
 
+type WorkflowAuthority interface {
+	WebhookGatewayWorkflowRevision(context.Context, int64, int64, string, func(githubquota.ResponseQuota)) (string, string, error)
+}
+
 type PolicyLoader interface {
 	Load(context.Context) (gateway.PolicySnapshot, error)
 }
@@ -199,6 +203,12 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 	proof.SourcePermissionsOK = permissionsAllow(receiver.Permissions, subscription.Source.RequiredPermissions) &&
 		receiver.Permissions["actions"] != "write" && receiver.Permissions["contents"] != "write"
 	if len(subscription.Source.ProjectIDs) > 0 {
+		for _, project := range subscription.Source.ProjectIDs {
+			if !policy.ProjectAssigned(project, subscription.Source.OrganizationID, subscription.Destination.RepositoryID) {
+				proof.Complete, proof.SourceAccessible = true, false
+				return proof, nil
+			}
+		}
 		projects, supported := a.Receiving.(ProjectAuthority)
 		if !supported || subscription.Source.OrganizationID <= 0 {
 			return proof, gateway.ErrUnavailable
@@ -242,6 +252,7 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 			return authorityFailure(proof, sourceErr)
 		}
 		proof.SourceAccessible = proof.SourceAccessible && source.ID == subscription.Source.RepositoryID &&
+			source.Private && source.Visibility == "private" &&
 			!source.Disabled && !source.Archived && policy.RepositoryAllowed(source.FullName) &&
 			source.OwnerID == receiver.AccountID
 		if subscription.Source.OrganizationID > 0 && source.OwnerID != subscription.Source.OrganizationID {
@@ -254,9 +265,36 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 		return authorityFailure(proof, err)
 	}
 	proof.DestinationAccessible = proof.DestinationAccessible && destination.ID == subscription.Destination.RepositoryID &&
+		destination.Private && destination.Visibility == "private" &&
 		!destination.Disabled && !destination.Archived && policy.RepositoryAllowed(destination.FullName) &&
 		destination.OwnerID == dispatcher.AccountID
 	proof.DestinationVisibility = destination.Visibility
+	if subscription.Compiler != nil && proof.SourceAccessible && proof.DestinationAccessible {
+		workflows, ok := a.Receiving.(WorkflowAuthority)
+		if !ok {
+			return proof, gateway.ErrUnavailable
+		}
+		var quotaErr error
+		head, digest, err := workflows.WebhookGatewayWorkflowRevision(ctx, subscription.Source.InstallationID,
+			subscription.Source.RepositoryID, subscription.Compiler.Dispatch.Workflow, func(response githubquota.ResponseQuota) {
+				if a.Quota != nil {
+					quotaErr = errors.Join(quotaErr, ObserveQuota(ctx, a.Quota,
+						strconv.FormatInt(policy.Policy.ReceivingAppID, 10), subscription.Source.InstallationID, response))
+				}
+			})
+		if quotaErr != nil {
+			return proof, gateway.ErrUnavailable
+		}
+		if err != nil {
+			return authorityFailure(proof, err)
+		}
+		if head != proof.CurrentRevision.CommitSHA || digest != proof.CurrentRevision.Digest {
+			proof.SourceAccessible = false
+		}
+	}
+	if subscription.Compiler != nil && proof.Grant.ExpiresAt.Before(proof.ExpiresAt) {
+		proof.ExpiresAt = proof.Grant.ExpiresAt
+	}
 	return proof, nil
 }
 

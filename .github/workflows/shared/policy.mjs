@@ -274,13 +274,13 @@ function validateControlPlane(control) {
   }
   if ("publishing" in control) validatePublishing(control.publishing);
   if ("marketplace" in control) validateMarketplace(control.marketplace);
-  if ("webhook-gateway" in control) validateWebhookGateway(control["webhook-gateway"]);
+  if ("webhook-gateway" in control) validateWebhookGateway(control["webhook-gateway"], control.scope);
 }
 
-function validateWebhookGateway(gateway) {
+function validateWebhookGateway(gateway, scope) {
   const path = "control-plane.webhook-gateway";
   assertMapping(gateway, path);
-  assertKeys(gateway, ["version", "enabled", "revision", "receivingAppId", "dispatchAppId", "namespace", "artifacts", "grants", "queue", "workers"], path);
+  assertKeys(gateway, ["version", "enabled", "revision", "receivingAppId", "dispatchAppId", "namespace", "artifacts", "grants", "queue", "workers", "discovery", "projectAssignments"], path);
   assertInteger(gateway.version, `${path}.version`, 1, 1);
   assertBoolean(gateway.enabled, `${path}.enabled`);
   for (const key of ["revision", "receivingAppId", "dispatchAppId"]) assertInteger(gateway[key], `${path}.${key}`, 1);
@@ -301,6 +301,57 @@ function validateWebhookGateway(gateway) {
     assertInteger(artifact.repositoryId, `${path}.artifacts.repositoryId`, 1);
   }
   const grants = new Set();
+  const discoveryRepositories = new Set();
+  if ("discovery" in gateway) {
+    const d = gateway.discovery;
+    assertMapping(d, `${path}.discovery`);
+    assertKeys(d, ["repositories", "intervalSeconds", "activateSecurity"], `${path}.discovery`);
+    assertBoolean(d.activateSecurity, `${path}.discovery.activateSecurity`);
+    if ("intervalSeconds" in d) assertInteger(d.intervalSeconds, `${path}.discovery.intervalSeconds`, 30, 3600);
+    if (!Array.isArray(d.repositories) || d.repositories.length < 1 || d.repositories.length > 64) {
+      throw new PolicyError(`${path}.discovery.repositories requires 1 to 64 explicit repositories`);
+    }
+    const names = new Set();
+    const allowed = (scope?.["allowed-repositories"] ?? []).map(value => value.toLowerCase());
+    const owners = (scope?.["allowed-owners"] ?? []).map(value => value.toLowerCase());
+    for (const repository of d.repositories) {
+      assertMapping(repository, `${path}.discovery.repositories`);
+      assertKeys(repository, ["repository", "repositoryId", "receivingInstallationId", "dispatchInstallationId"], `${path}.discovery.repositories`);
+      assertString(repository.repository, `${path}.discovery.repositories.repository`, REPOSITORY_PATTERN);
+      if ([".", ".."].includes(repository.repository.split("/")[1])) {
+        throw new PolicyError(`${path}.discovery repository name is invalid`);
+      }
+      for (const key of ["repositoryId", "receivingInstallationId", "dispatchInstallationId"]) {
+        assertInteger(repository[key], `${path}.discovery.repositories.${key}`, 1);
+      }
+      const name = repository.repository.toLowerCase();
+      if (names.has(name) || discoveryRepositories.has(repository.repositoryId)) {
+        throw new PolicyError(`${path}.discovery.repositories contains duplicate identity`);
+      }
+      if ((!allowed.length && !owners.length) || (allowed.length && !allowed.includes(name)) ||
+          (owners.length && !owners.includes(name.split("/")[0]))) {
+        throw new PolicyError(`${path}.discovery repository is outside control-plane.scope`);
+      }
+      names.add(name);
+      discoveryRepositories.add(repository.repositoryId);
+    }
+  }
+  if ("projectAssignments" in gateway) {
+    if (!Array.isArray(gateway.projectAssignments) || gateway.projectAssignments.length > 128) {
+      throw new PolicyError(`${path}.projectAssignments must contain at most 128 entries`);
+    }
+    const projects = new Set();
+    for (const assignment of gateway.projectAssignments) {
+      assertMapping(assignment, `${path}.projectAssignments`);
+      assertKeys(assignment, ["projectId", "organizationId", "repositoryId"], `${path}.projectAssignments`);
+      assertString(assignment.projectId, `${path}.projectAssignments.projectId`, /^[A-Za-z0-9_+/=-]{1,256}$/);
+      for (const key of ["organizationId", "repositoryId"]) assertInteger(assignment[key], `${path}.projectAssignments.${key}`, 1);
+      if (projects.has(assignment.projectId) || !discoveryRepositories.has(assignment.repositoryId)) {
+        throw new PolicyError(`${path}.projectAssignments requires a unique project and an enrolled repository`);
+      }
+      projects.add(assignment.projectId);
+    }
+  }
   for (const grant of gateway.grants) {
     assertMapping(grant, `${path}.grants`);
     assertKeys(grant, ["subscriptionId", "digest", "sourceInstallationId", "sourceRepositoryId", "sourceOrganizationId", "projectIds",

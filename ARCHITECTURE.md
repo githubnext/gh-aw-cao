@@ -533,8 +533,11 @@ binds exact-SHA compiler artifacts and digests separately from administrative
 grants. Missing or invalid policy/evidence fails closed without stale fallback.
 The gateway is not installed or enabled by default and cannot widen campaign
 scope, enablement, or live authority. Repository and owner allowlists intersect
-when both are declared. Source-route additions, deployment identity and capacity
-changes require restart; root-scope changes require a new gateway revision.
+when both are declared. Production source/destination repositories must be
+private; public/internal, archived, disabled, or inaccessible repositories fail
+closed. Static source-route additions, adding/removing managed discovery,
+deployment identity and capacity changes require restart; root-scope changes
+require a new gateway revision.
 Monotonic persisted queue revisions reject
 stale callers and serialize observed revocation with the irreversible dispatch
 reservation; they cannot recall an in-flight request or guarantee instantaneous
@@ -556,11 +559,31 @@ mapping from the compiled `.lock.yml` single-line `gh-aw-manifest` header's
 groups, dispatch/context routes and limits, and whole-artifact digests. It never
 interprets steps/frontmatter or activates subscriptions. This tracks the
 inspected github/gh-aw#69772 proposal, not a claim about the installed compiler.
-An approved identity/projection bridge and immutable execution binding remain
-external dependencies blocking production activation. The compiler's inline
-original-payload context must not bypass scalar projection or reserved
-provenance. Hand-authored fixtures demonstrate local contracts, not compiler
-integration or a live Projects V2 end-to-end deployment.
+Reviewed `discovery.repositories` binds at most 64 exact repository names/IDs
+and separate receiving/dispatch installation IDs. The dispatch role backfills
+and periodically scans only those repositories with fresh repository-restricted
+read tokens, regular top-level locks pinned to one default-branch SHA, bounded
+file/byte inventories, and a final head recheck. The fixed HMAC compiler route
+durably invalidates on lock-update/repository-change hints, without exposing
+App keys to the receiver. A protected PostgreSQL operational record publishes
+inventory CAS and effective queue-revision changes in one transaction; every
+hint fences earlier scans, including already-dirty inventories. Routing changes
+cancel old ready/claimed work, while timestamp-only refreshes retain the queue
+revision. Reviewed control revisions remain a separate monotonic ceiling.
+
+Explicit `activateSecurity` delegates only the three repository-level security
+families to same-repository compiler routes, with private-only live checks,
+event/contents-read permission checks, bounded grants expiring at inventory
+freshness, and nested allowlisted scalar context plus reserved provenance.
+Missing/invalid/dirty/expired inventories cannot remain active. Both receiving
+authority and independent final egress preflight re-fetch the current head and
+whole-lock digest. This does not guarantee immutable default-branch execution
+across a subsequent remote mutation; deployment must establish trust in the
+reviewed/protected default branch. `projectAssignments` binds each project node
+and organization to one enrolled repository and constrains separately approved
+subscriptions; discovery does not autoactivate Projects. Hand-authored fixtures,
+mock GitHub tests, and the separate bounded registry TLA+ model demonstrate
+local contracts, not installed-compiler or live GitHub end-to-end acceptance.
 
 ## Source tree
 

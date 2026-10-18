@@ -283,17 +283,19 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 	var matches []WorkflowTrigger
 	for _, route := range m.ByEvent[event.Name] {
 		t := route.Declaration
-		if !slices.Contains(t.Types, event.Action) || !compilerConditionsMatch(root, t.Conditions) {
-			continue
-		}
-		if len(t.AnyOf) > 0 && !slices.ContainsFunc(t.AnyOf, func(group []CompilerCondition) bool {
-			return compilerConditionsMatch(root, group)
-		}) {
+		if !compilerTriggerMatches(t, root, event.Action) {
 			continue
 		}
 		matches = append(matches, route)
 	}
 	return matches, nil
+}
+
+func compilerTriggerMatches(t CompilerTrigger, root any, action string) bool {
+	return slices.Contains(t.Types, action) && compilerConditionsMatch(root, t.Conditions) &&
+		(len(t.AnyOf) == 0 || slices.ContainsFunc(t.AnyOf, func(group []CompilerCondition) bool {
+			return compilerConditionsMatch(root, group)
+		}))
 }
 
 func compilerConditionsMatch(root any, conditions []CompilerCondition) bool {

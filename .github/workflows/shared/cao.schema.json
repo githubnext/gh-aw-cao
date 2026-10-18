@@ -473,6 +473,45 @@
         "dispatchAppId": { "type": "integer", "minimum": 1 },
         "namespace": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
         "workers": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "discovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repositories", "activateSecurity"],
+          "properties": {
+            "activateSecurity": { "type": "boolean", "default": false },
+            "intervalSeconds": { "type": "integer", "minimum": 30, "maximum": 3600, "default": 300 },
+            "repositories": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["repository", "repositoryId", "receivingInstallationId", "dispatchInstallationId"],
+                "properties": {
+                  "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$" },
+                  "repositoryId": { "type": "integer", "minimum": 1 },
+                  "receivingInstallationId": { "type": "integer", "minimum": 1 },
+                  "dispatchInstallationId": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "projectAssignments": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["projectId", "organizationId", "repositoryId"],
+            "properties": {
+              "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_+/=-]{1,256}$" },
+              "organizationId": { "type": "integer", "minimum": 1 },
+              "repositoryId": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
         "artifacts": {
           "type": "array",
           "maxItems": 1024,

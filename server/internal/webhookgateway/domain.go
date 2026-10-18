@@ -67,11 +67,12 @@ type Subscription struct {
 	TenantID      string `json:"tenantId"`
 	// AppID is the dispatching GitHub App identity, not the receiving App.
 	// Policy loading must bind it to the configured dispatch App ID.
-	AppID       int64          `json:"appId"`
-	Source      Source         `json:"source"`
-	Filter      *Filter        `json:"filter,omitempty"`
-	Destination Destination    `json:"destination"`
-	Delivery    DeliveryPolicy `json:"delivery"`
+	AppID       int64            `json:"appId"`
+	Source      Source           `json:"source"`
+	Filter      *Filter          `json:"filter,omitempty"`
+	Destination Destination      `json:"destination"`
+	Delivery    DeliveryPolicy   `json:"delivery"`
+	Compiler    *CompilerTrigger `json:"compiler,omitempty"`
 }
 
 // Source selects one configured route and a bounded immutable GitHub scope.

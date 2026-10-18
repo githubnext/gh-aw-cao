@@ -387,8 +387,9 @@ do not invent fields or fetch missing values to make a subscription match.
 Read policy afresh for every ingress/dispatch decision. Metadata may be cached
 only as immutable bytes bound to its exact approved digest; cached metadata
 does not replace fresh policy/grant checks.
-Adding source routes or changing namespace, App IDs, queue capacity options, or
-worker count requires a role restart. The immutable configuration cache fails
+Adding static source routes, adding/removing managed discovery, or changing
+namespace, App IDs, queue capacity options, or worker count requires a role
+restart. The immutable configuration cache fails
 closed on incompatible changes; do not expect a hot reload to rebuild topology.
 Missing, changed, invalid, inaccessible, disabled, or unsupported configuration
 fails closed; there is no last-known-good authority fallback. Apply the loaded
@@ -396,7 +397,8 @@ fails closed; there is no last-known-good authority fallback. Apply the loaded
 worker action. Database comparison rejects older revisions and conflicting
 equal revisions, so a stale replica cannot revert an already-applied
 revocation. A newer revision conservatively cancels older ready/claimed jobs.
-External GitHub revocation is observed only through authorization calls; a
+External GitHub revocation is observed through authorization calls and signed
+repository/update invalidation hints; a
 30-second admission proof and even a fresh egress check cannot eliminate the
 remote check-to-send race. Do not promise immediate global revocation.
 Dispatching is an irreversible local reservation: it cannot be recalled by a
@@ -466,7 +468,7 @@ not install Prometheus alert rules or other alert resources.
 Trigger discovery reads `webhook_subscriptions` from the single-line
 `# gh-aw-manifest: {...}` header proposed by
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`e0105843d0ce6eaa3203e104f77975f562ab6527`:
+`5113c42dda961e53fb08fdb92a84fb46dc87aa1f`:
 
 ```bash
 go -C server run ./cmd/cao-webhook-gateway --role=discover \
@@ -483,15 +485,90 @@ over-budget inputs reject the entire inventory. It reads no workflow steps or
 frontmatter and rejects production gateway App/HMAC credentials and mixed-role options.
 Bounds and matching semantics are specified in RFC-033 section 6.1.
 
-Discovery is **not activation**: the compiler's numeric-versioned declarations
-and inline original-payload context are not the gateway's approved subscription,
-scalar projection, or `_gateway` provenance contract. Do not forward raw bodies
-or turn these mappings into administrative grants. That bridge, immutable
-execution binding, and live end-to-end activation remain pending. The
-hand-authored interchange fixture, typed contracts, local API simulations, and
-TLC results are **not** proof of a real frontmatter compile or signed GitHub
-delivery-to-workflow execution. Keep production activation disabled until those
-dependencies and deployment acceptance gates are satisfied.
+Offline discovery is **not activation**. Production activation is a separate,
+explicitly reviewed delegation for private repositories. Merge a configuration
+like this fragment into `control-plane.webhook-gateway`, replace the illustrative
+identities with verified IDs, and increment its reviewed `revision`:
+
+```json
+{
+  "discovery": {
+    "activateSecurity": true,
+    "intervalSeconds": 300,
+    "repositories": [
+      {
+        "repository": "acme/private-repo",
+        "repositoryId": 42,
+        "receivingInstallationId": 7,
+        "dispatchInstallationId": 8
+      }
+    ]
+  },
+  "projectAssignments": [
+    {
+      "projectId": "PVT_example",
+      "organizationId": 99,
+      "repositoryId": 42
+    }
+  ]
+}
+```
+
+This fragment does not replace the required gateway identity, queue, artifact,
+grant, root scope, or enablement configuration. No checked-in rollout is changed.
+Both owner and repository allowlists intersect when present. Public and internal
+repositories are denied at live admission/egress checks; RFC-034 local simulation
+remains non-authoritative and may read a public Events API.
+
+The dispatch role backfills only these repositories and routinely scans their
+current default branch using fresh repository-restricted receiving-App tokens.
+It reads regular top-level compiled locks at one exact commit and rechecks the
+head before publication. The default rescan threshold is 300 seconds
+(30–3600 configurable). Ten-second wakeups process at most eight due repositories
+per round, with 30 seconds per repository; backpressure can delay completion.
+Private inventories expire after twice their configured interval.
+Failures suspend routes rather than retain indefinitely active old metadata.
+Directory and lock-size/count bounds are specified in RFC-033 section 6.2.
+
+Configure the receiving App's webhook URL as `/webhooks/compiler`, subscribing
+to `push`, `repository`, and the selected security families. The route exists
+before any lock is discovered. Signed lock-update and repository-change hints
+atomically invalidate the enrolled repository before HTTP 202; storage failure
+returns a failure response. Hints never supply a fetch URL, ref, or authority.
+The receiver still holds no App private keys; its database invalidation wakes
+the dispatch role through routine polling. CAS publication fences in-flight
+older scans, including repeated hints on already-dirty records.
+
+With gateway enablement and `activateSecurity: true`, valid discovered
+`dependabot_alert`, `code_scanning_alert`, and `secret_scanning_alert` declarations
+become same-repository subscriptions with bounded expiring grants and
+workflow-specific compiler dispatch routes. The receiving App needs contents-read
+and the corresponding security-event read permission; the independent dispatch
+App needs contents-write. Security payloads use the compiler's nested context
+with only RFC-033's allowlisted scalar projection, never raw alert bodies or
+secret values. Reserved `_gateway` provenance and both compiler byte limits
+are enforced after projection.
+
+`projectAssignments` maps an organization project to exactly one enrolled
+repository. It constrains separately approved project subscriptions at admission
+and egress; it does **not** automatically activate compiler Projects declarations.
+Keep their explicit artifacts/grants and project identity constraints.
+
+The shared PostgreSQL operational registry atomically publishes inventory with
+a separately monotonic effective queue revision. Policy changes clear discovered
+authority; routing changes cancel older ready/claimed jobs. Freshness-only
+refreshes advance registry CAS without cancelling valid work. Protected-record
+storage needs no new schema/table. Production roles must use the registry loader's
+effective `QueueRevision`, never apply the reviewed file's numeric counter
+directly after binding the registry.
+
+Both receiving-side authority and final dispatch preflight recheck the current
+head and whole-lock digest. Repository dispatch still runs GitHub's default
+branch; preflight does **not** guarantee immutable execution across a later ref
+change. Establish trust in the reviewed/protected default branch and complete
+deployment acceptance before enabling dispatch. The hand-authored fixture,
+mock GitHub tests, local simulations, and TLC results do not prove actual
+compiler emission or live signed delivery-to-workflow execution.
 
 The host demonstration uses real PostgreSQL, signed HMAC ingress, and mock
 GitHub HTTP—not live GitHub or a real subscription compiler. Its targeted command

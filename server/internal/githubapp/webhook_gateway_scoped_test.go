@@ -46,8 +46,8 @@ func TestWebhookGatewayRepositoryFreshScopedMintProvesMembership(t *testing.T) {
 			if r.Header.Get("Authorization") != fmt.Sprintf("token repo-scoped-%d", mints) {
 				t.Error("repository lookup reused a previous authority token")
 			}
-			_, _ = w.Write([]byte(`{"id":42,"full_name":"owner/public","owner":{"id":99},"visibility":"public","private":false}`))
-		case "/api/v3/repos/owner/public/dispatches":
+			_, _ = w.Write([]byte(`{"id":42,"full_name":"owner/private","owner":{"id":99},"visibility":"private","private":true}`))
+		case "/api/v3/repos/owner/private/dispatches":
 			posts++
 			if r.Header.Get("Authorization") != fmt.Sprintf("token repo-scoped-%d", mints) {
 				t.Error("dispatch did not reuse this attempt's scoped token")
@@ -74,8 +74,8 @@ func TestWebhookGatewayRepositoryFreshScopedMintProvesMembership(t *testing.T) {
 	if response.StatusCode != 204 || mints != 3 || lookups != 3 || posts != 1 {
 		t.Fatalf("response=%+v mints=%d lookups=%d posts=%d", response, mints, lookups, posts)
 	}
-	// A public GET would still succeed, but a new scoped mint now rejects the
-	// target. Never fall back to its cached token or public readability.
+	// Metadata could still be readable, but a new scoped mint rejects the
+	// target. Never fall back to a cached token or a metadata-only access probe.
 	deny = true
 	var quota githubquota.ResponseQuota
 	dispatcher.ObserveQuota = func(_ context.Context, _ int64, value githubquota.ResponseQuota) error {

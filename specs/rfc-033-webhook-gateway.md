@@ -130,12 +130,12 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`e0105843d0ce6eaa3203e104f77975f562ab6527`, defines a discovery interchange in
+`5113c42dda961e53fb08fdb92a84fb46dc87aa1f`, defines a discovery interchange in
 the compiled lock-file header. That proposed interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
-this parser accepts it. Immutable execution binding and the payload transport
-bridge remain dependencies blocking production activation.
+this parser accepts it. Section 6.2 defines the private-repository security
+activation bridge. Other compiler event families remain discovery-only.
 
 Workflow dispatch accepts a branch or tag ref, not an arbitrary guarantee of
 execution at the metadata SHA. Use a protected, policy-approved revision
@@ -197,15 +197,122 @@ local simulation or production options/credentials. This role performs no
 network requests, storage provisioning, admission, approval, or dispatch.
 `TriggerMapping.Match` returns discovery candidates, never authorization.
 
-The compiler's inline `github.event.client_payload.payload` contract differs
-from this RFC's approved scalar projection and reserved `_gateway` provenance.
-Discovery MUST preserve that difference, not synthesize raw-body forwarding or
-silently convert a declaration into an Active subscription. Reviewed immutable
-identities, grants, delivery policy, projection, and execution-revision proof
-are still required. `specs/fixtures/webhook-manifest-v1.json` is a hand-authored
-interchange fixture, not proof of an actual compiler run. The manifest and CLI
-test suites derive their positive/negative cases from this section; no queue
-or TLA+ transition changes because discovery cannot activate or dispatch work.
+Offline discovery MUST NOT activate subscriptions or forward raw webhook bodies.
+`specs/fixtures/webhook-manifest-v1.json` is a hand-authored interchange fixture,
+not proof of an actual compiler run. The manifest and CLI test suites derive
+their positive/negative cases from this section. The separate managed profile
+below adds activation and durable registry transitions.
+
+### 6.2. Private repository discovery and security activation
+
+Production webhook subscriptions MUST target private repositories. Fresh
+authenticated checks MUST deny public, internal, archived, disabled, inaccessible,
+or mismatched source/destination repositories. Organization-scoped project
+sources additionally require explicit project assignments and a private
+destination. This restriction does not turn RFC-034's non-authoritative public
+Events API simulation into live authority.
+
+Reviewed `control-plane.webhook-gateway.discovery.repositories` MUST explicitly
+bind each `repository` name to its immutable `repositoryId`,
+`receivingInstallationId`, and `dispatchInstallationId`. Names and IDs MUST be
+unique; there MUST be 1–64 entries. Each entry MUST intersect both root allowlists
+when both are present. Credential reach MUST NOT enroll additional repositories.
+The required boolean `activateSecurity` delegates activation only of
+`dependabot_alert`, `code_scanning_alert`, and `secret_scanning_alert`. Its absence,
+null, or invalid type is invalid; false permits discovery without activation.
+No checked-in rollout is enabled merely by implementing this profile.
+
+The dispatch role MUST backfill at startup and routinely rescan enrolled
+repositories. `intervalSeconds` defaults to 300 and MUST be 30–3600 when supplied.
+Ten-second wakeups process at most eight eligible repositories per round in
+round-robin order, with a 30-second deadline per repository. The interval is an
+eligibility threshold, not a completion-time guarantee under backpressure.
+Every attempt MUST mint a fresh repository-restricted installation token and
+verify the configured repository's identity and private classification.
+Discovery MUST resolve the current default branch to a commit, list only
+`.github/workflows/` at that SHA, and read only regular top-level `.lock.yml`
+files at the same SHA. It MUST NOT follow download URLs, symlinks, or submodules.
+The final default-head read MUST equal the initial head; moved or incomplete
+inventories MUST NOT publish partial active mappings.
+
+The directory response is bounded to 2 MiB and 512 entries; each repository
+permits at most 128 compiled locks, 8 MiB per lock, and 16 MiB total fetched lock
+bytes. Only validated compiler metadata, immutable identity, commit, digest,
+and refresh state may be retained. The combined durable registry is limited
+to 1 MiB or the operational record ceiling, whichever is smaller.
+An inaccessible/missing directory, permission loss, invalid header, or exceeded
+bound MUST suspend that repository, not preserve last-known-good active routes.
+An authenticated empty directory inventory withdraws its prior routes.
+
+The fixed HMAC-authenticated `/webhooks/compiler` route MUST exist even before
+backfill discovers any subscriptions. The receiving App SHOULD subscribe to
+`push`, `repository`, and selected security events on this route. Push
+added/modified/removed paths matching top-level `.github/workflows/*.lock.yml`
+and repository-change events are invalidation hints. Forced/deleted pushes,
+missing commit lists, and reported commit-count truncation invalidate
+conservatively. Payload names, refs, paths, and URLs MUST NOT select a fetch
+target or grant authority. The receiver MUST bind hints to an enrolled
+repository/receiving installation, and atomically suspend its inventory before
+HTTP 202. Storage failure MUST return failure. An invalid signature MUST cause
+no registry write.
+
+Registry publication MUST use one PostgreSQL operational transaction for
+inventory CAS and effective queue-revision changes. Every accepted publication
+or relevant hint MUST advance the CAS version, including hints on already-dirty
+inventory and timestamp-only refreshes. A scan started before any such hint
+MUST NOT overwrite it. Routing changes MUST advance a separate monotonic
+effective queue revision and cancel older Ready/Claimed jobs atomically.
+Unchanged refreshes MUST retain that revision. The reviewed policy revision
+remains a separate monotonic authority ceiling; changing or disabling it clears
+the registry. No new dashboard schema or operational table is required.
+
+Only clean private inventories checked no more than twice their configured
+interval ago may activate. Future timestamps fail closed. Derived grants MUST
+expire at that same freshness bound, and 30-second admission proofs MUST NOT
+outlive it. Automatically activated security subscriptions MUST dispatch only
+to the same immutable repository using the compiler's workflow-specific
+repository-dispatch route. They require contents-read and event-specific
+receiving permissions, and independent contents-write dispatch capability.
+Project declarations MUST NOT autoactivate through this security delegation.
+
+Security dispatch context MUST contain `schema_version: 1`, original `event`,
+`delivery_id`, projected `payload`, and runtime-owned `_gateway` provenance.
+The only projected scalar paths are `action`, repository `id/private/visibility`,
+installation/organization `id`, alert `number/state/secret_type/resolution`,
+`alert.security_advisory.severity`, and `alert.rule.id/severity`.
+Action, repository ID, private=true, installation ID, and alert number are
+required. Positive numeric identities MUST fit JavaScript's safe integer range.
+Organization identity MUST agree when bound. Extra nested fields, raw alerts,
+secret values, titles, bodies, and sender-controlled provenance MUST NOT persist.
+The complete request and client payload MUST each fit the compiler ceilings
+after provenance injection, as well as gateway limits.
+
+The receiving-side authority check and independent final dispatch preflight
+MUST re-fetch the current default head and whole-lock digest. A changed head,
+removed workflow, or changed artifact MUST block the POST. This is not immutable
+workflow execution: repository dispatch runs GitHub's default-branch workflow,
+and mutation after preflight remains an external race. Operators MUST establish
+trust in the reviewed/protected default branch before enabling dispatch; where
+that cannot be established, dispatch MUST remain disabled.
+
+The `registry`, `discovery`, compiler-projection, signed-ingress, and PostgreSQL
+test suites derive positive and negative cases from these requirements:
+private-only activation, freshness, no implicit Projects activation, byte bounds,
+startup/backfill, dirty-hint races, unchanged refresh, stale CAS, atomic queue
+cancellation, restart, capacity rollback, and restricted runtime credentials.
+`WebhookSubscriptionRegistry.tla` separately models these local registry/CAS,
+freshness, and reservation invariants; it does not model an atomic GitHub
+check-to-send operation, prove installed-compiler support, or replace live
+deployment acceptance.
+
+Reproduce the separately bounded registry check with the existing evidence
+runner (official TLC v1.7.4 JAR); its retained result records input hashes,
+configuration bounds, and checked properties:
+
+```bash
+python3 scripts/check-webhook-gateway-model.py --jar "$TLA2TOOLS_JAR" \
+  --model specs/tla/WebhookSubscriptionRegistry.tla
+```
 
 ## 7. Event subscriptions and generic filters
 
@@ -224,6 +331,14 @@ Fanout is deterministically bounded and paginated against one registry snapshot;
 partial admission MUST be reported and safely resumable without duplicate jobs.
 
 ## 8. Projects and cross-repository identity constraints
+
+Reviewed `control-plane.webhook-gateway.projectAssignments` MAY contain at most
+128 entries binding one unique `projectId` to its `organizationId` and an
+enrolled `repositoryId`. The exact assignment MUST match the subscription's
+organization and destination repository at admission and egress. Missing,
+duplicate, or differently assigned projects fail closed. Assignments constrain
+separately reviewed project subscriptions and grants; they do not activate
+compiler project declarations or grant organization-wide repository discovery.
 
 Project-related events MUST use compiler-declared project constraints, not
 hardcoded project event names as an authorization shortcut. A constraint binds

@@ -86,12 +86,12 @@ func authorityFixture() (gateway.PolicySnapshot, gateway.Job, authorityAPI, auth
 	receiver := authorityAPI{
 		installation: githubapp.GatewayInstallation{ID: 10, AppID: 1, AccountID: 12, AccountType: "Organization",
 			AccountLogin: "approved", Permissions: map[string]string{"issues": "read"}},
-		repository: githubapp.GatewayRepository{ID: 11, OwnerID: 12, FullName: "approved/source", Visibility: "public"},
+		repository: githubapp.GatewayRepository{ID: 11, OwnerID: 12, FullName: "approved/source", Visibility: "private", Private: true},
 	}
 	dispatcher := authorityAPI{
 		installation: githubapp.GatewayInstallation{ID: 20, AppID: 2, AccountID: 12, AccountType: "Organization",
 			AccountLogin: "approved", Permissions: map[string]string{"actions": "write"}},
-		repository: githubapp.GatewayRepository{ID: 21, OwnerID: 12, FullName: "approved/destination", Visibility: "public"},
+		repository: githubapp.GatewayRepository{ID: 21, OwnerID: 12, FullName: "approved/destination", Visibility: "private", Private: true},
 	}
 	return policy, job, receiver, dispatcher
 }
@@ -126,7 +126,7 @@ func TestIsolatedAuthorityFreshAndRevoked(t *testing.T) {
 }
 
 func TestAuthorityCannotBroadenReviewedOrInstallationScope(t *testing.T) {
-	for _, scenario := range []string{"receiving-dispatch-permission", "destination-outside-policy", "repository-transfer", "private-source", "stale-config", "missing-api"} {
+	for _, scenario := range []string{"receiving-dispatch-permission", "destination-outside-policy", "repository-transfer", "public-source", "internal-source", "public-destination", "internal-destination", "missing-private", "stale-config", "missing-api"} {
 		t.Run(scenario, func(t *testing.T) {
 			policy, job, receiver, dispatcher := authorityFixture()
 			switch scenario {
@@ -136,8 +136,16 @@ func TestAuthorityCannotBroadenReviewedOrInstallationScope(t *testing.T) {
 				dispatcher.repository.FullName = "unapproved/destination"
 			case "repository-transfer":
 				receiver.repository.OwnerID = 999
-			case "private-source":
-				receiver.repository.Visibility = "private"
+			case "public-source":
+				receiver.repository.Visibility, receiver.repository.Private = "public", false
+			case "internal-source":
+				receiver.repository.Visibility = "internal"
+			case "public-destination":
+				dispatcher.repository.Visibility, dispatcher.repository.Private = "public", false
+			case "internal-destination":
+				dispatcher.repository.Visibility = "internal"
+			case "missing-private":
+				dispatcher.repository.Private = false
 			case "stale-config":
 				job.Subscription.Destination.RepositoryID++
 			case "missing-api":
@@ -234,6 +242,7 @@ func TestAuthorityAccountsProjectResponsesInGraphQLBucket(t *testing.T) {
 				{Path: "/projects_v2_item/project_node_id", Value: json.RawMessage(`"PVT_project"`)},
 			}
 			policy.Subscriptions = []gateway.Subscription{job.Subscription}
+			policy.Policy.ProjectAssignments = []gateway.ProjectAssignment{{ProjectID: "PVT_project", OrganizationID: 12, RepositoryID: 21}}
 			grant := policy.Grants[job.Subscription.ID]
 			grant.ProjectIDs = job.Subscription.Source.ProjectIDs
 			policy.Grants[job.Subscription.ID] = grant

@@ -134,6 +134,9 @@ func validateRequest(job Job, limits Limits, bindIdentity bool) error {
 	if !ok || len(properties) > limits.MaxDispatchProperties {
 		return ErrInvalid
 	}
+	if s.Compiler != nil {
+		return validateCompilerProperties(job, properties, limits, bindIdentity)
+	}
 	fields := make(map[string]PayloadField, len(s.Destination.Fields))
 	for _, f := range s.Destination.Fields {
 		fields[f.Name] = f

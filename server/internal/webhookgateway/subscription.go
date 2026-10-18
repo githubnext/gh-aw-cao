@@ -228,6 +228,11 @@ func ValidateSubscription(s Subscription, limits Limits) error {
 			return err
 		}
 	}
+	if s.Compiler != nil {
+		if err := validateCompilerSubscription(s, l); err != nil {
+			return err
+		}
+	}
 	encoded, err := json.Marshal(s)
 	if err != nil || len(encoded) > l.MaxMetadataBytes {
 		return ErrInvalid
@@ -311,6 +316,9 @@ func MatchSubscription(s Subscription, event Event, limits Limits) (bool, error)
 			return false, nil
 		}
 	}
+	if s.Compiler != nil && !compilerTriggerMatches(*s.Compiler, root, event.Action) {
+		return false, nil
+	}
 	return s.Filter == nil || evaluate(*s.Filter, root, l) == True, nil
 }
 
@@ -337,6 +345,9 @@ func BuildDispatchPayload(s Subscription, event Event, limits Limits) (json.RawM
 	root, err := boundedJSON(event.Payload, l.MaxEventBytes, l)
 	if err != nil {
 		return nil, err
+	}
+	if s.Compiler != nil {
+		return buildCompilerDispatchPayload(s, event, root, l)
 	}
 	properties := make(map[string]any)
 	for _, field := range s.Destination.Fields {

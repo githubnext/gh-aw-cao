@@ -30,7 +30,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jar", default=os.environ.get("TLA2TOOLS_JAR"))
     parser.add_argument("--work-dir", help="optional scratch override (any directory)")
-    parser.add_argument("--config", default="specs/tla/WebhookGateway.cfg")
+    parser.add_argument("--model", default="specs/tla/WebhookGateway.tla",
+                        choices=("specs/tla/WebhookGateway.tla",
+                                 "specs/tla/WebhookSubscriptionRegistry.tla"))
+    parser.add_argument("--config", help="configuration (defaults beside model)")
     parser.add_argument("--result", help="result JSON (defaults beside configuration)")
     args = parser.parse_args()
     if not args.jar:
@@ -47,8 +50,8 @@ def main():
 def run_model(args, work):
     work.mkdir(parents=True, exist_ok=True)
     jar = Path(args.jar).resolve()
-    model = Path("specs/tla/WebhookGateway.tla")
-    config = Path(args.config)
+    model = Path(args.model)
+    config = Path(args.config) if args.config else model.with_suffix(".cfg")
     config_text = config.read_text()
     properties = config_section(config_text, "PROPERTIES")
     command = [
@@ -77,6 +80,19 @@ def run_model(args, work):
         if arg != str(jar) else "$TLA2TOOLS_JAR"
         for arg in command
     ]
+    bounds = {}
+    for key, name in (("jobs", "Jobs"), ("workers", "Workers")):
+        match = re.search(rf"{name}\s*=\s*\{{([^}}]+)\}}", config_text)
+        if match:
+            bounds[key] = len(match[1].split(","))
+    for key, name in (
+        ("capacity", "Capacity"), ("max_time", "MaxTime"),
+        ("max_generation", "MaxGeneration"), ("max_version", "MaxVersion"),
+        ("fresh_window", "FreshWindow"),
+    ):
+        match = re.search(rf"{name}\s*=\s*(\d+)", config_text)
+        if match:
+            bounds[key] = int(match[1])
     result = {
         "schema_version": 1, "rfc": "RFC-033", "status": "passed",
         "checked_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -85,23 +101,13 @@ def run_model(args, work):
         "command_is_template": True,
         "reproduce_command": (
             'python3 scripts/check-webhook-gateway-model.py --jar "$TLA2TOOLS_JAR"'
-            f" --config {config}"
+            f" --model {model} --config {config}"
         ),
         "tool": {"release": "v1.7.4",
                  "url": "https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar",
                  "sha256": digest(jar), "version_line": output.splitlines()[0]},
         "inputs": {str(path): digest(path) for path in (model, config)},
-        "bounds": {
-            "jobs": len(re.search(r"Jobs\s*=\s*\{([^}]+)\}", config_text)[1].split(",")),
-            "workers": len(re.search(r"Workers\s*=\s*\{([^}]+)\}", config_text)[1].split(",")),
-            **{
-                key: int(re.search(rf"{name}\s*=\s*(\d+)", config_text)[1])
-                for key, name in (
-                    ("capacity", "Capacity"), ("max_time", "MaxTime"),
-                    ("max_generation", "MaxGeneration")
-                )
-            },
-        },
+        "bounds": bounds,
         "specification": config_section(config_text, "SPECIFICATION")[0],
         "invariants": config_section(config_text, "INVARIANTS"),
         "action_properties": [p for p in properties if p != "EventualSettlement"],
