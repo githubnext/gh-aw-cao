@@ -586,19 +586,20 @@ compiler declaration can select multiple source repositories:
 
 ```yaml
 on:
-  gateway:
-    security-alerts:
-      repos:
-        - bar/baz
-        - foo/*
+  webhook-gateway: true
+  security-alerts:
+    repos:
+      - bar/baz
+      - foo/*
 ```
 
-The upstream compiler places special events under `on.gateway`:
-`projects-items` and `security-alerts`. It requires `"webhook-gateway": true`
-in `.github/workflows/aw.json`. Roles/bots and native triggers remain outside
-`gateway`. Old flat Projects/security trigger spellings, nested singular
-spellings, unknown or empty gateway configurations, and the old
-`webhook-triggers` opt-in are rejected.
+The upstream compiler places `projects-items` and `security-alerts` directly
+under `on`, alongside roles/bots and native triggers. Each subscribing workflow
+requires the sibling boolean `on.webhook-gateway: true`, independently of the
+repository's `"webhook-gateway": true` in `.github/workflows/aw.json`.
+These are compilation gates, not gateway activation or dispatch authority.
+The obsolete `on.gateway` mapping, singular Projects/security spellings, and
+the old repository `webhook-triggers` opt-in are rejected.
 This authoring change leaves the normalized lock manifest and closed v2
 dispatch envelope unchanged; the runtime conformance pin below does not claim
 installed-compiler emission of this syntax.
@@ -628,7 +629,7 @@ Declaration v2 must specify `dispatch.batch:{mode:"same-event",
 deduplicate_by:"delivery_id"}` and the fixed context paths in RFC-033 §6.1.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`a1f69bf693aa4bda9727c05c27e7bdb8563b2a89`; optional interoperability tests
+`e0354e619f77936a283eed4c2c189e8d303b260b`; optional interoperability tests
 execute that commit's actual runtime validator/normalizer, including exact and
 wildcard source selection and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not

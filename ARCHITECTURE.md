@@ -631,7 +631,12 @@ mock GitHub tests, and separate bounded registry, source-selection and dispatch-
 demonstrate local contracts, not installed-compiler or live GitHub acceptance.
 Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
 context paths, same-event/delivery-ID batch policy and alert-URL projection,
-with optional source selectors, match github/gh-aw#69772 commit a1f69bf.
+with optional source selectors, match github/gh-aw#69772 commit e0354e6.
+Upstream authoring places `projects-items` and `security-alerts` directly under
+`on`, requiring sibling `on.webhook-gateway: true` independently of the
+repository's `.github/workflows/aw.json` opt-in. These compilation gates never
+grant activation or dispatch authority; obsolete `on.gateway` and singular
+trigger spellings are rejected.
 Optional runtime interoperability executes that source's actual validator/
 normalizer, including exact/wildcard sources and whole-batch selector rejection,
 not a hosted workflow or an installed compiler.

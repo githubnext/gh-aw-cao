@@ -134,7 +134,7 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`a1f69bf693aa4bda9727c05c27e7bdb8563b2a89`, defines a batch-v2 discovery interchange in
+`e0354e619f77936a283eed4c2c189e8d303b260b`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
@@ -319,19 +319,21 @@ source selection such as:
 
 ```yaml
 on:
-  gateway:
-    security-alerts:
-      repos:
-        - bar/baz
-        - foo/*
+  webhook-gateway: true
+  security-alerts:
+    repos:
+      - bar/baz
+      - foo/*
 ```
 
-The upstream compiler places special events under `on.gateway`, using
-`projects-items` and `security-alerts`, and requires `"webhook-gateway": true`
-in `.github/workflows/aw.json`. Roles/bots and native triggers remain outside
-`gateway`. Old flat Projects/security spellings, nested singular spellings,
-unknown or empty gateway configurations, and the old `webhook-triggers` opt-in
-are rejected. A repos-only declaration selects supported Dependabot and code-scanning
+The upstream compiler places `projects-items` and `security-alerts` directly
+under `on`, alongside roles/bots and native triggers. Each subscribing workflow
+MUST declare the sibling boolean `on.webhook-gateway: true`, independently of
+the repository gate `"webhook-gateway": true` in `.github/workflows/aw.json`.
+These compilation gates MUST NOT be treated as activation or dispatch authority.
+The obsolete `on.gateway` mapping, singular Projects/security spellings, and
+the old repository `webhook-triggers` opt-in are rejected.
+A repos-only declaration selects supported Dependabot and code-scanning
 sources; explicit sources remain authoritative. CAO consumes the compiled
 manifest, not this YAML. The normalized manifest and closed v2 wire contract
 are unchanged; the pinned runtime interoperability evidence does not establish
