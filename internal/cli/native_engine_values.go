@@ -260,6 +260,10 @@ func engineComputeValue(row nativeRow, definition nativeRow) (any, error) {
 }
 
 func engineISO(value float64) string {
+	// MaxInt64 rounds up to 2^63 as float64, so the upper bound is exclusive.
+	if !engineFinite(value) || value < float64(math.MinInt64) || value >= -float64(math.MinInt64) {
+		return ""
+	}
 	date := time.UnixMilli(int64(value)).UTC()
 	text := date.Format("2006-01-02T15:04:05.000Z")
 	if date.Year() < 0 || date.Year() > 9999 {

@@ -589,7 +589,8 @@ func nativePrepareRelease(ctx context.Context, gh ghExecutor, record nativePacka
 	if isCommit {
 		tag = tags[record.revision]
 		if tag == "" {
-			stdout, stderr, err := gh(ctx, "api", "--paginate", "/repos/"+catalogRepository+"/tags", "--jq", `.[] | select(.commit.sha == "`+record.revision+`") | .name`)
+			revisionJSON, _ := json.Marshal(record.revision)
+			stdout, stderr, err := gh(ctx, "api", "--paginate", "/repos/"+catalogRepository+"/tags", "--jq", `.[] | select(.commit.sha == `+string(revisionJSON)+`) | .name`)
 			if err != nil {
 				return nil, commandError("Unable to resolve CAO tag for "+record.revision, stderr, err)
 			}

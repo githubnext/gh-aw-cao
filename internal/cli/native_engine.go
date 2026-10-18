@@ -312,7 +312,14 @@ func engineString(value any) string {
 	return s
 }
 
-func engineInt(value any) int { n, _ := engineNumber(value); return int(n) }
+func engineInt(value any) int {
+	n, ok := engineNumber(value)
+	// The exclusive upper bound stays exact even when float64 rounds MaxInt up.
+	if !ok || n < float64(math.MinInt) || n >= -float64(math.MinInt) {
+		return 0
+	}
+	return int(n)
+}
 func engineDefaultInt(value any, fallback int) int {
 	if value == nil {
 		return fallback

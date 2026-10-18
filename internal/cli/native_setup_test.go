@@ -467,8 +467,16 @@ func TestNativeSetupWildcardExpansionFailsClosed(t *testing.T) {
 }
 
 func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
-	for _, invalid := range []bool{false, true} {
-		t.Run(fmt.Sprint(invalid), func(t *testing.T) {
+	for _, test := range []struct {
+		name, owner, appName, homepage string
+		invalid                        bool
+	}{
+		{"valid", "org", "test-app", "https://github.com/org/control", false},
+		{"invalid state", "org", "test-app", "https://github.com/org/control", true},
+		{"quoted HTML and JSON", "org", `app"></form><script>alert("manifest")</script><input name="injected" value="`, "https://github.com/org/control?q=\"'<>&\\\n\u2028\u2029", false},
+		{"quoted action URL", `org"><script>alert("action")</script><input name="injected`, "test-app", "https://github.com/org/control", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			cmd := nativeSetupTestCommand()
 			key := nativeSetupTestKey(t)
 			conversions := 0
@@ -490,8 +498,13 @@ func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
 					if len(action) != 2 || len(manifest) != 2 {
 						t.Fatalf("browser registration form missing: %s", page)
 					}
+					for _, element := range []string{"<form ", "<input ", "<script>"} {
+						if strings.Count(string(page), element) != 1 {
+							t.Fatalf("manifest escaped its HTML attribute: %s", page)
+						}
+					}
 					parsed, err := url.Parse(html.UnescapeString(action[1]))
-					if err != nil || parsed.Path != "/organizations/org/settings/apps/new" {
+					if err != nil || parsed.Path != "/organizations/"+test.owner+"/settings/apps/new" {
 						t.Fatalf("invalid registration URL: %v", parsed)
 					}
 					var body map[string]any
@@ -501,12 +514,15 @@ func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
 					if body["public"] != false || nativeSetupMap(body["hook_attributes"])["active"] != false {
 						t.Fatalf("unsafe manifest: %#v", body)
 					}
+					if body["name"] != test.appName || body["url"] != test.homepage || nativeSetupMap(body["hook_attributes"])["url"] != test.homepage {
+						t.Fatalf("manifest did not round-trip HTML and JSON encoding: %#v", body)
+					}
 					callback := body["redirect_url"].(string)
 					state := parsed.Query().Get("state")
 					if len(state) != 32 {
 						t.Fatal("manifest callback has no unpredictable state")
 					}
-					if invalid {
+					if test.invalid {
 						state = "invalid-state"
 					}
 					client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -520,7 +536,7 @@ func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
 						}
 					}()
 					expected := http.StatusFound
-					if invalid {
+					if test.invalid {
 						expected = http.StatusBadRequest
 					}
 					if result.StatusCode != expected {
@@ -536,15 +552,15 @@ func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
 				t.Fatalf("unexpected gh operation: %v", args)
 				return "", "", nil
 			}
-			app, err := nativeSetupCreateApp(cmd, gh, "org", "test-app", "https://github.com/org/control", nativeSetupCredentials(false)[0], false)
-			if invalid {
+			app, err := nativeSetupCreateApp(cmd, gh, test.owner, test.appName, test.homepage, nativeSetupCredentials(false)[0], false)
+			if test.invalid {
 				if err == nil || conversions != 0 {
 					t.Fatalf("invalid callback exchanged a code: %v conversions=%d", err, conversions)
 				}
 			} else if err != nil || app.PEM != key || conversions != 1 {
 				t.Fatalf("manifest flow did not return credentials: %v", err)
 			}
-			if strings.Contains(cmd.ErrOrStderr().(*bytes.Buffer).String(), key) {
+			if strings.Contains(cmd.ErrOrStderr().(*bytes.Buffer).String(), key) || strings.Contains(cmd.OutOrStdout().(*bytes.Buffer).String(), key) {
 				t.Fatal("private key leaked to setup output")
 			}
 		})

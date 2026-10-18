@@ -14,7 +14,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"html"
+	"html/template"
 	"io"
 	"net"
 	"net/http"
@@ -37,6 +37,8 @@ type nativeSetupAppAPI struct {
 	base   string
 	client *http.Client
 }
+
+var nativeSetupAppRegistrationTemplate = template.Must(template.New("app-registration").Parse(`<!doctype html><html lang="en"><meta charset="utf-8"><title>Create GitHub App</title><form id="manifest-form" action="{{.Action}}" method="post"><input type="hidden" name="manifest" value="{{.Manifest}}"><button type="submit">Continue to GitHub App creation</button></form><script>document.getElementById("manifest-form").submit();</script></html>`))
 
 func nativeSetupNewAppAPI() (nativeSetupAppAPI, error) {
 	server, err := nativeSetupServerURL()
@@ -192,7 +194,10 @@ func nativeSetupCreateApp(cmd *cobra.Command, gh ghExecutor, owner, name, homepa
 	registrationURL := serverURL + "/organizations/" + owner + "/settings/apps/new?state=" + state
 	// This browser-only form is the GitHub App manifest protocol, not a CLI
 	// JavaScript runtime. The noscript button supports JavaScript-free browsers.
-	page := `<!doctype html><html lang="en"><meta charset="utf-8"><title>Create GitHub App</title><form id="manifest-form" action="` + html.EscapeString(registrationURL) + `" method="post"><input type="hidden" name="manifest" value="` + html.EscapeString(string(data)) + `"><button type="submit">Continue to GitHub App creation</button></form><script>document.getElementById("manifest-form").submit();</script></html>`
+	var page bytes.Buffer
+	if err := nativeSetupAppRegistrationTemplate.Execute(&page, struct{ Action, Manifest string }{registrationURL, string(data)}); err != nil {
+		return nativeSetupApp{}, errors.New("unable to prepare GitHub App registration page")
+	}
 	type outcome struct {
 		app nativeSetupApp
 		err error
@@ -208,7 +213,7 @@ func nativeSetupCreateApp(cmd *cobra.Command, gh ghExecutor, owner, name, homepa
 		}
 		if req.URL.Path == "/register" {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			if _, err := fmt.Fprint(w, page); err != nil {
+			if _, err := fmt.Fprint(w, page.String()); err != nil {
 				finish(nativeSetupApp{}, errors.New("unable to serve GitHub App registration page"))
 			}
 			return
