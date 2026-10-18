@@ -202,15 +202,18 @@ func (d WebhookGatewayDispatcher) dispatchWithQuota(ctx context.Context, subscri
 		(destination.Kind == "repository_dispatch" && destination.EventType == "") {
 		return result, githubquota.ResponseQuota{}
 	}
+	var observationErr error
 	observe := func(quota githubquota.ResponseQuota) {
-		d.observe(ctx, destination.InstallationID, quota)
+		if d.ObserveQuota != nil && quota.HasResponse {
+			observationErr = errors.Join(observationErr, d.ObserveQuota(ctx, destination.InstallationID, quota))
+		}
 	}
 	client, quota, err := d.Client.webhookGatewayRepositoryClient(ctx, destination.InstallationID, destination.RepositoryID, observe)
-	if err != nil {
+	if err != nil || observationErr != nil {
 		return result, quota
 	}
 	repository, quota, err := webhookGatewayRepositoryWithClient(ctx, client, destination.RepositoryID, observe)
-	if err != nil || repository.Disabled || repository.Archived || !repository.Private || repository.Visibility != "private" {
+	if err != nil || observationErr != nil || repository.Disabled || repository.Archived || !repository.Private || repository.Visibility != "private" {
 		return result, quota
 	}
 	owner, name, valid := strings.Cut(repository.FullName, "/")
@@ -222,7 +225,7 @@ func (d WebhookGatewayDispatcher) dispatchWithQuota(ctx context.Context, subscri
 			return result, quota
 		}
 		head, digest, err := gatewayCurrentWorkflow(ctx, client, repository, subscription.Compiler.Dispatch.Workflow, observe)
-		if err != nil || head != revision.CommitSHA || digest != revision.Digest ||
+		if err != nil || observationErr != nil || head != revision.CommitSHA || digest != revision.Digest ||
 			revision.RepositoryID != destination.RepositoryID || revision.MetadataPath != subscription.Compiler.Dispatch.Workflow {
 			return result, quota
 		}

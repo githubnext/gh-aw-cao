@@ -67,7 +67,7 @@ func authorize(now time.Time, s Subscription, expectedDigest string, event Event
 	if event.InstallationID != src.InstallationID ||
 		snapshot.SourceInstallationID != src.InstallationID ||
 		snapshot.ReceivingInstallationID != src.InstallationID ||
-		(src.RepositoryID != 0 && (event.RepositoryID != src.RepositoryID || snapshot.SourceRepositoryID != src.RepositoryID)) ||
+		event.RepositoryID != src.RepositoryID || snapshot.SourceRepositoryID != src.RepositoryID ||
 		(src.OrganizationID != 0 && (event.OrganizationID != src.OrganizationID || snapshot.SourceOrganizationID != src.OrganizationID)) ||
 		snapshot.DestinationInstallationID != dst.InstallationID ||
 		snapshot.DestinationRepositoryID != dst.RepositoryID {

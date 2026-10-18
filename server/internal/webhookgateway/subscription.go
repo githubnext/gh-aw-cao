@@ -305,7 +305,7 @@ func MatchSubscription(s Subscription, event Event, limits Limits) (bool, error)
 	}
 	if s.Source.ID != event.SourceID || s.Source.Event != event.Name ||
 		s.Source.InstallationID != event.InstallationID ||
-		(s.Source.RepositoryID != 0 && s.Source.RepositoryID != event.RepositoryID) ||
+		s.Source.RepositoryID != event.RepositoryID ||
 		(s.Source.OrganizationID != 0 && s.Source.OrganizationID != event.OrganizationID) {
 		return false, nil
 	}

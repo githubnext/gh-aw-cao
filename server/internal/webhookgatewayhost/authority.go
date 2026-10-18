@@ -308,6 +308,18 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 // Refresh primes receiver evidence even while the queue is empty. Inventory is
 // bounded by the reviewed policy, and failures never retain proof indefinitely.
 func (a LiveAuthority) Refresh(ctx context.Context) error {
+	return (&AuthorityRefresher{Authority: a}).Refresh(ctx)
+}
+
+// AuthorityRefresher belongs to one primer loop. Its cursor advances even when
+// a slow subscription exhausts the round deadline, so later routes get a turn.
+type AuthorityRefresher struct {
+	Authority LiveAuthority
+	next      int
+}
+
+func (r *AuthorityRefresher) Refresh(ctx context.Context) error {
+	a := r.Authority
 	policy, err := a.Loader.Load(ctx)
 	if err != nil {
 		return err
@@ -319,7 +331,18 @@ func (a LiveAuthority) Refresh(ctx context.Context) error {
 		return nil
 	}
 	var failures []error
-	for _, subscription := range policy.Subscriptions {
+	if len(policy.Subscriptions) == 0 {
+		r.next = 0
+		return nil
+	}
+	start := r.next % len(policy.Subscriptions)
+	for offset := range len(policy.Subscriptions) {
+		if err := ctx.Err(); err != nil {
+			return errors.Join(append(failures, err)...)
+		}
+		index := (start + offset) % len(policy.Subscriptions)
+		subscription := policy.Subscriptions[index]
+		r.next = (index + 1) % len(policy.Subscriptions)
 		job := gateway.Job{
 			Subscription: subscription, SubscriptionDigest: policy.Revisions[subscription.ID].Digest,
 			QueueRevision: policy.Revision,
@@ -327,9 +350,6 @@ func (a LiveAuthority) Refresh(ctx context.Context) error {
 		if _, err := a.Authorize(ctx, job); err != nil {
 			failures = append(failures, errors.New("gateway authority refresh incomplete"))
 		}
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
 	}
-	return errors.Join(failures...)
+	return errors.Join(append(failures, ctx.Err())...)
 }

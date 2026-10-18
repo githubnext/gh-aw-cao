@@ -30,7 +30,7 @@ func validEventIdentity(event EventIdentity, subscription Subscription) bool {
 		identifier(event.DeliveryID) && (event.Action == "" || identifier(event.Action)) &&
 		event.InstallationID == source.InstallationID &&
 		event.RepositoryID >= 0 && event.OrganizationID >= 0 &&
-		(source.RepositoryID == 0 || event.RepositoryID == source.RepositoryID) &&
+		event.RepositoryID == source.RepositoryID &&
 		(source.OrganizationID == 0 || event.OrganizationID == source.OrganizationID)
 }
 

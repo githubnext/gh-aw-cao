@@ -312,14 +312,22 @@ the previous secret after the approved overlap and restart again.
 
 The dispatch role publishes short-lived authorization proofs (30 seconds) to
 the existing operational `StateStore`, using one bounded fixed key per
-subscription ID. Its proof primer runs even when the queue is empty. Receive
-admits only with a fresh proof bound to both the current queue policy revision
+subscription ID. Its proof primer runs even when the queue is empty.
+The primer rotates across deadline-limited rounds so slow subscriptions cannot
+always starve later routes; incomplete refreshes are reported with
+`DEBUG=cao:webhook-gateway:authority`.
+Receive admits only with a fresh proof bound to both the current queue policy revision
 and the exact trusted subscription revision;
 missing, expired, mismatched, or incomplete proofs fail closed. No private key is
 delegated to ingress. Before each outbound attempt, dispatch always performs
 fresh live installation/repository checks for both source and destination,
 current root-policy scope checks, and grant validation; admission proofs are not
 an egress authorization cache.
+An omitted source `repositoryId` binds only organization-level deliveries
+without a repository envelope. It is not an organization-wide repository
+wildcard: repository-bearing events require an exact approved source ID.
+Quota-observation storage failures during final preflight block the POST;
+failures after a known HTTP acceptance never convert it into a retry.
 
 The queue stores only payload-free `Job.Event` identity and bounded compiled
 `Job.Payload` dispatch JSON, never original matched or filtered event bodies.

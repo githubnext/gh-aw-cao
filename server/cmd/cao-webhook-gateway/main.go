@@ -20,6 +20,7 @@ import (
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
@@ -27,6 +28,7 @@ import (
 )
 
 var version = "dev"
+var authorityLog = logger.New("cao:webhook-gateway:authority")
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -332,11 +334,14 @@ func dispatch(ctx context.Context, policy gateway.PolicySnapshot, loader, baseLo
 		workers.Go(func() { _ = discovery.Run(ctx) })
 	}
 	workers.Go(func() {
+		primer := webhookgatewayhost.AuthorityRefresher{Authority: authority}
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 		for {
 			refreshCtx, finish := context.WithTimeout(ctx, 20*time.Second)
-			_ = authority.Refresh(refreshCtx)
+			if err := primer.Refresh(refreshCtx); err != nil && ctx.Err() == nil {
+				authorityLog.Printf("authorization proof refresh incomplete")
+			}
 			finish()
 			select {
 			case <-ctx.Done():

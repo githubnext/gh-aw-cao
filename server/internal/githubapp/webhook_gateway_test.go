@@ -224,7 +224,10 @@ func TestWebhookGatewayDispatchRequests(t *testing.T) {
 				if id != 7 || !quota.HasObservation {
 					t.Errorf("observation id=%d quota=%+v", id, quota)
 				}
-				return errors.New("storage down")
+				if posts > 0 {
+					return errors.New("storage down")
+				}
+				return nil
 			}}
 			subscription := gatewayTestSubscription(kind)
 			response, quota := dispatcher.DispatchWithQuota(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"delivery":"abc","number":12}`)))

@@ -75,6 +75,10 @@ The compiler-facing interchange document is a bounded JSON object with
 `source`, optional `filter`, `destination`, and `delivery`. Source declares
 trusted route and immutable installation/repository/organization constraints;
 destination explicitly declares transport kind and bounded field mapping.
+An omitted source `repositoryId` means organization-only delivery, not a
+wildcard over repositories in that organization. Repository-bearing events
+MUST match an explicit source repository ID at ingress, retained-job validation,
+and fresh authorization; an organization-only proof MUST NOT authorize them.
 The trusted artifact/approval wrapper binds compiler identity, repository ID,
 source commit SHA, metadata path, and exact digest; those are not self-asserted
 activation authority in the subscription.
@@ -535,7 +539,11 @@ The isolated receiver has no App private key: the dispatch role delegates
 admission evidence through a 30-second authorization proof in the existing
 operational StateStore, at one bounded fixed subscription-ID key. Receive accepts
 only fresh, complete evidence bound to the exact trusted revision and current
-policy. The proof primer runs even with no queued jobs. Such a proof is bounded
+policy. The proof primer runs even with no queued jobs and retains a rotating
+cursor across deadline-limited rounds. Failed or slow subscriptions MUST NOT
+monopolize the start of every round; an interrupted attempt advances the cursor.
+Refresh failures emit sanitized diagnostics through the existing debug logger.
+Such a proof is bounded
 observation, not an instantaneous guarantee against external GitHub revocation.
 
 The worker MUST independently refresh the same grants before Dispatching and
@@ -925,6 +933,8 @@ Reuse `server/internal/githubapp/` for existing App authentication and governed
 API transports, adding explicitly scoped dispatch functionality without silently
 upgrading the read-only collector App. Reuse `githubquota` and focused operational
 quota services across replicas; unavailable quota storage blocks sending.
+Quota-observation persistence failures during token mint, repository lookup,
+source checks, or workflow-revision preflight MUST prevent the outbound POST.
 Production composition MUST provide `Worker.Budget`, whose focused contract is
 `Acquire(context.Context, Job) (release func(), err error)`, before durable
 BeginDispatch, in addition to the queue's atomic hierarchical reservation.
@@ -932,7 +942,7 @@ The shell permits nil Budget only for isolated pure-test composition; production
 MUST NOT omit it. Acquisition denial leaves the job claimed without consuming a
 dispatch attempt, and the acquired callback MUST be released on every exit.
 The production paired budget gate/dispatcher owns actual response-based quota
-reconciliation. A reconciliation failure MUST NOT overwrite a known HTTP
+reconciliation. After sending, a reconciliation failure MUST NOT overwrite a known HTTP
 acceptance or prevent durable fenced Finish from recording it, and MUST NOT
 cause a replay. There is no separate DispatchQuota/DispatchReservation API.
 Reuse existing logger/telemetry factories and application lifecycle: cancel

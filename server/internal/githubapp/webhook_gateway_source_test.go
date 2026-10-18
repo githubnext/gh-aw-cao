@@ -1,17 +1,20 @@
 package githubapp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
 )
 
 func TestCompilerMultiRepositoryDispatchRechecksSource(t *testing.T) {
-	for _, scenario := range []string{"exact", "wildcard", "missing-receiver", "public-source", "internal-source", "archived-source", "revoked-source", "renamed-source", "wrong-url", "changed-workflow"} {
+	for _, scenario := range []string{"exact", "wildcard", "missing-receiver", "public-source", "internal-source", "archived-source", "revoked-source", "renamed-source", "wrong-url", "changed-workflow", "source-quota-unavailable", "workflow-quota-unavailable"} {
 		t.Run(scenario, func(t *testing.T) {
 			entries, err := gateway.ParseWorkflowManifest(gatewayManifestLock(t), ".github/workflows/test.lock.yml", gateway.DefaultLimits())
 			if err != nil {
@@ -96,7 +99,20 @@ func TestCompilerMultiRepositoryDispatchRechecksSource(t *testing.T) {
 			if scenario == "missing-receiver" {
 				receiving = nil
 			}
-			result := (WebhookGatewayDispatcher{Client: destination, Receiving: receiving}).DispatchCompiler(t.Context(), subscription, payload, revision)
+			adapter := WebhookGatewayDispatcher{Client: destination, Receiving: receiving,
+				ObserveReceivingQuota: func(context.Context, int64, githubquota.ResponseQuota) error {
+					if scenario == "source-quota-unavailable" {
+						return errors.New("quota unavailable")
+					}
+					return nil
+				},
+				ObserveQuota: func(context.Context, int64, githubquota.ResponseQuota) error {
+					if scenario == "workflow-quota-unavailable" && workflowReads > 0 {
+						return errors.New("quota unavailable")
+					}
+					return nil
+				}}
+			result := adapter.DispatchCompiler(t.Context(), subscription, payload, revision)
 			if scenario == "exact" || scenario == "wildcard" {
 				if result.StatusCode != http.StatusNoContent || posts != 1 || sourceReads != 1 || workflowReads != 1 {
 					t.Fatalf("cross-repository preflight failed: status=%d posts=%d sources=%d workflows=%d",

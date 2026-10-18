@@ -524,7 +524,9 @@ Receive and dispatch are separate processes and credential domains. Receive
 verifies bounded raw deliveries with HMAC secrets and holds no App private keys.
 Dispatch holds independent receiving-App read and dispatch-App private keys, but
 no HMAC secret. It primes 30-second admission authorization proofs in the existing
-operational `StateStore`, even with an empty queue. Egress independently rechecks
+operational `StateStore`, even with an empty queue. One primer loop retains a
+rotating cursor across deadline-limited rounds so slow or failed subscriptions
+cannot always starve later routes. Egress independently rechecks
 live GitHub installation/repository grants, identities, visibility, current root
 scope, and approved revision; an admission proof never authorizes sending.
 
@@ -535,7 +537,10 @@ The gateway is not installed or enabled by default and cannot widen campaign
 scope, enablement, or live authority. Repository and owner allowlists intersect
 when both are declared. Production source/destination repositories must be
 private; public/internal, archived, disabled, or inaccessible repositories fail
-closed. Static source-route additions, adding/removing managed discovery,
+closed. An omitted source repository ID binds organization-only deliveries,
+never a wildcard over organization repositories; repository-bearing events
+require exact source repository identity at admission and egress.
+Static source-route additions, adding/removing managed discovery,
 deployment identity and capacity changes require restart; root-scope changes
 require a new gateway revision.
 Monotonic persisted queue revisions reject
@@ -564,6 +569,8 @@ tenant/subscription cursor rotation balances workflow routes across replicas,
 whose concurrency counts claim groups rather than member rows.
 Every member fence and fresh claim-bound authorization must pass one atomic
 all-member dispatch reservation with one rate/quota charge per request.
+Quota-observation persistence failures before the outbound POST block sending;
+post-send failures cannot overwrite known HTTP acceptance or cause replay.
 Compatible members may share newly fetched GitHub authority facts, never
 admission proofs. Completion is atomic across all member fences; lost/unknown
 acceptance makes every reserved member ambiguous, never per-event replay.

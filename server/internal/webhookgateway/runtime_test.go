@@ -208,6 +208,27 @@ func TestIngressFilteredNeverAuthorizesOrPersistsPayload(t *testing.T) {
 	}
 }
 
+func TestOrganizationIngressRejectsSignedRepositoryDelivery(t *testing.T) {
+	_, snapshot := shellFixture()
+	snapshot.Subscriptions[0].Source.Event = "issues"
+	snapshot.Subscriptions[0].Filter = nil
+	snapshot.AllowedOwners = []string{"approved"}
+	snapshot.AllowedRepos = []string{"approved/destination"}
+	queue, authorizer := &shellQueue{}, &shellAuthorizer{}
+	handler := Ingress{SourceID: "projects", Policies: shellPolicy{snapshot: snapshot},
+		Secrets: shellSecrets{}, Queue: queue, Authorizer: authorizer}
+	request := shellRequest(`{"action":"opened","installation":{"id":10},"organization":{"id":20},
+		"repository":{"id":99999,"full_name":"approved/excluded","private":true},
+		"projects_v2_item":{"id":9},"issue":{"body":"must-not-forward"}}`)
+	request.Header.Set("X-GitHub-Event", "issues")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent || authorizer.calls != 0 || len(queue.admission.Jobs) != 0 {
+		t.Fatalf("excluded repository reached organization authority: status=%d auth=%d jobs=%d",
+			response.Code, authorizer.calls, len(queue.admission.Jobs))
+	}
+}
+
 func TestIngressAtomicAdmissionAndAllowlist(t *testing.T) {
 	sub, snapshot := shellFixture()
 	second := sub
