@@ -15,6 +15,7 @@
         "workflow": ".github/workflows/test.lock.yml",
         "context": {"envelope":"github.event.client_payload","aw_context":"github.event.client_payload.aw_context","event":"github.event.client_payload.aw_context.webhook.event","deliveries":"github.event.client_payload.aw_context.webhook.deliveries","items":"aw_context.items"},
         "batch": {"mode":"same-event","deduplicate_by":"delivery_id"},
+        "payload_projection": {"policy":"resource-url-types/v1"},
         "max_payload_bytes": 65535,
         "max_request_bytes": 65535
       }
@@ -33,7 +34,7 @@
         "workflow": ".github/workflows/test.lock.yml",
         "context": {"envelope":"github.event.client_payload","aw_context":"github.event.client_payload.aw_context","event":"github.event.client_payload.aw_context.webhook.event","deliveries":"github.event.client_payload.aw_context.webhook.deliveries","items":"aw_context.items"},
         "batch": {"mode":"same-event","deduplicate_by":"delivery_id"},
-        "payload_projection": {"source_path":["alert","url"],"target_path":["url"]},
+        "payload_projection": {"policy":"resource-url-types/v1"},
         "max_payload_bytes": 65535,
         "max_request_bytes": 65535
       }
@@ -53,7 +54,7 @@
         "workflow": ".github/workflows/test.lock.yml",
         "context": {"envelope":"github.event.client_payload","aw_context":"github.event.client_payload.aw_context","event":"github.event.client_payload.aw_context.webhook.event","deliveries":"github.event.client_payload.aw_context.webhook.deliveries","items":"aw_context.items"},
         "batch": {"mode":"same-event","deduplicate_by":"delivery_id"},
-        "payload_projection": {"source_path":["alert","url"],"target_path":["url"]},
+        "payload_projection": {"policy":"resource-url-types/v1"},
         "max_payload_bytes": 65535,
         "max_request_bytes": 65535
       }

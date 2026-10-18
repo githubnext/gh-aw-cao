@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
@@ -92,5 +93,64 @@ func TestWebhookRegistryCapacityRollsBackInventoryAndQueueRevision(t *testing.T)
 	after, err := q.BindRegistry(t.Context(), control)
 	if err != nil || !reflect.DeepEqual(before, after) {
 		t.Fatal("failed publication partly changed registry or queue policy", err)
+	}
+}
+
+func TestWebhookRegistryReviewedRevisionRevokesIncompatibleProjection(t *testing.T) {
+	s, _ := testStore(t, Config{})
+	q := openWebhook(t, s, webhookOptions())
+	control := webhookPolicy()
+	first, err := q.BindRegistry(t.Context(), control)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := wg.RepositoryInventory{RepositoryID: 20, OwnerID: 50, OwnerType: "Organization",
+		Visibility: "private", CommitSHA: strings.Repeat("c", 40), CheckedAt: time.Now().UTC()}
+	active, err := q.ReplaceRegistry(t.Context(), control, first.Version, []wg.RepositoryInventory{record})
+	if err != nil {
+		t.Fatal(err)
+	}
+	admission := webhookAdmission("legacy-delivery", webhookJob("legacy-job", "tenant"))
+	admission.Revision, admission.Jobs[0].QueueRevision = active.Revision, active.Revision
+	if _, err := q.AdmitBatch(t.Context(), admission); err != nil {
+		t.Fatal(err)
+	}
+	claimed := claimWebhook(t, q)
+	active.Records[0].Workflows = []wg.DiscoveredWorkflow{{
+		Path: ".github/workflows/old.lock.yml", SHA256: strings.Repeat("d", 64),
+		Triggers: []wg.CompilerTrigger{{SchemaVersion: 2, Event: "dependabot_alert",
+			Dispatch: wg.CompilerDispatch{PayloadProjection: &wg.CompilerProjection{Policy: "obsolete/v1"}}}},
+	}}
+	data, err := json.Marshal(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := q.transact(t.Context(), func(tx *transaction) error {
+		return tx.put(key{"state", "webhook-gateway:registry:" + q.name, ""}, data, time.Time{})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.BindRegistry(t.Context(), control); !errors.Is(err, wg.ErrInvalid) {
+		t.Fatal("incompatible projection remained active", err)
+	}
+	if _, err := q.ReplaceRegistry(t.Context(), control, active.Version, nil); !errors.Is(err, wg.ErrInvalid) {
+		t.Fatal("same control revision bypassed incompatible metadata", err)
+	}
+	control.Revision++
+	control.Digest = strings.Repeat("e", 64)
+	reset, err := q.BindRegistry(t.Context(), control)
+	if err != nil || len(reset.Records) != 0 || reset.Version <= active.Version ||
+		reset.Revision.Revision <= active.Revision.Revision {
+		t.Fatal("reviewed revision could not revoke incompatible inventory", err)
+	}
+	if _, err := q.BeginDispatch(t.Context(), webhookJobFence(claimed), webhookAuthorization(claimed)); err == nil {
+		t.Fatal("old worker survived projection migration")
+	}
+	current, err := q.BindRegistry(t.Context(), control)
+	if err != nil || !reflect.DeepEqual(current, reset) {
+		t.Fatal("reset registry did not remain usable", err)
+	}
+	if _, err := q.BindRegistry(t.Context(), webhookPolicy()); !errors.Is(err, wg.ErrConflict) {
+		t.Fatal("old control revision reactivated incompatible metadata", err)
 	}
 }

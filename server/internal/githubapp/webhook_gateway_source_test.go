@@ -47,7 +47,7 @@ func TestCompilerMultiRepositoryDispatchRechecksSource(t *testing.T) {
 			}
 			payload := json.RawMessage(fmt.Sprintf(`{"event_type":%q,"client_payload":{"schema_version":2,
 				"aw_context":{"webhook":{"event":"dependabot_alert","deliveries":[
-				{"delivery_id":"delivery","payload":{"url":"https://api.github.com/repos/%s/dependabot/alerts/42"}}]}}}}`,
+				{"delivery_id":"delivery","payload":{"url":"https://api.github.com/repos/%s/dependabot/alerts/42","type":["created"]}}]}}}}`,
 				subscription.Destination.EventType, projectedRepo))
 			sourceReads, posts, workflowReads := 0, 0, 0
 			destination := gatewayTestClient(t, func(w http.ResponseWriter, r *http.Request) {

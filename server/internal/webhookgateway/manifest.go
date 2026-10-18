@@ -9,6 +9,7 @@ import (
 )
 
 const MaxWorkflowArtifactBytes = 8 << 20
+const compilerProjectionPolicy = "resource-url-types/v1"
 
 // CompilerCondition preserves gh-aw's typed equality and array traversal paths.
 type CompilerCondition struct {
@@ -35,8 +36,7 @@ type CompilerBatch struct {
 }
 
 type CompilerProjection struct {
-	SourcePath []string `json:"source_path"`
-	TargetPath []string `json:"target_path"`
+	Policy string `json:"policy"`
 }
 
 type CompilerDispatch struct {
@@ -169,19 +169,12 @@ func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) e
 		context = CompilerContext{Envelope: "github.event.client_payload",
 			AWContext: "github.event.client_payload.aw_context", Event: "github.event.client_payload.aw_context.webhook.event",
 			Deliveries: "github.event.client_payload.aw_context.webhook.deliveries", Items: "aw_context.items"}
-		if d.Batch == nil || *d.Batch != (CompilerBatch{Mode: "same-event", DeduplicateBy: "delivery_id"}) {
+		if d.Batch == nil || *d.Batch != (CompilerBatch{Mode: "same-event", DeduplicateBy: "delivery_id"}) ||
+			d.PayloadProjection == nil || d.PayloadProjection.Policy != compilerProjectionPolicy {
 			return ErrInvalid
 		}
 		switch t.Event {
-		case "dependabot_alert", "code_scanning_alert":
-			if d.PayloadProjection == nil || !slices.Equal(d.PayloadProjection.SourcePath, []string{"alert", "url"}) ||
-				!slices.Equal(d.PayloadProjection.TargetPath, []string{"url"}) {
-				return ErrInvalid
-			}
-		case "projects_v2_item":
-			if d.PayloadProjection != nil {
-				return ErrInvalid
-			}
+		case "dependabot_alert", "code_scanning_alert", "projects_v2_item":
 		default:
 			return ErrInvalid
 		}
@@ -197,7 +190,7 @@ func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) e
 	}
 	seen := make(map[string]bool)
 	for _, activity := range t.Types {
-		if !identifier(activity) || seen[activity] {
+		if !identifier(activity) || seen[activity] || t.SchemaVersion == 2 && !compilerActivity(t.Event, activity) {
 			return ErrInvalid
 		}
 		seen[activity] = true

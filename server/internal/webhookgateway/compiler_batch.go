@@ -92,7 +92,7 @@ func validateCompilerBatch(s Subscription, payload json.RawMessage, l Limits) er
 		seen[delivery.DeliveryID] = true
 		value, err := boundedJSON(delivery.Payload, l.MaxDispatchBytes, l)
 		object, ok := value.(map[string]any)
-		if err != nil || !ok || len(object) != 1 || !validCompilerAlertURL(s.Source.Event, object["url"]) {
+		if err != nil || !ok || !validCompilerNotification(s, object, "", false) {
 			return ErrInvalid
 		}
 		parts := strings.Split(strings.TrimPrefix(object["url"].(string), "https://api.github.com/repos/"), "/")
@@ -103,7 +103,7 @@ func validateCompilerBatch(s Subscription, payload json.RawMessage, l Limits) er
 	return nil
 }
 
-// CompilerBatchRepository binds URL-only projections to the freshly resolved
+// CompilerBatchRepository binds minimal notifications to the freshly resolved
 // source identity, not a sender-provided repository name.
 func CompilerBatchRepository(s Subscription, payload json.RawMessage, repository string) error {
 	if s.Compiler == nil || !CompilerRepositoryMatches(*s.Compiler, repository) ||

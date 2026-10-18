@@ -14,6 +14,18 @@ import (
 var _ wg.RegistryStore = (*webhookQueue)(nil)
 
 func (q *webhookQueue) registry(t *transaction) (wg.RegistrySnapshot, error) {
+	snapshot, err := q.registryEnvelope(t)
+	if err != nil || snapshot.Version == 0 {
+		return snapshot, err
+	}
+	digest, err := wg.RegistryDigest(snapshot.Control, snapshot.Records)
+	if err != nil || snapshot.Revision.Digest != digest || snapshot.Revision.Enabled != snapshot.Control.Enabled {
+		return wg.RegistrySnapshot{}, wg.ErrInvalid
+	}
+	return snapshot, nil
+}
+
+func (q *webhookQueue) registryEnvelope(t *transaction) (wg.RegistrySnapshot, error) {
 	data, err := t.get(key{"state", "webhook-gateway:registry:" + q.name, ""})
 	if err != nil || data == nil {
 		return wg.RegistrySnapshot{}, err
@@ -23,8 +35,8 @@ func (q *webhookQueue) registry(t *transaction) (wg.RegistrySnapshot, error) {
 		snapshot.Revision.Revision < 1 || len(snapshot.Records) > 64 {
 		return wg.RegistrySnapshot{}, wg.ErrInvalid
 	}
-	digest, err := wg.RegistryDigest(snapshot.Control, snapshot.Records)
-	if err != nil || snapshot.Revision.Digest != digest || snapshot.Revision.Enabled != snapshot.Control.Enabled {
+	if _, err := wg.RegistryDigest(snapshot.Control, nil); err != nil ||
+		snapshot.Revision.Enabled != snapshot.Control.Enabled {
 		return wg.RegistrySnapshot{}, wg.ErrInvalid
 	}
 	return snapshot, nil
@@ -53,7 +65,7 @@ func (q *webhookQueue) BindRegistry(ctx context.Context, control wg.QueueRevisio
 	}
 	var result wg.RegistrySnapshot
 	err := q.transact(ctx, func(t *transaction) error {
-		existing, err := q.registry(t)
+		existing, err := q.registryEnvelope(t)
 		if err != nil {
 			return err
 		}
@@ -73,9 +85,11 @@ func (q *webhookQueue) BindRegistry(ctx context.Context, control wg.QueueRevisio
 			return wg.ErrConflict
 		}
 		if existing.Version > 0 && control == existing.Control {
-			result = existing
-			return nil
+			result, err = q.registry(t)
+			return err
 		}
+		// A higher reviewed control revision revokes all discovered authority.
+		// Do not require an obsolete discovery codec to accept its old records.
 		if current.Revision >= math.MaxInt64-1 || existing.Version >= math.MaxInt64-1 {
 			return wg.ErrCapacity
 		}

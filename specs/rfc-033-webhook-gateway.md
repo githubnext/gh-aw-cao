@@ -134,7 +134,7 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`e0354e619f77936a283eed4c2c189e8d303b260b`, defines a batch-v2 discovery interchange in
+`87d3245cbe0659efb4ba93e3ecf85fa29031f703`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
@@ -197,9 +197,19 @@ Batch-capable v2 MUST declare the following fixed mapping and batching policy:
 }
 ```
 
-Security declarations MUST additionally declare
-`payload_projection: {"source_path":["alert","url"],"target_path":["url"]}`.
-Projects declarations preserve native item identity and have no such projection.
+Every v2 declaration MUST additionally declare exactly
+`payload_projection: {"policy":"resource-url-types/v1"}`. The complete delivery
+payload is exactly `{"url":"<canonical resource URL>","type":["<activity>"]}`.
+GitHub notifications carry the single original action, not a state object.
+Missing or unknown policies, old `source_path`/`target_path` declarations,
+URL-only security payloads, and native Projects bodies MUST reject validation,
+never fall back to raw-body forwarding.
+The upstream [gateway specification](https://github.com/github/gh-aw/blob/87d3245cbe0659efb4ba93e3ecf85fa29031f703/docs/src/content/docs/specs/webhook-gateway-specification.md)
+defines all six event families, including provider-normalized activity arrays.
+This bridge still discovers only Projects and the two security families and
+activates only the explicitly delegated security routes. Projects remain
+nonactivating; external providers remain unsupported. No URL or projection
+policy supplies enrollment, permissions, or authority.
 Mixed versions, paths, modes, or unsupported projections MUST reject validation.
 Only explicit v2 declarations may activate through section 6.2. A v1 workflow
 MUST NOT silently receive an incompatible batch or fall back to one dispatch
@@ -372,8 +382,12 @@ installation/repository. Missing either capability MUST block dispatch.
 
 Security dispatch context MUST use section 13.1's compiler-v2 envelope.
 The current compiler supports Dependabot and code-scanning alerts, not
-secret-scanning declarations. Its only projected payload is `{"url": "..."}`
-from each matching original event's `alert.url`. The URL MUST be a canonical
+secret-scanning declarations. Its only projected payload is
+`{"url":"...","type":["<original action>"]}` from each matching original event's
+`alert.url` and `action`. Both keys MUST be present, with no additional data,
+and the singleton type MUST belong to the event family and selected declaration.
+Retained notifications MUST bind that type to their immutable original activity.
+The URL MUST be a canonical
 HTTPS `api.github.com/repos/OWNER/REPO/{dependabot|code-scanning}/alerts/NUMBER`
 URL with no credentials, query, fragment, or encoded path. At ingress its
 repository and alert number MUST agree with the signed source event; final
@@ -382,9 +396,23 @@ source identity, including explicitly selected cross-repository routes.
 Enterprise API origins are not supported by this bridge.
 Private source identities and predicates are checked before projection, and
 original activity/immutable IDs remain separate durable event identity.
-Raw alerts, secret values, titles, bodies, and sender provenance MUST NOT persist.
+Raw alerts, secret values, titles, bodies, severities, transition evidence, and
+sender provenance MUST NOT persist or be forwarded. All further resource data
+MUST be resolved inside the workflow through a configured provider-authenticated
+reader so the provider enforces access. A URL is a reference, not authority;
+denied or unavailable reads MUST NOT fall back to native webhook content or
+attach credentials to arbitrary URL origins.
 The complete request and client payload MUST each fit compiler ceilings before
 any deduplication, as well as gateway limits.
+
+Persisted inventories using an obsolete projection contract MUST remain
+nonactivating at the current reviewed policy revision. A higher reviewed gateway
+policy revision MAY revoke the entire incompatible inventory without interpreting
+its obsolete declarations. That reset MUST advance the registry CAS and effective
+queue revision atomically, cancel older ready/claimed work, reject lower or
+same-revision conflicting control policies, and require fresh bounded discovery.
+It MUST NOT reinterpret old delivery payloads, preserve discovered grants, or
+expand enrollment. This implementation does not edit rollout policy automatically.
 
 Compiler v2 forbids wire `_gateway` provenance, including a nested workaround.
 Approved revision evidence MUST instead be extracted from all durable members
@@ -412,7 +440,7 @@ deployment acceptance.
 
 The selector, independent-authority and real PostgreSQL signed-ingress/worker
 cases derive from SR-01–SR-04. They cover exact/wildcard intersection, distinct
-receiving installations, source-only inventories, URL-only two-delivery batches
+receiving installations, source-only inventories, URL/type-only two-delivery batches
 per source, source invalidation and destination withdrawal.
 `WebhookSecuritySources.tla` separately abstracts selector matching as a set of
 sources and exhaustively checks its intersection with enrollment/private state,
@@ -781,8 +809,8 @@ admission; batching MUST NOT hydrate, re-filter, or reconstruct relationships.
       "webhook": {
         "event": "dependabot_alert",
         "deliveries": [
-          {"delivery_id": "delivery-a", "payload": {"url": "https://api.github.com/repos/owner/repo/dependabot/alerts/12"}},
-          {"delivery_id": "delivery-b", "payload": {"url": "https://api.github.com/repos/owner/repo/dependabot/alerts/12"}}
+          {"delivery_id": "delivery-a", "payload": {"url": "https://api.github.com/repos/owner/repo/dependabot/alerts/12", "type": ["created"]}},
+          {"delivery_id": "delivery-b", "payload": {"url": "https://api.github.com/repos/owner/repo/dependabot/alerts/12", "type": ["reopened"]}}
         ]
       }
     }
@@ -790,11 +818,14 @@ admission; batching MUST NOT hydrate, re-filter, or reconstruct relationships.
 }
 ```
 
-The compiler retains both deliveries and derives one unique affected item.
+The compiler retains both activities and derives one unique affected item from
+the canonical resource URL, not sender-supplied resource details.
 Each producer delivery ID MUST be unique; admission deduplicates redelivery.
 Per-delivery event overrides, supplied `items`, legacy envelopes and additional
-provenance keys MUST be rejected. Gateway revision evidence stays out of band.
-For generic approved repository-dispatch routes, the envelope is:
+provenance keys MUST be rejected. Gateway `aw_context` accepts only `webhook`;
+resource-detail side channels are forbidden. Gateway revision evidence stays
+out of band. Generic approved repository-dispatch routes have a separate
+contract, not a fallback or compatibility path to the compiler runtime:
 
 ```json
 {
@@ -803,8 +834,8 @@ For generic approved repository-dispatch routes, the envelope is:
     "schema_version": 2,
     "event": "dependabot_alert",
     "delivery_ids": ["delivery-a", "delivery-b"],
-    "aw_context": [{"action": "created", "repository": {"id": 42, "private": true},
-                    "installation": {"id": 7}, "alert": {"number": 12}}],
+    "aw_context": [{"url": "https://api.github.com/repos/owner/repo/dependabot/alerts/12",
+                    "type": ["created"]}],
     "_gateway": {
       "version": "cao.webhook-batch/v1",
       "sourceId": "compiler",

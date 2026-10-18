@@ -29,12 +29,13 @@ func compilerBatchJobs(t *testing.T, deliveries ...string) []Job {
 
 func compilerSecurityJobs(t *testing.T, policy PolicySnapshot, subscription Subscription, repository string, deliveries ...string) []Job {
 	t.Helper()
+	family := strings.TrimSuffix(strings.ReplaceAll(subscription.Source.Event, "_", "-"), "-alert")
 	body := []byte(fmt.Sprintf(`{"action":"created","installation":{"id":%d},"organization":{"id":%d},
 		"repository":{"id":%d,"private":true,"full_name":%q},"alert":{"number":42,
-		"url":"https://api.github.com/repos/%s/dependabot/alerts/42",
-		"secret":"MUST-NOT-PERSIST","security_advisory":{"severity":"critical"}}}`,
+		"url":"https://api.github.com/repos/%s/%s/alerts/42",
+		"secret":"MUST-NOT-PERSIST","assignees":[{"login":"octocat"}],"security_advisory":{"severity":"critical"}}}`,
 		subscription.Source.InstallationID, subscription.Source.OrganizationID,
-		subscription.Source.RepositoryID, repository, repository))
+		subscription.Source.RepositoryID, repository, repository, family))
 	jobs := make([]Job, 0, len(deliveries))
 	for _, delivery := range deliveries {
 		event, err := ParseEvent(delivery, subscription.Source.Event, body, DefaultLimits())
@@ -57,7 +58,20 @@ func compilerSecurityJobs(t *testing.T, policy PolicySnapshot, subscription Subs
 }
 
 func TestCompilerBatchPreservesDeliveriesAndOutOfBandRevision(t *testing.T) {
-	jobs := compilerBatchJobs(t, "one", "two")
+	base, registry := discoveryFixture(t)
+	policy, err := RegistryPolicy(base, registry, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, subscription := range policy.Subscriptions {
+		t.Run(subscription.Source.Event, func(t *testing.T) {
+			checkCompilerBatchProvenance(t, compilerSecurityJobs(t, policy, subscription, "approved/exact", "one", "two"))
+		})
+	}
+}
+
+func checkCompilerBatchProvenance(t *testing.T, jobs []Job) {
+	t.Helper()
 	payload, err := BuildDispatchBatch(jobs)
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +98,7 @@ func TestCompilerBatchRejectsUnagreedEnvelopesAndURLs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, scenario := range []string{"root-provenance", "nested-provenance", "supplied-items", "flat-context", "legacy", "mixed-event", "duplicate-delivery", "raw-alert", "wrong-host", "query", "credentials", "wrong-family"} {
+	for _, scenario := range []string{"root-provenance", "nested-provenance", "supplied-items", "resource-details", "flat-context", "legacy", "mixed-event", "duplicate-delivery", "raw-alert", "wrong-host", "query", "credentials", "wrong-family"} {
 		t.Run(scenario, func(t *testing.T) {
 			var request map[string]any
 			if err := json.Unmarshal(payload, &request); err != nil {
@@ -102,6 +116,8 @@ func TestCompilerBatchRejectsUnagreedEnvelopesAndURLs(t *testing.T) {
 				context["_gateway"] = map[string]any{}
 			case "supplied-items":
 				context["items"] = []any{}
+			case "resource-details":
+				context["resource"] = map[string]any{"title": "not-forwarded"}
 			case "flat-context":
 				p["aw_context"] = []any{projection}
 			case "legacy":
@@ -146,7 +162,7 @@ func TestCompilerBatchDeclarationNegotiation(t *testing.T) {
 			case "missing-projection":
 				trigger.Dispatch.PayloadProjection = nil
 			case "wrong-projection":
-				trigger.Dispatch.PayloadProjection = &CompilerProjection{SourcePath: []string{"alert"}, TargetPath: []string{"payload"}}
+				trigger.Dispatch.PayloadProjection = &CompilerProjection{Policy: "unknown/v1"}
 			case "unsupported-event":
 				trigger.Event = "secret_scanning_alert"
 			}
@@ -162,7 +178,20 @@ func TestCompilerBatchRuntimeInteroperability(t *testing.T) {
 	if directory == "" {
 		t.Skip("WEBHOOK_COMPILER_RUNTIME_DIR must point to the pinned gh-aw runtime")
 	}
-	jobs := compilerBatchJobs(t, "one", "two")
+	base, registry := discoveryFixture(t)
+	policy, err := RegistryPolicy(base, registry, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, subscription := range policy.Subscriptions {
+		t.Run(subscription.Source.Event, func(t *testing.T) {
+			checkCompilerRuntime(t, compilerSecurityJobs(t, policy, subscription, "approved/exact", "one", "two"))
+		})
+	}
+}
+
+func checkCompilerRuntime(t *testing.T, jobs []Job) {
+	t.Helper()
 	payload, err := BuildDispatchBatch(jobs)
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +214,38 @@ assert.equal(context.webhook.deliveries.length, 2);
 assert.equal(context.items.length, 1);
 assert.equal(context.items[0].item_number, '42');
 assert.equal(context.items[0].repo, 'approved/exact');
+const projection = request.client_payload.aw_context.webhook.deliveries[0].payload;
+assert.deepEqual(Object.keys(projection).sort(), ['type', 'url']);
+assert.deepEqual(projection.type, ['created']);
+const subscription = JSON.parse(process.env.GH_AW_WEBHOOK_SUBSCRIPTIONS)[0];
+for (const activity of subscription.types) {
+  const selected = JSON.parse(JSON.stringify(event));
+  selected.client_payload.aw_context.webhook.deliveries[1].payload.type = [activity];
+  assert.equal(validateWebhook(selected).skipped, false);
+  assert.equal(normalizeWebhookContext(selected.client_payload.aw_context).items.length, 1);
+}
 assert.throws(() => validateWebhook({...event, client_payload:{...request.client_payload, _gateway:{}}}));
+for (const invalid of [
+  {url: projection.url}, {...projection, type: 'created'}, {...projection, type: []},
+  {...projection, type: ['created', 'reopened']}, {...projection, type: ['unknown']},
+  {...projection, alert: {number: 42}}, {...projection, source: {id: 42}},
+]) {
+  const rejected = JSON.parse(JSON.stringify(event));
+  rejected.client_payload.aw_context.webhook.deliveries[1].payload = invalid;
+  assert.throws(() => validateWebhook(rejected));
+}
+for (const payload_projection of [undefined, {}, {policy: 'unknown/v1'},
+  {source_path: ['alert', 'url'], target_path: ['url']},
+  {policy: 'resource-url-types/v1', source_path: ['alert', 'url']}]) {
+  const subscriptions = JSON.parse(process.env.GH_AW_WEBHOOK_SUBSCRIPTIONS);
+  subscriptions[0].dispatch.payload_projection = payload_projection;
+  assert.throws(() => validateWebhook(event, {...process.env, GH_AW_WEBHOOK_SUBSCRIPTIONS: JSON.stringify(subscriptions)}));
+}
+for (const key of ['items', '_gateway', 'resource']) {
+  const rejected = JSON.parse(JSON.stringify(event));
+  rejected.client_payload.aw_context[key] = {};
+  assert.throws(() => validateWebhook(rejected));
+}
 `
 	command := exec.CommandContext(t.Context(), "node", "-e", script)
 	command.Env = append(os.Environ(), "GITHUB_EVENT_NAME=repository_dispatch", "GITHUB_API_URL=https://api.github.com",
@@ -230,6 +290,8 @@ assert.deepEqual(validateWebhook(event).delivery_ids, ['one', 'two']);
 const context = normalizeWebhookContext(request.client_payload.aw_context);
 assert.equal(context.items.length, 1);
 assert.equal(context.items[0].repo, process.env.EXPECTED_SOURCE_REPOSITORY);
+assert.deepEqual(context.webhook.deliveries[0].payload.type, ['created']);
+assert.deepEqual(Object.keys(context.webhook.deliveries[0].payload).sort(), ['type', 'url']);
 for (const repository of ['bar/other', 'foobar/one', 'unselected/repo']) {
   const rejected = JSON.parse(JSON.stringify(event));
   rejected.client_payload.aw_context.webhook.deliveries[1].payload.url =

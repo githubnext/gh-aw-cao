@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -37,10 +38,8 @@ func validCompilerAlertURL(event string, value any) bool {
 		strings.Contains(parsed.Path, "/"+family+"/alerts/")
 }
 
-// compilerProjection is an explicit scalar allowlist, not raw-body forwarding.
-// In particular secret-scanning secret values and payload titles/bodies cannot
-// enter either durable jobs or the generated workflow's inline context.
-func compilerProjection(root any, l Limits) (map[string]any, error) {
+// Only references and the original activity survive receiver-side filtering.
+func compilerProjection(root any, event Event, l Limits) (map[string]any, error) {
 	for _, path := range []string{"/repository/id", "/installation/id", "/alert/number"} {
 		if value, exists := lookup(root, path, l); !exists || !positiveSafeInteger(value) {
 			return nil, ErrInvalid
@@ -53,7 +52,11 @@ func compilerProjection(root any, l Limits) (map[string]any, error) {
 	if !exists {
 		return nil, ErrInvalid
 	}
-	return map[string]any{"url": value}, nil
+	action, exists := lookup(root, "/action", l)
+	if !exists || action != event.Action {
+		return nil, ErrInvalid
+	}
+	return map[string]any{"url": value, "type": []any{event.Action}}, nil
 }
 
 func positiveSafeInteger(value any) bool {
@@ -66,11 +69,11 @@ func positiveSafeInteger(value any) bool {
 }
 
 func buildCompilerDispatchPayload(s Subscription, event Event, root any, l Limits) (json.RawMessage, error) {
-	payload, err := compilerProjection(root, l)
+	payload, err := compilerProjection(root, event, l)
 	if err != nil {
 		return nil, err
 	}
-	if !validCompilerAlertURL(event.Name, payload["url"]) || !compilerTriggerAction(s.Compiler.Types, event.Action) {
+	if !validCompilerNotification(s, payload, event.Action, true) {
 		return nil, ErrInvalid
 	}
 	repository, _ := lookup(root, "/repository/full_name", l)
@@ -113,13 +116,34 @@ func validateCompilerProperties(job Job, properties map[string]any, l Limits, bi
 	if !ok {
 		return ErrInvalid
 	}
-	if len(root) != 1 || !validCompilerAlertURL(s.Source.Event, root["url"]) {
-		return ErrInvalid
-	}
-	if bindIdentity && !compilerTriggerAction(s.Compiler.Types, job.Event.Action) {
+	if !validCompilerNotification(s, root, job.Event.Action, bindIdentity) {
 		return ErrInvalid
 	}
 	return nil
+}
+
+func validCompilerNotification(s Subscription, payload map[string]any, action string, bindIdentity bool) bool {
+	activities, ok := payload["type"].([]any)
+	if len(payload) != 2 || !validCompilerAlertURL(s.Source.Event, payload["url"]) ||
+		!ok || len(activities) != 1 {
+		return false
+	}
+	activity, ok := activities[0].(string)
+	return ok && compilerActivity(s.Source.Event, activity) && compilerTriggerAction(s.Compiler.Types, activity) &&
+		(!bindIdentity || activity == action)
+}
+
+func compilerActivity(event, action string) bool {
+	switch event {
+	case "projects_v2_item":
+		return slices.Contains([]string{"archived", "converted", "created", "deleted", "edited", "reordered", "restored"}, action)
+	case "code_scanning_alert":
+		return slices.Contains([]string{"appeared_in_branch", "closed_by_user", "created", "fixed", "reopened", "reopened_by_user", "updated_assignment"}, action)
+	case "dependabot_alert":
+		return slices.Contains([]string{"assignees_changed", "auto_dismissed", "auto_reopened", "created", "dismissed", "fixed", "reintroduced", "reopened", "withdrawn"}, action)
+	default:
+		return false
+	}
 }
 
 func compilerTriggerAction(types []string, action string) bool {

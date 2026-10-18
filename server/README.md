@@ -344,12 +344,16 @@ never be persisted, forwarded, or logged.
 uses exactly `client_payload:{schema_version:2,aw_context:{webhook:{event,
 deliveries:[{delivery_id,payload},...]}}}`. All distinct deliveries are retained;
 the compiler derives the unique affected-resource array at `aw_context.items`.
-It does not trust a supplied item list or infer latest state. Security payloads
-contain only a canonical GitHub API alert URL. Approved artifact revision
+It does not trust a supplied item list or infer latest state. Compiler security
+payloads contain exactly `{"url":"<canonical GitHub API alert URL>","type":["<original action>"]}`
+under the required `resource-url-types/v1` projection policy. Native alert bodies,
+URL-only legacy payloads, and additional resource details are rejected.
+Approved artifact revision
 evidence stays in immutable durable provenance and the typed compiler-dispatch
 argument, never additional wire fields. Missing evidence/capability blocks send.
 
-Generic approved repository-dispatch routes use five properties: `schema_version: 2`,
+Generic approved repository-dispatch routes use a separate contract, not a
+compiler-runtime fallback, with five properties: `schema_version: 2`,
 the original `event` kind, sorted unique `delivery_ids`, a nonempty `aw_context`
 array of unique approved projections, and runtime-owned `_gateway` provenance.
 Delivery IDs do not participate in context uniqueness, so repeated equivalent
@@ -615,8 +619,10 @@ security families; CAO reads only the compiled manifest.
 
 The receiving App needs contents-read
 and the corresponding security-event read permission; the independent dispatch
-App needs contents-write. Each projected security payload contains only its
-canonical GitHub API `url`, never raw alerts or secret values. The bridge checks
+App needs contents-write. Each projected security payload contains exactly its
+canonical GitHub API `url` and `type` array containing the original action,
+never raw alerts, severities, resource details, or secret values. Filters run
+against the authenticated original delivery before projection. The bridge checks
 the signed source identity at ingress and binds every URL to the authenticated
 current source repository before dispatch, and reapplies selectors. Cross-source
 events never share one batch. Source preflight uses the receiving App while
@@ -626,15 +632,22 @@ destination access loss blocks sending. API origins other than
 the complete framed request before deduplication.
 
 Declaration v2 must specify `dispatch.batch:{mode:"same-event",
-deduplicate_by:"delivery_id"}` and the fixed context paths in RFC-033 §6.1.
+deduplicate_by:"delivery_id"}`, exactly
+`dispatch.payload_projection:{"policy":"resource-url-types/v1"}`, and the fixed
+context paths in RFC-033 §6.1. Missing/unknown projection policies do not activate.
+All additional resource data must be retrieved inside the workflow through
+configured provider-authenticated readers; notification URLs do not grant access
+or justify attaching credentials to arbitrary origins.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`e0354e619f77936a283eed4c2c189e8d303b260b`; optional interoperability tests
+`87d3245cbe0659efb4ba93e3ecf85fa29031f703`; optional interoperability tests
 execute that commit's actual runtime validator/normalizer, including exact and
 wildcard source selection and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not
 supported by that compiler and do not autoactivate. See RFC-033 §13.1 for the
 wire contract, test reproduction, and bounded TLA+ result.
+The upstream specification also defines Jira, Linear, and Azure DevOps resource
+notifications. This bridge does not discover or activate those providers.
 
 `projectAssignments` maps an organization project to exactly one enrolled
 repository. It constrains separately approved project subscriptions at admission
@@ -648,6 +661,13 @@ refreshes advance registry CAS without cancelling valid work. Protected-record
 storage needs no new schema/table. Production roles must use the registry loader's
 effective `QueueRevision`, never apply the reviewed file's numeric counter
 directly after binding the registry.
+
+After upgrading from an obsolete projection contract, incompatible persisted
+inventories fail closed at the current policy revision. A higher reviewed gateway
+policy revision atomically revokes the old inventory and ready/claimed work,
+then permits fresh bounded discovery within the same enrollment. It does not
+reinterpret old payloads or grant new authority; this change does not edit rollout
+policy automatically.
 
 Both receiving-side authority and final dispatch preflight recheck the current
 head and whole-lock digest. Repository dispatch still runs GitHub's default

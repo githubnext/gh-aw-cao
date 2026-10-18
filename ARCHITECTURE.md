@@ -603,7 +603,14 @@ Explicit `activateSecurity` delegates only compiler-supported Dependabot and
 code-scanning repository events with batch-capable declaration v2 to compiler
 routes, with private-only live checks,
 event/contents-read permission checks, bounded grants expiring at inventory
-freshness, and URL-only security projections. Canonical HTTPS api.github.com
+freshness, and exact URL/type-only security notifications under required
+`dispatch.payload_projection: {"policy":"resource-url-types/v1"}`. Missing or
+unknown policies and legacy projections fail closed, without a native-body
+fallback. Original deliveries are authenticated, classified, and filtered before
+projection; GitHub `type` contains exactly the original action, bound to durable
+event identity. All additional data must be resolved inside the workflow through
+configured provider-authenticated readers; notification URLs never grant access.
+Canonical HTTPS api.github.com
 alert URLs must agree with signed source repository/number at ingress and
 authenticated current source repository at egress; other API origins are unsupported.
 Optional declaration `repos` is a nonempty bounded lowercase/sorted/unique list
@@ -630,8 +637,17 @@ subscriptions; discovery does not autoactivate Projects. Hand-authored fixtures,
 mock GitHub tests, and separate bounded registry, source-selection and dispatch-batch TLA+ models
 demonstrate local contracts, not installed-compiler or live GitHub acceptance.
 Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
-context paths, same-event/delivery-ID batch policy and alert-URL projection,
-with optional source selectors, match github/gh-aw#69772 commit e0354e6.
+context paths, same-event/delivery-ID batching, minimal resource URL/type policy,
+and optional source selectors match github/gh-aw#69772 commit 87d3245. Gateway
+`aw_context` contains only `webhook`, never supplied items, provenance, or resource
+details. Context resource identities are derived from canonical URLs. The upstream
+contract covers six families; this bridge still discovers only Projects and the
+two security families and activates only delegated security subscriptions.
+External providers remain unsupported; no provider normalization evidence is
+forwarded. Incompatible persisted inventories remain nonactivating at the current
+policy revision. A higher reviewed gateway policy revision atomically discards
+them, fences old ready/claimed work, and permits bounded rediscovery without
+reinterpreting old payloads or expanding authority.
 Upstream authoring places `projects-items` and `security-alerts` directly under
 `on`, requiring sibling `on.webhook-gateway: true` independently of the
 repository's `.github/workflows/aw.json` opt-in. These compilation gates never
