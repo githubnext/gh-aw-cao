@@ -121,7 +121,7 @@ func run(ctx context.Context, args []string) error {
 		defer cancel()
 		_ = shutdown(shutdownCtx)
 	}()
-	store, err := postgres.New(ctx, os.Getenv("CAO_POSTGRES_URL"), policy.Policy.Namespace, postgres.Config{})
+	store, err := postgres.Open(ctx, os.Getenv("CAO_POSTGRES_URL"), policy.Policy.Namespace, postgres.Config{})
 	if err != nil {
 		return errors.New("gateway operational storage is unavailable")
 	}

@@ -18,6 +18,10 @@ human operator
 
 The shared `explore`, `propose`, or `operate` classification applied to every dashboard-declared action (CLI action, row action, or generated view prompt) independent of its presentation or executor. `explore` is a read-only investigation, `propose` previews a request such as a prompt that can produce a pull request, and `operate` shows the underlying command and requires explicit per-run confirmation. A separate `ui` level covers native dashboard-local and account-session controls (such as resetting local storage or logging out) that carry no operational or repository authority and never generate an agent prompt or CLI command. See the [Dashboard Language specification](dashboard-language-specification.md#111-syntax-and-view-classes).
 
+## Administrator step-up
+
+A hosted-server requirement that every administrator operation comes from a fresh, assured interactive GitHub OAuth authentication. Fresh means within `CAO_ADMIN_REAUTH_MAX_AGE`, which defaults to 15 minutes. Assured means GitHub explicitly reported two-factor authentication, or the user's membership was confirmed in an operator-attested SAML SSO organization. Token refresh never extends step-up. See the [hosted CLI actions specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md).
+
 ## Agent catalog
 
 The protocol-independent listing of agent-facing dashboard pages and named Dashboard Language queries, derived once from the dashboard page definitions and shared by every agent transport (the `cao` CLI, the read-only CAO MCP server, and WebMCP) so none of them maintains a second catalog. See [Agent analysis](agent-analysis.md).
@@ -102,6 +106,10 @@ The runtime and provider integration used to execute an AI agent. The engine is 
 
 The explicit `generic` HTTP target with `listener: external` that lets a separately owned Go host embed CAO without duplicating its authentication, policy, or ingestion logic. The public `server/hosting/` facade exposes only `New`, `Start`, the complete `http.Handler`, and `Stop`; CAO keeps OAuth, session/CSRF authorization, webhook verification, proxy trust, rate limits, Redis, and background-task cancellation, while the host owns the HTTP listener and must drain it before CAO stops. External hosting introduces no runtime-loaded modules or rollout authority.
 
+## gh cao
+
+The operator-facing GitHub CLI extension for CAO, installed from this repository as `gh aw-cao` because GitHub CLI derives the extension name from the repository name. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` release binaries with SHA-256 checksums. Policy initialization and modes, workflow enablement, `campaigns add`, and `doctor` run natively in Go; onboarding, lifecycle, and other shared domain commands delegate to the installed production CAO Node runtime, and Actions pipeline commands remain owned by `./cao.sh`. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+
 ## GitHub quota service
 
 The CAO-side authority in `server/internal/githubquota` that coordinates GitHub API rate-limit quota across replicas. A bucket is one independently metered quota identified by GitHub App identity, installation, and rate-limit resource, never by a token; admission requires remaining minus reserved minus cost to stay at or above a requested floor, and administrators read 24-hour peak usage through the `github-quota-usage` runtime source. Existing collection budgets do not use this service yet.
@@ -109,6 +117,10 @@ The CAO-side authority in `server/internal/githubquota` that coordinates GitHub 
 ## History campaign
 
 The single campaign selected for historical operational-value reconstruction in one collector invocation, as defined by the operational-value history protocol. Its adapter supplies historical evaluations at earlier scheduled cadence instants in addition to the current observation every campaign adapter provides; the reconstruction orchestrator schedules, validates, retains, deduplicates, retires, and publishes these observations without reinterpreting or recomputing a supplied metric value. See [Operational-Value History Reconstruction Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/operational-value-history.md).
+
+## Hosted CLI actions
+
+An experimental hosted-server mode, enabled with `serve-hosted --experimental --hosted-cli-actions`, in which step-up administrators queue declared `cao` actions. A separate `execute-cli` process runs each queued action with a single-use, repository-scoped GitHub App installation token that is revoked when the command finishes. Executor replicas coordinate through a durable, fenced PostgreSQL queue lease. See the [hosted CLI actions specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md).
 
 ## Live authority
 

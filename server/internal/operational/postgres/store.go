@@ -10,10 +10,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
@@ -67,6 +69,8 @@ type Store struct {
 
 var _ operational.Store = (*Store)(nil)
 
+// New provisions or migrates operational storage with the schema owner's
+// credentials. Runtime processes must use Open against pre-provisioned state.
 func New(ctx context.Context, dsn, namespace string, config Config) (*Store, error) {
 	return open(ctx, dsn, namespace, config, true)
 }
@@ -121,7 +125,13 @@ func (s *Store) initialize(ctx context.Context) error {
 	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(712083241, 17485)`); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, schema); err != nil {
+	// Capture only the owned schema in SECURITY DEFINER functions. In
+	// particular, temporary objects must never shadow their table references.
+	var schemaName string
+	if err := tx.QueryRowContext(ctx, `SELECT current_schema()`).Scan(&schemaName); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, strings.ReplaceAll(schema, "{{schema}}", pgx.Identifier{schemaName}.Sanitize())); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, webhookSchema); err != nil {
@@ -148,8 +158,8 @@ func (s *Store) checkConfig(ctx context.Context, reader interface {
 	if err := reader.QueryRowContext(ctx, `SELECT version,config FROM cao_operational_namespaces WHERE namespace=$1`, s.namespace).Scan(&version, &stored); err != nil {
 		return err
 	}
-	if version != 1 {
-		return operational.ErrUnsupported
+	if version != 2 {
+		return fmt.Errorf("operational schema requires owner-run database bootstrap: %w", operational.ErrUnsupported)
 	}
 	config, err := json.Marshal(s.config)
 	if err != nil {
@@ -201,15 +211,42 @@ type transaction struct {
 
 // One namespace row serializes multi-record transitions and budget accounting.
 // No locks are held while a queue reader waits for work.
-func (s *Store) transact(ctx context.Context, fn func(*transaction) error) error {
+func (s *Store) transact(ctx context.Context, fn func(*transaction) error) (err error) {
 	if ctx == nil {
 		return invalid("nil context")
 	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		if cause := ctx.Err(); cause != nil {
+			err = errors.Join(err, cause)
+			return
+		}
+		// PostgreSQL can expire its deadline-derived timeout just before
+		// the client's timer fires. Preserve the context timeout contract.
+		var failure *pgconn.PgError
+		if _, bounded := ctx.Deadline(); bounded && errors.As(err, &failure) &&
+			(failure.Code == "57014" || failure.Code == "55P03") {
+			err = errors.Join(err, context.DeadlineExceeded)
+		}
+	}()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if deadline, ok := ctx.Deadline(); ok {
+		wait := max(1, time.Until(deadline).Milliseconds())
+		// pg_settings expresses these timeouts in milliseconds, including
+		// session overrides. Never widen an operator's nonzero ceiling.
+		// Bound server-side waits before taking the namespace lock.
+		if _, err := tx.ExecContext(ctx, `SELECT set_config(name,
+			LEAST(NULLIF(setting::bigint,0),$1::bigint)::text,true)
+			FROM pg_settings WHERE name IN ('lock_timeout','statement_timeout','idle_in_transaction_session_timeout')`, strconv.FormatInt(wait, 10)); err != nil {
+			return err
+		}
+	}
 	var namespace string
 	if err := tx.QueryRowContext(ctx, `SELECT namespace FROM cao_operational_namespaces WHERE namespace=$1 FOR UPDATE`, s.namespace).Scan(&namespace); err != nil {
 		return err
@@ -331,7 +368,7 @@ func (t *transaction) json(k key, target any) (bool, error) {
 func (s *Store) Capabilities() operational.Capabilities {
 	c := operational.Capability{Scope: operational.ScopeDeployment, Persistence: operational.PersistenceRestart}
 	return operational.Capabilities{Cache: c, RequestLimits: c, Sessions: c, Revocations: c,
-		GitHubQuota: c, Collection: c, Coordination: c, Diagnostics: c, CLICommands: c}
+		GitHubQuota: c, Collection: c, Coordination: c, Diagnostics: c, CLICommands: c, Audit: c}
 }
 
 func (s *Store) OperationalServices() operational.OperationalServices {
@@ -340,7 +377,7 @@ func (s *Store) OperationalServices() operational.OperationalServices {
 		SessionInvalidator: s, Revocations: s, Leases: s, State: s,
 		Deliveries: s, Queue: s, Admission: s, Collection: s,
 		GitHubQuota: s, RateLimits: s, Health: s, IngestionMetrics: s,
-		CLICommands: s,
+		CLICommands: s, Audit: s,
 	}
 }
 

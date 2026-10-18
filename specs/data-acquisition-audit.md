@@ -47,6 +47,7 @@ The inventory distinguishes:
 | --- | --- | --- | --- |
 | `.github/workflows/cao-activity.yml` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **10,000** runs (`REPORT_RUN_LIMIT`; the underlying `activity/collect-logs.sh`/`activity/logs.mjs` default is unchanged at 10) | `gh-aw-logs-shards/` wildcard shards and `gh-aw-logs.sqlite` in the shared `cao-activity-v4` cache | The workflow (via `activity/collect-logs.sh`) runs `gh aw logs --cached-jsonl "<prefix>*" --audit --artifacts usage,experiment --max-github-api-rate-limit -2000` (reserve reverted from `-4000`), writing new data to a freshly named shard instead of rescanning the carried-forward shard set. Ingestion (`activity/cao.mjs`) writes paired `--runs-dir`/`--events-dir` phased shard directories instead of one `--input-dir` directory, so compact run properties commit before detailed events; each shard still skips reprocessing when its content hash already matches the transactions-table record. **Changed:** `cao issue-status --database ... --graphql-cost-budget 25 --graphql-min-remaining 500` now runs as its own workflow step, deferred until after log collection (`REPORT_DEFER_ISSUE_STATUS=1` suppresses `collect-logs.sh`'s former inline invocation), under a freshly minted `issues: read`-scoped GitHub App token distinct from the log-collection token (see §2.1 and §6). **Removed:** the prior `optimization/collect-token-efficiency.sh` invocation was pulled out of this workflow; the activity run no longer lists `token-efficiency-observation`/`token-efficiency-lifecycle-claim` artifacts or downloads them (see §5 item 23 and §6). |
 | `activity/collect-logs.sh` (session evidence) | After each repository's `gh aw logs` call, `activity/session-evidence.mjs` projects published gh-aw unified sessions into run-scoped evidence locally (no extra GitHub traffic); `--timeout` is now minutes (default 10), `recycle-cache` bounds shard retention/size (1 GiB), and an API-capacity exhaustion (exit 75) retains partial downloads, marks inventory partial, and skips issue-status enrichment instead of failing. | Reduces cold-rescan and wasted-failure cost; later repositories in a rate-limited run remain stale until the next run. |
+| `activity/collect-workflow-logs.mjs` (invoked by `activity/collect-logs.sh` per repository) | Before each `gh aw logs`, one paginated `gh api repos/<repo>/actions/workflows?per_page=100 --paginate --slurp` call (16 MiB buffer, shares `--timeout`, 429 maps to exit 75) lists workflows; only `.github/workflows/*.lock.yml` paths are passed to `gh aw logs` as explicit `<repo>/<path>` targets, and no agentic workflows skips collection. | Added one workflow-list request family per target repository per activity run, uncached and separate from the control-plane workflow inventory. |
 | `.github/workflows/agentics-maintenance.yml` | Repository activity report, one week, up to 500 runs | Actions cache under `.cache/gh-aw/activity-report-logs` | This conventional maintenance workflow maintains a separate gh-aw log cache and does not reuse the CAO activity snapshot. |
 
 **Removed:** `optimization-ai-credit-auditor.md` and `optimization-ai-credit-optimizer.md` no longer exist. They were briefly renamed to `cao-evolution-ai-credit-auditor.md`/`cao-evolution-ai-credit-optimizer.md` and then deleted entirely when the `Optimization` campaign bundle was assembled; no workflow under either name, nor any other workflow, now collects a two-day or seven-day AI-credit-scoped `gh aw logs` window. This removes the overlap this audit previously recorded between those two workflows, the dashboard usage window, and their graders' later evidence windows.
@@ -270,6 +271,7 @@ flowchart LR
     control["control.mjs admission<br/>rate_limit, policy, inventory via github-script Octokit<br/>manual debug: actor permission at admission + precompute"]
   end
   subgraph Activity
+    wfdiscover["collect-workflow-logs.mjs<br/>actions/workflows list, paginated,<br/>per repository"]
     logsmjs["collect-logs.sh + activity/logs.mjs<br/>gh aw logs, 30-day window,<br/>10000-run cap, usage+experiment artifacts"]
     issuestatus["cao issue-status<br/>budgeted GraphQL,<br/>25-cost budget, 500 floor"]
     indexmjs["activity/index.mjs<br/>local only"]
@@ -324,6 +326,7 @@ flowchart LR
     backfill["backfill.go cold start<br/>Redis: lake replay, then enumerate<br/>memory: always re-enumerate first"]
     runbackfill["enqueueHistoricalRuns<br/>per-repo paginated run history,<br/>resumable cursor, no run-count cap"]
   end
+  wfdiscover -->|workflow lock paths as explicit targets| logsmjs
   logsmjs -->|snapshot write| cache
   cache -->|reused by| indexmjs
   cache -->|feeds issue targets| issuestatus

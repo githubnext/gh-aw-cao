@@ -58,6 +58,8 @@ type Client struct {
 	appClient     *github.Client
 	mutex         sync.Mutex
 	installations map[int64]*installationEntry
+	identityMutex sync.Mutex
+	identity      *BotIdentity
 }
 
 type installationEntry struct {

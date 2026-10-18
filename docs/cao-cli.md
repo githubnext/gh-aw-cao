@@ -27,7 +27,28 @@ reference. Request command-specific help with `gh cao COMMAND --help`.
 
 ## GitHub CLI extension
 
-Build with `make build` and use `./gh-cao` directly, or follow the
+Once a release containing extension binaries is promoted to latest, install
+or upgrade the precompiled extension:
+
+```bash
+gh extension install githubnext/gh-aw-cao
+gh aw-cao --version
+# For an existing installation:
+gh extension upgrade aw-cao
+```
+
+GitHub CLI derives `gh aw-cao` from this repository's name; use it in place of
+`gh cao` in the examples below. Release binaries use the
+`gh-cao-OS-ARCH` naming convention, with `.exe` for Windows, and cover Linux,
+macOS, and Windows on amd64 and arm64. `checksums.txt` contains their SHA-256
+digests. An unpinned install selects the latest stable release, not a prerelease.
+After the latest stable release has extension assets, select a particular
+release (including a prerelease) with
+`gh extension install githubnext/gh-aw-cao --pin vX.Y.Z`.
+GitHub CLI also checks the latest stable release to detect binary extensions,
+so pinning alone cannot bypass a latest stable release without binaries.
+
+For local development, build with `make build` and use `./gh-cao` directly, or follow the
 [local extension installation guide](https://github.com/githubnext/gh-aw-cao/blob/main/CONTRIBUTING.md#go-extension-development)
 to invoke it as `gh cao`.
 
@@ -35,7 +56,8 @@ to invoke it as `gh cao`.
 | --- | --- | --- |
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
-| Onboarding and lifecycle | `setup`, `quickstart`, `setup-auth github-app\|enterprise-app\|token`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
+| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Unified Go command/argument hierarchy with the installed production CAO Node runtime. |
+| Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Same installed runtime and canonical query engine as the dashboard and existing CLI. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Remain in `./cao.sh` / `activity/cao.mjs`; not migrated to the extension. |
@@ -50,6 +72,10 @@ or policy authority, and never downloads code implicitly.
 
 ```bash
 gh cao init
+gh cao setup
+gh cao setup auth github-app --help
+gh cao setup auth enterprise-app --help
+gh cao setup auth token --help
 gh cao campaigns add githubnext/gh-aw-cao/dependabot
 gh cao repos add acme/example-service
 gh cao campaigns mode preview dependabot
@@ -67,7 +93,15 @@ All help works offline, including `gh cao quickstart --help` and
 Repository enrollment uses `gh cao repos add OWNER/REPO`; the extension has no
 root-level `add` command. `./cao.sh add CAMPAIGN` and
 `./cao.sh add --repository OWNER/REPO` retain their existing syntax.
-`gh cao setup-auth token --help` also works offline. `campaigns add` and `update` retain
+Authentication is grouped under `gh cao setup auth`; there is no root-level
+`gh cao setup-auth` command. Run `gh cao setup` without a subcommand for guided
+control-plane setup, or configure credentials independently with
+`gh cao setup auth github-app`, `gh cao setup auth enterprise-app`, or
+`gh cao setup auth token`. Each authentication profile retains its existing
+options, dry-run behavior, credential prompts, and separate read/write scope.
+`./cao.sh setup` and `./cao.sh setup-auth PROFILE` retain their existing syntax.
+The runtime JSON result for authentication retains `command: "setup-auth"`.
+`gh cao setup auth token --help` also works offline. `campaigns add` and `update` retain
 gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
 secret prompts, and validator exit codes retain their existing contracts.
 There is no `gh cao run`: workflow execution still belongs to gh-aw.
@@ -154,6 +188,7 @@ gh aw run dependabot --ref main \
 | `./cao.sh init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `./cao.sh setup-auth github-app ...` | Configure organization-owned read and write Apps. |
 | `./cao.sh setup-auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
+| `./cao.sh setup-auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
 | `./cao.sh setup-auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
 | `./cao.sh add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
 | `./cao.sh add --repository OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
@@ -299,6 +334,33 @@ gh run watch RUN_ID --exit-status
 ```
 
 Manual inputs may narrow checked-in policy for one run; they never widen it.
+
+## Operate the Hosted CLI Backend
+
+The server binary includes a privileged operator interface for the hosted CLI
+queue. Run it in the trusted executor environment with the same operational
+store configuration as `execute-cli`:
+
+```bash
+cao-dashboard hosted-cli queue list --status queued --limit 50
+cao-dashboard hosted-cli queue list --status queued --limit 50 \
+  --continuation-token TOKEN_FROM_PREVIOUS_PAGE
+cao-dashboard hosted-cli queue show COMMAND_ID
+cao-dashboard hosted-cli queue cancel COMMAND_ID --actor OPERATOR_LOGIN
+```
+
+Queue output contains command summaries, not invocation values or process
+output. List responses include `limit`, `hasMore`, and, when another page is
+available, `nextContinuationToken`. Pass that opaque token to
+`--continuation-token` with the same status filters to retrieve the next page.
+The cursor follows command IDs and does not count or skip preceding rows.
+Cancellation is an operator override that bypasses the dashboard
+requester's live repository-permission check; it requires a durable audit store
+and records the supplied operator login as a self-reported identity, not proof
+of the caller's identity. Restrict database and executor environment access
+accordingly. See
+[Hosted CLI actions](../server/README.md#hosted-cli-actions) for the operator
+workflow and SQLite debugging limitation.
 
 For a single-worker development loop without a dispatcher, use
 [Local Worker Debugging](local-debugging.md). Its request-only `debug` mode

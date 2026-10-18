@@ -49,7 +49,7 @@ func runLocal(ctx context.Context, options localOptions, output io.Writer) (err 
 		return err
 	}
 	namespace := policy.Policy.Namespace + "-" + wg.MetadataDigest([]byte(options.apiURL))[:16]
-	queue, err := sqlite.Open(ctx, options.path, namespace, policy.Policy.Queue)
+	queue, err := sqlite.OpenWebhookQueue(ctx, options.path, namespace, policy.Policy.Queue)
 	if err != nil {
 		return err
 	}

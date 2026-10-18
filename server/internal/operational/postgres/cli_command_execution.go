@@ -46,6 +46,11 @@ func (q *cliCommandQueue) Claim(ctx context.Context, lease operational.CLIComman
 }
 
 func (q *cliCommandQueue) Finish(ctx context.Context, lease operational.CLICommandLease, id int64, result operational.CLICommandResult) error {
+	if ctx == nil {
+		return invalid("nil context")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	if id < 1 || (result.Status != operational.CLICommandCompleted && result.Status != operational.CLICommandFailed && result.Status != operational.CLICommandTimedOut) ||
 		len(result.Error) > 512 || operational.ValidateCLICommandText(result.Error) != nil ||
 		(result.ExitCode != nil && (*result.ExitCode < -2147483648 || *result.ExitCode > 2147483647)) {
@@ -68,11 +73,19 @@ func (q *cliCommandQueue) Finish(ctx context.Context, lease operational.CLIComma
 		}
 		_, err = t.tx.ExecContext(ctx, `UPDATE cao_operational_cli_commands SET status=$4,exit_code=$5,error=$6,completed_at=$7,completion_week=$8 WHERE namespace=$1 AND queue=$2 AND id=$3`,
 			t.namespace, q.name, id, result.Status, result.ExitCode, result.Error, t.now, cliMonday(t.now))
-		return err
+		if err != nil {
+			return err
+		}
+		return q.auditLifecycle(t, id, "cli_command.result", false)
 	})
 }
 
 func (q *cliCommandQueue) Settle(ctx context.Context, lease operational.CLICommandLease, id int64, exitCode *int) error {
+	if ctx == nil {
+		return invalid("nil context")
+	}
+	ctx, cancel := context.WithTimeout(ctx, operational.AuditWriteTimeout)
+	defer cancel()
 	if id < 1 || (exitCode != nil && (*exitCode < -2147483648 || *exitCode > 2147483647)) {
 		return operational.ErrCLICommandInput
 	}
@@ -94,13 +107,20 @@ func (q *cliCommandQueue) Settle(ctx context.Context, lease operational.CLIComma
 			return nil
 		}
 		_, err = t.tx.ExecContext(ctx, `UPDATE cao_operational_cli_commands SET execution_claimed=FALSE,exit_code=coalesce($4,exit_code) WHERE namespace=$1 AND queue=$2 AND id=$3`, t.namespace, q.name, id, exitCode)
-		return err
+		if err != nil {
+			return err
+		}
+		return q.auditLifecycle(t, id, "cli_command.finished", false)
 	})
 }
 
 func (q *cliCommandQueue) Cancel(ctx context.Context, id int64) (operational.CLICommand, error) {
+	return q.cancel(ctx, id, nil)
+}
+
+func (q *cliCommandQueue) cancel(ctx context.Context, id int64, event *operational.AuditEvent) (operational.CLICommand, error) {
 	var command operational.CLICommand
-	err := q.transact(ctx, true, func(t *transaction, _ cliQueueState) error {
+	err := q.mutateCommand(ctx, &command, event, func(t *transaction, _ cliQueueState) error {
 		var err error
 		command, err = q.detail(t, id)
 		if err != nil || command.Status.Terminal() {

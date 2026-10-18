@@ -114,7 +114,7 @@ func newPollRig(t *testing.T, total int) *pollRig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rig.queue, err = sqlite.Open(t.Context(), rig.path, rig.policy.Policy.Namespace, rig.policy.Policy.Queue)
+	rig.queue, err = sqlite.OpenWebhookQueue(t.Context(), rig.path, rig.policy.Policy.Namespace, rig.policy.Policy.Queue)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestSpecPolling(t *testing.T) {
 				if err := rig.queue.Close(); err != nil {
 					t.Fatal(err)
 				}
-				rig.queue, err = sqlite.Open(t.Context(), rig.path, rig.policy.Policy.Namespace, rig.policy.Policy.Queue)
+				rig.queue, err = sqlite.OpenWebhookQueue(t.Context(), rig.path, rig.policy.Policy.Namespace, rig.policy.Policy.Queue)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test as baseTest } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -6,11 +6,13 @@ import {
   configureDeployedStorageQuota,
   DEPLOYED_REFRESH_TIMEOUT_MS,
   deployedDashboardUrl as dashboardUrl,
+  deployedStorageContext,
   populatedDashboardPages,
   scrollRenderedViewsIntoView,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 
+const test = baseTest.extend({ context: deployedStorageContext });
 const outputDirectory = resolve("test-results/dashboard-deployed");
 
 test("deployed dashboard refreshes and renders populated views", async ({ page }, testInfo) => {

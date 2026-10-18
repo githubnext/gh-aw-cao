@@ -81,7 +81,7 @@ func newRig(t *testing.T, c specCase) *queueRig {
 func (r *queueRig) open(t *testing.T) {
 	t.Helper()
 	var err error
-	r.q, err = Open(t.Context(), r.path, r.namespace, r.options)
+	r.q, err = OpenWebhookQueue(t.Context(), r.path, r.namespace, r.options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func TestCrossConnectionClaimsAndCancellation(t *testing.T) {
 	if _, err := r.q.AdmitBatch(t.Context(), r.admission(t, "", 1)); err != nil {
 		t.Fatal(err)
 	}
-	other, err := Open(t.Context(), r.path, r.namespace, r.options)
+	other, err := OpenWebhookQueue(t.Context(), r.path, r.namespace, r.options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,13 +378,13 @@ func TestDatabaseConfigurationCannotBeRebound(t *testing.T) {
 	if err != nil || info.Mode().Perm() != 0600 {
 		t.Fatal("SQLite database was not created privately", err)
 	}
-	if _, err := Open(t.Context(), r.path, "another-namespace", r.options); !errors.Is(err, wg.ErrConflict) {
+	if _, err := OpenWebhookQueue(t.Context(), r.path, "another-namespace", r.options); !errors.Is(err, wg.ErrConflict) {
 		t.Fatal("namespace rebound", err)
 	}
 	if err := os.Chmod(r.path, 0644); err != nil { // #nosec G302 -- negative test: opening a non-private database must fail.
 		t.Fatal(err)
 	}
-	if _, err := Open(t.Context(), r.path, r.namespace, r.options); !errors.Is(err, wg.ErrInvalid) {
+	if _, err := OpenWebhookQueue(t.Context(), r.path, r.namespace, r.options); !errors.Is(err, wg.ErrInvalid) {
 		t.Fatal("public database accepted", err)
 	}
 }
@@ -408,7 +408,7 @@ func TestReceiptAndFanoutExactByteBoundary(t *testing.T) {
 			options := r.options
 			options.MaxBytes = required + adjustment
 			options.MaxTenantBytes, options.MaxSourceBytes, options.MaxDestinationBytes = options.MaxBytes, options.MaxBytes, options.MaxBytes
-			queue, err := Open(t.Context(), filepath.Join(t.TempDir(), "bounded.sqlite"), r.namespace, options)
+			queue, err := OpenWebhookQueue(t.Context(), filepath.Join(t.TempDir(), "bounded.sqlite"), r.namespace, options)
 			if err != nil {
 				t.Fatal(err)
 			}

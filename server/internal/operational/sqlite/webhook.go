@@ -26,7 +26,7 @@ type Queue struct {
 
 var _ wg.Queue = (*Queue)(nil)
 
-const schema = `
+const webhookSchema = `
 CREATE TABLE IF NOT EXISTS gateway (
  id INTEGER PRIMARY KEY CHECK(id=1), namespace TEXT NOT NULL, config BLOB NOT NULL,
  revision BLOB NOT NULL, tenant_cursor TEXT NOT NULL DEFAULT ''
@@ -52,9 +52,9 @@ CREATE TABLE IF NOT EXISTS rates (
  id TEXT PRIMARY KEY, tokens REAL NOT NULL, updated_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
 );`
 
-// Open requires a private, dedicated SQLite file. Concurrent handles use SQLite
+// OpenWebhookQueue requires a private, dedicated SQLite file. Concurrent handles use SQLite
 // write transactions, rather than a process mutex, to fence all queue changes.
-func Open(ctx context.Context, path, namespace string, options wg.QueueOptions) (*Queue, error) {
+func OpenWebhookQueue(ctx context.Context, path, namespace string, options wg.QueueOptions) (*Queue, error) {
 	if !filepath.IsAbs(path) || namespace == "" || len(namespace) > 128 {
 		return nil, wg.ErrInvalid
 	}
@@ -81,7 +81,7 @@ func Open(ctx context.Context, path, namespace string, options wg.QueueOptions) 
 	}
 	db.SetMaxOpenConns(1)
 	q := &Queue{db: db, options: options}
-	if _, err := db.ExecContext(ctx, schema); err != nil {
+	if _, err := db.ExecContext(ctx, webhookSchema); err != nil {
 		_ = db.Close()
 		return nil, err
 	}

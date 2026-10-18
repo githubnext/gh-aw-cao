@@ -71,6 +71,15 @@ bounded to at most 512 expired protected records and 512 expired cache records
 per pass. Operational durability depends on the database's persistence
 configuration; it does not reconstruct every external GitHub delivery.
 Diagnostics MUST open existing state without creating tables or namespaces.
+Production runtime MUST also open pre-provisioned state without DDL. Only an
+explicit schema-owner bootstrap operation may create namespaces, migrate the
+operational contract, or replace audit functions/triggers. Runtime credentials
+MUST NOT own tables/functions, inherit privileged roles, create permanent
+objects, change triggers, truncate audit history, or destroy namespaces.
+Canonical bootstrap and partition maintenance MUST be separate operator jobs;
+runtime MUST validate the canonical contract and provisioned partition window.
+The fixed canonical statistics capability MAY grant runtime ANALYZE without
+granting ownership or caller-selected SQL/object names.
 The shared conformance suite and real PostgreSQL cross-connection tests MUST
 cover atomicity, isolation, capacity rollback, restart, and cancellation.
 
@@ -88,6 +97,35 @@ the original lease, in one atomic transition. Delay MUST NOT block unrelated
 ready work. Enrollment changes MUST serialize and preserve current ownership
 when repositories transfer between installations.
 
+The PostgreSQL adapter also provides the `AuditLog` service in
+`cao_operational_audit_events`. Appends MUST serialize on the namespace row,
+assign a gap-free per-namespace sequence, and chain
+`hash = SHA-256(prev_hash || record)` over the exact stored canonical record. A
+trigger MUST reject updates and MUST reject deletes except owner-authorized
+retention and namespace removal. A namespace-delete guard MUST check the
+initiating caller before foreign-key cascades assume owner identity.
+Runtime MUST have only SELECT/INSERT on audit history; evidence readers MUST
+have only SELECT. Audit retention MUST NOT run in ordinary `Maintain`.
+A separately granted SECURITY DEFINER function MUST pin a safe search path,
+qualify its tables, revoke PUBLIC execution, reject nonexistent namespaces,
+and accept no caller-supplied cutoff or object name.
+Audit rows are not charged to protected-record capacity;
+retention maintenance MUST keep at least 400 days, delete at most 512 rows per
+pass as a contiguous oldest prefix, and always keep the newest row. Redis and
+volatile memory do not provide this service, so hosted CLI actions require
+PostgreSQL. `server/POSTGRES.md` defines operator provisioning and rollout.
+`specs/server-hosted-cli.md` §7 defines the events.
+
+For local debugging only, `server/internal/operational/sqlite` provides the
+`CLICommandQueues` and `AuditLog` contracts in one SQLite file (mode `0600`,
+WAL, immediate transactions) shared by `serve-hosted --hosted-cli-sqlite` and
+`execute-cli --sqlite` on one host. It is not an `operational.Store` backend,
+has one global namespace and no capacity accounting, uses host-clock
+timestamps, and its append-only triggers can be dropped by anyone who can
+write the file; the hash chain still detects edits that do not rewrite every
+later hash. `specs/server-hosted-cli.md` §2 restricts it to loopback
+listeners.
+
 ## Durable CLI command queue service
 
 `OperationalServices.CLICommands` exposes `CLICommandQueues`, whose
@@ -98,7 +136,9 @@ requiring CLI commands MUST set `Requirements.CLICommands` and reject an absent,
 typed-nil, unsupported, or volatile service. Storage support MUST NOT enable
 hosted execution, expose new HTTP actions, bypass declared-action validation or
 trusted approval, or provide credentials, quota admission, or subprocess control.
-The existing local-admin/canvas SQLite queue remains unchanged.
+The existing local-admin/canvas SQLite queue remains unchanged. Hosted
+execution is a separate opt-in contract defined by
+[`server-hosted-cli.md`](server-hosted-cli.md).
 
 Queue configuration is immutable across connections. Commands and ordered
 stdout/stderr chunks live in namespace-isolated `cao_operational_cli_*` tables,

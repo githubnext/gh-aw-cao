@@ -189,7 +189,7 @@ protected. Unreclaimable operational pressure fails startup or is reported by
 running maintenance; cache writes decline admission rather than widening the
 budget or changing Redis configuration. The budget is not a process-RSS or
 persistence-disk cap and cannot bound protected-state growth by cache eviction.
-Its local mode remains loopback-only. Its host-neutral mode uses
+Its local mode remains loopback-only. Its ordinary host-neutral mode uses
 GitHub OAuth and explicit organization or team authorization, verifies and
 deduplicates GitHub webhooks, and atomically replaces the current Postgres
 sources and state. `server/spec/storage.tsp` owns the fresh-only physical
@@ -200,7 +200,11 @@ query-consumed fields and identity/storage keys. Scalars use native SQL types;
 required structured fields use entity-owned relational child values, not
 JSON, JSONB, or serialized row documents. Scalar entity rows are never duplicated
 in generic source storage. Compact presence bits preserve missing versus null.
-Startup initializes this schema only; it performs no legacy conversion or
+Owner-run bootstrap initializes this schema and its weekly partitions; runtime
+opens and validates provisioned state without DDL. Daily owner-run maintenance
+keeps historical and four upcoming weeks provisioned. A fixed schema-qualified
+ANALYZE capability preserves ingestion statistics without runtime ownership.
+Bootstrap performs no legacy conversion or
 backward-compatible import. There are no persistent Postgres generations or
 separate derived projections. Redis remains reconstructable
 operational state, not an entity
@@ -243,6 +247,89 @@ state and available history, not every missed event or expired artifact. There
 is no memory disk journal, automatic failover, or dual-write path.
 `specs/server-operational-storage.md` specifies these guarantees.
 
+Hosted CLI actions are an experimental opt-in
+`serve-hosted --experimental --hosted-cli-actions` mode. Step-up administrators
+enqueue catalog-declared actions into the PostgreSQL CLI command queue after the
+server checks their own repository permission. Web replicas share durable
+queue state; executor replicas coordinate through one fenced lease and durable
+execution claims, so a command is not dispatched twice. A crash with uncertain
+subprocess state blocks further claims until an operator confirms termination
+and acknowledges recovery; interrupted commands are never automatically
+replayed, so external effects are not exactly-once. Command deadlines and queue
+state survive process restarts. A separate `execute-cli` process drains the
+queue, rechecks the actor's live write permission, and runs each command in an
+isolated workspace with a single-use, repository-scoped GitHub App installation
+token that is revoked on completion. A bounded broker pre-mints tokens for
+backlog.
+The Go planner translates the hosted CAO package-update action into a native
+`gh-aw update`; it never invokes `cao.sh` or executes control-repository scripts.
+The executor runs only `gh` or the Go `gh-aw` CLI in the official digest-pinned
+gh-aw container by default, mounting only command-owned workspace and egress
+relay/socket resources and passing the
+single-use token through a temporary protected environment file. The broker
+revokes and rejects any token whose granted scope exceeds the request. Both
+processes append credential-free audit events (`server/internal/audit`) to the
+hash-chained, append-only PostgreSQL table `cao_operational_audit_events` and
+mirror logger-produced events as JSON lines; privileged steps fail closed
+when the event cannot be stored. Result commits, claim settlement and
+interrupted-command recovery append lifecycle evidence in the same queue
+transaction, using state transitions to deduplicate replay. Unconfirmed VM
+termination and audit failures retain execution claims. Token cleanup replaces
+encrypted ownership with a credential-free terminal receipt independently of
+audit availability, then atomically appends its evidence and deletes the
+receipt. CAS journal transitions preserve pending failure evidence and terminal
+receipts without expiry; capacity exhaustion backpressures issuance rather
+than evicting them. Receipt replay never issues or revokes credentials.
+External revocation before local receipt persistence remains an explicit
+uncertainty window, resolved by a later repeat revoke or expiry observation,
+not an exactly-once claim. Complete forwarding consumes committed audit rows,
+including storage-owned events absent from the inline mirror.
+For local debugging only, `--hosted-cli-sqlite` and `execute-cli --sqlite`
+share a loopback-only SQLite file (`server/internal/operational/sqlite`) that
+provides the same queue and audit table without PostgreSQL.
+Local `database bootstrap --store operational --sqlite PATH` provisions that
+file explicitly; runtime opens only existing state, and audit retention runs
+only through the explicit `database retain-audit` command. `audit deliver`
+uses a read-only SQLite connection and deferred verification transaction, while
+`audit verify` retains append authority to record its result. SQLite does not
+replace the canonical dashboard backend or reproduce PostgreSQL role isolation.
+That SQLite development profile may explicitly select an alternative
+`ContainerLifecycle` adapter without changing admission or token authority.
+Docker remains the production default and keeps its local-default-context
+restriction. Production workloads use `--network none`; a private read-only
+Unix socket and SHA-256-verified, architecture-matched relay built from reviewed
+server source carry HTTPS CONNECT to an executor-owned exact-host proxy.
+Every DNS address is validated before numeric dialing, private GHES needs
+exact host/IP approval, and metadata/loopback/link-local reach stays denied.
+Policy and verified relay bytes are immutable for the executor lifetime.
+Missing production egress configuration fails startup; only SQLite Docker
+development with no egress settings retains the previous bridge mode.
+The proxy is bounded and canceled with its command; losing egress never proves
+workload termination or releases retained claims. No shared host-network
+configuration changes or new runtime providers are introduced.
+Apple Silicon development uses Apple's `container` CLI with the
+same pinned Linux image, a private VM, dropped capabilities, and an in-guest
+no-new-privileges bootstrap. Windows development uses Windows Sandbox and a
+separately SHA-256-pinned archive of Windows `gh`, `gh-aw`, and Git tools, not a
+Linux-image fallback. Native providers preserve registration before creation,
+private workspace isolation, bounded cleanup, and original-runtime recovery.
+Guest result receipts or launcher exit never prove VM termination. Windows
+Sandbox ownership is exclusive across local executor namespaces; unrelated
+user sandboxes must not be reused or stopped. Without a verified Sandbox-to-HCS
+VM identity mapping, this conservative profile rejects other HCS-managed VMs
+and requires empty host-compute VM inventory before settlement.
+These development exceptions do
+not enable a new production runtime or exactly-once external effects.
+Tokens appear in those events only as GitHub's `hashed_token` digest.
+`cao-dashboard audit verify` checks the chain against external head anchors
+and `audit export` writes rows as JSON Lines. Logger-produced audit events are also OTLP log
+records carrying the active trace ID, and the executor and broker emit
+command and token spans and metrics without tokens or actors.
+Every hosted administrator operation requires a fresh, assured interactive
+OAuth authentication (2FA or attested SSO) within a bounded maximum age.
+`specs/server-hosted-cli.md` and `specs/tla/HostedCLIActions.tla` specify and
+model these guarantees.
+
 The PostgreSQL operational adapter is independent of `postgresx` canonical
 storage and the TypeSpec-generated entity schema. It implements narrow cache,
 OAuth, request-limit, quota, collection, coordination, and diagnostic contracts.
@@ -259,6 +346,12 @@ The Coolify profile selects PostgreSQL for every role without Redis credentials.
 This is not an operational-state migration, fallback, or campaign rollout change.
 The read-only doctor opens existing
 operational state without initializing it.
+PostgreSQL bootstrap, runtime, audit retention, and evidence-reader credentials
+are separate authorities. Runtime uses audit SELECT/INSERT and namespace budget
+updates, not namespace destruction or DDL. Audit retention runs only through a
+separately granted owner-defined function with a pinned search path and fixed
+400-day/512-row limits; ordinary maintenance never deletes audit history.
+`server/POSTGRES.md` specifies migration order, grants, and operator schedules.
 
 Hosted server observability uses the same vendor-neutral OTLP contract as
 agentic workflows. Standard `OTEL_*` runtime environment variables select the
@@ -510,7 +603,13 @@ using the installed setup Action, and worker declarations are merged without
 widening scope, modes, enablement, or worker ceilings. Missing policy initializes
 only the exact current control repository. Initialization refuses
 replacement, preview maps to review, and campaign declarations are fully checked
-before workflow enablement/disablement. Repository enrollment (`gh cao repos add OWNER/REPO`),
+before workflow enablement/disablement. The extension groups guided setup at
+`gh cao setup` and independent credential profiles under
+`gh cao setup auth github-app|enterprise-app|token`, with no root-level
+`setup-auth` command. It maps the nested authentication commands to the existing
+runtime `setup-auth` handler without changing its options, JSON results,
+credential prompts, consent, or read/write scope boundaries.
+Repository enrollment (`gh cao repos add OWNER/REPO`),
 updates, and other operator commands reuse the installed Node.js
 24+ runtime, preserving the production onboarding, authentication, policy
 validation, and canonical query engines instead of introducing alternate
@@ -833,6 +932,17 @@ all public; that does not authorize non-public targets or other campaigns.
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
+- Explicit `CAO_GITHUB_LOCAL_USER` development OAuth replaces membership
+  authorization with one configured GitHub login and a valid numeric account
+  ID. Classic login requests `read:user` without `read:org`; GitHub App clients
+  retain `offline_access`. It requires a process-owned loopback TLS listener,
+  one matching allowed host and exact callback authority/path, and loopback
+  request peers. Proxy trust, external/platform hosting, CORS, and simultaneous
+  organization/team/SSO policy are rejected. Sessions are bound to the mode and
+  developer and cannot cross into ordinary hosted authorization. Administrator
+  allowlisting, recent OAuth assurance, CSRF, explicit classic `repo` consent,
+  and live target writer checks are unchanged. Operators must not expose this
+  development listener through tunnels or proxies.
 - In the durable PostgreSQL or Redis server-collection profiles, delivery deduplication, repository debounce,
   and task append are one atomic admission. Memory provides the same
   atomic admission within one process lifetime, not restart durability. Queue transitions append

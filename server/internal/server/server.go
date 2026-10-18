@@ -12,6 +12,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -29,6 +30,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/audit"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
@@ -81,6 +83,9 @@ type Config struct {
 	WebhookSecret        string
 	AdminUsers           []string
 	Logger               *log.Logger
+	// Audit records security audit events for administrator and hosted CLI
+	// operations; nil disables them (local mode and tests).
+	Audit *audit.Logger
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
 	RateLimits RateLimitConfig
@@ -123,6 +128,7 @@ type App struct {
 	cacheMetrics     *queryCacheTelemetry
 	cacheError       error
 	githubResources  githubResourceCache
+	hostedCLI        *hostedCLI
 }
 
 func New(ctx context.Context, store operational.Store, config Config) (*App, error) {
@@ -157,6 +163,9 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	}
 	if err := operational.ValidateOperationalServices(capabilities, services, requirements); err != nil {
 		return nil, fmt.Errorf("operational services: %w", err)
+	}
+	if services.Audit != nil && !config.Audit.Durable() {
+		config.Audit = config.Audit.WithStore(services.Audit)
 	}
 	if capabilities.Collection.Persistence == operational.PersistenceVolatile &&
 		capabilities.Collection.Scope != operational.ScopeUnsupported {
@@ -213,6 +222,9 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 			}
 		}
 		oauth = newGitHubOAuth(oauthConfig, services.Sessions, services.SessionInvalidator, services.Revocations)
+		if oauthConfig.LocalDevelopmentUser != "" {
+			config.Logger.Printf("single-user local OAuth development mode enabled; organization membership authorization is disabled")
+		}
 	} else {
 		accessToken = strings.TrimSpace(config.AccessToken)
 		if accessToken == "" {
@@ -654,6 +666,7 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/github-quota/usage", a.gitHubQuotaUsage)
 	register("GET /api/v1/github/repos/{owner}/{repo}", a.gitHubRepositoryResource)
 	register("GET /api/v1/github/repos/{owner}/{repo}/releases/latest", a.gitHubReleaseResource)
+	a.registerHostedCLIRoutes(register)
 	mux.HandleFunc("/", a.static)
 	handler := a.preAuthRateLimit(a.cors(a.requireAccess(a.rateLimit(mux))))
 	switch a.config.HostProfile.Listener {
@@ -870,6 +883,11 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 			http.Error(response, "invalid forwarded request host", http.StatusMisdirectedRequest)
 			return
 		}
+		if !a.oauth.validLocalDevelopmentRequest(request) {
+			a.logAuthBranch("access.local_development_boundary_rejected")
+			writeError(response, http.StatusForbidden, "Local development OAuth requires a direct loopback HTTPS request")
+			return
+		}
 		if publicServiceEndpoint(request.URL.Path) ||
 			request.URL.Path == "/api/github/webhook" ||
 			strings.HasPrefix(request.URL.Path, "/auth/login") ||
@@ -951,7 +969,7 @@ func (a *App) requireGitHubAccess(next http.Handler) http.Handler {
 		a.logAuthBranch("access.authorized")
 		request = request.WithContext(context.WithValue(request.Context(), oauthSessionContextKey{}, session))
 		if request.URL.Path == "/mcp" && a.mcp != nil && !a.adminAuthorized(request) {
-			writeError(response, http.StatusForbidden, "administrator access is required")
+			a.writeAdminDenied(response, request, "administrator access is required")
 			return
 		}
 		next.ServeHTTP(response, request)
@@ -988,14 +1006,51 @@ func (a *App) adminAuthorizedContext(ctx context.Context) bool {
 		a.logAuthBranch("admin.session_missing")
 		return false
 	}
+	if !a.adminListed(session) {
+		a.logAuthBranch("admin.denied")
+		return false
+	}
+	if !a.oauth.adminAssured(session, time.Now().UTC()) {
+		a.logAuthBranch("admin.step_up_required")
+		return false
+	}
+	a.logAuthBranch("admin.allowed")
+	return true
+}
+
+func (a *App) adminListed(session oauthSession) bool {
 	for _, login := range a.config.AdminUsers {
 		if strings.EqualFold(strings.TrimSpace(login), session.Login) {
-			a.logAuthBranch("admin.allowed")
 			return true
 		}
 	}
-	a.logAuthBranch("admin.denied")
 	return false
+}
+
+// writeAdminDenied distinguishes a configured administrator whose step-up
+// lapsed (401, re-authenticate) from a non-administrator (403).
+func (a *App) writeAdminDenied(response http.ResponseWriter, request *http.Request, message string) {
+	if a.oauth != nil {
+		session, ok := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+		reason := "not_admin"
+		if ok && a.adminListed(session) {
+			reason = "step_up_required"
+		}
+		_ = a.config.Audit.Record(request.Context(), "admin.denied", audit.Denied,
+			slog.String("actor", session.Login), slog.String("reason", reason),
+			slog.String("method", request.Method), slog.String("path", request.URL.Path))
+		if reason == "step_up_required" {
+			maxAge := int(a.oauth.adminReauthenticationMaxAge() / time.Second)
+			response.Header().Set("WWW-Authenticate", fmt.Sprintf(`CAO-Step-Up realm="admin", max_age=%d`, maxAge))
+			writeErrorPayload(response, http.StatusUnauthorized, map[string]string{
+				"error":          "Sign in again with two-factor authentication or single sign-on to perform administrator actions.",
+				"code":           "admin_step_up_required",
+				"reauthenticate": "/auth/login",
+			})
+			return
+		}
+	}
+	writeError(response, http.StatusForbidden, message)
 }
 
 func constantTimeTokenEqual(candidate, expected string) bool {
@@ -1655,6 +1710,9 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	injections := `<meta name="dashboard-data-backend" content="server-http"><meta name="dashboard-storage-backend" content="postgres">`
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
+		if a.hostedCLI != nil {
+			injections += `<script>globalThis.__CLI_QUEUE__ = true;</script>`
+		}
 		injections += `<script>const m=document.cookie.match(/(?:^|;\s*)cao_csrf=([^;]+)/);if(m){const c=decodeURIComponent(m[1]);const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i.url;if(u&&new URL(u,location.href).origin===location.origin){const h=new Headers(n.headers||{});if(!h.has("X-CSRF-Token"))h.set("X-CSRF-Token",c);n={...n,headers:h};}return f(i,n);};}</script>`
 	} else if accessToken != "" {
 		http.SetCookie(response, &http.Cookie{

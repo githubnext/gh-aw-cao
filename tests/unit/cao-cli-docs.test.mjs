@@ -13,6 +13,7 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "quickstart",
     "setup-auth github-app",
     "setup-auth enterprise-app",
+    "setup-auth hosted-cli",
     "setup-auth token",
     "add OWNER/REPO/CAMPAIGN",
     "update",

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
@@ -96,6 +97,70 @@ func (q *cliCommandQueue) List(ctx context.Context, filter operational.CLIComman
 	})
 	if err != nil {
 		return operational.CLICommandPage{}, err
+	}
+	return page, nil
+}
+
+func (q *cliCommandQueue) ListBefore(ctx context.Context, filter operational.CLICommandCursorFilter) (operational.CLICommandCursorPage, error) {
+	if err := filter.Validate(); err != nil {
+		return operational.CLICommandCursorPage{}, err
+	}
+	page := operational.CLICommandCursorPage{Commands: []operational.CLICommand{}}
+	statuses := make([]string, 0, len(filter.Statuses))
+	for _, status := range filter.Statuses {
+		statuses = append(statuses, string(status))
+	}
+	err := q.transact(ctx, false, func(t *transaction, state cliQueueState) error {
+		page.Revision, page.RecoveryBlocked = state.revision, state.blocked
+		where := `namespace=$1 AND queue=$2`
+		args := []any{t.namespace, q.name}
+		if filter.BeforeID > 0 {
+			args = append(args, filter.BeforeID)
+			where += ` AND id<$` + strconv.Itoa(len(args))
+		}
+		if len(statuses) > 0 {
+			args = append(args, statuses)
+			where += ` AND status=ANY($` + strconv.Itoa(len(args)) + `::text[])`
+		}
+		args = append(args, filter.Limit+1)
+		// #nosec G202 -- where contains only fixed SQL and numbered placeholders.
+		rows, err := t.tx.QueryContext(ctx, `SELECT id FROM cao_operational_cli_commands WHERE `+where+` ORDER BY id DESC LIMIT $`+strconv.Itoa(len(args)), args...)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = rows.Close() }()
+		ids := make([]int64, 0, filter.Limit+1)
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				_ = rows.Close()
+				return err
+			}
+			ids = append(ids, id)
+		}
+		err = rows.Err()
+		if closeErr := rows.Close(); err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			return err
+		}
+		page.HasMore = len(ids) > filter.Limit
+		if page.HasMore {
+			ids = ids[:filter.Limit]
+		}
+		for _, id := range ids {
+			command, err := q.detail(t, id)
+			if err != nil {
+				return err
+			}
+			command.Input = nil
+			page.Commands = append(page.Commands, command)
+		}
+		return nil
+	})
+	if err != nil {
+		return operational.CLICommandCursorPage{}, err
 	}
 	return page, nil
 }
