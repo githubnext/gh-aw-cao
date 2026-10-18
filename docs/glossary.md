@@ -108,7 +108,7 @@ The explicit `generic` HTTP target with `listener: external` that lets a separat
 
 ## gh cao
 
-The operator-facing GitHub CLI extension for CAO, installed from this repository as `gh aw-cao` because GitHub CLI derives the extension name from the repository name. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` release binaries with SHA-256 checksums. Policy initialization and modes, workflow enablement, `campaigns add`, and `doctor` run natively in Go; onboarding, lifecycle, and other shared domain commands delegate to the installed production CAO Node runtime, and Actions pipeline commands remain owned by `./cao.sh`. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+The operator-facing GitHub CLI extension for CAO, installed from this repository as `gh aw-cao` because GitHub CLI derives the extension name from the repository name. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` release binaries with SHA-256 checksums. The extension is entirely Go and executes no Node.js, npm, or installed CAO runtime: policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics all run natively. Actions pipeline and maintainer commands remain owned by `./cao.sh` and are not migrated. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
 
 ## GitHub quota service
 
