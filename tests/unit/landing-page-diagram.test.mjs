@@ -24,7 +24,8 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(landingPage, /text: Sample Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao/);
   assert.doesNotMatch(headerLinks, /label: "Dashboard"/);
   assert.match(landingPage, /title: Central Agentic Ops \(CAO\)/);
-  assert.match(landingPage, /Hyperscale Agentic Campaigns\.<br \/>Centralized Control Planes\./);
+  assert.match(landingPage, /Monitor and control GitHub Agentic Workflows at scale\./);
+  assert.match(landingPage, /Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories\. Set execution scope and rollout policy\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
   assert.match(hero, /cao-dashboard-mobile-overview-light\.png/);
   assert.match(hero, /cao-dashboard-run-history-mobile\.png/);
@@ -39,16 +40,23 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /ThemeImage/);
   assert.match(hero, /@media \(max-width: 42rem\) \{[\s\S]*?\.hero-callout \{[\s\S]*?display: flex/);
   assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
-  assert.match(hero, /From one control repo to many campaigns/);
+  assert.match(hero, /Reusable workflows, central Ops/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(hero, /Coordinate campaigns from one control plane/);
+  assert.match(hero, /Reuse what works\./);
+  assert.match(hero, /Reuse the definition; decide separately where it may run/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
   assert.match(terminalText, /\.\/cao\.sh setup/);
-  assert.match(terminalText, /\.\/cao\.sh add githubnext\/gh-aw-cao\/CAMPAIGN/);
-  assert.match(terminalText, /target_repo="OWNER\/TARGET_REPOSITORY"/);
-  assert.match(terminalText, /--raw-field safe_output_mode="review"/);
-  assert.match(hero, /See every campaign\. Focus where it diverges/);
-  assert.match(hero, /Prove value before multiplying work/);
+  assert.match(terminalText, /\.\/cao\.sh validate/);
+  assert.match(terminalText, /no campaign added/);
+  assert.match(terminalText, /no agentic work started/);
+  assert.match(terminalText, /Next: publish and open your dashboard/);
+  assert.match(terminal, /href="\/gh-aw-cao\/setup-quickstarts\/#3-publish-your-configuration"/);
+  assert.doesNotMatch(terminalText, /cao\.sh add|gh aw run|--raw-field/);
+  assert.match(hero, /Monitor what runs\./);
+  assert.match(hero, /Roll out safely\./);
+  assert.match(hero, /See workflow health, cost, and outcomes in one dashboard/);
+  assert.match(hero, /execution success is not an accepted outcome/);
+  assert.doesNotMatch(hero, /https:\/\/github\.github\.com\/gh-aw\/practices\//);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
   assert.doesNotMatch(
     hero,
@@ -56,30 +64,39 @@ test("landing page presents the product through real operational surfaces", () =
   );
   assert.doesNotMatch(hero, /trust-section|Coordination without concentrated risk|section-actions/);
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfactor(?:y|ies)\b/i);
-  assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfleets?\b/i);
 });
 
-test("landing page explains and illustrates campaign dispatch", () => {
-  assert.match(hero, /One goal, many repositories/);
-  assert.match(hero, /Agentic Campaigns dispatch work at scale\./);
+test("landing page keeps the hero and supporting copy concise", () => {
+  const wordCount = (text) => text.replaceAll(/<[^>]+>/g, " ").trim().split(/\s+/).length;
+  const title = landingPage.match(/^  title: (.+)$/m)?.[1];
+  const tagline = landingPage.match(/^  tagline: (.+)$/m)?.[1];
+  assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
+  assert.ok(tagline && wordCount(tagline) <= 25, "hero tagline should stay within twenty-five words");
+  const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
+  assert.equal(paragraphs.length, 4);
+  for (const [, paragraph] of paragraphs) {
+    assert.ok(wordCount(paragraph) <= 30, "each supporting paragraph should stay within thirty words");
+  }
+  assert.doesNotMatch(hero, /<ul class="story-points">/);
+});
+
+test("landing page explains and illustrates governed cross-repository dispatch", () => {
+  assert.match(hero, /Execution policy/);
+  assert.match(hero, /Control where workflows run\./);
   assert.match(hero, /\.dispatch-story \{[\s\S]*?width: min\(calc\(100% - 2rem\), 86rem\)/);
   assert.match(hero, /\.dispatch-story > \.section-eyebrow \{[\s\S]*?justify-self: center/);
   assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[\s\S]*?max-width: 64rem/);
   assert.match(hero, /@media \(min-width: 64rem\) \{[\s\S]*?\.dispatch-story h2 \{[\s\S]*?white-space: nowrap/);
-  assert.match(
-    hero,
-    /Each campaign turns a defined operation into bounded work across an explicitly enrolled set of repositories\./,
-  );
-  assert.match(hero, /A\s+dispatcher resolves reviewed rollout policy/);
-  assert.match(hero, /namespaced workers in parallel—one authorized target\s+per worker, across organizations/);
-  assert.match(hero, /centralized scale and a shared operating rhythm without giving any\s+worker open-ended repository reach/);
+  assert.match(hero, /Run workflows centrally across enrolled repositories and organizations/);
+  assert.match(hero, /Reviewed policy sets the scope/);
+  assert.match(hero, /each worker handles one authorized target/);
   assert.match(hero, /<DispatchIllustration \/>/);
   assert.match(hero, /aria-describedby="dispatch-description"/);
   assert.doesNotMatch(illustration, /cao-dashboard-campaign/);
   assert.match(illustration, /Central Agentic Ops \(CAO\)/);
   assert.match(illustration, /<small>Control plane<\/small>/);
   assert.match(illustration, /class="campaign-cue"/);
-  assert.match(illustration, /Configured campaigns/);
+  assert.match(illustration, /Configured Ops/);
   assert.match(illustration, /<strong>Dependabot<\/strong>/);
   assert.match(illustration, /<strong>Repo Assist<\/strong>/);
   assert.match(illustration, /const goalPaths = \[/);
@@ -186,7 +203,7 @@ test("landing page explains and illustrates campaign dispatch", () => {
   assert.match(illustration, /\{job\.operation\} · \{job\.repository\} · \{job\.mode\}/);
   assert.match(illustration, /class="run-card dispatcher dispatcher-dependabot"/);
   assert.match(illustration, /class="run-card dispatcher dispatcher-repo-assist"/);
-  assert.match(illustration, /Campaign dispatcher/);
+  assert.match(illustration, /Ops dispatcher/);
   assert.match(illustration, /class={`run-card worker \$\{job\.timing\}`}/);
   assert.match(illustration, /animation: spin/);
   assert.match(illustration, /class="status running action-progress"/);
@@ -264,7 +281,6 @@ test("landing page uses a theme-aware blueprint background", () => {
   assert.match(hero, /--cao-page-glow: rgba\(63, 185, 80, 0\.22\)/);
   assert.match(hero, /radial-gradient\(ellipse 58rem 42rem at 76% 8%/);
   assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.product-story::before \{[\s\S]*?display: none/);
-  assert.match(hero, /background: var\(--section-accent\)/);
   assert.match(hero, /\.section-eyebrow::before \{[\s\S]*?border-radius: 1px/);
   assert.doesNotMatch(hero, /--section-accent: #(?:58a6ff|a371f7)/);
   assert.doesNotMatch(hero, /--cao-page-blue-glow/);
@@ -305,8 +321,5 @@ test("landing terminal uses accessible CSS motion without a JavaScript player", 
   assert.match(terminal, /background: var\(--terminal-bg\)/);
   assert.match(terminal, /class="syntax-command"/);
   assert.match(terminal, /class="syntax-option"/);
-  assert.match(terminal, /class="syntax-string"/);
-  assert.match(terminal, /class="syntax-placeholder"/);
-  assert.match(terminal, /--terminal-syntax-placeholder: #953800/);
-  assert.match(terminal, /--terminal-syntax-placeholder: #ffa657/);
+  assert.match(terminal, /class="syntax-url"/);
 });

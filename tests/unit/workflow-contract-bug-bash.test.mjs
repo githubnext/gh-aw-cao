@@ -142,13 +142,13 @@ test("bug bash installs as a complete, self-describing campaign package", () => 
   assert.deepEqual(STARTER_TARGET.hypothesis, DEFAULT_HYPOTHESIS);
 });
 
-test("bug bash remains available while optional repository quick look is offered for onboarding", () => {
+test("bug bash remains available while campaign onboarding is optional after monitoring", () => {
   const quickstarts = readFileSync(join(root, "docs", "setup-quickstarts.md"), "utf8");
   const catalogIndex = readFileSync(join(root, "docs", "pages", "catalog", "index.astro"), "utf8");
   const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
 
-  assert.match(quickstarts, /start with \*\*Repo Assist\*\*/);
-  assert.match(quickstarts, /cao\.sh add githubnext\/gh-aw-cao\/repo-assist/);
+  assert.match(quickstarts, /## Optional: add automation later/);
+  assert.match(quickstarts, /\[Repo Assist walkthrough\]\(repo-assist-quickstart\.md\)/);
   assert.doesNotMatch(quickstarts, /recommended getting-started campaign[\s\S]*Bug Bash/);
   assert.match(catalogIndex, /catalog\/repo-assist/);
   assert.match(catalogIndex, /New to CAO\? Try/);

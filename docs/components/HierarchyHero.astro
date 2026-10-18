@@ -16,7 +16,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
   <div class="hero-visual">
     <span class="hero-callout callout-health" aria-hidden="true">
-      <span class="callout-card">Campaign health<br />at a glance</span>
+      <span class="callout-card">Workflow health<br />at a glance</span>
       <span class="callout-line"></span>
     </span>
     <span class="hero-callout callout-attention" aria-hidden="true">
@@ -32,7 +32,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
         <ThemeImage
           dark={dashboardMobileOverview}
           light={dashboardMobileOverviewLight}
-          alt="Central Agentic Ops mobile dashboard showing campaigns needing attention, campaign rhythm, health, and repository coverage."
+          alt="Central Agentic Ops mobile dashboard showing weekly workflow rhythm, workflow health, repository coverage, retained issues and pull requests, and observed grader results."
           widths={[390, 780]}
           sizes="(max-width: 42rem) 76vw, 18vw"
           loading="eager"
@@ -44,17 +44,15 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 </div>
 
 <section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal>
-  <p class="section-eyebrow">One goal, many repositories</p>
-  <h2 id="dispatch-title">Agentic Campaigns dispatch work at scale.</h2>
+  <p class="section-eyebrow">Execution policy</p>
+  <h2 id="dispatch-title">Control where workflows run.</h2>
   <p>
-    Each campaign turns a defined operation into bounded work across an explicitly enrolled set of repositories. A
-    dispatcher resolves reviewed rollout policy, then launches namespaced workers in parallel—one authorized target
-    per worker, across organizations. Teams gain centralized scale and a shared operating rhythm without giving any
-    worker open-ended repository reach.
+    Run workflows centrally across enrolled repositories and organizations. Reviewed policy sets the scope;
+    each worker handles one authorized target.
   </p>
   <figure class="dispatch-illustration" aria-describedby="dispatch-description">
     <figcaption id="dispatch-description" class="visually-hidden">
-      Central Agentic Ops configures campaigns, runs dispatchers followed by namespaced workers in GitHub Actions,
+      Central Agentic Ops configures workflows, runs dispatchers followed by namespaced workers in GitHub Actions,
       and sends each worker to one explicitly enrolled external repository.
     </figcaption>
     <DispatchIllustration />
@@ -63,40 +61,29 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
 <section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal>
   <div class="product-story-copy">
-    <p class="section-eyebrow">From one control repo to many campaigns</p>
-    <h2 id="terminal-title">Coordinate campaigns from one control plane.</h2>
+    <p class="section-eyebrow">Reusable workflows, central Ops</p>
+    <h2 id="terminal-title">Reuse what works.</h2>
     <p>
-      Install multiple operational campaigns, assign explicit repositories to each, and expand them through
-      controlled cohorts. CAO resolves shared policy before orchestrators select work and dispatch bounded workers.
+      Start by monitoring one repository. Add versioned workflows when you're ready. Reuse the definition; decide separately where it may run.
     </p>
-    <ul class="story-points">
-      <li>Run each operation across its intended repositories.</li>
-      <li>Control scope, mode, credentials, and rollout limits in reviewed policy.</li>
-      <li>Keep every worker fixed to one explicitly authorized target.</li>
-    </ul>
   </div>
   <TerminalDemo />
 </section>
 
 <section class="product-story runs-story" aria-labelledby="runs-title" data-reveal>
   <div class="product-story-copy">
-    <p class="section-eyebrow">Many runs, one operating picture</p>
-    <h2 id="runs-title">See every campaign. Focus where it diverges.</h2>
+    <p class="section-eyebrow">Local workflows, central visibility</p>
+    <h2 id="runs-title">Monitor what runs.</h2>
     <p>
-      CAO connects each run to its campaign, workflow revision, target, and outcome. Instead of visiting repositories
-      one by one, operators can identify shared patterns and spend attention on the exceptions that need judgment.
+      See workflow health, cost, and outcomes in one dashboard. Find what needs attention, then drill into the run
+      and its evidence.
     </p>
-    <ul class="story-points">
-      <li>Compare campaigns and their repositories across the same time horizon.</li>
-      <li>Separate cross-campaign patterns from isolated target issues.</li>
-      <li>Drill from aggregate health into the exact run and evidence.</li>
-    </ul>
   </div>
   <figure class="product-frame product-shot product-shot-mobile product-shot-runs">
     <ThemeImage
       dark={dashboardRunHistory}
       light={dashboardRunHistoryLight}
-      alt="Mobile CAO Runs view showing its compact app header and one-week successful, failed, and cancelled workflow chart."
+      alt="Mobile CAO Runs view showing its compact app header and stacked workflow run chart by success, failure, cancellation, and unknown conclusion."
       widths={[390, 780]}
       sizes="(max-width: 42rem) calc(100vw - 3rem), 22rem"
       loading="lazy"
@@ -107,23 +94,18 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
 <section class="product-story value-story reverse" aria-labelledby="value-title" data-reveal>
   <div class="product-story-copy">
-    <p class="section-eyebrow">Scale what works</p>
-    <h2 id="value-title">Prove value before multiplying work.</h2>
+    <p class="section-eyebrow">Earn trust before expanding autonomy</p>
+    <h2 id="value-title">Roll out safely.</h2>
     <p>
-      Campaign-specific measures combine cost, reliability, and repository outcomes into comparable evidence. Use
-      that evidence to expand a cohort, pause an operation, or improve it before it reaches more repositories.
+      Review proposed actions before enabling live changes through explicit policy. Expand scope with evidence,
+      not just successful runs: execution success is not an accepted outcome.
     </p>
-    <ul class="story-points">
-      <li>Define success in the operation instead of inferring it from completed runs.</li>
-      <li>Compare cohorts without hiding missing or incomplete evidence.</li>
-      <li>Promote, revise, or stop work based on observed operational value.</li>
-    </ul>
   </div>
   <figure class="product-frame product-shot product-shot-mobile product-shot-value">
     <ThemeImage
       dark={dashboardCampaignValue}
       light={dashboardCampaignValueLight}
-      alt="Mobile AW Optimization view showing compact campaign navigation and AI credit per successful run against its baseline."
+      alt="Mobile Operational Value view for githubnext/gh-aw-cao showing AI credit per successful optimization-token-optimizer run over time."
       widths={[390, 780]}
       sizes="(max-width: 42rem) calc(100vw - 3rem), 22rem"
       loading="lazy"
@@ -717,33 +699,6 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       box-shadow:
         0 2rem 5rem rgba(31, 35, 40, 0.25),
         0 0 0 1px color-mix(in srgb, var(--section-accent) 30%, transparent);
-    }
-
-    .story-points {
-      display: grid;
-      gap: 0.8rem;
-      margin: 1.5rem 0 0;
-      padding: 0;
-      color: var(--cao-story-text);
-      list-style: none;
-    }
-
-    .story-points li {
-      position: relative;
-      padding-inline-start: 1.25rem;
-      line-height: 1.5;
-    }
-
-    .story-points li::before {
-      position: absolute;
-      top: 0.62em;
-      left: 0;
-      width: 0.45rem;
-      height: 0.45rem;
-      border-radius: 50%;
-      background: var(--section-accent);
-      box-shadow: 0 0 0.75rem color-mix(in srgb, var(--section-accent) 42%, transparent);
-      content: "";
     }
 
     .product-story-copy {

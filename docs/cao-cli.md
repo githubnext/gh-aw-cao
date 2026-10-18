@@ -229,7 +229,7 @@ or collect requests new work. The run stage can consume
 up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
 + 400 output checking; configured output-check limits may differ),
 with each stage owning only its documented effects in the
-[quickstart](setup-quickstarts.md). Use `./cao.sh setup` for
+[Repo Assist walkthrough](repo-assist-quickstart.md). Use `./cao.sh setup` for
 review-before-apply configuration. The individual `setup-auth` commands remain
 available for manual and non-interactive administration.
 

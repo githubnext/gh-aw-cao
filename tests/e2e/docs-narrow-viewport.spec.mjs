@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 const paths = [
   "./",
   "setup-quickstarts/",
+  "repo-assist-quickstart/",
   "setup-one-organization/",
   "setup-multiple-organizations/",
   "setup-fine-grained-pat/",
@@ -29,11 +30,39 @@ test("Get started navigation follows the user journey without duplicate authenti
 
   const getStartedGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Get started$/ }).locator("..");
   await expect(getStartedGroup.getByRole("link")).toHaveText([
-    "Set up the control plane",
-    "Add a campaign",
+    "Set up and monitor",
+    "Add a campaign (optional)",
     "CAO commands",
     "Authentication",
   ]);
+});
+
+test("getting started leads from monitoring to a separate optional campaign guide", async ({ page }, testInfo) => {
+  expect((await page.goto("setup-quickstarts/"))?.ok()).toBe(true);
+  await expect(page.locator("main h2")).toHaveText([
+    "Prerequisites",
+    "1. Install CAO",
+    "2. Connect one repository",
+    "3. Publish your configuration",
+    "4. Open your dashboard",
+    "Optional: add automation later",
+  ]);
+  const content = page.locator(".sl-markdown-content");
+  await expect(content).toContainText("You do not need to install or run a campaign.");
+  await expect(content).toContainText("An empty dashboard is expected.");
+  await expect(content).not.toContainText("gh aw run");
+  for (const [name, viewport] of [
+    ["desktop", { width: 1280, height: 900 }],
+    ["mobile", { width: 390, height: 844 }],
+  ]) {
+    await page.setViewportSize(viewport);
+    const screenshot = testInfo.outputPath(`getting-started-${name}.png`);
+    await page.screenshot({ path: screenshot, fullPage: true });
+    await testInfo.attach(`Getting started (${name})`, { path: screenshot, contentType: "image/png" });
+  }
+  await content.getByRole("link", { name: "Repo Assist walkthrough", exact: true }).click();
+  await expect(page).toHaveURL(/\/repo-assist-quickstart\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Try a Repo Assist review");
 });
 
 test("legacy getting-started route redirects to interactive setup", async ({ page }) => {
@@ -106,6 +135,31 @@ for (const { name, viewport } of [
   { name: "mobile", viewport: { width: 390, height: 844 } },
 ]) {
   for (const colorScheme of ["light", "dark"]) {
+    test(`landing ${name} emphasizes overview and control in ${colorScheme} mode`, async ({ page }) => {
+      await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
+      await page.emulateMedia({ colorScheme });
+      await page.setViewportSize(viewport);
+      expect((await page.goto("./"))?.ok()).toBe(true);
+
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+        "Monitor and control GitHub Agentic Workflows at scale.",
+      );
+      const tagline = page.locator(".docs-hero-intro .tagline");
+      await expect(tagline).toBeVisible();
+      await expect(tagline).toHaveText("Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy.");
+      await expect(page.getByRole("heading", { name: "Control where workflows run.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Reuse what works.", exact: true })).toBeAttached();
+      await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
+        .toHaveCount(0);
+      for (const story of await page.locator(".product-story-copy, .dispatch-story").all()) {
+        await expect(story).not.toContainText(/campaign/i);
+      }
+      expect(await page.locator("html").evaluate((element) => element.scrollWidth))
+        .toBeLessThanOrEqual(viewport.width);
+    });
+
     test(`landing ${name} product story renders in ${colorScheme} mode`, async ({ page }) => {
       await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
       await page.emulateMedia({ colorScheme });
@@ -127,8 +181,8 @@ for (const { name, viewport } of [
         (images) => images.map((image) => image.currentSrc),
       );
       expect(productSources.every((source) => colorScheme === "light"
-        ? source.includes("-light.png")
-        : !source.includes("-light.png"))).toBe(true);
+        ? source.includes("-light.")
+        : !source.includes("-light."))).toBe(true);
       expect(productSources.slice(1).every((source) => source.includes("-mobile"))).toBe(true);
       expect(await page.locator(".product-shot-mobile").evaluateAll((frames) => frames.every((frame) => {
         const image = frame.querySelector("img");
@@ -151,13 +205,13 @@ test("landing product media follows a manual theme change", async ({ page }) => 
   expect((await page.goto("./"))?.ok()).toBe(true);
 
   await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
-    (images) => images.every((image) => !image.currentSrc.includes("-light.png")),
+    (images) => images.every((image) => !image.currentSrc.includes("-light.")),
   )).toBe(true);
 
   await page.getByRole("button", { name: "Switch to light theme" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
-    (images) => images.every((image) => image.currentSrc.includes("-light.png")),
+    (images) => images.every((image) => image.currentSrc.includes("-light.")),
   )).toBe(true);
 });
 

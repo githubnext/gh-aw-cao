@@ -9,94 +9,48 @@
 > [!TIP]
 > **Agent debugging router:** When a CAO deployment, credential, Agentic Workflow, Activity collection, or dashboard build fails, load and follow [the `debug-cao` skill](skills/debug-cao/SKILL.md). Preserve the failing workflow commit and exact component versions before changing or rerunning the deployment.
 
-Run trusted agentic operations across your repository fleet from one central control plane.
+Monitor GitHub Agentic Workflow runs, costs, and outcomes from one control
+repository. Add trusted agentic operations when you are ready.
 
-Start the [step-by-step onboarding guide](docs/setup-quickstarts.md) with:
+## Get started: monitor one repository
+
+From a clean control-repository checkout on its default branch:
 
 ```bash
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- --quickstart \
-    --create-repo CONTROL_OWNER/CONTROL_REPOSITORY \
-    --target TARGET_OWNER/TARGET_REPOSITORY
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash
 ```
 
-At a repository root, the installer uses that clean default-branch checkout,
-including headlessly; omit `--create-repo` when using that existing checkout.
-Outside a checkout, explicitly choose the private control repository to create.
-Replace the uppercase coordinates with your choices: no owner, repository name,
-or target is suggested or selected by default. Interactive `--create-repo`
-without a coordinate asks you to enter an owner and name without defaults;
-headless creation requires the full coordinate. Occupied names are rejected,
-not renamed automatically.
-With no catalog source, quickstart resolves and pins
-the latest stable CAO `vX.Y.Z` release; it does not fall back to `main` if
-release discovery fails. Pass an explicit source such as
-`githubnext/gh-aw-cao@main`, a tag, a commit SHA, or a local checkout to override
-that catalog selection. Installation requires `--target OWNER/REPO` to select an
-existing public repository explicitly, using Repo Assist's normal checkout.
-Repo Assist proposes one small, validated maintenance improvement in review
-mode, or honestly records a no-op if nothing suitable fits.
-It works even when the target has no Agentic Workflows or Actions history.
-Quickstart runs the existing maintenance worker, not a special assessment.
-A control review issue and downloadable patch bundle let you decide whether
-to apply the improvement.
-Installation configures and commits the control plane, then stops with Repo
-Assist paused. Continue from the printed control-repository directory:
+Connect one repository and configure authentication:
 
-1. **Run:** `./cao.sh quickstart --step run` requests one review and returns an
-   Actions link. Inspect the orchestrator and maintenance worker there.
-2. **Collect:** after the worker finishes, `./cao.sh quickstart --step collect`
-   requests an Activity snapshot and returns without waiting.
-3. **Explore:** `./cao.sh quickstart --step dashboard` checks publication
-   read-only. Repeat this check if pending, then open the verified dashboard.
+```bash
+./cao.sh setup
+```
 
-Each step explains a different component; there is no long default terminal
-wait. Normal Activity push/schedule triggers may publish a baseline independently;
-the collect stage refreshes evidence after your review.
-The review issue is the first useful result. Starting the campaign can use
-up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
-+ 400 output checking; configured output-check limits may differ), not a
-measured token budget or expected consumption.
-**None of these proposals is a requirement for using CAO.** There are no
-readiness grades, required templates, or practice checklists; keeping the
-repository unchanged is a valid result. Only maintenance is enabled; quickstart
-pauses the orchestrator after dispatch so recurring runs need explicit re-enablement.
-CAO never modifies the target.
-Remote jobs continue in GitHub Actions between stages. Use `--wait` on
-`./cao.sh quickstart --target OWNER/REPO` only to explicitly opt into the original end-to-end flow
-immediately after bare installation, not to resume or check a staged run.
-Use `--create-repo OWNER/CONTROL_REPOSITORY` to choose a new control
-repository explicitly.
+Validate, review, and publish your configuration:
 
-Want to see the rest of Repo Assist before running more workers? Browse
-[real triage, issue-fix, maintenance, and PR-upkeep reports](repo-assist/README.md#see-repo-assist-in-action)
-from our own control plane. This separate showcase adds no workflows or AI
-spend to your first run; it distinguishes proposals and blockers from applied
-changes. No demo repository is created.
+```bash
+./cao.sh validate
+git status --short
+git diff -- .github
+git add .github activity dashboard cao.sh
+git commit -m "Set up CAO monitoring"
+git push
+```
 
-The installer checks tools, sign-in, and checkout readiness before writing CAO
-files, adds gh-aw and the core runtime, and preserves an existing policy.
-Without `--quickstart`, installation remains non-greedy: bare installation
-stops with `Next: ./cao.sh setup`, and `--setup` opens
-**Repositories → Connections → Review and apply** directly. Guided setup uses
-default-No confirmation and never installs a campaign, dispatches a workflow,
-commits, or pushes. Install the Agent Plugin separately when you want the
-portable CAO skills.
+In Actions, wait for **CAO Activity** and **CAO Dashboard**,
+including its Pages deployment, then open **Settings → Pages**.
+**No campaign is installed or run.** A repository without Agentic Workflow
+history starts with an empty dashboard; you do not need to generate activity.
 
-Without an interactive terminal, or when `CI` is set, `--setup` and
-`./cao.sh setup` apply one fail-closed agent profile only: the current control
-repository must be public, existing scope must already be exact to that
-repository, and campaigns must be empty. Setup configures public Actions-backed
-Pages, selects the repository `GITHUB_TOKEN` (`workflow-token`), and records
-Activity scope for only that repository. Private/internal repositories or
-broader existing policy require interactive setup. Headless guided-setup
-repository creation requires `--create-repo OWNER/NAME` for both guided setup
-and quickstart; neither infers a control owner or name.
-Missing prerequisites (including an installed gh-aw that is too old) fail
-instead of reporting success. Explicit `--quickstart` is the bounded headless
-onboarding path: installation performs the documented control-repository effects
-without prompting; separate stage commands authorize workflow dispatches.
+The [getting-started guide](docs/setup-quickstarts.md) covers prerequisites,
+creating a separate control repository, authentication, dashboard visibility,
+and your first look at the data. Prefer a private control repository for
+non-public evidence; a private repository does not guarantee a private dashboard.
+
+**Optional, later:** browse the [campaign catalog](https://githubnext.github.io/gh-aw-cao/catalog/)
+or try the separate [Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
+You can also read [real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)
+without starting a workflow or spending AI credits.
 
 Control repositories receive only the curated production runtime, not dashboard
 tests, screenshots, contributor tooling, or plugin files. The CLI and runtime

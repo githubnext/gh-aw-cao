@@ -254,8 +254,8 @@ export default defineConfig({
         {
           label: "Get started",
           items: [
-            { label: "Set up the control plane", link: "/setup-quickstarts/" },
-            { label: "Add a campaign", link: "/catalog/" },
+            { label: "Set up and monitor", link: "/setup-quickstarts/" },
+            { label: "Add a campaign (optional)", link: "/catalog/" },
             { label: "CAO commands", link: "/cao-cli/" },
             { label: "Authentication", link: "/authentication/" },
           ],
