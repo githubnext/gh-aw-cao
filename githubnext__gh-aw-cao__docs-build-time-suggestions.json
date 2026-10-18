@@ -3,6 +3,34 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-18T03:56:49.231865Z",
+      "worker_run_id": 39095203688,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39095041909,
+        39094496186,
+        39093661749,
+        39093499218,
+        39092174005,
+        39091537097,
+        39090370845,
+        39088640464,
+        39087924678,
+        39087832789,
+        39086764911,
+        39086658333,
+        39084759712,
+        39084613320,
+        39081398631,
+        39080280156,
+        39079340491,
+        39079315155,
+        39078510130,
+        39078473718
+      ],
+      "outcome": "Incomplete evaluation for category \"Astro documentation generation\" on source SHA 6394ae3db0534eada9c0881ef1db971a8ddb3bce. In the latest 20 completed docs.yml runs from 2026-10-17T23:17:53Z through 2026-10-18T03:51:01Z, 15 runs concluded success and 5 concluded skipped; none failed, were cancelled, timed out, or required action. All observed head SHAs in that window resolved to unchanged workflow blobs (.github/workflows/docs.yml 9a4834bb3d54ed40376fab886e8e1effff0951d5 and .github/workflows/cao-dashboard.yml 415481b74f6b56b4d012c9a23e076b13bcaca2bd), so the runs remain comparable on workflow source. However, only 4 successful docs runs executed the build job in this bounded window (39081398631, 39080280156, 39079340491, and 39078510130). The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable Astro-generation recommendation was assessed in this run and next_category remains unchanged until a later authorized run has enough comparable evidence."
+    },
+    {
       "evaluated_at": "2026-10-18T03:30:12Z",
       "worker_run_id": 39093642065,
       "category": "Astro documentation generation",
@@ -813,34 +841,6 @@
         38991200650
       ],
       "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 8332050ca00104805d3a7539f1e46b39418d1426. In the latest 20 completed docs.yml runs from 2026-10-17T01:31:03Z through 2026-10-17T05:33:49Z, 19 runs concluded success and 1 concluded skipped; none failed or were cancelled. All 20 runs shared the same head SHA, but only 3 successful runs executed both docs build and deploy (39005420152, 39000135333, and 38995249093). The other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
-    },
-    {
-      "evaluated_at": "2026-10-17T05:26:28Z",
-      "worker_run_id": 39005926807,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        39006015140,
-        39005420152,
-        39004746498,
-        39003953054,
-        39003183241,
-        39002487464,
-        39001019650,
-        39000231517,
-        39000135333,
-        38999486422,
-        38998708389,
-        38997214076,
-        38996457368,
-        38995249093,
-        38995179876,
-        38993342825,
-        38992733552,
-        38991200650,
-        38990576500,
-        38995006790
-      ],
-      "outcome": "Evaluated category \"Astro documentation generation\" on source SHA 8332050ca00104805d3a7539f1e46b39418d1426. In the latest 20 completed docs.yml runs from 2026-10-17T01:22:28Z through 2026-10-17T05:22:29Z, 19 runs concluded success and 1 concluded skipped; none failed, were cancelled, timed out, or required action. All 20 docs runs shared the same head SHA 8332050ca00104805d3a7539f1e46b39418d1426, so the comparability requirement is satisfied on the current source, although only 4 successful workflow_run publishes executed the docs build and deploy jobs. Trusted metadata showed docs queue time median 0.0s (p90 0.0s), full workflow execution 12.0s (p90 78.4s) across successful runs, schedule-freshness 7.0s (p90 8.2s), build 50.5s (p90 53.8s) across the 4 successful build jobs, and deploy 10.5s (p90 15.9s) across the 4 successful deploy jobs. Docs step timings showed Set up Node.js 3.5s median, Restore node_modules 5.5s, Build documentation 14.5s (p90 15.7s), Restore cached CAO Dashboard 2.5s, Upload Pages artifact 10.5s, and Deploy Pages 7.0s. Bounded logs from docs runs 39005420152, 38995249093, and 38990576500 verified warm setup-node npm, node_modules, and central-agentic-ops-dashboard cache hits on every sampled build; Astro built 76 pages in 12.27s, 8.14s, and 11.86s; /llms-full.txt remained the slowest visible route at about +960ms to +1.54s; Pagefind ran after the page build; and github-pages artifacts finalized at 55.5 MB, 57.5 MB, and 50.4 MB. Relevant cao-dashboard.yml evidence from the latest 20 completed dashboard runs provided 11 successful builds and 9 skipped callbacks, with dashboard queue time median 0.0s (p90 0.0s), full workflow execution 175.0s (p90 254.0s), build 156.0s (p90 237.0s), and cache 11.0s (p90 12.0s). Dashboard step timings showed Restore collected activity data 5.0s median, Install dashboard build dependencies 4.0s, Upgrade fallback activity data 117.0s (p90 168.0s), Assess activity database health 11.0s, Assemble Dashboard Language site 4.0s, Upload dashboard artifact 9.0s, cache-job Download dashboard artifact 4.0s, Delete previous dashboard cache 1.0s, and Save dashboard cache 3.0s. Bounded logs from dashboard runs 39005275855, 38999928989, and 38984482860 verified cao-activity cache hits; dashboard npm ci adding only 10 packages in 1-4s; copied SQLite payloads of 497.7 MiB to 580.2 MiB plus 346 to 388 activity shards totaling 323.2 MiB to 367.9 MiB; dashboard artifact uploads of 45.3 MB to 53.7 MB; and one outlier where Upgrade fallback activity data alone took 290s in run 38984482860. No new recommendation in this category is actionable because docs-side Astro generation remains a stable secondary cost at 8-16s, the largest visible per-route cost is still /llms-full.txt at roughly 1-1.5s, and no concrete workflow-only Astro change is evidenced to save at least 60 seconds or materially more than 15 percent of median execution time without weakening correctness, freshness, or deployment safety. The dominant repeated cost remains dashboard activity-data upgrade outside this category."
     }
   ]
 }
