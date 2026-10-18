@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "cases": [
+    {"id":"BG-01-unique","events":[{"kind":"issues","number":1},{"kind":"issues","number":2},{"kind":"issues","number":1}],"contexts":[2]},
+    {"id":"BG-02-kinds","events":[{"kind":"issues","number":1},{"kind":"issue_comment","number":2}],"contexts":[1,1]},
+    {"id":"BG-03-singleton","events":[{"kind":"issues","number":1}],"contexts":[1]}
+  ]
+}

@@ -162,11 +162,18 @@ func (q *webhookQueue) spendRates(t *transaction, job wg.Job) error {
 	return nil
 }
 
-func (q *webhookQueue) Finish(ctx context.Context, fence wg.Fence, outcome wg.Outcome) (wg.Job, error) {
+func validateWebhookOutcome(outcome wg.Outcome) error {
 	if len(outcome.Reason) > 512 || strings.ContainsRune(outcome.Reason, 0) || !utf8.ValidString(outcome.Reason) ||
 		(!webhookTerminal(outcome.State) && outcome.State != wg.Ready) ||
 		(outcome.State != wg.Succeeded && (outcome.AcceptedStatus != 0 || outcome.WorkflowRunID != 0)) {
-		return wg.Job{}, wg.ErrInvalid
+		return wg.ErrInvalid
+	}
+	return nil
+}
+
+func (q *webhookQueue) Finish(ctx context.Context, fence wg.Fence, outcome wg.Outcome) (wg.Job, error) {
+	if err := validateWebhookOutcome(outcome); err != nil {
+		return wg.Job{}, err
 	}
 	var job wg.Job
 	err := q.transact(ctx, func(t *transaction) error {

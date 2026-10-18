@@ -144,11 +144,19 @@ func (l *dispatchAPILimiter) TakeRateLimitToken(_ context.Context, _ string, _ i
 func TestDispatchAPIBudgetRefusalIsKnownNotSent(t *testing.T) {
 	limiter := &dispatchAPILimiter{remaining: 2}
 	client, calls := demoDispatchClient(t, BudgetTransport{Limiter: limiter})
-	subscription := gateway.Subscription{Provider: "github", AppID: 2,
+	subscription := gateway.Subscription{SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", AppID: 2,
+		ID: "budget", TenantID: "tenant", Source: gateway.Source{ID: "source", Event: "issues", InstallationID: 10, RepositoryID: 11},
+		Delivery: gateway.DeliveryPolicy{TTLSeconds: 600, LeaseSeconds: 60, MaxAttempts: 3, RetryDelaySeconds: 1},
 		Destination: gateway.Destination{Kind: "workflow_dispatch", InstallationID: 20, RepositoryID: 21,
-			Workflow: "project-change.yml", Ref: "main"}}
+			Workflow: "project-change.yml", Ref: "main", GatewayInput: true, BatchInput: true}}
+	provenance, _ := json.Marshal(map[string]any{"version": "cao.webhook-batch/v1", "sourceId": "source",
+		"subscriptionId": "budget", "batchId": strings.Repeat("b", 64), "revision": gateway.Revision{
+			RepositoryID: 21, CommitSHA: strings.Repeat("c", 40), MetadataPath: "subscription.json",
+			Digest: strings.Repeat("a", 64), CompilerID: "fixture"}})
+	payload, _ := json.Marshal(map[string]any{"ref": "main", "inputs": map[string]any{
+		"schema_version": "2", "event": "issues", "delivery_ids": `["delivery"]`, "aw_context": `[{}]`, "_gateway": string(provenance)}})
 	response := (githubapp.WebhookGatewayDispatcher{Client: client}).Dispatch(t.Context(), subscription,
-		json.RawMessage(`{"ref":"main","inputs":{}}`))
+		payload)
 	if limiter.remaining != -1 || calls.Load() != 0 || response.TransportOutcome != "not-sent" || response.StatusCode != 0 {
 		t.Fatalf("local budget refusal was not classified as unsent: %+v", response)
 	}

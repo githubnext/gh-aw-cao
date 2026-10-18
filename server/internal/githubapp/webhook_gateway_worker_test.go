@@ -55,6 +55,24 @@ func (q *gatewayWorkerQueue) Finish(_ context.Context, fence webhookgateway.Fenc
 	return job, err
 }
 
+func (q *gatewayWorkerQueue) ClaimBatch(ctx context.Context, request webhookgateway.ClaimRequest) ([]webhookgateway.Job, error) {
+	job, err := q.Claim(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	return []webhookgateway.Job{*job}, nil
+}
+
+func (q *gatewayWorkerQueue) BeginDispatchBatch(ctx context.Context, fences []webhookgateway.Fence, evidence []webhookgateway.Authorization) ([]webhookgateway.Job, error) {
+	job, err := q.BeginDispatch(ctx, fences[0], evidence[0])
+	return []webhookgateway.Job{job}, err
+}
+
+func (q *gatewayWorkerQueue) FinishBatch(ctx context.Context, fences []webhookgateway.Fence, outcome webhookgateway.Outcome) ([]webhookgateway.Job, error) {
+	job, err := q.Finish(ctx, fences[0], outcome)
+	return []webhookgateway.Job{job}, err
+}
+
 type gatewayWorkerPolicy struct{ snapshot webhookgateway.PolicySnapshot }
 
 func (p gatewayWorkerPolicy) Load(context.Context) (webhookgateway.PolicySnapshot, error) {
@@ -98,8 +116,15 @@ func TestWebhookGatewayWorkerToHTTPPreservesCompleteRequest(t *testing.T) {
 	}
 	policy := webhookgateway.QueueRevision{Revision: 1, Digest: strings.Repeat("a", 64), Enabled: true}
 	job.QueueRevision = policy
-	queue := &gatewayWorkerQueue{job: job}
 	revision := webhookgateway.Revision{RepositoryID: 42, CommitSHA: strings.Repeat("c", 40), MetadataPath: "compiled/metadata.json", Digest: digest, CompilerID: "gh-aw"}
+	job.Payload, err = json.Marshal(map[string]any{"event_type": subscription.Destination.EventType,
+		"client_payload": map[string]any{"selected": "chosen", "_gateway": map[string]any{
+			"version": "cao.webhook/v1", "sourceId": subscription.Source.ID, "deliveryId": "delivery",
+			"subscriptionId": subscription.ID, "revision": revision}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	queue := &gatewayWorkerQueue{job: job}
 	posts := 0
 	client := gatewayTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if gatewayAuthorityResponse(w, r) {
@@ -116,8 +141,8 @@ func TestWebhookGatewayWorkerToHTTPPreservesCompleteRequest(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			t.Error(err)
 		}
-		if request.EventType != subscription.Destination.EventType || string(request.Payload["selected"]) != `"chosen"` ||
-			len(request.Payload) != 1 {
+		if request.EventType != subscription.Destination.EventType || string(request.Payload["aw_context"]) != `[{"selected":"chosen"}]` ||
+			len(request.Payload) != 5 {
 			t.Errorf("incorrect real worker HTTP body: %+v", request)
 		}
 		w.WriteHeader(http.StatusNoContent)

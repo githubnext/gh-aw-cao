@@ -25,9 +25,21 @@ type Authorizer interface {
 	Authorize(context.Context, Job) (AuthorizationSnapshot, error)
 }
 
+// BatchAuthorizer may share fresh GitHub facts only across identical authority
+// boundaries, returning separately claim-bound evidence for every member.
+type BatchAuthorizer interface {
+	AuthorizeBatch(context.Context, []Job) ([]AuthorizationSnapshot, error)
+}
+
 // Dispatcher performs exactly one external attempt. It must honor cancellation.
 type Dispatcher interface {
 	Dispatch(context.Context, Subscription, json.RawMessage) DispatchResponse
+}
+
+// CompilerDispatcher carries approved revision evidence outside the compiler's
+// closed wire envelope. Absence of this capability must never bypass preflight.
+type CompilerDispatcher interface {
+	DispatchCompiler(context.Context, Subscription, json.RawMessage, Revision) DispatchResponse
 }
 
 // Budget reserves shared installation quota before the durable dispatch
@@ -123,9 +135,6 @@ func buildGatewayDispatchPayload(subscription Subscription, event Event, revisio
 	payload, err := json.Marshal(request)
 	if err != nil || len(payload) > resolved.MaxDispatchBytes ||
 		(propertyKey == "client_payload" && len(payload) >= 65536) {
-		return nil, ErrInvalid
-	}
-	if subscription.Compiler != nil && !compilerPayloadFits(subscription, payload, properties, resolved) {
 		return nil, ErrInvalid
 	}
 	return payload, nil

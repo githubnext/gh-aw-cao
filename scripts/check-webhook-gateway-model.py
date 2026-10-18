@@ -32,7 +32,8 @@ def main():
     parser.add_argument("--work-dir", help="optional scratch override (any directory)")
     parser.add_argument("--model", default="specs/tla/WebhookGateway.tla",
                         choices=("specs/tla/WebhookGateway.tla",
-                                 "specs/tla/WebhookSubscriptionRegistry.tla"))
+                                                 "specs/tla/WebhookDispatchBatch.tla",
+                                                 "specs/tla/WebhookSubscriptionRegistry.tla"))
     parser.add_argument("--config", help="configuration (defaults beside model)")
     parser.add_argument("--result", help="result JSON (defaults beside configuration)")
     args = parser.parse_args()
@@ -89,6 +90,7 @@ def run_model(args, work):
         ("capacity", "Capacity"), ("max_time", "MaxTime"),
         ("max_generation", "MaxGeneration"), ("max_version", "MaxVersion"),
         ("fresh_window", "FreshWindow"),
+        ("max_batch", "MaxBatch"), ("budget", "Budget"),
     ):
         match = re.search(rf"{name}\s*=\s*(\d+)", config_text)
         if match:

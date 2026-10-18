@@ -189,6 +189,10 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			TraceParent: traceParent,
 			CreatedAt:   now, ExpiresAt: now.Add(time.Duration(subscription.Delivery.TTLSeconds) * time.Second), NotBefore: now,
 		}
+		if _, err := BuildDispatchBatch([]Job{job}); err != nil {
+			respond(http.StatusBadRequest, "invalid")
+			return
+		}
 		authCtx, authEnd := gatewayStage(ctx, "admission_authorization", event.Name)
 		authorization, err := h.Authorizer.Authorize(authCtx, job)
 		if err != nil || !authorization.Complete {

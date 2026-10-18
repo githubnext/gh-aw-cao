@@ -112,6 +112,24 @@ func (q *boundaryQueue) Finish(_ context.Context, fence wg.Fence, outcome wg.Out
 	return q.job, nil
 }
 
+func (q *boundaryQueue) ClaimBatch(ctx context.Context, request wg.ClaimRequest) ([]wg.Job, error) {
+	job, err := q.Claim(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	return []wg.Job{*job}, nil
+}
+
+func (q *boundaryQueue) BeginDispatchBatch(ctx context.Context, fences []wg.Fence, evidence []wg.Authorization) ([]wg.Job, error) {
+	job, err := q.BeginDispatch(ctx, fences[0], evidence[0])
+	return []wg.Job{job}, err
+}
+
+func (q *boundaryQueue) FinishBatch(ctx context.Context, fences []wg.Fence, outcome wg.Outcome) ([]wg.Job, error) {
+	job, err := q.Finish(ctx, fences[0], outcome)
+	return []wg.Job{job}, err
+}
+
 func TestWorkerProductionHTTPBoundaryCompletePayload(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -131,6 +149,7 @@ func TestWorkerProductionHTTPBoundaryCompletePayload(t *testing.T) {
 			if kind == "workflow_dispatch" {
 				sub.Destination.EventType, sub.Destination.Workflow, sub.Destination.Ref = "", "project.yml", "main"
 				sub.Destination.GatewayInput = true
+				sub.Destination.BatchInput = true
 			}
 			revision := wg.Revision{RepositoryID: 42, CommitSHA: strings.Repeat("c", 40), MetadataPath: "compiled/subscription.json",
 				Digest: wg.MetadataDigest([]byte("artifact")), CompilerID: "gh-aw"}
@@ -221,7 +240,15 @@ func TestWorkerProductionHTTPBoundaryCompletePayload(t *testing.T) {
 			if err := json.Unmarshal(envelope[field], &properties); err != nil {
 				t.Fatal(err)
 			}
-			if len(envelope) != 2 || len(properties) != 2 || string(properties["issue_id"]) != `"9"` || len(properties["_gateway"]) == 0 {
+			context := properties["aw_context"]
+			if kind == "workflow_dispatch" {
+				var text string
+				if err := json.Unmarshal(context, &text); err != nil {
+					t.Fatal(err)
+				}
+				context = []byte(text)
+			}
+			if len(envelope) != 2 || len(properties) != 5 || string(context) != `[{"issue_id":"9"}]` || len(properties["_gateway"]) == 0 {
 				t.Fatalf("double wrapping or missing provenance: %s", envelope[field])
 			}
 			if _, exists := properties[field]; exists {

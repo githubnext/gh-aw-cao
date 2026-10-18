@@ -67,7 +67,7 @@ func TestProjectsV2GatewayPostgresDemonstration(t *testing.T) {
 			{Op: "eq", Path: "/changes/field_value/field_node_id", Value: json.RawMessage(`"PVTSSF_example_status_field"`)},
 		}},
 		Destination: gateway.Destination{Kind: "workflow_dispatch", InstallationID: 20, RepositoryID: 21,
-			Workflow: "project-change.yml", Ref: "main", GatewayInput: true, Fields: []gateway.PayloadField{
+			Workflow: "project-change.yml", Ref: "main", GatewayInput: true, BatchInput: true, Fields: []gateway.PayloadField{
 				{Name: "project", Path: &projectPath, Required: true}, {Name: "field_type", Path: &fieldPath, Required: true},
 			}},
 		Delivery: gateway.DeliveryPolicy{TTLSeconds: 86400, LeaseSeconds: 60, MaxAttempts: 5, RetryDelaySeconds: 10},
@@ -212,8 +212,13 @@ func demoDispatchClient(t *testing.T, transports ...http.RoundTripper) (*githuba
 				Inputs map[string]json.RawMessage `json:"inputs"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.Ref != "main" ||
-				len(request.Inputs) != 3 || len(request.Inputs["_gateway"]) == 0 || string(request.Inputs["project"]) != `"PVT_example_project"` ||
-				string(request.Inputs["field_type"]) != `"single_select"` {
+				len(request.Inputs) != 5 || len(request.Inputs["_gateway"]) == 0 {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
+			var context string
+			if json.Unmarshal(request.Inputs["aw_context"], &context) != nil ||
+				context != `[{"field_type":"single_select","project":"PVT_example_project"}]` {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				return
 			}

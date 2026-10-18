@@ -131,7 +131,7 @@ func RegistryPolicy(base PolicySnapshot, registry RegistrySnapshot, now time.Tim
 		}
 		for _, workflow := range record.Workflows {
 			for _, trigger := range workflow.Triggers {
-				if !config.ActivateSecurity || SecurityEventPermission(trigger.Event) == "" {
+				if !config.ActivateSecurity || trigger.SchemaVersion != 2 || SecurityEventPermission(trigger.Event) == "" {
 					continue
 				}
 				subscription, revision, grant, err := discoveredSecuritySubscription(base.Policy, *binding, record, workflow, trigger)

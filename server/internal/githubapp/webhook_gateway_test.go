@@ -29,6 +29,11 @@ func gatewayTestSubscription(kind string) webhookgateway.Subscription {
 		Delivery: webhookgateway.DeliveryPolicy{TTLSeconds: 60, LeaseSeconds: 30, MaxAttempts: 2, RetryDelaySeconds: 1},
 		Destination: webhookgateway.Destination{
 			Kind: kind, InstallationID: 7, RepositoryID: 42, Workflow: "123", Ref: "main",
+			GatewayInput: true, BatchInput: true,
+			Fields: []webhookgateway.PayloadField{
+				{Name: "delivery", Literal: json.RawMessage(`"abc"`)},
+				{Name: "number", Literal: json.RawMessage(`12`)},
+			},
 		},
 	}
 	if kind == "repository_dispatch" {
@@ -39,12 +44,51 @@ func gatewayTestSubscription(kind string) webhookgateway.Subscription {
 }
 
 func gatewayTestEnvelope(subscription webhookgateway.Subscription, fields json.RawMessage) json.RawMessage {
-	body := map[string]any{"ref": subscription.Destination.Ref, "inputs": fields}
-	if subscription.Destination.Kind == "repository_dispatch" {
-		body = map[string]any{"event_type": subscription.Destination.EventType, "client_payload": fields}
+	properties := map[string]any{"schema_version": 2, "event": subscription.Source.Event,
+		"delivery_ids": []string{"delivery"}, "aw_context": []json.RawMessage{fields},
+		"_gateway": map[string]any{"version": "cao.webhook-batch/v1", "sourceId": subscription.Source.ID,
+			"subscriptionId": subscription.ID, "batchId": strings.Repeat("b", 64),
+			"revision": webhookgateway.Revision{RepositoryID: 42, CommitSHA: strings.Repeat("c", 40),
+				MetadataPath: "compiled/subscription.json", Digest: strings.Repeat("a", 64), CompilerID: "fixture"}}}
+	body := map[string]any{"event_type": subscription.Destination.EventType, "client_payload": properties}
+	if subscription.Destination.Kind == "workflow_dispatch" {
+		for _, key := range []string{"schema_version", "delivery_ids", "aw_context", "_gateway"} {
+			encoded, _ := json.Marshal(properties[key])
+			properties[key] = string(encoded)
+		}
+		body = map[string]any{"ref": subscription.Destination.Ref, "inputs": properties}
 	}
 	encoded, _ := json.Marshal(body)
 	return encoded
+}
+
+func gatewayReceivedContext(t *testing.T, kind string, raw json.RawMessage) string {
+	t.Helper()
+	var properties map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &properties); err != nil {
+		t.Fatal(err)
+	}
+	context := properties["aw_context"]
+	if kind == "workflow_dispatch" {
+		var text string
+		if err := json.Unmarshal(context, &text); err != nil {
+			t.Fatal(err)
+		}
+		context = []byte(text)
+	}
+	return string(context)
+}
+
+func TestWorkflowDispatchRequiresExplicitBatchInput(t *testing.T) {
+	subscription := gatewayTestSubscription("workflow_dispatch")
+	payload := gatewayTestEnvelope(subscription, json.RawMessage(`{}`))
+	if err := webhookgateway.ValidateBatchDispatchPayload(subscription, payload, webhookgateway.DefaultLimits()); err != nil {
+		t.Fatal("invalid positive workflow batch fixture", err)
+	}
+	subscription.Destination.BatchInput = false
+	if webhookgateway.ValidateBatchDispatchPayload(subscription, payload, webhookgateway.DefaultLimits()) == nil {
+		t.Fatal("workflow without explicit batch input capability accepted")
+	}
 }
 
 func TestWebhookGatewayDispatchDomainPayloadIsNotDoubleWrapped(t *testing.T) {
@@ -62,16 +106,13 @@ func TestWebhookGatewayDispatchDomainPayloadIsNotDoubleWrapped(t *testing.T) {
 			})
 			subscription := gatewayTestSubscription(kind)
 			subscription.Destination.Fields = []webhookgateway.PayloadField{{Name: "delivery", Literal: json.RawMessage(`"abc"`)}}
-			payload, err := webhookgateway.BuildDispatchPayload(subscription, webhookgateway.Event{Payload: json.RawMessage(`{}`)}, webhookgateway.Limits{})
-			if err != nil {
-				t.Fatal(err)
-			}
+			payload := gatewayTestEnvelope(subscription, json.RawMessage(`{"delivery":"abc"}`))
 			response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, payload)
 			field := "inputs"
 			if kind == "repository_dispatch" {
 				field = "client_payload"
 			}
-			if response.StatusCode != http.StatusNoContent || len(received) != 2 || string(received[field]) != `{"delivery":"abc"}` {
+			if response.StatusCode != http.StatusNoContent || len(received) != 2 || gatewayReceivedContext(t, kind, received[field]) != `[{"delivery":"abc"}]` {
 				t.Fatalf("response=%+v received=%v", response, received)
 			}
 		})
@@ -173,7 +214,7 @@ func TestWebhookGatewayDispatchRequests(t *testing.T) {
 				if kind == "workflow_dispatch" {
 					field, selector, wantSelector = "inputs", "ref", `"main"`
 				}
-				if string(body[field]) != `{"delivery":"abc","number":12}` || string(body[selector]) != wantSelector {
+				if gatewayReceivedContext(t, kind, body[field]) != `[{"delivery":"abc","number":12}]` || string(body[selector]) != wantSelector {
 					t.Errorf("unexpected payload: %v", body)
 				}
 				w.WriteHeader(http.StatusNoContent)
@@ -277,8 +318,8 @@ func TestWebhookGatewayDispatchDocumentedLimits(t *testing.T) {
 		size       int
 		wantPost   bool
 	}{
-		{"workflow-25", "workflow_dispatch", 25, "", 0, true},
-		{"workflow-26", "workflow_dispatch", 26, "", 0, false},
+		{"workflow-context-10", "workflow_dispatch", 10, "", 0, true},
+		{"workflow-context-11", "workflow_dispatch", 11, "", 0, false},
 		{"repository-10", "repository_dispatch", 10, "", 0, true},
 		{"repository-11", "repository_dispatch", 11, "", 0, false},
 		{"event-type-100", "repository_dispatch", 1, strings.Repeat("x", 100), 0, true},
@@ -309,6 +350,12 @@ func TestWebhookGatewayDispatchDocumentedLimits(t *testing.T) {
 				t.Fatal(err)
 			}
 			subscription := gatewayTestSubscription(test.kind)
+			subscription.Destination.Fields = nil
+			path := "/safe"
+			for name := range fields {
+				subscription.Destination.Fields = append(subscription.Destination.Fields,
+					webhookgateway.PayloadField{Name: name, Path: &path})
+			}
 			if test.eventType != "" {
 				subscription.Destination.EventType = test.eventType
 			}
@@ -513,7 +560,7 @@ func TestWebhookGatewayDispatchExistingAppAuthentication(t *testing.T) {
 		t.Fatal(err)
 	}
 	subscription := gatewayTestSubscription("repository_dispatch")
-	response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"ok":true}`)))
+	response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{}`)))
 	if response.StatusCode != 204 || tokenMints != 1 || posts != 1 {
 		t.Fatalf("response=%+v mints=%d posts=%d", response, tokenMints, posts)
 	}

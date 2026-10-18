@@ -361,7 +361,7 @@ func dispatch(ctx context.Context, policy gateway.PolicySnapshot, loader, baseLo
 		// Opaque bounded worker identity; hostnames never enter metric labels.
 		owner := gateway.MetadataDigest([]byte(strings.Join([]string{hostname, strconv.Itoa(os.Getpid()), strconv.Itoa(i)}, ":")))[:32]
 		worker := &gateway.Worker{Policies: loader, Queue: queue, Authorizer: authority, Dispatcher: gate, Budget: gate,
-			Owner: owner, HTTPTimeout: 20 * time.Second, LeaseDuration: time.Minute}
+			Owner: owner, HTTPTimeout: 20 * time.Second, LeaseDuration: time.Minute, BatchWindow: gateway.DispatchBatchWindow}
 		workers.Go(func() { _ = worker.Run(ctx) })
 	}
 	<-ctx.Done()

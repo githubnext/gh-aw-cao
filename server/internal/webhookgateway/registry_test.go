@@ -1,8 +1,11 @@
 package webhookgateway
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +23,7 @@ func discoveryFixture(t *testing.T) (PolicySnapshot, RegistrySnapshot) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	triggers, err := ParseWorkflowManifest(manifestFixture(t), ".github/workflows/test.lock.yml", DefaultLimits())
+	triggers, err := ParseWorkflowManifest(batchManifestFixture(t), ".github/workflows/test.lock.yml", DefaultLimits())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,11 +34,24 @@ func discoveryFixture(t *testing.T) (PolicySnapshot, RegistrySnapshot) {
 	now := time.Now().UTC()
 	records := []RepositoryInventory{{RepositoryID: 11, OwnerID: 12, OwnerType: "Organization", Visibility: "private",
 		CommitSHA: strings.Repeat("c", 40), CheckedAt: now, AttemptedAt: now,
-		Workflows: []DiscoveredWorkflow{{Path: ".github/workflows/test.lock.yml", SHA256: MetadataDigest(manifestFixture(t)), Triggers: declarations}}}}
+		Workflows: []DiscoveredWorkflow{{Path: ".github/workflows/test.lock.yml", SHA256: MetadataDigest(batchManifestFixture(t)), Triggers: declarations}}}}
 	registry := RegistrySnapshot{Version: 1, Control: base.Revision, Records: records}
 	registry.Revision = QueueRevision{Revision: 2, Enabled: true}
 	refreshRegistryDigest(t, &registry)
 	return base, registry
+}
+
+func batchManifestFixture(t *testing.T) []byte {
+	t.Helper()
+	data, err := os.ReadFile("../../../specs/fixtures/webhook-manifest-v2.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, data); err != nil {
+		t.Fatal(err)
+	}
+	return []byte("# gh-aw-manifest: " + compact.String() + "\nname: batch-contract-fixture\n")
 }
 
 func refreshRegistryDigest(t *testing.T, registry *RegistrySnapshot) {
@@ -89,7 +105,7 @@ func TestRegistrySecurityEnrollmentAndFreshness(t *testing.T) {
 			}
 			want := 0
 			if scenario == "active" {
-				want = 3
+				want = 2
 			}
 			if len(policy.Subscriptions) != want {
 				t.Fatalf("subscriptions=%d want=%d", len(policy.Subscriptions), want)
@@ -113,11 +129,12 @@ func TestCompilerProjectionConformsWithoutRawSecurityPayload(t *testing.T) {
 	}
 	for _, s := range policy.Subscriptions {
 		t.Run(s.Source.Event, func(t *testing.T) {
-			raw := []byte(`{"action":"created","installation":{"id":10},"organization":{"id":12},
-				"repository":{"id":11,"private":true,"visibility":"private","name":"not-forwarded"},
-				"alert":{"number":42,"state":"open","publicly_leaked":true,"secret":"NEVER-FORWARD",
+			family := strings.TrimSuffix(strings.ReplaceAll(s.Source.Event, "_", "-"), "-alert")
+			raw := []byte(fmt.Sprintf(`{"action":"created","installation":{"id":10},"organization":{"id":12},
+				"repository":{"id":11,"private":true,"visibility":"private","full_name":"approved/exact","name":"not-forwarded"},
+				"alert":{"number":42,"url":"https://api.github.com/repos/approved/exact/%s/alerts/42","state":"open","publicly_leaked":true,"secret":"NEVER-FORWARD",
 				"title":"NEVER-FORWARD","body":"NEVER-FORWARD","assignees":[{"login":"octocat"}],
-				"rule":{"id":"example","severity":"high"},"security_advisory":{"severity":"critical"}}}`)
+				"rule":{"id":"example","severity":"high"},"security_advisory":{"severity":"critical"}}}`, family))
 			event, err := ParseEvent("delivery", s.Source.Event, raw, DefaultLimits())
 			if err != nil {
 				t.Fatal(err)
@@ -138,23 +155,46 @@ func TestCompilerProjectionConformsWithoutRawSecurityPayload(t *testing.T) {
 			if err := ValidateDispatchPayload(s, payload, DefaultLimits()); err != nil {
 				t.Fatal(err)
 			}
-			var encoded map[string]json.RawMessage
-			if err := json.Unmarshal(payload, &encoded); err != nil {
-				t.Fatal(err)
-			}
 			tight := s
 			contract := *s.Compiler
-			contract.Dispatch.MaxRequestBytes = len(payload)
-			contract.Dispatch.MaxPayloadBytes = len(encoded["client_payload"])
 			tight.Compiler = &contract
-			if _, err := buildGatewayDispatchPayload(tight, event, policy.Revisions[s.ID], DefaultLimits()); err != nil {
-				t.Fatal("exact compiler request/payload ceilings rejected", err)
+			job, err := NewJob(time.Now(), "compiler-job", event, s, policy.Revisions[s.ID].Digest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			job.Payload = payload
+			batch, err := BuildDispatchBatch([]Job{job})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var framed map[string]json.RawMessage
+			if err := json.Unmarshal(batch, &framed); err != nil {
+				t.Fatal(err)
+			}
+			contract.Dispatch.MaxRequestBytes = len(batch)
+			contract.Dispatch.MaxPayloadBytes = len(framed["client_payload"])
+			if err := ValidateBatchDispatchPayload(tight, batch, DefaultLimits()); err != nil {
+				t.Fatal("exact framed batch byte ceilings rejected", err)
+			}
+			exact := job
+			exact.Subscription = tight
+			exact.Payload, err = buildGatewayDispatchPayload(tight, event, policy.Revisions[s.ID], DefaultLimits())
+			if err != nil {
+				t.Fatal("internal provenance incorrectly consumed compiler wire byte budget", err)
+			}
+			if _, err := BuildDispatchBatch([]Job{exact}); err != nil {
+				t.Fatal("exact framed compiler budget failed production batch construction", err)
 			}
 			contract.Dispatch.MaxRequestBytes--
-			if _, err := buildGatewayDispatchPayload(tight, event, policy.Revisions[s.ID], DefaultLimits()); err == nil {
-				t.Fatal("one-byte excess after provenance injection accepted")
+			if ValidateBatchDispatchPayload(tight, batch, DefaultLimits()) == nil {
+				t.Fatal("batch request one-byte excess accepted")
 			}
-			if revision, err := DispatchRevision(s, payload); err != nil || revision != policy.Revisions[s.ID] {
+			contract.Dispatch.MaxRequestBytes++
+			contract.Dispatch.MaxPayloadBytes--
+			if ValidateBatchDispatchPayload(tight, batch, DefaultLimits()) == nil {
+				t.Fatal("batch context one-byte excess accepted")
+			}
+			if revision, err := DispatchRevision([]Job{job}); err != nil || revision != policy.Revisions[s.ID] {
 				t.Fatalf("lost runtime provenance: %+v %v", revision, err)
 			}
 			var envelope map[string]any
@@ -175,7 +215,7 @@ func TestCompilerProjectionConformsWithoutRawSecurityPayload(t *testing.T) {
 			trigger := *s.Compiler
 			trigger.Dispatch.MaxPayloadBytes, trigger.Dispatch.MaxRequestBytes = 200, 200
 			bad.Compiler = &trigger
-			if _, err := buildGatewayDispatchPayload(bad, event, policy.Revisions[s.ID], DefaultLimits()); err == nil {
+			if ValidateBatchDispatchPayload(bad, batch, DefaultLimits()) == nil {
 				t.Fatal("compiler byte ceiling ignored")
 			}
 		})

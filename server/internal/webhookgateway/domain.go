@@ -103,8 +103,10 @@ type Destination struct {
 	Ref            string `json:"ref,omitempty"`
 	EventType      string `json:"eventType,omitempty"`
 	// GatewayInput asserts that the compiled workflow declares the reserved _gateway input.
-	GatewayInput bool           `json:"gatewayInput,omitempty"`
-	Fields       []PayloadField `json:"fields"`
+	GatewayInput bool `json:"gatewayInput,omitempty"`
+	// BatchInput asserts all five reserved batch inputs are declared by the workflow.
+	BatchInput bool           `json:"batchInput,omitempty"`
+	Fields     []PayloadField `json:"fields"`
 }
 
 // PayloadField copies an allowlisted scalar/scalar array or a compiler literal
@@ -328,6 +330,7 @@ type AdmissionResult struct {
 type ClaimRequest struct {
 	Owner         string        `json:"owner"`
 	LeaseDuration time.Duration `json:"leaseDuration"`
+	BatchWindow   time.Duration `json:"batchWindow"`
 }
 
 // Fence is the exact owner, generation, and version required for a mutation.

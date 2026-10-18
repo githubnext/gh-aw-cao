@@ -2,15 +2,15 @@ package webhookgateway
 
 import (
 	"encoding/json"
-	"reflect"
-	"strconv"
+	"net/url"
+	"regexp"
 	"strings"
 )
 
 func validateCompilerSubscription(s Subscription, l Limits) error {
 	t := s.Compiler
 	id := strings.TrimSuffix(strings.TrimPrefix(t.Dispatch.Workflow, ".github/workflows/"), ".lock.yml")
-	if !identifier(id) || t.Dispatch.Workflow != ".github/workflows/"+id+".lock.yml" ||
+	if t.SchemaVersion != 2 || !identifier(id) || t.Dispatch.Workflow != ".github/workflows/"+id+".lock.yml" ||
 		s.Source.ID != CompilerSourceID || SecurityEventPermission(t.Event) == "" || t.Event != s.Source.Event ||
 		s.Source.RepositoryID <= 0 || s.Source.RepositoryID != s.Destination.RepositoryID ||
 		s.Destination.Kind != "repository_dispatch" || s.Destination.EventType != t.Dispatch.EventType ||
@@ -22,56 +22,38 @@ func validateCompilerSubscription(s Subscription, l Limits) error {
 	return validateCompilerTrigger(*t, t.Dispatch.Workflow, id, l)
 }
 
-var compilerProjectionPaths = []string{
-	"/action", "/repository/id", "/repository/private", "/repository/visibility",
-	"/installation/id", "/organization/id", "/alert/number", "/alert/state",
-	"/alert/security_advisory/severity", "/alert/rule/severity", "/alert/rule/id",
-	"/alert/secret_type", "/alert/resolution",
+var compilerAlertPath = regexp.MustCompile(`^/repos/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+/(code-scanning|dependabot)/alerts/[1-9][0-9]*$`)
+
+func validCompilerAlertURL(event string, value any) bool {
+	text, ok := value.(string)
+	if !ok {
+		return false
+	}
+	parsed, err := url.Parse(text)
+	family := map[string]string{"dependabot_alert": "dependabot", "code_scanning_alert": "code-scanning"}[event]
+	return err == nil && family != "" && parsed.Scheme == "https" && parsed.Host == "api.github.com" &&
+		parsed.User == nil && parsed.RawQuery == "" && !parsed.ForceQuery && parsed.Fragment == "" &&
+		parsed.RawPath == "" && parsed.String() == text && compilerAlertPath.MatchString(parsed.Path) &&
+		strings.Contains(parsed.Path, "/"+family+"/alerts/")
 }
 
 // compilerProjection is an explicit scalar allowlist, not raw-body forwarding.
 // In particular secret-scanning secret values and payload titles/bodies cannot
 // enter either durable jobs or the generated workflow's inline context.
 func compilerProjection(root any, l Limits) (map[string]any, error) {
-	result := make(map[string]any)
-	for _, path := range compilerProjectionPaths {
-		value, exists := lookup(root, path, l)
-		if !exists || value == nil {
-			continue
-		}
-		if !scalar(value) {
-			return nil, ErrInvalid
-		}
-		switch path {
-		case "/repository/id", "/installation/id", "/organization/id", "/alert/number":
-			if !positiveSafeInteger(value) {
-				return nil, ErrInvalid
-			}
-		case "/repository/private":
-			if value != true {
-				return nil, ErrUnauthorized
-			}
-		default:
-			if _, ok := value.(string); !ok || path == "/repository/visibility" && value != "private" {
-				return nil, ErrInvalid
-			}
-		}
-		parts, _ := pointer(path, l)
-		parent := result
-		for _, part := range parts[:len(parts)-1] {
-			if parent[part] == nil {
-				parent[part] = make(map[string]any)
-			}
-			parent = parent[part].(map[string]any)
-		}
-		parent[parts[len(parts)-1]] = value
-	}
-	for _, path := range []string{"/action", "/repository/id", "/repository/private", "/installation/id", "/alert/number"} {
-		if _, exists := lookup(result, path, l); !exists {
+	for _, path := range []string{"/repository/id", "/installation/id", "/alert/number"} {
+		if value, exists := lookup(root, path, l); !exists || !positiveSafeInteger(value) {
 			return nil, ErrInvalid
 		}
 	}
-	return result, nil
+	if private, _ := lookup(root, "/repository/private", l); private != true {
+		return nil, ErrUnauthorized
+	}
+	value, exists := lookup(root, "/alert/url", l)
+	if !exists {
+		return nil, ErrInvalid
+	}
+	return map[string]any{"url": value}, nil
 }
 
 func positiveSafeInteger(value any) bool {
@@ -88,18 +70,22 @@ func buildCompilerDispatchPayload(s Subscription, event Event, root any, l Limit
 	if err != nil {
 		return nil, err
 	}
+	if !validCompilerAlertURL(event.Name, payload["url"]) || !compilerTriggerAction(s.Compiler.Types, event.Action) {
+		return nil, ErrInvalid
+	}
+	repository, _ := lookup(root, "/repository/full_name", l)
+	number, _ := lookup(root, "/alert/number", l)
+	family := strings.TrimSuffix(strings.ReplaceAll(event.Name, "_", "-"), "-alert")
+	if repositoryName, ok := repository.(string); !ok ||
+		payload["url"] != "https://api.github.com/repos/"+repositoryName+"/"+family+"/alerts/"+string(number.(json.Number)) {
+		return nil, ErrInvalid
+	}
 	properties := map[string]any{"schema_version": 1, "event": event.Name, "delivery_id": event.DeliveryID, "payload": payload}
 	data, err := json.Marshal(map[string]any{"event_type": s.Destination.EventType, "client_payload": properties})
-	if err != nil || !compilerPayloadFits(s, data, properties, l) {
+	if err != nil || len(data) > l.MaxDispatchBytes {
 		return nil, ErrInvalid
 	}
 	return data, nil
-}
-
-func compilerPayloadFits(s Subscription, data []byte, properties any, l Limits) bool {
-	encoded, err := json.Marshal(properties)
-	return err == nil && len(data) <= l.MaxDispatchBytes && len(data) <= s.Compiler.Dispatch.MaxRequestBytes &&
-		len(encoded) <= s.Compiler.Dispatch.MaxPayloadBytes
 }
 
 func validateCompilerProperties(job Job, properties map[string]any, l Limits, bindIdentity bool) error {
@@ -126,29 +112,10 @@ func validateCompilerProperties(job Job, properties map[string]any, l Limits, bi
 	if !ok {
 		return ErrInvalid
 	}
-	projected, err := compilerProjection(root, l)
-	if err != nil || !reflect.DeepEqual(projected, root) {
+	if len(root) != 1 || !validCompilerAlertURL(s.Source.Event, root["url"]) {
 		return ErrInvalid
 	}
-	action, ok := root["action"].(string)
-	if !ok || !compilerTriggerAction(s.Compiler.Types, action) || bindIdentity && action != job.Event.Action {
-		return ErrInvalid
-	}
-	repository, _ := lookup(root, "/repository/id", l)
-	if repository != json.Number(strconv.FormatInt(s.Source.RepositoryID, 10)) {
-		return ErrInvalid
-	}
-	installation, _ := lookup(root, "/installation/id", l)
-	if installation != json.Number(strconv.FormatInt(s.Source.InstallationID, 10)) {
-		return ErrInvalid
-	}
-	if s.Source.OrganizationID > 0 {
-		organization, _ := lookup(root, "/organization/id", l)
-		if organization != json.Number(strconv.FormatInt(s.Source.OrganizationID, 10)) {
-			return ErrInvalid
-		}
-	}
-	if !compilerPayloadFits(s, job.Payload, properties, l) {
+	if bindIdentity && !compilerTriggerAction(s.Compiler.Types, job.Event.Action) {
 		return ErrInvalid
 	}
 	return nil
@@ -163,18 +130,33 @@ func compilerTriggerAction(types []string, action string) bool {
 	return false
 }
 
-// DispatchRevision reads only the runtime-owned reserved provenance.
-func DispatchRevision(s Subscription, payload json.RawMessage) (Revision, error) {
-	if s.Compiler == nil || ValidateDispatchPayload(s, payload, DefaultLimits()) != nil {
+// DispatchRevision binds out-of-band dispatch authority to every durable member.
+// Compiler v2 forbids putting gateway provenance in its wire envelope.
+func DispatchRevision(jobs []Job) (Revision, error) {
+	if len(jobs) == 0 || len(jobs) > MaxDispatchBatchItems || jobs[0].Subscription.Compiler == nil {
 		return Revision{}, ErrInvalid
 	}
-	var request struct {
-		ClientPayload struct {
-			Gateway dispatchProvenance `json:"_gateway"`
-		} `json:"client_payload"`
+	var revision Revision
+	for _, job := range jobs {
+		var request struct {
+			ClientPayload struct {
+				Gateway dispatchProvenance `json:"_gateway"`
+			} `json:"client_payload"`
+		}
+		if !BatchCompatible(jobs[0], job) || ValidateJob(job) != nil ||
+			json.Unmarshal(job.Payload, &request) != nil || !validRevision(request.ClientPayload.Gateway.Revision) ||
+			revision != (Revision{}) && revision != request.ClientPayload.Gateway.Revision {
+			return Revision{}, ErrInvalid
+		}
+		revision = request.ClientPayload.Gateway.Revision
 	}
-	if json.Unmarshal(payload, &request) != nil || !validRevision(request.ClientPayload.Gateway.Revision) {
-		return Revision{}, ErrInvalid
+	return revision, nil
+}
+
+func ValidateCompilerRevision(s Subscription, revision Revision) error {
+	if s.Compiler == nil || !validRevision(revision) || revision.RepositoryID != s.Destination.RepositoryID ||
+		revision.MetadataPath != s.Compiler.Dispatch.Workflow {
+		return ErrInvalid
 	}
-	return request.ClientPayload.Gateway.Revision, nil
+	return nil
 }

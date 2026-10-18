@@ -326,21 +326,52 @@ The queue stores only payload-free `Job.Event` identity and bounded compiled
 Ingress evaluates filters/constraints on ephemeral authenticated bytes, builds
 the approved leaf allowlist plus reserved provenance, then discards raw input.
 Workers authorize against stored identity and immutable approved metadata and
-send the compiled request unchanged; they never parse it as a source event.
+combine compatible immutable projections into one bounded batch; they never
+parse compiled JSON as a source event or rerun ingress filters.
 The original delivery hash remains admission dedup evidence, independent of
 projected payload bytes. Restrict database access, require deployment-provided
 encryption at rest, and enforce reviewed byte/retention bounds. Raw events must
 never be persisted, forwarded, or logged.
-Gateway output is capped at 10 total properties and 64 KiB for either transport,
-including reserved provenance injected by the runtime,
-intentionally stricter than GitHub's current 25-input workflow-dispatch limit.
-`client_payload._gateway` is an object for repository dispatch;
-`inputs._gateway` is a JSON string for workflow dispatch. It carries
-`version: "cao.webhook/v1"`, source/delivery/subscription IDs, and the complete
-approved Revision. Workflow metadata must declare `destination.gatewayInput: true`,
-asserting the compiled workflow has that reserved input; otherwise the
-worker fails closed. `_gateway` collisions are rejected, and at most nine
-ordinary mapped properties remain under the total cap.
+**Handlers always receive batches, including singleton flushes.** Compiler v2
+uses exactly `client_payload:{schema_version:2,aw_context:{webhook:{event,
+deliveries:[{delivery_id,payload},...]}}}`. All distinct deliveries are retained;
+the compiler derives the unique affected-resource array at `aw_context.items`.
+It does not trust a supplied item list or infer latest state. Security payloads
+contain only a canonical GitHub API alert URL. Approved artifact revision
+evidence stays in immutable durable provenance and the typed compiler-dispatch
+argument, never additional wire fields. Missing evidence/capability blocks send.
+
+Generic approved repository-dispatch routes use five properties: `schema_version: 2`,
+the original `event` kind, sorted unique `delivery_ids`, a nonempty `aw_context`
+array of unique approved projections, and runtime-owned `_gateway` provenance.
+Delivery IDs do not participate in context uniqueness, so repeated equivalent
+contexts collapse without losing delivery provenance. Distinct context/activity
+values remain distinct; this is not a latest-state or chronological event feed.
+Only events sharing the complete subscription, revision, source identity and
+event kind can batch together.
+
+Provenance carries `version: "cao.webhook-batch/v1"`, source/subscription IDs,
+the complete approved Revision, and a SHA-256 batch identity over sorted durable
+job IDs. It is an object for repository dispatch. Workflow dispatch uses the
+same five properties under `inputs`, JSON-encoding all but `event` as strings.
+Its metadata must assert both `destination.gatewayInput: true` and
+`destination.batchInput: true`, confirming all reserved inputs exist. Missing
+batch capability or legacy singleton envelopes fail closed, without a
+one-workflow-per-event fallback. The internal stored member projection retains
+`cao.webhook/v1` provenance but is never sent as the wire envelope.
+
+Long-running roles coalesce for two seconds before a route's oldest eligible
+event can be claimed; singletons then flush subject to quota/authority. Local
+one-shot mode immediately batches its already-polled backlog. Each batch has
+at most 64 jobs and must fit under 64 KiB, including provenance and framing,
+plus compiler byte ceilings where applicable. Overflow stays queued.
+The durable cursor rotates between `(tenant, subscription)` workflow routes.
+Replica claims are exclusive, and concurrency measures batches rather than
+member rows. This lets the server balance workflow dispatch across replicas.
+Every member fence/authorization is checked before one atomic reservation and
+one rate charge per external request. Completion is atomic for every member;
+unknown/lost acceptance makes all reserved members ambiguous, never automatic
+per-event replay.
 Both dispatch endpoints explicitly pin REST API `2026-03-10`; workflow acceptance
 supports HTTP 200 and legacy 204. Safe queue outcomes retain accepted HTTP status and a validated numeric
 workflow-run ID when returned, not the raw response body or run URLs. A
@@ -539,15 +570,27 @@ The receiver still holds no App private keys; its database invalidation wakes
 the dispatch role through routine polling. CAS publication fences in-flight
 older scans, including repeated hints on already-dirty records.
 
-With gateway enablement and `activateSecurity: true`, valid discovered
-`dependabot_alert`, `code_scanning_alert`, and `secret_scanning_alert` declarations
+With gateway enablement and `activateSecurity: true`, valid **batch-capable v2**
+discovered `dependabot_alert` and `code_scanning_alert` declarations
 become same-repository subscriptions with bounded expiring grants and
 workflow-specific compiler dispatch routes. The receiving App needs contents-read
 and the corresponding security-event read permission; the independent dispatch
-App needs contents-write. Security payloads use the compiler's nested context
-with only RFC-033's allowlisted scalar projection, never raw alert bodies or
-secret values. Reserved `_gateway` provenance and both compiler byte limits
-are enforced after projection.
+App needs contents-write. Each projected security payload contains only its
+canonical GitHub API `url`, never raw alerts or secret values. The bridge checks
+the signed source identity at ingress and binds every URL to the authenticated
+current destination repository before dispatch. API origins other than
+`https://api.github.com` are not supported. Both compiler byte limits apply to
+the complete framed request before deduplication.
+
+Declaration v2 must specify `dispatch.batch:{mode:"same-event",
+deduplicate_by:"delivery_id"}` and the fixed context paths in RFC-033 §6.1.
+Legacy declaration v1 remains discoverable but cannot activate. The bridge
+matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
+`4a619f186575901a2dbd7cb0196e94f562458c69`; an optional interoperability test
+executes that commit's actual runtime validator/normalizer. An installed
+compiler emitting v2 is still required. Secret-scanning triggers are not
+supported by that compiler and do not autoactivate. See RFC-033 §13.1 for the
+wire contract, test reproduction, and bounded TLA+ result.
 
 `projectAssignments` maps an organization project to exactly one enrolled
 repository. It constrains separately approved project subscriptions at admission
@@ -576,7 +619,7 @@ is:
 
 ```bash
 # Set POSTGRES_URL to a disposable local PostgreSQL database first.
-go -C server test ./internal/webhookgatewayhost \
+go -C server test -p 1 ./internal/webhookgatewayhost \
   -run '^TestProjectsV2GatewayPostgresDemonstration$'
 ```
 

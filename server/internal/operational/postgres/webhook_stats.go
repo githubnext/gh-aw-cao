@@ -36,7 +36,7 @@ func (q *webhookQueue) readStats(ctx context.Context, tx *sql.Tx) (wg.QueueStats
 	if err := tx.QueryRowContext(ctx, `SELECT
 		count(*) FILTER (WHERE state IN ('ready','claimed','dispatching')),
 		greatest(0,coalesce(extract(epoch FROM ($3::timestamptz-min(created_at) FILTER (WHERE state IN ('ready','claimed','dispatching')))),0))::double precision,
-		count(*) FILTER (WHERE state IN ('claimed','dispatching') AND lease_until>$3 AND expires_at>$3),
+		count(DISTINCT owner) FILTER (WHERE state IN ('claimed','dispatching') AND lease_until>$3 AND expires_at>$3),
 		count(*),coalesce(sum(storage_bytes),0)
 		FROM cao_operational_webhook_jobs WHERE namespace=$1 AND queue=$2`,
 		q.store.namespace, q.name, now).Scan(&stats.Depth, &stats.OldestAgeSeconds, &stats.ActiveWorkers, &stats.RetainedRows, &stats.RetainedBytes); err != nil {

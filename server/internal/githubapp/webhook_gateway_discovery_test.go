@@ -15,7 +15,7 @@ import (
 
 func gatewayManifestLock(t *testing.T) []byte {
 	t.Helper()
-	fixture, err := os.ReadFile("../../../specs/fixtures/webhook-manifest-v1.json")
+	fixture, err := os.ReadFile("../../../specs/fixtures/webhook-manifest-v2.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestPrivateDefaultBranchSubscriptionDiscovery(t *testing.T) {
 				result.OwnerType != "Organization" || result.CommitSHA != strings.Repeat("a", 40) || headReads != 2 {
 				t.Fatalf("inventory=%+v err=%v", result, err)
 			}
-			if scenario == "valid" && (len(result.Workflows) != 1 || len(result.Workflows[0].Triggers) != 4 ||
+			if scenario == "valid" && (len(result.Workflows) != 1 || len(result.Workflows[0].Triggers) != 3 ||
 				result.Workflows[0].SHA256 != gateway.MetadataDigest(lock) || rawReads != 1 || observations != 6) {
 				t.Fatalf("lost mapping, digest or quota observations: %+v observations=%d", result, observations)
 			}
@@ -140,7 +140,7 @@ func TestDispatcherNeverSendsToPublicOrInternalRepository(t *testing.T) {
 }
 
 func TestCompilerDispatchRechecksCurrentHeadAndWholeArtifact(t *testing.T) {
-	for _, scenario := range []string{"valid", "moved", "modified", "missing"} {
+	for _, scenario := range []string{"valid", "moved", "modified", "missing", "wrong-url-repository", "no-approved-revision"} {
 		t.Run(scenario, func(t *testing.T) {
 			lock := gatewayManifestLock(t)
 			triggers, err := gateway.ParseWorkflowManifest(lock, ".github/workflows/test.lock.yml", gateway.DefaultLimits())
@@ -155,18 +155,25 @@ func TestCompilerDispatchRechecksCurrentHeadAndWholeArtifact(t *testing.T) {
 			}
 			s := gatewayTestSubscription("repository_dispatch")
 			s.Source.ID, s.Source.Event = gateway.CompilerSourceID, trigger.Event
+			s.Destination.Fields = nil
 			s.Source.RequiredPermissions = map[string]string{"contents": "read", "vulnerability_alerts": "read"}
 			s.Destination.EventType, s.Compiler = trigger.Dispatch.EventType, &trigger
 			revision := gateway.Revision{RepositoryID: 42, CommitSHA: strings.Repeat("a", 40),
 				MetadataPath: trigger.Dispatch.Workflow, Digest: gateway.MetadataDigest(lock), CompilerID: "gh-aw-manifest-v1"}
+			projectionRepository := "current/renamed"
+			if scenario == "wrong-url-repository" {
+				projectionRepository = "other/repository"
+			}
 			payload, err := json.Marshal(map[string]any{
 				"event_type": s.Destination.EventType,
 				"client_payload": map[string]any{
-					"schema_version": 1, "event": trigger.Event, "delivery_id": "delivery",
-					"payload": map[string]any{"action": "created", "repository": map[string]any{"id": 42, "private": true},
-						"installation": map[string]any{"id": 7}, "alert": map[string]any{"number": 42}},
-					"_gateway": map[string]any{"version": "cao.webhook/v1", "sourceId": gateway.CompilerSourceID,
-						"deliveryId": "delivery", "subscriptionId": s.ID, "revision": revision},
+					"schema_version": 2, "aw_context": map[string]any{"webhook": map[string]any{
+						"event": trigger.Event, "deliveries": []any{map[string]any{
+							"delivery_id": "delivery", "payload": map[string]any{
+								"url": "https://api.github.com/repos/" + projectionRepository + "/dependabot/alerts/42",
+							},
+						}},
+					}},
 				},
 			})
 			if err != nil {
@@ -205,7 +212,10 @@ func TestCompilerDispatchRechecksCurrentHeadAndWholeArtifact(t *testing.T) {
 					w.WriteHeader(http.StatusNotFound)
 				}
 			})
-			result := (WebhookGatewayDispatcher{Client: client}).Dispatch(t.Context(), s, payload)
+			if scenario == "no-approved-revision" {
+				revision = gateway.Revision{}
+			}
+			result := (WebhookGatewayDispatcher{Client: client}).DispatchCompiler(t.Context(), s, payload, revision)
 			if scenario == "valid" {
 				if result.StatusCode != http.StatusNoContent || posts != 1 || reads != 1 {
 					t.Fatalf("valid compiler dispatch failed: %+v posts=%d reads=%d", result, posts, reads)

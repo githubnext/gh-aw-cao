@@ -88,6 +88,9 @@ func (q *Queue) Renew(ctx context.Context, expected wg.Fence, lease time.Duratio
 		if err := fence(job, expected, now); err != nil {
 			return err
 		}
+		if job.State == wg.Dispatching && strings.HasPrefix(job.ClaimID, "batch.") {
+			return wg.ErrConflict
+		}
 		if job.Version == math.MaxUint64 || !job.ExpiresAt.After(now) {
 			return wg.ErrConflict
 		}

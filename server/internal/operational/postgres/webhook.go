@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
@@ -180,6 +181,9 @@ func (q *webhookQueue) Renew(ctx context.Context, fence wg.Fence, ttl time.Durat
 		}
 		if err := webhookFence(job, fence, t.now); err != nil {
 			return err
+		}
+		if job.State == wg.Dispatching && strings.HasPrefix(job.ClaimID, "batch.") {
+			return wg.ErrConflict
 		}
 		until := t.now.Add(ttl)
 		subscriptionUntil := t.now.Add(time.Duration(job.Subscription.Delivery.LeaseSeconds) * time.Second)

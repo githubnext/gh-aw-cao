@@ -70,6 +70,9 @@ func runLocal(ctx context.Context, options localOptions, output io.Writer) (err 
 	}
 	worker := &wg.Worker{Policies: simulation, Queue: queue, Authorizer: simulation, Dispatcher: simulation,
 		Owner: "local-" + rand.Text(), HTTPTimeout: time.Second, LeaseDuration: time.Minute}
+	if !options.once {
+		worker.BatchWindow = wg.DispatchBatchWindow
+	}
 	if options.once {
 		if _, err := poller.Poll(ctx); err != nil {
 			return err

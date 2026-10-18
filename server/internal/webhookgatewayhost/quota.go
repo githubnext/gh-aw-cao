@@ -77,12 +77,30 @@ func (g *QuotaGate) Acquire(ctx context.Context, job gateway.Job) (func(), error
 }
 
 func (g *QuotaGate) Dispatch(ctx context.Context, subscription gateway.Subscription, payload json.RawMessage) gateway.DispatchResponse {
+	return g.dispatch(ctx, subscription, payload, nil)
+}
+
+func (g *QuotaGate) DispatchCompiler(ctx context.Context, subscription gateway.Subscription, payload json.RawMessage, revision gateway.Revision) gateway.DispatchResponse {
+	return g.dispatch(ctx, subscription, payload, &revision)
+}
+
+func (g *QuotaGate) dispatch(ctx context.Context, subscription gateway.Subscription, payload json.RawMessage, revision *gateway.Revision) gateway.DispatchResponse {
 	if g.reservation == nil || subscription.ID != g.subscriptionID ||
 		subscription.Destination.InstallationID != g.reservation.Bucket.Installation {
 		return gateway.DispatchResponse{Kind: subscription.Destination.Kind, TransportOutcome: "not-sent"}
 	}
 	g.sent = true
-	response, quota := g.Dispatcher.DispatchWithQuota(ctx, subscription, payload)
+	var response gateway.DispatchResponse
+	var quota githubquota.ResponseQuota
+	if revision == nil {
+		response, quota = g.Dispatcher.DispatchWithQuota(ctx, subscription, payload)
+	} else if compiler, ok := g.Dispatcher.(interface {
+		DispatchCompilerWithQuota(context.Context, gateway.Subscription, json.RawMessage, gateway.Revision) (gateway.DispatchResponse, githubquota.ResponseQuota)
+	}); ok {
+		response, quota = compiler.DispatchCompilerWithQuota(ctx, subscription, payload, *revision)
+	} else {
+		response = gateway.DispatchResponse{Kind: subscription.Destination.Kind, TransportOutcome: "not-sent"}
+	}
 	// Persist quota even when the dispatch deadline has just elapsed. Failure
 	// here must never turn accepted work into a replay.
 	accountCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)

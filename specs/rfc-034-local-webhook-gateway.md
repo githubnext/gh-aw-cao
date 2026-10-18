@@ -149,7 +149,10 @@ flag MUST be rejected. Applying an identical tuple MUST be a no-op.
 **LG-Q08** Global/App/tenant/destination/workflow token budgets and the attempt
 increment MUST be committed atomically with BeginDispatch. Exhaustion MUST
 leave the job claimed without consuming an attempt; budget state MUST survive
-reopening. Claims MUST respect global concurrency and tenant round-robin order.
+reopening. RFC-033 §13.1's production batch worker MUST charge once per external
+batch, count active claim groups for concurrency, and rotate tenant/subscription
+routes. The individual-job transition primitives remain available to this
+historical queue-trace suite, not as a singleton wire transport fallback.
 
 **LG-Q09** TTL expiry and bounded maintenance MUST release safe expired work.
 Terminal jobs MUST remain until their retention deadline; receipts MUST remain
@@ -169,6 +172,14 @@ MUST be enforced before replay.
 
 **LG-Q13** Reusing a retained delivery identity with a different body digest
 MUST conflict without replacing the receipt or any existing job.
+
+The local role MUST use RFC-033's batch-only handler contract, compatible-group
+claims, unique `aw_context` arrays, all-member reservation/completion and
+ambiguous recovery. Long-running simulation uses the two-second coalescing
+threshold; explicit one-shot mode immediately batches the already-polled
+backlog. Overflow remains queued. The additional shared batch conformance
+vectors and SQLite/PostgreSQL tests in RFC-033 §13.1 cover these requirements;
+the original local model below abstracts individual-member transitions only.
 
 ## 5. Formal model (normative artifact; bounded evidence)
 

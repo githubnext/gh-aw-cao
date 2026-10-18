@@ -548,6 +548,27 @@ The existing PostgreSQL operational adapter extends its own namespace with
 jobs. Atomic bounded batch admission reserves deduplication and protected
 capacity together. Database-time leases, ownership fences and version CAS guard
 claims and completion; HTTP and backoff remain outside database transactions.
+Outbound handlers always consume batches of one event kind. Compiler v2 carries
+distinct projected deliveries in `aw_context.webhook.deliveries` and derives
+the unique affected-resource array at `aw_context.items`; incoming item lists
+and extra provenance fields are forbidden. Durable immutable provenance binds
+the approved artifact revision passed out of band through CompilerDispatcher;
+missing capability/evidence blocks sending. Generic approved routes instead
+carry a nonempty unique-projection `aw_context` array, sorted delivery provenance,
+and runtime batch identity. Full subscription, artifact/queue revision and
+immutable source identities must agree; distinct activity history must not be
+discarded or replaced with inferred latest state. The two-second long-running coalescing threshold flushes
+singletons; local one-shot flushes immediately. At most 64 jobs and both gateway/
+compiler byte ceilings bound each batch; overflow stays Ready. Persisted
+tenant/subscription cursor rotation balances workflow routes across replicas,
+whose concurrency counts claim groups rather than member rows.
+Every member fence and fresh claim-bound authorization must pass one atomic
+all-member dispatch reservation with one rate/quota charge per request.
+Compatible members may share newly fetched GitHub authority facts, never
+admission proofs. Completion is atomic across all member fences; lost/unknown
+acceptance makes every reserved member ambiguous, never per-event replay.
+Workflow-dispatch metadata must explicitly attest all five batch inputs with
+both gatewayInput and batchInput. Legacy singleton wire transport is rejected.
 Uncertain acceptance or expired dispatch leases become terminal `ambiguous`,
 never automatic replay. Acceptance is not workflow success or operational value.
 Cancellation joins owned workers before storage closes.
@@ -571,10 +592,14 @@ hint fences earlier scans, including already-dirty inventories. Routing changes
 cancel old ready/claimed work, while timestamp-only refreshes retain the queue
 revision. Reviewed control revisions remain a separate monotonic ceiling.
 
-Explicit `activateSecurity` delegates only the three repository-level security
-families to same-repository compiler routes, with private-only live checks,
+Explicit `activateSecurity` delegates only compiler-supported Dependabot and
+code-scanning repository events with batch-capable declaration v2 to same-repository compiler
+routes, with private-only live checks,
 event/contents-read permission checks, bounded grants expiring at inventory
-freshness, and nested allowlisted scalar context plus reserved provenance.
+freshness, and URL-only security projections. Canonical HTTPS api.github.com
+alert URLs must agree with signed source repository/number at ingress and
+authenticated current repository at egress; other API origins are unsupported.
+Secret-scanning declarations are not emitted/supported by this compiler contract.
 Missing/invalid/dirty/expired inventories cannot remain active. Both receiving
 authority and independent final egress preflight re-fetch the current head and
 whole-lock digest. This does not guarantee immutable default-branch execution
@@ -582,8 +607,13 @@ across a subsequent remote mutation; deployment must establish trust in the
 reviewed/protected default branch. `projectAssignments` binds each project node
 and organization to one enrolled repository and constrains separately approved
 subscriptions; discovery does not autoactivate Projects. Hand-authored fixtures,
-mock GitHub tests, and the separate bounded registry TLA+ model demonstrate
-local contracts, not installed-compiler or live GitHub end-to-end acceptance.
+mock GitHub tests, and separate bounded registry and dispatch-batch TLA+ models
+demonstrate local contracts, not installed-compiler or live GitHub acceptance.
+Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
+context paths, same-event/delivery-ID batch policy and alert-URL projection
+match github/gh-aw#69772 commit 4a619f1. Optional runtime interoperability executes
+that source's actual validator/normalizer, not a hosted workflow or an installed
+compiler.
 
 ## Source tree
 

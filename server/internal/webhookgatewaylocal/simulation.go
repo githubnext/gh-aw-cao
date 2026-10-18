@@ -121,8 +121,12 @@ func (s *Simulation) Authorize(ctx context.Context, job wg.Job) (wg.Authorizatio
 	}, nil
 }
 
-func (*Simulation) Dispatch(ctx context.Context, _ wg.Subscription, _ json.RawMessage) wg.DispatchResponse {
-	if ctx.Err() != nil {
+func (s *Simulation) AuthorizeBatch(ctx context.Context, jobs []wg.Job) ([]wg.AuthorizationSnapshot, error) {
+	return wg.AuthorizeCompatibleBatch(ctx, s, jobs)
+}
+
+func (*Simulation) Dispatch(ctx context.Context, s wg.Subscription, payload json.RawMessage) wg.DispatchResponse {
+	if ctx.Err() != nil || wg.ValidateBatchDispatchPayload(s, payload, wg.DefaultLimits()) != nil {
 		return wg.DispatchResponse{TransportOutcome: "not-sent"}
 	}
 	return wg.DispatchResponse{StatusCode: 204, TransportOutcome: "response"}

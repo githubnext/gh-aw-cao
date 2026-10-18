@@ -147,15 +147,31 @@ func (d WebhookGatewayDispatcher) Dispatch(ctx context.Context, subscription web
 	return result
 }
 
-// DispatchWithQuota sends the complete envelope produced by BuildDispatchPayload.
+// DispatchWithQuota sends only the complete envelope produced by BuildDispatchBatch.
 // Compiler routes recheck the current default head and whole-lock digest.
 // This adapter never retries a POST.
 // Quota observation failures cannot overwrite a known dispatch outcome.
 func (d WebhookGatewayDispatcher) DispatchWithQuota(ctx context.Context, subscription webhookgateway.Subscription, payload json.RawMessage) (webhookgateway.DispatchResponse, githubquota.ResponseQuota) {
+	return d.dispatchWithQuota(ctx, subscription, payload, nil)
+}
+
+func (d WebhookGatewayDispatcher) DispatchCompiler(ctx context.Context, subscription webhookgateway.Subscription, payload json.RawMessage, revision webhookgateway.Revision) webhookgateway.DispatchResponse {
+	result, _ := d.DispatchCompilerWithQuota(ctx, subscription, payload, revision)
+	return result
+}
+
+func (d WebhookGatewayDispatcher) DispatchCompilerWithQuota(ctx context.Context, subscription webhookgateway.Subscription, payload json.RawMessage, revision webhookgateway.Revision) (webhookgateway.DispatchResponse, githubquota.ResponseQuota) {
+	return d.dispatchWithQuota(ctx, subscription, payload, &revision)
+}
+
+func (d WebhookGatewayDispatcher) dispatchWithQuota(ctx context.Context, subscription webhookgateway.Subscription, payload json.RawMessage, revision *webhookgateway.Revision) (webhookgateway.DispatchResponse, githubquota.ResponseQuota) {
 	destination := subscription.Destination
 	result := webhookgateway.DispatchResponse{Kind: destination.Kind, TransportOutcome: "not-sent"}
 	if d.Client == nil || d.Client.config.AppID <= 0 || subscription.AppID != d.Client.config.AppID ||
-		subscription.Provider != "github" || !json.Valid(payload) || len(payload) >= 64<<10 {
+		subscription.Provider != "github" || webhookgateway.ValidateBatchDispatchPayload(subscription, payload, webhookgateway.DefaultLimits()) != nil {
+		return result, githubquota.ResponseQuota{}
+	}
+	if subscription.Compiler != nil && (revision == nil || webhookgateway.ValidateCompilerRevision(subscription, *revision) != nil) {
 		return result, githubquota.ResponseQuota{}
 	}
 	if destination.Kind != "workflow_dispatch" && destination.Kind != "repository_dispatch" {
@@ -200,8 +216,7 @@ func (d WebhookGatewayDispatcher) DispatchWithQuota(ctx context.Context, subscri
 		return result, quota
 	}
 	if subscription.Compiler != nil {
-		revision, err := webhookgateway.DispatchRevision(subscription, payload)
-		if err != nil {
+		if webhookgateway.CompilerBatchRepository(subscription, payload, repository.FullName) != nil {
 			return result, quota
 		}
 		head, digest, err := gatewayCurrentWorkflow(ctx, client, repository, subscription.Compiler.Dispatch.Workflow, observe)

@@ -59,6 +59,10 @@ type ReceiveAuthority struct {
 	State  operational.StateStore
 }
 
+func (a LiveAuthority) AuthorizeBatch(ctx context.Context, jobs []gateway.Job) ([]gateway.AuthorizationSnapshot, error) {
+	return gateway.AuthorizeCompatibleBatch(ctx, a, jobs)
+}
+
 func currentSubscription(policy gateway.PolicySnapshot, job gateway.Job) (gateway.Subscription, gateway.Revision, error) {
 	if !policy.Revision.Enabled || policy.Revision != job.QueueRevision {
 		return gateway.Subscription{}, gateway.Revision{}, gateway.ErrUnauthorized

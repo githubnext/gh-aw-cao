@@ -21,19 +21,34 @@ type CompilerCondition struct {
 
 type CompilerContext struct {
 	Envelope   string `json:"envelope"`
+	AWContext  string `json:"aw_context,omitempty"`
 	Event      string `json:"event"`
-	Payload    string `json:"payload"`
-	DeliveryID string `json:"delivery_id"`
+	Payload    string `json:"payload,omitempty"`
+	DeliveryID string `json:"delivery_id,omitempty"`
+	Deliveries string `json:"deliveries,omitempty"`
+	Items      string `json:"items,omitempty"`
+}
+
+type CompilerBatch struct {
+	Mode          string `json:"mode"`
+	DeduplicateBy string `json:"deduplicate_by"`
+}
+
+type CompilerProjection struct {
+	SourcePath []string `json:"source_path"`
+	TargetPath []string `json:"target_path"`
 }
 
 type CompilerDispatch struct {
-	Repository      string          `json:"repository"`
-	Method          string          `json:"method"`
-	EventType       string          `json:"event_type"`
-	Workflow        string          `json:"workflow"`
-	Context         CompilerContext `json:"context"`
-	MaxPayloadBytes int             `json:"max_payload_bytes"`
-	MaxRequestBytes int             `json:"max_request_bytes"`
+	Repository        string              `json:"repository"`
+	Method            string              `json:"method"`
+	EventType         string              `json:"event_type"`
+	Workflow          string              `json:"workflow"`
+	Context           CompilerContext     `json:"context"`
+	Batch             *CompilerBatch      `json:"batch,omitempty"`
+	PayloadProjection *CompilerProjection `json:"payload_projection,omitempty"`
+	MaxPayloadBytes   int                 `json:"max_payload_bytes"`
+	MaxRequestBytes   int                 `json:"max_request_bytes"`
 }
 
 // CompilerTrigger is the numeric-versioned discovery contract emitted by gh-aw,
@@ -139,11 +154,35 @@ func ParseWorkflowManifest(data []byte, workflow string, limits Limits) ([]Workf
 
 func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) error {
 	d := t.Dispatch
-	if t.SchemaVersion != 1 || !identifier(t.Event) || len(t.Types) == 0 ||
+	context := CompilerContext{Envelope: "github.event.client_payload", Event: "github.event.client_payload.event",
+		Payload: "github.event.client_payload.payload", DeliveryID: "github.event.client_payload.delivery_id"}
+	if t.SchemaVersion == 2 {
+		context = CompilerContext{Envelope: "github.event.client_payload",
+			AWContext: "github.event.client_payload.aw_context", Event: "github.event.client_payload.aw_context.webhook.event",
+			Deliveries: "github.event.client_payload.aw_context.webhook.deliveries", Items: "aw_context.items"}
+		if d.Batch == nil || *d.Batch != (CompilerBatch{Mode: "same-event", DeduplicateBy: "delivery_id"}) {
+			return ErrInvalid
+		}
+		switch t.Event {
+		case "dependabot_alert", "code_scanning_alert":
+			if d.PayloadProjection == nil || !slices.Equal(d.PayloadProjection.SourcePath, []string{"alert", "url"}) ||
+				!slices.Equal(d.PayloadProjection.TargetPath, []string{"url"}) {
+				return ErrInvalid
+			}
+		case "projects_v2_item":
+			if d.PayloadProjection != nil {
+				return ErrInvalid
+			}
+		default:
+			return ErrInvalid
+		}
+	} else if d.Batch != nil || d.PayloadProjection != nil {
+		return ErrInvalid
+	}
+	if (t.SchemaVersion != 1 && t.SchemaVersion != 2) || !identifier(t.Event) || len(t.Types) == 0 ||
 		d.Repository != "${{ github.repository }}" || d.Method != "repository_dispatch" ||
 		d.Workflow != workflow || d.EventType != "gh-aw-webhook-"+MetadataDigest([]byte(id))[:24] ||
-		d.Context != (CompilerContext{Envelope: "github.event.client_payload", Event: "github.event.client_payload.event",
-			Payload: "github.event.client_payload.payload", DeliveryID: "github.event.client_payload.delivery_id"}) ||
+		d.Context != context ||
 		d.MaxPayloadBytes < 1 || d.MaxPayloadBytes > d.MaxRequestBytes || d.MaxRequestBytes > 65535 {
 		return ErrInvalid
 	}

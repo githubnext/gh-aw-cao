@@ -2,13 +2,14 @@ package webhookgateway
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
 	servertelemetry "github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
-// Worker owns one fenced claim at a time. External HTTP is never performed by Queue.
+// Worker owns one fenced same-kind batch at a time. Queue never performs HTTP.
 type Worker struct {
 	Policies      PolicyProvider
 	Queue         Queue
@@ -20,6 +21,7 @@ type Worker struct {
 	LeaseDuration time.Duration
 	FinishTimeout time.Duration
 	PollInterval  time.Duration
+	BatchWindow   time.Duration
 }
 
 func (w *Worker) durations() (httpTimeout, lease, finish, poll time.Duration) {
@@ -60,9 +62,13 @@ func (w *Worker) Run(ctx context.Context) error {
 	}
 }
 
-// RunOnce returns whether it claimed a job, not whether GitHub accepted it.
+// RunOnce returns whether it claimed a batch, not whether GitHub accepted it.
 func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	if w.Policies == nil || w.Queue == nil || w.Authorizer == nil || w.Dispatcher == nil || w.Owner == "" {
+		return false, ErrInvalid
+	}
+	queue, ok := w.Queue.(BatchQueue)
+	if !ok {
 		return false, ErrInvalid
 	}
 	if err := ctx.Err(); err != nil {
@@ -98,8 +104,8 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	}
 	httpTimeout, lease, finishTimeout, _ := w.durations()
 	claimCtx, claimEnd := gatewayStage(ctx, "claim", "")
-	job, err := w.Queue.Claim(claimCtx, ClaimRequest{Owner: w.Owner, LeaseDuration: lease})
-	if errors.Is(err, ErrNotFound) || (err == nil && job == nil) {
+	jobs, err := queue.ClaimBatch(claimCtx, ClaimRequest{Owner: w.Owner, LeaseDuration: lease, BatchWindow: w.BatchWindow})
+	if errors.Is(err, ErrNotFound) || (err == nil && len(jobs) == 0) {
 		claimEnd("empty")
 		outcome = "empty"
 		return false, nil
@@ -109,6 +115,7 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	claimEnd("claimed")
+	job := &jobs[0]
 	ctx, attemptEnd := gatewayStage(servertelemetry.ExtractTraceparent(ctx, job.TraceParent), "attempt", job.Event.Name)
 	defer func() { attemptEnd(outcome) }()
 	traceGatewayIdentity(ctx, job.DeliveryID, job.ID)
@@ -121,41 +128,58 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	if err := w.Queue.ApplyRevision(ctx, snapshot.Revision); err != nil {
 		return true, err
 	}
-	revision, exists := snapshot.Revisions[job.Subscription.ID]
-	if !snapshot.Revision.Enabled || !exists || revision.Digest != job.SubscriptionDigest {
-		_, err = w.Queue.Cancel(ctx, job.ID, job.Version)
+	for _, member := range jobs {
+		revision, exists := snapshot.Revisions[member.Subscription.ID]
+		if !snapshot.Revision.Enabled || !exists || revision.Digest != member.SubscriptionDigest {
+			outcome = "cancelled"
+			return true, w.cancelBatch(ctx, jobs)
+		}
+	}
+	payload, err := BuildDispatchBatch(jobs)
+	if err != nil || ValidateBatchMembers(jobs) != nil {
 		outcome = "cancelled"
-		return true, err
+		return true, errors.Join(ErrInvalid, w.cancelBatch(ctx, jobs))
+	}
+	dispatch := w.Dispatcher.Dispatch
+	if job.Subscription.Compiler != nil {
+		compiler, ok := w.Dispatcher.(CompilerDispatcher)
+		revision, err := DispatchRevision(jobs)
+		if !ok || err != nil {
+			return true, errors.Join(ErrUnavailable, err)
+		}
+		dispatch = func(ctx context.Context, s Subscription, payload json.RawMessage) DispatchResponse {
+			return compiler.DispatchCompiler(ctx, s, payload, revision)
+		}
 	}
 	authCtx, authEnd := gatewayStage(ctx, "authorization", job.Subscription.Source.Event)
-	authorization, err := w.Authorizer.Authorize(authCtx, *job)
-	if err != nil || !authorization.Complete {
+	evidence, err := w.authorizeBatch(authCtx, jobs)
+	if err != nil {
 		authEnd("deferred")
 		outcome = "deferred"
 		// Unknown authority stays claimed until safe claim recovery or TTL expiry.
 		return true, err
 	}
-	decision, err := ValidateAuthorization(time.Now(), *job, authorization)
-	if err != nil {
-		authEnd("error")
-		return true, err
-	}
-	if decision.Cancel {
-		authEnd("auth_denied")
-		_, err = w.Queue.Cancel(ctx, job.ID, job.Version)
-		outcome = "cancelled"
-		return true, err
-	}
-	if !decision.Allowed {
-		authEnd("deferred")
-		outcome = "deferred"
-		return true, nil
+	authorizations := make([]Authorization, len(jobs))
+	for i, member := range jobs {
+		decision, err := ValidateAuthorization(time.Now(), member, evidence[i])
+		if err != nil {
+			authEnd("error")
+			return true, err
+		}
+		if decision.Cancel {
+			authEnd("auth_denied")
+			outcome = "cancelled"
+			return true, w.cancelBatch(ctx, jobs)
+		}
+		if !decision.Allowed {
+			authEnd("deferred")
+			outcome = "deferred"
+			return true, nil
+		}
+		authorizations[i] = Authorization{Revision: snapshot.Revision,
+			ApprovedSubscriptionDigest: member.SubscriptionDigest, Snapshot: evidence[i]}
 	}
 	authEnd("authorized")
-	if err := ValidateJob(*job); err != nil {
-		_, cancelErr := w.Queue.Cancel(ctx, job.ID, job.Version)
-		return true, cancelErr
-	}
 	if w.Budget != nil {
 		quotaCtx, quotaEnd := gatewayStage(ctx, "quota", job.Subscription.Source.Event)
 		release, err := w.Budget.Acquire(quotaCtx, *job)
@@ -171,37 +195,42 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 		defer release()
 	}
 	renewCtx, renewEnd := gatewayStage(ctx, "renewal", job.Subscription.Source.Event)
-	renewed, err := w.Queue.Renew(renewCtx, jobFence(*job), lease)
-	if err != nil {
-		renewEnd("error")
-		return true, err
+	for i := range jobs {
+		renewed, err := w.Queue.Renew(renewCtx, jobFence(jobs[i]), lease)
+		if err != nil {
+			renewEnd("error")
+			return true, err
+		}
+		jobs[i] = renewed
+		if time.Until(renewed.LeaseUntil) < httpTimeout+finishTimeout {
+			renewEnd("deferred")
+			outcome = "deferred"
+			return true, nil
+		}
 	}
 	renewEnd("renewed")
-	job = &renewed
-	if time.Until(job.LeaseUntil) < httpTimeout+finishTimeout {
-		outcome = "deferred"
-		return true, nil
-	}
 	// Renew changes the CAS version, not the claim generation used by evidence.
 	beginCtx, beginEnd := gatewayStage(ctx, "begin_dispatch", job.Subscription.Source.Event)
-	started, err := w.Queue.BeginDispatch(beginCtx, jobFence(*job), Authorization{
-		Revision: snapshot.Revision, ApprovedSubscriptionDigest: revision.Digest, Snapshot: authorization,
-	})
+	started, err := queue.BeginDispatchBatch(beginCtx, BatchFences(jobs), authorizations)
 	if err != nil {
 		beginEnd("deferred")
 		outcome = "deferred"
 		return true, err
 	}
+	if len(started) != len(jobs) || ValidateBatchMembers(started) != nil {
+		beginEnd("error")
+		return true, ErrConflict
+	}
 	beginEnd("dispatching")
-	job = &started
+	jobs, job = started, &started[0]
 	// A delayed BeginDispatch must not let HTTP outlive its durable dispatch lease.
 	if time.Until(job.LeaseUntil) < httpTimeout+finishTimeout {
 		outcome = "ambiguous"
-		return true, w.finish(ctx, *job, Outcome{State: Ambiguous, Reason: "lease_insufficient"})
+		return true, w.finishBatch(ctx, queue, jobs, Outcome{State: Ambiguous, Reason: "lease_insufficient"})
 	}
 	dispatchCtx, cancel := context.WithTimeout(ctx, httpTimeout)
 	dispatchCtx, dispatchEnd := gatewayStage(dispatchCtx, "dispatch", job.Subscription.Source.Event)
-	response := w.Dispatcher.Dispatch(dispatchCtx, job.Subscription, job.Payload)
+	response := dispatch(dispatchCtx, job.Subscription, payload)
 	response.Kind = job.Subscription.Destination.Kind
 	cancel()
 	result, err := ClassifyDispatchResponse(time.Now(), response)
@@ -218,23 +247,54 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	traceGatewayAcceptance(dispatchCtx, final.AcceptedStatus, final.WorkflowRunID)
 	dispatchEnd(string(final.State))
 	outcome = string(final.State)
-	return true, w.finish(ctx, *job, final)
+	return true, w.finishBatch(ctx, queue, jobs, final)
 }
 
-func (w *Worker) finish(ctx context.Context, job Job, outcome Outcome) error {
+func (w *Worker) finishBatch(ctx context.Context, queue BatchQueue, jobs []Job, outcome Outcome) error {
 	_, _, finish, _ := w.durations()
 	// Shutdown must still persist the knowledge acquired by the external attempt.
 	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), finish)
 	defer cancel()
-	finishCtx, end := gatewayStage(finishCtx, "finish", job.Subscription.Source.Event)
-	finished, err := w.Queue.Finish(finishCtx, jobFence(job), outcome)
+	finishCtx, end := gatewayStage(finishCtx, "finish", jobs[0].Subscription.Source.Event)
+	finished, err := queue.FinishBatch(finishCtx, BatchFences(jobs), outcome)
+	if err == nil && len(finished) != len(jobs) {
+		err = ErrConflict
+	}
 	if err != nil {
 		end("error")
 	} else {
-		end(string(finished.State))
-		if finished.State == Ready {
+		end(string(finished[0].State))
+		if finished[0].State == Ready {
 			observeGatewayRetry(finishCtx)
 		}
 	}
 	return err
+}
+
+func (w *Worker) cancelBatch(ctx context.Context, jobs []Job) error {
+	var result error
+	for _, job := range jobs {
+		_, err := w.Queue.Cancel(ctx, job.ID, job.Version)
+		result = errors.Join(result, err)
+	}
+	return result
+}
+
+func (w *Worker) authorizeBatch(ctx context.Context, jobs []Job) ([]AuthorizationSnapshot, error) {
+	if authorizer, ok := w.Authorizer.(BatchAuthorizer); ok {
+		evidence, err := authorizer.AuthorizeBatch(ctx, jobs)
+		if err != nil || len(evidence) != len(jobs) {
+			return nil, errors.Join(err, ErrUnauthorized)
+		}
+		return evidence, nil
+	}
+	evidence := make([]AuthorizationSnapshot, len(jobs))
+	for i, job := range jobs {
+		snapshot, err := w.Authorizer.Authorize(ctx, job)
+		if err != nil || !snapshot.Complete {
+			return nil, errors.Join(err, ErrUnauthorized)
+		}
+		evidence[i] = snapshot
+	}
+	return evidence, nil
 }

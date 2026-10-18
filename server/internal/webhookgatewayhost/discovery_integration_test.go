@@ -31,9 +31,16 @@ func (a compilerAuthorityAPI) WebhookGatewayWorkflowRevision(context.Context, in
 
 type compilerAcceptance struct{ calls int }
 
+func (d *compilerAcceptance) DispatchCompiler(ctx context.Context, s gateway.Subscription, payload json.RawMessage, revision gateway.Revision) gateway.DispatchResponse {
+	if gateway.ValidateCompilerRevision(s, revision) != nil {
+		return gateway.DispatchResponse{TransportOutcome: "not-sent", Kind: s.Destination.Kind}
+	}
+	return d.Dispatch(ctx, s, payload)
+}
+
 func (d *compilerAcceptance) Dispatch(_ context.Context, s gateway.Subscription, payload json.RawMessage) gateway.DispatchResponse {
 	d.calls++
-	if gateway.ValidateDispatchPayload(s, payload, gateway.DefaultLimits()) != nil {
+	if gateway.ValidateBatchDispatchPayload(s, payload, gateway.DefaultLimits()) != nil {
 		return gateway.DispatchResponse{TransportOutcome: "not-sent", Kind: s.Destination.Kind}
 	}
 	return gateway.DispatchResponse{TransportOutcome: "response", Kind: s.Destination.Kind, StatusCode: http.StatusNoContent}
@@ -45,7 +52,7 @@ func TestDiscoveredSecurityGatewayPostgresConformance(t *testing.T) {
 		t.Skip("POSTGRES_URL is required for registry/ingress/worker conformance")
 	}
 	ctx := t.Context()
-	fixture, err := os.ReadFile("../../../specs/fixtures/webhook-manifest-v1.json")
+	fixture, err := os.ReadFile("../../../specs/fixtures/webhook-manifest-v2.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +113,7 @@ func TestDiscoveredSecurityGatewayPostgresConformance(t *testing.T) {
 		t.Fatal(err)
 	}
 	policy, err := loader.Load(ctx)
-	if err != nil || len(policy.Subscriptions) != 3 {
+	if err != nil || len(policy.Subscriptions) != 2 {
 		t.Fatalf("security declarations did not activate: subscriptions=%d err=%v", len(policy.Subscriptions), err)
 	}
 	_, _, receiver, destination := authorityFixture()
@@ -122,7 +129,8 @@ func TestDiscoveredSecurityGatewayPostgresConformance(t *testing.T) {
 	}
 	secret := demoSecrets(bytes.Repeat([]byte("x"), 32))
 	body := []byte(`{"action":"created","installation":{"id":10},"organization":{"id":12},
-		"repository":{"id":11,"private":true,"visibility":"private"},"alert":{"number":42,
+		"repository":{"id":11,"private":true,"visibility":"private","full_name":"approved/private"},"alert":{"number":42,
+		"url":"https://api.github.com/repos/approved/private/dependabot/alerts/42",
 		"secret":"MUST-NOT-PERSIST","body":"MUST-NOT-PERSIST","security_advisory":{"severity":"critical"}}}`)
 	request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/webhooks/compiler", bytes.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")

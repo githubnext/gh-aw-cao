@@ -129,6 +129,24 @@ func (q *shellQueue) Maintain(context.Context, int) (MaintenanceResult, error) {
 	return MaintenanceResult{}, nil
 }
 
+func (q *shellQueue) ClaimBatch(ctx context.Context, request ClaimRequest) ([]Job, error) {
+	job, err := q.Claim(ctx, request)
+	if job == nil || err != nil {
+		return nil, err
+	}
+	return []Job{*job}, nil
+}
+
+func (q *shellQueue) BeginDispatchBatch(ctx context.Context, fences []Fence, evidence []Authorization) ([]Job, error) {
+	job, err := q.BeginDispatch(ctx, fences[0], evidence[0])
+	return []Job{job}, err
+}
+
+func (q *shellQueue) FinishBatch(ctx context.Context, fences []Fence, outcome Outcome) ([]Job, error) {
+	job, err := q.Finish(ctx, fences[0], outcome)
+	return []Job{job}, err
+}
+
 type shellDispatch func(context.Context, Subscription, json.RawMessage) DispatchResponse
 
 func (fn shellDispatch) Dispatch(ctx context.Context, subscription Subscription, payload json.RawMessage) DispatchResponse {
@@ -424,6 +442,7 @@ func TestWorkerWorkflowDispatchHTTP200Acceptance(t *testing.T) {
 		Kind: "workflow_dispatch", InstallationID: 30, RepositoryID: 40,
 		Workflow: "project-sync.yml", Ref: "main",
 		GatewayInput: true,
+		BatchInput:   true,
 		Fields:       []PayloadField{{Name: "item_id", Literal: json.RawMessage(`"9"`)}},
 	}
 	_, snapshot := shellFixture()

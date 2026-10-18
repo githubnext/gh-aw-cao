@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "webhook_subscriptions": [
+    {
+      "schema_version": 2,
+      "event": "projects_v2_item",
+      "types": ["edited"],
+      "conditions": [
+        {"filter":"project_id","path":["projects_v2_item","project_node_id"],"operator":"equals","value_type":"string","values":["PVT_one","PVT_two"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {"envelope":"github.event.client_payload","aw_context":"github.event.client_payload.aw_context","event":"github.event.client_payload.aw_context.webhook.event","deliveries":"github.event.client_payload.aw_context.webhook.deliveries","items":"aw_context.items"},
+        "batch": {"mode":"same-event","deduplicate_by":"delivery_id"},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 2,
+      "event": "dependabot_alert",
+      "types": ["created","reopened"],
+      "conditions": [
+        {"filter":"severity","path":["alert","security_advisory","severity"],"operator":"equals","value_type":"string","values":["high","critical"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {"envelope":"github.event.client_payload","aw_context":"github.event.client_payload.aw_context","event":"github.event.client_payload.aw_context.webhook.event","deliveries":"github.event.client_payload.aw_context.webhook.deliveries","items":"aw_context.items"},
+        "batch": {"mode":"same-event","deduplicate_by":"delivery_id"},
+        "payload_projection": {"source_path":["alert","url"],"target_path":["url"]},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 2,
+      "event": "code_scanning_alert",
+      "types": ["created"],
+      "conditions": [
+        {"filter":"alert_number","path":["alert","number"],"operator":"equals","value_type":"integer","values":[42]},
+        {"filter":"assignee","path":["alert","assignees","*","login"],"operator":"equals","value_type":"string","values":["octocat"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {"envelope":"github.event.client_payload","aw_context":"github.event.client_payload.aw_context","event":"github.event.client_payload.aw_context.webhook.event","deliveries":"github.event.client_payload.aw_context.webhook.deliveries","items":"aw_context.items"},
+        "batch": {"mode":"same-event","deduplicate_by":"delivery_id"},
+        "payload_projection": {"source_path":["alert","url"],"target_path":["url"]},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    }
+  ]
+}
