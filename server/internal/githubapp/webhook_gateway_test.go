@@ -28,7 +28,7 @@ func gatewayTestSubscription(kind string) webhookgateway.Subscription {
 		Source:   webhookgateway.Source{ID: "source", Event: "issues", InstallationID: 7, RepositoryID: 42},
 		Delivery: webhookgateway.DeliveryPolicy{TTLSeconds: 60, LeaseSeconds: 30, MaxAttempts: 2, RetryDelaySeconds: 1},
 		Destination: webhookgateway.Destination{
-			Kind: kind, InstallationID: 7, RepositoryID: 42, Workflow: "123", Ref: "main",
+			Kind: kind, InstallationID: 7, RepositoryID: 42, Workflow: "123", Ref: "main", URLPath: "/issue/url",
 		},
 	}
 	if kind == "repository_dispatch" {
@@ -61,8 +61,7 @@ func TestWebhookGatewayDispatchDomainPayloadIsNotDoubleWrapped(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			})
 			subscription := gatewayTestSubscription(kind)
-			subscription.Destination.Fields = []webhookgateway.PayloadField{{Name: "delivery", Literal: json.RawMessage(`"abc"`)}}
-			payload, err := webhookgateway.BuildDispatchPayload(subscription, webhookgateway.Event{Payload: json.RawMessage(`{}`)}, webhookgateway.Limits{})
+			payload, err := webhookgateway.BuildDispatchPayload(subscription, webhookgateway.Event{Payload: json.RawMessage(`{"issue":{"url":"https://api.github.com/repos/current/renamed/issues/9"}}`)}, webhookgateway.Limits{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +70,7 @@ func TestWebhookGatewayDispatchDomainPayloadIsNotDoubleWrapped(t *testing.T) {
 			if kind == "repository_dispatch" {
 				field = "client_payload"
 			}
-			if response.StatusCode != http.StatusNoContent || len(received) != 2 || string(received[field]) != `{"delivery":"abc"}` {
+			if response.StatusCode != http.StatusNoContent || len(received) != 2 || string(received[field]) != `{"url":"https://api.github.com/repos/current/renamed/issues/9"}` {
 				t.Fatalf("response=%+v received=%v", response, received)
 			}
 		})
@@ -173,7 +172,7 @@ func TestWebhookGatewayDispatchRequests(t *testing.T) {
 				if kind == "workflow_dispatch" {
 					field, selector, wantSelector = "inputs", "ref", `"main"`
 				}
-				if string(body[field]) != `{"delivery":"abc","number":12}` || string(body[selector]) != wantSelector {
+				if string(body[field]) != `{"url":"https://api.github.com/repos/current/renamed/issues/9"}` || string(body[selector]) != wantSelector {
 					t.Errorf("unexpected payload: %v", body)
 				}
 				w.WriteHeader(http.StatusNoContent)
@@ -186,7 +185,7 @@ func TestWebhookGatewayDispatchRequests(t *testing.T) {
 				return errors.New("storage down")
 			}}
 			subscription := gatewayTestSubscription(kind)
-			response, quota := dispatcher.DispatchWithQuota(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"delivery":"abc","number":12}`)))
+			response, quota := dispatcher.DispatchWithQuota(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 			if response.StatusCode != 204 || response.TransportOutcome != "response" || posts != 1 || observations != 3 || !quota.HasObservation {
 				t.Fatalf("response=%+v posts=%d observations=%d quota=%+v", response, posts, observations, quota)
 			}
@@ -223,7 +222,7 @@ func TestWebhookGatewayDispatchErrorMetadata(t *testing.T) {
 				_, _ = w.Write([]byte(test.body))
 			})
 			subscription := gatewayTestSubscription("workflow_dispatch")
-			response, quota := (WebhookGatewayDispatcher{Client: client}).DispatchWithQuota(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{}`)))
+			response, quota := (WebhookGatewayDispatcher{Client: client}).DispatchWithQuota(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 			if response.StatusCode != test.status || response.TransportOutcome != "response" || response.RetryAfter != test.wait || response.WorkflowRunID != 0 ||
 				(len(response.Body) > 0) != test.wantBody || len(response.Body) > webhookGatewayResponseLimit ||
 				strings.Contains(string(response.Body), "https:") || strings.Contains(string(response.Body), "secret-token-value") || !quota.HasResponse {
@@ -262,7 +261,7 @@ func TestWebhookGatewayDispatchRejectsInvalidRequestsBeforeHTTP(t *testing.T) {
 		} else {
 			subscription.Provider = "unsupported"
 		}
-		response := dispatcher.Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{}`)))
+		response := dispatcher.Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 		if response.TransportOutcome != "not-sent" || requests != 0 {
 			t.Fatalf("incorrect %s authority response=%+v requests=%d", field, response, requests)
 		}
@@ -348,7 +347,7 @@ func TestWebhookGatewayAcceptanceRunIdentityIsBounded(t *testing.T) {
 				_, _ = w.Write([]byte(test.body))
 			})
 			subscription := gatewayTestSubscription("workflow_dispatch")
-			response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{}`)))
+			response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 			if response.StatusCode != test.status || response.WorkflowRunID != test.wantID || len(response.Body) != 0 {
 				t.Fatalf("response=%+v wantRunID=%d", response, test.wantID)
 			}
@@ -387,13 +386,13 @@ func TestWebhookGatewayDispatchTransportAmbiguity(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
 	defer cancel()
 	subscription := gatewayTestSubscription("workflow_dispatch")
-	response := (WebhookGatewayDispatcher{Client: client}).Dispatch(ctx, subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{}`)))
+	response := (WebhookGatewayDispatcher{Client: client}).Dispatch(ctx, subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 	if response.TransportOutcome != "unknown" || response.StatusCode != 0 {
 		t.Fatalf("timeout response=%+v", response)
 	}
 	cancelled, cancelNow := context.WithCancel(context.Background())
 	cancelNow()
-	response = (WebhookGatewayDispatcher{Client: client}).Dispatch(cancelled, subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{}`)))
+	response = (WebhookGatewayDispatcher{Client: client}).Dispatch(cancelled, subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 	if response.TransportOutcome != "not-sent" {
 		t.Fatalf("already cancelled response=%+v", response)
 	}
@@ -410,7 +409,7 @@ func TestWebhookGatewayDispatchNeverFollowsRedirect(t *testing.T) {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	})
 	subscription := gatewayTestSubscription("workflow_dispatch")
-	response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{}`)))
+	response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 	if response.StatusCode != 307 || posts != 1 {
 		t.Fatalf("response=%+v posts=%d", response, posts)
 	}
@@ -513,7 +512,7 @@ func TestWebhookGatewayDispatchExistingAppAuthentication(t *testing.T) {
 		t.Fatal(err)
 	}
 	subscription := gatewayTestSubscription("repository_dispatch")
-	response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"ok":true}`)))
+	response := (WebhookGatewayDispatcher{Client: client}).Dispatch(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 	if response.StatusCode != 204 || tokenMints != 1 || posts != 1 {
 		t.Fatalf("response=%+v mints=%d posts=%d", response, tokenMints, posts)
 	}
@@ -549,7 +548,7 @@ func TestWebhookGatewayTokenMintFailureQuota(t *testing.T) {
 				t.Fatal(err)
 			}
 			subscription := gatewayTestSubscription("repository_dispatch")
-			response, quota := (WebhookGatewayDispatcher{Client: client}).DispatchWithQuota(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{}`)))
+			response, quota := (WebhookGatewayDispatcher{Client: client}).DispatchWithQuota(context.Background(), subscription, gatewayTestEnvelope(subscription, json.RawMessage(`{"url":"https://api.github.com/repos/current/renamed/issues/9"}`)))
 			if response.TransportOutcome != "not-sent" || response.StatusCode != 0 || len(response.Body) != 0 ||
 				!quota.HasObservation || quota.Observation.Remaining != 4998 || quota.ParkUntil.IsZero() || requests != 1 {
 				t.Fatalf("response=%+v quota=%+v requests=%d", response, quota, requests)

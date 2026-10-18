@@ -84,9 +84,7 @@ func (a gatewayWorkerAuthorizer) Authorize(_ context.Context, job webhookgateway
 
 func TestWebhookGatewayWorkerToHTTPPreservesCompleteRequest(t *testing.T) {
 	subscription := gatewayTestSubscription("repository_dispatch")
-	path := "/safe"
-	subscription.Destination.Fields = []webhookgateway.PayloadField{{Name: "selected", Path: &path, Required: true}}
-	event, err := webhookgateway.ParseEvent("delivery", "issues", []byte(`{"installation":{"id":7},"repository":{"id":42},"safe":"chosen","secret":"never-forward"}`), webhookgateway.Limits{})
+	event, err := webhookgateway.ParseEvent("delivery", "issues", []byte(`{"installation":{"id":7},"repository":{"id":42},"issue":{"url":"https://api.github.com/repos/current/renamed/issues/9","body":"never-forward"},"secret":"never-forward"}`), webhookgateway.Limits{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +114,7 @@ func TestWebhookGatewayWorkerToHTTPPreservesCompleteRequest(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			t.Error(err)
 		}
-		if request.EventType != subscription.Destination.EventType || string(request.Payload["selected"]) != `"chosen"` ||
+		if request.EventType != subscription.Destination.EventType || string(request.Payload["url"]) != `"https://api.github.com/repos/current/renamed/issues/9"` ||
 			len(request.Payload) != 1 {
 			t.Errorf("incorrect real worker HTTP body: %+v", request)
 		}

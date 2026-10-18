@@ -12,16 +12,15 @@ import (
 func domainFixture(t *testing.T) (Subscription, Event, Job, AuthorizationSnapshot) {
 	t.Helper()
 	now := time.Date(2026, 10, 17, 0, 0, 0, 0, time.UTC)
-	p := "/action"
 	s := Subscription{SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", ID: "subscription-1",
 		TenantID: "tenant-1", AppID: 10,
 		Source: Source{ID: "route-1", Event: "custom_event", InstallationID: 20,
 			RepositoryID: 30, OrganizationID: 40,
 			IdentityConstraints: []IdentityConstraint{{Path: "/custom/id", Value: json.RawMessage("50")}}},
 		Destination: Destination{Kind: "workflow_dispatch", InstallationID: 60, RepositoryID: 70,
-			Workflow: "worker.yml", Ref: "main", Fields: []PayloadField{{Name: "action", Path: &p, Required: true}}},
+			Workflow: "worker.yml", Ref: "main", URLPath: "/custom/url"},
 		Delivery: DeliveryPolicy{TTLSeconds: 600, LeaseSeconds: 60, MaxAttempts: 3, RetryDelaySeconds: 2}}
-	payload := []byte(`{"action":"edited","installation":{"id":20},"repository":{"id":30},"organization":{"id":40},"custom":{"id":50},"secret":"never-forward"}`)
+	payload := []byte(`{"action":"edited","installation":{"id":20},"repository":{"id":30},"organization":{"id":40},"custom":{"id":50,"url":"https://api.github.com/repos/approved/source/issues/50"},"secret":"never-forward"}`)
 	e, err := ParseEvent("delivery-1", "custom_event", payload, DefaultLimits())
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +153,7 @@ func TestDomainRejectsInvalidSubscriptionAndJSON(t *testing.T) {
 func TestDomainGenericMatchTransformAndFreeze(t *testing.T) {
 	s, e, j, _ := domainFixture(t)
 	payload, err := BuildDispatchPayload(s, e, DefaultLimits())
-	if err != nil || string(payload) != `{"inputs":{"action":"edited"},"ref":"main"}` {
+	if err != nil || string(payload) != `{"inputs":{"url":"https://api.github.com/repos/approved/source/issues/50"},"ref":"main"}` {
 		t.Fatalf("unexpected allowlist transform: %s %v", payload, err)
 	}
 	if strings.Contains(string(payload), "secret") {
@@ -179,26 +178,14 @@ func TestDomainGenericMatchTransformAndFreeze(t *testing.T) {
 	s.Destination.Kind, s.Destination.Workflow, s.Destination.Ref = "repository_dispatch", "", ""
 	s.Destination.EventType = "generic-event"
 	payload, err = BuildDispatchPayload(s, e, DefaultLimits())
-	if err != nil || string(payload) != `{"client_payload":{"action":"edited"},"event_type":"generic-event"}` {
+	if err != nil || string(payload) != `{"client_payload":{"url":"https://api.github.com/repos/approved/source/issues/50"},"event_type":"generic-event"}` {
 		t.Fatalf("repository transform: %s %v", payload, err)
 	}
-	s.Destination.Fields = make([]PayloadField, 11)
-	if _, err := BuildDispatchPayload(s, e, DefaultLimits()); !errors.Is(err, ErrInvalid) {
-		t.Fatal("property ceiling ignored")
-	}
-	s.Destination.Fields = []PayloadField{{Name: "_gateway", Literal: json.RawMessage(`"overwrite"`)}}
-	if _, err := BuildDispatchPayload(s, e, DefaultLimits()); !errors.Is(err, ErrInvalid) {
-		t.Fatal("reserved gateway metadata field accepted")
-	}
-	objectPath := "/installation"
-	s.Destination.Fields = []PayloadField{{Name: "raw", Path: &objectPath}}
-	if _, err := BuildDispatchPayload(s, e, DefaultLimits()); !errors.Is(err, ErrInvalid) {
-		t.Fatal("whole webhook object copied instead of leaf allowlist")
-	}
-	rootPath := ""
-	s.Destination.Fields[0].Path = &rootPath
-	if _, err := BuildDispatchPayload(s, e, DefaultLimits()); !errors.Is(err, ErrInvalid) {
-		t.Fatal("whole payload root copied")
+	for _, invalid := range []string{"", "/installation", "/custom/id", "/action", "/url", "/missing/url"} {
+		s.Destination.URLPath = invalid
+		if _, err := BuildDispatchPayload(s, e, DefaultLimits()); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("non-resource URL pointer accepted: %q", invalid)
+		}
 	}
 }
 
@@ -408,15 +395,18 @@ func TestDomainAdmissionValidation(t *testing.T) {
 
 func TestDomainDispatchByteCeiling(t *testing.T) {
 	s, e, _, _ := domainFixture(t)
-	s.Destination.Fields = []PayloadField{{Name: "literal",
-		Literal: json.RawMessage(`"` + strings.Repeat("a", 65536) + `"`)}}
-	if _, err := BuildDispatchPayload(s, e, DefaultLimits()); !errors.Is(err, ErrInvalid) {
+	limits := DefaultLimits()
+	body, err := BuildDispatchPayload(s, e, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	limits.MaxDispatchBytes = len(body) - 1
+	if _, err := BuildDispatchPayload(s, e, limits); !errors.Is(err, ErrInvalid) {
 		t.Fatal("oversized complete dispatch body accepted")
 	}
-	s.Destination.Fields[0].Literal = json.RawMessage(`"` + strings.Repeat("a", 64000) + `"`)
-	body, err := BuildDispatchPayload(s, e, DefaultLimits())
-	if err != nil || len(body) > 65536 {
-		t.Fatal("valid near-ceiling dispatch rejected", err)
+	limits.MaxDispatchBytes = len(body)
+	if _, err := BuildDispatchPayload(s, e, limits); err != nil {
+		t.Fatal("valid exact-ceiling dispatch rejected", err)
 	}
 }
 
@@ -430,10 +420,12 @@ func TestDomainProjectNodeIDsRequireExactGenericConstraint(t *testing.T) {
 	if matches, err := MatchSubscription(s, e, DefaultLimits()); err != nil || !matches {
 		t.Fatalf("GraphQL node identity did not match: %v %v", matches, err)
 	}
-	j, err := NewJob(j.CreatedAt, j.ID, e, s, j.SubscriptionDigest)
-	if err != nil {
-		t.Fatal(err)
+	if _, err := NewJob(j.CreatedAt, j.ID, e, s, j.SubscriptionDigest); !errors.Is(err, ErrInvalid) {
+		t.Fatal("event without canonical resource URL admitted")
 	}
+	j.Subscription = s
+	j.Event = IdentityOf(e)
+	var err error
 	j, err = ClaimJob(j.CreatedAt, j, j.Version, 1, "owner")
 	if err != nil {
 		t.Fatal(err)

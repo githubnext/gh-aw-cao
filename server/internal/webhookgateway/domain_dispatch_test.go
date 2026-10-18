@@ -27,48 +27,31 @@ func TestDomainCompleteDispatchRequestValidation(t *testing.T) {
 	}
 }
 
-func TestDomainProvenanceIsTypedAndBoundToImmutableJob(t *testing.T) {
-	s, _, job, snapshot := domainFixture(t)
-	s.Destination.GatewayInput = true
-	job.Subscription = s
-	p := dispatchProvenance{Version: "cao.webhook/v1", SourceID: job.Event.SourceID,
-		DeliveryID: job.DeliveryID, SubscriptionID: s.ID, Revision: snapshot.CurrentRevision}
-	makePayload := func(value any) json.RawMessage {
-		t.Helper()
-		data, err := json.Marshal(map[string]any{"ref": "main",
-			"inputs": map[string]any{"action": "edited", "_gateway": value}})
-		if err != nil {
-			t.Fatal(err)
+func TestDomainDispatchRejectsDataAndProvenanceAlongsideURL(t *testing.T) {
+	for _, kind := range []string{"workflow_dispatch", "repository_dispatch"} {
+		s, _, job, _ := domainFixture(t)
+		key, selector := "inputs", "ref"
+		value := "main"
+		if kind == "repository_dispatch" {
+			s.Destination.Kind, s.Destination.Workflow, s.Destination.Ref = kind, "", ""
+			s.Destination.EventType = "changed"
+			key, selector, value = "client_payload", "event_type", "changed"
 		}
-		return data
-	}
-	encoded, err := json.Marshal(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	job.Payload = makePayload(string(encoded))
-	if err := ValidateJob(job); err != nil {
-		t.Fatal(err)
-	}
-	if err := ValidateDispatchPayload(s, job.Payload, DefaultLimits()); err != nil {
-		t.Fatal(err)
-	}
-	job.Payload = makePayload(p)
-	if err := ValidateDispatchPayload(s, job.Payload, DefaultLimits()); !errors.Is(err, ErrInvalid) {
-		t.Fatal("nested object sent to workflow input")
-	}
-	job.Payload = makePayload(string(encoded))
-	s.Destination.GatewayInput = false
-	if err := ValidateDispatchPayload(s, job.Payload, DefaultLimits()); !errors.Is(err, ErrInvalid) {
-		t.Fatal("undeclared reserved workflow input accepted")
-	}
-	p.Revision.Digest = MetadataDigest([]byte("wrong-revision"))
-	encoded, err = json.Marshal(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	job.Payload = makePayload(string(encoded))
-	if err := ValidateJob(job); !errors.Is(err, ErrInvalid) {
-		t.Fatal("job accepted spoofed provenance digest")
+		job.Subscription = s
+		for _, extra := range []string{"body", "action", "id", "_gateway"} {
+			payload, err := json.Marshal(map[string]any{selector: value, key: map[string]any{
+				"url": "https://api.github.com/repos/approved/source/issues/50", extra: "must-not-forward",
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			job.Payload = payload
+			if err := ValidateDispatchPayload(s, payload, DefaultLimits()); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("%s accepted extra %s", kind, extra)
+			}
+			if err := ValidateJob(job); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("durable %s job accepted extra %s", kind, extra)
+			}
+		}
 	}
 }

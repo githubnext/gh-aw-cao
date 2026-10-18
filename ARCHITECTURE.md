@@ -514,6 +514,14 @@ operational `StateStore`, even with an empty queue. Egress independently recheck
 live GitHub installation/repository grants, identities, visibility, current root
 scope, and approved revision; an admission proof never authorizes sending.
 
+Dispatch forwards only the event resource's canonical GitHub URL, selected by
+approved `destination.urlPath`, as one `url` input. Payload fields, literals,
+and `_gateway` provenance are not forwarded; correlation remains internal.
+The gateway never fetches or enriches that resource. The receiving workflow must
+resolve the URL with its own token and fail closed on denied access, preserving
+GitHub's enforcement of its permissions. Missing or unsafe URLs fail admission;
+events without a delivered canonical resource URL cannot be dispatched.
+
 Fresh `control-plane.webhook-gateway` policy in `.github/workflows/cao.json`
 binds exact-SHA compiler artifacts and digests separately from administrative
 grants. Missing or invalid policy/evidence fails closed without stale fallback.

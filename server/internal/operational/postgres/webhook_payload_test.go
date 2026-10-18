@@ -12,9 +12,7 @@ func TestWebhookPersistsOnlyCompiledPayloadAndTrustedIdentity(t *testing.T) {
 	s, _ := testStore(t, Config{})
 	q := openWebhook(t, s, webhookOptions())
 	subscription := webhookJob("one", "tenant").Subscription
-	path := "/approved"
-	subscription.Destination.Fields = []wg.PayloadField{{Name: "approved", Path: &path, Required: true}}
-	raw := []byte(`{"installation":{"id":10},"repository":{"id":20},"approved":"safe","secret":"sensitive-value-must-not-be-retained"}`)
+	raw := []byte(`{"installation":{"id":10},"repository":{"id":20},"issue":{"url":"https://api.github.com/repos/approved/source/issues/9","body":"sensitive-value-must-not-be-retained"},"secret":"sensitive-value-must-not-be-retained"}`)
 	event, err := wg.ParseEvent("delivery", "issues", raw, wg.DefaultLimits())
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +36,7 @@ func TestWebhookPersistsOnlyCompiledPayloadAndTrustedIdentity(t *testing.T) {
 		t.Fatal("raw unapproved event data persisted")
 	}
 	claimed := claimWebhook(t, q)
-	if claimed.Event != wg.IdentityOf(event) || !bytes.Contains(claimed.Payload, []byte(`"approved":"safe"`)) {
+	if claimed.Event != wg.IdentityOf(event) || string(claimed.Payload) != `{"inputs":{"url":"https://api.github.com/repos/approved/source/issues/9"},"ref":"main"}` {
 		t.Fatalf("trusted identity or compiled payload lost: %+v", claimed.Event)
 	}
 	dispatchWebhook(t, q, claimed)

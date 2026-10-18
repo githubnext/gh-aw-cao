@@ -57,69 +57,8 @@ func jobFence(job Job) Fence {
 }
 
 func buildGatewayDispatchPayload(subscription Subscription, event Event, revision Revision, limits Limits) (json.RawMessage, error) {
-	if subscription.Destination.Kind == "workflow_dispatch" && !subscription.Destination.GatewayInput {
+	if !validRevision(revision) {
 		return nil, ErrInvalid
 	}
-	base, err := BuildDispatchPayload(subscription, event, limits)
-	if err != nil {
-		return nil, err
-	}
-	resolved, err := resolveLimits(limits)
-	if err != nil {
-		return nil, err
-	}
-	var request map[string]json.RawMessage
-	if err := json.Unmarshal(base, &request); err != nil {
-		return nil, ErrInvalid
-	}
-	propertyKey := "client_payload"
-	if subscription.Destination.Kind == "workflow_dispatch" {
-		propertyKey = "inputs"
-	}
-	var properties map[string]json.RawMessage
-	if err := json.Unmarshal(request[propertyKey], &properties); err != nil {
-		return nil, ErrInvalid
-	}
-	if _, exists := properties["_gateway"]; exists {
-		return nil, ErrInvalid
-	}
-	provenance, err := json.Marshal(struct {
-		Version        string   `json:"version"`
-		SourceID       string   `json:"sourceId"`
-		DeliveryID     string   `json:"deliveryId"`
-		SubscriptionID string   `json:"subscriptionId"`
-		Revision       Revision `json:"revision"`
-	}{
-		Version: "cao.webhook/v1", SourceID: subscription.Source.ID,
-		DeliveryID: event.DeliveryID, SubscriptionID: subscription.ID, Revision: revision,
-	})
-	if err != nil {
-		return nil, ErrInvalid
-	}
-	properties["_gateway"] = provenance
-	if propertyKey == "inputs" {
-		// Workflow input values cannot carry nested objects.
-		encoded, err := json.Marshal(string(provenance))
-		if err != nil {
-			return nil, ErrInvalid
-		}
-		properties["_gateway"] = encoded
-	}
-	maxProperties := resolved.MaxDispatchProperties
-	if propertyKey == "client_payload" && maxProperties > 10 {
-		maxProperties = 10
-	}
-	if len(properties) > maxProperties {
-		return nil, ErrInvalid
-	}
-	request[propertyKey], err = json.Marshal(properties)
-	if err != nil {
-		return nil, ErrInvalid
-	}
-	payload, err := json.Marshal(request)
-	if err != nil || len(payload) > resolved.MaxDispatchBytes ||
-		(propertyKey == "client_payload" && len(payload) >= 65536) {
-		return nil, ErrInvalid
-	}
-	return payload, nil
+	return BuildDispatchPayload(subscription, event, limits)
 }

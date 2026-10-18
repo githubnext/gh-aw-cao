@@ -3,7 +3,8 @@ package webhookgateway
 import (
 	"encoding/hex"
 	"encoding/json"
-	"reflect"
+	"net/url"
+	"path"
 	"strings"
 )
 
@@ -34,69 +35,28 @@ func validEventIdentity(event EventIdentity, subscription Subscription) bool {
 		(source.OrganizationID == 0 || event.OrganizationID == source.OrganizationID)
 }
 
-func safeProjection(value any) bool {
-	if scalar(value) {
-		return true
-	}
-	array, ok := value.([]any)
-	if !ok {
+func canonicalResourceURL(value any) bool {
+	text, ok := value.(string)
+	if !ok || len(text) == 0 || len(text) > 2048 || strings.ContainsAny(text, "\\ \t\r\n\x00") {
 		return false
 	}
-	for _, item := range array {
-		if !scalar(item) {
-			return false
-		}
-	}
-	return true
-}
-
-type dispatchProvenance struct {
-	Version        string   `json:"version"`
-	SourceID       string   `json:"sourceId"`
-	DeliveryID     string   `json:"deliveryId"`
-	SubscriptionID string   `json:"subscriptionId"`
-	Revision       Revision `json:"revision"`
-}
-
-func validateProvenance(job Job, value any, limits Limits, bindIdentity bool) error {
-	var encoded []byte
-	if job.Subscription.Destination.Kind == "workflow_dispatch" {
-		text, ok := value.(string)
-		if !ok || !job.Subscription.Destination.GatewayInput {
-			return ErrInvalid
-		}
-		encoded = []byte(text)
-	} else {
-		var err error
-		encoded, err = json.Marshal(value)
-		if err != nil {
-			return ErrInvalid
-		}
-	}
-	root, err := boundedJSON(encoded, limits.MaxDispatchBytes, limits)
-	if err != nil || !exactSchemaKeys(root, reflect.TypeFor[dispatchProvenance]()) {
-		return ErrInvalid
-	}
-	var p dispatchProvenance
-	if err := json.Unmarshal(encoded, &p); err != nil ||
-		p.Version != "cao.webhook/v1" || p.SourceID != job.Subscription.Source.ID ||
-		!identifier(p.DeliveryID) || p.SubscriptionID != job.Subscription.ID || !validRevision(p.Revision) {
-		return ErrInvalid
-	}
-	if bindIdentity && (p.SourceID != job.Event.SourceID || p.DeliveryID != job.DeliveryID ||
-		p.Revision.Digest != job.SubscriptionDigest) {
-		return ErrInvalid
-	}
-	return nil
+	u, err := url.Parse(text)
+	return err == nil && u.Scheme == "https" &&
+		(u.Host == "api.github.com" || u.Host == "github.com") &&
+		u.User == nil && u.Opaque == "" && u.RawQuery == "" && !u.ForceQuery &&
+		u.Fragment == "" && u.RawFragment == "" && !strings.Contains(text, "#") &&
+		!strings.ContainsAny(u.Path, "\\%") &&
+		strings.IndexFunc(u.Path, func(r rune) bool { return r <= ' ' || r == '\x7f' }) < 0 &&
+		u.RawPath == "" && u.Path != "" && u.Path != "/" && path.Clean(u.Path) == u.Path &&
+		u.String() == text
 }
 
 func validateCompiledPayload(job Job) error {
-	return validateRequest(job, DefaultLimits(), true)
+	return validateRequest(job, DefaultLimits())
 }
 
 // ValidateDispatchPayload validates the complete API request, never a properties-only object.
-// It binds selectors and declared properties to approved metadata, applies hard ceilings,
-// and checks provenance structure. ValidateJob additionally binds provenance to job identity.
+// It binds selectors to approved metadata and rejects anything except one canonical URL.
 func ValidateDispatchPayload(s Subscription, payload json.RawMessage, limits Limits) error {
 	if err := ValidateSubscription(s, limits); err != nil {
 		return err
@@ -105,10 +65,10 @@ func ValidateDispatchPayload(s Subscription, payload json.RawMessage, limits Lim
 	if err != nil {
 		return err
 	}
-	return validateRequest(Job{Subscription: s, Payload: payload}, resolved, false)
+	return validateRequest(Job{Subscription: s, Payload: payload}, resolved)
 }
 
-func validateRequest(job Job, limits Limits, bindIdentity bool) error {
+func validateRequest(job Job, limits Limits) error {
 	s := job.Subscription
 	if s.Destination.Kind == "repository_dispatch" && len(job.Payload) >= 65536 {
 		return ErrInvalid
@@ -131,40 +91,8 @@ func validateRequest(job Job, limits Limits, bindIdentity bool) error {
 		return ErrInvalid
 	}
 	properties, ok := request[propertyKey].(map[string]any)
-	if !ok || len(properties) > limits.MaxDispatchProperties {
+	if !ok || len(properties) != 1 || !canonicalResourceURL(properties["url"]) {
 		return ErrInvalid
-	}
-	fields := make(map[string]PayloadField, len(s.Destination.Fields))
-	for _, f := range s.Destination.Fields {
-		fields[f.Name] = f
-		if f.Required {
-			if _, exists := properties[f.Name]; !exists {
-				return ErrInvalid
-			}
-		}
-	}
-	for name, value := range properties {
-		if name == "_gateway" {
-			if err := validateProvenance(job, value, limits, bindIdentity); err != nil {
-				return err
-			}
-			continue
-		}
-		field, declared := fields[name]
-		if !declared {
-			return ErrInvalid
-		}
-		if s.Destination.Kind == "workflow_dispatch" && (value == nil || !scalar(value)) {
-			return ErrInvalid
-		}
-		if field.Path == nil {
-			literal, err := boundedJSON(field.Literal, limits.MaxDispatchBytes, limits)
-			if err != nil || !reflect.DeepEqual(value, literal) {
-				return ErrInvalid
-			}
-		} else if !safeProjection(value) {
-			return ErrInvalid
-		}
 	}
 	return nil
 }

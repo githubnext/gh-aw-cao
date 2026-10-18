@@ -12,14 +12,13 @@ import (
 func policyFixture(t *testing.T) (string, GatewayPolicy) {
 	t.Helper()
 	directory := t.TempDir()
-	actionPath := "/action"
 	subscription := Subscription{
 		SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", ID: "issue-change",
 		TenantID: "org-22", AppID: 2,
 		Source: Source{ID: "github", Event: "issues", InstallationID: 1, RepositoryID: 11, OrganizationID: 22,
 			RequiredPermissions: map[string]string{"issues": "read"}},
 		Destination: Destination{Kind: "workflow_dispatch", InstallationID: 2, RepositoryID: 12,
-			Workflow: "work.yml", Ref: "main", Fields: []PayloadField{{Name: "action", Path: &actionPath, Required: true}}},
+			Workflow: "work.yml", Ref: "main", URLPath: "/issue/url"},
 		Delivery: DeliveryPolicy{TTLSeconds: 86400, LeaseSeconds: 60, MaxAttempts: 5, RetryDelaySeconds: 10},
 	}
 	data, err := json.Marshal(subscription)

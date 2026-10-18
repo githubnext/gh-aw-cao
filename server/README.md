@@ -259,24 +259,46 @@ an egress authorization cache.
 
 The queue stores only payload-free `Job.Event` identity and bounded compiled
 `Job.Payload` dispatch JSON, never original matched or filtered event bodies.
-Ingress evaluates filters/constraints on ephemeral authenticated bytes, builds
-the approved leaf allowlist plus reserved provenance, then discards raw input.
+Ingress evaluates filters/constraints on ephemeral authenticated bytes, selects
+the canonical resource URL at the approved `destination.urlPath` (for example
+`/issue/url` or `/comment/url`), then discards raw input.
 Workers authorize against stored identity and immutable approved metadata and
 send the compiled request unchanged; they never parse it as a source event.
 The original delivery hash remains admission dedup evidence, independent of
-projected payload bytes. Restrict database access, require deployment-provided
+URL-only request bytes. Restrict database access, require deployment-provided
 encryption at rest, and enforce reviewed byte/retention bounds. Raw events must
 never be persisted, forwarded, or logged.
-Gateway output is capped at 10 total properties and 64 KiB for either transport,
-including reserved provenance injected by the runtime,
-intentionally stricter than GitHub's current 25-input workflow-dispatch limit.
-`client_payload._gateway` is an object for repository dispatch;
-`inputs._gateway` is a JSON string for workflow dispatch. It carries
-`version: "cao.webhook/v1"`, source/delivery/subscription IDs, and the complete
-approved Revision. Workflow metadata must declare `destination.gatewayInput: true`,
-asserting the compiled workflow has that reserved input; otherwise the
-worker fails closed. `_gateway` collisions are rejected, and at most nine
-ordinary mapped properties remain under the total cap.
+Dispatch carries exactly one property: `inputs.url` for workflow dispatch or
+`client_payload.url` for repository dispatch. Workflow `ref` and repository
+`event_type` remain approved transport selectors, never event-supplied values.
+No titles, bodies, actions, IDs, field values, literals, original payload, or
+`_gateway` provenance are forwarded. Correlation and authorization evidence stay
+inside the gateway. The complete request remains capped at 64 KiB.
+
+`destination.urlPath` must be a resource-object JSON pointer ending in `url` or
+`html_url`. The value is copied unchanged, not synthesized, fetched, or enriched.
+It must be an absolute HTTPS URL on exactly `api.github.com` or `github.com`,
+at most 2048 bytes, without credentials, ports, query strings, fragments,
+noncanonical path encodings, dot segments, or control characters. Prefer the
+resource's API `url`, particularly for comments whose HTML URLs contain anchors.
+Missing, null, invalid, or unsupported-host URLs reject admission. Events without
+a delivered canonical resource URL, including the checked-in Projects V2 item
+fixture, are not dispatchable; do not construct a URL from node IDs or forward
+another object's URL as a substitute.
+
+The generated workflow must declare the `url` input and resolve that resource
+using **its own** workflow token and declared permissions. It must validate the
+trusted GitHub origin, avoid forwarding credentials across redirects, and fail
+closed on 403/404 or other access failures. Neither a gateway delivery nor its
+App credentials grant the workflow access. The gateway must never resolve the
+resource on the workflow's behalf or supply fetched content as a fallback.
+The compiler/workflow resolver remains an external integration gate, not a
+capability implemented by these fixtures.
+
+This replaces the unreleased `fields`/`gatewayInput` contract; old metadata and
+queued non-URL requests fail validation, with no compatibility forwarding path.
+Regenerate and explicitly reapprove artifact digests before activation. Do not
+automatically replay old accepted or ambiguous work.
 Both dispatch endpoints explicitly pin REST API `2026-03-10`; workflow acceptance
 supports HTTP 200 and legacy 204. Safe queue outcomes retain accepted HTTP status and a validated numeric
 workflow-run ID when returned, not the raw response body or run URLs. A
@@ -408,7 +430,7 @@ is:
 ```bash
 # Set POSTGRES_URL to a disposable local PostgreSQL database first.
 go -C server test ./internal/webhookgatewayhost \
-  -run '^TestProjectsV2GatewayPostgresDemonstration$'
+  -run '^TestCanonicalURLGatewayPostgresDemonstration$'
 ```
 
 The command is an operational recipe, not a claim that this documentation change

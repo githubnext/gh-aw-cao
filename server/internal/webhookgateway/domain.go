@@ -100,18 +100,8 @@ type Destination struct {
 	Workflow       string `json:"workflow,omitempty"`
 	Ref            string `json:"ref,omitempty"`
 	EventType      string `json:"eventType,omitempty"`
-	// GatewayInput asserts that the compiled workflow declares the reserved _gateway input.
-	GatewayInput bool           `json:"gatewayInput,omitempty"`
-	Fields       []PayloadField `json:"fields"`
-}
-
-// PayloadField copies an allowlisted scalar/scalar array or a compiler literal
-// into a named property. Webhook objects cannot be forwarded wholesale.
-type PayloadField struct {
-	Name     string          `json:"name"`
-	Path     *string         `json:"path,omitempty"`
-	Literal  json.RawMessage `json:"literal,omitempty"`
-	Required bool            `json:"required"`
+	// URLPath selects the event resource's canonical URL; the workflow declares a url input.
+	URLPath string `json:"urlPath"`
 }
 
 // DeliveryPolicy bounds lifetime, lease duration, attempts, and safe-response retry delay.
@@ -228,7 +218,7 @@ const (
 	Ambiguous   JobState = "ambiguous"
 )
 
-// Job retains an immutable subscription, common identities, and compiled allowlisted request.
+// Job retains an immutable subscription, common identities, and a URL-only dispatch request.
 // Raw webhook bodies are never persisted; IDs exclude mutable revisions.
 type Job struct {
 	ID                 string          `json:"id"`

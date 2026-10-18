@@ -38,7 +38,7 @@ func TestGatewayTelemetryTraceSurvivesQueueWithoutBaggage(t *testing.T) {
 	_, snapshot := shellFixture()
 	queue := &shellQueue{}
 	handler := Ingress{SourceID: "projects", Secrets: shellSecrets{}, Policies: shellPolicy{snapshot: snapshot}, Queue: queue, Authorizer: &shellAuthorizer{}}
-	request := shellRequest(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"projects_v2_item":{"id":9}}`).WithContext(ctx)
+	request := shellRequest(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"issue":{"url":"https://api.github.com/repos/approved/source/issues/9"}}`).WithContext(ctx)
 	handler.ServeHTTP(httptest.NewRecorder(), request)
 	if len(queue.admission.Jobs) != 1 {
 		t.Fatal("ingress failed to admit trace fixture")

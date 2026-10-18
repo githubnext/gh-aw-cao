@@ -34,42 +34,23 @@ func (s demoSecrets) WebhookSecrets(context.Context, string) ([]byte, []byte, er
 	return s, nil, nil
 }
 
-type demoProjectAPI struct{ authorityAPI }
-
-func (a demoProjectAPI) WebhookGatewayProjects(_ context.Context, installation, organization int64, ids []string) error {
-	if installation != 10 || organization != 12 || len(ids) != 1 || ids[0] != "PVT_example_project" {
-		return gateway.ErrUnauthorized
-	}
-	return nil
-}
-
 // This exercises the proposed compiled-artifact boundary, not an unavailable
 // upstream gh-aw emitter or a live GitHub installation.
-func TestProjectsV2GatewayPostgresDemonstration(t *testing.T) {
+func TestCanonicalURLGatewayPostgresDemonstration(t *testing.T) {
 	dsn := os.Getenv("POSTGRES_URL")
 	if dsn == "" {
 		t.Skip("POSTGRES_URL is required for the real PostgreSQL gateway demonstration")
 	}
 	ctx := t.Context()
 	directory := t.TempDir()
-	payload, err := os.ReadFile("testdata/projects-v2-item-edited.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	projectPath, fieldPath := "/projects_v2_item/project_node_id", "/changes/field_value/field_type"
+	payload := []byte(`{"action":"edited","installation":{"id":10},"organization":{"id":12},"issue":{"id":1001,"url":"https://api.github.com/repos/approved/source/issues/33","body":"private-content-must-not-forward"}}`)
 	subscription := gateway.Subscription{
-		SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", ID: "project-field-change", TenantID: "approved", AppID: 2,
-		Source: gateway.Source{ID: "github", Event: "projects_v2_item", InstallationID: 10, OrganizationID: 12,
-			ProjectIDs: []string{"PVT_example_project"}, RequiredPermissions: map[string]string{"organization_projects": "read"},
-			IdentityConstraints: []gateway.IdentityConstraint{{Path: projectPath, Value: json.RawMessage(`"PVT_example_project"`)}}},
-		Filter: &gateway.Filter{Op: "and", Args: []gateway.Filter{
-			{Op: "eq", Path: "/action", Value: json.RawMessage(`"edited"`)},
-			{Op: "eq", Path: "/changes/field_value/field_node_id", Value: json.RawMessage(`"PVTSSF_example_status_field"`)},
-		}},
+		SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", ID: "issue-change", TenantID: "approved", AppID: 2,
+		Source: gateway.Source{ID: "github", Event: "issues", InstallationID: 10, OrganizationID: 12,
+			RequiredPermissions: map[string]string{"issues": "read"}},
+		Filter: &gateway.Filter{Op: "eq", Path: "/action", Value: json.RawMessage(`"edited"`)},
 		Destination: gateway.Destination{Kind: "workflow_dispatch", InstallationID: 20, RepositoryID: 21,
-			Workflow: "project-change.yml", Ref: "main", GatewayInput: true, Fields: []gateway.PayloadField{
-				{Name: "project", Path: &projectPath, Required: true}, {Name: "field_type", Path: &fieldPath, Required: true},
-			}},
+			Workflow: "issue-change.yml", Ref: "main", URLPath: "/issue/url"},
 		Delivery: gateway.DeliveryPolicy{TTLSeconds: 86400, LeaseSeconds: 60, MaxAttempts: 5, RetryDelaySeconds: 10},
 	}
 	metadata, err := json.Marshal(subscription)
@@ -83,7 +64,7 @@ func TestProjectsV2GatewayPostgresDemonstration(t *testing.T) {
 		Artifacts: []gateway.CompiledArtifact{{Path: "subscription.json", SHA256: digest, RepositoryID: 21,
 			CommitSHA: strings.Repeat("a", 40), CompilerID: "contract-fixture-not-upstream-compiler"}},
 		Grants: []gateway.AdminGrant{{SubscriptionID: subscription.ID, Digest: digest, SourceInstallationID: 10,
-			SourceOrganizationID: 12, ProjectIDs: []string{"PVT_example_project"}, ReceivingInstallationID: 10,
+			SourceOrganizationID: 12, ReceivingInstallationID: 10,
 			DestinationInstallationID: 20, DestinationRepositoryID: 21, DispatchKind: "workflow_dispatch",
 			AllowVisibilityTransfer: true, ExpiresAt: time.Now().Add(time.Hour)}},
 	}
@@ -118,9 +99,9 @@ func TestProjectsV2GatewayPostgresDemonstration(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _, receiver, destination := authorityFixture()
-	receiver.installation.Permissions = map[string]string{"organization_projects": "read"}
+	receiver.installation.Permissions = map[string]string{"issues": "read"}
 	destination.repository.Visibility = "private"
-	authority := LiveAuthority{Loader: loader, Queue: queue, Receiving: demoProjectAPI{receiver}, Dispatch: destination, State: store}
+	authority := LiveAuthority{Loader: loader, Queue: queue, Receiving: receiver, Dispatch: destination, State: store}
 	if err := authority.Refresh(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +111,7 @@ func TestProjectsV2GatewayPostgresDemonstration(t *testing.T) {
 	deliver := func(body []byte) int {
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/webhooks/github", bytes.NewReader(body))
 		request.Header.Set("Content-Type", "application/json")
-		request.Header.Set("X-GitHub-Event", "projects_v2_item")
+		request.Header.Set("X-GitHub-Event", "issues")
 		request.Header.Set("X-GitHub-Delivery", "00000000-0000-4000-8000-000000000033")
 		mac := hmac.New(sha256.New, secret)
 		_, _ = mac.Write(body)
@@ -139,16 +120,19 @@ func TestProjectsV2GatewayPostgresDemonstration(t *testing.T) {
 		ingress.ServeHTTP(response, request)
 		return response.Code
 	}
-	if status := deliver(bytes.ReplaceAll(payload, []byte("PVT_example_project"), []byte("PVT_not_approved"))); status != http.StatusNoContent {
-		t.Fatalf("irrelevant project delivery: HTTP %d", status)
+	if status := deliver(bytes.ReplaceAll(payload, []byte(`"edited"`), []byte(`"opened"`))); status != http.StatusNoContent {
+		t.Fatalf("irrelevant delivery: HTTP %d", status)
+	}
+	if status := deliver(bytes.ReplaceAll(payload, []byte(`"url":`), []byte(`"missing_url":`))); status != http.StatusBadRequest {
+		t.Fatalf("missing canonical URL: HTTP %d", status)
 	}
 	if status := deliver(payload); status != http.StatusAccepted {
-		t.Fatalf("matching project delivery: HTTP %d", status)
+		t.Fatalf("matching URL delivery: HTTP %d", status)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = postgres.New(ctx, dsn, namespace, postgres.Config{})
+	store, err = postgres.Open(ctx, dsn, namespace, postgres.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,14 +186,13 @@ func demoDispatchClient(t *testing.T) (*githubapp.Client, *atomic.Int64) {
 			_, _ = fmt.Fprintf(w, `{"token":"test-installation-token","expires_at":%q}`, time.Now().Add(time.Hour).Format(time.RFC3339))
 		case r.Method == http.MethodGet && path == "/repositories/21":
 			_, _ = fmt.Fprint(w, `{"id":21,"full_name":"approved/destination","private":true,"visibility":"private","owner":{"id":12}}`)
-		case r.Method == http.MethodPost && path == "/repos/approved/destination/actions/workflows/project-change.yml/dispatches":
+		case r.Method == http.MethodPost && path == "/repos/approved/destination/actions/workflows/issue-change.yml/dispatches":
 			var request struct {
 				Ref    string                     `json:"ref"`
 				Inputs map[string]json.RawMessage `json:"inputs"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.Ref != "main" ||
-				len(request.Inputs) != 3 || len(request.Inputs["_gateway"]) == 0 || string(request.Inputs["project"]) != `"PVT_example_project"` ||
-				string(request.Inputs["field_type"]) != `"single_select"` {
+				len(request.Inputs) != 1 || string(request.Inputs["url"]) != `"https://api.github.com/repos/approved/source/issues/33"` {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				return
 			}

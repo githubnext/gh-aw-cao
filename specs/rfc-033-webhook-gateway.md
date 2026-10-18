@@ -74,7 +74,9 @@ The compiler-facing interchange document is a bounded JSON object with
 `id`, `tenantId`, `appId`,
 `source`, optional `filter`, `destination`, and `delivery`. Source declares
 trusted route and immutable installation/repository/organization constraints;
-destination explicitly declares transport kind and bounded field mapping.
+destination explicitly declares transport kind and `urlPath`, a required
+resource-object JSON pointer ending in `url` or `html_url`. No arbitrary field
+mapping or literal output is supported.
 The trusted artifact/approval wrapper binds compiler identity, repository ID,
 source commit SHA, metadata path, and exact digest; those are not self-asserted
 activation authority in the subscription.
@@ -323,19 +325,19 @@ expiry times, state, not-before, attempt count, owner, generation, lease deadlin
 outcome classification, and bounded diagnostics. Credentials and raw tokens
 MUST NOT enter records. Raw source payloads MUST NOT persist, whether matched
 or filtered. After HMAC verification, ingress evaluates filters and identity
-constraints on ephemeral raw bytes, builds only allowlisted output plus reserved
-provenance, and discards the source body. `Job.Event` contains SourceID,
+constraints on ephemeral raw bytes, copies only the approved canonical resource
+URL into the dispatch request, and discards the source body. `Job.Event` contains SourceID,
 DeliveryID, Name, Action, and numeric InstallationID, RepositoryID, and
 OrganizationID, with no Payload. `Job.Payload` is the complete compiled outbound
 request, not an event body.
 
 The worker validates stored EventIdentity, exact immutable approved subscription
 digest, fresh grants, and the compiled request's shape/keys/limits, then sends
-the stored projected request unchanged. It MUST NOT ParseEvent or rerun source
+the stored URL-only request unchanged. It MUST NOT ParseEvent or rerun source
 filters on compiled dispatch JSON. The admission DeliveryDigest remains the hash
-of the original authenticated delivery; it is independent of projected payload
+of the original authenticated delivery; it is independent of URL-only request
 bytes and MUST NOT be compared as if both byte sequences were identical.
-Projected approved leaf data still requires protected database access,
+Resource URLs and internal identities still require protected database access,
 deployment-provided encryption at rest, strict byte/retention bounds, and no
 body-level logging. Database time is authoritative for leases and expiry.
 
@@ -411,27 +413,42 @@ contract: HTTP 204, at most 10 top-level
 under 64 KiB. Selecting it requires separately approved compiler metadata,
 input/trigger validation, and endpoint tests; do not reuse workflow_dispatch's
 25-input or run-ID response assumptions.
-The gateway itself deliberately caps both transports at 10 total properties
-and 64 KiB **after** reserved provenance injection, even though current GitHub
-workflow_dispatch supports 25 inputs. This leaves at most nine ordinary mapped
-properties when the mandatory reserved property is present.
-These gateway bounds MUST NOT be widened merely to match the upstream maximum.
+The gateway itself permits exactly one event-derived property, `url`, and
+caps the complete request at 64 KiB. These bounds MUST NOT be widened merely to
+match the upstream property/input maximum.
 workflow_dispatch accepts its documented HTTP 200 and legacy 204 contracts;
 repository_dispatch accepts HTTP 204, not an undocumented 202 response.
 
-The runtime alone creates reserved `_gateway` provenance with
-`version: "cao.webhook/v1"`, trusted `sourceId`, `deliveryId`, `subscriptionId`,
-and the complete approved Revision. This provenance version is distinct from
-the subscription metadata schema version. repository_dispatch carries it as
-the object `client_payload._gateway`; workflow_dispatch carries the same
-document as a JSON string in `inputs._gateway`.
-For workflow dispatch, approved compiler metadata MUST explicitly declare
-`destination.gatewayInput: true`, asserting that the compiled workflow declares
-the reserved input. Absence of that contract fails closed without dispatch.
-User mappings MUST NOT overwrite or supply `_gateway`; collisions and
-post-injection byte/property overflows fail closed. The upstream emitter is
-still unavailable, so local gatewayInput declarations remain proposed contract
-fixtures, not proof that a real compiler produced the workflow input.
+The only forwarded event value MUST be the canonical resource URL delivered at
+the approved `destination.urlPath`, copied unchanged into `inputs.url` or
+`client_payload.url`. The gateway MUST NOT forward titles, bodies, actions,
+identifiers, field values, literals, original event context, or `_gateway`
+provenance. Delivery/subscription/revision identity remains internal for
+authorization, deduplication and audit; it is not workflow input.
+
+The URL MUST be an absolute HTTPS resource URL on exactly `api.github.com` or
+`github.com`, at most 2048 bytes, without userinfo, explicit ports, query strings,
+fragments, noncanonical path encodings, dot segments, or control characters.
+Prefer the API `url` over HTML links with anchors. A missing, null, malformed,
+or unsupported-host URL MUST reject admission before authorization or durable
+queue writes. The gateway MUST NOT synthesize URLs from IDs, substitute another
+object's URL, fetch a missing URL, or enrich event content. In particular, the
+checked-in Projects V2 item payload lacks a canonical item URL and MUST NOT be
+dispatched under this contract.
+
+The workflow MUST resolve `url` with its own token and declared permissions, so
+GitHub independently enforces resource access at execution time. The workflow
+MUST validate the GitHub origin, prevent cross-origin credential redirects,
+and fail closed on access denial or unresolved resources; neither gateway App
+credentials nor forwarded content may serve as a fallback. The URL is an
+untrusted resource reference, never a grant. Approved workflow metadata must
+correspond to a declared `url` input; compiler emission and this token-scoped
+resolver remain unverified external integration dependencies.
+
+Legacy `fields`/`gatewayInput` metadata and queued non-URL payloads MUST fail
+validation without a compatibility forwarding path. Artifact changes require
+new reviewed digests and grants; accepted or ambiguous legacy work MUST NOT be
+automatically replayed.
 
 Retry is allowed only on positively classified known-safe nonacceptance, with
 bounded attempts, persisted backoff/jitter, not-before, and a fixed original
@@ -524,7 +541,7 @@ cross-tenant delivery collisions, repository transfer/name reuse, private data
 exfiltration through inputs, removed grants, stale workers, duplicate dispatch,
 unbounded fanout, quota exhaustion, and compromised ingress credentials.
 Mitigations are signed-byte validation, immutable IDs, trusted revision approval,
-both-phase grant checks, allowlisted minimized input mapping, strict bounds,
+both-phase grant checks, URL-only dispatch and workflow-token resolution, strict bounds,
 durable dedup, generation fencing, isolated deployments, and terminal ambiguity.
 
 Do not forward raw payloads, user-controlled refs, callback URLs, or repository

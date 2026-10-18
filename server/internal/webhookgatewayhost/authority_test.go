@@ -60,7 +60,7 @@ func authorityFixture() (gateway.PolicySnapshot, gateway.Job, authorityAPI, auth
 		TenantID: "tenant", AppID: 2,
 		Source: gateway.Source{ID: "github", Event: "issues", InstallationID: 10, RepositoryID: 11,
 			OrganizationID: 12, RequiredPermissions: map[string]string{"issues": "read"}},
-		Destination: gateway.Destination{Kind: "workflow_dispatch", InstallationID: 20, RepositoryID: 21, Workflow: "work.yml", Ref: "main"},
+		Destination: gateway.Destination{Kind: "workflow_dispatch", InstallationID: 20, RepositoryID: 21, Workflow: "work.yml", Ref: "main", URLPath: "/issue/url"},
 		Delivery:    gateway.DeliveryPolicy{TTLSeconds: 86400, LeaseSeconds: 60, MaxAttempts: 5, RetryDelaySeconds: 10},
 	}
 	digest := strings.Repeat("a", 64)
@@ -81,7 +81,7 @@ func authorityFixture() (gateway.PolicySnapshot, gateway.Job, authorityAPI, auth
 		QueueRevision: revision, State: gateway.Claimed, Fence: 3, Attempt: 1,
 		Event: gateway.EventIdentity{SourceID: subscription.Source.ID, DeliveryID: "delivery", Name: subscription.Source.Event,
 			InstallationID: 10, RepositoryID: 11, OrganizationID: 12},
-		Payload: json.RawMessage(`{"ref":"main","inputs":{}}`)}
+		Payload: json.RawMessage(`{"ref":"main","inputs":{"url":"https://api.github.com/repos/approved/source/issues/9"}}`)}
 	receiver := authorityAPI{
 		installation: githubapp.GatewayInstallation{ID: 10, AppID: 1, AccountID: 12, AccountType: "Organization",
 			AccountLogin: "approved", Permissions: map[string]string{"issues": "read"}},

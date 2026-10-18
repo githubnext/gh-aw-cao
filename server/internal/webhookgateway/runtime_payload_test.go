@@ -3,12 +3,13 @@ package webhookgateway
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-func TestGatewayPayloadReservedProvenance(t *testing.T) {
+func TestGatewayPayloadContainsOnlyCanonicalURL(t *testing.T) {
 	for _, kind := range []string{"repository_dispatch", "workflow_dispatch"} {
 		t.Run(kind, func(t *testing.T) {
 			subscription, snapshot := shellFixture()
@@ -17,10 +18,9 @@ func TestGatewayPayloadReservedProvenance(t *testing.T) {
 				subscription.Destination.Workflow = "project.yml"
 				subscription.Destination.Ref = "main"
 				subscription.Destination.EventType = ""
-				subscription.Destination.GatewayInput = true
 			}
-			event, err := ParseEvent("delivery", "projects_v2_item",
-				[]byte(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"projects_v2_item":{"id":9},"_gateway":{"attacker":"spoofed"}}`),
+			event, err := ParseEvent("delivery", "issues",
+				[]byte(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"issue":{"id":9,"url":"https://api.github.com/repos/approved/source/issues/9","body":"private"},"_gateway":{"attacker":"spoofed"}}`),
 				DefaultLimits())
 			if err != nil {
 				t.Fatal(err)
@@ -30,7 +30,7 @@ func TestGatewayPayloadReservedProvenance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if strings.Contains(string(payload), "spoofed") {
+			if strings.Contains(string(payload), "spoofed") || strings.Contains(string(payload), "private") {
 				t.Fatal("untrusted metadata propagated")
 			}
 			// Decode only the nested properties, since workflow requests also have ref.
@@ -46,62 +46,42 @@ func TestGatewayPayloadReservedProvenance(t *testing.T) {
 			if err := json.Unmarshal(envelope[property], &properties); err != nil {
 				t.Fatal(err)
 			}
-			provenance := properties["_gateway"]
-			if kind == "workflow_dispatch" {
-				var encoded string
-				if err := json.Unmarshal(provenance, &encoded); err != nil {
-					t.Fatal(err)
-				}
-				provenance = []byte(encoded)
-			}
-			var metadata struct {
-				SourceID       string   `json:"sourceId"`
-				DeliveryID     string   `json:"deliveryId"`
-				SubscriptionID string   `json:"subscriptionId"`
-				Revision       Revision `json:"revision"`
-			}
-			if err := json.Unmarshal(provenance, &metadata); err != nil {
-				t.Fatal(err)
-			}
-			if metadata.SourceID != "projects" || metadata.DeliveryID != "delivery" ||
-				metadata.SubscriptionID != subscription.ID || metadata.Revision.Digest != snapshot.Revisions[subscription.ID].Digest {
-				t.Fatalf("incorrect provenance %+v", metadata)
+			if len(properties) != 1 || string(properties["url"]) != `"https://api.github.com/repos/approved/source/issues/9"` {
+				t.Fatalf("dispatch forwarded more than the event resource URL: %s", payload)
 			}
 		})
 	}
 }
 
-func TestGatewayPayloadReservedFieldCountsAgainstLimit(t *testing.T) {
+func TestGatewayPayloadRejectsMissingURLBeforeAdmission(t *testing.T) {
 	subscription, snapshot := shellFixture()
-	event, err := ParseEvent("delivery", "projects_v2_item", []byte(`{"action":"edited"}`), DefaultLimits())
+	event, err := ParseEvent("delivery", "issues", []byte(`{"action":"edited"}`), DefaultLimits())
 	if err != nil {
 		t.Fatal(err)
 	}
 	event.SourceID = "projects"
-	for _, fields := range []int{9, 10} {
-		subscription.Destination.Fields = nil
-		for i := range fields {
-			subscription.Destination.Fields = append(subscription.Destination.Fields,
-				PayloadField{Name: fmt.Sprintf("field_%d", i), Literal: json.RawMessage(`"x"`)})
-		}
-		_, err := buildGatewayDispatchPayload(subscription, event, snapshot.Revisions[subscription.ID], DefaultLimits())
-		if fields == 9 && err != nil {
-			t.Fatal(err)
-		}
-		if fields == 10 && !errors.Is(err, ErrInvalid) {
-			t.Fatal("reserved field bypassed repository property limit")
-		}
+	if _, err := buildGatewayDispatchPayload(subscription, event, snapshot.Revisions[subscription.ID], DefaultLimits()); !errors.Is(err, ErrInvalid) {
+		t.Fatal("missing resource URL accepted")
+	}
+	queue, authorizer := &shellQueue{}, &shellAuthorizer{}
+	handler := Ingress{SourceID: "projects", Policies: shellPolicy{snapshot: snapshot}, Secrets: shellSecrets{}, Queue: queue, Authorizer: authorizer}
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, shellRequest(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"issue":{"id":9}}`))
+	if response.Code != http.StatusBadRequest || authorizer.calls != 0 || len(queue.admission.Jobs) != 0 {
+		t.Fatal("missing URL triggered authorization or durable admission")
 	}
 }
 
-func TestGatewayWorkflowRequiresDeclaredReservedInput(t *testing.T) {
-	subscription, snapshot := shellFixture()
-	subscription.Destination.Kind = "workflow_dispatch"
-	subscription.Destination.EventType = ""
-	subscription.Destination.Workflow = "project.yml"
-	subscription.Destination.Ref = "main"
-	event := Event{SourceID: "projects", DeliveryID: "delivery", Payload: json.RawMessage(`{}`)}
-	if _, err := buildGatewayDispatchPayload(subscription, event, snapshot.Revisions[subscription.ID], DefaultLimits()); !errors.Is(err, ErrInvalid) {
-		t.Fatal("undeclared workflow input was injected")
+func TestGatewayRejectsLegacyPayloadMappings(t *testing.T) {
+	subscription, _ := shellFixture()
+	data, err := json.Marshal(subscription)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, legacy := range []string{`"fields":[{"name":"body","path":"/issue/body","required":true}],`, `"gatewayInput":true,`} {
+		raw := strings.Replace(string(data), `"destination":{`, `"destination":{`+legacy, 1)
+		if _, err := ParseSubscription([]byte(raw), DefaultLimits()); !errors.Is(err, ErrInvalid) {
+			t.Fatal("legacy data-forwarding contract accepted")
+		}
 	}
 }

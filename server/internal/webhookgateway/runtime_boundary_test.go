@@ -125,18 +125,17 @@ func TestWorkerProductionHTTPBoundaryCompletePayload(t *testing.T) {
 				Delivery: wg.DeliveryPolicy{TTLSeconds: 600, LeaseSeconds: 60, MaxAttempts: 3, RetryDelaySeconds: 1},
 				Destination: wg.Destination{
 					Kind: kind, InstallationID: 7, RepositoryID: 42, EventType: "gateway-event",
-					Fields: []wg.PayloadField{{Name: "issue_id", Literal: json.RawMessage(`"9"`)}},
+					URLPath: "/issue/url",
 				},
 			}
 			if kind == "workflow_dispatch" {
 				sub.Destination.EventType, sub.Destination.Workflow, sub.Destination.Ref = "", "project.yml", "main"
-				sub.Destination.GatewayInput = true
 			}
 			revision := wg.Revision{RepositoryID: 42, CommitSHA: strings.Repeat("c", 40), MetadataPath: "compiled/subscription.json",
 				Digest: wg.MetadataDigest([]byte("artifact")), CompilerID: "gh-aw"}
 			policy := wg.QueueRevision{Revision: 1, Enabled: true, Digest: wg.MetadataDigest([]byte("policy"))}
 			event, err := wg.ParseEvent("delivery", "issues",
-				[]byte(`{"action":"opened","installation":{"id":7},"repository":{"id":42},"issue":{"id":9},"private":"never-propagate"}`), wg.DefaultLimits())
+				[]byte(`{"action":"opened","installation":{"id":7},"repository":{"id":42},"issue":{"id":9,"url":"https://api.github.com/repos/current/renamed/issues/9"},"private":"never-propagate"}`), wg.DefaultLimits())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -221,8 +220,8 @@ func TestWorkerProductionHTTPBoundaryCompletePayload(t *testing.T) {
 			if err := json.Unmarshal(envelope[field], &properties); err != nil {
 				t.Fatal(err)
 			}
-			if len(envelope) != 2 || len(properties) != 2 || string(properties["issue_id"]) != `"9"` || len(properties["_gateway"]) == 0 {
-				t.Fatalf("double wrapping or missing provenance: %s", envelope[field])
+			if len(envelope) != 2 || len(properties) != 1 || string(properties["url"]) != `"https://api.github.com/repos/current/renamed/issues/9"` {
+				t.Fatalf("dispatch must contain only the resource URL: %s", envelope[field])
 			}
 			if _, exists := properties[field]; exists {
 				t.Fatal("dispatch request was double wrapped")

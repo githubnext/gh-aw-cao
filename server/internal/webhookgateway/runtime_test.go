@@ -150,13 +150,12 @@ func (q *shellQuotaProbe) Acquire(context.Context, Job) (func(), error) {
 }
 
 func shellFixture() (Subscription, PolicySnapshot) {
-	path := "/projects_v2_item/id"
 	sub := Subscription{
 		SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", ID: "project-sync", TenantID: "tenant", AppID: 1,
-		Source: Source{ID: "projects", Event: "projects_v2_item", InstallationID: 10, OrganizationID: 20},
+		Source: Source{ID: "projects", Event: "issues", InstallationID: 10, OrganizationID: 20},
 		Filter: &Filter{Op: "eq", Path: "/action", Value: json.RawMessage(`"edited"`)},
 		Destination: Destination{Kind: "repository_dispatch", InstallationID: 30, RepositoryID: 40,
-			EventType: "project.changed", Fields: []PayloadField{{Name: "item_id", Path: &path, Required: true}}},
+			EventType: "project.changed", URLPath: "/issue/url"},
 		Delivery: DeliveryPolicy{TTLSeconds: 600, LeaseSeconds: 60, MaxAttempts: 3, RetryDelaySeconds: 2},
 	}
 	snapshot := PolicySnapshot{
@@ -174,7 +173,7 @@ func shellRequest(body string) *http.Request {
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("X-GitHub-Delivery", "delivery-1")
-	r.Header.Set("X-GitHub-Event", "projects_v2_item")
+	r.Header.Set("X-GitHub-Event", "issues")
 	r.Header.Set("X-Hub-Signature-256", signWebhook([]byte(body), []byte("current")))
 	return r
 }
@@ -203,7 +202,7 @@ func TestIngressAtomicAdmissionAndAllowlist(t *testing.T) {
 		}
 		handler := Ingress{SourceID: "projects", Policies: shellPolicy{snapshot: snapshot}, Secrets: shellSecrets{}, Queue: queue, Authorizer: authorizer}
 		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, shellRequest(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"projects_v2_item":{"id":9},"secret":"never-propagate"}`))
+		handler.ServeHTTP(recorder, shellRequest(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"issue":{"id":9,"url":"https://api.github.com/repos/approved/source/issues/9"},"secret":"never-propagate"}`))
 		expected := http.StatusAccepted
 		if capacityFailure {
 			expected = http.StatusServiceUnavailable
@@ -212,7 +211,7 @@ func TestIngressAtomicAdmissionAndAllowlist(t *testing.T) {
 			t.Fatalf("status %d, auth calls %d, jobs %d", recorder.Code, authorizer.calls, len(queue.admission.Jobs))
 		}
 		for _, job := range queue.admission.Jobs {
-			if strings.Contains(string(job.Payload), "never-propagate") || !strings.Contains(string(job.Payload), "item_id") {
+			if strings.Contains(string(job.Payload), "never-propagate") || !strings.Contains(string(job.Payload), `"url"`) {
 				t.Fatalf("allowlist not enforced: %s", job.Payload)
 			}
 		}
@@ -221,9 +220,9 @@ func TestIngressAtomicAdmissionAndAllowlist(t *testing.T) {
 
 func shellWorker(queue *shellQueue, authorizer *shellAuthorizer) *Worker {
 	sub, snapshot := shellFixture()
-	event := Event{SourceID: "projects", DeliveryID: "delivery", Name: "projects_v2_item", Action: "edited",
+	event := Event{SourceID: "projects", DeliveryID: "delivery", Name: "issues", Action: "edited",
 		InstallationID: 10, OrganizationID: 20,
-		Payload: json.RawMessage(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"projects_v2_item":{"id":9},"secret":"never-propagate"}`)}
+		Payload: json.RawMessage(`{"action":"edited","installation":{"id":10},"organization":{"id":20},"issue":{"id":9,"url":"https://api.github.com/repos/approved/source/issues/9"},"secret":"never-propagate"}`)}
 	payload, err := buildGatewayDispatchPayload(sub, event, snapshot.Revisions[sub.ID], DefaultLimits())
 	if err != nil {
 		panic(err)
@@ -362,7 +361,7 @@ func TestIngressIndexedFilteredLoad(t *testing.T) {
 	if authorizer.calls != 0 || len(queue.admission.Jobs) != 0 {
 		t.Fatal("filtered load performed GitHub authorization or persisted data")
 	}
-	if got := len(handler.candidates(snapshot, Event{SourceID: "projects", Name: "projects_v2_item", Action: "edited"})); got != 1 {
+	if got := len(handler.candidates(snapshot, Event{SourceID: "projects", Name: "issues", Action: "edited"})); got != 1 {
 		t.Fatalf("indexed candidate count %d", got)
 	}
 }
@@ -407,12 +406,11 @@ func TestWorkerWorkflowDispatchHTTP200Acceptance(t *testing.T) {
 	queue.job.Subscription.Destination = Destination{
 		Kind: "workflow_dispatch", InstallationID: 30, RepositoryID: 40,
 		Workflow: "project-sync.yml", Ref: "main",
-		GatewayInput: true,
-		Fields:       []PayloadField{{Name: "item_id", Literal: json.RawMessage(`"9"`)}},
+		URLPath: "/issue/url",
 	}
 	_, snapshot := shellFixture()
 	payload, err := buildGatewayDispatchPayload(queue.job.Subscription,
-		Event{DeliveryID: queue.job.DeliveryID, Payload: json.RawMessage(`{}`)},
+		Event{DeliveryID: queue.job.DeliveryID, Payload: json.RawMessage(`{"issue":{"url":"https://api.github.com/repos/approved/source/issues/9"}}`)},
 		snapshot.Revisions[queue.job.Subscription.ID], DefaultLimits())
 	if err != nil {
 		t.Fatal(err)

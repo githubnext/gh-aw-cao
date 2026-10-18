@@ -34,7 +34,7 @@ func webhookJob(subscription, tenant string) wg.Job {
 		Subscription: wg.Subscription{
 			SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", ID: subscription, TenantID: tenant, AppID: 1,
 			Source:      wg.Source{ID: "source", Event: "issues", InstallationID: 10, RepositoryID: 20},
-			Destination: wg.Destination{Kind: "workflow_dispatch", InstallationID: 30, RepositoryID: 40, Workflow: "build.yml", Ref: "main", GatewayInput: true},
+			Destination: wg.Destination{Kind: "workflow_dispatch", InstallationID: 30, RepositoryID: 40, Workflow: "build.yml", Ref: "main", URLPath: "/issue/url"},
 			Delivery:    wg.DeliveryPolicy{TTLSeconds: 3600, LeaseSeconds: 60, MaxAttempts: 3, RetryDelaySeconds: 1},
 		},
 		SubscriptionDigest: strings.Repeat("b", 64), Payload: []byte(`{"ref":"main","inputs":{}}`),
@@ -44,7 +44,7 @@ func webhookJob(subscription, tenant string) wg.Job {
 }
 
 func webhookAdmission(delivery string, jobs ...wg.Job) wg.Admission {
-	raw := []byte(`{"installation":{"id":10},"repository":{"id":20},"organization":{"id":50}}`)
+	raw := []byte(`{"installation":{"id":10},"repository":{"id":20},"organization":{"id":50},"issue":{"url":"https://api.github.com/repos/approved/source/issues/9"}}`)
 	for i := range jobs {
 		jobs[i].DeliveryID = delivery
 		jobs[i].Event.DeliveryID = delivery

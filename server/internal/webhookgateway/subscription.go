@@ -198,22 +198,10 @@ func ValidateSubscription(s Subscription, limits Limits) error {
 	default:
 		return ErrInvalid
 	}
-	if len(d.Fields) > l.MaxDispatchProperties {
+	segments, err := pointer(d.URLPath, l)
+	if err != nil || len(segments) < 2 ||
+		(segments[len(segments)-1] != "url" && segments[len(segments)-1] != "html_url") {
 		return ErrInvalid
-	}
-	names := map[string]bool{}
-	for _, f := range d.Fields {
-		if !identifier(f.Name) || f.Name == "_gateway" || names[f.Name] || (f.Path == nil) == (len(f.Literal) == 0) {
-			return ErrInvalid
-		}
-		names[f.Name] = true
-		if f.Path != nil {
-			if _, err := pointer(*f.Path, l); err != nil {
-				return err
-			}
-		} else if _, err := boundedJSON(f.Literal, l.MaxDispatchBytes, l); err != nil {
-			return err
-		}
 	}
 	p := s.Delivery
 	if p.TTLSeconds < 1 || p.TTLSeconds > 7*24*3600 ||
@@ -328,7 +316,7 @@ func identityMatches(value, expected any) bool {
 	return compatible && same
 }
 
-// BuildDispatchPayload emits only declared properties and caps the complete GitHub request.
+// BuildDispatchPayload forwards only the resource URL, never event contents or enrichment.
 func BuildDispatchPayload(s Subscription, event Event, limits Limits) (json.RawMessage, error) {
 	if err := ValidateSubscription(s, limits); err != nil {
 		return nil, err
@@ -338,32 +326,11 @@ func BuildDispatchPayload(s Subscription, event Event, limits Limits) (json.RawM
 	if err != nil {
 		return nil, err
 	}
-	properties := make(map[string]any)
-	for _, field := range s.Destination.Fields {
-		var value any
-		if field.Path != nil {
-			var exists bool
-			value, exists = lookup(root, *field.Path, l)
-			if !exists {
-				if field.Required {
-					return nil, ErrInvalid
-				}
-				continue
-			}
-			if !safeProjection(value) {
-				return nil, ErrInvalid
-			}
-		} else {
-			value, err = boundedJSON(field.Literal, l.MaxDispatchBytes, l)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if s.Destination.Kind == "workflow_dispatch" && (value == nil || !scalar(value)) {
-			return nil, ErrInvalid
-		}
-		properties[field.Name] = value
+	value, exists := lookup(root, s.Destination.URLPath, l)
+	if !exists || !canonicalResourceURL(value) {
+		return nil, ErrInvalid
 	}
+	properties := map[string]any{"url": value}
 	var request map[string]any
 	if s.Destination.Kind == "workflow_dispatch" {
 		request = map[string]any{"ref": s.Destination.Ref, "inputs": properties}
