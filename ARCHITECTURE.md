@@ -624,7 +624,7 @@ mock GitHub tests, and separate bounded registry, source-selection and dispatch-
 demonstrate local contracts, not installed-compiler or live GitHub acceptance.
 Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
 context paths, same-event/delivery-ID batch policy and alert-URL projection,
-with optional source selectors, match github/gh-aw#69772 commit 156495e.
+with optional source selectors, match github/gh-aw#69772 commit a1f69bf.
 Optional runtime interoperability executes that source's actual validator/
 normalizer, including exact/wildcard sources and whole-batch selector rejection,
 not a hosted workflow or an installed compiler.

@@ -585,13 +585,15 @@ on:
         - foo/*
 ```
 
-The upstream authoring migration places special events under `on.gateway`:
+The upstream compiler places special events under `on.gateway`:
 `projects-items` and `security-alerts`. It requires `"webhook-gateway": true`
-in the compiler's `aw.json`. Old flat Projects/security trigger spellings and
-the old `webhook-triggers` opt-in are rejected by the migrated compiler.
+in `.github/workflows/aw.json`. Roles/bots and native triggers remain outside
+`gateway`. Old flat Projects/security trigger spellings, nested singular
+spellings, unknown or empty gateway configurations, and the old
+`webhook-triggers` opt-in are rejected.
 This authoring change leaves the normalized lock manifest and closed v2
 dispatch envelope unchanged; the runtime conformance pin below does not claim
-compiler emission of the migrated syntax.
+installed-compiler emission of this syntax.
 
 Selectors are lowercase, sorted, unique exact names or literal-owner `/*`
 patterns, intersected with reviewed `discovery.repositories` and root scope.
@@ -618,7 +620,7 @@ Declaration v2 must specify `dispatch.batch:{mode:"same-event",
 deduplicate_by:"delivery_id"}` and the fixed context paths in RFC-033 §6.1.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`156495e5eded7afd423f753c61b34f830497939f`; optional interoperability tests
+`a1f69bf693aa4bda9727c05c27e7bdb8563b2a89`; optional interoperability tests
 execute that commit's actual runtime validator/normalizer, including exact and
 wildcard source selection and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not

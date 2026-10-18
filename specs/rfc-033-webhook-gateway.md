@@ -130,7 +130,7 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`156495e5eded7afd423f753c61b34f830497939f`, defines a batch-v2 discovery interchange in
+`a1f69bf693aa4bda9727c05c27e7bdb8563b2a89`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
@@ -322,15 +322,16 @@ on:
         - foo/*
 ```
 
-The upstream authoring migration places special events under `on.gateway`,
-using `projects-items` and `security-alerts`, and requires
-`"webhook-gateway": true` in the compiler's `aw.json`. The migrated compiler
-rejects old flat Projects/security spellings and the old `webhook-triggers`
-opt-in. A repos-only declaration selects supported Dependabot and code-scanning
+The upstream compiler places special events under `on.gateway`, using
+`projects-items` and `security-alerts`, and requires `"webhook-gateway": true`
+in `.github/workflows/aw.json`. Roles/bots and native triggers remain outside
+`gateway`. Old flat Projects/security spellings, nested singular spellings,
+unknown or empty gateway configurations, and the old `webhook-triggers` opt-in
+are rejected. A repos-only declaration selects supported Dependabot and code-scanning
 sources; explicit sources remain authoritative. CAO consumes the compiled
 manifest, not this YAML. The normalized manifest and closed v2 wire contract
 are unchanged; the pinned runtime interoperability evidence does not establish
-compiler emission of the migrated authoring syntax.
+installed-compiler emission of this authoring syntax.
 
 **SR-01** A present `repos` MUST be a nonempty bounded array of lowercase, sorted,
 unique strings. Each selector MUST be an exact `owner/repository` or a literal
