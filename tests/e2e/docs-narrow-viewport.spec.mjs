@@ -127,8 +127,8 @@ for (const { name, viewport } of [
         (images) => images.map((image) => image.currentSrc),
       );
       expect(productSources.every((source) => colorScheme === "light"
-        ? source.includes("-light.png")
-        : !source.includes("-light.png"))).toBe(true);
+        ? source.includes("-light.")
+        : !source.includes("-light."))).toBe(true);
       expect(productSources.slice(1).every((source) => source.includes("-mobile"))).toBe(true);
       expect(await page.locator(".product-shot-mobile").evaluateAll((frames) => frames.every((frame) => {
         const image = frame.querySelector("img");
@@ -151,13 +151,13 @@ test("landing product media follows a manual theme change", async ({ page }) => 
   expect((await page.goto("./"))?.ok()).toBe(true);
 
   await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
-    (images) => images.every((image) => !image.currentSrc.includes("-light.png")),
+    (images) => images.every((image) => !image.currentSrc.includes("-light.")),
   )).toBe(true);
 
   await page.getByRole("button", { name: "Switch to light theme" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
-    (images) => images.every((image) => image.currentSrc.includes("-light.png")),
+    (images) => images.every((image) => image.currentSrc.includes("-light.")),
   )).toBe(true);
 });
 
