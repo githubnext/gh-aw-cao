@@ -378,10 +378,11 @@ missing filter values. User-owned/unverifiable project nodes fail closed.
 The dispatch role records project responses in the receiving App installation's
 shared `graphql` quota bucket, including backoff; unavailable quota storage
 defers authorization.
-For Projects item edited events, actual `changes.field_value` supplies only
-`field_node_id` and `field_type`, not selected status names, labels, or from/to
-values. Missing status/label/transition operands are Unknown/nonmatch; do not
-invent fixture fields or fetch missing values to make a subscription match.
+For Projects item edited events, GitHub's published field-change example includes
+`changes.field_value.field_name`, `field_type`, and single-select `from.name` /
+`to.name`. The manifest mapper preserves complete transition pairs and requires
+delivered operands. Missing status/label/transition operands remain nonmatches;
+do not invent fields or fetch missing values to make a subscription match.
 
 Read policy afresh for every ingress/dispatch decision. Metadata may be cached
 only as immutable bytes bound to its exact approved digest; cached metadata
@@ -462,13 +463,35 @@ not install Prometheus alert rules or other alert resources.
 
 ### Compiler bridge and validation limits
 
-The local gh-aw compiler has no subscription metadata emitter, and upstream
-verification was blocked by SAML access. Compiler-produced metadata/revision
-binding and live end-to-end subscription activation remain an explicit pending
-dependency. Fixtures, typed contracts, local API simulations, and the exhaustive
-TLC safety result are **not** proof of a real frontmatter compile or signed
-GitHub delivery-to-workflow execution. Keep production activation disabled
-until those dependencies and deployment acceptance gates are satisfied.
+Trigger discovery reads `webhook_subscriptions` from the single-line
+`# gh-aw-manifest: {...}` header proposed by
+[github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
+`e0105843d0ce6eaa3203e104f77975f562ab6527`:
+
+```bash
+go -C server run ./cmd/cao-webhook-gateway --role=discover \
+  --workflow="$PWD/.github/workflows/example.lock.yml"
+```
+
+Repeat `--workflow` for each explicitly selected compiled workflow in one
+repository. The read-only, offline role emits a deterministic
+`cao.webhook-trigger-mapping/v1` event-to-workflow index with
+`discoveryOnly: true`, complete typed declarations, paired `any_of` groups,
+dispatch/context paths and limits, and whole-lock SHA-256 identities.
+Native-only workflows contribute no webhook routes. Invalid, conflicting, or
+over-budget inputs reject the entire inventory. It reads no workflow steps or
+frontmatter and rejects production gateway App/HMAC credentials and mixed-role options.
+Bounds and matching semantics are specified in RFC-033 section 6.1.
+
+Discovery is **not activation**: the compiler's numeric-versioned declarations
+and inline original-payload context are not the gateway's approved subscription,
+scalar projection, or `_gateway` provenance contract. Do not forward raw bodies
+or turn these mappings into administrative grants. That bridge, immutable
+execution binding, and live end-to-end activation remain pending. The
+hand-authored interchange fixture, typed contracts, local API simulations, and
+TLC results are **not** proof of a real frontmatter compile or signed GitHub
+delivery-to-workflow execution. Keep production activation disabled until those
+dependencies and deployment acceptance gates are satisfied.
 
 The host demonstration uses real PostgreSQL, signed HMAC ingress, and mock
 GitHub HTTP—not live GitHub or a real subscription compiler. Its targeted command

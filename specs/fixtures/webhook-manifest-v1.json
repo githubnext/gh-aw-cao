@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "secrets": [],
+  "actions": [],
+  "mcp_servers": [],
+  "webhook_subscriptions": [
+    {
+      "schema_version": 1,
+      "event": "projects_v2_item",
+      "types": ["edited"],
+      "conditions": [
+        {"filter":"field.name","path":["changes","field_value","field_name"],"operator":"equals","value_type":"string","values":["Status"]},
+        {"filter":"field.type","path":["changes","field_value","field_type"],"operator":"equals","value_type":"string","values":["single_select"]},
+        {"filter":"project_id","path":["projects_v2_item","project_node_id"],"operator":"equals","value_type":"string","values":["PVT_one","PVT_two"]}
+      ],
+      "any_of": [
+        [
+          {"filter":"field.from.name","path":["changes","field_value","from","name"],"operator":"equals","value_type":"string","values":["Todo"]},
+          {"filter":"field.to.name","path":["changes","field_value","to","name"],"operator":"equals","value_type":"string","values":["Ready"]}
+        ],
+        [
+          {"filter":"field.from.name","path":["changes","field_value","from","name"],"operator":"equals","value_type":"string","values":["In progress"]},
+          {"filter":"field.to.name","path":["changes","field_value","to","name"],"operator":"equals","value_type":"string","values":["Done"]}
+        ]
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {
+          "envelope": "github.event.client_payload",
+          "event": "github.event.client_payload.event",
+          "payload": "github.event.client_payload.payload",
+          "delivery_id": "github.event.client_payload.delivery_id"
+        },
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 1,
+      "event": "dependabot_alert",
+      "types": ["created","reopened"],
+      "conditions": [
+        {"filter":"severity","path":["alert","security_advisory","severity"],"operator":"equals","value_type":"string","values":["high","critical"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {
+          "envelope": "github.event.client_payload",
+          "event": "github.event.client_payload.event",
+          "payload": "github.event.client_payload.payload",
+          "delivery_id": "github.event.client_payload.delivery_id"
+        },
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 1,
+      "event": "code_scanning_alert",
+      "types": ["created"],
+      "conditions": [
+        {"filter":"alert_number","path":["alert","number"],"operator":"equals","value_type":"integer","values":[42]},
+        {"filter":"assignee","path":["alert","assignees","*","login"],"operator":"equals","value_type":"string","values":["octocat"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {
+          "envelope": "github.event.client_payload",
+          "event": "github.event.client_payload.event",
+          "payload": "github.event.client_payload.payload",
+          "delivery_id": "github.event.client_payload.delivery_id"
+        },
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 1,
+      "event": "secret_scanning_alert",
+      "types": ["created"],
+      "conditions": [
+        {"filter":"publicly_leaked","path":["alert","publicly_leaked"],"operator":"equals","value_type":"boolean","values":[true]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {
+          "envelope": "github.event.client_payload",
+          "event": "github.event.client_payload.event",
+          "payload": "github.event.client_payload.payload",
+          "delivery_id": "github.event.client_payload.delivery_id"
+        },
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    }
+  ]
+}

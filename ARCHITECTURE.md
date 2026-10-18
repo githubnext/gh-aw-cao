@@ -550,10 +550,17 @@ never automatic replay. Acceptance is not workflow success or operational value.
 Cancellation joins owned workers before storage closes.
 
 `specs/rfc-033-webhook-gateway.md` specifies the safety contract and bounded model.
-An official gh-aw subscription metadata emitter and immutable execution binding
-remain external, unverified dependencies blocking production activation.
-Hand-authored fixtures demonstrate local contracts, not compiler integration or
-a live Projects V2 end-to-end deployment.
+The offline `discover` role builds a bounded, deterministic event-to-workflow
+mapping from the compiled `.lock.yml` single-line `gh-aw-manifest` header's
+`webhook_subscriptions`, preserving typed conditions, complete paired `any_of`
+groups, dispatch/context routes and limits, and whole-artifact digests. It never
+interprets steps/frontmatter or activates subscriptions. This tracks the
+inspected github/gh-aw#69772 proposal, not a claim about the installed compiler.
+An approved identity/projection bridge and immutable execution binding remain
+external dependencies blocking production activation. The compiler's inline
+original-payload context must not bypass scalar projection or reserved
+provenance. Hand-authored fixtures demonstrate local contracts, not compiler
+integration or a live Projects V2 end-to-end deployment.
 
 ## Source tree
 

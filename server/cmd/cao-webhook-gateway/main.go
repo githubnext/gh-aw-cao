@@ -68,7 +68,15 @@ func loadKey(path string) ([]byte, error) {
 
 func run(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("cao-webhook-gateway", flag.ContinueOnError)
-	role := flags.String("role", "", "receive, dispatch, or local; credentials must be isolated by role")
+	role := flags.String("role", "", "receive, dispatch, local, or discover; credentials must be isolated by role")
+	var workflows []string
+	flags.Func("workflow", "discover only: absolute workflow lock-file path (repeatable)", func(path string) error {
+		if len(workflows) >= 1024 {
+			return errors.New("gateway discovery workflow limit exceeded")
+		}
+		workflows = append(workflows, path)
+		return nil
+	})
 	policyPath := flags.String("policy", "", "absolute path to reviewed cao.json")
 	listen := flags.String("listen", "127.0.0.1:8081", "receiving HTTP address")
 	cert := flags.String("tls-cert", "", "receiving TLS certificate file")
@@ -82,21 +90,28 @@ func run(ctx context.Context, args []string) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if (*role != "receive" && *role != "dispatch" && *role != "local") || flags.NArg() != 0 {
-		return errors.New("gateway requires an isolated receive, dispatch, or local role")
+	if (*role != "receive" && *role != "dispatch" && *role != "local" && *role != "discover") || flags.NArg() != 0 {
+		return errors.New("gateway requires an explicit receive, dispatch, local, or discover role")
 	}
 	if err := validateRoleCredentials(*role); err != nil {
 		return err
 	}
 	var incompatible bool
 	flags.Visit(func(f *flag.Flag) {
+		if *role == "discover" {
+			incompatible = incompatible || f.Name != "role" && f.Name != "workflow"
+			return
+		}
 		productionOption := f.Name == "policy" || f.Name == "listen" || f.Name == "tls-cert" || f.Name == "tls-key"
-		if *role == "local" && productionOption || *role != "local" && f.Name != "role" && !productionOption {
+		if f.Name == "workflow" || *role == "local" && productionOption || *role != "local" && f.Name != "role" && !productionOption {
 			incompatible = true
 		}
 	})
 	if incompatible {
-		return errors.New("local simulation and production role options cannot be combined")
+		return errors.New("gateway discovery, local simulation, and production options cannot be combined")
+	}
+	if *role == "discover" {
+		return discoverWorkflows(ctx, workflows, os.Stdout)
 	}
 	if *role == "local" {
 		return runLocal(ctx, localOptions{repository: *repository, path: *sqlitePath, events: strings.Split(*events, ","),
@@ -141,11 +156,11 @@ func run(ctx context.Context, args []string) error {
 }
 
 func validateRoleCredentials(role string) error {
-	if role == "local" {
+	if role == "local" || role == "discover" {
 		for _, name := range []string{"CAO_GATEWAY_RECEIVE_KEY_FILE", "CAO_GATEWAY_DISPATCH_KEY_FILE",
 			"CAO_GATEWAY_WEBHOOK_SECRET", "CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET"} {
 			if os.Getenv(name) != "" {
-				return errors.New("local simulation must not receive production gateway credentials")
+				return errors.New("local simulation and discovery must not receive production gateway credentials")
 			}
 		}
 	}

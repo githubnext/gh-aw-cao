@@ -128,13 +128,14 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 ## 6. Compiler dependency and workflow identity
 
 The compiler MUST emit the versioned subscription declaration and a stable
-binding to the dispatchable workflow artifact and its source revision. This RFC
-does not assume the installed gh-aw compiler provides this feature. The local
-compiler has no subscription metadata emitter; upstream verification was blocked
-by SAML access, so an upstream implementation cannot be asserted here. Until an
-official emitter/schema and revision-binding contract exist, production
-activation of compiler-declared subscriptions is blocked by that dependency.
-A local hand-authored fixture is not a production compiler integration.
+binding to the dispatchable workflow artifact and its source revision.
+[github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
+`e0105843d0ce6eaa3203e104f77975f562ab6527`, defines a discovery interchange in
+the compiled lock-file header. That proposed interchange is supported for
+discovery below; it is not the approved subscription schema in section 4.
+An installed compiler version MUST NOT be assumed to emit it merely because
+this parser accepts it. Immutable execution binding and the payload transport
+bridge remain dependencies blocking production activation.
 
 Workflow dispatch accepts a branch or tag ref, not an arbitrary guarantee of
 execution at the metadata SHA. Use a protected, policy-approved revision
@@ -143,6 +144,68 @@ verify their expected approved revision before privileged work. Ref mutation
 between verification and GitHub processing is another external race: a ref alone
 does not prove immutable execution. Where that trust cannot be established,
 dispatch MUST remain disabled. Do not claim this RFC solves mutable-ref pinning.
+
+### 6.1. Lock-header trigger mapping
+
+The gateway MUST discover webhook declarations from the single-line
+`# gh-aw-manifest: {...}` header in each explicitly selected compiled
+`.lock.yml`, not by interpreting YAML jobs, `on` entries, source frontmatter,
+or workflow steps. Exactly one header in the leading comment preamble is
+required. Missing, duplicate, malformed, multiline, or unsupported-version
+headers MUST reject the inventory without emitting a partial mapping.
+
+Manifest `version: 1` carries `webhook_subscriptions`. Its omission or an empty
+array denotes no webhook subscriptions; native triggers MUST NOT be inferred
+as webhook routes. Explicit null is invalid. Each declaration uses numeric
+`schema_version: 1`, `event`, `types`, `conditions`, optional `any_of`, and
+`dispatch`. Unrelated top-level manifest fields are permitted; unknown
+declaration, condition, dispatch, or context properties MUST fail closed.
+Duplicate JSON keys, repeated events in one workflow, conflicting workflow
+identities, and unsupported predicate operations MUST be rejected.
+
+The deterministic mapping indexes original webhook event names to all declared
+workflow routes. Each entry MUST retain the complete declaration, manifest
+version, and SHA-256 of the **entire** lock artifact, including steps after
+the header. Workflow identity is `.github/workflows/ID.lock.yml`; the current
+compiler emits `repository_dispatch` to `${{ github.repository }}` with
+`event_type` equal to `gh-aw-webhook-` plus the first 24 hexadecimal characters
+of SHA-256(ID). Workflow path, context paths, and transport limits MUST agree
+with this versioned contract. Mapping never resolves a repository template
+from an incoming payload.
+
+Activity types select alternatives. `conditions` are ANDed; condition values
+are typed alternatives. When `any_of` is present, at least one complete
+nonempty AND group MUST also match. Status transition pairs MUST NOT be
+flattened into independent from/to lists or a cross-product. Supported operand
+types are string, boolean, and signed 64-bit integer; no string/number/boolean
+coercion is permitted. A `*` path segment traverses array elements only, never
+object keys. Missing, null, or incompatible payload operands do not match.
+Matching uses delivered data only, without GitHub hydration or state history.
+
+Discovery MUST bound lock artifacts to 8 MiB, header JSON to the configured
+metadata ceiling (262,144 bytes by default), conditions to the configured
+filter-node ceiling (128 by default), and the combined index to 1,024 routes.
+The local inventory accepts at most 1,024 explicit absolute file paths and
+reserves a 15 MiB declaration budget, leaving output framing within 16 MiB.
+Workflow order MUST NOT affect the mapping. A cancelled, unreadable, invalid,
+or over-budget inventory MUST fail rather than emit partial success.
+
+`cao-webhook-gateway --role=discover --workflow=/absolute/path/ID.lock.yml`
+emits `cao.webhook-trigger-mapping/v1` with `discoveryOnly: true` and `byEvent`.
+The repeatable workflow option is discovery-only and MUST NOT be combined with
+local simulation or production options/credentials. This role performs no
+network requests, storage provisioning, admission, approval, or dispatch.
+`TriggerMapping.Match` returns discovery candidates, never authorization.
+
+The compiler's inline `github.event.client_payload.payload` contract differs
+from this RFC's approved scalar projection and reserved `_gateway` provenance.
+Discovery MUST preserve that difference, not synthesize raw-body forwarding or
+silently convert a declaration into an Active subscription. Reviewed immutable
+identities, grants, delivery policy, projection, and execution-revision proof
+are still required. `specs/fixtures/webhook-manifest-v1.json` is a hand-authored
+interchange fixture, not proof of an actual compiler run. The manifest and CLI
+test suites derive their positive/negative cases from this section; no queue
+or TLA+ transition changes because discovery cannot activate or dispatch work.
 
 ## 7. Event subscriptions and generic filters
 
@@ -214,21 +277,20 @@ and not output from a real compiler:
 }
 ```
 
-The actual Projects v2 item edited webhook schema limits
-`changes.field_value` to `field_node_id` and `field_type`, with the latter drawn
-from `single_select`, `date`, `number`, `text`, and `iteration`; that object has
-`additionalProperties: false`. It does **not** carry selected status names,
-labels, or `from`/`to` transition values there. Realistic fixtures MAY filter
-`/changes/field_value/field_node_id` and `/changes/field_value/field_type`,
-together with `/projects_v2_item/project_node_id`. They MUST NOT invent status,
-label, or transition fields that the webhook does not supply.
+GitHub's published Projects custom-field change example includes
+`changes.field_value.field_name`, `field_type`, and `from.name`/`to.name`
+for single-select fields. The compiler emits paired transition predicates over
+those delivered operands, alongside the containing `project_node_id`, field
+name `Status`, and type `single_select`. Sparse schema fixtures containing only
+`field_node_id` and `field_type` MUST NOT be treated as evidence that GitHub
+never supplies transition names. Conversely, host/version differences and
+deliveries missing those operands MUST NOT be repaired by inventing fields.
 
 A requested status-name, label, or transition filter whose operand is absent
 evaluates Unknown/nonmatch, including beneath negation; it MUST NOT trigger a
 fallback API fetch or fabricate an enriched payload. Such a subscription cannot
 claim to implement the requested intent without compiler evidence that the
-actual event contract supplies the needed fields. This limitation is separate
-from the unsupported compiler bridge and remains true even with a valid grant.
+actual event contract supplies the needed fields. This limitation remains true even with a valid grant and a discovered route.
 
 ## 9. Grants at admission and immediately before dispatch
 
@@ -429,9 +491,10 @@ For workflow dispatch, approved compiler metadata MUST explicitly declare
 `destination.gatewayInput: true`, asserting that the compiled workflow declares
 the reserved input. Absence of that contract fails closed without dispatch.
 User mappings MUST NOT overwrite or supply `_gateway`; collisions and
-post-injection byte/property overflows fail closed. The upstream emitter is
-still unavailable, so local gatewayInput declarations remain proposed contract
-fixtures, not proof that a real compiler produced the workflow input.
+post-injection byte/property overflows fail closed. The inspected upstream
+discovery contract does not declare this reserved input; local gatewayInput
+declarations remain proposed contract fixtures, not proof that a real compiler
+produced the workflow input.
 
 Retry is allowed only on positively classified known-safe nonacceptance, with
 bounded attempts, persisted backoff/jitter, not-before, and a fixed original
@@ -660,9 +723,12 @@ This design/model change makes no such claim.
 - [Webhook event payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads).
 - [Projects v2 item webhook payload](https://docs.github.com/en/webhooks/webhook-events-and-payloads#projects_v2_item):
   distinguish `project_node_id` from the item's `node_id`.
-- [Actual Projects v2 item edited schema](https://raw.githubusercontent.com/octokit/webhooks/main/payload-schemas/api.github.com/projects_v2_item/edited.schema.json):
-  `changes.field_value` has only `field_type` and `field_node_id`, not status
-  names or transition values (verified 2026-10-17).
+- [Projects field-change webhook example](https://github.blog/changelog/2024-06-27-github-issues-projects-graphql-and-webhook-support-for-project-status-updates-and-more/):
+  includes `field_name` and single-select `from.name`/`to.name`; a narrower
+  third-party JSON schema does not negate the published payload example.
+- [Compiler webhook manifest proposal](https://github.com/github/gh-aw/pull/69772):
+  versioned normalized declarations in the lock-file header; proposal state
+  and exact inspected revision are recorded in section 6.
 - [Repository dispatch REST API](https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event):
   a separate HTTP 204 transport with different event/payload limits.
 - [GitHub App rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
@@ -670,8 +736,8 @@ This design/model change makes no such claim.
   [ingestion boundaries](server-ingestion.md), and
   [control architecture](control-architecture.md).
 
-Open dependencies are an official compiler metadata emitter/schema and revision
-binding; approved App permissions and supported project-event capabilities on
+Open dependencies are an agreed approved-subscription/projection bridge and
+immutable execution binding; approved App permissions and supported project-event capabilities on
 each GitHub host; a trustworthy dispatch-ref execution contract; operational
 retention/SLO budgets; and real deployment acceptance evidence. Absence of any
 required dependency disables affected subscriptions rather than substituting
