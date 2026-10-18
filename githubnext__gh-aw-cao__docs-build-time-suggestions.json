@@ -3,6 +3,34 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-18T23:34:00Z",
+      "worker_run_id": 39176910573,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39176849931,
+        39176029082,
+        39176008649,
+        39175838140,
+        39174730895,
+        39173669741,
+        39173019337,
+        39173011411,
+        39172590294,
+        39171797995,
+        39171613830,
+        39170377716,
+        39169267070,
+        39168217259,
+        39167361899,
+        39167137866,
+        39166119466,
+        39165928781,
+        39164795000,
+        39163782102
+      ],
+      "outcome": "Incomplete evaluation for category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 553fa58dd630481370bf764daab0bc42d99496fb. In the latest 20 completed docs.yml runs from 2026-10-18T20:32:36Z through 2026-10-18T23:31:15Z, 14 runs concluded success, 6 concluded skipped, 0 concluded failure, and 0 were cancelled. Trusted job metadata showed only 4 successful build-bearing docs runs in that bounded sample: schedule 39173669741 and push 39173011411 on head SHA 553fa58dd630481370bf764daab0bc42d99496fb, plus schedule 39167361899 and push 39166119466 on head SHA ded621fccab4ac56977ac061dc15a2b9a7c12950. All other successful runs completed only schedule-freshness and skipped build plus deploy, while workflow_run callbacks were skipped. Because the mission requires at least 5 comparable successful build-bearing docs runs before assessing scheduling, concurrency, and avoidable rebuilds or recommending a workflow change, no actionable improvement was evaluated in this run and next_category remains unchanged."
+    },
+    {
       "evaluated_at": "2026-10-18T23:20:52Z",
       "worker_run_id": 39175946466,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -813,34 +841,6 @@
         39077935656
       ],
       "outcome": "Incomplete evaluation for category \"Astro documentation generation\" on source SHA 6394ae3db0534eada9c0881ef1db971a8ddb3bce. In the latest 20 completed docs.yml runs from 2026-10-17T23:09:46Z through 2026-10-18T03:27:17Z, 13 runs concluded success and 7 concluded skipped; none failed, were cancelled, or timed out. All observed head SHAs in that window resolved to unchanged workflow blobs (.github/workflows/docs.yml 9a4834bb3d54ed40376fab886e8e1effff0951d5 and .github/workflows/cao-dashboard.yml 415481b74f6b56b4d012c9a23e076b13bcaca2bd), so the runs remain comparable on workflow source. However, only 4 successful docs runs executed the build job in this bounded window (39081398631, 39080280156, 39079340491, and 39078510130). The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable Astro-generation recommendation was assessed in this run and next_category remains unchanged until a later authorized run has enough comparable evidence."
-    },
-    {
-      "evaluated_at": "2026-10-18T02:59:08Z",
-      "worker_run_id": 39091711233,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39091537097,
-        39090370845,
-        39088640464,
-        39087924678,
-        39087832789,
-        39086764911,
-        39086658333,
-        39084759712,
-        39084613320,
-        39081398631,
-        39080280156,
-        39079340491,
-        39079315155,
-        39078510130,
-        39078473718,
-        39078340726,
-        39077935656,
-        39077752389,
-        39077745429,
-        39077380883
-      ],
-      "outcome": "Evaluated category \"dependency installation and caching\" on source SHA 6394ae3db0534eada9c0881ef1db971a8ddb3bce. In the latest 20 completed docs.yml runs from 2026-10-18T00:56:16Z through 2026-10-18T02:51:15Z, 13 runs concluded success, 7 concluded skipped, and none failed, were cancelled, or timed out. Six successful runs executed the docs build job (39081398631, 39080280156, 39079340491, 39078510130, 39077745429, 39077380883), which satisfies the comparable-run requirement; four of those also completed deploy. All sampled docs and paired successful dashboard head SHAs resolved to the same workflow blobs (.github/workflows/docs.yml 9a4834bb3d54ed40376fab886e8e1effff0951d5 and .github/workflows/cao-dashboard.yml 415481b74f6b56b4d012c9a23e076b13bcaca2bd), so the runs remain comparable on workflow source. Trusted metadata showed docs queue time median/p90 0.0s/0.0s, full workflow execution 13.0s/92.8s across all successful runs and 83.5s/102.5s across the 6 build-bearing runs, build 48.5s/59.0s, and deploy 24.0s/29.4s across the 4 deploy-bearing runs. Docs step timings showed Set up Node.js 5.0s/8.0s, Restore node_modules 5.0s/7.0s, Build documentation 12.0s/15.0s, Restore cached CAO Dashboard 2.0s/3.0s, and Upload Pages artifact 10.5s/12.5s; Install dependencies, Save node_modules, Find latest CAO Dashboard run, and Mount latest CAO Dashboard artifact did not execute in any sampled successful build. Bounded log reads from docs runs 39081398631 and 39079340491 verified warm cache hits for setup-node npm, node_modules, and central-agentic-ops-dashboard, skipped dependency installation, /llms-full.txt as the slowest visible route at about 1.00s to 1.53s, Pagefind starting immediately after the site build, and github-pages artifact uploads of 65,257,524 to 65,257,859 bytes; run 39091537097 logged the expected freshness skip summary when the deployed docs and dashboard were current. The paired successful dashboard sample used the latest 10 successful cao-dashboard.yml runs in the same 14-day window because the latest 20 completed dashboard runs were mostly skipped callbacks. Trusted metadata for those dashboard runs showed queue time median/p90 0.0s/0.0s, full workflow execution 214.0s/373.6s, build 198.0s/355.6s, and cache 11.5s/13.3s. Dashboard step timings showed Restore collected activity data 5.0s/8.2s, Install dashboard build dependencies 4.0s/5.1s, Upgrade fallback activity data 155.0s/275.7s, Assess activity database health 12.0s/49.1s, Assemble Dashboard Language site 4.0s/8.1s, Upload dashboard artifact 10.0s/11.1s, Download dashboard artifact 4.5s/5.1s, Delete previous dashboard cache 0.5s/1.0s, and Save dashboard cache 3.0s/4.0s. Bounded log reads from dashboard runs 39054332173 and 39044082669 verified cao-activity cache hits, dashboard npm ci adding only 10 packages in 2s to 3s, copied SQLite payloads of 651.7 MiB to 665.7 MiB plus 396.1 MiB to 399.8 MiB of activity shards, and central-agentic-ops-dashboard artifact uploads of 60,373,605 to 61,396,588 bytes. Run 39044082669 remained the outlier at 586s total with 568s in build and about 480s in Upgrade fallback activity data, but its dependency installation still took only 3s. No dependency-installation or caching change is newly actionable: all sampled docs caches were warm, no sampled docs build executed npm ci, dashboard dependency installation stayed in single digits, and this category does not identify a concrete workflow change expected to save at least 60 seconds or 15 percent of median execution time without weakening correctness, freshness, or deployment safety. The dominant repeated cost remains the already-open upgraded-activity-cache work tracked by issue #16825, while same-SHA duplicate docs rebuilds remain tracked separately by issue #18158."
     }
   ]
 }
