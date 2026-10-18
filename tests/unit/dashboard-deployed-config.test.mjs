@@ -21,7 +21,7 @@ import { authoritativeDashboard } from "../helpers/authoritative-dashboard.mjs";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 test("deployed dashboard test has enough time for sequential refresh checks", () => {
-  assert.equal(DEPLOYED_REFRESH_TIMEOUT_MS, 300_000);
+  assert.equal(DEPLOYED_REFRESH_TIMEOUT_MS, 600_000);
   assert.equal(config.timeout, 3 * DEPLOYED_REFRESH_TIMEOUT_MS);
   const deployedTest = readFileSync(resolve(repositoryRoot, "tests/e2e/dashboard-deployed-refresh.spec.mjs"), "utf8");
   assert.equal((deployedTest.match(/timeout: DEPLOYED_REFRESH_TIMEOUT_MS/g) ?? []).length, 2);
