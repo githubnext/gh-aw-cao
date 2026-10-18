@@ -106,21 +106,19 @@ for (const { name, viewport } of [
   { name: "mobile", viewport: { width: 390, height: 844 } },
 ]) {
   for (const colorScheme of ["light", "dark"]) {
-    test(`landing ${name} explains CAO capabilities and scale in ${colorScheme} mode`, async ({ page }) => {
+    test(`landing ${name} emphasizes overview and control in ${colorScheme} mode`, async ({ page }) => {
       await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
       await page.emulateMedia({ colorScheme });
       await page.setViewportSize(viewport);
       expect((await page.goto("./"))?.ok()).toBe(true);
 
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        "Monitor and Run Agentic Workflows.From One Workflow to Hyperscale.",
+        "Monitor and control GitHub Agentic Workflows at scale.",
       );
       const tagline = page.locator(".docs-hero-intro .tagline");
       await expect(tagline).toBeVisible();
-      await expect(tagline).toContainText("control plane for GitHub Agentic Workflows");
-      await expect(tagline).toContainText("monitor workflows in your repositories");
-      await expect(tagline).toContainText("run governed workflows across repositories and organizations");
-      await expect(tagline).toContainText("Start small. Roll out safely. Reuse what works.");
+      await expect(tagline).toHaveText("Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy.");
+      await expect(page.getByRole("heading", { name: "Control where workflows run.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Reuse what works.", exact: true })).toBeAttached();

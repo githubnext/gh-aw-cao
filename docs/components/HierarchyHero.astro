@@ -44,13 +44,11 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 </div>
 
 <section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal>
-  <p class="section-eyebrow">From one repository to enterprise hyperscale</p>
-  <h2 id="dispatch-title">Run governed workflows across repositories and organizations.</h2>
+  <p class="section-eyebrow">Execution policy</p>
+  <h2 id="dispatch-title">Control where workflows run.</h2>
   <p>
-    Start with one workflow in one repository, then expand to an explicitly enrolled set of repositories across
-    organizations. CAO coordinates that work: a dispatcher resolves reviewed rollout policy, then launches
-    namespaced workers in parallel—one authorized target per worker. Keep execution bounded and rollout staged as
-    your use case grows, without giving any worker open-ended repository reach.
+    Run workflows centrally across enrolled repositories and organizations. Reviewed policy sets the scope;
+    each worker handles one authorized target.
   </p>
   <figure class="dispatch-illustration" aria-describedby="dispatch-description">
     <figcaption id="dispatch-description" class="visually-hidden">
@@ -66,15 +64,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     <p class="section-eyebrow">Reusable workflows, central Ops</p>
     <h2 id="terminal-title">Reuse what works.</h2>
     <p>
-      Build on versioned workflows and shared components instead of starting over for every repository. Sharing a
-      workflow definition and running it centrally are separate choices. CAO gives centrally coordinated work a home
-      in your control repository, with reviewed scope and rollout policy.
+      Start with versioned workflows and shared components. Reuse the definition; decide separately where it may run.
     </p>
-    <ul class="story-points">
-      <li>Reuse proven workflow definitions and common building blocks.</li>
-      <li>Review version updates before expanding their reach.</li>
-      <li>Keep source ownership separate from permission to run against a target.</li>
-    </ul>
   </div>
   <TerminalDemo />
 </section>
@@ -84,15 +75,9 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     <p class="section-eyebrow">Local workflows, central visibility</p>
     <h2 id="runs-title">Monitor what runs.</h2>
     <p>
-      Monitor Agentic Workflows running in your repositories alongside centrally coordinated Ops. CAO brings collected
-      run evidence, health, cost, and outcomes into one dashboard. Whether you follow a single workflow or a fleet,
-      identify shared patterns and focus on the exceptions that need judgment instead of visiting repositories one by one.
+      See workflow health, cost, and outcomes in one dashboard. Find what needs attention, then drill into the run
+      and its evidence.
     </p>
-    <ul class="story-points">
-      <li>Track workflow runs across explicitly enrolled repositories.</li>
-      <li>Read reliability, cost, and accepted outcomes as distinct signals over time.</li>
-      <li>Drill from aggregate health into the exact run and evidence.</li>
-    </ul>
   </div>
   <figure class="product-frame product-shot product-shot-mobile product-shot-runs">
     <ThemeImage
@@ -112,15 +97,9 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     <p class="section-eyebrow">Earn trust before expanding autonomy</p>
     <h2 id="value-title">Roll out safely.</h2>
     <p>
-      Start with reports and review proposed actions before allowing live changes. When previews are not enough,
-      validate the real write path against a safe non-production target. Expand autonomy and repository scope only
-      through explicit policy decisions informed by evidence.
+      Review proposed actions before enabling live changes through explicit policy. Expand scope with evidence,
+      not just successful runs: execution success is not an accepted outcome.
     </p>
-    <ul class="story-points">
-      <li>Distinguish a proposed action from a safely tested write.</li>
-      <li>Do not mistake a successful run for an accepted outcome.</li>
-      <li>Use reliability, cost, and outcome trends to expand, revise, or pause Ops.</li>
-    </ul>
   </div>
   <figure class="product-frame product-shot product-shot-mobile product-shot-value">
     <ThemeImage
@@ -720,33 +699,6 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       box-shadow:
         0 2rem 5rem rgba(31, 35, 40, 0.25),
         0 0 0 1px color-mix(in srgb, var(--section-accent) 30%, transparent);
-    }
-
-    .story-points {
-      display: grid;
-      gap: 0.8rem;
-      margin: 1.5rem 0 0;
-      padding: 0;
-      color: var(--cao-story-text);
-      list-style: none;
-    }
-
-    .story-points li {
-      position: relative;
-      padding-inline-start: 1.25rem;
-      line-height: 1.5;
-    }
-
-    .story-points li::before {
-      position: absolute;
-      top: 0.62em;
-      left: 0;
-      width: 0.45rem;
-      height: 0.45rem;
-      border-radius: 50%;
-      background: var(--section-accent);
-      box-shadow: 0 0 0.75rem color-mix(in srgb, var(--section-accent) 42%, transparent);
-      content: "";
     }
 
     .product-story-copy {

@@ -24,10 +24,8 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(landingPage, /text: Sample Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao/);
   assert.doesNotMatch(headerLinks, /label: "Dashboard"/);
   assert.match(landingPage, /title: Central Agentic Ops \(CAO\)/);
-  assert.match(landingPage, /Monitor and Run Agentic Workflows\.<br \/>From One Workflow to Hyperscale\./);
-  assert.match(landingPage, /control plane for GitHub Agentic Workflows/);
-  assert.match(landingPage, /monitor workflows in your repositories and run governed workflows across repositories and organizations/);
-  assert.match(landingPage, /Start small\. Roll out safely\. Reuse what works\./);
+  assert.match(landingPage, /Monitor and control GitHub Agentic Workflows at scale\./);
+  assert.match(landingPage, /Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories\. Set execution scope and rollout policy\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
   assert.match(hero, /cao-dashboard-mobile-overview-light\.png/);
   assert.match(hero, /cao-dashboard-run-history-mobile\.png/);
@@ -45,7 +43,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Reusable workflows, central Ops/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Reuse what works\./);
-  assert.match(hero, /Sharing a\s+workflow definition and running it centrally are separate choices/);
+  assert.match(hero, /Reuse the definition; decide separately where it may run/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
   assert.match(terminalText, /\.\/cao\.sh setup/);
   assert.match(terminalText, /\.\/cao\.sh add githubnext\/gh-aw-cao\/CAMPAIGN/);
@@ -53,8 +51,8 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminalText, /--raw-field safe_output_mode="review"/);
   assert.match(hero, /Monitor what runs\./);
   assert.match(hero, /Roll out safely\./);
-  assert.match(hero, /Read reliability, cost, and accepted outcomes as distinct signals over time/);
-  assert.match(hero, /Do not mistake a successful run for an accepted outcome/);
+  assert.match(hero, /See workflow health, cost, and outcomes in one dashboard/);
+  assert.match(hero, /execution success is not an accepted outcome/);
   assert.doesNotMatch(hero, /https:\/\/github\.github\.com\/gh-aw\/practices\//);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
   assert.doesNotMatch(
@@ -65,20 +63,30 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(`${landingPage}\n${hero}`, /\bfactor(?:y|ies)\b/i);
 });
 
+test("landing page keeps the hero and supporting copy concise", () => {
+  const wordCount = (text) => text.replaceAll(/<[^>]+>/g, " ").trim().split(/\s+/).length;
+  const title = landingPage.match(/^  title: (.+)$/m)?.[1];
+  const tagline = landingPage.match(/^  tagline: (.+)$/m)?.[1];
+  assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
+  assert.ok(tagline && wordCount(tagline) <= 25, "hero tagline should stay within twenty-five words");
+  const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
+  assert.equal(paragraphs.length, 4);
+  for (const [, paragraph] of paragraphs) {
+    assert.ok(wordCount(paragraph) <= 30, "each supporting paragraph should stay within thirty words");
+  }
+  assert.doesNotMatch(hero, /<ul class="story-points">/);
+});
+
 test("landing page explains and illustrates governed cross-repository dispatch", () => {
-  assert.match(hero, /From one repository to enterprise hyperscale/);
-  assert.match(hero, /Run governed workflows across repositories and organizations\./);
+  assert.match(hero, /Execution policy/);
+  assert.match(hero, /Control where workflows run\./);
   assert.match(hero, /\.dispatch-story \{[\s\S]*?width: min\(calc\(100% - 2rem\), 86rem\)/);
   assert.match(hero, /\.dispatch-story > \.section-eyebrow \{[\s\S]*?justify-self: center/);
   assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[\s\S]*?max-width: 64rem/);
   assert.match(hero, /@media \(min-width: 64rem\) \{[\s\S]*?\.dispatch-story h2 \{[\s\S]*?white-space: nowrap/);
-  assert.match(
-    hero,
-    /Start with one workflow in one repository, then expand to an explicitly enrolled set of repositories across\s+organizations\./,
-  );
-  assert.match(hero, /a dispatcher resolves reviewed rollout policy/);
-  assert.match(hero, /namespaced workers in parallel—one authorized target per worker/);
-  assert.match(hero, /Keep execution bounded and rollout staged as\s+your use case grows, without giving any worker open-ended repository reach/);
+  assert.match(hero, /Run workflows centrally across enrolled repositories and organizations/);
+  assert.match(hero, /Reviewed policy sets the scope/);
+  assert.match(hero, /each worker handles one authorized target/);
   assert.match(hero, /<DispatchIllustration \/>/);
   assert.match(hero, /aria-describedby="dispatch-description"/);
   assert.doesNotMatch(illustration, /cao-dashboard-campaign/);
@@ -270,7 +278,6 @@ test("landing page uses a theme-aware blueprint background", () => {
   assert.match(hero, /--cao-page-glow: rgba\(63, 185, 80, 0\.22\)/);
   assert.match(hero, /radial-gradient\(ellipse 58rem 42rem at 76% 8%/);
   assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.product-story::before \{[\s\S]*?display: none/);
-  assert.match(hero, /background: var\(--section-accent\)/);
   assert.match(hero, /\.section-eyebrow::before \{[\s\S]*?border-radius: 1px/);
   assert.doesNotMatch(hero, /--section-accent: #(?:58a6ff|a371f7)/);
   assert.doesNotMatch(hero, /--cao-page-blue-glow/);
