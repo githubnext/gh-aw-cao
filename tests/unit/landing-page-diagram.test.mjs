@@ -55,9 +55,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Roll out safely\./);
   assert.match(hero, /Read reliability, cost, and accepted outcomes as distinct signals over time/);
   assert.match(hero, /Do not mistake a successful run for an accepted outcome/);
-  for (const practice of ["measuring-impact", "safe-rollout", "sharing-workflows"]) {
-    assert.ok(hero.includes(`https://github.github.com/gh-aw/practices/${practice}/`));
-  }
+  assert.doesNotMatch(hero, /https:\/\/github\.github\.com\/gh-aw\/practices\//);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
   assert.doesNotMatch(
     hero,

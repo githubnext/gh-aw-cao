@@ -124,10 +124,8 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Reuse what works.", exact: true })).toBeAttached();
-      for (const practice of ["measuring-impact", "safe-rollout", "sharing-workflows"]) {
-        await expect(page.locator(`.product-story a[href="https://github.github.com/gh-aw/practices/${practice}/"]`))
-          .toBeAttached();
-      }
+      await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
+        .toHaveCount(0);
       for (const story of await page.locator(".product-story-copy, .dispatch-story").all()) {
         await expect(story).not.toContainText(/campaign/i);
       }
