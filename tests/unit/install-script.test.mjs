@@ -1390,6 +1390,26 @@ async function runExtensionInstaller(consumer, env) {
   ], { cwd: consumer, env, timeout });
 }
 
+test("Go extension verifies checksums without filename-escape markers in native Windows paths", async (t) => {
+  const { root, consumer, env } = await createConsumer(t, supportedGhAw);
+  await writeFile(path.join(root, "bin", "sha256sum"), `#!/usr/bin/env bash
+node --input-type=module -e '
+  import { readFileSync } from "node:fs";
+  import { createHash } from "node:crypto";
+  const file = process.argv.slice(1).filter((argument) => argument !== "-b")[0];
+  const digest = createHash("sha256").update(readFileSync(file ?? 0)).digest("hex");
+  console.log((file ? "\\\\" : "") + digest + "  " + (file ?? "-"));
+' -- "$@"
+`, { mode: 0o755 });
+  await runExtensionInstaller(consumer, {
+    ...env,
+    XDG_DATA_HOME: path.join(root, "data\\native-windows-path"),
+  });
+  const binary = path.join(root, "data\\native-windows-path", "gh", "extensions", "gh-cao", `gh-cao${process.platform === "win32" ? ".exe" : ""}`);
+  const { stdout } = await executeFile("bash", [binary, "--version"], { env });
+  assert.equal(stdout.trim(), "gh cao version v1.2.3");
+});
+
 for (const [system, machine, asset] of [
   ["Linux", "x86_64", "linux-amd64"],
   ["Linux", "aarch64", "linux-arm64"],

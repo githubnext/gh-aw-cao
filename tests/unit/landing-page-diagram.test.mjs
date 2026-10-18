@@ -45,13 +45,13 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Reuse what works\./);
   assert.match(hero, /Reuse the definition; decide separately where it may run/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
-  assert.match(terminalText, /\.\/cao\.sh setup/);
-  assert.match(terminalText, /\.\/cao\.sh validate/);
+  assert.match(terminalText, /gh cao setup/);
+  assert.match(terminalText, /gh cao doctor/);
   assert.match(terminalText, /no campaign added/);
   assert.match(terminalText, /no agentic work started/);
   assert.match(terminalText, /Next: publish and open your dashboard/);
   assert.match(terminal, /href="\/gh-aw-cao\/setup-quickstarts\/#3-publish-your-configuration"/);
-  assert.doesNotMatch(terminalText, /cao\.sh add|gh aw run|--raw-field/);
+  assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field/);
   assert.match(hero, /Monitor what runs\./);
   assert.match(hero, /Roll out safely\./);
   assert.match(hero, /See workflow health, cost, and outcomes in one dashboard/);

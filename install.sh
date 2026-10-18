@@ -459,10 +459,11 @@ install_cao_extension() (
     printf 'Release checksums must contain exactly one SHA-256 digest for %s.\n' "$asset" >&2
     exit 1
   fi
+  # Hash stdin so Windows path separators cannot trigger escaped-filename output.
   if command -v sha256sum >/dev/null 2>&1; then
-    actual="$(sha256sum "$binary" | awk '{print $1}')"
+    actual="$(sha256sum -b < "$binary" | awk '{print $1}')"
   elif command -v shasum >/dev/null 2>&1; then
-    actual="$(shasum -a 256 "$binary" | awk '{print $1}')"
+    actual="$(shasum -a 256 -b < "$binary" | awk '{print $1}')"
   else
     printf 'Installing gh cao requires sha256sum or shasum for checksum verification.\n' >&2
     exit 1
