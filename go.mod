@@ -6,7 +6,6 @@ require (
 	github.com/cli/go-gh/v2 v2.16.1
 	github.com/github/gh-aw v0.92.0
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.0.10
 )
 
 require (
@@ -37,6 +36,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
