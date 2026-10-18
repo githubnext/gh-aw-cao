@@ -7,68 +7,16 @@ import { processDataRequest } from '../../src/data-worker.js';
 import { resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { compileDashboardViewPayloadQueries, dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../../src/data/queries/view-payload-compiler.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
-import fixture from '../fixtures/model-resolution-sessions.json' with { type: 'json' };
+import { originalSessions, realSession, replay, runCacheLine } from '../model-resolution-fixture.js';
 
 const dashboard = authoritativeDashboard.dashboard;
 const now = Date.parse('2026-10-18T12:00:00Z');
-const SECTION = ['routing-resolutions', 'routing-resolution-status', 'routing-resolution-coverage', 'routing-alias-moves',
-  'routing-alias-history', 'routing-resolution-failures', 'routing-resolution-failure-records'];
 
-/** @typedef {{ line: number|null, envelope: { type: string, data: Record<string, unknown>, provenance: Record<string, unknown> } }} FixtureRecord */
-/** @typedef {{ workflow: string, run: number, attempt: number, repository: string, 'head-sha': string, 'session-clock': string|null, records: FixtureRecord[] }} FixtureSession */
-
-/** @param {string} workflow */
-function realSession(workflow) {
-  const found = /** @type {FixtureSession[]} */ (fixture.sessions).find((entry) => entry.workflow === workflow);
-  if (!found) throw new Error(`missing fixture session ${workflow}`);
-  return found;
-}
-
-/**
- * Builds a documented controlled replay from a real envelope: only the identified
- * resolution line is kept, its data changes are applied, and the run identity and
- * session clock are the variant's declared test values.
- * @param {string} id
- * @returns {FixtureSession}
- */
-function replay(id) {
-  const variant = fixture['controlled-replays'].variants.find((entry) => entry.id === id);
-  if (!variant) throw new Error(`missing controlled replay ${id}`);
-  const base = /** @type {FixtureSession[]} */ (fixture.sessions).find((entry) => entry.run === variant['derived-from'].run);
-  if (!base) throw new Error(`missing replay base ${variant['derived-from'].run}`);
-  const clock = variant['session-clock'] === null ? undefined : Date.parse(variant['session-clock']);
-  const records = base.records
-    .filter((record) => record.envelope.type !== 'model.resolution' || record.line === variant['derived-from'].line)
-    .map((record) => {
-      const envelope = structuredClone(record.envelope);
-      if (envelope.type === 'workflow.info') {
-        envelope.data.run_id = variant['test-run'];
-        if (clock === undefined) delete envelope.provenance.timestampMs;
-        else envelope.provenance.timestampMs = clock;
-      }
-      if (envelope.type === 'model.resolution') Object.assign(envelope.data, variant.changes);
-      return { line: record.line, envelope };
-    });
-  return { ...base, run: variant['test-run'], 'session-clock': variant['session-clock'], records };
-}
+/** @typedef {import('../model-resolution-fixture.js').FixtureSession} FixtureSession */
 
 /** @param {IDBFactory} indexedDB @param {FixtureSession} source @param {{ attempt?: number, workflow?: string }} [overrides] */
 async function ingest(indexedDB, source, overrides = {}) {
-  const attempt = overrides.attempt ?? source.attempt;
-  const text = source.records.map((record) => JSON.stringify(record.envelope)).join('\n');
-  const document = parseUnifiedSessionDocument(text, 'usage/aw_session.jsonl', { runId: String(source.run), attempt });
-  const engine = source.records.find((record) => record.envelope.type === 'workflow.info')?.envelope.data.engine_id;
-  await ingestCachedGhAwJsonl(indexedDB, JSON.stringify({
-    schema_version: 5, kind: 'run',
-    run: { run_id: source.run, run_attempt: attempt, organization: 'github', repository: source.repository,
-      workflow_name: overrides.workflow ?? source.workflow, workflow_path: `.github/workflows/${source.workflow}.lock.yml`,
-      // Cache-envelope bookkeeping only; routing clocks come from recorded session events.
-      created_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString(),
-      ...(typeof engine === 'string' ? { engine, engine_id: engine } : {}),
-      head_sha: source['head-sha'], status: 'completed', conclusion: 'success',
-      cao_unified_session: { version: 1, path: 'usage/aw_session.jsonl', ...document }
-    }
-  }), { now });
+  await ingestCachedGhAwJsonl(indexedDB, runCacheLine(source, now, overrides), { now });
 }
 
 /** @param {IDBFactory} indexedDB @param {string[]} names @param {Record<string, string|number|boolean>} [parameters] @param {string} [pageId] */
@@ -101,7 +49,7 @@ async function viewRows(indexedDB, pageId, viewId, routeParameters = {}, paramet
   });
   expect(payload.aliases.length).toBeGreaterThan(0);
   const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
-    operation: 'load-dashboard-query-sources', sources: {}, queries: [...queries, ...payload.queries], sourceNames: payload.aliases
+    operation: 'load-dashboard-query-sources', sources: {}, queries: [.../** @type {unknown[]} */ (queries), ...payload.queries], sourceNames: payload.aliases
   }));
   expect(result[payload.aliases[0]].metadata.availability).not.toBe('unavailable');
   return result[payload.aliases[0]].rows;
@@ -109,7 +57,7 @@ async function viewRows(indexedDB, pageId, viewId, routeParameters = {}, paramet
 
 /** @param {IDBFactory} indexedDB */
 async function ingestOriginals(indexedDB) {
-  for (const source of /** @type {FixtureSession[]} */ (fixture.sessions)) await ingest(indexedDB, source);
+  for (const source of originalSessions) await ingest(indexedDB, source);
 }
 
 const PI_ROLES = [
@@ -233,7 +181,7 @@ describe('model resolution', () => {
       runs: 6, 'resolution-runs': 4, 'routed-runs': 1, 'routed-without-resolution': 1, 'missing-resolution': 1, 'failed-runs': 0, 'resolution-records': 7
     })]);
     expect(after['routing-resolution-failures'].rows).toEqual([]);
-    expect(after['routing-runs'].rows.find((row) => row.run === '990000006')['routing-state']).not.toBe('selected');
+    expect(after['routing-runs'].rows.find((row) => row.run === '990000006')?.['routing-state']).not.toBe('selected');
     expect(after['routing-runs'].rows).toHaveLength(6);
     expect(after['routing-runs'].rows.filter((row) => row['routing-state'] === 'selected').map((row) => row.run)).toEqual(['39091105929']);
     expect(await viewRows(indexedDB, 'routing-run', 'routing-run-resolutions', { 'routing-run': 'github/gh-aw:990000006' })).toEqual([]);

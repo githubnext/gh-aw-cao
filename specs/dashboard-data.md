@@ -28,9 +28,9 @@ agent-written routing summaries. Audit retains typed routing identifiers,
 classifier labels, request identities, sub-agent ownership, token classes,
 per-response AIC and collection receipts. It MUST NOT retain prompts, bodies,
 free-form errors/reasons, raw tool payloads or content-derived hashes.
-Canonical schema 31 and IndexedDB version 41 invalidate older browser projections;
+Canonical schema 32 and IndexedDB version 42 invalidate older browser projections;
 hosted PostgreSQL deployments require a fresh schema with the generated Audit
-columns.
+columns, including the configured-model resolution columns added in schema 32.
 
 Dashboard Language queries SHALL resolve proxy-first routing state, choose one
 accounting source per phase, and attribute each response to one exclusive bucket.
@@ -51,12 +51,48 @@ source records, including messages and tools, without copying their contents.
 Bounded time filters SHALL exclude wholly untimed sessions rather than substituting
 the GitHub run's creation or ingestion time.
 
+Configured-model resolution SHALL be read from the runner-written
+`model.resolution` events (unified session specification T-UAS-074, session
+format version 1) that gh-aw projects from `agent/model-resolution.json`, one per
+recorded role. Each event SHALL become one Audit record that retains only the
+event `engine` (`sourceEngine`), `role` (`resolutionRole`), `configured_model`
+(`resolutionConfiguredModel`), `resolved_model` (`resolutionResolvedModel`),
+`provider`, `status` and `cause` (`code`) with its source provenance and order.
+Every value SHALL be identifier-shaped; configured and resolved models SHALL be
+kept exactly as recorded, including provider prefixes such as
+`copilot/gpt-5-mini`, without served-model shortening. `status` SHALL be one of
+`resolved`, `exact` or `failed` and `cause` one of `model_unavailable` or
+`catalog_unavailable`; any other, unsafe or missing value SHALL remain unknown,
+never an empty string, zero, a fallback model or inferred success. A failed
+resolution keeps its resolved model unknown. Resolution records carry no
+timestamp; ordering SHALL use the recorded session clock and source order, never
+GitHub creation or ingestion time.
+
+The Model routing page SHALL admit `model.resolution` into
+`routing-session-observations` and apply the same latest-attempt selection and
+Routing scope filters before joining resolution events. Its Model resolution
+section SHALL report coverage over scoped runs (runs with resolution evidence,
+positively identified routed runs, routed runs without resolution and non-routed
+runs without resolution), status by event engine and role with distinct run and
+record counts, alias moves and history, and failures grouped by configured
+model and cause with links to the contributing runs. Roles are records, not
+runs: four roles from one run count as one run. A routed session is expected to
+have no configured-model resolution; absence SHALL NOT classify a run as routed,
+failed or successful, and legacy sessions without the event SHALL report no
+resolution evidence. Alias series SHALL be keyed by repository, workflow,
+engine, role, provider and configured model, so unrelated resolutions cannot
+manufacture a move. A move SHALL be highlighted only between adjacent runs with
+recorded session clocks; untimed runs are counted but cannot establish a
+transition. Alias moves are observations of resolution, not served-model
+evidence or a cause. The `routing-run` drill-down SHALL list each run's
+resolution roles with configured-to-resolved model, status, cause, engine and
+provider, showing unknown values rather than manufacturing rows.
+
 The Model routing page currently provides adoption, objective/classifier
 dimensions, label-to-pick counts, workflow stability, exclusive AIC/token
 attribution, complete-cost distributions and observational baselines, deviation
 shares, failure facts, agent-job Wilson intervals and a run drill-down. It does
-not yet implement candidate ranking, inventory/router change context, alias
-moves, prioritized deviation causes, failure clustering, or the full
+not yet implement candidate ranking, inventory/router change context, prioritized deviation causes, failure clustering, or the full
 safe-output/grader/delayed-outcome comparison surfaces of the upstream analytics
 specification. Absent producer fields and these unimplemented analyses MUST NOT
 be represented as zero or successful outcomes.
@@ -517,8 +553,8 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 31 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 41 | Eighteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
+| Canonical model | 32 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 42 | Eighteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
 | Local SQLite projection | IndexedDB 38 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
 | Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
@@ -2413,7 +2449,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 41;
+const DATABASE_VERSION = 42;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2425,7 +2461,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 41 SHALL define:
+IndexedDB version 42 SHALL define:
 
 ```text
 campaigns

@@ -1433,7 +1433,7 @@
           ] }, "empty-message": "No identified sessions with routing outcome evidence are available."
         },
         {
-          "id": "routing-resolution-coverage", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "id": "routing-resolution-coverage", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Model resolution coverage",
           "description": "Runner-written configured-model resolution before engine launch. Denominator is scoped runs; routed runs are counted separately and their absence of resolution is expected. Absence alone never establishes routing or failure.",
           "data": { "source": "routing-resolution-coverage", "query-context": false },
           "encoding": { "columns": [
@@ -1443,7 +1443,7 @@
           ] }, "empty-message": "No scoped routing runs are available."
         },
         {
-          "id": "routing-resolution-status", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "id": "routing-resolution-status", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Model resolution status",
           "description": "Runs are distinct runs; records are individual role resolutions. resolved means alias resolution against the live catalog; exact means the configured value passed through. Resolution does not prove which model was served.",
           "data": { "source": "routing-resolution-status", "query-context": false },
           "encoding": { "columns": [
@@ -1452,7 +1452,7 @@
           ] }, "empty-message": "No configured-model resolution was recorded for the scoped runs; missing evidence is not a failure."
         },
         {
-          "id": "routing-alias-moves", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "id": "routing-alias-moves", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Alias moves",
           "description": "One row per repository, workflow, engine, role, provider and configured model. A move needs adjacent runs with recorded session clocks; untimed runs never establish a transition. Changes are observations, not causes or served-model evidence.",
           "data": { "source": "routing-alias-moves", "limit": 100, "query-context": false },
           "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
@@ -1465,7 +1465,7 @@
           ] }, "empty-message": "No resolved configured models were recorded for the scoped runs."
         },
         {
-          "id": "routing-alias-history", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "id": "routing-alias-history", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Alias history",
           "description": "Observed resolved models per alias series with first and last timed runs. Untimed runs are counted but cannot order history.",
           "data": { "source": "routing-alias-history", "limit": 200, "query-context": false },
           "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
@@ -1478,7 +1478,7 @@
           ] }, "empty-message": "No resolved configured models were recorded for the scoped runs."
         },
         {
-          "id": "routing-resolution-failures", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "id": "routing-resolution-failures", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Resolution failures",
           "description": "Failed configured-model resolutions grouped by configured model and cause with engine and role context. Affected runs are distinct runs.",
           "data": { "source": "routing-resolution-failures", "limit": 100, "query-context": false },
           "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
@@ -1488,7 +1488,7 @@
           ] }, "empty-message": "No failed configured-model resolution was recorded; missing evidence does not establish success."
         },
         {
-          "id": "routing-resolution-failure-runs", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "id": "routing-resolution-failure-runs", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Resolution failure runs",
           "data": { "source": "routing-resolution-failure-records", "limit": 100, "query-context": false },
           "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
             { "field": "run", "title": "Run" }, { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" },
@@ -1567,7 +1567,7 @@
           ] }, "empty-message": "No retained routing evidence is available for this run."
         },
         {
-          "id": "routing-run-resolutions", "mark": "table", "layout": "full", "disclosure": "supplemental",
+          "id": "routing-run-resolutions", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Model resolution",
           "description": "Runner-written configured-model resolution for each role before engine launch. Resolution records carry no timestamp of their own.",
           "data": { "source": "routing-resolutions", "route-field": "routing-run-key", "order-by": [{ "field": "source-sequence", "direction": "asc" }], "limit": 100, "query-context": false },
           "encoding": { "columns": [
