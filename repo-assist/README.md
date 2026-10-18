@@ -42,9 +42,9 @@ not expected consumption or a measured token count. Normal validation and
 review-bundle behavior are unchanged.
 
 Quickstart installs and commits the control plane, then stops with the
-orchestrator paused. Continue with `./cao.sh quickstart --step run` when ready
+orchestrator paused. Continue with `gh cao quickstart --step run` when ready
 to request one review; inspect its outcome in Actions, then use
-`./cao.sh quickstart --step collect` and `./cao.sh quickstart --step dashboard`.
+`gh cao quickstart --step collect` and `gh cao quickstart --step dashboard`.
 These separate stages do not wait for remote completion. See the
 [Repo Assist walkthrough](../docs/repo-assist-quickstart.md) for component explanations
 and checkpoints.

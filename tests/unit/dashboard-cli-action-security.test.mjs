@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "../../dashboard/cli-action-contract.mjs";
+import { executeDashboardCommand } from "../../dashboard/cli-actions.mjs";
 import { approveDashboardCommand } from "../../com.github.copilot/extensions/cao-dashboard/approval.mjs";
 
 async function fixture(options) {
@@ -77,6 +78,52 @@ test("canvas-reviewed actions execute through command validation without host el
     await response.text();
     assert.deepEqual(executions, ["gh aw compile"]);
     assert.equal((await testCase.post({ id: "undeclared-action" })).status, 404);
+    assert.equal(executions.length, 1);
+  } finally { await testCase.close(); }
+});
+
+test("the cli-actions protocol queues and streams native gh cao through the configured GitHub CLI", async () => {
+  const ghExecutable = "/trusted tools/custom-gh";
+  const preparations = [];
+  const executions = [];
+  const testCase = await fixture({
+    approveCliAction: approveDashboardCommand,
+    executeCliAction: (invocation) => executeDashboardCommand({
+      ...invocation, ghExecutable, workingDirectory: process.cwd(), githubToken: "test-fixture",
+      execute: async (executable, args, options) => {
+        assert.equal(executable, ghExecutable);
+        assert.equal(options.env.GH_TOKEN, "test-fixture");
+        preparations.push(args);
+        if (args[0] === "aw") {
+          assert.deepEqual(args, ["aw", "--help"]);
+          return { stdout: "usage", stderr: "" };
+        }
+        assert.deepEqual(args, ["api", "user"]);
+        return { stdout: JSON.stringify({ login: "octocat", id: 1 }), stderr: "" };
+      },
+      streamCommand: async (options) => {
+        executions.push(options.args);
+        assert.equal(options.ghExecutable, ghExecutable);
+        assert.equal(options.workingDirectory, process.cwd());
+        assert.equal(options.githubToken, "test-fixture");
+        assert.equal(options.gitIdentity.name, "octocat");
+        assert.equal(options.terminal, true);
+        await options.onOutput({ stream: "stdout", data: "Repository staged.\n" });
+        return { ok: true, exitCode: 0 };
+      },
+    }),
+  });
+  try {
+    const response = await testCase.post({ id: "add-repository", values: { repository: "octo/repo" } });
+    assert.equal(response.status, 200);
+    const events = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
+    assert.deepEqual(preparations, [["aw", "--help"], ["api", "user"]]);
+    assert.deepEqual(executions, [["cao", "repos", "add", "octo/repo"]]);
+    assert.ok(events.some((event) => event.type === "output" && event.data === "Repository staged.\n"));
+    assert.deepEqual(events.at(-1).result, { ok: true, exitCode: 0 });
+    assert.equal((await testCase.post({
+      id: "add-repository", values: { repository: "octo/repo" }, command: "gh cao campaigns enable other",
+    })).status, 400);
     assert.equal(executions.length, 1);
   } finally { await testCase.close(); }
 });

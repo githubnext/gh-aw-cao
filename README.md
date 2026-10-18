@@ -82,7 +82,7 @@ work and planned improvements.
 ### GitHub CLI extension
 
 The installer downloads and verifies the compiled `gh cao` Go extension for
-setup, authentication, campaigns, validation, and read-only evidence analysis.
+setup, authentication, campaigns, diagnostics, and read-only evidence analysis.
 No local Go build is needed:
 
 ```bash

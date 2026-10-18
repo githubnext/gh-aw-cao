@@ -1510,6 +1510,15 @@ command for copying and must not execute it.
 A dashboard CLI action command is a single-line GitHub CLI invocation.
 Presenters recognize `gh cao ...`, `gh aw ...`, `gh workflow run <workflow> ...`, and
 `gh agent-task create --from-file -` by default; the workflow command triggers a workflow that declares `workflow_dispatch`, while the agent-task command receives the reviewed prompt through standard input.
+`gh cao <command>` is a first-class cli-actions command, not a shell alias.
+Local and Copilot hosts MUST launch the configured GitHub CLI executable with
+an argument vector beginning with `cao`, preserving the approved subcommand and
+arguments. They MUST NOT rewrite it to `cao.sh` or a Node.js operator command.
+Native CAO actions use the same declaration resolution, per-invocation approval,
+durable queue, output streaming, cancellation, and retry protocol as other CLI
+actions. Recognizing the prefix MUST NOT widen the experimental
+[hosted executor's allowlist](../specs/server-hosted-cli.md): commands that only
+edit a local checkout remain local-only.
 The agent-task invocation follows the [GitHub CLI `agent-task create` reference](https://cli.github.com/manual/gh_agent-task_create), where `--from-file -` reads the task description from standard input.
 Workflow dispatch commands may use `--repo`, `--ref`, and non-file-backed
 inputs through `--raw-field` (`-f`). Presenters reject file-reading workflow inputs

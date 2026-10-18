@@ -103,6 +103,34 @@ func TestResolveDeclaredCampaignUpdateUsesNativeGhAwCommand(t *testing.T) {
 	}
 }
 
+func TestResolveNativeCaoActionsPreservesTheHostedExecutionBoundary(t *testing.T) {
+	catalog := loadTestCatalog(t)
+	for _, tc := range []struct {
+		id, field, value, command string
+	}{
+		{"set-campaign-live", "campaign", "security", "gh cao campaigns mode live security"},
+		{"set-campaign-preview", "campaign", "security", "gh cao campaigns mode preview security"},
+		{"enable-campaign", "campaign", "security", "gh cao campaigns enable security"},
+		{"disable-campaign", "campaign", "security", "gh cao campaigns disable security"},
+		{"add-repository", "repository", "octo/app", "gh cao repos add octo/app"},
+	} {
+		t.Run(tc.id, func(t *testing.T) {
+			invocation, err := catalog.Resolve(Request{
+				ID: tc.id, Values: map[string]string{tc.field: tc.value},
+			}, testContext(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if invocation.Command != tc.command {
+				t.Fatalf("native command = %q, want %q", invocation.Command, tc.command)
+			}
+			if _, err := PlanCommand(invocation.Command, "octo/cao"); !errors.Is(err, ErrNotHosted) {
+				t.Fatalf("local-checkout mutation must not gain hosted authority: %v", err)
+			}
+		})
+	}
+}
+
 func TestPlanCommandAllowlist(t *testing.T) {
 	update, err := PlanCommand("gh aw update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao --pr-message 'msg' --create-pull-request --auto-merge", "octo/cao")
 	if err != nil {

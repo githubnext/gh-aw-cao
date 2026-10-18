@@ -25,10 +25,10 @@ It is deliberately the smallest scope of the same campaign machinery intended fo
 ## Install
 
 ```bash
-./cao.sh add githubnext/gh-aw-cao/bug-bash
+gh cao campaigns add githubnext/gh-aw-cao/bug-bash
 ```
 
-Use the control repository's `./cao.sh add` lifecycle command, not a direct `gh aw add`. `cao add` materializes the complete canonical runtime — including `.github/workflows/cao.json` policy — that a direct gh-aw install does not produce. See [repository layout and installation §4.3](../specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
+Use the control repository's `gh cao campaigns add` lifecycle command, not a direct `gh aw add`, so campaign materialization and worker declarations in `.github/workflows/cao.json` stay consistent. See [repository layout and installation §4.3](../specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
 
 The campaign is runnable once the campaign is declared in checked-in policy. There is no schedule: every run is an explicit decision.
 
