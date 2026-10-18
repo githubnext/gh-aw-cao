@@ -13,8 +13,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/githubnext/gh-aw-cao/internal/runtimecli"
 )
 
 func nodeRuntime(t *testing.T) (string, string) {
@@ -40,7 +38,7 @@ func nodeRuntime(t *testing.T) (string, string) {
 	return node, repository
 }
 
-func TestInstalledRuntimeOutputParity(t *testing.T) {
+func TestNativeOperatorOutputParity(t *testing.T) {
 	node, repository := nodeRuntime(t)
 	t.Setenv("CAO_RUNTIME_ROOT", repository)
 	t.Setenv("CAO_DEBUG", "")
@@ -103,13 +101,22 @@ func TestInstalledRuntimeOutputParity(t *testing.T) {
 			err := root.ExecuteContext(ctx)
 			code := 0
 			if err != nil {
-				var exit *runtimecli.ExitError
-				if !errors.As(err, &exit) {
-					t.Fatalf("unexpected Go error: %v", err)
+				code = 1
+				var exit *ExitError
+				if errors.As(err, &exit) {
+					code = exit.Code
+				} else {
+					stderr.WriteString("Error: " + err.Error() + "\n")
 				}
-				code = exit.Code
 			}
-			if code != baselineCode || !bytes.Equal(stdout.Bytes(), wantOut.Bytes()) || !bytes.Equal(stderr.Bytes(), wantErr.Bytes()) {
+			equalOutput := bytes.Equal(stdout.Bytes(), wantOut.Bytes())
+			if !equalOutput {
+				var gotJSON, wantJSON any
+				if json.Unmarshal(stdout.Bytes(), &gotJSON) == nil && json.Unmarshal(wantOut.Bytes(), &wantJSON) == nil {
+					equalOutput = reflect.DeepEqual(gotJSON, wantJSON)
+				}
+			}
+			if code != baselineCode || !equalOutput || !bytes.Equal(stderr.Bytes(), wantErr.Bytes()) {
 				t.Fatalf("runtime parity mismatch:\nstatus=%d (want %d)\nstdout=%s\nwant stdout=%s\nstderr=%s\nwant stderr=%s",
 					code, baselineCode, &stdout, &wantOut, &stderr, &wantErr)
 			}

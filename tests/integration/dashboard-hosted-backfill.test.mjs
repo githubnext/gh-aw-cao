@@ -12,18 +12,21 @@ const transientStatuses = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 async function fetchJson(url) {
   const maximumAttempts = 4;
   for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    let response;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         headers: { "cache-control": "no-cache" },
         signal: AbortSignal.timeout(30_000),
       });
+    } catch (error) {
+      if (attempt === maximumAttempts) throw error;
+    }
+    if (response) {
       if (response.ok) return response.json();
+      await response.body?.cancel();
       if (!transientStatuses.has(response.status) || attempt === maximumAttempts) {
         assert.fail(`failed to download ${url}: ${response.status}`);
       }
-      await response.body?.cancel();
-    } catch (error) {
-      if (attempt === maximumAttempts) throw error;
     }
     await new Promise((resolve) => setTimeout(resolve, attempt * 5_000));
   }

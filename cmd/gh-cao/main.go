@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/githubnext/gh-aw-cao/internal/cli"
-	"github.com/githubnext/gh-aw-cao/internal/runtimecli"
 )
 
 var version = "dev"
@@ -32,7 +31,7 @@ func run() int {
 			if received == syscall.SIGTERM {
 				code = 143
 			}
-			cancel(&runtimecli.ExitError{Code: code})
+			cancel(&cli.ExitError{Code: code})
 		case <-ctx.Done():
 		}
 	}()
@@ -48,7 +47,7 @@ func reportError(err error, stderr io.Writer) int {
 	if err == nil {
 		return 0
 	}
-	var exit *runtimecli.ExitError
+	var exit *cli.ExitError
 	if errors.As(err, &exit) {
 		return exit.Code
 	}

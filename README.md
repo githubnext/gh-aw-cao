@@ -97,13 +97,13 @@ The local development installation can expose the same executable as `gh cao`.
 
 Use `gh cao setup` for guided configuration or
 `gh cao setup auth github-app|enterprise-app|token` for authentication only.
-`campaigns add`, `init`, `campaigns mode`, `campaigns enable`, and
-`campaigns disable` execute natively in Go; repository enrollment
-(`repos add OWNER/REPO`) and other operator commands reuse the installed CAO Node.js 24+
-runtime to preserve production
-onboarding, policy, and Dashboard Language semantics. Run them from the control
-repository root, or select an installed runtime with `CAO_RUNTIME_ROOT`.
-Help, version, and the local `doctor` diagnostic need no CAO runtime.
+Every extension command executes natively in Go, including onboarding,
+authentication, repository enrollment, validation, downloads, Dashboard Language
+queries, computations, and MCP. No Node.js installation or JavaScript runtime
+checkout is needed. The binary embeds the reviewed dashboard definitions and
+reads canonical SQLite snapshots directly; use `--dashboard FILE` to select
+an explicit dashboard document. Run policy mutations from the control repository root.
+Help, version, and catalog discovery work offline.
 
 Activity and Dashboard Actions retain their Node CLI and pipeline commands;
 `cao.sh` and the installer remain compatible. Releases include version-stamped

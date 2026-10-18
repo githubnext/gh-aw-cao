@@ -84,9 +84,16 @@ test("Go extension quality checks cover root-module sources and lint configurati
       "internal/cli/doctor_test.go",
       "internal/cli/doctor_auth_test.go",
       "internal/ghcli/gh.go",
-      "internal/runtimecli/runtime.go",
+      "internal/cli/native_queries.go",
+      "dashboard/catalog.go",
+      "dashboard/site/src/data/queries/database.json",
+      "dashboard/site/src/data/queries/declarative.js",
+      "dashboard/site/src/data/storage/sqlite-indexeddb.js",
+      "dashboard/site/src/semantic-view-prompt.js",
       "go.mod",
       "go.sum",
+      "package.json",
+      "package-lock.json",
     ]) {
       assert.ok(runsForFile("go-extension.yml", event, file), `${event}: ${file}`);
     }
@@ -113,12 +120,18 @@ test("Go extension quality checks cover root-module sources and lint configurati
   assert.equal(lint["working-directory"] ?? ".", ".");
   assert.equal(format.shell, "bash");
   assert.equal(format.run, [
-    'golangci-lint fmt --diff ./cmd/... ./internal/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"',
+    'golangci-lint fmt --diff ./cmd/... ./internal/... ./dashboard | tee "$RUNNER_TEMP/go-extension-fmt.diff"',
     'test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"',
     "",
   ].join("\n"));
-  assert.equal(lint.run, "golangci-lint run ./cmd/... ./internal/...");
-  assert.ok(steps.some((step) => step.run === "make check"));
+  assert.equal(lint.run, "golangci-lint run ./cmd/... ./internal/... ./dashboard");
+  const standalone = steps.find((step) => step.name === "Check standalone execution without Node.js");
+  assert.match(standalone.run, /PATH="" "\$binary" pages --json/);
+  assert.match(standalone.run, /PATH="" "\$binary" query --database explicit.sqlite --collection runs/);
+  const parity = steps.find((step) => step.name === "Install JavaScript parity-oracle dependencies");
+  const check = steps.find((step) => step.run === "make check");
+  assert.equal(parity.run, "npm ci --ignore-scripts --no-audit --no-fund");
+  assert.ok(steps.indexOf(parity) < steps.indexOf(check));
 });
 
 test("Go extension keeps authenticated doctor integration separate from unit and smoke tests", () => {

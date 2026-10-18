@@ -21,7 +21,7 @@ func repositoryCommands(runtime runtimeExecutor) *cobra.Command {
 	repos.AddCommand(&cobra.Command{
 		Use:   "add OWNER/REPO",
 		Short: "Enroll one exact repository",
-		Long:  "Enroll one exact repository using the installed CAO runtime.",
+		Long:  "Enroll one exact repository in review mode without widening existing campaign authority.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args[0]) > 200 || !repositoryPattern.MatchString(args[0]) {

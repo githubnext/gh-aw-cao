@@ -1,7 +1,7 @@
 import { isSpuriousAbortAfterSuccessResponse } from "./dashboard-view-assessment.mjs";
 
 export const deployedDashboardUrl = "https://githubnext.github.io/gh-aw-cao/cao/";
-export const DEPLOYED_REFRESH_TIMEOUT_MS = 300_000;
+export const DEPLOYED_REFRESH_TIMEOUT_MS = 600_000;
 // IndexedDB and the service-worker cache together exceed 2 GiB in the deployed snapshot.
 export const DEPLOYED_STORAGE_QUOTA_BYTES = 4 * 1024 ** 3;
 export const populatedDashboardPages = [

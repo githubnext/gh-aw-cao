@@ -56,19 +56,25 @@ to invoke it as `gh cao`.
 | --- | --- | --- |
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
-| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Unified Go command/argument hierarchy with the installed production CAO Node runtime. |
-| Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw`, `validate` | Go command/argument layer with the installed production CAO Node runtime. |
-| Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Same installed runtime and canonical query engine as the dashboard and existing CLI. |
+| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Native Go, preserving separate read/write credentials and explicit repository scope. |
+| Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw`, `validate` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
+| Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Remain in `./cao.sh` / `activity/cao.mjs`; not migrated to the extension. |
 
-The extension is **not yet a Node-free replacement** for the domain runtime.
-Shared-runtime commands require Node.js 24+ and the installed CAO root campaign.
-The extension finds `activity/cao.mjs` in the current checkout (without crossing
-its Git boundary), or beside the extension executable. Set `CAO_RUNTIME_ROOT`
-to select another installed runtime explicitly; an invalid override fails
-without fallback. Selecting runtime code does not change the current directory
-or policy authority, and never downloads code implicitly.
+The extension is **entirely Go** and does not execute Node.js, npm, or installed
+JavaScript modules. Its default reviewed dashboard catalog, canonical source
+projections, and MCP contract are embedded from the same JSON documents used by
+the dashboard. `pages`, `queries`, `query-info`, and definition-only `prompt`
+work outside an installed control repository. Use `--dashboard FILE` to read
+an explicit dashboard document and its directory-confined fragments.
+`CAO_RUNTIME_ROOT` is no longer used by the extension.
+
+Evidence queries read the canonical `__idb_records` projection through a
+read-only SQLite connection; they do not run migrations or repair the snapshot.
+Download evidence first with `gh cao download`, or pass `--database FILE` for
+an explicitly prepared projection. Policy mutations still operate on the current
+control checkout; the executable does not grant rollout authority.
 
 ```bash
 gh cao init
