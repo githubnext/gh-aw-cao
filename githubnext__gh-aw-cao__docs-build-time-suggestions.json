@@ -3,6 +3,34 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-18T04:43:50Z",
+      "worker_run_id": 39097855162,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39097762970,
+        39097049499,
+        39096898089,
+        39095680386,
+        39095041909,
+        39094496186,
+        39093661749,
+        39093499218,
+        39092174005,
+        39091537097,
+        39090370845,
+        39088640464,
+        39087924678,
+        39087832789,
+        39086764911,
+        39086658333,
+        39084759712,
+        39084613320,
+        39081398631,
+        39080280156
+      ],
+      "outcome": "Incomplete evaluation for category \"Astro documentation generation\" on source SHA 6394ae3db0534eada9c0881ef1db971a8ddb3bce. In the latest 20 completed docs.yml runs from 2026-10-17T23:46:11Z through 2026-10-18T04:38:13Z, 15 runs concluded success and 5 concluded skipped; none failed, were cancelled, timed out, or required action. However, only 2 successful docs runs executed the build job in this bounded window (39081398631 and 39080280156). The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable Astro-generation recommendation was assessed in this run and next_category remains unchanged until a later authorized run has enough comparable evidence."
+    },
+    {
       "evaluated_at": "2026-10-18T03:56:49.231865Z",
       "worker_run_id": 39095203688,
       "category": "Astro documentation generation",
@@ -813,34 +841,6 @@
         39008430574
       ],
       "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 4df4baeeea76296e0c9426fe9afc2ddca7870dc9. In the latest 20 completed docs.yml runs from 2026-10-17T06:02:25Z through 2026-10-17T09:46:07Z, 17 runs concluded success, 2 concluded skipped, 1 concluded action_required, and none failed or were cancelled. All 20 runs shared the same head SHA, but only 2 successful runs executed both docs build and deploy (39018733048, 39011796811). The other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
-    },
-    {
-      "evaluated_at": "2026-10-17T05:38:26Z",
-      "worker_run_id": 39006807753,
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39006706451,
-        39006015140,
-        39005420152,
-        39004746498,
-        39003953054,
-        39003183241,
-        39002487464,
-        39001019650,
-        39000231517,
-        39000135333,
-        38999486422,
-        38998708389,
-        38997214076,
-        38996457368,
-        38995249093,
-        38995179876,
-        38995006790,
-        38993342825,
-        38992733552,
-        38991200650
-      ],
-      "outcome": "Incomplete evaluation for category \"reusable dashboard generation\" on source SHA 8332050ca00104805d3a7539f1e46b39418d1426. In the latest 20 completed docs.yml runs from 2026-10-17T01:31:03Z through 2026-10-17T05:33:49Z, 19 runs concluded success and 1 concluded skipped; none failed or were cancelled. All 20 runs shared the same head SHA, but only 3 successful runs executed both docs build and deploy (39005420152, 39000135333, and 38995249093). The other successful runs were schedule freshness checks that skipped build and deploy because the deployed docs and dashboard were current. The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable recommendation was assessed in this window and next_category remains unchanged."
     }
   ]
 }
