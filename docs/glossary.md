@@ -56,7 +56,7 @@ The curated production bundle of canonical Activity and Dashboard code that a co
 
 ## CAO validation
 
-The read-only `gh cao validate` command that checks policy resolution against the production resolver, the installed gh-aw compiler version, strict compilation and generated-workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. It reports emitted findings (severity, category, remediation) and never rewrites a workflow artifact; exit code `0` means no errors, `1` means a finding met the requested severity threshold, and `2` means the validator itself could not complete. See [Validate the Control Plane](cao-cli.md#validate-the-control-plane).
+The Actions-only `cao-validate.yml` workflow, implemented in the shipped JavaScript runtime, that checks policy resolution against the production resolver, the installed gh-aw compiler version, strict compilation and generated-workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. It reports emitted findings (severity, category, remediation) and never rewrites a workflow artifact; exit code `0` means no errors, `1` means a finding met the requested severity threshold, and `2` means the validator itself could not complete. Request a run with `gh workflow run cao-validate.yml` and inspect its `cao-validation` report artifact. See [Validate the Control Plane](cao-cli.md#validate-the-control-plane).
 
 ## CLI command queue
 

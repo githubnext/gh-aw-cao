@@ -544,7 +544,7 @@ before workflow enablement/disablement. The extension groups guided setup at
 `setup-auth` command. Native authentication preserves the `setup-auth` result
 contract, options, credential prompts, consent, and read/write scope boundaries.
 Repository enrollment (`gh cao repos add OWNER/REPO`),
-updates, validation, onboarding, downloads, computations, and all evidence commands
+updates, onboarding, downloads, computations, and all evidence commands
 run entirely in Go. No production command invokes Node.js, npm, or JavaScript
 modules; `CAO_RUNTIME_ROOT` is no longer an extension input. The default reviewed
 catalog, fragments, canonical source projections, and MCP contract are embedded
@@ -566,12 +566,15 @@ pipeline commands, SQLite snapshot `doctor`, and the unmigrated
 `setup-auth hosted-cli` profile. Migrated operator commands are rejected with
 their `gh cao` replacement. Internal Node implementations remain available for
 Actions and parity tests, not as wrapper operator commands.
-Operator-facing `gh cao validate` remains native Go. In Actions, control-plane
-validation intentionally runs the shipped JavaScript runtime directly as
+User-facing commands belong in the Go extension; Actions execution support
+belongs in the shipped JavaScript runtime. Control-plane validation is
+Actions-only, with one implementation invoked directly as
 `node activity/cao.mjs validate --json`, using the installed runtime revision
-and production policy resolver. It does not build or download the Go extension
-or require consumer npm metadata. Native and runtime tests preserve the report
-and exit-code contracts. The JSON report remains under `RUNNER_TEMP`, outside
+and production policy resolver. Neither the extension nor `cao.sh` exposes a
+`validate` command. Native policy parsing still guards operator construction
+and mutation; it is not a second control-plane validator. The workflow does not
+build or download the Go extension or require consumer npm metadata. Runtime
+tests preserve report and exit-code contracts. The JSON report remains under `RUNNER_TEMP`, outside
 the checkout, so creating it cannot trigger a dirty-working-tree warning.
 Dashboard CAO actions and marketplace copy commands use the Go hierarchy;
 their executor launches `gh cao` without invoking repository shell scripts.

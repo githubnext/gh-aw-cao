@@ -31,8 +31,8 @@ metadata:
 7. Add package problem clustering only when the campaign has a deterministic,
    bounded problem definition not covered by built-in computations; follow
    [Computations](https://github.com/githubnext/gh-aw-cao/blob/main/specs/computations.md).
-8. Compile editable workflow sources with `npm run compile`, then run
-   `gh cao validate`. Never edit generated `.lock.yml` files directly. Run
+8. Compile editable workflow sources with `npm run compile`; inspect CAO validation
+   in Actions after publication. Never edit generated `.lock.yml` files directly. Run
    focused tests, package-completeness tests, and clean-room lifecycle tests
    when credentials are available.
 9. Compare intended state with policy and the dashboard control-plane view.

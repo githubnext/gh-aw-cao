@@ -849,7 +849,7 @@ test("fine-grained token setup formats a concise completion summary", () => {
   assert.match(summary, /Read scope: 2 repositories across githubnext, github/);
   assert.match(summary, /Write scope: githubnext\/gh-aw-cao/);
   assert.match(summary, /Authentication mode: pat/);
-  assert.match(summary, /run gh cao validate/);
+  assert.match(summary, /publish policy changes, then run gh workflow run cao-validate\.yml/);
   assert.doesNotMatch(summary, /^\{/);
 });
 

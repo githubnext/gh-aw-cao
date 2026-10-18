@@ -56,15 +56,13 @@ func TestNativeStandaloneBinary(t *testing.T) {
 			}
 		})
 	}
-	validation := exec.Command(binary, "validate", "--json")
+	validation := exec.Command(binary, "validate")
 	validation.Dir = working
 	validation.Env = append(os.Environ(), "PATH=", "CAO_RUNTIME_ROOT=/not-an-installed-runtime")
 	output, err := validation.CombinedOutput()
 	var exit *exec.ExitError
-	var report nativeValidationReport
-	if !errors.As(err, &exit) || exit.ExitCode() != 1 || json.Unmarshal(output, &report) != nil ||
-		len(report.Findings) != 1 || report.Findings[0].ID != "missing-cao-policy" {
-		t.Fatalf("standalone validation: %v\n%s", err, output)
+	if !errors.As(err, &exit) || exit.ExitCode() != 1 || !strings.Contains(string(output), `unknown command "validate"`) {
+		t.Fatalf("standalone binary accepted Actions-only validation: %v\n%s", err, output)
 	}
 	files, err := os.ReadDir(working)
 	if err != nil {

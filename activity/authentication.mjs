@@ -147,7 +147,7 @@ export function formatSetupAuthenticationSummary(result) {
     `  Authentication mode: ${GITHUB_AUTH_MODES.PAT}`,
     '',
     'Existing GitHub App credentials, if present, are inactive while PAT mode is selected.',
-    'Next: run gh cao validate, then validate a bounded review workflow before removing App credentials.',
+    'Next: review and publish policy changes, then run gh workflow run cao-validate.yml and a bounded review workflow before removing App credentials.',
   ].join('\n');
 }
 

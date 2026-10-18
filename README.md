@@ -26,10 +26,10 @@ Connect one repository and configure authentication:
 gh cao setup
 ```
 
-Validate, review, and publish your configuration:
+Check the installation, review, and publish your configuration:
 
 ```bash
-gh cao validate
+gh cao doctor
 git status --short
 git diff -- .github
 git add .github activity dashboard cao.sh
@@ -37,7 +37,7 @@ git commit -m "Set up CAO monitoring"
 git push
 ```
 
-In Actions, wait for **CAO Activity** and **CAO Dashboard**,
+In Actions, check **CAO validation**, then wait for **CAO Activity** and **CAO Dashboard**,
 including its Pages deployment, then open **Settings → Pages**.
 **No campaign is installed or run.** A repository without Agentic Workflow
 history starts with an empty dashboard; you do not need to generate activity.

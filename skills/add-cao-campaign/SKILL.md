@@ -23,8 +23,9 @@ or install a campaign.
 The agent interprets intent, compares candidates, and explains tradeoffs.
 After selection, `gh cao campaigns add` owns package resolution,
 installation, policy merging, and installed-declaration validation. Use
-`gh cao validate` and `gh aw doctor --dir .` for postconditions; do not
-reimplement package or policy mutation.
+`gh cao doctor` and `gh aw doctor --dir .` for local checks; inspect CAO validation
+in Actions after approved changes are published. Do not reimplement package or
+policy mutation.
 
 ## Boundaries
 

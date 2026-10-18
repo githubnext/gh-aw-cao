@@ -14,7 +14,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   const commands = [
     "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash",
     "gh cao setup",
-    "gh cao validate",
+    "gh cao doctor",
     'git commit -m "Set up CAO monitoring"',
     "git push",
     "gh workflow run cao-activity.yml",
@@ -35,6 +35,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.doesNotMatch(monitoring, /--quickstart|gh aw run|cao\.sh (?:add|enable|quickstart)|AI credits/);
   assert.match(monitoring, /setup installs no campaign and runs no workflow/i);
   assert.match(monitoring, /does not commit or push/);
+  assert.match(monitoring, /Check \*\*CAO validation\*\* in Actions/);
   assert.match(monitoring, /control-plane\.campaigns` is `\{\}`/);
   assert.match(monitoring, /empty dashboard is expected/);
   assert.match(monitoring, /not every ordinary Actions job/);
@@ -66,7 +67,6 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "campaigns disable",
     "download",
     "doctor",
-    "validate",
     "computation runtime-health",
     "query",
     "gh runs",
@@ -86,8 +86,9 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.match(docs, /gh-aw owns workflow execution/);
   assert.match(docs, /`gh cao campaigns mode preview` writes `mode: review`/);
   assert.match(docs, /different from `gh aw doctor`/);
-  assert.match(docs, /Actions use the shipped JavaScript runtime/);
+  assert.match(docs, /Control-plane validation is Actions-only/);
   assert.match(docs, /node activity\/cao\.mjs validate --json/);
+  assert.doesNotMatch(docs, /gh cao validate/);
 });
 
 test("quickstart documents separate component stages and explicit checkpoints", () => {

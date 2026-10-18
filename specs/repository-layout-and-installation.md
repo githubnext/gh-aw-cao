@@ -222,12 +222,14 @@ The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
 removed shell equivalents. `cao.sh` MUST reject migrated operator commands
 with migration guidance and expose only pipeline tools, SQLite `doctor`,
 and `setup-auth hosted-cli`. Actions MAY invoke internal Node modules directly.
-Operator-facing `gh cao validate` MUST remain native Go. The validation workflow
+User-facing commands MUST live in the Go extension, while Actions execution
+support MUST live in the JavaScript runtime. Control-plane validation MUST have
+one JavaScript implementation, without a Go or shell-wrapper command. Its workflow
 MUST execute the shipped JavaScript runtime directly with
 `node activity/cao.mjs validate --json` at its installed revision, using the
 production policy resolver. It MUST NOT build or download the Go extension or
-require consumer npm metadata. Both implementations MUST preserve the structured
-report and exit-code contract. CI MUST keep its report under `RUNNER_TEMP`, not
+require consumer npm metadata. Runtime tests MUST preserve the structured report
+and exit-code contract. CI MUST keep its report under `RUNNER_TEMP`, not
 in the repository working tree.
 
 The supported root CAO installer MUST materialize the root runtime after gh-aw

@@ -59,7 +59,7 @@ async function main() {
     }
     if (typeof output === 'object' && output?.command === 'setup' && !arguments_.includes('--json')) {
       if (!output.cancelled) {
-        process.stdout.write('Next: gh cao validate\nThen review git diff and git status, commit, and push the installed files.\nAdd your first campaign separately with gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN.\n');
+        process.stdout.write('Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nAdd your first campaign separately with gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN.\n');
       }
       return;
     }

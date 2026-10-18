@@ -290,16 +290,16 @@ In the control repository, edit `.github/workflows/cao.json`:
 Keep `control-plane.activity.repositories` set to `CONTROL_OWNER/CONTROL_REPOSITORY`; Activity
 collects the control-plane runs, not source data from the target.
 
-Validate, commit, and push the reviewed policy change:
+Inspect, commit, and push the reviewed policy change:
 
 ```bash
-gh cao validate
+git diff -- .github/workflows/cao.json
 git add .github/workflows/cao.json
 git commit -m "Target Repo Assist at OWNER/REPOSITORY"
 git push
 ```
 
-Then run the already-installed campaign:
+Wait for **CAO validation** to pass in Actions, then run the already-installed campaign:
 
 ```bash
 gh workflow enable repo-assist.lock.yml

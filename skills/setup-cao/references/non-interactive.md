@@ -78,9 +78,10 @@ created; other control names or owners require exact
 8. Configure Pages in the control repository's settings to use GitHub Actions;
    for a private repository, restrict access to repository readers. Verify
    visibility and stop if the plan cannot restrict a private site's access.
-9. Run `gh cao validate`, `gh aw doctor --repo
+9. Run `gh cao doctor`, `gh aw doctor --repo
    OWNER/CONTROL_REPOSITORY --dir .`, and `git diff --check`; inspect the policy
-   and diff before asking to commit or push.
+   and diff before asking to commit or push. Full policy/workflow validation
+   runs in Actions after publication.
 
 Do not manually copy runtime files, invent a new credential profile, install a
 campaign, enable a workflow, or dispatch work.

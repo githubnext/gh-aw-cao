@@ -216,10 +216,12 @@ Activity/Dashboard pipeline commands are deliberately not registered in Go;
 their Actions, Node command modules and runtime ownership remain unchanged.
 CI invokes the shipped JavaScript validator directly with
 `node activity/cao.mjs validate --json`; it does not build or download the Go
-extension or require consumer npm metadata. Keep `gh cao validate` native for
-operators and preserve the report and exit-code contracts with both
-`internal/cli/native_validation_test.go` and
-`tests/unit/cao-validation.test.mjs`. The CI JSON artifact stays outside the
+extension or require consumer npm metadata. User-facing commands belong in
+`gh cao`; Actions execution support belongs in JavaScript. Control-plane
+validation has one JavaScript implementation and no Go or shell-wrapper command.
+Preserve its report and exit-code contracts in `tests/unit/cao-validation.test.mjs`.
+Retain native policy guards used by operator construction and mutation.
+The CI JSON artifact stays outside the
 checkout in `RUNNER_TEMP`.
 See [the operator migration table](docs/cao-cli.md#github-cli-extension).
 

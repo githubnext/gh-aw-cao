@@ -60,10 +60,11 @@ to invoke it as `gh cao`.
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
 | Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Native Go, preserving separate read/write credentials and explicit repository scope. |
-| Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw`, `validate` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
+| Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Remain in `./cao.sh` / `activity/cao.mjs`; not migrated to the extension. |
+| Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
 | Node-only administration | `./cao.sh doctor`, `./cao.sh setup-auth hosted-cli` | SQLite check/repair and dedicated hosted-executor App creation; neither has an equivalent Go command. |
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
@@ -91,7 +92,7 @@ gh cao repos add acme/example-service
 gh cao campaigns mode preview dependabot
 gh cao campaigns enable dependabot
 gh cao campaigns disable dependabot
-gh cao validate --json
+gh cao doctor --json
 gh cao pages --json
 gh cao query campaign-runs --param campaign=dependabot
 ```
@@ -111,7 +112,7 @@ Only the Node-only `./cao.sh setup-auth hosted-cli` profile remains in the wrapp
 The runtime JSON result for authentication retains `command: "setup-auth"`.
 `gh cao setup auth token --help` also works offline. `campaigns add` and `update` retain
 gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
-secret prompts, and validator exit codes retain their existing contracts.
+secret prompts, and command exit codes retain their existing contracts.
 There is no `gh cao run`: workflow execution still belongs to gh-aw.
 
 Campaign installation fetches only the installed package's full `resolvedCommit`
@@ -148,8 +149,8 @@ has a shorter five-second limit). Cancellation stops the diagnostic.
 The command is read-only: it does not install extensions, log in, modify policy,
 repair databases, or change remote settings. Raw authentication output and
 subprocess errors are not included in reports. A passing basic policy check
-does not establish rollout authority or full schema validity; use
-`gh cao validate` for production policy and workflow validation.
+does not establish rollout authority or full schema validity; use the
+[CAO validation workflow](#validate-the-control-plane) for full policy and workflow validation.
 
 CAO and gh-aw have separate jobs:
 
@@ -293,30 +294,31 @@ It also checks whether the control repository has a selected GitHub App or PAT w
 
 ## Validate the Control Plane
 
-Run read-only validation locally with the native Go extension:
+Control-plane validation is Actions-only. Publish reviewed configuration changes
+to the control repository's default branch and inspect **CAO validation** in
+Actions. To request another validation run:
 
 ```bash
-gh cao validate
-gh cao validate --json
+gh workflow run cao-validate.yml
+gh run list --workflow cao-validate.yml --limit 5
 ```
 
-Validation checks the policy with the production resolver, the installed gh-aw compiler version, strict compilation and generated workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. GitHub workflow state is reported as unknown when API access is unavailable. Warnings do not fail by default; use `--strict-warnings` to make them fail.
+Validation checks the policy with the production resolver, the installed gh-aw compiler version, strict compilation and generated workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. GitHub workflow state is reported as unknown when API access is unavailable. Warnings do not fail the workflow by default.
 
-`gh cao validate` runs natively in Go. Actions use the shipped JavaScript runtime
-at the installed revision instead, with
-`node activity/cao.mjs validate --json`. CI does not build or download the Go
-extension or require consumer npm metadata. Both implementations preserve the
-structured report and exit-code contract; `cao.sh` does not expose validation.
+The workflow invokes `node activity/cao.mjs validate --json` from the shipped
+JavaScript runtime at the installed revision. This is the sole implementation;
+neither `gh cao` nor `cao.sh` exposes `validate`. CI does not build or download
+the Go extension or require consumer npm metadata. The internal runtime command
+retains `--strict-warnings` for Actions callers that require warnings to fail.
 
 Strict compilation runs against a committed temporary snapshot of the current
-workflow files. Normal uncommitted local edits are still validated, but they do
-not produce an unrelated dirty-working-tree warning from `gh aw`.
+workflow files in the Actions checkout, without rewriting generated artifacts.
 
 CI writes its JSON report under `RUNNER_TEMP`, outside the checkout, before
 uploading the `cao-validation` artifact. This keeps report creation from
 triggering a false `gh aw doctor` warning and validation issue on a fresh
-installation. When redirecting local JSON output, likewise use a path outside
-the checkout so the report does not make the repository appear modified.
+installation. Download the structured report with
+`gh run download RUN_ID --name cao-validation`.
 
 Exit code `0` means no validation errors, `1` means validation findings failed the requested threshold, and `2` means the validator itself could not complete. Validation never rewrites workflow artifacts; run `npm run compile:locks` to regenerate stale locks.
 

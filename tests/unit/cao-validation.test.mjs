@@ -332,7 +332,7 @@ test("the JavaScript runtime exposes structured validation without a consumer pa
   assert.equal(report.exitCode, 1);
   assert.equal(report.findings[0].id, "missing-cao-policy");
   assert.equal(report.findings[0].remediation, "gh cao init");
-  assert.equal(report.findings[0].validate, "gh cao validate");
+  assert.equal(report.findings[0].validate, "gh workflow run cao-validate.yml");
 });
 
 test("CI validation does not dirty a fresh checkout with its own report", async (t) => {
@@ -445,6 +445,16 @@ test("clean repositories and warnings-only repositories exit successfully", asyn
     });
     assert.equal(warning.exitCode, 0);
     assert.equal(warning.summary.warnings, 1);
+    const strict = await validateRepository({
+      root,
+      execute(command, args, options) {
+        if (command === "gh" && args[0] === "workflow") return { status: 1, stdout: "", stderr: "offline" };
+        return cleanExecutor()(command, args, options);
+      },
+      strictWarnings: true,
+    });
+    assert.equal(strict.exitCode, 1);
+    assert.deepEqual(strict.summary, { errors: 0, warnings: 1, notes: 0 });
   } finally {
     await rm(root, { recursive: true, force: true });
   }

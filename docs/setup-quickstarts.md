@@ -77,10 +77,10 @@ supports the exact current public control repository, not an external target.
 
 ## 3. Publish your configuration
 
-Validate and inspect the installed files:
+Check the installation and inspect the installed files:
 
 ```bash
-gh cao validate
+gh cao doctor
 git status --short
 git diff -- .github
 ```
@@ -98,6 +98,7 @@ git push
 ```
 
 **Ready:** GitHub Actions can use your reviewed configuration.
+Check **CAO validation** in Actions for full policy and workflow validation.
 The installation includes scheduled Activity collection; pushing the policy
 also triggers collection. This collects evidence, not new agentic work.
 

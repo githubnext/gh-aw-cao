@@ -7,21 +7,21 @@ metadata:
 
 # Set Up Central Agentic Ops
 
-Create or reuse one bare CAO control plane. Setup leaves the compiled `gh cao`
-extension, runtime (including the pipeline-only `./cao.sh`), exact repository
-scope and compatible authentication installed,
-`control-plane.campaigns` as an empty object, and no user-facing campaign installed or enabled, no live rollout, and no workflow
+Create or reuse a bare CAO control plane with the compiled `gh cao` extension,
+runtime (including pipeline-only `./cao.sh`), exact scope and compatible
+authentication. Leave `control-plane.campaigns` as an empty object, with
+no user-facing campaign installed or enabled, no live rollout, and no workflow
 dispatch.
 
 Campaign discovery and installation are a separate task for `add-cao-campaign`.
 
 ## Deterministic boundary
 
-Use `gh cao setup` and `gh cao validate` from the control checkout for
+Use `gh cao setup` from the control checkout for
 policy construction, authentication setup, external checks, mutation, and
-postcondition validation. The agent owns topology clarification, exact scope,
-tradeoff explanation, approval, and diff review. Do not recreate setup logic or
-write policy JSON directly.
+postconditions. Use `gh cao doctor` for local installation checks.
+The agent owns topology, exact scope, tradeoffs, approval, and diff review.
+Do not recreate setup logic or write policy JSON directly.
 
 ## Invariants
 
@@ -89,17 +89,17 @@ runtime copying.
    [non-interactive setup](references/non-interactive.md) and take its safe
    defaults. Do not infer broader scope or configure credentials without
    explicit authorization.
-6. Validate policy and repository state:
+6. Check local installation and repository state:
 
    ```bash
-   gh cao validate
+   gh cao doctor
    gh aw doctor --repo OWNER/CONTROL_REPOSITORY --dir .
    git diff --check
    ```
 
    Confirm `.github/workflows/cao.json` parses, has no unresolved placeholders,
-   and contains an empty `control-plane.campaigns` object. This is the canonical
-   validator; do not replace it with inline validation.
+   and contains an empty `control-plane.campaigns` object. Full validation runs
+   in Actions after publication; do not replace it with inline validation.
 7. Show the exact diff. Reject campaign, live-mode, credential, generated-lock,
    campaign-owned, or unrelated changes. Ask before commit or push.
 8. Report the control repository, visibility, exact read scope, authentication

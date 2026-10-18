@@ -37,9 +37,6 @@ func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
 		jsonFlag,
 	}, execute)
 	quickstart.PreRunE = validateQuickstart
-	validate := operatorCommand("validate", "Validate control-plane policy and workflow installation", cobra.NoArgs, []operatorFlag{
-		jsonFlag, boolFlag("strict-warnings", "Fail on validation warnings"),
-	}, execute)
 	download := operatorCommand("download", "Download the deployed CAO evidence snapshot", cobra.NoArgs, []operatorFlag{
 		textFlag("url", "Dashboard payload-hashes.json URL"),
 		textFlag("output", "Local output directory (default .cao)"),
@@ -103,7 +100,7 @@ func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
 		return nil
 	}
 	computation.AddCommand(intelligence, health)
-	root.AddCommand(setupCommand(execute), quickstart, validate, download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
+	root.AddCommand(setupCommand(execute), quickstart, download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
 		passthroughCommand("update [REF] [GH_AW_OPTIONS...]", "Update installed CAO packages without widening rollout", execute),
 	)
 }

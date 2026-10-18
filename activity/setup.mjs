@@ -598,7 +598,7 @@ export async function setupCaoControlPlane({
     if (error instanceof SetupCancelled) {
       if (applyStage === 'public dashboard consent') return declinePublicPages();
       interactive.cancel?.(policySaved
-        ? 'Configuration was saved before cancellation. Run gh cao validate, then review the installed files.'
+        ? 'Configuration was saved before cancellation. Run gh cao doctor, then review the installed files.'
         : applyStage
         ? 'Setup cancelled. The local policy is unchanged; Pages settings or credentials may have changed. Rerun gh cao setup to finish.'
         : 'Setup cancelled. Policy, credentials, and Pages settings are unchanged.');
@@ -607,7 +607,7 @@ export async function setupCaoControlPlane({
     interactive.failure?.();
     if (applyStage) {
       const recovery = policySaved
-        ? 'Configuration was saved, but completion could not be displayed. Run gh cao validate, then review the installed files.'
+        ? 'Configuration was saved, but completion could not be displayed. Run gh cao doctor, then review the installed files.'
         : `Setup stopped during ${applyStage}; the local policy was not changed. Pages settings or credentials may already have changed. Fix the reported problem and rerun gh cao setup; existing settings will be inspected again.`;
       throw new UsageError(`${error.message}\n${recovery}`, { cause: error });
     }

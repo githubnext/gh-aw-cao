@@ -17,6 +17,7 @@ export function pipelineUsage() {
     '  ./cao.sh setup-auth hosted-cli [OPTIONS]',
     '',
     'Operator commands have moved to the compiled Go extension: gh cao --help.',
+    'Control-plane validation runs only in Actions: gh workflow run cao-validate.yml.',
     'doctor here checks/repairs SQLite; gh cao doctor diagnoses the installation.',
     'setup-auth is retained only for the hosted-cli App profile.'
   ].join('\n');
@@ -28,6 +29,9 @@ export function checkPipelineCommand(arguments_) {
   if (pipelineCommands.has(command) || command === 'setup-auth' && profile === 'hosted-cli') {
     if (arguments_.includes('--help') || arguments_.includes('-h')) return pipelineUsage();
     return;
+  }
+  if (command === 'validate') {
+    throw new UsageError('Control-plane validation runs only in Actions; use gh workflow run cao-validate.yml after publishing reviewed changes.');
   }
   const replacement = {
     add: profile === '--repository' ? 'repos add OWNER/REPO' : 'campaigns add CAMPAIGN',
