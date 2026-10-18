@@ -413,7 +413,7 @@ resolve_latest_cao_release() {
 install_cao_extension() (
   set -euo pipefail
   local release="$1"
-  local os arch suffix="" data_dir asset directory staged binary expected actual installed_version
+  local os arch suffix="" data_dir asset directory binary expected actual installed_version
   case "$(uname -s)" in
     Linux) os=linux ;;
     Darwin) os=darwin ;;
@@ -444,7 +444,7 @@ install_cao_extension() (
   mkdir -p "$directory"
   staged="$(mktemp -d "$directory/.install.XXXXXX")"
   binary="$staged/gh-cao$suffix"
-  trap 'rm -f "$binary" "$staged/checksums.txt"; rmdir "$staged"' EXIT
+  trap 'rm -rf -- "$staged"' EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
   asset="gh-cao-$os-$arch$suffix"

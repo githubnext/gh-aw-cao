@@ -276,6 +276,9 @@ if [[ "$url" == https://github.com/githubnext/gh-aw-cao/releases/download/* ]]; 
   release="\${url%/*}"
   release="\${release##*/}"
   if [[ "$asset" == checksums.txt ]]; then
+    downloaded_suffix=""
+    case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) downloaded_suffix=.exe ;; esac
+    downloaded_binary="$(dirname "$output")/gh-cao$downloaded_suffix"
     node --input-type=module -e '
       import { readFileSync } from "node:fs";
       import { createHash } from "node:crypto";
@@ -286,7 +289,7 @@ if [[ "$url" == https://github.com/githubnext/gh-aw-cao/releases/download/* ]]; 
         console.log(line);
         if (mode === "duplicate") console.log(line);
       }
-    ' "$(find "$(dirname "$output")" -name 'gh-cao*' -type f -print -quit)" > "$output"
+    ' "$downloaded_binary" > "$output"
   else
     cat > "$output" <<EOF
 #!/usr/bin/env bash
