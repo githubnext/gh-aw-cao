@@ -43,6 +43,44 @@ async function startRoutingServer(dataBackend, shards, run, timestamp, repositor
   return { server, workspace };
 }
 
+const ROUTING_VIEWS = ['routing-health', 'routing-models', 'routing-cost-trend', 'routing-problems', 'routing-runs'];
+const ROUTING_TITLES = ['Routing health by workflow', 'Models picked over time', 'Cost per run over time', 'Problems', 'Routing runs'];
+
+/** @param {import('@playwright/test').Page} page */
+async function expectFiveViews(page) {
+  const views = page.locator('.dashboard-page:not([hidden]) [data-view-id^="routing-"]');
+  await expect.poll(() => views.evaluateAll((elements) => elements.map((element) => element.getAttribute('data-view-id')))).toEqual(ROUTING_VIEWS);
+  for (const [index, title] of ROUTING_TITLES.entries()) {
+    await expect(views.nth(index)).toContainText(title);
+  }
+  await expect(page.locator('.dashboard-page:not([hidden]) [data-disclosure="supplemental"]')).toHaveCount(0);
+}
+
+/** @param {import('@playwright/test').Page} page @param {number} width */
+async function showTables(page, width) {
+  const activePage = page.locator('.dashboard-page:not([hidden])');
+  await expect(async () => {
+    if (width < 768) {
+      for (let step = 0; step < 2; step += 1) {
+        if (await activePage.getAttribute('data-view-mode') === 'table') break;
+        await page.locator('.mobile-view-mode-toggle').click();
+      }
+    } else await page.getByRole('button', { name: 'Table', exact: true }).click();
+    await expect(activePage).toHaveAttribute('data-view-mode', 'table', { timeout: 1000 });
+  }).toPass();
+}
+
+/**
+ * Runs table-mode assertions, reselecting table mode if a data publication re-renders the page.
+ * @param {import('@playwright/test').Page} page @param {number} width @param {() => Promise<void>} check
+ */
+async function inTables(page, width, check) {
+  await expect(async () => {
+    await showTables(page, width);
+    await check();
+  }).toPass({ timeout: 20000 });
+}
+
 for (const dataBackend of ['indexeddb', 'sqlite']) {
   test.describe(`${dataBackend} model routing`, () => {
     /** @type {{ url: string, close: () => Promise<void> }} */
@@ -86,7 +124,9 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${server.url}/?local-preview=canvas#page-model-routing`);
         await expect(page.getByRole('dialog', { name: 'Preparing your dashboard' })).toBeHidden();
-        await expect(page.getByRole('heading', { name: 'Adoption', exact: true })).toBeVisible();
+        await expectFiveViews(page);
+        await expect(page.getByRole('heading', { name: 'Models picked over time', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Cost per run over time', exact: true })).toBeVisible();
         const runs = page.locator('[data-view-id="routing-runs"]');
         await expect(runs).toContainText('selected');
         await expect(runs).toContainText('gpt-5');
@@ -98,13 +138,21 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
         await expect(runs).toContainText('No identified routing sessions');
         await state.fill('');
         await expect(runs).toContainText('selected');
-        if (width < 768) {
-          for (let step = 0; step < 2; step += 1) {
-            await page.locator('.mobile-view-mode-toggle').click();
-            if (await page.locator('.dashboard-page:not([hidden])').getAttribute('data-view-mode') === 'table') break;
-          }
-        } else await page.getByRole('button', { name: 'Table', exact: true }).click();
-        await runs.locator('a[href*="routing-run="]').click();
+        const health = page.locator('[data-view-id="routing-health"]');
+        await inTables(page, width, async () => {
+          await expect(health).toBeVisible({ timeout: 1000 });
+          await expect(health).toContainText('octo/api', { timeout: 1000 });
+          await expect(health).toContainText('.github/workflows/worker.md', { timeout: 1000 });
+          await expect(health).toContainText('100%', { timeout: 1000 });
+          await expect(health).toContainText('0%', { timeout: 1000 });
+          await expect(page.locator('[data-view-id="routing-problems"]'))
+            .toContainText('No routing failures, deviations or resolution failures were recorded', { timeout: 1000 });
+        });
+        const tableScreenshot = testInfo.outputPath(`model-routing-${dataBackend}-${width}-table.png`);
+        await page.screenshot({ path: tableScreenshot, fullPage: true });
+        await testInfo.attach(`model-routing-${dataBackend}-${width}-table`, { path: tableScreenshot, contentType: 'image/png' });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await inTables(page, width, () => runs.locator('a[href*="routing-run="]:visible').first().click({ timeout: 1000 }));
         await expect(page.getByRole('heading', { name: 'Agent-phase accounting coverage', exact: true })).toBeVisible();
         await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('main_agent');
         await expect(page.locator('[data-view-id="routing-run-requests"]')).toContainText('as_selected');
@@ -135,32 +183,21 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
     });
 
     for (const width of [1280, 390]) {
-      test(`renders Model resolution and run resolution drill-down at ${width}px`, async ({ page }, testInfo) => {
+      test(`renders resolution Problems and run resolution drill-down at ${width}px`, async ({ page }, testInfo) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${server.url}/?local-preview=canvas#page-model-routing`);
         await expect(page.getByRole('dialog', { name: 'Preparing your dashboard' })).toBeHidden();
-        if (width < 768) {
-          for (let step = 0; step < 2; step += 1) {
-            await page.locator('.mobile-view-mode-toggle').click();
-            if (await page.locator('.dashboard-page:not([hidden])').getAttribute('data-view-mode') === 'table') break;
+        await expectFiveViews(page);
+        const problems = page.locator('[data-view-id="routing-problems"]');
+        await inTables(page, width, async () => {
+          for (const [run, cause] of [['990000003', 'model_unavailable'], ['990000004', 'catalog_unavailable']]) {
+            await expect(problems.locator(`a[href*="routing-run=github%2Fgh-aw%3A${run}"]:visible`).first()).toBeVisible({ timeout: 1000 });
+            await expect(problems).toContainText(run, { timeout: 1000 });
+            await expect(problems).toContainText(cause, { timeout: 1000 });
           }
-        } else await page.getByRole('button', { name: 'Table', exact: true }).click();
-        /** @param {string} id */
-        const section = async (id) => {
-          const disclosure = page.locator('details', { has: page.locator(`[data-view-id="${id}"]`) });
-          if (await disclosure.getAttribute('open') === null) await disclosure.locator('summary').first().press('Enter');
-          return page.locator(`[data-view-id="${id}"]`);
-        };
-        const coverage = await section('routing-resolution-coverage');
-        await expect(coverage).toContainText('Routed without resolution');
-        const moves = await section('routing-alias-moves');
-        await expect(moves).toContainText('alias moved');
-        await expect(moves).toContainText('claude-opus-5 → claude-opus-5.5');
-        await expect(moves).toContainText('claude-haiku-5.5');
-        const failures = await section('routing-resolution-failures');
-        await expect(failures).toContainText('model_unavailable');
-        await expect(failures).toContainText('catalog_unavailable');
-        await expect(failures).toContainText('copilot/gpt-5.3');
+          await expect(problems).toContainText('resolution failure', { timeout: 1000 });
+          await expect(problems).toContainText('.github/workflows/smoke-pi-sub-agents.md', { timeout: 1000 });
+        });
         const screenshot = testInfo.outputPath(`model-resolution-${dataBackend}-${width}.png`);
         await page.screenshot({ path: screenshot, fullPage: true });
         await testInfo.attach(`model-resolution-${dataBackend}-${width}`, { path: screenshot, contentType: 'image/png' });
@@ -168,16 +205,15 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
 
         const engine = page.getByRole('textbox', { name: 'Engine', exact: true });
         await engine.fill('codex');
-        await expect(moves).not.toContainText('claude-opus-5.5');
-        await expect(moves).toContainText('auto');
-        await expect(failures).toContainText('No failed configured-model resolution was recorded');
+        await expect(problems).toContainText('No routing failures, deviations or resolution failures were recorded');
         await engine.fill('');
-        await expect(failures).toContainText('model_unavailable');
+        await expect(problems).toContainText('model_unavailable');
 
-        await section('routing-resolution-failures');
-        await failures.locator('a[href*="routing-run=github%2Fgh-aw%3A990000003"]:visible').first().click();
+        await inTables(page, width, () => problems.locator('a[href*="routing-run=github%2Fgh-aw%3A990000003"]:visible').first().click({ timeout: 1000 }));
         await expect(page).toHaveURL(/#page-routing-run\?routing-run=github%2Fgh-aw%3A990000003$/);
-        const drill = await section('routing-run-resolutions');
+        const disclosure = page.locator('details', { has: page.locator('[data-view-id="routing-run-resolutions"]') });
+        if (await disclosure.getAttribute('open') === null) await disclosure.locator('summary').first().press('Enter');
+        const drill = page.locator('[data-view-id="routing-run-resolutions"]');
         await expect(drill).toContainText('copilot/gpt-5.3 → unknown');
         await expect(drill).toContainText('model_unavailable');
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

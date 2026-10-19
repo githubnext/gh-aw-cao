@@ -994,7 +994,7 @@
     {
       "id": "model-routing",
       "title": "Model routing",
-      "description": "Inspect routing adoption, decisions, cost coverage and outcomes from unified-session metadata.",
+      "description": "Inspect routing health, picked models, cost per run and problems from unified-session metadata.",
       "intent": "Investigate routing choices from unified sessions.",
       "subject": "Runner and proxy metadata from usage/aw_session.jsonl.",
       "objective": "Identify choices and evidence gaps requiring investigation.",
@@ -1106,28 +1106,11 @@
         }
       ],
       "queries": [
-        "routing-adoption",
-        "routing-adoption-summary",
-        "routing-alias-history",
-        "routing-alias-moves",
-        "routing-comparisons",
-        "routing-cost-buckets",
-        "routing-cost-distributions",
-        "routing-coverage",
-        "routing-decision-dimensions",
-        "routing-deviation-summary",
-        "routing-deviations",
-        "routing-duplicate-sessions",
-        "routing-failures",
-        "routing-outcomes",
-        "routing-picks",
-        "routing-resolution-coverage",
-        "routing-resolution-failure-records",
-        "routing-resolution-failures",
-        "routing-resolution-status",
+        "routing-health",
+        "routing-problems",
         "routing-runs",
-        "routing-stability",
-        "routing-weekly-cost"
+        "routing-weekly-cost",
+        "routing-weekly-models"
       ]
     },
     {
@@ -5434,48 +5417,6 @@
       }
     },
     {
-      "id": "routing-duplicate-sessions",
-      "subject": "Count session attempts omitted from routing metrics.",
-      "objective": "Expose duplicate files instead of silently summing them.",
-      "acceptance": "Only nonauthoritative attempts contribute.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "routing-session-order"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-coverage",
-      "subject": "Expose supported, legacy, unsupported and unidentified session coverage.",
-      "objective": "Keep sessions excluded from adoption denominators visible.",
-      "acceptance": "Missing identity or time is never inferred from external run success.",
-      "description": "",
-      "parameters": [],
-      "sources": [
-        "routing-run-facts"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
       "id": "routing-ordered-selections",
       "subject": "Order proxy selections within each session.",
       "objective": "Use the last selection by normalized clock and file order.",
@@ -5863,1227 +5804,6 @@
       ],
       "used-by-pages": [
         "routing-run"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-adoption",
-      "subject": "Count identified sessions by routing state and engine.",
-      "objective": "Show adoption without silently treating unknown or inferred routing as explicit configuration.",
-      "acceptance": "All seven states remain distinct and sum to identified sessions.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-runs"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-adoption-totals",
-      "subject": "Count routed populations and classifier coverage by engine.",
-      "objective": "Exclude unknown state from adoption shares without hiding it.",
-      "acceptance": "Configured-unrecorded counts as routed; inferred unrouted stays separate.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-runs"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-adoption-summary",
-      "subject": "Show adoption and degraded-classification shares with their denominators.",
-      "objective": "Distinguish unknown coverage from explicit zero.",
-      "acceptance": "A missing or zero denominator produces no ratio.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-adoption-totals"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-decision-dimensions",
-      "subject": "Group selected runs by configured and resolved objectives.",
-      "objective": "Expose configured mode independently of the router's resolved mode.",
-      "acceptance": "Absent goal, mode and classifier fields remain unknown.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-runs"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-picks",
-      "subject": "Compare selected picks within classifier label cells.",
-      "objective": "Separate task variation from routing decisions.",
-      "acceptance": "Only proxy-selected runs contribute and absent labels remain unknown.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-runs"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-pick-history",
-      "subject": "Order known picks within workflow and classifier label cells.",
-      "objective": "Separate task variation from pick instability.",
-      "acceptance": "Unknown picks and untimed runs cannot establish adjacent changes.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-runs"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-pick-changes",
-      "subject": "Mark decidable adjacent pick changes.",
-      "objective": "Exclude first observations from change-rate denominators.",
-      "acceptance": "Label-conditioned pairs never compare unlike classifier cells.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-pick-history"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-stability-totals",
-      "subject": "Count adjacent changes and distinct picks per workflow.",
-      "objective": "Measure stability with explicit pair denominators.",
-      "acceptance": "Label-conditioned change rate weights cells by their adjacent pairs.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-pick-changes"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-pick-frequencies",
-      "subject": "Count each known pick within its workflow.",
-      "objective": "Compute modal share without counting unknown picks.",
-      "acceptance": "All retained known picks contribute, including runs without an event clock.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-runs"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-modal-picks",
-      "subject": "Count known picks and the largest workflow pick cohort.",
-      "objective": "Distinguish modal stability from adjacent change rates.",
-      "acceptance": "Modal share uses runs with known model and effort only.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-pick-frequencies"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-stability",
-      "subject": "Compute observed workflow and label-conditioned pick change rates.",
-      "objective": "Distinguish changing tasks from changing decisions.",
-      "acceptance": "Fewer than two comparable runs produces an unknown rate.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-modal-picks",
-        "routing-stability-totals"
-      ],
-      "used-by-pages": [
-        "model-routing"
       ],
       "execution": {
         "local": true,
@@ -8647,228 +7367,6 @@
       }
     },
     {
-      "id": "routing-cost-bucket-totals",
-      "subject": "Sum nonoverlapping credits with explicit known and unknown coverage.",
-      "objective": "Show recorded lower bounds by served model and attribution bucket.",
-      "acceptance": "Unknown costs are counted, not repriced or silently treated as zero; evals remain separate.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-attributed-accounting"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-cost-buckets",
-      "subject": "Show known credit lower bounds with honest missing-value coverage.",
-      "objective": "Never display a zero sum when every cost is missing.",
-      "acceptance": "Every additive measure carries known and unknown record counts.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-cost-bucket-totals"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
       "id": "routing-joined-requests",
       "subject": "Inspect per-request deviations and outcomes against proxy picks.",
       "objective": "Keep requests without accounting visible and never invent a deviation cause.",
@@ -9197,230 +7695,7 @@
         "routing-unaccounted-failures"
       ],
       "used-by-pages": [
-        "model-routing",
         "routing-run"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-deviation-totals",
-      "subject": "Count deviations and their known response credits by phase.",
-      "objective": "Keep request-share and credit-share denominators distinct.",
-      "acceptance": "Missing joined AIC is excluded from credit share and counted.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-deviations"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-deviation-summary",
-      "subject": "Show deviation shares with explicit response coverage.",
-      "objective": "Never equate missing request accounting with free traffic.",
-      "acceptance": "Zero known joined credits produce no credit share.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-deviation-totals"
-      ],
-      "used-by-pages": [
-        "model-routing"
       ],
       "execution": {
         "local": true,
@@ -10101,241 +8376,6 @@
       }
     },
     {
-      "id": "routing-cost-distribution-totals",
-      "subject": "Compare complete agent-phase AIC by workflow, routing state and pick.",
-      "objective": "Exclude partial runs from quantiles and display their coverage.",
-      "acceptance": "Comparisons are observational and do not imply a causal routing benefit.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-cost-runs"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-cost-distributions",
-      "subject": "Suppress cost comparisons with insufficient complete samples.",
-      "objective": "Enforce the configurable minimum sample rather than overstate sparse evidence.",
-      "acceptance": "Below the default ten complete runs, cost quantiles remain unavailable.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "minimum-sample",
-          "type": "number",
-          "required": true,
-          "schema": {
-            "type": "number",
-            "description": "Minimum complete runs per group",
-            "minimum": 1,
-            "maximum": 100,
-            "multipleOf": 1,
-            "default": 10
-          }
-        },
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-cost-distribution-totals"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
       "id": "routing-weekly-cost-totals",
       "subject": "Summarize complete agent-phase costs by UTC ISO week and routing state.",
       "objective": "Expose trends without including partial costs.",
@@ -10571,463 +8611,6 @@
       }
     },
     {
-      "id": "routing-comparison-totals",
-      "subject": "Compare complete agent-phase costs for selected and unrouted workflow runs.",
-      "objective": "Keep explicit and inferred baselines separate.",
-      "acceptance": "Partial costs never contribute to sample counts or quantiles.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-cost-runs"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-explicit-baselines",
-      "subject": "Read explicitly unrouted baseline costs.",
-      "objective": "Avoid combining inferred with configured baselines.",
-      "acceptance": "Only explicitly unrouted runs contribute.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-comparison-totals"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-inferred-baselines",
-      "subject": "Read inferred unrouted baseline costs.",
-      "objective": "Label inference rather than imply explicit routing configuration.",
-      "acceptance": "Only unrouted_inferred runs contribute.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-comparison-totals"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-comparisons",
-      "subject": "Compute observational routed-versus-unrouted cost deltas within one workflow.",
-      "objective": "Expose both baseline cohorts and their complete sample sizes.",
-      "acceptance": "Both cohorts must meet the minimum; zero or absent baseline costs produce no ratio.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "minimum-sample",
-          "type": "number",
-          "required": true,
-          "schema": {
-            "type": "number",
-            "description": "Minimum complete runs per group",
-            "minimum": 1,
-            "maximum": 100,
-            "multipleOf": 1,
-            "default": 10
-          }
-        },
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-comparison-totals",
-        "routing-explicit-baselines",
-        "routing-inferred-baselines"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
       "id": "routing-failure-candidates",
       "subject": "Read routing failures, upstream errors, steering and exit 78 evidence.",
       "objective": "Keep execution failures separate from the routing selection state.",
@@ -11238,354 +8821,7 @@
       "sources": [
         "routing-failure-candidates"
       ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-outcome-totals",
-      "subject": "Compare recorded agent job outcomes within pick and classifier label cells.",
-      "objective": "Avoid conflating runtime success with delayed safe-output outcomes or operational value.",
-      "acceptance": "Unknown outcomes are excluded from success-rate denominators and shown as coverage.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-cost-runs"
-      ],
       "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-outcome-statistics",
-      "subject": "Compute outcome ratios with known denominators.",
-      "objective": "Keep excluded unknown job results visible.",
-      "acceptance": "Missing denominators remain unknown.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-outcome-totals"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-outcomes",
-      "subject": "Gate outcome comparisons with explicit sample coverage.",
-      "objective": "Avoid presenting sparse pick cohorts as reliable comparisons.",
-      "acceptance": "Success rates and intervals need enough known outcomes; cost per success also needs enough complete costs.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "minimum-sample",
-          "type": "number",
-          "required": true,
-          "schema": {
-            "type": "number",
-            "description": "Minimum complete runs per group",
-            "minimum": 1,
-            "maximum": 100,
-            "multipleOf": 1,
-            "default": 10
-          }
-        },
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-outcome-statistics"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
       "execution": {
         "local": true,
         "backend": "sqlite",
@@ -11712,1557 +8948,6 @@
       }
     },
     {
-      "id": "routing-resolution-status",
-      "subject": "Count configured-model resolution outcomes by event engine and role.",
-      "objective": "Show resolved, exact and failed resolutions without multiplying runs by roles.",
-      "acceptance": "Runs are distinct run identities; records count individual role resolutions.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolutions"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-resolution-run-counts",
-      "subject": "Count resolution records per scoped run.",
-      "objective": "Attach configured-model resolution evidence to run-level coverage.",
-      "acceptance": "Several roles in one run remain one covered run.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolutions"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-resolution-run-coverage",
-      "subject": "Classify each scoped run's configured-model resolution evidence.",
-      "objective": "Separate covered runs, positively routed runs and runs lacking evidence.",
-      "acceptance": "Absence never establishes routing or failure; routed state comes only from routing evidence.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-run-counts",
-        "routing-runs"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-resolution-coverage-totals",
-      "subject": "Count scoped runs by configured-model resolution coverage.",
-      "objective": "Keep denominators explicit for covered, routed and missing evidence.",
-      "acceptance": "Routed runs without resolution are expected absence, not missing evidence.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-run-coverage"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-resolution-coverage",
-      "subject": "Show configured-model resolution coverage with its denominators.",
-      "objective": "Distinguish expected routed absence from missing resolution evidence.",
-      "acceptance": "A zero denominator produces no share.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-coverage-totals"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-resolution-observations",
-      "subject": "Retain resolutions with a known resolved model.",
-      "objective": "Build alias history without treating failed or unsafe values as a model.",
-      "acceptance": "Failed null resolutions and unsafe resolved values never enter alias history.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolutions"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-resolution-timeline",
-      "subject": "Order timed resolutions within each workflow, engine, role, provider and configured model.",
-      "objective": "Compare only chronologically adjacent resolutions of the same alias series.",
-      "acceptance": "Untimed runs cannot establish a transition or a first or last observation.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-observations"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-resolution-transitions",
-      "subject": "Mark adjacent resolved-model changes within an alias series.",
-      "objective": "Count observed alias moves without claiming why they happened.",
-      "acceptance": "First observations are not changes; equal adjacent models are stable.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-timeline"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-alias-model-runs",
-      "subject": "Identify the first and last timed run for each resolved model of a series.",
-      "objective": "Link alias history rows to their contributing runs.",
-      "acceptance": "Only timed runs identify first and last observations.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-transitions"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-alias-history-totals",
-      "subject": "Count runs and recorded clocks for each resolved model of an alias series.",
-      "objective": "Expose resolved-model history per workflow, engine, role, provider and configured model.",
-      "acceptance": "Distinct runs are counted once; untimed runs remain counted with unknown time.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-observations"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-alias-history",
-      "subject": "Show the observed resolved-model history of each alias series.",
-      "objective": "Support investigation of alias moves with first and last observed runs.",
-      "acceptance": "History rows are observations, not proof that the model was served.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-alias-history-totals",
-        "routing-alias-model-runs"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-alias-sequences",
-      "subject": "Summarize timed resolved-model changes for each alias series.",
-      "objective": "Identify the earliest and latest resolved model and the observed transitions.",
-      "acceptance": "Transitions require adjacent recorded run clocks.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-transitions"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-alias-move-totals",
-      "subject": "Count runs and distinct resolved models for each alias series.",
-      "objective": "Provide one change-summary row per series, including stable aliases.",
-      "acceptance": "Engine, role and provider stay part of the series so unrelated resolutions cannot manufacture a move.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-resolution-observations"
-      ],
-      "used-by-pages": [],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
-      "id": "routing-alias-moves",
-      "subject": "Highlight alias series whose resolved model changed between timed runs.",
-      "objective": "Investigate aliases moving to newer models without claiming cause or served-model evidence.",
-      "acceptance": "Exactly one row per series; only adjacent timed runs establish a move and unordered changes stay distinct.",
-      "description": "",
-      "parameters": [
-        {
-          "name": "routing-filter-awf",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "AWF version",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-end",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "End time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-engine",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Engine",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-goal",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Goal",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-mode",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Resolved mode",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-repository",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Repository (OWNER/NAME)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-start",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Start time (UTC)",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-state",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Routing state",
-            "default": ""
-          }
-        },
-        {
-          "name": "routing-filter-workflow",
-          "type": "string",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "description": "Workflow",
-            "default": ""
-          }
-        }
-      ],
-      "sources": [
-        "routing-alias-move-totals",
-        "routing-alias-sequences"
-      ],
-      "used-by-pages": [
-        "model-routing"
-      ],
-      "execution": {
-        "local": true,
-        "backend": "sqlite",
-        "requirements": [
-          "audits"
-        ]
-      }
-    },
-    {
       "id": "routing-resolution-failure-records",
       "subject": "Retain failed configured-model resolutions with their runs.",
       "objective": "Link each failed resolution to its contributing run.",
@@ -13363,6 +9048,337 @@
       "sources": [
         "routing-resolutions"
       ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "routing-pick-adherence",
+      "subject": "Count agent-phase requests with a routed flag and those that deviated, per run.",
+      "objective": "Decide whether each run followed the proxy pick without guessing for runs that lack request evidence.",
+      "acceptance": "Only agent-phase requests flagged as_selected or deviated contribute; runs without such requests have no row and stay unknown.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "routing-filter-awf",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "AWF version",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-end",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "End time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-engine",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Engine",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-goal",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Goal",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-mode",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Resolved mode",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-repository",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Repository (OWNER/NAME)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-start",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Start time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-state",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Routing state",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-workflow",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workflow",
+            "default": ""
+          }
+        }
+      ],
+      "sources": [
+        "routing-deviations"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "routing-health-totals",
+      "subject": "Count routed runs and their selection, failure, adherence, outcome and cost evidence per repository and workflow.",
+      "objective": "Answer whether routing is on and working from one row per routed workflow.",
+      "acceptance": "Only selected, selection_failed, harness_reported and configured_unrecorded runs contribute; runs without evidence stay out of each denominator.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "routing-filter-awf",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "AWF version",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-end",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "End time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-engine",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Engine",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-goal",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Goal",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-mode",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Resolved mode",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-repository",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Repository (OWNER/NAME)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-start",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Start time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-state",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Routing state",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-workflow",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workflow",
+            "default": ""
+          }
+        }
+      ],
+      "sources": [
+        "routing-cost-runs",
+        "routing-pick-adherence"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "routing-health",
+      "subject": "Show routing health shares per repository and workflow.",
+      "objective": "Tell whether routing is on and working from selection, failure or fallback, pick adherence, known outcomes and complete cost.",
+      "acceptance": "A zero denominator or no complete cost is unknown, never zero; unknown job outcomes are excluded from the success rate.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "routing-filter-awf",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "AWF version",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-end",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "End time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-engine",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Engine",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-goal",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Goal",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-mode",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Resolved mode",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-repository",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Repository (OWNER/NAME)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-start",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Start time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-state",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Routing state",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-workflow",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workflow",
+            "default": ""
+          }
+        }
+      ],
+      "sources": [
+        "routing-health-totals"
+      ],
       "used-by-pages": [
         "model-routing"
       ],
@@ -13375,10 +9391,342 @@
       }
     },
     {
-      "id": "routing-resolution-failures",
-      "subject": "Group failed resolutions by configured model and cause.",
-      "objective": "Keep model_unavailable and catalog_unavailable distinct with engine and role context.",
-      "acceptance": "Affected runs are distinct run identities; a single-run group links to that run.",
+      "id": "routing-weekly-models",
+      "subject": "Count proxy-selected runs by UTC ISO week and picked model.",
+      "objective": "Show what the router chooses over time.",
+      "acceptance": "Only selected runs with a known pick model and a recorded run clock contribute; an unrecorded effort does not exclude a run.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "routing-filter-awf",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "AWF version",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-end",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "End time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-engine",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Engine",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-goal",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Goal",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-mode",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Resolved mode",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-repository",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Repository (OWNER/NAME)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-start",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Start time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-state",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Routing state",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-workflow",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workflow",
+            "default": ""
+          }
+        }
+      ],
+      "sources": [
+        "routing-runs"
+      ],
+      "used-by-pages": [
+        "model-routing"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "routing-failure-problems",
+      "subject": "Summarize recorded routing failures per run.",
+      "objective": "Give the Problems view one routing-failure row per run.",
+      "acceptance": "Causes are the distinct recorded codes, or the event type when an event records no code.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "routing-filter-awf",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "AWF version",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-end",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "End time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-engine",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Engine",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-goal",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Goal",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-mode",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Resolved mode",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-repository",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Repository (OWNER/NAME)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-start",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Start time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-state",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Routing state",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-workflow",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workflow",
+            "default": ""
+          }
+        }
+      ],
+      "sources": [
+        "routing-failures"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "routing-deviation-problems",
+      "subject": "Summarize agent-phase requests that deviated from the pick per run.",
+      "objective": "Give the Problems view one deviation row per run.",
+      "acceptance": "Causes are the distinct deviated axes, or deviated when a request records no axes.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "routing-filter-awf",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "AWF version",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-end",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "End time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-engine",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Engine",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-goal",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Goal",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-mode",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Resolved mode",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-repository",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Repository (OWNER/NAME)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-start",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Start time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-state",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Routing state",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-workflow",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workflow",
+            "default": ""
+          }
+        }
+      ],
+      "sources": [
+        "routing-deviations"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "routing-resolution-problems",
+      "subject": "Summarize failed configured-model resolutions per run.",
+      "objective": "Give the Problems view one resolution-failure row per run.",
+      "acceptance": "Causes are the distinct recorded resolution causes; roles are records, not runs.",
       "description": "",
       "parameters": [
         {
@@ -13474,6 +9822,119 @@
       ],
       "sources": [
         "routing-resolution-failure-records"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "routing-problems",
+      "subject": "List routing failures, deviations and resolution failures with one row per run and kind.",
+      "objective": "Show what needs attention and link each problem to its run page.",
+      "acceptance": "Time is the run's recorded observation time and stays unknown without a run clock; untimed rows sort after timed rows.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "routing-filter-awf",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "AWF version",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-end",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "End time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-engine",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Engine",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-goal",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Goal",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-mode",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Resolved mode",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-repository",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Repository (OWNER/NAME)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-start",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Start time (UTC)",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-state",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Routing state",
+            "default": ""
+          }
+        },
+        {
+          "name": "routing-filter-workflow",
+          "type": "string",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Workflow",
+            "default": ""
+          }
+        }
+      ],
+      "sources": [
+        "routing-deviation-problems",
+        "routing-failure-problems",
+        "routing-resolution-problems",
+        "routing-runs"
       ],
       "used-by-pages": [
         "model-routing"

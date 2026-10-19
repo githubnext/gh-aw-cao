@@ -51,6 +51,19 @@ async function query(indexedDB, names, parameters = {}) {
   }));
 }
 
+/** Playwright run 101 replayed on the unit clock. */
+const run101 = [
+  event('model.config', { routing: { enabled: true } }),
+  event('firewall.model_routing', { stage: 'selection', selectedModel: 'gpt-5', selectedEffort: 'high',
+    objective: { goal: 'cost', mode: 'auto' }, mode: 'balanced',
+    labels: { task_type: 'coding', scope: 'repository', task_complexity: 'high' } }),
+  event('firewall.model_routing', { stage: 'request', requestId: 'request-1', requestedModel: 'gpt-5',
+    selectedModel: 'gpt-5', routed: 'as_selected', outcome: 'success' }),
+  event('firewall.token_usage', { requestId: 'request-1', model: 'gpt-5', aic: 4 }),
+  event('workflow.job_result', { jobId: 'agent', result: 'success' }),
+  event('session.collection', { sources: [{ path: 'firewall/agent/token-usage.jsonl', phase: 'agent', component: 'firewall', events: 1 }] }, 'conclusion')
+];
+
 describe('model routing unified-session contract', () => {
   afterEach(() => vi.unstubAllGlobals());
   it.each(['firewall.event', 'firewall.upstream_error'])('preserves numeric status and HTTP evidence for %s', (type) => {
@@ -59,7 +72,7 @@ describe('model routing unified-session contract', () => {
       .toMatchObject({ status: '429', httpStatus: 429 });
   });
 
-  it('declares all analytics views and resolves payloads through the production worker', async () => {
+  it('declares the five essential views and resolves payloads through the production worker', async () => {
     const indexedDB = new IDBFactory();
     vi.stubGlobal('indexedDB', indexedDB);
     await ingest(indexedDB, 1, [
@@ -72,6 +85,10 @@ describe('model routing unified-session contract', () => {
     ]);
     const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.page);
     expect(page.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual(contract.views);
+    expect(page.views.map((/** @type {{ title: string }} */ view) => view.title)).toEqual([
+      'Routing health by workflow', 'Models picked over time', 'Cost per run over time', 'Problems', 'Routing runs'
+    ]);
+    expect(page.views.filter((/** @type {{ disclosure?: string }} */ view) => view.disclosure)).toEqual([]);
     for (const view of page.views) {
       const payload = compileDashboardViewPayloadQueries(page, page.id, {
         queries: dashboard.queries, views: dashboard.views, viewId: view.id, sourceNames: [view.data.source]
@@ -103,16 +120,19 @@ describe('model routing unified-session contract', () => {
     }
     const result = await query(indexedDB, contract.queries, { 'minimum-sample': 1 });
     expect(result['routing-resolutions'].rows).toEqual([]);
-    expect(result['routing-resolution-coverage'].rows).toMatchObject([{
-      runs: 1, 'resolution-runs': 0, 'routed-runs': 1, 'routed-without-resolution': 1, 'missing-resolution': 0, 'resolution-records': 0
-    }]);
     expect(result['routing-runs'].rows).toMatchObject([{
-      'routing-state': 'selected', 'pick-model': 'gpt-5', 'pick-effort': 'high', 'failure-count': 1
-    }]);
-    expect(result['routing-picks'].rows).toMatchObject([{
+      'routing-state': 'selected', 'pick-model': 'gpt-5', 'pick-effort': 'high', 'failure-count': 1,
       'routing-task-type': 'coding', 'routing-scope': 'repository', 'routing-complexity': 'high'
     }]);
-    expect(result['routing-outcomes'].rows).toMatchObject([{ successes: 1, 'known-outcomes': 1, 'success-rate': 1 }]);
+    expect(result['routing-health'].rows).toEqual([expect.objectContaining({
+      'full-repository': 'octo/api', workflow: '.github/workflows/worker.md', 'routed-runs': 1,
+      'selected-percent': '100%', 'failure-percent': '100%', 'success-percent': '100%', 'median-aic': null
+    })]);
+    expect(result['routing-problems'].rows).toEqual([expect.objectContaining({
+      run: '1', 'full-repository': 'octo/api', workflow: '.github/workflows/worker.md',
+      'problem-kind': 'routing failure', 'problem-cause': 'ai_credits_limit_exceeded', 'observed-at': '2026-10-16T10:00:00.000Z',
+      'routing-dashboard-link': expect.objectContaining({ 'dashboard-href': '#page-routing-run?routing-run=octo%2Fapi%3A1' })
+    })]);
   });
 
   it('keeps each routing state distinct, including explicit and inferred unrouted runs', async () => {
@@ -129,11 +149,15 @@ describe('model routing unified-session contract', () => {
     for (const [index, events] of inputs.entries()) await ingest(indexedDB, index + 1, events);
     const result = await query(indexedDB, ['routing-runs']);
     expect(result['routing-runs'].rows.map((row) => row['routing-state']).sort()).toEqual([...contract.states].sort());
-    const summary = await query(indexedDB, ['routing-adoption-summary']);
-    expect(summary['routing-adoption-summary'].rows).toMatchObject([{
-      runs: 7, routed: 4, unrouted: 1, 'inferred-unrouted': 1, unknown: 1,
-      'routed-share': 4 / 6, 'routed-workflows': 1, 'degraded-share': null
-    }]);
+    const summary = await query(indexedDB, ['routing-health', 'routing-weekly-models']);
+    expect(summary['routing-health'].rows).toEqual([expect.objectContaining({
+      'full-repository': 'octo/api', workflow: '.github/workflows/worker.md', 'routed-runs': 4,
+      'selected-share': 0.25, 'selected-percent': '25%', 'failure-share': 0.25, 'failure-percent': '25%',
+      'followed-share': null, 'followed-percent': null, 'success-rate': null, 'success-percent': null, 'median-aic': null
+    })]);
+    expect(summary['routing-weekly-models'].rows).toEqual([expect.objectContaining({
+      week: '2026-10-12T00:00:00.000Z', 'pick-model': 'gpt-5', runs: 1
+    })]);
   });
 
   it('keeps deviation denominators and all five token-class coverage counters explicit', async () => {
@@ -147,15 +171,28 @@ describe('model routing unified-session contract', () => {
       } }),
       event('firewall.token_usage', { requestId: 'b', aic: 6, purpose: 'agent' })
     ]);
-    const result = await query(indexedDB, ['routing-deviation-summary', 'routing-cost-buckets']);
-    expect(result['routing-deviation-summary'].rows).toMatchObject([{
-      'classified-requests': 3, 'deviated-requests': 2, 'deviated-request-share': 2 / 3,
-      'deviated-credit-share': 0.25, 'unknown-costs': 1
-    }]);
-    expect(result['routing-cost-buckets'].rows).toMatchObject([{
-      'input-tokens': 10, 'output-tokens': 4, 'reasoning-tokens': 2, 'cache-read-tokens': 3, 'cache-write-tokens': 1,
-      'input-unknown': 1, 'output-unknown': 1, 'reasoning-unknown': 1, 'cache-read-unknown': 1, 'cache-write-unknown': 1
-    }]);
+    const result = await query(indexedDB, ['routing-deviations', 'routing-attributed-accounting']);
+    expect(result['routing-deviations'].rows.map((row) => row['routing-routed'])).toEqual(['deviated', 'as_selected', 'deviated']);
+    const tokenClasses = ['input-tokens', 'output-tokens', 'reasoning-tokens', 'cache-read-tokens', 'cache-write-tokens'];
+    expect(result['routing-attributed-accounting'].rows.map((row) => [row['correlation-id'], row.aic, ...tokenClasses.map((field) => row[field] ?? null)]))
+      .toEqual([['a', 2, 10, 4, 2, 3, 1], ['b', 6, null, null, null, null, null]]);
+  });
+
+  it('reports pick adherence and deviation problems for a selected run', async () => {
+    const indexedDB = new IDBFactory();
+    await ingest(indexedDB, 1, [
+      event('firewall.model_routing', { stage: 'selection', selectedModel: 'gpt-5', selectedEffort: 'high' }),
+      event('firewall.model_routing', { stage: 'request', requestId: 'a', routed: 'deviated' }),
+      event('firewall.model_routing', { stage: 'request', requestId: 'b', routed: 'as_selected' }),
+      event('firewall.model_routing', { stage: 'request', requestId: 'c', routed: 'deviated' })
+    ]);
+    const result = await query(indexedDB, ['routing-health', 'routing-problems']);
+    expect(result['routing-health'].rows).toEqual([expect.objectContaining({
+      'routed-runs': 1, 'adherence-known-runs': 1, 'followed-runs': 0, 'followed-share': 0, 'followed-percent': '0%'
+    })]);
+    expect(result['routing-problems'].rows).toEqual([expect.objectContaining({
+      run: '1', 'problem-kind': 'deviation', 'problem-cause': 'deviated'
+    })]);
   });
 
   it('counts only the four specified agent-job outcomes as known results', async () => {
@@ -166,10 +203,12 @@ describe('model routing unified-session contract', () => {
         event('workflow.job_result', { jobId: 'agent', result })
       ]);
     }
-    const result = await query(indexedDB, ['routing-outcomes'], { 'minimum-sample': 1 });
-    expect(result['routing-outcomes'].rows).toMatchObject([{
-      successes: 1, 'known-outcomes': 4, 'unknown-outcomes': 1, 'success-rate': 0.25
-    }]);
+    const result = await query(indexedDB, ['routing-health', 'routing-weekly-models']);
+    expect(result['routing-health'].rows).toEqual([expect.objectContaining({
+      'routed-runs': 5, successes: 1, 'known-outcomes': 4, 'success-rate': 0.25, 'success-percent': '25%',
+      'selected-percent': '100%', 'failure-percent': '0%', 'followed-percent': null
+    })]);
+    expect(result['routing-weekly-models'].rows).toEqual([expect.objectContaining({ 'pick-model': 'gpt-5', runs: 5 })]);
   });
 
   it('chooses proxy accounting per phase and never makes missing purpose agent traffic', async () => {
@@ -185,12 +224,11 @@ describe('model routing unified-session contract', () => {
       event('usage.report', { requestId: 'evals', aic: 5 }, 'evals'),
       event('session.result', { totalAic: 5000, agentMetrics: { reviewer: { totalNanoAiu: 1000000000 } } })
     ]);
-    const result = await query(indexedDB, ['routing-attributed-accounting', 'routing-cost-buckets']);
+    const result = await query(indexedDB, ['routing-attributed-accounting']);
     const rows = result['routing-attributed-accounting'].rows;
     expect(rows.map((row) => row.bucket).sort()).toEqual(['classifier', 'unattributed', 'subagent_exact', 'main_agent', 'detection', 'evals'].sort());
-    const classifier = result['routing-cost-buckets'].rows.find((row) => row.bucket === 'classifier');
-    expect(classifier).toMatchObject({ 'recorded-aic-lower-bound': 1, 'known-cost-records': 1, 'unknown-cost-records': 0 });
-    expect(result['routing-cost-buckets'].rows.find((row) => row.bucket === 'unattributed')).toMatchObject({ 'unknown-cost-records': 1 });
+    expect(rows.filter((row) => row.bucket === 'classifier')).toMatchObject([{ aic: 1, 'unknown-aic-count': 0 }]);
+    expect(rows.filter((row) => row.bucket === 'unattributed')).toMatchObject([{ 'unknown-aic': true, 'unknown-aic-count': 1 }]);
   });
 
   it('normalizes legacy fields and strips content before persistence', () => {
@@ -312,11 +350,10 @@ describe('model routing unified-session contract', () => {
       event('firewall.model_routing', { stage: 'selection', selectedModel: 'new', selectedEffort: 'high' }),
       event('firewall.token_usage', { requestId: 'new-request', aic: 2 })
     ], 2);
-    const result = await query(indexedDB, ['routing-runs', 'routing-attributed-accounting', 'routing-duplicate-sessions']);
+    const result = await query(indexedDB, ['routing-runs', 'routing-attributed-accounting']);
     expect(result['routing-runs'].rows).toMatchObject([{ 'pick-model': 'new', 'selection-count': 1 }]);
     expect(result['routing-attributed-accounting'].rows).toMatchObject([{ aic: 2 }]);
     expect(result['routing-attributed-accounting'].rows).toHaveLength(1);
-    expect(result['routing-duplicate-sessions'].rows).toEqual([{ 'duplicate-files': 0 }]);
   });
 
   it('uses every recorded source clock and leaves wholly untimed sessions outside bounded ranges', async () => {
@@ -348,28 +385,30 @@ describe('model routing unified-session contract', () => {
     expect(bounded['routing-runs'].rows[0].run).toBe('1');
   });
 
-  it('gates quantiles, baseline deltas and Wilson intervals by the configured sample', async () => {
+  it('gates weekly cost medians by the configured complete sample', async () => {
     const indexedDB = new IDBFactory();
-    const receipt = event('session.collection', {
-      sources: [{ path: 'firewall/agent/token-usage.jsonl', phase: 'agent', component: 'firewall', events: 1 }]
-    });
-    for (const [index, aic] of [4, 6, 8, 12].entries()) {
-      await ingest(indexedDB, index + 1, [receipt,
-        index < 2 ? event('firewall.model_routing', { stage: 'selection', selectedModel: 'gpt-5', selectedEffort: 'high' })
-          : event('model.config', { routing: { enabled: false } }),
-        event('firewall.token_usage', { requestId: 'a', aic }),
-        event('workflow.job_result', { jobId: 'agent', result: index === 0 ? 'failure' : 'success' })
-      ]);
-    }
-    const names = ['routing-cost-distributions', 'routing-comparisons', 'routing-outcomes'];
-    const sparse = await query(indexedDB, names);
-    expect(sparse['routing-cost-distributions'].rows.every((row) => row['median-aic'] === null)).toBe(true);
-    expect(sparse['routing-comparisons'].rows).toMatchObject([{ 'explicit-delta': null, 'explicit-evidence': 'insufficient data' }]);
-    expect(sparse['routing-outcomes'].rows).toMatchObject([{ 'success-rate': null, 'wilson-low': null, 'wilson-high': null }]);
-    const enough = await query(indexedDB, names, { 'minimum-sample': 2 });
-    expect(enough['routing-comparisons'].rows).toMatchObject([{ 'explicit-delta': -0.5, 'explicit-evidence': 'observational' }]);
-    expect(enough['routing-outcomes'].rows).toMatchObject([{ 'success-rate': 0.5, 'cost-per-success': 10 }]);
-    expect(enough['routing-outcomes'].rows[0]['wilson-low']).toBeCloseTo(0.09453, 4);
-    expect(enough['routing-outcomes'].rows[0]['wilson-high']).toBeCloseTo(0.90547, 4);
+    await ingest(indexedDB, 101, run101);
+    const sparse = await query(indexedDB, ['routing-weekly-cost']);
+    expect(sparse['routing-weekly-cost'].rows).toEqual([expect.objectContaining({
+      week: '2026-10-12T00:00:00.000Z', 'routing-state': 'selected', runs: 1, 'complete-runs': 1, 'median-aic': null, 'sample-status': 'insufficient data'
+    })]);
+    const enough = await query(indexedDB, ['routing-weekly-cost'], { 'minimum-sample': 1 });
+    expect(enough['routing-weekly-cost'].rows).toEqual([expect.objectContaining({
+      week: '2026-10-12T00:00:00.000Z', 'routing-state': 'selected', runs: 1, 'complete-runs': 1, 'median-aic': 4, 'sample-status': 'observational'
+    })]);
+  });
+
+  it('reports run 101 as healthy with no problems', async () => {
+    const indexedDB = new IDBFactory();
+    await ingest(indexedDB, 101, run101);
+    const result = await query(indexedDB, ['routing-health', 'routing-weekly-models', 'routing-problems']);
+    expect(result['routing-health'].rows).toEqual([expect.objectContaining({
+      'routed-runs': 1, 'selected-percent': '100%', 'failure-percent': '0%', 'followed-percent': '100%',
+      'success-percent': '100%', 'median-aic': 4
+    })]);
+    expect(result['routing-weekly-models'].rows).toEqual([expect.objectContaining({
+      week: '2026-10-12T00:00:00.000Z', 'pick-model': 'gpt-5', runs: 1
+    })]);
+    expect(result['routing-problems'].rows).toEqual([]);
   });
 });

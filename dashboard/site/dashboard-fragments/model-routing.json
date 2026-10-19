@@ -94,29 +94,6 @@
       }
     },
     {
-      "name": "routing-duplicate-sessions", "from": "routing-session-order",
-      "subject": "Count session attempts omitted from routing metrics.",
-      "objective": "Expose duplicate files instead of silently summing them.",
-      "acceptance": "Only nonauthoritative attempts contribute.",
-      "filter": { "predicates": [{ "field": "session-position", "gte": 2 }] },
-      "aggregate": { "values": [{ "field": "routing-run-key", "as": "duplicate-files", "reducer": "count" }] }
-    },
-    {
-      "name": "routing-coverage",
-      "subject": "Expose supported, legacy, unsupported and unidentified session coverage.",
-      "objective": "Keep sessions excluded from adoption denominators visible.",
-      "acceptance": "Missing identity or time is never inferred from external run success.",
-      "from": "routing-run-facts",
-      "compute": [
-        { "as": "identified", "function": "greater-than", "args": [{ "field": "workflow-info-count" }, { "value": 0 }] },
-        { "as": "untimed", "function": "equals-any", "args": [{ "field": "run-clock" }, { "value": null }] }
-      ],
-      "aggregate": { "by": ["session-format", "identified", "untimed"], "values": [
-        { "field": "routing-run-key", "as": "sessions", "reducer": "count" },
-        { "field": "warnings", "as": "warnings", "reducer": "sum" }
-      ] }
-    },
-    {
       "name": "routing-ordered-selections",
       "subject": "Order proxy selections within each session.",
       "objective": "Use the last selection by normalized clock and file order.",
@@ -252,155 +229,6 @@
       "acceptance": "State, pick and accounting are computed before the scope is applied.",
       "joins": [{ "source": "routing-runs", "type": "inner", "on": [{ "left": "routing-run-key", "right": "routing-run-key" }],
         "fields": [{ "field": "routing-state", "as": "run-routing-state" }] }]
-    },
-    {
-      "name": "routing-adoption",
-      "subject": "Count identified sessions by routing state and engine.",
-      "objective": "Show adoption without silently treating unknown or inferred routing as explicit configuration.",
-      "acceptance": "All seven states remain distinct and sum to identified sessions.",
-      "from": "routing-runs",
-      "aggregate": { "by": ["routing-state", "engine"], "values": [{ "field": "routing-run-key", "as": "runs", "reducer": "count" }] }
-    },
-    {
-      "name": "routing-adoption-totals", "from": "routing-runs",
-      "subject": "Count routed populations and classifier coverage by engine.",
-      "objective": "Exclude unknown state from adoption shares without hiding it.",
-      "acceptance": "Configured-unrecorded counts as routed; inferred unrouted stays separate.",
-      "compute": [
-        { "as": "workflow-key", "function": "concat", "args": [{ "field": "full-repository" }, { "value": ":" }, { "field": "workflow" }] },
-        { "as": "is-routed", "function": "equals-any", "args": [{ "field": "routing-state" }, { "value": "selected" }, { "value": "selection_failed" }, { "value": "harness_reported" }, { "value": "configured_unrecorded" }] }
-      ],
-      "aggregate": { "by": ["engine"], "values": [
-        { "field": "run", "as": "runs", "reducer": "count" },
-        { "field": "run", "as": "routed", "reducer": "count", "filter": { "predicates": [{ "field": "is-routed", "equals": true }] } },
-        { "field": "run", "as": "unrouted", "reducer": "count", "filter": { "predicates": [{ "field": "routing-state", "equals": "unrouted" }] } },
-        { "field": "run", "as": "inferred-unrouted", "reducer": "count", "filter": { "predicates": [{ "field": "routing-state", "equals": "unrouted_inferred" }] } },
-        { "field": "run", "as": "unknown", "reducer": "count", "filter": { "predicates": [{ "field": "routing-state", "equals": "unknown" }] } },
-        { "field": "workflow-key", "as": "routed-workflows", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "is-routed", "equals": true }] } },
-        { "field": "routing-degraded", "as": "degraded-known", "reducer": "count" },
-        { "field": "run", "as": "degraded", "reducer": "count", "filter": { "predicates": [{ "field": "routing-degraded", "equals": true }] } }
-      ] }
-    },
-    {
-      "name": "routing-adoption-summary", "from": "routing-adoption-totals",
-      "subject": "Show adoption and degraded-classification shares with their denominators.",
-      "objective": "Distinguish unknown coverage from explicit zero.",
-      "acceptance": "A missing or zero denominator produces no ratio.",
-      "compute": [
-        { "as": "known-state-runs", "function": "difference", "args": [{ "field": "runs" }, { "field": "unknown" }] },
-        { "as": "routed-share", "function": "quotient", "args": [{ "field": "routed" }, { "field": "known-state-runs" }] },
-        { "as": "degraded-share", "function": "quotient", "args": [{ "field": "degraded" }, { "field": "degraded-known" }] }
-      ]
-    },
-    {
-      "name": "routing-decision-dimensions", "from": "routing-runs",
-      "subject": "Group selected runs by configured and resolved objectives.",
-      "objective": "Expose configured mode independently of the router's resolved mode.",
-      "acceptance": "Absent goal, mode and classifier fields remain unknown.",
-      "filter": { "predicates": [{ "field": "routing-state", "equals": "selected" }] },
-      "aggregate": { "by": ["engine", "routing-goal", "routing-configured-mode", "routing-mode", "routing-classifier-model", "routing-classifier-effort", "routing-classifier-attempts"], "values": [
-        { "field": "run", "as": "runs", "reducer": "count" },
-        { "field": "routing-latency-ms", "as": "latency-known", "reducer": "count" },
-        { "field": "routing-latency-ms", "as": "latency-p50", "reducer": "median" },
-        { "field": "routing-latency-ms", "as": "latency-p95", "reducer": "p95" }
-      ] }
-    },
-    {
-      "name": "routing-picks",
-      "subject": "Compare selected picks within classifier label cells.",
-      "objective": "Separate task variation from routing decisions.",
-      "acceptance": "Only proxy-selected runs contribute and absent labels remain unknown.",
-      "from": "routing-runs",
-      "filter": { "predicates": [{ "field": "routing-state", "equals": "selected" }, { "field": "unknown-pick", "equals": false }] },
-      "aggregate": { "by": ["pick", "routing-task-type", "routing-scope", "routing-complexity"], "values": [
-        { "field": "run", "as": "runs", "reducer": "count" },
-        { "field": "routing-latency-ms", "as": "latency-known", "reducer": "count" },
-        { "field": "routing-latency-ms", "as": "mean-latency-ms", "reducer": "mean" },
-        { "field": "routing-latency-ms", "as": "median-latency-ms", "reducer": "median" },
-        { "field": "routing-latency-ms", "as": "p95-latency-ms", "reducer": "p95" },
-        { "field": "routing-degraded", "as": "degraded-known", "reducer": "count" },
-        { "field": "run", "as": "degraded-runs", "reducer": "count", "filter": { "predicates": [{ "field": "routing-degraded", "equals": true }] } }
-      ] }
-    },
-    {
-      "name": "routing-pick-history", "from": "routing-runs",
-      "subject": "Order known picks within workflow and classifier label cells.",
-      "objective": "Separate task variation from pick instability.",
-      "acceptance": "Unknown picks and untimed runs cannot establish adjacent changes.",
-      "filter": { "predicates": [{ "field": "unknown-pick", "equals": false }, { "field": "run-clock", "gte": 0 }] },
-      "window": [
-        { "operation": "previous", "field": "pick", "as": "previous-pick",
-          "groupby": ["organization", "repository", "workflow"],
-          "order-by": [{ "field": "run-clock", "direction": "asc" }, { "field": "run", "direction": "asc" }] },
-        { "operation": "previous", "field": "pick", "as": "previous-cell-pick",
-          "groupby": ["organization", "repository", "workflow", "routing-task-type", "routing-scope", "routing-complexity"],
-          "order-by": [{ "field": "run-clock", "direction": "asc" }, { "field": "run", "direction": "asc" }] }
-      ]
-    },
-    {
-      "name": "routing-pick-changes", "from": "routing-pick-history",
-      "subject": "Mark decidable adjacent pick changes.",
-      "objective": "Exclude first observations from change-rate denominators.",
-      "acceptance": "Label-conditioned pairs never compare unlike classifier cells.",
-      "compute": [
-        { "as": "first-pick", "function": "equals-any", "args": [{ "field": "previous-pick" }, { "value": null }] },
-        { "as": "first-cell-pick", "function": "equals-any", "args": [{ "field": "previous-cell-pick" }, { "value": null }] },
-        { "as": "same-pick", "function": "equals-any", "args": [{ "field": "previous-pick" }, { "field": "pick" }] },
-        { "as": "same-cell-pick", "function": "equals-any", "args": [{ "field": "previous-cell-pick" }, { "field": "pick" }] },
-        { "as": "pair", "function": "if", "args": [{ "field": "first-pick" }, { "value": 0 }, { "value": 1 }] },
-        { "as": "cell-pair", "function": "if", "args": [{ "field": "first-cell-pick" }, { "value": 0 }, { "value": 1 }] },
-        { "as": "changed", "function": "if", "args": [{ "field": "same-pick" }, { "value": 0 }, { "field": "pair" }] },
-        { "as": "cell-changed", "function": "if", "args": [{ "field": "same-cell-pick" }, { "value": 0 }, { "field": "cell-pair" }] }
-      ]
-    },
-    {
-      "name": "routing-stability-totals", "from": "routing-pick-changes",
-      "subject": "Count adjacent changes and distinct picks per workflow.",
-      "objective": "Measure stability with explicit pair denominators.",
-      "acceptance": "Label-conditioned change rate weights cells by their adjacent pairs.",
-      "aggregate": { "by": ["organization", "repository", "workflow"], "values": [
-        { "field": "pick", "as": "distinct-picks", "reducer": "distinct-count" },
-        { "field": "pair", "as": "pairs", "reducer": "sum" },
-        { "field": "cell-pair", "as": "cell-pairs", "reducer": "sum" },
-        { "field": "changed", "as": "changes", "reducer": "sum" },
-        { "field": "cell-changed", "as": "cell-changes", "reducer": "sum" }
-      ] }
-    },
-    {
-      "name": "routing-pick-frequencies", "from": "routing-runs",
-      "subject": "Count each known pick within its workflow.",
-      "objective": "Compute modal share without counting unknown picks.",
-      "acceptance": "All retained known picks contribute, including runs without an event clock.",
-      "filter": { "predicates": [{ "field": "unknown-pick", "equals": false }] },
-      "aggregate": { "by": ["organization", "repository", "workflow", "pick"], "values": [
-        { "field": "run", "as": "pick-runs", "reducer": "count" }
-      ] }
-    },
-    {
-      "name": "routing-modal-picks", "from": "routing-pick-frequencies",
-      "subject": "Count known picks and the largest workflow pick cohort.",
-      "objective": "Distinguish modal stability from adjacent change rates.",
-      "acceptance": "Modal share uses runs with known model and effort only.",
-      "aggregate": { "by": ["organization", "repository", "workflow"], "values": [
-        { "field": "pick", "as": "distinct-picks", "reducer": "count" },
-        { "field": "pick-runs", "as": "known-pick-runs", "reducer": "sum" },
-        { "field": "pick-runs", "as": "modal-runs", "reducer": "max" }
-      ] }
-    },
-    {
-      "name": "routing-stability", "from": "routing-modal-picks",
-      "subject": "Compute observed workflow and label-conditioned pick change rates.",
-      "objective": "Distinguish changing tasks from changing decisions.",
-      "acceptance": "Fewer than two comparable runs produces an unknown rate.",
-      "joins": [{ "source": "routing-stability-totals", "type": "left",
-        "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
-        "fields": [{ "field": "pairs", "as": "pairs" }, { "field": "cell-pairs", "as": "cell-pairs" },
-          { "field": "changes", "as": "changes" }, { "field": "cell-changes", "as": "cell-changes" }] }],
-      "compute": [
-        { "as": "modal-pick-share", "function": "quotient", "args": [{ "field": "modal-runs" }, { "field": "known-pick-runs" }] },
-        { "as": "change-rate", "function": "quotient", "args": [{ "field": "changes" }, { "field": "pairs" }] },
-        { "as": "cell-change-rate", "function": "quotient", "args": [{ "field": "cell-changes" }, { "field": "cell-pairs" }] }
-      ]
     },
     {
       "name": "routing-phase-sources",
@@ -576,54 +404,6 @@
       ]
     },
     {
-      "name": "routing-cost-bucket-totals",
-      "subject": "Sum nonoverlapping credits with explicit known and unknown coverage.",
-      "objective": "Show recorded lower bounds by served model and attribution bucket.",
-      "acceptance": "Unknown costs are counted, not repriced or silently treated as zero; evals remain separate.",
-      "from": "routing-attributed-accounting",
-      "aggregate": { "by": ["bucket", "agent-name", "telemetry-model"], "values": [
-        { "field": "event", "as": "records", "reducer": "count" },
-        { "field": "aic", "as": "known-cost-records", "reducer": "count" },
-        { "field": "unknown-aic-count", "as": "unknown-cost-records", "reducer": "sum" },
-        { "field": "aic", "as": "recorded-aic-lower-bound", "reducer": "sum" },
-        { "field": "input-tokens", "as": "recorded-input-tokens", "reducer": "sum" },
-        { "field": "input-tokens", "as": "input-known", "reducer": "count" },
-        { "field": "output-tokens", "as": "recorded-output-tokens", "reducer": "sum" },
-        { "field": "output-tokens", "as": "output-known", "reducer": "count" },
-        { "field": "reasoning-tokens", "as": "recorded-reasoning-tokens", "reducer": "sum" },
-        { "field": "reasoning-tokens", "as": "reasoning-known", "reducer": "count" },
-        { "field": "cache-read-tokens", "as": "recorded-cache-read-tokens", "reducer": "sum" },
-        { "field": "cache-read-tokens", "as": "cache-read-known", "reducer": "count" },
-        { "field": "cache-write-tokens", "as": "recorded-cache-write-tokens", "reducer": "sum" },
-        { "field": "cache-write-tokens", "as": "cache-write-known", "reducer": "count" }
-      ] }
-    },
-    {
-      "name": "routing-cost-buckets", "from": "routing-cost-bucket-totals",
-      "subject": "Show known credit lower bounds with honest missing-value coverage.",
-      "objective": "Never display a zero sum when every cost is missing.",
-      "acceptance": "Every additive measure carries known and unknown record counts.",
-      "compute": [
-        { "as": "has-known-cost", "function": "greater-than", "args": [{ "field": "known-cost-records" }, { "value": 0 }] },
-        { "as": "aic-lower-bound", "function": "if", "args": [{ "field": "has-known-cost" }, { "field": "recorded-aic-lower-bound" }, { "value": null }] },
-        { "as": "input-unknown", "function": "difference", "args": [{ "field": "records" }, { "field": "input-known" }] },
-        { "as": "output-unknown", "function": "difference", "args": [{ "field": "records" }, { "field": "output-known" }] },
-        { "as": "reasoning-unknown", "function": "difference", "args": [{ "field": "records" }, { "field": "reasoning-known" }] },
-        { "as": "cache-read-unknown", "function": "difference", "args": [{ "field": "records" }, { "field": "cache-read-known" }] },
-        { "as": "cache-write-unknown", "function": "difference", "args": [{ "field": "records" }, { "field": "cache-write-known" }] },
-        { "as": "has-input", "function": "greater-than", "args": [{ "field": "input-known" }, { "value": 0 }] },
-        { "as": "has-output", "function": "greater-than", "args": [{ "field": "output-known" }, { "value": 0 }] },
-        { "as": "has-reasoning", "function": "greater-than", "args": [{ "field": "reasoning-known" }, { "value": 0 }] },
-        { "as": "has-cache-read", "function": "greater-than", "args": [{ "field": "cache-read-known" }, { "value": 0 }] },
-        { "as": "has-cache-write", "function": "greater-than", "args": [{ "field": "cache-write-known" }, { "value": 0 }] },
-        { "as": "input-tokens", "function": "if", "args": [{ "field": "has-input" }, { "field": "recorded-input-tokens" }, { "value": null }] },
-        { "as": "output-tokens", "function": "if", "args": [{ "field": "has-output" }, { "field": "recorded-output-tokens" }, { "value": null }] },
-        { "as": "reasoning-tokens", "function": "if", "args": [{ "field": "has-reasoning" }, { "field": "recorded-reasoning-tokens" }, { "value": null }] },
-        { "as": "cache-read-tokens", "function": "if", "args": [{ "field": "has-cache-read" }, { "field": "recorded-cache-read-tokens" }, { "value": null }] },
-        { "as": "cache-write-tokens", "function": "if", "args": [{ "field": "has-cache-write" }, { "field": "recorded-cache-write-tokens" }, { "value": null }] }
-      ]
-    },
-    {
       "name": "routing-joined-requests",
       "subject": "Inspect per-request deviations and outcomes against proxy picks.",
       "objective": "Keep requests without accounting visible and never invent a deviation cause.",
@@ -668,31 +448,6 @@
         { "as": "request-aic", "function": "coalesce", "args": [{ "field": "accounted-aic" }, { "field": "local-cost" }] },
         { "as": "unknown-request-cost", "function": "equals-any", "args": [{ "field": "request-aic" }, { "value": null }] },
         { "as": "unknown-request-count", "function": "if", "args": [{ "field": "unknown-request-cost" }, { "value": 1 }, { "value": 0 }] }
-      ]
-    },
-    {
-      "name": "routing-deviation-totals", "from": "routing-deviations",
-      "subject": "Count deviations and their known response credits by phase.",
-      "objective": "Keep request-share and credit-share denominators distinct.",
-      "acceptance": "Missing joined AIC is excluded from credit share and counted.",
-      "aggregate": { "by": ["phase"], "values": [
-        { "field": "event", "as": "requests", "reducer": "count" },
-        { "field": "routing-routed", "as": "classified-requests", "reducer": "count" },
-        { "field": "event", "as": "deviated-requests", "reducer": "count", "filter": { "predicates": [{ "field": "routing-routed", "equals": "deviated" }] } },
-        { "field": "accounted-aic", "as": "known-costs", "reducer": "count" },
-        { "field": "accounted-aic", "as": "joined-aic", "reducer": "sum" },
-        { "field": "accounted-aic", "as": "deviated-aic", "reducer": "sum", "filter": { "predicates": [{ "field": "routing-routed", "equals": "deviated" }] } }
-      ] }
-    },
-    {
-      "name": "routing-deviation-summary", "from": "routing-deviation-totals",
-      "subject": "Show deviation shares with explicit response coverage.",
-      "objective": "Never equate missing request accounting with free traffic.",
-      "acceptance": "Zero known joined credits produce no credit share.",
-      "compute": [
-        { "as": "deviated-request-share", "function": "quotient", "args": [{ "field": "deviated-requests" }, { "field": "classified-requests" }] },
-        { "as": "deviated-credit-share", "function": "quotient", "args": [{ "field": "deviated-aic" }, { "field": "joined-aic" }] },
-        { "as": "unknown-costs", "function": "difference", "args": [{ "field": "requests" }, { "field": "known-costs" }] }
       ]
     },
     {
@@ -770,35 +525,6 @@
       ]
     },
     {
-      "name": "routing-cost-distribution-totals", "from": "routing-cost-runs",
-      "subject": "Compare complete agent-phase AIC by workflow, routing state and pick.",
-      "objective": "Exclude partial runs from quantiles and display their coverage.",
-      "acceptance": "Comparisons are observational and do not imply a causal routing benefit.",
-      "aggregate": { "by": ["organization", "repository", "workflow", "routing-state", "pick"], "values": [
-        { "field": "run", "as": "runs", "reducer": "count" },
-        { "field": "complete-aic", "as": "complete-runs", "reducer": "count" },
-        { "field": "complete-aic", "as": "observed-median-aic", "reducer": "median" },
-        { "field": "complete-aic", "as": "observed-p75-aic", "reducer": "p75" },
-        { "field": "complete-aic", "as": "observed-p90-aic", "reducer": "p90" }
-      ] }
-    },
-    {
-      "name": "routing-cost-distributions", "from": "routing-cost-distribution-totals",
-      "subject": "Suppress cost comparisons with insufficient complete samples.",
-      "objective": "Enforce the configurable minimum sample rather than overstate sparse evidence.",
-      "acceptance": "Below the default ten complete runs, cost quantiles remain unavailable.",
-      "parameters": [{ "name": "minimum-sample", "type": "number" }],
-      "compute": [
-        { "as": "sample-floor", "function": "difference", "args": [{ "parameter": "minimum-sample" }, { "value": 1 }] },
-        { "as": "enough-samples", "function": "greater-than", "args": [{ "field": "complete-runs" }, { "field": "sample-floor" }] },
-        { "as": "sample-status", "function": "if", "args": [{ "field": "enough-samples" }, { "value": "observational" }, { "value": "insufficient data" }] },
-        { "as": "partial-runs", "function": "difference", "args": [{ "field": "runs" }, { "field": "complete-runs" }] },
-        { "as": "median-aic", "function": "if", "args": [{ "field": "enough-samples" }, { "field": "observed-median-aic" }, { "value": null }] },
-        { "as": "p75-aic", "function": "if", "args": [{ "field": "enough-samples" }, { "field": "observed-p75-aic" }, { "value": null }] },
-        { "as": "p90-aic", "function": "if", "args": [{ "field": "enough-samples" }, { "field": "observed-p90-aic" }, { "value": null }] }
-      ]
-    },
-    {
       "name": "routing-weekly-cost-totals", "from": "routing-cost-runs",
       "subject": "Summarize complete agent-phase costs by UTC ISO week and routing state.",
       "objective": "Expose trends without including partial costs.",
@@ -826,65 +552,6 @@
       "order-by": [{ "field": "week", "direction": "asc" }]
     },
     {
-      "name": "routing-comparison-totals", "from": "routing-cost-runs",
-      "subject": "Compare complete agent-phase costs for selected and unrouted workflow runs.",
-      "objective": "Keep explicit and inferred baselines separate.",
-      "acceptance": "Partial costs never contribute to sample counts or quantiles.",
-      "aggregate": { "by": ["organization", "repository", "workflow", "routing-state"], "values": [
-        { "field": "workflow-model", "as": "workflow-model", "reducer": "unique" },
-        { "field": "complete-aic", "as": "complete-runs", "reducer": "count" },
-        { "field": "complete-aic", "as": "median-aic", "reducer": "median" },
-        { "field": "complete-aic", "as": "p75-aic", "reducer": "p75" }
-      ] }
-    },
-    {
-      "name": "routing-explicit-baselines", "from": "routing-comparison-totals",
-      "subject": "Read explicitly unrouted baseline costs.",
-      "objective": "Avoid combining inferred with configured baselines.",
-      "acceptance": "Only explicitly unrouted runs contribute.",
-      "filter": { "predicates": [{ "field": "routing-state", "equals": "unrouted" }] }
-    },
-    {
-      "name": "routing-inferred-baselines", "from": "routing-comparison-totals",
-      "subject": "Read inferred unrouted baseline costs.",
-      "objective": "Label inference rather than imply explicit routing configuration.",
-      "acceptance": "Only unrouted_inferred runs contribute.",
-      "filter": { "predicates": [{ "field": "routing-state", "equals": "unrouted_inferred" }] }
-    },
-    {
-      "name": "routing-comparisons", "from": "routing-comparison-totals",
-      "subject": "Compute observational routed-versus-unrouted cost deltas within one workflow.",
-      "objective": "Expose both baseline cohorts and their complete sample sizes.",
-      "acceptance": "Both cohorts must meet the minimum; zero or absent baseline costs produce no ratio.",
-      "parameters": [{ "name": "minimum-sample", "type": "number" }],
-      "filter": { "predicates": [{ "field": "routing-state", "equals": "selected" }] },
-      "joins": [
-        { "source": "routing-explicit-baselines", "type": "left", "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
-          "fields": [{ "field": "workflow-model", "as": "explicit-model" }, { "field": "complete-runs", "as": "explicit-runs" }, { "field": "median-aic", "as": "explicit-median" }, { "field": "p75-aic", "as": "explicit-p75" }] },
-        { "source": "routing-inferred-baselines", "type": "left", "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
-          "fields": [{ "field": "workflow-model", "as": "inferred-model" }, { "field": "complete-runs", "as": "inferred-runs" }, { "field": "median-aic", "as": "inferred-median" }, { "field": "p75-aic", "as": "inferred-p75" }] }
-      ],
-      "compute": [
-        { "as": "sample-floor", "function": "difference", "args": [{ "parameter": "minimum-sample" }, { "value": 1 }] },
-        { "as": "routed-enough", "function": "greater-than", "args": [{ "field": "complete-runs" }, { "field": "sample-floor" }] },
-        { "as": "explicit-enough", "function": "greater-than", "args": [{ "field": "explicit-runs" }, { "field": "sample-floor" }] },
-        { "as": "inferred-enough", "function": "greater-than", "args": [{ "field": "inferred-runs" }, { "field": "sample-floor" }] },
-        { "as": "explicit-comparable", "function": "if", "args": [{ "field": "routed-enough" }, { "field": "explicit-enough" }, { "value": false }] },
-        { "as": "inferred-comparable", "function": "if", "args": [{ "field": "routed-enough" }, { "field": "inferred-enough" }, { "value": false }] },
-        { "as": "selected-median-shown", "function": "if", "args": [{ "field": "routed-enough" }, { "field": "median-aic" }, { "value": null }] },
-        { "as": "explicit-median-shown", "function": "if", "args": [{ "field": "explicit-enough" }, { "field": "explicit-median" }, { "value": null }] },
-        { "as": "inferred-median-shown", "function": "if", "args": [{ "field": "inferred-enough" }, { "field": "inferred-median" }, { "value": null }] },
-        { "as": "explicit-difference", "function": "difference", "args": [{ "field": "median-aic" }, { "field": "explicit-median" }] },
-        { "as": "inferred-difference", "function": "difference", "args": [{ "field": "median-aic" }, { "field": "inferred-median" }] },
-        { "as": "explicit-ratio", "function": "quotient", "args": [{ "field": "explicit-difference" }, { "field": "explicit-median" }] },
-        { "as": "inferred-ratio", "function": "quotient", "args": [{ "field": "inferred-difference" }, { "field": "inferred-median" }] },
-        { "as": "explicit-delta", "function": "if", "args": [{ "field": "explicit-comparable" }, { "field": "explicit-ratio" }, { "value": null }] },
-        { "as": "inferred-delta", "function": "if", "args": [{ "field": "inferred-comparable" }, { "field": "inferred-ratio" }, { "value": null }] },
-        { "as": "explicit-evidence", "function": "if", "args": [{ "field": "explicit-comparable" }, { "value": "observational" }, { "value": "insufficient data" }] },
-        { "as": "inferred-evidence", "function": "if", "args": [{ "field": "inferred-comparable" }, { "value": "observational" }, { "value": "insufficient data" }] }
-      ]
-    },
-    {
       "name": "routing-failure-candidates",
       "subject": "Read routing failures, upstream errors, steering and exit 78 evidence.",
       "objective": "Keep execution failures separate from the routing selection state.",
@@ -907,74 +574,6 @@
       "from": "routing-failure-candidates",
       "filter": { "predicates": [{ "field": "failure-row", "equals": true }] },
       "order-by": [{ "field": "event-timestamp", "direction": "desc" }]
-    },
-    {
-      "name": "routing-outcome-totals",
-      "subject": "Compare recorded agent job outcomes within pick and classifier label cells.",
-      "objective": "Avoid conflating runtime success with delayed safe-output outcomes or operational value.",
-      "acceptance": "Unknown outcomes are excluded from success-rate denominators and shown as coverage.",
-      "from": "routing-cost-runs",
-      "filter": { "predicates": [{ "field": "unknown-pick", "equals": false }] },
-      "aggregate": { "by": ["pick", "routing-task-type", "routing-scope", "routing-complexity"], "values": [
-        { "field": "run", "as": "runs", "reducer": "count" },
-        { "field": "agent-result", "as": "known-outcomes", "reducer": "count" },
-        { "field": "run", "as": "successes", "reducer": "count", "filter": { "predicates": [{ "field": "agent-result", "equals": "success" }] } },
-        { "field": "complete-aic", "as": "complete-cost-total", "reducer": "sum" },
-        { "field": "complete-aic", "as": "complete-cost-count", "reducer": "count" },
-        { "field": "run", "as": "complete-successes", "reducer": "count", "filter": { "predicates": [{ "field": "agent-result", "equals": "success" }, { "field": "cost-complete", "equals": true }] } }
-      ] }
-    },
-    {
-      "name": "routing-outcome-statistics",
-      "subject": "Compute outcome ratios with known denominators.",
-      "objective": "Keep excluded unknown job results visible.",
-      "acceptance": "Missing denominators remain unknown.",
-      "from": "routing-outcome-totals",
-      "compute": [
-        { "as": "unknown-outcomes", "function": "difference", "args": [{ "field": "runs" }, { "field": "known-outcomes" }] },
-        { "as": "success-rate", "function": "quotient", "args": [{ "field": "successes" }, { "field": "known-outcomes" }] },
-        { "as": "cost-per-success", "function": "quotient", "args": [{ "field": "complete-cost-total" }, { "field": "successes" }] },
-        { "as": "z-squared-over-n", "function": "quotient", "args": [{ "value": 3.8416 }, { "field": "known-outcomes" }] },
-        { "as": "wilson-denominator", "function": "sum", "args": [{ "value": 1 }, { "field": "z-squared-over-n" }] },
-        { "as": "wilson-adjustment", "function": "quotient", "args": [{ "value": 1.9208 }, { "field": "known-outcomes" }] },
-        { "as": "wilson-numerator", "function": "sum", "args": [{ "field": "success-rate" }, { "field": "wilson-adjustment" }] },
-        { "as": "wilson-center", "function": "quotient", "args": [{ "field": "wilson-numerator" }, { "field": "wilson-denominator" }] },
-        { "as": "failure-rate", "function": "difference", "args": [{ "value": 1 }, { "field": "success-rate" }] },
-        { "as": "bernoulli-variance", "function": "product", "args": [{ "field": "success-rate" }, { "field": "failure-rate" }] },
-        { "as": "sample-variance", "function": "quotient", "args": [{ "field": "bernoulli-variance" }, { "field": "known-outcomes" }] },
-        { "as": "n-squared", "function": "product", "args": [{ "field": "known-outcomes" }, { "field": "known-outcomes" }] },
-        { "as": "variance-adjustment", "function": "quotient", "args": [{ "value": 0.9604 }, { "field": "n-squared" }] },
-        { "as": "wilson-variance", "function": "sum", "args": [{ "field": "sample-variance" }, { "field": "variance-adjustment" }] },
-        { "as": "wilson-root", "function": "sqrt", "args": [{ "field": "wilson-variance" }] },
-        { "as": "wilson-radius-numerator", "function": "product", "args": [{ "value": 1.96 }, { "field": "wilson-root" }] },
-        { "as": "wilson-radius", "function": "quotient", "args": [{ "field": "wilson-radius-numerator" }, { "field": "wilson-denominator" }] },
-        { "as": "wilson-low", "function": "difference", "args": [{ "field": "wilson-center" }, { "field": "wilson-radius" }] },
-        { "as": "wilson-high", "function": "sum", "args": [{ "field": "wilson-center" }, { "field": "wilson-radius" }] }
-      ]
-    },
-    {
-      "name": "routing-outcomes", "from": "routing-outcome-statistics",
-      "subject": "Gate outcome comparisons with explicit sample coverage.",
-      "objective": "Avoid presenting sparse pick cohorts as reliable comparisons.",
-      "acceptance": "Success rates and intervals need enough known outcomes; cost per success also needs enough complete costs.",
-      "parameters": [{ "name": "minimum-sample", "type": "number" }],
-      "compute": [
-        { "as": "sample-floor", "function": "difference", "args": [{ "parameter": "minimum-sample" }, { "value": 1 }] },
-        { "as": "enough-outcomes", "function": "greater-than", "args": [{ "field": "known-outcomes" }, { "field": "sample-floor" }] },
-        { "as": "enough-costs", "function": "greater-than", "args": [{ "field": "complete-cost-count" }, { "field": "sample-floor" }] },
-        { "as": "sample-status", "function": "if", "args": [{ "field": "enough-outcomes" }, { "value": "observational" }, { "value": "insufficient data" }] },
-        { "as": "display-rate", "function": "if", "args": [{ "field": "enough-outcomes" }, { "field": "success-rate" }, { "value": null }] },
-        { "as": "display-low", "function": "if", "args": [{ "field": "enough-outcomes" }, { "field": "wilson-low" }, { "value": null }] },
-        { "as": "display-high", "function": "if", "args": [{ "field": "enough-outcomes" }, { "field": "wilson-high" }, { "value": null }] },
-        { "as": "display-cost", "function": "if", "args": [{ "field": "enough-costs" }, { "field": "cost-per-success" }, { "value": null }] }
-      ],
-      "select": [
-        { "field": "pick" }, { "field": "routing-task-type" }, { "field": "routing-scope" }, { "field": "routing-complexity" },
-        { "field": "successes" }, { "field": "known-outcomes" }, { "field": "unknown-outcomes" }, { "field": "complete-cost-count" },
-        { "field": "sample-status" }, { "field": "display-rate", "as": "success-rate" },
-        { "field": "display-low", "as": "wilson-low" }, { "field": "display-high", "as": "wilson-high" },
-        { "field": "display-cost", "as": "cost-per-success" }
-      ]
     },
     {
       "name": "routing-resolutions", "from": "routing-session-events",
@@ -1005,200 +604,6 @@
       ]
     },
     {
-      "name": "routing-resolution-status", "from": "routing-resolutions",
-      "subject": "Count configured-model resolution outcomes by event engine and role.",
-      "objective": "Show resolved, exact and failed resolutions without multiplying runs by roles.",
-      "acceptance": "Runs are distinct run identities; records count individual role resolutions.",
-      "aggregate": { "by": ["resolution-engine", "resolution-role-label", "resolution-status"], "values": [
-        { "field": "routing-run-key", "as": "runs", "reducer": "distinct-count" },
-        { "field": "event", "as": "records", "reducer": "count" }
-      ] },
-      "order-by": [{ "field": "resolution-engine", "direction": "asc" }, { "field": "resolution-role-label", "direction": "asc" }, { "field": "resolution-status", "direction": "asc" }]
-    },
-    {
-      "name": "routing-resolution-run-counts", "from": "routing-resolutions",
-      "subject": "Count resolution records per scoped run.",
-      "objective": "Attach configured-model resolution evidence to run-level coverage.",
-      "acceptance": "Several roles in one run remain one covered run.",
-      "aggregate": { "by": ["routing-run-key"], "values": [
-        { "field": "event", "as": "resolution-records", "reducer": "count" },
-        { "field": "event", "as": "failed-records", "reducer": "count", "filter": { "predicates": [{ "field": "resolution-status", "equals": "failed" }] } }
-      ] }
-    },
-    {
-      "name": "routing-resolution-run-coverage", "from": "routing-runs",
-      "subject": "Classify each scoped run's configured-model resolution evidence.",
-      "objective": "Separate covered runs, positively routed runs and runs lacking evidence.",
-      "acceptance": "Absence never establishes routing or failure; routed state comes only from routing evidence.",
-      "joins": [{ "source": "routing-resolution-run-counts", "type": "left", "on": [{ "left": "routing-run-key", "right": "routing-run-key" }],
-        "fields": [{ "field": "resolution-records", "as": "resolution-records" }, { "field": "failed-records", "as": "failed-records" }] }],
-      "compute": [
-        { "as": "resolution-record-count", "function": "coalesce", "args": [{ "field": "resolution-records" }, { "value": 0 }] },
-        { "as": "failed-record-count", "function": "coalesce", "args": [{ "field": "failed-records" }, { "value": 0 }] },
-        { "as": "has-resolution", "function": "greater-than", "args": [{ "field": "resolution-record-count" }, { "value": 0 }] },
-        { "as": "has-failed-resolution", "function": "greater-than", "args": [{ "field": "failed-record-count" }, { "value": 0 }] },
-        { "as": "is-routed", "function": "equals-any", "args": [{ "field": "routing-state" }, { "value": "selected" }, { "value": "selection_failed" }, { "value": "harness_reported" }, { "value": "configured_unrecorded" }] },
-        { "as": "absent-state", "function": "if", "args": [{ "field": "is-routed" }, { "value": "routed" }, { "value": "missing" }] },
-        { "as": "resolution-coverage-state", "function": "if", "args": [{ "field": "has-resolution" }, { "value": "covered" }, { "field": "absent-state" }] }
-      ]
-    },
-    {
-      "name": "routing-resolution-coverage-totals", "from": "routing-resolution-run-coverage",
-      "subject": "Count scoped runs by configured-model resolution coverage.",
-      "objective": "Keep denominators explicit for covered, routed and missing evidence.",
-      "acceptance": "Routed runs without resolution are expected absence, not missing evidence.",
-      "aggregate": { "values": [
-        { "field": "routing-run-key", "as": "runs", "reducer": "count" },
-        { "field": "routing-run-key", "as": "resolution-runs", "reducer": "count", "filter": { "predicates": [{ "field": "has-resolution", "equals": true }] } },
-        { "field": "routing-run-key", "as": "routed-runs", "reducer": "count", "filter": { "predicates": [{ "field": "is-routed", "equals": true }] } },
-        { "field": "routing-run-key", "as": "routed-without-resolution", "reducer": "count", "filter": { "predicates": [{ "field": "resolution-coverage-state", "equals": "routed" }] } },
-        { "field": "routing-run-key", "as": "missing-resolution", "reducer": "count", "filter": { "predicates": [{ "field": "resolution-coverage-state", "equals": "missing" }] } },
-        { "field": "routing-run-key", "as": "failed-runs", "reducer": "count", "filter": { "predicates": [{ "field": "has-failed-resolution", "equals": true }] } },
-        { "field": "resolution-record-count", "as": "resolution-records", "reducer": "sum" }
-      ] }
-    },
-    {
-      "name": "routing-resolution-coverage", "from": "routing-resolution-coverage-totals",
-      "subject": "Show configured-model resolution coverage with its denominators.",
-      "objective": "Distinguish expected routed absence from missing resolution evidence.",
-      "acceptance": "A zero denominator produces no share.",
-      "compute": [
-        { "as": "non-routed-runs", "function": "difference", "args": [{ "field": "runs" }, { "field": "routed-runs" }] },
-        { "as": "resolution-share", "function": "quotient", "args": [{ "field": "resolution-runs" }, { "field": "runs" }] }
-      ]
-    },
-    {
-      "name": "routing-resolution-observations", "from": "routing-resolutions",
-      "subject": "Retain resolutions with a known resolved model.",
-      "objective": "Build alias history without treating failed or unsafe values as a model.",
-      "acceptance": "Failed null resolutions and unsafe resolved values never enter alias history.",
-      "filter": { "predicates": [{ "field": "unknown-resolved-model", "equals": false }] }
-    },
-    {
-      "name": "routing-resolution-timeline", "from": "routing-resolution-observations",
-      "subject": "Order timed resolutions within each workflow, engine, role, provider and configured model.",
-      "objective": "Compare only chronologically adjacent resolutions of the same alias series.",
-      "acceptance": "Untimed runs cannot establish a transition or a first or last observation.",
-      "filter": { "predicates": [{ "field": "run-clock", "gte": 0 }] },
-      "window": [
-        { "operation": "previous", "field": "resolved-model-label", "as": "previous-resolved-model", "groupby": ["resolution-series"],
-          "order-by": [{ "field": "run-clock", "direction": "asc" }, { "field": "run", "direction": "asc" }] },
-        { "operation": "row-number", "field": "run", "as": "series-first-position", "groupby": ["resolution-series"],
-          "order-by": [{ "field": "run-clock", "direction": "asc" }, { "field": "run", "direction": "asc" }] },
-        { "operation": "row-number", "field": "run", "as": "series-last-position", "groupby": ["resolution-series"],
-          "order-by": [{ "field": "run-clock", "direction": "desc" }, { "field": "run", "direction": "desc" }] },
-        { "operation": "row-number", "field": "run", "as": "model-first-position", "groupby": ["resolution-series", "resolved-model-label"],
-          "order-by": [{ "field": "run-clock", "direction": "asc" }, { "field": "run", "direction": "asc" }] },
-        { "operation": "row-number", "field": "run", "as": "model-last-position", "groupby": ["resolution-series", "resolved-model-label"],
-          "order-by": [{ "field": "run-clock", "direction": "desc" }, { "field": "run", "direction": "desc" }] }
-      ]
-    },
-    {
-      "name": "routing-resolution-transitions", "from": "routing-resolution-timeline",
-      "subject": "Mark adjacent resolved-model changes within an alias series.",
-      "objective": "Count observed alias moves without claiming why they happened.",
-      "acceptance": "First observations are not changes; equal adjacent models are stable.",
-      "compute": [
-        { "as": "first-resolution", "function": "equals-any", "args": [{ "field": "previous-resolved-model" }, { "value": null }] },
-        { "as": "same-resolution", "function": "equals-any", "args": [{ "field": "previous-resolved-model" }, { "field": "resolved-model-label" }] },
-        { "as": "resolution-pair", "function": "if", "args": [{ "field": "first-resolution" }, { "value": 0 }, { "value": 1 }] },
-        { "as": "resolution-changed", "function": "if", "args": [{ "field": "same-resolution" }, { "value": 0 }, { "field": "resolution-pair" }] },
-        { "as": "is-transition", "function": "greater-than", "args": [{ "field": "resolution-changed" }, { "value": 0 }] },
-        { "as": "transition-label", "function": "concat", "args": [{ "field": "previous-resolved-model" }, { "value": " → " }, { "field": "resolved-model-label" }] },
-        { "as": "resolution-transition", "function": "if", "args": [{ "field": "is-transition" }, { "field": "transition-label" }, { "value": null }] }
-      ]
-    },
-    {
-      "name": "routing-alias-model-runs", "from": "routing-resolution-transitions",
-      "subject": "Identify the first and last timed run for each resolved model of a series.",
-      "objective": "Link alias history rows to their contributing runs.",
-      "acceptance": "Only timed runs identify first and last observations.",
-      "aggregate": { "by": ["resolution-series", "resolved-model-label"], "values": [
-        { "field": "run", "as": "first-run", "reducer": "unique", "filter": { "predicates": [{ "field": "model-first-position", "equals": 1 }] } },
-        { "field": "run", "as": "last-run", "reducer": "unique", "filter": { "predicates": [{ "field": "model-last-position", "equals": 1 }] } },
-        { "field": "routing-dashboard-link", "as": "first-run-link", "reducer": "unique", "filter": { "predicates": [{ "field": "model-first-position", "equals": 1 }] } }
-      ] }
-    },
-    {
-      "name": "routing-alias-history-totals", "from": "routing-resolution-observations",
-      "subject": "Count runs and recorded clocks for each resolved model of an alias series.",
-      "objective": "Expose resolved-model history per workflow, engine, role, provider and configured model.",
-      "acceptance": "Distinct runs are counted once; untimed runs remain counted with unknown time.",
-      "aggregate": { "by": ["resolution-series", "full-repository", "workflow", "resolution-engine", "resolution-role-label", "resolution-provider", "configured-model", "resolved-model-label"], "values": [
-        { "field": "routing-run-key", "as": "runs", "reducer": "distinct-count" },
-        { "field": "routing-run-key", "as": "untimed-runs", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "untimed", "equals": true }] } },
-        { "field": "run", "as": "contributing-runs", "reducer": "distinct-list" },
-        { "field": "run-clock", "as": "first-clock", "reducer": "min" },
-        { "field": "run-clock", "as": "last-clock", "reducer": "max" }
-      ] }
-    },
-    {
-      "name": "routing-alias-history", "from": "routing-alias-history-totals",
-      "subject": "Show the observed resolved-model history of each alias series.",
-      "objective": "Support investigation of alias moves with first and last observed runs.",
-      "acceptance": "History rows are observations, not proof that the model was served.",
-      "joins": [{ "source": "routing-alias-model-runs", "type": "left",
-        "on": [{ "left": "resolution-series", "right": "resolution-series" }, { "left": "resolved-model-label", "right": "resolved-model-label" }],
-        "fields": [{ "field": "first-run", "as": "first-run" }, { "field": "last-run", "as": "last-run" }, { "field": "first-run-link", "as": "routing-dashboard-link" }] }],
-      "compute": [
-        { "as": "first-seen", "function": "iso-timestamp", "args": [{ "field": "first-clock" }] },
-        { "as": "last-seen", "function": "iso-timestamp", "args": [{ "field": "last-clock" }] }
-      ],
-      "order-by": [{ "field": "resolution-series", "direction": "asc" }, { "field": "first-clock", "direction": "asc" }, { "field": "resolved-model-label", "direction": "asc" }]
-    },
-    {
-      "name": "routing-alias-sequences", "from": "routing-resolution-transitions",
-      "subject": "Summarize timed resolved-model changes for each alias series.",
-      "objective": "Identify the earliest and latest resolved model and the observed transitions.",
-      "acceptance": "Transitions require adjacent recorded run clocks.",
-      "aggregate": { "by": ["resolution-series"], "values": [
-        { "field": "resolution-changed", "as": "changes", "reducer": "sum" },
-        { "field": "resolution-pair", "as": "pairs", "reducer": "sum" },
-        { "field": "resolution-transition", "as": "transitions", "reducer": "distinct-list" },
-        { "field": "resolved-model-label", "as": "first-model", "reducer": "unique", "filter": { "predicates": [{ "field": "series-first-position", "equals": 1 }] } },
-        { "field": "resolved-model-label", "as": "latest-model", "reducer": "unique", "filter": { "predicates": [{ "field": "series-last-position", "equals": 1 }] } },
-        { "field": "run", "as": "first-run", "reducer": "unique", "filter": { "predicates": [{ "field": "series-first-position", "equals": 1 }] } },
-        { "field": "run", "as": "last-run", "reducer": "unique", "filter": { "predicates": [{ "field": "series-last-position", "equals": 1 }] } },
-        { "field": "routing-dashboard-link", "as": "last-run-link", "reducer": "unique", "filter": { "predicates": [{ "field": "series-last-position", "equals": 1 }] } }
-      ] }
-    },
-    {
-      "name": "routing-alias-move-totals", "from": "routing-resolution-observations",
-      "subject": "Count runs and distinct resolved models for each alias series.",
-      "objective": "Provide one change-summary row per series, including stable aliases.",
-      "acceptance": "Engine, role and provider stay part of the series so unrelated resolutions cannot manufacture a move.",
-      "aggregate": { "by": ["resolution-series", "full-repository", "workflow", "resolution-engine", "resolution-role-label", "resolution-provider", "configured-model"], "values": [
-        { "field": "routing-run-key", "as": "runs", "reducer": "distinct-count" },
-        { "field": "routing-run-key", "as": "untimed-runs", "reducer": "distinct-count", "filter": { "predicates": [{ "field": "untimed", "equals": true }] } },
-        { "field": "resolved-model-label", "as": "distinct-models", "reducer": "distinct-count" },
-        { "field": "resolved-model-label", "as": "resolved-models", "reducer": "distinct-list" },
-        { "field": "run-clock", "as": "first-clock", "reducer": "min" },
-        { "field": "run-clock", "as": "last-clock", "reducer": "max" }
-      ] }
-    },
-    {
-      "name": "routing-alias-moves", "from": "routing-alias-move-totals",
-      "subject": "Highlight alias series whose resolved model changed between timed runs.",
-      "objective": "Investigate aliases moving to newer models without claiming cause or served-model evidence.",
-      "acceptance": "Exactly one row per series; only adjacent timed runs establish a move and unordered changes stay distinct.",
-      "joins": [{ "source": "routing-alias-sequences", "type": "left", "on": [{ "left": "resolution-series", "right": "resolution-series" }],
-        "fields": [{ "field": "changes", "as": "changes" }, { "field": "pairs", "as": "pairs" }, { "field": "transitions", "as": "transitions" },
-          { "field": "first-model", "as": "first-model" }, { "field": "latest-model", "as": "latest-model" },
-          { "field": "first-run", "as": "first-run" }, { "field": "last-run", "as": "last-run" }, { "field": "last-run-link", "as": "routing-dashboard-link" }] }],
-      "compute": [
-        { "as": "change-count", "function": "coalesce", "args": [{ "field": "changes" }, { "value": 0 }] },
-        { "as": "moved", "function": "greater-than", "args": [{ "field": "change-count" }, { "value": 0 }] },
-        { "as": "several-models", "function": "greater-than", "args": [{ "field": "distinct-models" }, { "value": 1 }] },
-        { "as": "unmoved-state", "function": "if", "args": [{ "field": "several-models" }, { "value": "order unknown" }, { "value": "stable" }] },
-        { "as": "alias-change", "function": "if", "args": [{ "field": "moved" }, { "value": "alias moved" }, { "field": "unmoved-state" }] },
-        { "as": "move-label", "function": "concat", "args": [{ "field": "first-model" }, { "value": " → " }, { "field": "latest-model" }] },
-        { "as": "model-change", "function": "if", "args": [{ "field": "moved" }, { "field": "move-label" }, { "value": null }] },
-        { "as": "first-seen", "function": "iso-timestamp", "args": [{ "field": "first-clock" }] },
-        { "as": "last-seen", "function": "iso-timestamp", "args": [{ "field": "last-clock" }] }
-      ],
-      "order-by": [{ "field": "change-count", "direction": "desc" }, { "field": "resolution-series", "direction": "asc" }]
-    },
-    {
       "name": "routing-resolution-failure-records", "from": "routing-resolutions",
       "subject": "Retain failed configured-model resolutions with their runs.",
       "objective": "Link each failed resolution to its contributing run.",
@@ -1207,17 +612,115 @@
       "order-by": [{ "field": "run-clock", "direction": "desc" }, { "field": "run", "direction": "desc" }]
     },
     {
-      "name": "routing-resolution-failures", "from": "routing-resolution-failure-records",
-      "subject": "Group failed resolutions by configured model and cause.",
-      "objective": "Keep model_unavailable and catalog_unavailable distinct with engine and role context.",
-      "acceptance": "Affected runs are distinct run identities; a single-run group links to that run.",
-      "aggregate": { "by": ["configured-model", "resolution-cause", "resolution-engine", "resolution-role-label", "resolution-provider"], "values": [
-        { "field": "routing-run-key", "as": "affected-runs", "reducer": "distinct-count" },
-        { "field": "event", "as": "records", "reducer": "count" },
-        { "field": "run", "as": "runs", "reducer": "distinct-list" },
-        { "field": "routing-dashboard-link", "as": "routing-dashboard-link", "reducer": "unique" }
-      ] },
-      "order-by": [{ "field": "affected-runs", "direction": "desc" }, { "field": "configured-model", "direction": "asc" }, { "field": "resolution-cause", "direction": "asc" }]
+      "name": "routing-pick-adherence", "from": "routing-deviations",
+      "subject": "Count agent-phase requests with a routed flag and those that deviated, per run.",
+      "objective": "Decide whether each run followed the proxy pick without guessing for runs that lack request evidence.",
+      "acceptance": "Only agent-phase requests flagged as_selected or deviated contribute; runs without such requests have no row and stay unknown.",
+      "filter": { "predicates": [{ "field": "phase", "equals": "agent" }, { "field": "routing-routed", "in": ["as_selected", "deviated"] }] },
+      "aggregate": { "by": ["routing-run-key"], "values": [
+        { "field": "event", "as": "flagged-requests", "reducer": "count" },
+        { "field": "event", "as": "deviated-requests", "reducer": "count", "filter": { "predicates": [{ "field": "routing-routed", "equals": "deviated" }] } }
+      ] }
+    },
+    {
+      "name": "routing-health-totals", "from": "routing-cost-runs",
+      "subject": "Count routed runs and their selection, failure, adherence, outcome and cost evidence per repository and workflow.",
+      "objective": "Answer whether routing is on and working from one row per routed workflow.",
+      "acceptance": "Only selected, selection_failed, harness_reported and configured_unrecorded runs contribute; runs without evidence stay out of each denominator.",
+      "filter": { "predicates": [{ "field": "routing-state", "in": ["selected", "selection_failed", "harness_reported", "configured_unrecorded"] }] },
+      "joins": [
+        { "source": "routing-pick-adherence", "type": "left", "on": [{ "left": "routing-run-key", "right": "routing-run-key" }], "fields": [{ "field": "flagged-requests", "as": "flagged-requests" }, { "field": "deviated-requests", "as": "deviated-requests" }] }
+      ],
+      "compute": [
+        { "as": "has-routing-failure", "function": "greater-than", "args": [{ "field": "failure-count" }, { "value": 0 }] },
+        { "as": "failure-or-fallback", "function": "if", "args": [{ "field": "has-routing-failure" }, { "value": true }, { "field": "routing-degraded" }] },
+        { "as": "adherence-known", "function": "greater-than", "args": [{ "field": "flagged-requests" }, { "value": 0 }] },
+        { "as": "no-deviation", "function": "equals-any", "args": [{ "field": "deviated-requests" }, { "value": 0 }] }
+      ],
+      "aggregate": { "by": ["full-repository", "workflow"], "values": [
+        { "field": "run", "as": "routed-runs", "reducer": "count" },
+        { "field": "run", "as": "selected-runs", "reducer": "count", "filter": { "predicates": [{ "field": "routing-state", "equals": "selected" }] } },
+        { "field": "run", "as": "failure-runs", "reducer": "count", "filter": { "predicates": [{ "field": "failure-or-fallback", "equals": true }] } },
+        { "field": "run", "as": "adherence-known-runs", "reducer": "count", "filter": { "predicates": [{ "field": "adherence-known", "equals": true }] } },
+        { "field": "run", "as": "followed-runs", "reducer": "count", "filter": { "predicates": [{ "field": "adherence-known", "equals": true }, { "field": "no-deviation", "equals": true }] } },
+        { "field": "agent-result", "as": "known-outcomes", "reducer": "count" },
+        { "field": "run", "as": "successes", "reducer": "count", "filter": { "predicates": [{ "field": "agent-result", "equals": "success" }] } },
+        { "field": "complete-aic", "as": "complete-runs", "reducer": "count" },
+        { "field": "complete-aic", "as": "median-aic", "reducer": "median" }
+      ] }
+    },
+    {
+      "name": "routing-health",
+      "subject": "Show routing health shares per repository and workflow.",
+      "objective": "Tell whether routing is on and working from selection, failure or fallback, pick adherence, known outcomes and complete cost.",
+      "acceptance": "A zero denominator or no complete cost is unknown, never zero; unknown job outcomes are excluded from the success rate.",
+      "from": "routing-health-totals",
+      "compute": [
+        { "as": "selected-share", "function": "quotient", "args": [{ "field": "selected-runs" }, { "field": "routed-runs" }] },
+        { "as": "failure-share", "function": "quotient", "args": [{ "field": "failure-runs" }, { "field": "routed-runs" }] },
+        { "as": "followed-share", "function": "quotient", "args": [{ "field": "followed-runs" }, { "field": "adherence-known-runs" }] },
+        { "as": "success-rate", "function": "quotient", "args": [{ "field": "successes" }, { "field": "known-outcomes" }] },
+        { "as": "selected-percent", "function": "format-percent", "args": [{ "field": "selected-share" }] },
+        { "as": "failure-percent", "function": "format-percent", "args": [{ "field": "failure-share" }] },
+        { "as": "followed-percent", "function": "format-percent", "args": [{ "field": "followed-share" }] },
+        { "as": "success-percent", "function": "format-percent", "args": [{ "field": "success-rate" }] }
+      ],
+      "order-by": [{ "field": "routed-runs", "direction": "desc" }, { "field": "full-repository", "direction": "asc" }, { "field": "workflow", "direction": "asc" }]
+    },
+    {
+      "name": "routing-weekly-models", "from": "routing-runs",
+      "subject": "Count proxy-selected runs by UTC ISO week and picked model.",
+      "objective": "Show what the router chooses over time.",
+      "acceptance": "Only selected runs with a known pick model and a recorded run clock contribute; an unrecorded effort does not exclude a run.",
+      "filter": { "predicates": [{ "field": "routing-state", "equals": "selected" }, { "field": "unknown-pick-model", "equals": false }, { "field": "run-clock", "gte": 0 }] },
+      "compute": [{ "as": "week", "function": "date-bucket", "args": [{ "field": "observed-at" }, { "value": "week" }] }],
+      "aggregate": { "by": ["week", "pick-model"], "values": [{ "field": "run", "as": "runs", "reducer": "count" }] },
+      "order-by": [{ "field": "week", "direction": "asc" }, { "field": "pick-model", "direction": "asc" }]
+    },
+    {
+      "name": "routing-failure-problems", "from": "routing-failures",
+      "subject": "Summarize recorded routing failures per run.",
+      "objective": "Give the Problems view one routing-failure row per run.",
+      "acceptance": "Causes are the distinct recorded codes, or the event type when an event records no code.",
+      "compute": [
+        { "as": "problem-kind", "function": "literal", "args": [{ "value": "routing failure" }] },
+        { "as": "problem-cause-item", "function": "coalesce", "args": [{ "field": "code" }, { "field": "event-type" }] }
+      ],
+      "aggregate": { "by": ["routing-run-key", "problem-kind"], "values": [{ "field": "problem-cause-item", "as": "problem-cause", "reducer": "distinct-list" }] }
+    },
+    {
+      "name": "routing-deviation-problems", "from": "routing-deviations",
+      "subject": "Summarize agent-phase requests that deviated from the pick per run.",
+      "objective": "Give the Problems view one deviation row per run.",
+      "acceptance": "Causes are the distinct deviated axes, or deviated when a request records no axes.",
+      "filter": { "predicates": [{ "field": "phase", "equals": "agent" }, { "field": "routing-routed", "equals": "deviated" }] },
+      "compute": [
+        { "as": "problem-kind", "function": "literal", "args": [{ "value": "deviation" }] },
+        { "as": "problem-cause-item", "function": "coalesce", "args": [{ "field": "routing-deviations" }, { "value": "deviated" }] }
+      ],
+      "aggregate": { "by": ["routing-run-key", "problem-kind"], "values": [{ "field": "problem-cause-item", "as": "problem-cause", "reducer": "distinct-list" }] }
+    },
+    {
+      "name": "routing-resolution-problems", "from": "routing-resolution-failure-records",
+      "subject": "Summarize failed configured-model resolutions per run.",
+      "objective": "Give the Problems view one resolution-failure row per run.",
+      "acceptance": "Causes are the distinct recorded resolution causes; roles are records, not runs.",
+      "compute": [{ "as": "problem-kind", "function": "literal", "args": [{ "value": "resolution failure" }] }],
+      "aggregate": { "by": ["routing-run-key", "problem-kind"], "values": [{ "field": "resolution-cause", "as": "problem-cause", "reducer": "distinct-list" }] }
+    },
+    {
+      "name": "routing-problems", "from": "routing-failure-problems", "union": ["routing-deviation-problems", "routing-resolution-problems"],
+      "subject": "List routing failures, deviations and resolution failures with one row per run and kind.",
+      "objective": "Show what needs attention and link each problem to its run page.",
+      "acceptance": "Time is the run's recorded observation time and stays unknown without a run clock; untimed rows sort after timed rows.",
+      "joins": [
+        { "source": "routing-runs", "type": "inner", "on": [{ "left": "routing-run-key", "right": "routing-run-key" }], "fields": [
+          { "field": "run", "as": "run" }, { "field": "full-repository", "as": "full-repository" }, { "field": "workflow", "as": "workflow" },
+          { "field": "run-clock", "as": "run-clock" }, { "field": "observed-at", "as": "observed-at" }, { "field": "routing-dashboard-link", "as": "routing-dashboard-link" }
+        ] }
+      ],
+      "compute": [{ "as": "untimed", "function": "equals-any", "args": [{ "field": "run-clock" }, { "value": null }] }],
+      "order-by": [{ "field": "untimed", "direction": "asc" }, { "field": "run-clock", "direction": "desc" }, { "field": "run", "direction": "desc" }, { "field": "problem-kind", "direction": "asc" }]
     }
   ],
   "pages": [
@@ -1228,7 +731,7 @@
       "subject": "Runner and proxy metadata from usage/aw_session.jsonl.",
       "objective": "Identify choices and evidence gaps requiring investigation.",
       "acceptance": "Proxy evidence wins; unknown costs and observational comparisons remain explicit.",
-      "description": "Inspect routing adoption, decisions, cost coverage and outcomes from unified-session metadata.",
+      "description": "Inspect routing health, picked models, cost per run and problems from unified-session metadata.",
       "form": { "title": "Routing scope", "description": "Exact values; leave blank for all. Time bounds are UTC RFC 3339, inclusive start and exclusive end. Coverage includes excluded sessions.", "fields": [
         { "id": "routing-filter-workflow", "label": "Workflow", "control": "text", "default": "" },
         { "id": "routing-filter-repository", "label": "Repository (OWNER/NAME)", "control": "text", "default": "" },
@@ -1243,32 +746,53 @@
       ] },
       "views": [
         {
-          "id": "routing-adoption", "title": "Adoption", "mark": "chart", "chart": "bar", "layout": "half",
-          "subject": "Identified sessions by routing state and engine.",
-          "objective": "Distinguish explicit, inferred and unknown adoption.",
-          "acceptance": "Unknown states never count as unrouted.",
-          "data": { "source": "routing-adoption", "query-context": false },
-          "encoding": { "x": { "field": "routing-state", "type": "nominal", "title": "Routing state" }, "y": { "field": "runs", "type": "quantitative", "title": "Runs" }, "color": { "field": "engine", "type": "nominal", "title": "Engine" } },
-          "empty-message": "No identified unified sessions are available."
+          "id": "routing-health", "title": "Routing health by workflow", "mark": "table", "layout": "full", "locked": true,
+          "subject": "Routed runs per repository and workflow.",
+          "objective": "Tell whether routing is on and working.",
+          "acceptance": "Shares and medians without evidence are unknown, never zero.",
+          "description": "Routed runs are selected, selection failed, harness reported or configured but unrecorded. Failure or fallback counts agent-phase routing failures and degraded classifications; no separate fallback field exists. Followed the pick and success rate exclude runs without request or job-outcome evidence. Unknown is not zero.",
+          "data": { "source": "routing-health", "limit": 100, "query-context": false },
+          "encoding": { "columns": [
+            { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" },
+            { "field": "routed-runs", "title": "Routed runs" }, { "field": "selected-percent", "title": "Model selected" },
+            { "field": "failure-percent", "title": "Failure or fallback" }, { "field": "followed-percent", "title": "Followed the pick" },
+            { "field": "success-percent", "title": "Known success rate" }, { "field": "median-aic", "title": "Median AIC per complete run", "unit": "aic" }
+          ] },
+          "empty-message": "No routed runs are available."
         },
         {
-          "id": "routing-decisions", "title": "Decisions by classifier label", "mark": "chart", "chart": "horizontal-bar", "layout": "half",
-          "subject": "Proxy picks within classifier label cells.",
-          "objective": "Compare picks without confusing task variation with routing instability.",
-          "acceptance": "Missing labels stay unknown and harness-only picks are excluded.",
-          "data": { "source": "routing-picks", "limit": 100, "query-context": false },
-          "encoding": { "x": { "field": "pick", "type": "nominal", "title": "Selected model / effort" }, "y": { "field": "runs", "type": "quantitative", "title": "Runs" }, "color": { "field": "routing-task-type", "type": "nominal", "title": "Task type" } },
-          "empty-message": "No proxy selections were recorded."
+          "id": "routing-models", "title": "Models picked over time", "mark": "chart", "chart": "bar", "layout": "half",
+          "subject": "Proxy-selected runs by UTC ISO week and picked model.",
+          "objective": "Show what the router is choosing.",
+          "acceptance": "Only proxy selections with a known model and a recorded run clock count.",
+          "description": "Proxy selections only; harness-reported, configured-unrecorded and unrouted runs are not counted.",
+          "data": { "source": "routing-weekly-models", "query-context": false },
+          "encoding": { "x": { "field": "week", "type": "ordinal", "title": "UTC ISO week start" }, "y": { "field": "runs", "type": "quantitative", "title": "Runs" }, "color": { "field": "pick-model", "type": "nominal", "title": "Picked model" } },
+          "empty-message": "No timed proxy selections were recorded."
         },
         {
-          "id": "routing-cost", "title": "Recorded AIC by attribution", "mark": "chart", "chart": "horizontal-bar", "layout": "half",
-          "subject": "Nonoverlapping response accounting by attribution bucket.",
-          "objective": "Inspect lower bounds alongside unknown-cost coverage.",
-          "acceptance": "Unknown costs are not zero and evals are separate.",
-          "description": "Lower bounds only, not complete per-run cost. Evals are separate from routing cost. Missing purpose is unattributed unless a request identity establishes ownership.",
-          "data": { "source": "routing-cost-buckets", "limit": 100, "query-context": false },
-          "encoding": { "x": { "field": "bucket", "type": "nominal", "title": "Attribution" }, "y": { "field": "aic-lower-bound", "type": "quantitative", "title": "Recorded AIC", "unit": "aic" }, "color": { "field": "telemetry-model", "type": "nominal", "title": "Served model" } },
-          "empty-message": "No per-response accounting was recorded."
+          "id": "routing-cost-trend", "title": "Cost per run over time", "mark": "chart", "chart": "line", "layout": "half",
+          "subject": "Median complete agent-phase AIC per run by UTC ISO week and routing state.",
+          "objective": "Show whether routing is paying off without implying causation.",
+          "acceptance": "Weeks below the minimum complete sample are gaps, never zero.",
+          "description": "Observational, not causal: routed and unrouted runs are different tasks. Weeks with fewer complete runs than the minimum sample are gaps, not zero.",
+          "data": { "source": "routing-weekly-cost", "query-context": false },
+          "encoding": { "x": { "field": "week", "title": "UTC ISO week start" }, "y": { "field": "median-aic", "type": "quantitative", "title": "Median AIC per complete run", "unit": "aic" }, "color": { "field": "routing-state", "type": "nominal", "title": "Routing state" } },
+          "empty-message": "No timed complete-cost samples are available."
+        },
+        {
+          "id": "routing-problems", "title": "Problems", "mark": "table", "layout": "full", "locked": true,
+          "subject": "Routing failures, deviations and resolution failures per run.",
+          "objective": "Show what needs attention.",
+          "acceptance": "One row per run and kind; untimed runs stay unknown and sort last.",
+          "description": "One row per run and kind of problem. Open a row for the run's routing detail. Time is unknown when the run has no recorded clock.",
+          "data": { "source": "routing-problems", "limit": 100, "query-context": false },
+          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
+            { "field": "run", "title": "Run" }, { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" },
+            { "field": "problem-kind", "title": "Kind" }, { "field": "problem-cause", "title": "Cause or code" },
+            { "field": "observed-at", "title": "Time", "type": "temporal", "format": "human-friendly-timestamp" }
+          ] },
+          "empty-message": "No routing failures, deviations or resolution failures were recorded; missing evidence does not establish success."
         },
         {
           "id": "routing-runs", "title": "Routing runs", "mark": "table", "layout": "full", "controls": "interactive",
@@ -1282,219 +806,6 @@
             { "field": "selection-count", "title": "Selections" }, { "field": "configuration-conflict", "title": "Configuration conflict" }, { "field": "warnings", "title": "Warnings" }
           ] },
           "empty-message": "No identified routing sessions are available."
-        },
-        {
-          "id": "routing-classification", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-runs", "query-context": false, "limit": 100 },
-          "encoding": { "columns": [
-            { "field": "run", "title": "Run" }, { "field": "routing-classifier-model", "title": "Classifier" },
-            { "field": "routing-classifier-effort", "title": "Classifier effort" }, { "field": "routing-classifier-attempts", "title": "Attempts" },
-            { "field": "routing-latency-ms", "title": "Selection latency (ms)" }, { "field": "routing-degraded", "title": "Degraded" },
-            { "field": "routing-awf-version", "title": "AWF version" }, { "field": "routing-router-version", "title": "Legacy router version" }
-          ] }, "empty-message": "No classifier metadata is available."
-        },
-        {
-          "id": "routing-adoption-summary", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "description": "Unknown states are excluded from routed share. Configured-unrecorded runs count as routed; explicit and inferred unrouted counts remain separate.",
-          "data": { "source": "routing-adoption-summary", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "engine", "title": "Engine" }, { "field": "runs", "title": "Runs" },
-            { "field": "routed", "title": "Routed" }, { "field": "unrouted", "title": "Explicit unrouted" },
-            { "field": "inferred-unrouted", "title": "Inferred unrouted" }, { "field": "unknown", "title": "Unknown state" },
-            { "field": "routed-share", "title": "Routed share" }, { "field": "routed-workflows", "title": "Routed workflows" },
-            { "field": "degraded-share", "title": "Degraded classification share" }, { "field": "degraded-known", "title": "Known degraded flags" }
-          ] }, "empty-message": "No identified sessions are available."
-        },
-        {
-          "id": "routing-decision-dimensions", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-decision-dimensions", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "engine", "title": "Engine" }, { "field": "routing-goal", "title": "Goal" },
-            { "field": "routing-configured-mode", "title": "Configured mode" }, { "field": "routing-mode", "title": "Resolved mode" },
-            { "field": "routing-classifier-model", "title": "Classifier" }, { "field": "routing-classifier-effort", "title": "Classifier effort" },
-            { "field": "routing-classifier-attempts", "title": "Attempts" }, { "field": "runs", "title": "Runs" },
-            { "field": "latency-p50", "title": "Latency p50 (ms)" }, { "field": "latency-p95", "title": "Latency p95 (ms)" },
-            { "field": "latency-known", "title": "Known latency" }
-          ] }, "empty-message": "No selected sessions are available."
-        },
-        {
-          "id": "routing-coverage", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-coverage", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "session-format", "title": "Session format" }, { "field": "identified", "title": "Identified" },
-            { "field": "untimed", "title": "Untimed" }, { "field": "sessions", "title": "Sessions" }, { "field": "warnings", "title": "Warnings" }
-          ] }, "empty-message": "No unified-session format or collection coverage was retained."
-        },
-        {
-          "id": "routing-duplicate-sessions", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-duplicate-sessions", "query-context": false },
-          "encoding": { "columns": [{ "field": "duplicate-files", "title": "Duplicate session attempts excluded" }] },
-          "empty-message": "No duplicate session attempts were retained."
-        },
-        {
-          "id": "routing-cost-coverage", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-cost-buckets", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "bucket", "title": "Attribution" }, { "field": "agent-name", "title": "Sub-agent definition" }, { "field": "telemetry-model", "title": "Served model" },
-            { "field": "known-cost-records", "title": "Known cost" }, { "field": "unknown-cost-records", "title": "Unknown cost" },
-            { "field": "aic-lower-bound", "title": "AIC lower bound", "unit": "aic" },
-            { "field": "input-tokens", "title": "Input tokens" }, { "field": "input-unknown", "title": "Unknown input" },
-            { "field": "output-tokens", "title": "Output tokens" }, { "field": "output-unknown", "title": "Unknown output" },
-            { "field": "reasoning-tokens", "title": "Reasoning tokens" }, { "field": "reasoning-unknown", "title": "Unknown reasoning" },
-            { "field": "cache-read-tokens", "title": "Cache-read tokens" }, { "field": "cache-read-unknown", "title": "Unknown cache read" },
-            { "field": "cache-write-tokens", "title": "Cache-write tokens" }, { "field": "cache-write-unknown", "title": "Unknown cache write" }
-          ] }, "empty-message": "No accounting records are available."
-        },
-        {
-          "id": "routing-stability", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "description": "Adjacent known picks only; label-conditioned rates weight cells by comparable pairs and exclude first observations.",
-          "data": { "source": "routing-stability", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" },
-            { "field": "distinct-picks", "title": "Distinct picks" }, { "field": "pairs", "title": "Adjacent pairs" },
-            { "field": "known-pick-runs", "title": "Known-pick runs" }, { "field": "modal-pick-share", "title": "Modal pick share" },
-            { "field": "change-rate", "title": "Pick change rate" }, { "field": "cell-pairs", "title": "Label-cell pairs" },
-            { "field": "cell-change-rate", "title": "Label-conditioned change rate" }
-          ] }, "empty-message": "At least two timed runs with known picks are needed to measure change."
-        },
-        {
-          "id": "routing-cost-distributions", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "description": "Complete agent-phase AIC only, including classifier but excluding detection and evals. Groups below the minimum sample show insufficient data. Differences are observational, not causal.",
-          "data": { "source": "routing-cost-distributions", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "workflow", "title": "Workflow" }, { "field": "routing-state", "title": "State" }, { "field": "pick", "title": "Pick" },
-            { "field": "complete-runs", "title": "Complete runs" }, { "field": "partial-runs", "title": "Excluded partial runs" },
-            { "field": "sample-status", "title": "Evidence" }, { "field": "median-aic", "title": "Median AIC", "unit": "aic" },
-            { "field": "p75-aic", "title": "p75 AIC", "unit": "aic" }, { "field": "p90-aic", "title": "p90 AIC", "unit": "aic" }
-          ] }, "empty-message": "No complete agent-phase accounting is available for comparisons."
-        },
-        {
-          "id": "routing-weekly-cost", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-weekly-cost", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "week", "title": "UTC ISO week", "type": "temporal", "format": "human-friendly-timestamp" },
-            { "field": "routing-state", "title": "State" }, { "field": "runs", "title": "Runs" },
-            { "field": "complete-runs", "title": "Complete runs" }, { "field": "median-aic", "title": "Median AIC", "unit": "aic" },
-            { "field": "sample-status", "title": "Evidence" }
-          ] }, "empty-message": "No timed complete-cost samples are available."
-        },
-        {
-          "id": "routing-comparisons", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "description": "Observational, not causal: routed and unrouted runs may represent different periods and tasks. Missing or zero baselines do not establish savings.",
-          "data": { "source": "routing-comparisons", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" },
-            { "field": "complete-runs", "title": "Selected complete runs" }, { "field": "selected-median-shown", "title": "Selected median", "unit": "aic" },
-            { "field": "explicit-model", "title": "Explicit baseline model" }, { "field": "explicit-runs", "title": "Explicit baseline runs" }, { "field": "explicit-median-shown", "title": "Explicit baseline median", "unit": "aic" },
-            { "field": "explicit-delta", "title": "Explicit delta" }, { "field": "explicit-evidence", "title": "Explicit evidence" },
-            { "field": "inferred-model", "title": "Inferred baseline model" }, { "field": "inferred-runs", "title": "Inferred baseline runs" }, { "field": "inferred-median-shown", "title": "Inferred baseline median", "unit": "aic" },
-            { "field": "inferred-delta", "title": "Inferred delta" }, { "field": "inferred-evidence", "title": "Inferred evidence" }
-          ] }, "empty-message": "No selected workflow runs are available for baseline comparison."
-        },
-        {
-          "id": "routing-deviations", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-deviations", "limit": 100, "query-context": false },
-          "encoding": { "columns": [
-            { "field": "run-link", "title": "Actions run", "type": "nominal", "format": "workflow-run-url" }, { "field": "correlation-id", "title": "Request" },
-            { "field": "routing-requested-model", "title": "Requested model" }, { "field": "routing-requested-effort", "title": "Requested effort" },
-            { "field": "routing-selected-model", "title": "Selected model" }, { "field": "routing-selected-effort", "title": "Selected effort" },
-            { "field": "routing-routed", "title": "Routing" }, { "field": "routing-deviations", "title": "Axes" }, { "field": "routing-outcome", "title": "Outcome" },
-            { "field": "request-aic", "title": "AIC", "unit": "aic" }
-          ] }, "empty-message": "No per-request routing records were retained."
-        },
-        {
-          "id": "routing-deviation-summary", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-deviation-summary", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "phase", "title": "Phase" }, { "field": "classified-requests", "title": "Requests with routed flag" },
-            { "field": "deviated-requests", "title": "Deviated requests" }, { "field": "deviated-request-share", "title": "Deviated request share" },
-            { "field": "deviated-credit-share", "title": "Deviated credit share" }, { "field": "unknown-costs", "title": "Unknown joined costs" }
-          ] }, "empty-message": "No routing requests are available."
-        },
-        {
-          "id": "routing-failures", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "data": { "source": "routing-failures", "limit": 100, "query-context": false },
-          "encoding": { "columns": [
-            { "field": "run-link", "title": "Actions run", "type": "nominal", "format": "workflow-run-url" }, { "field": "event-timestamp", "title": "Time", "type": "temporal", "format": "human-friendly-timestamp" },
-            { "field": "event-type", "title": "Event" }, { "field": "code", "title": "Code" }, { "field": "exit-code", "title": "Exit" },
-            { "field": "http-status", "title": "HTTP" }, { "field": "threshold", "title": "Steering threshold" }, { "field": "telemetry-model", "title": "Model" }
-          ] }, "empty-message": "No failure or steering evidence was recorded; missing evidence does not establish success."
-        },
-        {
-          "id": "routing-outcomes", "mark": "table", "layout": "full", "disclosure": "supplemental",
-          "description": "Runtime outcomes only, not delayed safe-output acceptance or operational value. Unknown job results are excluded, not counted as success.",
-          "data": { "source": "routing-outcomes", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "pick", "title": "Pick" }, { "field": "routing-task-type", "title": "Task type" }, { "field": "routing-scope", "title": "Scope" },
-            { "field": "routing-complexity", "title": "Complexity" }, { "field": "successes", "title": "Successful jobs" },
-            { "field": "known-outcomes", "title": "Known outcomes" }, { "field": "unknown-outcomes", "title": "Unknown outcomes" }, { "field": "success-rate", "title": "Success rate" },
-            { "field": "wilson-low", "title": "95% Wilson lower" }, { "field": "wilson-high", "title": "95% Wilson upper" },
-            { "field": "sample-status", "title": "Evidence" }, { "field": "cost-per-success", "title": "Complete AIC / successful jobs", "unit": "aic" }, { "field": "complete-cost-count", "title": "Complete cost runs" }
-          ] }, "empty-message": "No identified sessions with routing outcome evidence are available."
-        },
-        {
-          "id": "routing-resolution-coverage", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Model resolution coverage",
-          "description": "Runner-written configured-model resolution before engine launch. Denominator is scoped runs; routed runs are counted separately and their absence of resolution is expected. Absence alone never establishes routing or failure.",
-          "data": { "source": "routing-resolution-coverage", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "runs", "title": "Scoped runs" }, { "field": "resolution-runs", "title": "With resolution" }, { "field": "resolution-share", "title": "Resolution share" },
-            { "field": "routed-runs", "title": "Routed runs" }, { "field": "routed-without-resolution", "title": "Routed without resolution" }, { "field": "non-routed-runs", "title": "Non-routed runs" },
-            { "field": "missing-resolution", "title": "Non-routed without resolution" }, { "field": "failed-runs", "title": "Runs with failed resolution" }, { "field": "resolution-records", "title": "Resolution records" }
-          ] }, "empty-message": "No scoped routing runs are available."
-        },
-        {
-          "id": "routing-resolution-status", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Model resolution status",
-          "description": "Runs are distinct runs; records are individual role resolutions. resolved means alias resolution against the live catalog; exact means the configured value passed through. Resolution does not prove which model was served.",
-          "data": { "source": "routing-resolution-status", "query-context": false },
-          "encoding": { "columns": [
-            { "field": "resolution-engine", "title": "Engine" }, { "field": "resolution-role-label", "title": "Role" }, { "field": "resolution-status", "title": "Status", "type": "nominal", "display": "status" },
-            { "field": "runs", "title": "Runs" }, { "field": "records", "title": "Records" }
-          ] }, "empty-message": "No configured-model resolution was recorded for the scoped runs; missing evidence is not a failure."
-        },
-        {
-          "id": "routing-alias-moves", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Alias moves",
-          "description": "One row per repository, workflow, engine, role, provider and configured model. A move needs adjacent runs with recorded session clocks; untimed runs never establish a transition. Changes are observations, not causes or served-model evidence.",
-          "data": { "source": "routing-alias-moves", "limit": 100, "query-context": false },
-          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
-            { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" }, { "field": "resolution-engine", "title": "Engine" },
-            { "field": "resolution-role-label", "title": "Role" }, { "field": "resolution-provider", "title": "Provider" }, { "field": "configured-model", "title": "Configured model" },
-            { "field": "alias-change", "title": "Change", "type": "nominal", "display": "status" }, { "field": "model-change", "title": "Earliest → latest" }, { "field": "transitions", "title": "Observed transitions" },
-            { "field": "resolved-models", "title": "Resolved models" }, { "field": "changes", "title": "Changes" }, { "field": "runs", "title": "Runs" },
-            { "field": "untimed-runs", "title": "Untimed runs" }, { "field": "first-run", "title": "First run" }, { "field": "first-seen", "title": "First seen", "type": "temporal", "format": "human-friendly-timestamp" },
-            { "field": "last-run", "title": "Last run" }, { "field": "last-seen", "title": "Last seen", "type": "temporal", "format": "human-friendly-timestamp" }
-          ] }, "empty-message": "No resolved configured models were recorded for the scoped runs."
-        },
-        {
-          "id": "routing-alias-history", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Alias history",
-          "description": "Observed resolved models per alias series with first and last timed runs. Untimed runs are counted but cannot order history.",
-          "data": { "source": "routing-alias-history", "limit": 200, "query-context": false },
-          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
-            { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" }, { "field": "resolution-engine", "title": "Engine" },
-            { "field": "resolution-role-label", "title": "Role" }, { "field": "resolution-provider", "title": "Provider" }, { "field": "configured-model", "title": "Configured model" },
-            { "field": "resolved-model-label", "title": "Resolved model" }, { "field": "runs", "title": "Runs" }, { "field": "contributing-runs", "title": "Contributing runs" },
-            { "field": "untimed-runs", "title": "Untimed runs" },
-            { "field": "first-run", "title": "First run" }, { "field": "first-seen", "title": "First seen", "type": "temporal", "format": "human-friendly-timestamp" }, { "field": "last-run", "title": "Last run" },
-            { "field": "last-seen", "title": "Last seen", "type": "temporal", "format": "human-friendly-timestamp" }
-          ] }, "empty-message": "No resolved configured models were recorded for the scoped runs."
-        },
-        {
-          "id": "routing-resolution-failures", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Resolution failures",
-          "description": "Failed configured-model resolutions grouped by configured model and cause with engine and role context. Affected runs are distinct runs.",
-          "data": { "source": "routing-resolution-failures", "limit": 100, "query-context": false },
-          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
-            { "field": "configured-model", "title": "Configured model" }, { "field": "resolution-cause", "title": "Cause" }, { "field": "resolution-engine", "title": "Engine" },
-            { "field": "resolution-role-label", "title": "Role" }, { "field": "resolution-provider", "title": "Provider" }, { "field": "affected-runs", "title": "Affected runs" },
-            { "field": "records", "title": "Records" }, { "field": "runs", "title": "Runs" }
-          ] }, "empty-message": "No failed configured-model resolution was recorded; missing evidence does not establish success."
-        },
-        {
-          "id": "routing-resolution-failure-runs", "mark": "table", "layout": "full", "disclosure": "supplemental", "disclosure-label": "Resolution failure runs",
-          "data": { "source": "routing-resolution-failure-records", "limit": 100, "query-context": false },
-          "encoding": { "href": { "field": "routing-dashboard-link" }, "columns": [
-            { "field": "run", "title": "Run" }, { "field": "full-repository", "title": "Repository" }, { "field": "workflow", "title": "Workflow" },
-            { "field": "resolution-engine", "title": "Engine" }, { "field": "resolution-role-label", "title": "Role" }, { "field": "configured-model", "title": "Configured model" },
-            { "field": "resolved-model-label", "title": "Resolved model" }, { "field": "resolution-cause", "title": "Cause" }
-          ] }, "empty-message": "No failed configured-model resolution was recorded; missing evidence does not establish success."
         }
       ]
     },

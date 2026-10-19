@@ -177,9 +177,10 @@ role with the event engine, role, configured model, resolved model, provider,
 status (`resolved`, `exact` or `failed`) and cause (`model_unavailable` or
 `catalog_unavailable`). Configured and resolved models keep their recorded value,
 including provider prefixes; unsafe or missing values stay unknown, and a failed
-resolution keeps its resolved model unknown. The events have no timestamp, so the
-Model resolution section orders alias history by the recorded session clock and
-counts distinct runs separately from role records. Routed sessions are expected
+resolution keeps its resolved model unknown. The events have no timestamp, so
+failed resolutions appear in the Model routing Problems view once per run, with
+an unknown time unless the session clock is recorded, and per-run resolution roles
+stay on the run page. Routed sessions are expected
 to lack these events, and legacy sessions report no resolution evidence rather
 than failure. Canonical schema 32 / IndexedDB version 42 rebuild older browser
 projections; hosted PostgreSQL needs a fresh generated schema with the new
