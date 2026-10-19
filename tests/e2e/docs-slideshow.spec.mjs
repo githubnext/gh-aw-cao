@@ -47,6 +47,9 @@ test("presents existing landing content with bounded keyboard and button navigat
   for (let index = 1; index < 6; index++) {
     await page.getByRole("button", { name: "Next slide", exact: true }).click();
     await expectSlide(page, index);
+    if (index === 1) {
+      await expect(presentation(page).locator(".hero-action:visible")).toHaveCount(0);
+    }
   }
   await expect(page.getByRole("button", { name: "Next slide", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Exit slideshow", exact: true })).toBeFocused();
@@ -60,6 +63,7 @@ test("presents existing landing content with bounded keyboard and button navigat
   await expect(presentation(page)).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Start slideshow", exact: true })).toBeFocused();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(slideTitles[1]);
+  await expect(page.locator(".hero-action:visible")).toHaveCount(3);
   await expect(page.locator(".product-story:visible")).toHaveCount(4);
   await expect(page.locator("[data-snippet-trigger]")).toHaveCount(0);
   await expect(page.locator("[data-slideshow-slides]")).not.toHaveAttribute("style", /transform|slide-width|slide-height/);
@@ -291,6 +295,65 @@ test("supports animated rapid navigation, reduced motion changes, and browsers w
   await page.keyboard.press("End");
   await expectSlide(page, 5);
 });
+
+for (const viewTransitions of [true, false]) {
+  test(`keeps hero typography stable during entrances ${viewTransitions ? "with" : "without"} View Transitions`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    if (!viewTransitions) {
+      await page.addInitScript(() => { document.startViewTransition = undefined; });
+    }
+    await page.goto("./");
+    await page.evaluate(() => document.fonts.ready);
+    await openSlideshow(page);
+    for (const direction of ["next", "previous"]) {
+      const frames = await page.evaluate(async direction => {
+        const dialog = document.querySelector("#landing-slideshow");
+        const entered = new Promise(resolve => dialog.addEventListener("slideshow:slide-change", resolve, { once: true }));
+        dialog.querySelector(`[data-slideshow-${direction}]`).click();
+        await entered;
+        const elements = [...dialog.querySelectorAll(".docs-hero-intro h1, .docs-hero-intro .tagline")];
+        const frames = [];
+        const start = performance.now();
+        do {
+          await new Promise(requestAnimationFrame);
+          frames.push(elements.map(element => {
+            const style = getComputedStyle(element);
+            const { x, y, width, height } = element.getBoundingClientRect();
+            return {
+              x, y, width, height,
+              font: style.font,
+              transform: style.transform,
+              animationName: style.animationName,
+              opacity: Number(style.opacity),
+              entrances: element.getAnimations().filter(animation => animation.id === "cao-slide-entrance").length,
+            };
+          }));
+        } while (performance.now() - start < 1100);
+        return frames;
+      }, direction);
+      await expectSlide(page, 1);
+      expect(frames.some(frame => frame.some(element => element.entrances > 0))).toBe(true);
+      expect(frames.some(frame => frame.some(element => element.opacity < 1))).toBe(true);
+      for (const frame of frames) {
+        frame.forEach((element, index) => {
+          expect(element.animationName).toBe("none");
+          expect(element.transform).toBe("none");
+          expect(element.font).toBe(frames[0][index].font);
+          for (const dimension of ["x", "y", "width", "height"]) {
+            expect(element[dimension]).toBeCloseTo(frames[0][index][dimension], 1);
+          }
+        });
+      }
+      expect(frames.at(-1).every(element => element.opacity === 1 && element.entrances === 0)).toBe(true);
+      if (direction === "next") {
+        await page.getByRole("button", { name: "Next slide", exact: true }).click();
+        await expectSlide(page, 2);
+      }
+    }
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".docs-hero-intro h1")).toHaveCSS("animation-name", "hero-item-enter");
+  });
+}
 
 test("cleans up on page swaps and does not open a disposed lazy launcher", async ({ page }) => {
   await page.goto("./");
