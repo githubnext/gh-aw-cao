@@ -17,7 +17,7 @@ Choosing a deployment option never changes campaign policy, rollout mode, creden
 
 ## Comparing the options
 
-You can host the dashboard in three ways. The GitHub Actions only option has two credential profiles, so it appears twice. Server-backed deployments use PostgreSQL for dashboard entities, queries, and operational state by default. Azure still pairs PostgreSQL with Azure Managed Redis for operational caches and security state; Redis remains available elsewhere as an explicit legacy selection, including through a compatible external provider such as Upstash.
+The table below compares the deployment options. The GitHub Actions only option has two credential profiles, so it appears twice. Server-backed deployments use PostgreSQL for dashboard entities, queries, and operational state by default. Azure still pairs PostgreSQL with Azure Managed Redis for operational caches and security state; Redis remains available elsewhere as an explicit legacy selection, including through a compatible external provider such as Upstash.
 
 | Option | Dashboard host | Where queries run | Who can sign in | Infrastructure you operate |
 | --- | --- | --- | --- | --- |
