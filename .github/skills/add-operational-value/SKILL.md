@@ -4,7 +4,7 @@ description: "Count demonstrated workflow-enabled improvements over time, with g
 argument-hint: 'OWNER/REPO [WORKFLOW | SOURCE | --goal "GOAL"] [--campaign SLUG]'
 allowed-tools: bash node gh
 metadata:
-  version: "0.18.3"
+  version: "0.18.4"
 ---
 
 # Measure workflow value
@@ -89,6 +89,14 @@ No campaign, dashboard, schedule or baseline required.
 Author once per measurement-contract version; new observations must collect,
 score and render deterministically without model calls. Revisit authoring only
 when the goal, acceptance or evidence interface changes, preserving prior versions.
+The agentic tradeoff is selecting and implementing that contract, not judging
+each new result. Encode native acceptance, deduplication and evidence verification
+in code; routine harvesting, comparison and replay must also be model-free.
+Pin imported helpers and evidence interfaces alongside the module version.
+The desired on-demand `OWNER/REPO WORKFLOW` experience still requires this
+authoring step: discovery only locates intent, and `evaluate.mjs` requires an
+existing module plus its evidence inputs. Do not claim a generic one-command
+remote harvester, automatic scheduler or deployment.
 
 Start with one real outcome and the evidence needed to verify that claim;
 extend the cohort and history from there. Complete runtime/source custody is

@@ -99,6 +99,169 @@ without CAO or a dashboard; publication into Activity is a separate action.
 Evaluation performs no run-context API calls by default. Explicit `--runs` adds
 diagnostic execution context only for workflow-adoption reports.
 
+## Internals: author once, harvest deterministically
+
+The intended on-demand experience is: **give the skill a repository and workflow,
+generate its measurement function once, then request fresh reports from that
+function whenever needed**. The agentic tradeoff is deciding what useful work
+means and how to verify it, not judging every new result. Once reviewed, that
+decision becomes executable, versioned code. Routine harvesting, verification,
+scoring, comparison, rendering and replay must not call a model.
+
+### What is agentic, and what is deterministic?
+
+| Stage | Responsibility | Current interface |
+|---|---|---|
+| Discover intent | Deterministic source listing/reading supplies untrusted workflow, document or prose candidates; it does not decide whether work is good. | `discover-intent.mjs`; `list-repository-workflows.mjs` for remote gh-aw Markdown workflows |
+| Generate the function | **Agentic, once per contract version:** interpret the goal and effective executor, choose eligibility, independent acceptance, native formula, evidence requirements, cadence, deduplication, safeguards and any agreed review bar. Implement and test those choices. | Reviewed module exporting `definition`, `collectBatch`, `scoreMetric` |
+| Harvest originals | Deterministic, separately authorized acquisition preserves bounded source facts, immutable identities, timestamps, hashes and failure receipts. Workflow-specific evidence producers are still needed. | For example, `collect-output-history.mjs` for shared issue/PR discovery; module-specific native acquisition |
+| Verify and collect | Deterministic custody/oracle checks turn originals into window-scoped evidence. Unknown defining facts remain unknown; collector defects are errors. | `collectBatch(requests, context)` returns evidence and provenance per request |
+| Calculate and compare | Deterministic native scoring, period quality, adjacent comparisons and optional policy verdict. No narrative assessment or model-generated score. | `scoreMetric`, `build-timeline.mjs`, `review-value.mjs` |
+| Render and replay | Deterministic presentation and verification of the same facts and contract. | `render-definitions.mjs`, `render-pulse.mjs`, `validate-report-artifacts.mjs` |
+
+The agent must freeze the contract before inspecting outcomes. If candidate
+descriptions or results have already been read, label subsequent authoring
+**outcome-informed retrospective assessment**, preserve the earlier contract and
+rejections, and do not claim blind or ex-ante acceptance. A material change to
+the goal, eligibility/acceptance or evidence interface starts an explicit new
+version; it is not permission to silently reinterpret old observations.
+Ordinary new evidence runs the existing function, not another agentic review.
+
+The three exports are the boundary, not a second reporting API:
+
+- `definition` declares schema version 3, source/activation identity, population,
+  measurement kind, windows, metrics and optional signal/review policy.
+- `collectBatch([{ windowStart, windowEnd, observedAt }], context)` shares reads
+  across requested windows and returns equally many `{ evidence, provenance,
+  commit? }` objects. `observedAt` is the assessment time, not the delivery time.
+- `scoreMetric(metricId, evidence)` returns a finite number in the declared
+  native unit, or `null`. The generic evaluator never infers acceptance from a
+  PR, merge, tracking marker or successful run.
+
+Contract generation includes real positive, negative, missing and malformed
+cases. `verify-value-function.mjs` checks the interface and examples;
+`--collector` also exercises a real collection request. Neither test alone
+establishes measured production value. Independent native evidence must actually
+be evaluated. The generic runner imports reviewed JavaScript modules; it is not
+a sandbox or an automatic guarantee that arbitrary custom code is offline or
+model-free.
+
+### How each reported quantity is calculated
+
+| Quantity | Calculation and boundary |
+|---|---|
+| Eligible opportunities | The collector applies the frozen scope, source era, exclusions and distinct opportunity identity to original facts in the selected window. Emit the known `eligibleCount`, population identity and coverage; an undiscovered population is not an empty one. |
+| Repository outcome | The scorer applies the declared native formula to independently accepted facts, regardless of actor. This may be a count, magnitude, fraction or retained state; there is no universal formula or normalization. A defect fraction, for example, divides accepted eligible defects by the known eligible population, using the contract's explicit zero-population rule. |
+| Workflow-linked delivered contribution | First verify the useful change, then establish its link to the workflow and downstream implementation. Count each distinct delivery in its accepted interval, including shared work by later agents or people. Never credit all repository movement to one workflow. |
+| Native partial and full acceptance | Score a named, independently verified partial facet separately from the stronger full-goal metric. A known partial may remain numeric while full semantics, regression safeguards or attribution are `null`. Missing the evidence defining the partial itself prevents acceptance. |
+| Attribution and safeguards | Preserve evidence-backed strata or separate metrics/limitations, not invented confidence weights. A receipt-verified subset refines corroborated contribution; it does not erase weaker but established outcomes or multiply the delivered quantity. |
+| Recent movement | For comparable values, native delta is current minus reference. Direction-aware gain is current minus reference for `increase`, reference minus current for `decrease`, and the reduction in absolute distance from the declared target for `maintain`/`target`. Percentages move in percentage points. This is descriptive movement, not causal impact or statistical significance. |
+| Attention signal | Focus on `definition.signal`, otherwise the review metric, otherwise the primary repository metric. `timelinePulse` compares the latest fresh, complete, mature period with its adjacent comparable predecessor. Positive/negative/zero gain gives improving/worsening/steady. Contribution-specific no-opportunity/stalled states additionally require known opportunity evidence. Gaps do not become a trend. |
+| Optional verdict | `reviewValue` checks the declared native minimum/maximum over the requested consecutive complete, mature, fresh periods with known positive opportunities. All meet: keep candidate; all miss: change/retire candidate; some meet: mixed. These workflow verdicts require interval contribution evidence; a repository-outcome policy instead reports goal met/missed. No policy means not rated. |
+| Cost | Current generic reviews explicitly report not measured. Future cost per accepted outcome requires matched workflow/version/period cost and a positive known accepted quantity. Missing or zero work cannot yield a finite cost-per-outcome. |
+
+These are separate answers, not components of an aggregate score. Incompatible
+native units, versions, populations or safeguards must not be summed. A
+repository-level improvement with unknown workflow linkage is still an outcome,
+not demonstrated workflow contribution.
+
+### Windows, deduplication and missingness
+
+All collector windows are **start-inclusive, end-exclusive**. `durationDays`
+defines the evidence window, `cadenceDays` the observation spacing, and
+`maturationDays` the delay before it can be assessed. `observationWindows` in
+`common.mjs` schedules interval windows backward from the requested endpoint,
+subtracting maturation from each window end and stepping by the larger of
+duration and cadence. This prevents overlapping delivered-work cohorts; a
+larger cadence can leave explicit gaps. The first interval may be shortened at
+the adoption/activation boundary. Snapshot schedules describe retained state
+at observation times and may have overlapping lookbacks.
+
+The module must deduplicate native opportunities and deliveries using stable
+domain identities. The generic runner does not know whether two GitHub objects
+represent the same repaired defect. Report-level deduplication is different:
+the evaluator caches observations by assessment time plus window start/end,
+and the value review selects the latest assessment for each identical window.
+Neither mechanism makes overlapping snapshots additive. A retained fix is not
+fresh work every week. The optional event projection deduplicates stable event
+IDs, rejects conflicting time/value facts, and lets later attribution evidence
+update the original delivery rather than create another event.
+
+For a standard timeline, period quality requires the declared full duration,
+explicit complete coverage, sufficient maturation and no future, provisional
+or dubious assessment. Partial native values remain visible, but they do not
+satisfy complete-period trend or keep-bar requirements. Freshness is evaluated
+relative to the report endpoint and declared cadence, not today's wall clock.
+The latest missing value stays missing; the renderer does not substitute an
+older success.
+
+The event projection is a separate, explicit input supported by the same pulse
+renderer: calendar-week totals sum distinct native events only over covered
+intervals. Its 28-day rate is the covered native total multiplied by `7 / 28`;
+the 91-day baseline uses `7 / 91`. Its signal compares adjacent, non-overlapping
+28-day windows, not the 91-day baseline. Coverage gaps and cold starts produce
+`null`. These are event rates, not formulas imposed on every workflow.
+
+### Current commands and the on-demand boundary
+
+The slash skill can guide authoring for `OWNER/REPO WORKFLOW`, a document or
+prose. **The CLI does not yet turn any arbitrary remote workflow into a complete
+native harvester and report in one command.** Remote listing only clones a
+temporary checkout and lists/selects gh-aw Markdown sources. Source reading is
+not goal interpretation, and discovery inventory is not outcome evidence.
+`evaluate.mjs` requires an existing reviewed module and the evidence its
+collector needs; it fails if the module is absent. Missing evidence adapters
+still require authoring rather than generic success-shaped fallback.
+
+From a target checkout, with the portable skill copied there:
+
+```sh
+# Deterministic discovery: select intent, do not score it.
+node .github/skills/add-operational-value/scripts/discover-intent.mjs \
+  --root . --source .github/workflows/WORKFLOW.md
+node .github/skills/add-operational-value/scripts/list-repository-workflows.mjs \
+  OWNER/REPO WORKFLOW
+
+# Agentic authoring happens here, once per version:
+# implement .github/operational-value/WORKFLOW.mjs and its native evidence plan.
+
+# Deterministic validation and repeatable reporting after authorized harvesting.
+node .github/skills/add-operational-value/scripts/verify-value-function.mjs \
+  .github/operational-value/WORKFLOW.mjs
+node .github/skills/add-operational-value/scripts/verify-value-function.mjs \
+  --collector .github/operational-value/WORKFLOW.mjs
+node .github/skills/add-operational-value/scripts/evaluate.mjs \
+  --root . --end YYYY-MM-DDTHH:MM:SSZ OWNER/REPO WORKFLOW
+```
+
+For prose, replace `--source PATH` with `--goal "GOAL"` in discovery. Evaluation
+also accepts `--function PATH` and `--output-dir DIR`. Harvesting new originals
+uses the chosen evidence producer; evaluation does not automatically acquire
+every native postcondition. Routine runs reuse retained observations for the
+matching requests and collect missing ones; `--refresh` explicitly recollects
+the scheduled requests. It does not ask a model to rescore them. Replay fixes
+the endpoint and verifies the same inputs, contract, helpers and runtime.
+
+Outputs under `docs/operational-value/reports/OWNER-REPO/` are
+`WORKFLOW-timeline.json` (definition, function hash, evidence, provenance, native
+values and comparisons), `WORKFLOW-definitions.md` (definitions and review),
+`WORKFLOW-pulse.html` and `.json` (the same plotted facts), and the
+version-keyed `WORKFLOW-evidence-archive.json` or compressed/partitioned form.
+The archive retains observations with at least one known metric; the timeline
+also preserves all-unknown windows. Acquisition originals and failures live in
+the producer's separately defined custody store, not automatically in that
+archive. The evaluator keys archived versions by the module file's SHA-256;
+that is **not** an automatic transitive dependency hash. Pin helper/oracle/input
+identities explicitly so changing an imported implementation cannot silently
+change a supposedly unchanged measurement.
+
+Reports are local files until separately authorized publication. Generating a
+function or invoking evaluation installs no scheduler, enrolls no campaign,
+starts no continuous monitoring and deploys nothing. This repeatable pipeline
+is the current building block for the desired on-demand repository/workflow
+experience, not a claim that unattended generic function generation and native
+acquisition are already implemented.
+
 ## A concise value review
 
 Evaluation now writes a `valueReview` into the existing timeline and renders it

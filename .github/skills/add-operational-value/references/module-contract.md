@@ -6,6 +6,27 @@ required. Use the existing schema version 3; do not invent a second interface.
 Internal CLI helpers run through the current Node executable; copying the skill
 does not require preserving Unix executable permission bits.
 
+## Authoring versus routine execution
+
+Interpret the goal and resolve measurement tradeoffs once when generating each
+explicit contract version. That agentic work chooses native quantities,
+eligibility, acceptance, evidence authority, deduplication, windows, safeguards
+and any agreed policy. Implement those choices in the existing exports below.
+Afterwards, authorized acquisition/harvesting, verification, collection, scoring,
+comparison, rendering and replay run deterministic code without model calls.
+Do not use model judgments to accept new observations or silently revise the
+function. A material goal, acceptance or evidence-interface change requires a
+new version with predecessors and limitations preserved.
+
+Discovery commands supply intent candidates, not a generated native collector.
+`evaluate.mjs` requires an existing reviewed module and usable evidence; it does
+not implement arbitrary workflow-specific postconditions on demand. The generic
+runner imports JavaScript, not a sandbox that enforces model-free behavior.
+Review/test that property and pin helper/oracle dependencies explicitly: the
+archive's module-file SHA-256 alone does not identify the transitive closure.
+See [the operator guide's calculation pipeline](https://github.com/githubnext/gh-aw-cao/blob/main/docs/operational-value.md#internals-author-once-harvest-deterministically)
+for stage boundaries, native calculations, scheduling, outputs and current commands.
+
 ## Exports
 
 `definition` is JSON-compatible and contains:
