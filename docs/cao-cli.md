@@ -47,8 +47,10 @@ digests. Downloads fail closed unless the asset's exact checksum and embedded
 version match. Verification finishes before replacing an existing binary.
 An explicit catalog source `githubnext/gh-cao@vX.Y.Z` selects the same
 extension tag, including a published prerelease with that tag; otherwise the
-installer selects the latest stable CAO release. Main/SHA and local catalog
-sources still select their own runtime revision independently.
+installer selects the latest stable CAO release that contains extension assets.
+Before the first such stable release exists, it falls back to the newest
+published extension prerelease. Main/SHA and local catalog sources still select
+their own runtime revision independently.
 Node.js 24+ remains required for installing the repository's pipeline runtime,
 but not for running the Go operator commands afterward.
 

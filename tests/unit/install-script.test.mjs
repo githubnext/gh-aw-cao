@@ -33,6 +33,10 @@ const policyPath = path.join(".github", "workflows", "cao.json");
 const materializer = path.join(".github", "workflows", "shared", "materialize-cao.mjs");
 const curlCommand = "curl --fail --show-error --location";
 const manualUpgrade = (version) => new RegExp(`Run \`${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- ${version.replaceAll(".", "\\.")}\`, then rerun the CAO installer`);
+const extensionAssets = [
+  "gh-cao-darwin-amd64", "gh-cao-darwin-arm64", "gh-cao-linux-amd64", "gh-cao-linux-arm64",
+  "gh-cao-windows-amd64.exe", "gh-cao-windows-arm64.exe", "checksums.txt",
+].join(",");
 
 test("quickstart keeps terminal presentation and filters Node experimental warnings", () => {
   assert.match(installerSource, /run_cao_quickstart\(\)[\s\S]*?terminal_available[\s\S]*?< \/dev\/tty/);
@@ -145,6 +149,19 @@ fi
 if [[ "$*" == "api --hostname github.com --paginate repos/githubnext/gh-cao/releases?per_page=100 --jq .[] | [.draft, .prerelease, .tag_name] | @tsv" ]]; then
   [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 1; }
   printf '%b\\n' "\${FAKE_CAO_RELEASE_LIST:-false\\\\tfalse\\\\t\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}}"
+  exit 0
+fi
+if [[ "\${1:-} \${2:-} \${3:-} \${4:-} \${5:-}" == \
+  "api --hostname github.com --paginate repos/githubnext/gh-cao/releases?per_page=100" &&
+  "$*" == *".assets[].name"* ]]; then
+  [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 1; }
+  printf '%b\\n' "\${FAKE_CAO_EXTENSION_RELEASE_LIST:-false\\\\tfalse\\\\t\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}\\\\t${extensionAssets}}"
+  exit 0
+fi
+if [[ "\${1:-} \${2:-}" == "api --hostname" && "\${3:-}" == github.com &&
+  "\${4:-}" == repos/githubnext/gh-cao/releases/tags/* ]]; then
+  release="\${4##*/}"
+  printf 'false\\t%s\\t%s\\n' "$release" "\${FAKE_CAO_EXPLICIT_RELEASE_ASSETS:-${extensionAssets}}"
   exit 0
 fi
 if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
@@ -286,9 +303,11 @@ if [[ "$url" == https://github.com/githubnext/gh-cao/releases/download/* ]]; the
       const mode = process.env.FAKE_CAO_CHECKSUM_MODE;
       const digest = mode === "corrupt" ? "0".repeat(64) : createHash("sha256").update(readFileSync(process.argv[1])).digest("hex");
       if (mode !== "missing") for (const os of ["darwin", "linux", "windows"]) for (const arch of ["amd64", "arm64"]) {
-        const line = digest + "  gh-cao-" + os + "-" + arch + (os === "windows" ? ".exe" : "");
-        console.log(line);
-        if (mode === "duplicate") console.log(line);
+        for (const prefix of ["gh-cao-", ""]) {
+          const line = digest + "  " + prefix + os + "-" + arch + (os === "windows" ? ".exe" : "");
+          console.log(line);
+          if (mode === "duplicate") console.log(line);
+        }
       }
     ' "$downloaded_binary" > "$output"
   else
@@ -1273,6 +1292,21 @@ test("quickstart skips malformed tags, drafts, and prereleases when selecting a 
   assert.notEqual(result.code, 0);
   assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
   assert.equal(await log(), "add\n");
+});
+
+test("installer falls back to a published extension prerelease when stable releases have no binaries", async (t) => {
+  const { consumer, env } = await createConsumer(t, supportedGhAw);
+  const legacyAsset = `${process.platform === "win32" ? "windows" : process.platform}-${process.arch === "x64" ? "amd64" : "arm64"}${process.platform === "win32" ? ".exe" : ""}`;
+  await streamInstaller(consumer, {
+    ...env,
+    FAKE_CAO_EXTENSION_RELEASE_LIST: [
+      `false\ttrue\tv1.2.4\t${legacyAsset},checksums.txt`,
+      "false\tfalse\tv1.2.3\tcao-runtime-abc.tgz",
+    ].join("\n"),
+  });
+  const downloads = await readFile(env.FAKE_CAO_DOWNLOADS, "utf8");
+  assert.match(downloads, new RegExp(`/v1\\.2\\.4/${legacyAsset.replace(".", "\\.")}\\n`));
+  assert.match(downloads, /\/v1\.2\.4\/checksums\.txt\n/);
 });
 
 for (const releases of [

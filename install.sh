@@ -410,10 +410,78 @@ resolve_latest_cao_release() {
   return 1
 }
 
+resolve_latest_cao_extension_release() {
+  local current_asset="$1"
+  local legacy_asset="$2"
+  local releases
+  local draft
+  local prerelease
+  local release
+  local assets
+  local asset
+  local fallback=""
+  if releases="$(gh api --hostname github.com --paginate \
+    'repos/githubnext/gh-cao/releases?per_page=100' \
+    --jq '.[] | [.draft, .prerelease, .tag_name, ([.assets[].name] | join(","))] | @tsv')"; then
+    while IFS=$'\t' read -r draft prerelease release assets; do
+      asset=""
+      if [[ ",$assets," == *",$current_asset,"* ]]; then
+        asset="$current_asset"
+      elif [[ ",$assets," == *",$legacy_asset,"* ]]; then
+        asset="$legacy_asset"
+      fi
+      if [[ "$draft" == false && "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ &&
+        -n "$asset" && ",$assets," == *",checksums.txt,"* ]]; then
+        if [[ "$prerelease" == false ]]; then
+          printf '%s\t%s\n' "$release" "$asset"
+          return
+        fi
+        [[ -n "$fallback" ]] || fallback="$release"$'\t'"$asset"
+      fi
+    done <<< "$releases"
+  fi
+  if [[ -n "$fallback" ]]; then
+    printf '%s\n' "$fallback"
+    return
+  fi
+  printf '%s\n' \
+    'Unable to resolve a published CAO release containing this platform extension and checksums.' \
+    'Retry after GitHub release access is restored, or pass an explicit published tag such as githubnext/gh-cao@vX.Y.Z.' \
+    'No CAO files were written.' >&2
+  return 1
+}
+
+resolve_cao_extension_asset() {
+  local release="$1"
+  local current_asset="$2"
+  local legacy_asset="$3"
+  local details
+  local draft
+  local resolved_release
+  local assets
+  if details="$(gh api --hostname github.com "repos/githubnext/gh-cao/releases/tags/$release" \
+    --jq '[.draft, .tag_name, ([.assets[].name] | join(","))] | @tsv')" &&
+    IFS=$'\t' read -r draft resolved_release assets <<< "$details" &&
+    [[ "$draft" == false && "$resolved_release" == "$release" &&
+      ",$assets," == *",checksums.txt,"* ]]; then
+    if [[ ",$assets," == *",$current_asset,"* ]]; then
+      printf '%s\n' "$current_asset"
+      return
+    fi
+    if [[ ",$assets," == *",$legacy_asset,"* ]]; then
+      printf '%s\n' "$legacy_asset"
+      return
+    fi
+  fi
+  printf 'Published CAO release %s does not contain this platform extension and checksums.\n' "$release" >&2
+  return 1
+}
+
 install_cao_extension() (
   set -euo pipefail
   local release="$1"
-  local os arch suffix="" data_dir asset directory binary expected actual installed_version
+  local asset="${2:-}"
+  local os arch suffix="" data_dir directory binary expected actual installed_version
   case "$(uname -s)" in
     Linux) os=linux ;;
     Darwin) os=darwin ;;
@@ -425,6 +493,7 @@ install_cao_extension() (
     aarch64|arm64) arch=arm64 ;;
     *) printf 'Unsupported CAO extension architecture.\n' >&2; exit 1 ;;
   esac
+  [[ -n "$asset" ]] || asset="gh-cao-$os-$arch$suffix"
   if [[ -n "${XDG_DATA_HOME:-}" ]]; then
     data_dir="$XDG_DATA_HOME/gh"
   elif [[ "$os" == windows && -n "${LOCALAPPDATA:-}" ]]; then
@@ -447,7 +516,6 @@ install_cao_extension() (
   trap 'rm -rf -- "$staged"' EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
-  asset="gh-cao-$os-$arch$suffix"
   info "Downloading gh cao $release for $os-$arch..."
   local base_url="https://github.com/githubnext/gh-cao/releases/download/$release"
   curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 120 \
@@ -536,6 +604,13 @@ main() {
   local quickstart_status
   local quickstart_release
   local extension_release=""
+  local extension_asset=""
+  local extension_selection
+  local extension_os
+  local extension_arch
+  local extension_suffix=""
+  local current_extension_asset
+  local legacy_extension_asset
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -710,9 +785,30 @@ main() {
     note "Quickstart selected stable CAO release $quickstart_release."
   fi
 
+  case "$(uname -s)" in
+    Linux) extension_os=linux ;;
+    Darwin) extension_os=darwin ;;
+    MINGW*|MSYS*|CYGWIN*) extension_os=windows; extension_suffix=.exe ;;
+    *) printf 'Unsupported CAO extension operating system.\n' >&2; return 1 ;;
+  esac
+  case "$(uname -m)" in
+    x86_64|amd64) extension_arch=amd64 ;;
+    aarch64|arm64) extension_arch=arm64 ;;
+    *) printf 'Unsupported CAO extension architecture.\n' >&2; return 1 ;;
+  esac
+  current_extension_asset="gh-cao-$extension_os-$extension_arch$extension_suffix"
+  legacy_extension_asset="$extension_os-$extension_arch$extension_suffix"
+
   if [[ "$catalog_source" =~ ^githubnext/gh-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
     extension_release="${BASH_REMATCH[1]}"
-  elif ! extension_release="$(resolve_latest_cao_release)"; then
+    if ! extension_asset="$(resolve_cao_extension_asset \
+      "$extension_release" "$current_extension_asset" "$legacy_extension_asset")"; then
+      return 1
+    fi
+  elif extension_selection="$(resolve_latest_cao_extension_release \
+    "$current_extension_asset" "$legacy_extension_asset")"; then
+    IFS=$'\t' read -r extension_release extension_asset <<< "$extension_selection"
+  else
     return 1
   fi
 
@@ -740,7 +836,7 @@ main() {
   else
     note "Using gh-aw $current_gh_aw."
   fi
-  install_cao_extension "$extension_release"
+  install_cao_extension "$extension_release" "$extension_asset"
 
   if [[ -n "$create_repository" ]]; then
     if [[ "$create_repository_in_place" == true ]]; then
