@@ -134,7 +134,7 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`6f8a4ec5419be5e4e217d5edf0f9ea8f6d34e822`, defines a batch-v2 discovery interchange in
+`518516c8f3328cc781107497cf55380f9212adee`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
@@ -199,20 +199,27 @@ Batch-capable v2 MUST declare the following fixed mapping and batching policy:
 ```
 
 Every v2 declaration MUST additionally declare exactly
-`payload_projection: {"policy":"resource-url-types-filters/v1"}`. The complete delivery
-payload requires `url` and `type`, plus `filters` when predicates exist.
+`payload_projection: {"policy":"resource-url-types-filters/v2"}`. The complete delivery
+payload requires `url` and `type`, plus `filters` when predicates or a selected
+Azure lifecycle match exist. Every forwarded type MUST be established by the
+original delivery and selected by the subscription; an empty intersection cannot
+qualify. Severity remains an ordinary compiled condition and only its matching
+literal(s) may appear under `filters.severity`.
 `filters` MUST be a flat map from compiled condition names to nonempty distinct
 homogeneous scalar arrays. It MUST contain only actual matching literals from
 the authenticated original delivery, accepted by every applicable condition for
 that name, and cover all shared conditions plus one complete matching `any_of`
 alternative. It MUST NOT include unmatched array elements, sibling fields, nested
-source objects, or cross-combined transition pairs. Without predicates it MUST
-be omitted. The old `resource-url-types/v1` policy MUST remain nonactivating.
+source objects, or cross-combined transition pairs. Azure selected closed/reopened
+additionally requires exactly one matching configured terminal name under
+`filters["closed-states"]`, as defined in §6.2.2. Without predicates or a selected
+Azure lifecycle match, filters MUST be omitted. Both old `resource-url-types/v1`
+and `resource-url-types-filters/v1` policies MUST remain nonactivating.
 GitHub notifications carry the single original action, not a state object.
 Missing or unknown policies, old `source_path`/`target_path` declarations,
 URL-only security payloads, and native Projects bodies MUST reject validation,
 never fall back to raw-body forwarding.
-The upstream [gateway specification](https://github.com/github/gh-aw/blob/6f8a4ec5419be5e4e217d5edf0f9ea8f6d34e822/docs/src/content/docs/specs/webhook-gateway-specification.md)
+The upstream [gateway specification](https://github.com/github/gh-aw/blob/518516c8f3328cc781107497cf55380f9212adee/docs/src/content/docs/specs/webhook-gateway-specification.md)
 defines seven event families, including provider-normalized activity arrays and
 the generic `webhook` family.
 This bridge discovers all seven families and activates only explicitly delegated
@@ -521,9 +528,20 @@ issue URL and the enrolled organization. Azure MUST bind collection/project IDs
 and use the work item ID, never an update/revision ID; version-1 snapshot fallback
 requires the published contract's evidence. Jira resolution/label changelogs,
 Linear updatedFrom and Azure state/tag deltas MUST follow the declared
-normalization policy, without hydration or guessed state history. All established
-activities MUST survive, including edited for updates. Missing/ambiguous
+normalization policy, without hydration or guessed state history. Derive all
+established activities, including edited for updates, then intersect with selected
+subscription types before persistence or forwarding. Unselected activities MUST
+NOT survive; an empty intersection or contradictory closed/reopened evidence MUST
+NOT qualify. Missing/ambiguous
 transition evidence MUST NOT establish a lifecycle or label transition.
+
+For a selected Azure closed activity, project exactly the entered configured
+terminal name in `filters["closed-states"]`; for reopened, exactly the departed
+configured terminal name. Complete delivered old/new state evidence is required.
+Never forward the unmatched nonterminal side or the entire configured set.
+`closed_states` remains `activity_normalization` metadata, not a source-path
+equality condition. Without a forwarded selected closed/reopened activity, the
+`closed-states` key MUST be absent even if terminal names are configured.
 
 External source authority is current unexpired reviewed enrollment plus native
 authentication, not a live provider resource-access/visibility probe. Source

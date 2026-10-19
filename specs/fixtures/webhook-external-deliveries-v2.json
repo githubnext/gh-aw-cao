@@ -93,7 +93,7 @@
           }
         }
       },
-      "expected": {"url": "https://dev.azure.com/acme/_apis/wit/workItems/42", "type": ["closed", "edited", "labeled", "unlabeled"], "filters": {"project_id": ["azure-project"]}}
+      "expected": {"url": "https://dev.azure.com/acme/_apis/wit/workItems/42", "type": ["closed", "edited", "labeled", "unlabeled"], "filters": {"project_id": ["azure-project"], "closed-states": ["Done"]}}
     },
     {
       "sourceId": "generic",

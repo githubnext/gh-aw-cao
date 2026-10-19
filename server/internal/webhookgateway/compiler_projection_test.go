@@ -15,9 +15,13 @@ func TestCompilerProjectionPolicyIsRequiredForEveryDeclaredFamily(t *testing.T) 
 	if err != nil || len(triggers) != 3 {
 		t.Fatal("invalid projection policy fixture", err)
 	}
+	_, registry, _ := externalFixture(t)
+	for _, declaration := range registry.Records[0].Workflows[0].Triggers {
+		triggers = append(triggers, WorkflowTrigger{Declaration: declaration})
+	}
 	for _, trigger := range triggers {
 		t.Run(trigger.Declaration.Event, func(t *testing.T) {
-			for _, policy := range []string{"", "unknown/v1", "resource-url-types/v1", "resource-url-types/v2"} {
+			for _, policy := range []string{"", "unknown/v1", "resource-url-types/v1", "resource-url-types/v2", "resource-url-types-filters/v1"} {
 				declaration := trigger.Declaration
 				declaration.Dispatch.PayloadProjection = &CompilerProjection{Policy: policy}
 				if validateCompilerTrigger(declaration, declaration.Dispatch.Workflow, "test", DefaultLimits()) == nil {
@@ -30,7 +34,7 @@ func TestCompilerProjectionPolicyIsRequiredForEveryDeclaredFamily(t *testing.T) 
 				t.Fatal("missing projection policy activated")
 			}
 			declaration = trigger.Declaration
-			declaration.Types = []string{"unknown"}
+			declaration.Types = []string{"unknown?"}
 			if validateCompilerTrigger(declaration, declaration.Dispatch.Workflow, "test", DefaultLimits()) == nil {
 				t.Fatal("unsupported activity entered a minimal notification")
 			}
@@ -40,9 +44,9 @@ func TestCompilerProjectionPolicyIsRequiredForEveryDeclaredFamily(t *testing.T) 
 	for _, projection := range []string{
 		`{}`, `null`, `{"policy":"unknown/v1"}`,
 		`{"source_path":["alert","url"],"target_path":["url"]}`,
-		`{"policy":"resource-url-types-filters/v1","source_path":["alert","url"]}`,
+		`{"policy":"resource-url-types-filters/v2","source_path":["alert","url"]}`,
 	} {
-		data := strings.ReplaceAll(fixture, `{"policy":"resource-url-types-filters/v1"}`, projection)
+		data := strings.ReplaceAll(fixture, `{"policy":"resource-url-types-filters/v2"}`, projection)
 		if _, err := ParseWorkflowManifest([]byte(data), ".github/workflows/test.lock.yml", DefaultLimits()); err == nil {
 			t.Fatalf("unsupported projection declaration accepted: %s", projection)
 		}

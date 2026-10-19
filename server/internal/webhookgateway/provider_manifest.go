@@ -72,6 +72,15 @@ func validateProviderDeclaration(t CompilerTrigger) error {
 			return ErrInvalid
 		}
 	}
+	if t.Event == "azure_devops_issue" {
+		for _, group := range compilerConditionGroups(t) {
+			for _, condition := range group {
+				if condition.Filter == "closed-states" {
+					return ErrInvalid
+				}
+			}
+		}
+	}
 	for _, condition := range t.Conditions {
 		if reflect.DeepEqual(condition.Path, externalScopePath(t.Event)) && condition.ValueType == "string" {
 			return nil

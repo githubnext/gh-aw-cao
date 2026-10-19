@@ -9,7 +9,7 @@ import (
 )
 
 const MaxWorkflowArtifactBytes = 8 << 20
-const compilerProjectionPolicy = "resource-url-types-filters/v1"
+const compilerProjectionPolicy = "resource-url-types-filters/v2"
 
 // CompilerCondition preserves gh-aw's typed equality and array traversal paths.
 type CompilerCondition struct {
@@ -379,10 +379,7 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 func compilerTriggerMatches(t CompilerTrigger, root any, action string) bool {
 	selected := slices.Contains(t.Types, action)
 	if providerEvent(t.Event) {
-		activities := providerActivities(t, root)
-		selected = slices.Contains(t.NativeEvents, action) && slices.ContainsFunc(activities, func(activity string) bool {
-			return slices.Contains(t.Types, activity)
-		})
+		selected = slices.Contains(t.NativeEvents, action) && len(selectedProviderActivities(t, root)) != 0
 	}
 	return selected && compilerConditionsMatch(root, t.Conditions) &&
 		(len(t.AnyOf) == 0 || slices.ContainsFunc(t.AnyOf, func(group []CompilerCondition) bool {

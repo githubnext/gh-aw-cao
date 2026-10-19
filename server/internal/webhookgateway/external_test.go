@@ -150,7 +150,7 @@ func TestExternalRegistryRequiresIndependentEnrollment(t *testing.T) {
 	}
 }
 
-func TestExternalNotificationsPreserveAllActivitiesWithoutResourceBodies(t *testing.T) {
+func TestExternalNotificationsPreserveSelectedActivitiesWithoutResourceBodies(t *testing.T) {
 	base, registry, deliveries := externalFixture(t)
 	policy, err := RegistryPolicy(base, registry, time.Now())
 	if err != nil {

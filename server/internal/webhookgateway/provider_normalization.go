@@ -7,6 +7,16 @@ import (
 	"time"
 )
 
+func selectedProviderActivities(trigger CompilerTrigger, root any) []string {
+	activities := providerActivities(trigger, root)
+	if slices.Contains(activities, "closed") && slices.Contains(activities, "reopened") {
+		return nil
+	}
+	return slices.DeleteFunc(activities, func(activity string) bool {
+		return !slices.Contains(trigger.Types, activity)
+	})
+}
+
 func providerActivities(trigger CompilerTrigger, root any) []string {
 	object, ok := root.(map[string]any)
 	if !ok {

@@ -234,9 +234,9 @@ for (const invalid of [
   rejected.client_payload.aw_context.webhook.deliveries[1].payload = invalid;
   assert.throws(() => validateWebhook(rejected));
 }
-for (const payload_projection of [undefined, {}, {policy: 'unknown/v1'}, {policy: 'resource-url-types/v1'},
+for (const payload_projection of [undefined, {}, {policy: 'unknown/v1'}, {policy: 'resource-url-types/v1'}, {policy: 'resource-url-types-filters/v1'},
   {source_path: ['alert', 'url'], target_path: ['url']},
-  {policy: 'resource-url-types-filters/v1', source_path: ['alert', 'url']}]) {
+  {policy: 'resource-url-types-filters/v2', source_path: ['alert', 'url']}]) {
   const subscriptions = JSON.parse(process.env.GH_AW_WEBHOOK_SUBSCRIPTIONS);
   subscriptions[0].dispatch.payload_projection = payload_projection;
   assert.throws(() => validateWebhook(event, {...process.env, GH_AW_WEBHOOK_SUBSCRIPTIONS: JSON.stringify(subscriptions)}));

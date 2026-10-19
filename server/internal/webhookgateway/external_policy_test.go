@@ -59,7 +59,7 @@ func TestProviderManifestsRejectMissingOrAmbiguousContracts(t *testing.T) {
 	_, registry, _ := externalFixture(t)
 	original := registry.Records[0].Workflows[0].Triggers
 	for _, scenario := range []string{"missing-normalization", "unknown-policy", "wrong-provider", "missing-scope",
-		"duplicate-native-event", "wrong-native-event", "azure-missing-closed-states", "generic-multiple-types", "generic-prototype-path", "generic-legacy-version"} {
+		"duplicate-native-event", "wrong-native-event", "azure-missing-closed-states", "azure-closed-states-condition", "generic-multiple-types", "generic-prototype-path", "generic-legacy-version"} {
 		t.Run(scenario, func(t *testing.T) {
 			data, err := json.Marshal(original)
 			if err != nil {
@@ -84,6 +84,9 @@ func TestProviderManifestsRejectMissingOrAmbiguousContracts(t *testing.T) {
 				triggers[0].NativeEvents = []string{"create"}
 			case "azure-missing-closed-states":
 				triggers[2].ActivityNormalization.ClosedStates = nil
+			case "azure-closed-states-condition":
+				triggers[2].Conditions = append(triggers[2].Conditions,
+					stringCondition("closed-states", []string{"resource", "fields", "System.State", "newValue"}, "Done"))
 			case "generic-multiple-types":
 				triggers[3].Types = []string{"com.example.deploy", "com.example.release"}
 			case "generic-prototype-path":

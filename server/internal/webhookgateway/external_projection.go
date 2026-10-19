@@ -17,27 +17,17 @@ func validExternalActivities(s Subscription, native string, activities []string)
 		return len(activities) == 1 && len(s.Compiler.Types) == 1 &&
 			activities[0] == s.Compiler.Types[0] && native == activities[0]
 	}
-	if !slices.Contains(s.Compiler.NativeEvents, native) {
+	if !slices.Contains(s.Compiler.NativeEvents, native) ||
+		slices.Contains(activities, "closed") && slices.Contains(activities, "reopened") {
 		return false
 	}
-	selected := false
 	for i, activity := range activities {
 		if !compilerActivity(s.Source.Event, activity) || i > 0 && activity <= activities[i-1] ||
-			providerNativeForActivity(s.Source.Event, activity) != native {
+			providerNativeForActivity(s.Source.Event, activity) != native || !slices.Contains(s.Compiler.Types, activity) {
 			return false
 		}
-		selected = selected || slices.Contains(s.Compiler.Types, activity)
 	}
-	base := "edited"
-	switch native {
-	case providerNativeEvents(s.Source.Event)[0]:
-		base = "opened"
-	case providerNativeEvents(s.Source.Event)[2]:
-		base = "deleted"
-	case "workitem.restored":
-		base = "restored"
-	}
-	return selected && slices.Contains(activities, base)
+	return true
 }
 
 func validExternalNotification(s Subscription, payload map[string]any) bool {
@@ -65,7 +55,7 @@ func buildExternalDispatchPayload(s Subscription, event Event, root any, l Limit
 	}
 	activities := []string{event.Action}
 	if providerEvent(event.Name) {
-		activities = providerActivities(*s.Compiler, root)
+		activities = selectedProviderActivities(*s.Compiler, root)
 	}
 	if !validExternalActivities(s, event.Action, activities) {
 		return nil, ErrInvalid

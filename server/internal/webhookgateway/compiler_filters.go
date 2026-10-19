@@ -106,6 +106,18 @@ func addCompilerFilters(payload map[string]any, trigger CompilerTrigger, root an
 	if err != nil {
 		return err
 	}
+	if trigger.Event == "azure_devops_issue" {
+		activities := selectedProviderActivities(trigger, root)
+		state := ""
+		if slices.Contains(activities, "closed") {
+			state = textAt(root, "resource", "fields", "System.State", "newValue")
+		} else if slices.Contains(activities, "reopened") {
+			state = textAt(root, "resource", "fields", "System.State", "oldValue")
+		}
+		if state != "" {
+			filters["closed-states"] = []any{state}
+		}
+	}
 	if len(filters) != 0 {
 		payload["filters"] = filters
 	}
@@ -123,8 +135,31 @@ func validCompilerFilters(trigger CompilerTrigger, payload map[string]any) bool 
 	if present && (!ok || len(projected) == 0) {
 		return false
 	}
+	terminal := false
+	if trigger.Event == "azure_devops_issue" {
+		activities, ok := notificationActivities(payload)
+		if !ok || slices.Contains(activities, "closed") && slices.Contains(activities, "reopened") {
+			return false
+		}
+		terminal = slices.Contains(activities, "closed") || slices.Contains(activities, "reopened")
+		if terminal {
+			values, ok := projected["closed-states"].([]any)
+			if !ok || len(values) != 1 || trigger.ActivityNormalization == nil {
+				return false
+			}
+			state, ok := values[0].(string)
+			if !ok || !slices.Contains(trigger.ActivityNormalization.ClosedStates, state) {
+				return false
+			}
+		} else if _, present := projected["closed-states"]; present {
+			return false
+		}
+	}
 	for _, conditions := range compilerConditionGroups(trigger) {
 		names := make(map[string]bool)
+		if terminal {
+			names["closed-states"] = true
+		}
 		valid := true
 		for _, condition := range conditions {
 			names[condition.Filter] = true

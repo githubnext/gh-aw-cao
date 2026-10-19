@@ -20,23 +20,48 @@ func TestExternalPublishedRuntimeInteroperability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, subscription := range policy.Subscriptions {
-		t.Run(compilerTriggerKey(*subscription.Compiler), func(t *testing.T) {
-			row := slices.IndexFunc(deliveries, func(row externalDeliveryFixture) bool { return row.SourceID == subscription.Source.ID })
-			root := deliveries[row].Payload
-			if subscription.Source.Event == "webhook" {
-				root["type"] = subscription.Compiler.Types[0]
-			}
-			jobs := []Job{externalJob(t, policy, subscription, root, "one"), externalJob(t, policy, subscription, root, "two")}
-			payload, err := BuildDispatchBatch(jobs)
-			if err != nil {
-				t.Fatal(err)
-			}
-			declarations, err := json.Marshal([]CompilerTrigger{*subscription.Compiler})
-			if err != nil {
-				t.Fatal(err)
-			}
-			const script = `
+	for _, original := range policy.Subscriptions {
+		scenarios := []string{"all"}
+		if providerEvent(original.Source.Event) {
+			scenarios = append(scenarios, "closed", "edited", "labeled")
+		}
+		if original.Source.Event == "azure_devops_issue" {
+			scenarios = append(scenarios, "reopened")
+		}
+		for _, scenario := range scenarios {
+			t.Run(compilerTriggerKey(*original.Compiler)+"/"+scenario, func(t *testing.T) {
+				subscription := original
+				trigger := *original.Compiler
+				subscription.Compiler = &trigger
+				if scenario != "all" {
+					trigger.Types = []string{scenario}
+				}
+				row := slices.IndexFunc(deliveries, func(row externalDeliveryFixture) bool { return row.SourceID == subscription.Source.ID })
+				encoded, err := json.Marshal(deliveries[row].Payload)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var root map[string]any
+				if err := json.Unmarshal(encoded, &root); err != nil {
+					t.Fatal(err)
+				}
+				if scenario == "reopened" {
+					state := at(root, "resource", "fields", "System.State").(map[string]any)
+					state["oldValue"], state["newValue"] = "Closed", "Active"
+				}
+				if subscription.Source.Event == "webhook" {
+					root["type"] = subscription.Compiler.Types[0]
+				}
+				jobs := []Job{externalJob(t, policy, subscription, root, "one"), externalJob(t, policy, subscription, root, "two")}
+				payload, err := BuildDispatchBatch(jobs)
+				if err != nil {
+					t.Fatal(err)
+				}
+				declarations, err := json.Marshal([]CompilerTrigger{*subscription.Compiler})
+				if err != nil {
+					t.Fatal(err)
+				}
+				const script = `
 const assert = require('node:assert/strict'), path = require('node:path');
 const {validateWebhook} = require(path.join(process.env.WEBHOOK_COMPILER_RUNTIME_DIR, 'validate_webhook.cjs'));
 const {normalizeWebhookContext} = require(path.join(process.env.WEBHOOK_COMPILER_RUNTIME_DIR, 'webhook_context.cjs'));
@@ -54,20 +79,45 @@ for (const invalid of [
   {...event.client_payload, aw_context: {...event.client_payload.aw_context, items: []}},
 ]) assert.throws(() => validateWebhook({...event, client_payload: invalid}));
 const original = normalized.webhook.deliveries[0].payload;
-for (const invalid of [{url: original.url}, {...original, title:'forbidden'}, {...original, type:['unknown']}]) {
+const subscription = JSON.parse(process.env.GH_AW_WEBHOOK_SUBSCRIPTIONS)[0];
+assert.ok(original.type.every(type => subscription.types.includes(type)));
+for (const policy of ['resource-url-types/v1', 'resource-url-types-filters/v1']) {
+  const obsolete = JSON.parse(process.env.GH_AW_WEBHOOK_SUBSCRIPTIONS);
+  obsolete[0].dispatch.payload_projection.policy = policy;
+  assert.throws(() => validateWebhook(event, {...process.env, GH_AW_WEBHOOK_SUBSCRIPTIONS:JSON.stringify(obsolete)}));
+}
+const invalidPayloads = [{url: original.url}, {...original, title:'forbidden'}, {...original, type:['unknown']}];
+const unselected = ['closed','edited','labeled'].find(type => !subscription.types.includes(type));
+if (unselected && subscription.provider) invalidPayloads.push({...original, type:[...original.type, unselected].sort()});
+if (subscription.event === 'azure_devops_issue') {
+  const terminal = original.type.some(type => ['closed','reopened'].includes(type));
+  if (terminal) {
+    assert.equal(original.filters['closed-states'].length, 1);
+    const without = {...original.filters};
+    delete without['closed-states'];
+    invalidPayloads.push({...original, filters:without});
+  } else assert.equal(Object.hasOwn(original.filters,'closed-states'), false);
+  for (const states of [[], ['Active'], ['Closed','Done'], ['Done','Done'], true]) {
+    invalidPayloads.push({...original, filters:{...original.filters,'closed-states':states}});
+  }
+  if (!terminal) invalidPayloads.push({...original, filters:{...original.filters,'closed-states':['Done']}});
+  invalidPayloads.push({...original,type:['closed','reopened']});
+}
+for (const invalid of invalidPayloads) {
   const rejected = JSON.parse(JSON.stringify(event));
   rejected.client_payload.aw_context.webhook.deliveries[0].payload = invalid;
   assert.throws(() => validateWebhook(rejected));
 }
 `
-			command := exec.CommandContext(t.Context(), "node", "-e", script)
-			command.Env = append(os.Environ(), "GITHUB_EVENT_NAME=repository_dispatch",
-				"GH_AW_WEBHOOK_SUBSCRIPTIONS="+string(declarations))
-			command.Stdin = bytes.NewReader(payload)
-			if output, err := command.CombinedOutput(); err != nil {
-				t.Fatalf("published compiler runtime rejected external batch: %v\n%s", err, output)
-			}
-		})
+				command := exec.CommandContext(t.Context(), "node", "-e", script)
+				command.Env = append(os.Environ(), "GITHUB_EVENT_NAME=repository_dispatch",
+					"GH_AW_WEBHOOK_SUBSCRIPTIONS="+string(declarations))
+				command.Stdin = bytes.NewReader(payload)
+				if output, err := command.CombinedOutput(); err != nil {
+					t.Fatalf("published compiler runtime rejected external batch: %v\n%s", err, output)
+				}
+			})
+		}
 	}
 }
 

@@ -347,7 +347,7 @@ the compiler derives the unique affected-resource array at `aw_context.items`.
 It does not trust a supplied item list or infer latest state. Compiler security
 payloads require `{"url":"<canonical GitHub API alert URL>","type":["<original action>"]}`
 plus only declared matching `filters` when predicates exist,
-under the required `resource-url-types-filters/v1` projection policy. Native alert bodies,
+under the required `resource-url-types-filters/v2` projection policy. Native alert bodies,
 URL-only legacy payloads, and additional resource details are rejected.
 Approved artifact revision
 evidence stays in immutable durable provenance and the typed compiler-dispatch
@@ -639,26 +639,30 @@ the complete framed request before deduplication.
 
 Declaration v2 must specify `dispatch.batch:{mode:"same-event",
 deduplicate_by:"delivery_id"}`, exactly
-`dispatch.payload_projection:{"policy":"resource-url-types-filters/v1"}`, and the fixed
+`dispatch.payload_projection:{"policy":"resource-url-types-filters/v2"}`, and the fixed
 context paths in RFC-033 §6.1. Missing/unknown projection policies do not activate.
 All additional resource data must be retrieved inside the workflow through
 configured provider-authenticated readers; notification URLs do not grant access
 or justify attaching credentials to arbitrary origins.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`6f8a4ec5419be5e4e217d5edf0f9ea8f6d34e822`; optional interoperability tests
+`518516c8f3328cc781107497cf55380f9212adee`; optional interoperability tests
 execute that commit's actual runtime validator/normalizer, including exact and
 wildcard source selection, projected filter evidence, and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not
 supported by that compiler and do not autoactivate. See RFC-033 §13.1 for the
 wire contract, test reproduction, and bounded TLA+ result.
-Every delivery now follows `resource-url-types-filters/v1`: `url` and `type` are
-required, and `filters` is required only when predicates exist. Its flat keys are
-compiled condition names and its values are nonempty distinct homogeneous scalar
+Every delivery now follows `resource-url-types-filters/v2`: `url` and `type` are
+required, and `filters` is required when predicates or a selected Azure lifecycle
+match exist. Its flat keys are compiled condition names, plus the applicable Azure
+`closed-states` key, and its values are nonempty distinct homogeneous scalar
 arrays containing only matching literals actually observed in that delivery.
 Include all shared conditions and one complete matching `any_of` group, never
 cross-combined transition pairs or unselected source-array elements. With no
-predicates, omit `filters`. Old `resource-url-types/v1` inventories are nonactivating.
+predicates or a selected Azure lifecycle match, omit `filters`. Both old
+`resource-url-types/v1` and `resource-url-types-filters/v1` inventories are
+nonactivating. Severity remains an ordinary compiled condition; only matching
+literals appear in `filters.severity`.
 
 Optional shared `on.gateway-dispatch.orgs` selects GitHub organizations with
 literal names or `*` patterns (case-insensitive, 1–39 ASCII letters/digits/hyphens/
@@ -694,9 +698,17 @@ snapshot fallback requires the upstream contract's snapshot evidence. Azure nati
 bodies are protected by HTTPS and Basic authentication, not a claimed provider HMAC.
 Jira resolution/label changelogs, Linear `updatedFrom`, and Azure state/tag deltas
 are interpreted only in the receiver under the compiled normalization policy.
-All established activities survive, including `edited` for updates. Missing or
+Normalization derives all established activities, including `edited` for updates,
+then retains only the subscription's selected types. Every forwarded type must
+be selected; an empty intersection or contradictory closed/reopened evidence
+cannot qualify. Missing or
 ambiguous evidence does not imply a lifecycle transition. Native bodies are
 discarded; only the reference, activities and declared matching literals persist.
+For selected Azure `closed`/`reopened`, `filters["closed-states"]` contains exactly
+one configured terminal name: entered for closure, departed for reopening.
+It never contains the unmatched nonterminal side or the complete configured set,
+and is omitted without a selected lifecycle activity. `closed_states` is
+normalization metadata, not a source-path equality condition.
 
 Generic enrollment instead requires literal `types` and a reviewed `urlPath`
 JSON Pointer, with no inferred provider scope. Example **policy fragment**, not

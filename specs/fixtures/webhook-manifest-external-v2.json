@@ -16,7 +16,7 @@
         "method": "repository_dispatch",
         "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
         "workflow": ".github/workflows/test.lock.yml",
-        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "payload_projection": {"policy": "resource-url-types-filters/v2"},
         "context": {
           "envelope": "github.event.client_payload",
           "aw_context": "github.event.client_payload.aw_context",
@@ -44,7 +44,7 @@
         "method": "repository_dispatch",
         "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
         "workflow": ".github/workflows/test.lock.yml",
-        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "payload_projection": {"policy": "resource-url-types-filters/v2"},
         "context": {
           "envelope": "github.event.client_payload",
           "aw_context": "github.event.client_payload.aw_context",
@@ -62,7 +62,7 @@
       "event": "azure_devops_issue",
       "provider": "azure-devops",
       "native_events": ["workitem.created", "workitem.deleted", "workitem.restored", "workitem.updated"],
-      "activity_normalization": {"policy": "azure-devops-issue/v1", "closed_states": ["Done"]},
+      "activity_normalization": {"policy": "azure-devops-issue/v1", "closed_states": ["Closed", "Done"]},
       "types": ["opened", "edited", "closed", "reopened", "labeled", "unlabeled", "deleted", "restored"],
       "conditions": [
         {"filter": "project_id", "path": ["resourceContainers", "project", "id"], "operator": "equals", "value_type": "string", "values": ["azure-project"]}
@@ -72,7 +72,7 @@
         "method": "repository_dispatch",
         "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
         "workflow": ".github/workflows/test.lock.yml",
-        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "payload_projection": {"policy": "resource-url-types-filters/v2"},
         "context": {
           "envelope": "github.event.client_payload",
           "aw_context": "github.event.client_payload.aw_context",
@@ -95,7 +95,7 @@
         "method": "repository_dispatch",
         "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
         "workflow": ".github/workflows/test.lock.yml",
-        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "payload_projection": {"policy": "resource-url-types-filters/v2"},
         "context": {
           "envelope": "github.event.client_payload",
           "aw_context": "github.event.client_payload.aw_context",
@@ -120,7 +120,7 @@
         "method": "repository_dispatch",
         "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
         "workflow": ".github/workflows/test.lock.yml",
-        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "payload_projection": {"policy": "resource-url-types-filters/v2"},
         "context": {
           "envelope": "github.event.client_payload",
           "aw_context": "github.event.client_payload.aw_context",

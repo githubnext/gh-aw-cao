@@ -605,14 +605,18 @@ code-scanning repository events with batch-capable declaration v2 to compiler
 routes, with private-only live checks,
 event/contents-read permission checks, bounded grants expiring at inventory
 freshness, and minimal security notifications under required
-`dispatch.payload_projection: {"policy":"resource-url-types-filters/v1"}`. Missing or
+`dispatch.payload_projection: {"policy":"resource-url-types-filters/v2"}`. Missing or
 unknown policies and legacy projections fail closed, without a native-body
 fallback. Original deliveries are authenticated, classified, and filtered before
 projection; GitHub `type` contains exactly the original action, bound to durable
 event identity. Optional `filters` contains only observed matching literals for
 every shared condition and one complete matching alternative, never unselected
 array elements, nested source objects, or cross-combined transition pairs. It is
-omitted without predicates. The old `resource-url-types/v1` policy is nonactivating.
+Azure selected lifecycle matches additionally carry exactly one matching
+`filters["closed-states"]` terminal name, not a source-path condition: entered for
+closed, departed for reopened. Otherwise that key is absent. Without predicates
+or a selected Azure lifecycle match, filters are omitted. Both old
+`resource-url-types/v1` and `resource-url-types-filters/v1` policies are nonactivating.
 All additional data must be resolved inside the workflow through
 configured provider-authenticated readers; notification URLs never grant access.
 Canonical HTTPS api.github.com
@@ -643,7 +647,7 @@ mock GitHub tests, and separate bounded registry, source-selection and dispatch-
 demonstrate local contracts, not installed-compiler or live GitHub acceptance.
 Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
 context paths, same-event/delivery-ID batching, minimal URL/type/matching-filter policy,
-and optional source selectors match github/gh-aw#69772 commit 6f8a4ec. Gateway
+and optional source selectors match github/gh-aw#69772 commit 518516c. Gateway
 `aw_context` contains only `webhook`, never supplied items, provenance, or resource
 details. Context resource identities are derived from canonical URLs. Discovery
 supports Projects, both security families, Jira, Linear, Azure DevOps, and generic
@@ -685,8 +689,13 @@ also checks signed timestamps within one minute and acknowledges durable success
 with HTTP 200. Generic bridges sign the exact body using HMAC-SHA256, require
 signed id/type/timestamp (within five minutes), and select the canonical resource
 URL only through the reviewed JSON Pointer. Receiver and admission policy
-revisions must agree. All derived provider activities, including edited on
-updates, survive projection; immutable activity evidence binds durable jobs.
+revisions must agree. Native normalization derives all established activities,
+including edited on updates, but projection and durable activity identity retain
+only their intersection with the subscription's selected types. An empty
+intersection or contradictory closed/reopened evidence cannot qualify. Every
+forwarded type must be selected. Azure closure/reopening requires complete
+delivered old/new state evidence and forwards only the applicable configured
+terminal name, never the nonterminal side or the entire configured set.
 Optional runtime interoperability executes that source's actual validator/
 normalizer, including exact/wildcard sources and whole-batch selector rejection,
 not a hosted workflow or an installed compiler.

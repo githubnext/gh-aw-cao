@@ -151,7 +151,7 @@ func subscriptionIdentity(s Subscription, event Event) (EventIdentity, error) {
 		return EventIdentity{}, err
 	}
 	if providerEvent(event.Name) {
-		identity.Activities = providerActivities(*s.Compiler, root)
+		identity.Activities = selectedProviderActivities(*s.Compiler, root)
 	} else {
 		identity.Activities = []string{event.Action}
 	}
