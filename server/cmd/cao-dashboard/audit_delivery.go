@@ -13,8 +13,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/auditdelivery"
+	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 )
+
+var auditDeliveryLog = debuglogger.New("cao:dashboard:audit-delivery")
 
 func newAuditDeliverCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -31,19 +34,9 @@ func newAuditDeliverCommand() *cobra.Command {
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		result := auditdelivery.Result{Status: "failure", Stage: "configuration"}
 		runErr := func() error {
-			if *timeout < time.Second || *timeout > 30*time.Minute {
-				return errors.New("audit delivery timeout must be between 1s and 30m")
-			}
-			options := auditdelivery.Options{Stream: *stream, MaxEvents: *maxEvents, MaxAnchorAge: *maxAge}
-			if err := options.Validate(); err != nil {
+			options, err := deliveryOptions(*stream, *maxEvents, *maxAge, *timeout, *bootstrapPath)
+			if err != nil {
 				return err
-			}
-			if *bootstrapPath != "" {
-				anchor, err := readBootstrapAnchor(*bootstrapPath)
-				if err != nil {
-					return err
-				}
-				options.Bootstrap = &anchor
 			}
 			destination, err := auditdelivery.NewHTTPDestination(os.Getenv("CAO_AUDIT_DELIVERY_URL"), os.Getenv("CAO_AUDIT_DELIVERY_TOKEN"))
 			if err != nil {
@@ -72,6 +65,30 @@ func newAuditDeliverCommand() *cobra.Command {
 		return runErr
 	}
 	return cmd
+}
+
+// deliveryOptions validates the delivery bounds and loads the optional
+// bootstrap anchor, without touching the network or the audit store.
+func deliveryOptions(stream string, maxEvents int, maxAge, timeout time.Duration, bootstrapPath string) (auditdelivery.Options, error) {
+	if timeout < time.Second || timeout > 30*time.Minute {
+		auditDeliveryLog.Printf("rejected delivery options: reason=timeout_out_of_range")
+		return auditdelivery.Options{}, errors.New("audit delivery timeout must be between 1s and 30m")
+	}
+	options := auditdelivery.Options{Stream: stream, MaxEvents: maxEvents, MaxAnchorAge: maxAge}
+	if err := options.Validate(); err != nil {
+		auditDeliveryLog.Printf("rejected delivery options: reason=invalid_options")
+		return auditdelivery.Options{}, err
+	}
+	if bootstrapPath != "" {
+		anchor, err := readBootstrapAnchor(bootstrapPath)
+		if err != nil {
+			auditDeliveryLog.Printf("rejected delivery options: reason=bootstrap_anchor")
+			return auditdelivery.Options{}, err
+		}
+		options.Bootstrap = &anchor
+	}
+	auditDeliveryLog.Printf("resolved delivery options: max_events=%d bootstrap=%t", maxEvents, bootstrapPath != "")
+	return options, nil
 }
 
 func readBootstrapAnchor(path string) (auditdelivery.Anchor, error) {
