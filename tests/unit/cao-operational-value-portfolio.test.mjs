@@ -443,6 +443,13 @@ test("Go failure containment qualifies once while logger, pattern and durable me
     assert.equal(gap.reportAvailable, true);
     assert.equal(gap.evaluationReady, false);
   }
+  for (const id of ["daily-code-debt-aider", "code-simplifier"]) {
+    assert.equal(measurements.some(row => row.workflowId === id), false);
+    const reserved = progress.find(row => row.workflowId === id);
+    assert.equal(reserved.functionReady, false);
+    assert.equal(reserved.evaluationReady, false);
+    assert.match(reserved.stage, /local source-first/);
+  }
 });
 
 test("mathematically correct worked examples remain distinct from complete educational acceptance", async () => {

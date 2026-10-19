@@ -311,6 +311,16 @@ export async function currentPortfolioInputs() {
     functionReady: false, evidenceReady: false, evaluationReady: false, plotReady: false, blocked: true,
     stage: "fixed three-report native event investigation retains an evidence gap, not measured zero",
     detail: "A source-first contract and 25 original responses retain the latest three title/profile-matched surviving Discussions from 169 candidates, exact reporting-run source/runtime bindings and provider artifact inventories for every explicitly cited run. All five distinct referenced runs currently return empty artifact inventories. Reported 270/33 blocked events, published chart assets and the third report's claimed no-data zero cannot establish original denied requests or complete reporting scopes. Native events, full acceptance and contribution remain unknown; this investigation is not a finished native value function or standard evaluation." });
+  progress.push(
+    { workflowId: "daily-code-debt-aider", sourceGitBlob: "3774deb1dcc48c170419e18dff3343d623150c76",
+      stage: "local source-first debt outcome authoring",
+      functionReady: false, evidenceReady: false, evaluationReady: false, plotReady: false,
+      detail: "A local isolated cohort owns this workflow and code-simplifier. It is deriving independently observable useful debt-removal predicates from actual source/adoption and native implementation evidence. No function or accepted outcome is admitted yet; TODO deletion, removed lines, fixtures and merged PRs do not earn coverage." },
+    { workflowId: "code-simplifier", sourceGitBlob: "b93dc061a8dc056497cf8ada5006eb9a9124bb25",
+      stage: "local source-first simplification outcome authoring",
+      functionReady: false, evidenceReady: false, evaluationReady: false, plotReady: false,
+      detail: "The local native code-debt cohort owns this workflow and daily-code-debt-aider. It is separating genuine source-defined simplification from cosmetic counters and independently checking any useful partial. This reservation is not instrument completion or native measurement; remote test selection must not duplicate the cohort." },
+  );
   const engineContracts = "docs/operational-value/proof/engine-conformance/contracts.json";
   for (const contract of existsSync(engineContracts) ? readCensusJson(engineContracts) : []) {
     const archivePath = `docs/operational-value/proof/engine-conformance/${contract.workflowId}-v2.json.gz`;
