@@ -3,6 +3,34 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-19T03:02:50Z",
+      "worker_run_id": 39192466798,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39191636952,
+        39190093654,
+        39187773401,
+        39187004841,
+        39186011455,
+        39185876269,
+        39183200743,
+        39179104419,
+        39177896104,
+        39176849931,
+        39176029082,
+        39176008649,
+        39175838140,
+        39174730895,
+        39173669741,
+        39173019337,
+        39173011411,
+        39172590294,
+        39171797995,
+        39171613830
+      ],
+      "outcome": "Incomplete evaluation for category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 553fa58dd630481370bf764daab0bc42d99496fb. In the latest 20 completed docs.yml runs from 2026-10-18T22:17:57Z through 2026-10-19T02:48:01Z, 14 runs concluded success, 6 concluded skipped, 0 concluded failure, and 0 were cancelled. Trusted job metadata showed only 2 successful build-bearing docs runs in that bounded sample: schedule 39173669741 and push 39173011411, both on head SHA 553fa58dd630481370bf764daab0bc42d99496fb. All other successful runs completed only schedule-freshness and skipped build plus deploy, while workflow_run callbacks were skipped. Because the mission requires at least 5 comparable successful build-bearing docs runs before assessing scheduling, concurrency, and avoidable rebuilds or recommending a workflow change, no actionable improvement was evaluated in this run and next_category remains unchanged."
+    },
+    {
       "evaluated_at": "2026-10-19T02:37:46Z",
       "worker_run_id": 39190654260,
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -813,34 +841,6 @@
         39084613320
       ],
       "outcome": "Incomplete evaluation for category \"Astro documentation generation\" on source SHA 6394ae3db0534eada9c0881ef1db971a8ddb3bce. In the latest 20 completed docs.yml runs from 2026-10-18T00:56:19Z through 2026-10-18T04:49:34Z, 15 runs concluded success, 5 concluded skipped, 0 concluded failure, and 0 were cancelled. All observed runs used unchanged workflow source at 6394ae3db0534eada9c0881ef1db971a8ddb3bce, but none of the successful runs executed the build job; the window contains only schedule freshness checks and workflow_run callbacks that skipped build and deploy because the deployed docs and dashboard were already current. The mission requires at least 5 comparable successful build-bearing runs before evaluating a build-time improvement, so no actionable Astro-generation recommendation was assessed in this run and next_category remains unchanged until a later authorized run has enough comparable evidence."
-    },
-    {
-      "evaluated_at": "2026-10-18T04:43:50Z",
-      "worker_run_id": 39097855162,
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        39097762970,
-        39097049499,
-        39096898089,
-        39095680386,
-        39095041909,
-        39094496186,
-        39093661749,
-        39093499218,
-        39092174005,
-        39091537097,
-        39090370845,
-        39088640464,
-        39087924678,
-        39087832789,
-        39086764911,
-        39086658333,
-        39084759712,
-        39084613320,
-        39081398631,
-        39080280156
-      ],
-      "outcome": "Incomplete evaluation for category \"Astro documentation generation\" on source SHA 6394ae3db0534eada9c0881ef1db971a8ddb3bce. In the latest 20 completed docs.yml runs from 2026-10-17T23:46:11Z through 2026-10-18T04:38:13Z, 15 runs concluded success and 5 concluded skipped; none failed, were cancelled, timed out, or required action. However, only 2 successful docs runs executed the build job in this bounded window (39081398631 and 39080280156). The mission requires at least 5 comparable successful runs before evaluating a build-time improvement, so no actionable Astro-generation recommendation was assessed in this run and next_category remains unchanged until a later authorized run has enough comparable evidence."
     }
   ]
 }
