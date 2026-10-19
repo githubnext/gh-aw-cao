@@ -73,6 +73,7 @@ import { collectBatch as collectTestifyQuality, scoreMetric as scoreTestifyQuali
 import { collectBatch as collectCliMigration, scoreMetric as scoreCliMigration } from "../docs/operational-value/proof/functions/breaking-change-checker.mjs";
 import { collectBatch as collectSimplification, scoreMetric as scoreSimplification } from "../docs/operational-value/proof/functions/code-simplifier.mjs";
 import { collectBatch as collectDebtRemediation, scoreMetric as scoreDebtRemediation } from "../docs/operational-value/proof/functions/daily-code-debt-aider.mjs";
+import { collectBatch as collectCiCoverage, scoreMetric as scoreCiCoverage } from "../docs/operational-value/proof/functions/ci-coach.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -781,6 +782,13 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "ci-coach", sourceGitBlob: "8eca15ac07bba381129cf48c03fd07335a317ae2",
+      functionSha256: "979bff8f8c476daac1e82d342582f22d65aef122d8270253fc892cdd35ea287b",
+      timelineDigest: "0fa78d5ba5c88aee5c345723e535c4c43292aab15aa0c7746308aee024e64861",
+      reports: "docs/operational-value/proof/native-ci/reports/github-gh-aw",
+      collector: collectCiCoverage, scorer: scoreCiCoverage, partialMetricId: "unambiguous-fuzz-selections-restored",
+      stage: "nine conditional native fuzz-selector restorations; actual execution and CI efficiency unknown",
+      detail: "All 107 frozen roots and35 downstream PR candidates retain123 original responses with complete bounded relationship queries, including empty results. Actual-parent CI-only transition c84a4a77a4ca2f915ee6e0b930f35d8faa0ba0a4 to460636a6a339eb7c5556c3bca828ec97823f4e7d in PR18158 adds11 invocations. A complete Git-bound665-file test inventory, native Go AST/build eligibility and Go regexp matching establish only nine unambiguous new fuzz-mode selections. The singular FuzzParseInputDefinition selector also matches FuzzParseInputDefinitions; an independently authored Go witness reproduces deterministic rejection, excluding that invocation and the later blocked plural invocation. This is outcome-informed v2 conditional configuration coverage, not eleven observed executions, full test coverage, measured speed or cost savings. V1 is preserved; seed execution is not fuzz-mode execution. One delivery period has9 and44 periods remain unknown. Original source/run and the current copied marker corroborate shared contribution, not an original publication or creation receipt; the selected issue's relationship query is empty. Full acceptance, comprehensive safeguards, causal attribution, costs and keep decision remain unknown." },
     { workflowId: "breaking-change-checker", sourceGitBlob: "dc7b08a992ed544f5f6350187252029ef30f3088",
       functionSha256: "cfa87c997a28ccc91d1be6c4e954b8aeaa1c5edd54d667b042a824282dc8c65c",
       timelineDigest: "6ae16654b2795109a40da99d4765b0a9f4be117f4ca7ced0504c297252e7286f",

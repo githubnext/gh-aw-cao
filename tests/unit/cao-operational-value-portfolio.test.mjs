@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 85);
-  assert.equal(model.totals.workflows - model.totals.measured, 259);
+  assert.equal(model.totals.measured, 86);
+  assert.equal(model.totals.workflows - model.totals.measured, 258);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -465,6 +465,21 @@ test("native migration and consolidation qualify as bounded partials while Aider
   assert.equal(gap.evaluationReady, false);
   assert.equal(progress.filter(row => row.workflowId === "code-simplifier").length, 1);
   assert.equal(progress.filter(row => row.workflowId === "daily-code-debt-aider").length, 1);
+});
+
+test("CI coverage counts nine conditional selections and preserves the ambiguous-selector failure", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const timeline = measurements.find(row => row.workflowId === "ci-coach")?.input;
+  assert.ok(timeline);
+  assert.equal(timeline.snapshots.length, 45);
+  assert.deepEqual(timeline.snapshots.map(row => row.metrics["unambiguous-fuzz-selections-restored"])
+    .filter(value => value !== null), [9]);
+  assert.equal(timeline.snapshots.at(-1).metrics["unambiguous-fuzz-selections-restored"], null);
+  const row = progress.find(row => row.workflowId === "ci-coach");
+  assert.equal(row.partial, true);
+  assert.match(row.detail, /not eleven observed executions/);
+  assert.match(row.detail, /deterministic rejection/);
+  assert.match(row.detail, /44 periods remain unknown/);
 });
 
 test("mathematically correct worked examples remain distinct from complete educational acceptance", async () => {

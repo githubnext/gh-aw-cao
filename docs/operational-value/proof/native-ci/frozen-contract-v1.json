@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "ci-coach",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceBlob": "8eca15ac07bba381129cf48c03fd07335a317ae2",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": {
+    "status": "source-informed-before-candidate-body-and-implementation-inspection",
+    "priorExposure": "Frozen source/imports, original introduction prompt, source commit titles/history, existing census intent and candidate identities/counts. Source history itself exposes repair titles; no selected output body or candidate implementation has been inspected. Any predicate selected or revised after outcome inspection requires an explicit outcome-informed successor.",
+    "effectiveExecutor": "The bound workflow uses Copilot SDK with runtime imports and pre-flight acquisition. Historical source/runtime, real task execution and applied outputs must be independently established for any contribution claim."
+  },
+  "adoption": {
+    "commit": "8a7e88c3655c695e43381a5e8c96ac29d7262df2",
+    "parent": "259442da73e08ae888cd1776c6cc124b8eb37a49",
+    "adoptedAt": "2025-12-10T23:34:35Z",
+    "sourcePath": ".github/workflows/ci-coach.md",
+    "preflightRepairPriorityAdded": "2026-06-08T22:23:57Z"
+  },
+  "goal": "Improve CI efficiency while preserving required test execution, correct failure propagation and correctness; repair independently demonstrated pre-flight failures when that priority exists in the contemporaneous workflow.",
+  "fullAcceptance": "Demonstrate more than five percent CI time improvement on comparable independently recorded workloads/environments while retaining complete eligible test coverage, correct failure propagation and required correctness/security dependencies. A pre-flight repair instead needs the original failing condition and independent acceptance of the repaired condition. Neither proposed savings nor successful/merged activity establishes acceptance.",
+  "partials": [
+    {
+      "id": "restored-ci-test-obligations",
+      "unit": "previously excluded required Go test obligations restored to CI selection",
+      "formula": "Count distinct existing package/test identities demonstrably excluded by the actual parent's production CI selection and included after the landed transition. Establish the complete relevant Git-bound Go test inventory, build/platform eligibility, native test-function identity and exact effective matrix/package/regex selection. Added test declarations alone, disabled tests, duplicated selections and changed documentation do not qualify.",
+      "limitation": "Selection coverage is not evidence that a test actually executed, passed, retained behavior or improved elapsed time."
+    },
+    {
+      "id": "restored-ci-failure-propagation",
+      "unit": "independently verified CI failure-propagation conditions repaired",
+      "formula": "Count distinct production command/status identities whose actual-parent control flow demonstrably discards a required failing command status and whose landed replacement propagates that status. Verify exact production wiring and an independently authored bounded failure witness without executing target source. Intended nonfatal evidence collection, documented expected timeout classification and changed assertions that hide errors do not qualify.",
+      "limitation": "Conditional status propagation is not an observed historical failure, successful full CI run or proof of complete test integrity."
+    }
+  ],
+  "eligibility": [
+    "The accepted actual repair commit is an ancestor of the frozen repository revision, after actual introduction and before cutoff.",
+    "The claimed condition is required by contemporaneous intent or an independently established older CI contract, not newly invented from the patch.",
+    "Actual parent, native source/configuration and complete relevant dependency closure establish the before/after predicate.",
+    "Retain all rejected or missing candidates; absence of an accepted case remains null, not zero whole-workflow value.",
+    "Units remain separate; do not add test obligations to propagation repairs or infer monetary savings.",
+    "Editable markers are discovery only. Repository outcome, corroborated shared contribution and receipt-verified applied output are separate claims."
+  ],
+  "selection": {
+    "scope": "All 107 marker-linked frozen roots and 23 related PR candidates, plus directly linked downstream PRs from bounded original relationship graphs. Original graph pagination must explicitly report completeness; no claim of complete historical output discovery.",
+    "roots": [17172,17175,18151,18158,18358,18370,18696,18879,19225,19226,19432,19729,20367,21240,21600,21809,21965,22436,23729,23732,23901,24318,25315,26044,26652,27359,27581,27842,28104,29124,30627,31024,31511,31696,31946,32389,33054,33564,33772,34016,34658,35487,37121,37840,41042,41230,44306,44560,44740,45271,45497,45748,46010,46255,46851,47090,47331,47589,47798,48390,48635,48902,49145,49352,50011,50274,50891,51795,52301,53397,53701,54017,54545,55789,56049,56392,56661,57452,57710,57956,58243,58497,59234,59469,59740,59987,60276,60846,61146,61359,61610,61809,62375,63187,63448,64020,65027,65868,66180,66896,67212,68444,68701,68706,69042,69375,69383],
+    "pulls": [17175,18158,18370,18879,19226,23732,31024,48392,50891,51795,53597,55789,57710,59740,61146,61359,63187,63907,65027,66180,66896,68714,69383]
+  },
+  "periods": {
+    "cadenceDays": 7,
+    "durationDays": 7,
+    "maturationDays": 0,
+    "interval": "Half-open disjoint delivery periods, counted once at the actual accepted commit timestamp."
+  },
+  "separateUnknowns": [
+    "Full acceptance and full-history completeness",
+    "Actual execution, behavior preservation and comprehensive safeguards",
+    "Original publication-time body correctness",
+    "Receipt-backed attribution, sole causation and matched costs",
+    "Keep decision without an explicitly agreed native threshold"
+  ],
+  "acquisition": {
+    "transport": "Read-only public GitHub API originals; batched discovery and resumable SHA-256-verified archive",
+    "requestBudget": 240,
+    "targetExecution": false,
+    "remoteWrites": false
+  }
+}

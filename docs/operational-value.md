@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-85 of 344 is 24.7%, with 259 workflows still unevaluated.
+86 of 344 is 25.0%, with 258 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -528,6 +528,16 @@ The Aider instrument remains unqualified: its retained failure issues and six
 downstream plumbing fixes do not establish production Go debt remediation.
 Neither partial proves full acceptance, comprehensive safeguards, receipt-backed
 attribution, causal effect, matched costs or an agreed keep decision.
+
+The CI coach partial establishes nine conditional fuzz-target selector
+restorations, not eleven executions. Complete Git-bound test inventories and
+native Go AST/build/regexp checks reveal that one added singular selector also
+matches its plural counterpart. An independently authored Go witness reproduces
+the resulting rejection; that invocation and its blocked successor earn no
+coverage. The outcome-informed v2 separates fuzz-mode configuration coverage
+from existing seed execution, measured CI time savings and full test integrity.
+The known selector failure remains visible rather than being erased by the
+useful partial.
 
 Durable storage is separately observable, not evidence that stored metrics are
 correct. Three immutable repo-memory snapshots preserve 344 records each, but

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "version": "2.0.0",
+  "predecessor": "frozen-contract-v1.json",
+  "authoring": {
+    "status": "outcome-informed-retrospective",
+    "reason": "After v1 freeze, original PR18158 and its actual-parent CI-only transition exposed an additive fuzz-selector repair. The complete native inventory also exposed an ambiguous singular/plural selector. V1 Go test selection is not interchangeable with fuzz-mode selection: existing seed execution can occur outside fuzz mode. Preserve v1 and do not claim eleven completed fuzz executions."
+  },
+  "nativePartial": {
+    "id": "unambiguous-fuzz-selections-restored",
+    "unit": "existing fuzz targets newly selected unambiguously in the main-branch fuzz job",
+    "formula": "Within the actual-parent CI-only transition, count distinct previously unmatched native Go fuzz targets introduced by additive production run_fuzz_test calls. Match the exact unanchored selectors with Go's regexp implementation against the complete Linux/amd64-eligible package test inventory. Require a unique testing.F entry point with a Fuzz body. Exclude ambiguous selectors and every added invocation after the first selector that deterministically fails under the production fail-fast shell. Preserve all previous invocations, helper, Go version and job gating.",
+    "interpretation": "Conditional configuration coverage, not observed fuzz execution, passing tests, discovered defects, full test integrity or elapsed-time improvement.",
+    "direction": "increase",
+    "caseIdentity": "460636a6a339eb7c5556c3bca828ec97823f4e7d:main-fuzz-selector-coverage"
+  },
+  "selection": {
+    "pull": 18158,
+    "parent": "c84a4a77a4ca2f915ee6e0b930f35d8faa0ba0a4",
+    "commit": "460636a6a339eb7c5556c3bca828ec97823f4e7d",
+    "deliveryAt": "2026-02-24T14:13:33Z",
+    "path": ".github/workflows/ci.yml",
+    "sourcePackages": ["pkg/parser", "pkg/workflow"],
+    "expectedInventoryFilesPerEndpoint": 665
+  },
+  "rejectedClaims": [
+    "Eleven independently completed or observed fuzz executions",
+    "Complete test coverage or complete security acceptance",
+    "No earlier fuzz failure or no later ambiguous-selection failure",
+    "Measured speed, cost savings or accepted five-percent improvement",
+    "V1 complete Go test obligations restored rather than narrower fuzz-mode selection",
+    "Receipt-verified workflow attribution or original report correctness"
+  ]
+}

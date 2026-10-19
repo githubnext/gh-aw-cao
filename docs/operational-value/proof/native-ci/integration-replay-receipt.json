@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "networkDeniedWithRealProbe": true,
+  "originalFilesAndCachesDeniedWithRealProbes": true,
+  "gitDirectoryPresent": false,
+  "nodeModulesPresent": false,
+  "freshHomeAndGoCaches": true,
+  "targetCodeExecuted": false,
+  "focusedTestsPassed": 9,
+  "actualCollectorVerified": true,
+  "standardInitialEvaluation": true,
+  "standardRefreshes": 2,
+  "completeTimelineParityRemovingOnlyRootGeneratedAt": true,
+  "exactNativeAssessmentParity": true,
+  "timelineFactsSha256": "1d59254e9e6869ccd14584c17a4396226679dfc250b8c4503007878c0ceb35f1",
+  "nativeSubtotal": 9,
+  "fullGoalAcceptance": null
+}

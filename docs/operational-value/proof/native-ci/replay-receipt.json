@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "focusedTests": 9,
+  "actualCollectorVerified": true,
+  "initialStandardEvaluation": true,
+  "completeRefreshes": 2,
+  "exactTimelineParityIgnoringOnlyGeneratedAt": true,
+  "timelineFactsSha256": "1d59254e9e6869ccd14584c17a4396226679dfc250b8c4503007878c0ceb35f1",
+  "nativeSubtotal": 9,
+  "qualification": "Conditional native fuzz-selector coverage only; not eleven executions or measured CI efficiency",
+  "fullAcceptance": null,
+  "targetCodeExecuted": false
+}
