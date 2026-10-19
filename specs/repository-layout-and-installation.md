@@ -217,6 +217,7 @@ destination set.
 ### 4.3 Lifecycle entry points
 
 The root installer MUST download the compiled `gh-cao-OS-ARCH` release asset
+(or the legacy `OS-ARCH` asset from an older published release)
 and `checksums.txt` for the current supported platform (Linux, Darwin or Windows;
 amd64 or arm64). It MUST verify exactly one matching SHA-256 entry and the
 embedded version before atomically replacing the binary in GitHub CLI's
@@ -224,15 +225,21 @@ embedded version before atomically replacing the binary in GitHub CLI's
 `LOCALAPPDATA`, refuse linked/source installations, and preserve an existing
 binary on verification failure. An explicit `githubnext/gh-cao@vX.Y.Z`
 source MUST select that extension release; other sources MUST use the latest
-stable extension. Runtime revision selection remains independent.
+published `vX.Y.Z` extension release, including prereleases but excluding drafts.
+Runtime revision selection remains independent.
 Before installing or upgrading tools or writing CAO files, the installer MUST
 verify that the selected published release contains exactly one uploaded,
 nonempty asset for each of the six supported platform binaries and
-`checksums.txt`. Runtime-only releases and legacy unprefixed binary names MUST
-fail with an actionable release-contract error, without selecting a prerelease
-or substituting another release. Maintainers MUST publish and promote a
-correctly packaged release before deploying an installer that requires its
-binaries; an immutable published release cannot be repaired in place.
+`checksums.txt`. The installer MUST select one complete naming set, preferring
+`gh-cao-OS-ARCH` when both sets are complete, and MUST verify the checksum entry
+for the exact downloaded name. It MUST NOT mix naming sets or retry another
+asset after verification fails. Runtime-only or incomplete releases MUST fail
+with an actionable release-contract error, without substituting another release.
+An immutable published release cannot be repaired in place.
+When an older verified extension initializes a new policy using the former
+`githubnext/gh-aw-cao` schema URI, the installer MUST align only that metadata URI
+with the installed catalog's canonical schema URI. It MUST reject unknown
+mismatches and MUST NOT rewrite an existing policy or any authority fields.
 The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
 removed shell equivalents. No shell launcher is installed. Actions and Node-only
 tools MUST invoke `node activity/cao.mjs <command>` or another explicit Node

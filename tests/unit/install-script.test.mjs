@@ -39,7 +39,7 @@ test("quickstart keeps terminal presentation and filters Node experimental warni
   assert.match(installerSource, /quickstart_arguments\+=\(--target "\$target_repository"\)/);
   assert.doesNotMatch(installerSource, /default_quickstart_control_repository|default_repository_name/);
   assert.match(installerSource, /Quickstart requires a clean control-repository checkout before installation/);
-  assert.match(installerSource, /Quickstart selected stable CAO release \$quickstart_release/);
+  assert.match(installerSource, /Quickstart selected published CAO release \$quickstart_release/);
 });
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
@@ -133,6 +133,11 @@ if [[ "\${1:-}" == cao ]]; then
   shift
   executable="$XDG_DATA_HOME/gh/extensions/gh-cao/gh-cao"
   [[ ! -f "$executable.exe" ]] || executable="$executable.exe"
+  if [[ "$*" == init && -n "\${FAKE_CAO_POLICY_SCHEMA:-}" ]]; then
+    "$executable" "$@" || exit "$?"
+    node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs"; const file=".github/workflows/cao.json"; const policy=JSON.parse(readFileSync(file,"utf8")); policy.$schema=process.env.FAKE_CAO_POLICY_SCHEMA; writeFileSync(file,JSON.stringify(policy));'
+    exit 0
+  fi
   exec "$executable" "$@"
 fi
 if [[ "$*" == "auth status" ]]; then
@@ -294,7 +299,8 @@ if [[ "$url" == https://github.com/githubnext/gh-cao/releases/download/* ]]; the
       const mode = process.env.FAKE_CAO_CHECKSUM_MODE;
       const digest = mode === "corrupt" ? "0".repeat(64) : createHash("sha256").update(readFileSync(process.argv[1])).digest("hex");
       if (mode !== "missing") for (const os of ["darwin", "linux", "windows"]) for (const arch of ["amd64", "arm64"]) {
-        const line = digest + "  gh-cao-" + os + "-" + arch + (os === "windows" ? ".exe" : "");
+        const prefix = process.env.FAKE_CAO_ASSET_PREFIX ?? "gh-cao-";
+        const line = digest + "  " + prefix + os + "-" + arch + (os === "windows" ? ".exe" : "");
         console.log(line);
         if (mode === "duplicate") console.log(line);
       }
@@ -1248,7 +1254,7 @@ test("headless quickstart selects the current checkout and validates it before m
   await assertNothingInstalled(consumer);
 });
 
-test("implicit quickstart pins the latest stable CAO release", async (t) => {
+test("implicit quickstart pins the latest published CAO release", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const result = await runStreamed(consumer, {
     ...env,
@@ -1258,17 +1264,17 @@ test("implicit quickstart pins the latest stable CAO release", async (t) => {
   }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
+  assert.match(result.stdout, /Quickstart selected published CAO release v1\.2\.3/);
   assert.equal(await log(), "add\n");
 });
 
-test("quickstart skips malformed tags, drafts, and prereleases when selecting a stable release", async (t) => {
+test("quickstart skips malformed tags and drafts but selects a published prerelease", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const result = await runStreamed(consumer, {
     ...env,
     CI: "1",
     FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.3",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.5",
     FAKE_CAO_RELEASE_LIST: [
       "false\tfalse\tuntagged-a58de5448231a0eed5d3",
       "true\tfalse\tv1.3.0",
@@ -1280,16 +1286,17 @@ test("quickstart skips malformed tags, drafts, and prereleases when selecting a 
   }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
+  assert.match(result.stdout, /Quickstart selected published CAO release v1\.2\.5/);
+  assert.equal(await readFile(env.FAKE_CAO_RELEASE_REQUESTS, "utf8"), "repos/githubnext/gh-cao/releases/tags/v1.2.5\n");
   assert.equal(await log(), "add\n");
 });
 
 for (const releases of [
   "",
   "false\tfalse\tuntagged-a58de5448231a0eed5d3",
-  "true\tfalse\tv1.3.0\nfalse\ttrue\tv1.2.5",
+  "true\tfalse\tv1.3.0\ntrue\ttrue\tv1.2.5",
 ]) {
-  test(`quickstart fails closed without a published stable version tag: ${JSON.stringify(releases)}`, async (t) => {
+  test(`quickstart fails closed without a published version tag: ${JSON.stringify(releases)}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t, supportedGhAw);
     const result = await runStreamed(consumer, {
       ...env,
@@ -1298,14 +1305,14 @@ for (const releases of [
     }, ["--quickstart", "--target", "alpha-org/project"]);
 
     assert.notEqual(result.code, 0);
-    assert.match(result.stderr, /Unable to resolve the latest stable CAO release with a vX\.Y\.Z tag/);
+    assert.match(result.stderr, /Unable to resolve the latest published CAO release with a vX\.Y\.Z tag/);
     assert.match(result.stderr, /No CAO files were written/);
     assert.equal(await log(), "");
     await assertNothingInstalled(consumer);
   });
 }
 
-test("implicit quickstart refreshes an existing control plane to the stable release", async (t) => {
+test("implicit quickstart refreshes an existing control plane to the published release", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
   await executeFile("git", ["add", "."], { cwd: consumer });
@@ -1339,12 +1346,12 @@ test("quickstart preserves an explicit main source", async (t) => {
   }, ["githubnext/gh-cao@main", "--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
-  assert.doesNotMatch(result.stdout + result.stderr, /Unable to resolve the latest stable CAO release/);
-  assert.doesNotMatch(result.stdout, /Quickstart selected stable CAO release/);
+  assert.doesNotMatch(result.stdout + result.stderr, /Unable to resolve the latest published CAO release/);
+  assert.doesNotMatch(result.stdout, /Quickstart selected published CAO release/);
   assert.equal(await log(), "add\n");
 });
 
-test("quickstart fails closed when no stable CAO release can be resolved", async (t) => {
+test("quickstart fails closed when no published CAO release can be resolved", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const result = await runStreamed(consumer, {
     ...env,
@@ -1353,7 +1360,7 @@ test("quickstart fails closed when no stable CAO release can be resolved", async
   }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /Unable to resolve the latest stable CAO release/);
+  assert.match(result.stderr, /Unable to resolve the latest published CAO release/);
   assert.match(result.stderr, /No CAO files were written/);
   assert.equal(await log(), "");
   await assertNothingInstalled(consumer);
@@ -1375,8 +1382,8 @@ const publishedExtensionAssets = [
   "gh-cao-windows-amd64.exe", "gh-cao-windows-arm64.exe", "checksums.txt",
 ];
 for (const [name, assets, missing] of [
-  ["runtime-only stable release", ["cao-runtime-sha.tgz", "cao-runtime-sha.tgz.sha256"], "gh-cao-darwin-amd64"],
-  ["legacy binary names", publishedExtensionAssets.map((asset) => asset.replace(/^gh-cao-/, "")), "gh-cao-darwin-amd64"],
+  ["runtime-only stable release", ["cao-runtime-sha.tgz", "cao-runtime-sha.tgz.sha256"], "checksums.txt"],
+  ["mixed binary names", publishedExtensionAssets.map((asset) => asset === "gh-cao-linux-amd64" ? "linux-amd64" : asset), "gh-cao-linux-amd64"],
   ["missing Windows binary", publishedExtensionAssets.filter((asset) => asset !== "gh-cao-windows-arm64.exe"), "gh-cao-windows-arm64.exe"],
   ["missing checksums", publishedExtensionAssets.filter((asset) => asset !== "checksums.txt"), "checksums.txt"],
   ["duplicate binary", [...publishedExtensionAssets, "gh-cao-linux-amd64"], "gh-cao-linux-amd64"],
@@ -1404,6 +1411,74 @@ for (const [name, assets, missing] of [
     await assertNothingInstalled(consumer);
   });
 }
+
+test("installer prefers the modern naming set when both complete sets are published", async (t) => {
+  const { consumer, env } = await createConsumer(t, supportedGhAw);
+  await streamInstaller(consumer, {
+    ...env,
+    FAKE_CAO_RELEASE_ASSETS: [
+      ...publishedExtensionAssets,
+      ...publishedExtensionAssets.slice(0, -1).map((asset) => asset.replace(/^gh-cao-/, "")),
+    ].join("\n"),
+  });
+  const downloads = await readFile(env.FAKE_CAO_DOWNLOADS, "utf8");
+  assert.match(downloads, /\/gh-cao-(?:darwin|linux|windows)-(?:amd64|arm64)(?:\.exe)?\n/);
+});
+
+for (const corrupt of [false, true]) {
+  test(`published prerelease with legacy binaries ${corrupt ? "rejects a corrupt checksum" : "installs with verified checksums"}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+    const result = await runStreamed(consumer, {
+      ...env,
+      FAKE_CAO_RELEASE_LIST: "false\ttrue\tv1.2.5\nfalse\tfalse\tv1.2.3",
+      FAKE_CAO_RELEASE_ASSETS: publishedExtensionAssets.map((asset) => asset.replace(/^gh-cao-/, "")).join("\n"),
+      FAKE_CAO_ASSET_PREFIX: "",
+      ...(corrupt ? { FAKE_CAO_CHECKSUM_MODE: "corrupt" } : {}),
+    }, [`githubnext/gh-cao@${revision}`]);
+    assert.equal(result.code, corrupt ? 1 : 0, result.stderr);
+    const downloads = await readFile(env.FAKE_CAO_DOWNLOADS, "utf8");
+    assert.match(downloads, /\/v1\.2\.5\/(?:darwin|linux|windows)-(?:amd64|arm64)(?:\.exe)?\n/);
+    assert.doesNotMatch(downloads, /\/gh-cao-(?:darwin|linux|windows)/);
+    assert.equal(await readFile(env.FAKE_CAO_RELEASE_REQUESTS, "utf8"), "repos/githubnext/gh-cao/releases/tags/v1.2.5\n");
+    if (corrupt) {
+      assert.match(result.stderr, /checksum verification failed/);
+      assert.equal(await log(), "");
+      await assertNothingInstalled(consumer);
+    } else {
+      const version = await executeFile("gh", ["cao", "--version"], { cwd: consumer, env });
+      assert.equal(version.stdout.trim(), "gh cao version v1.2.5");
+      assert.equal(await log(), "add\n");
+    }
+  });
+}
+
+test("an older extension's initial schema URI is aligned with the verified catalog without changing existing policy", async (t) => {
+  const { consumer, repository, env } = await createConsumer(t, supportedGhAw);
+  const legacyEnv = {
+    ...env,
+    FAKE_CAO_POLICY_SCHEMA: "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
+  };
+  await streamInstaller(consumer, legacyEnv);
+  await assertCompleteInstall(consumer, env, supportedGhAw, repository);
+  const policy = JSON.parse(await readFile(path.join(consumer, policyPath), "utf8"));
+  assert.equal(policy.$schema, "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json");
+  const existing = `${JSON.stringify({ ...policy, $schema: legacyEnv.FAKE_CAO_POLICY_SCHEMA })}\n`;
+  await writeFile(path.join(consumer, policyPath), existing);
+  await streamInstaller(consumer, legacyEnv);
+  assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), existing);
+});
+
+test("initial schema alignment rejects an unknown schema rather than repairing it", async (t) => {
+  const { consumer, env } = await createConsumer(t, supportedGhAw);
+  const result = await runStreamed(consumer, {
+    ...env,
+    FAKE_CAO_POLICY_SCHEMA: "https://example.invalid/untrusted.schema.json",
+  });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /initialized policy schema does not match the installed catalog/);
+  assert.doesNotMatch(result.stdout, /CAO installed and verified/);
+  assert.equal(JSON.parse(await readFile(path.join(consumer, policyPath), "utf8")).$schema, "https://example.invalid/untrusted.schema.json");
+});
 
 test("explicit release asset lookup failures stop before installing tools or CAO files", async (t) => {
   const { consumer, env, log } = await createConsumer(t);
@@ -1444,12 +1519,14 @@ for (const [name, override, message] of [
   });
 }
 
-async function runExtensionInstaller(consumer, env) {
+async function runExtensionInstaller(consumer, env, prefix = "gh-cao-") {
   const extensionInstaller = installerSource.match(/^install_cao_extension\(\) \([\s\S]*?^\)/m)?.[0];
   assert.ok(extensionInstaller, "the production extension installer is available");
   return executeFile("bash", [
     "-c",
-    `set -euo pipefail\ninfo() { :; }\nsuccess() { :; }\n${extensionInstaller}\ninstall_cao_extension v1.2.3`,
+    `set -euo pipefail\ninfo() { :; }\nsuccess() { :; }\n${extensionInstaller}\ninstall_cao_extension v1.2.3 "$1"`,
+    "extension-installer",
+    prefix,
   ], { cwd: consumer, env, timeout });
 }
 
@@ -1473,15 +1550,15 @@ node --input-type=module -e '
   assert.equal(stdout.trim(), "gh cao version v1.2.3");
 });
 
-for (const [system, machine, asset] of [
+for (const [system, machine, asset, prefix] of [
   ["Linux", "x86_64", "linux-amd64"],
   ["Linux", "aarch64", "linux-arm64"],
   ["Darwin", "x86_64", "darwin-amd64"],
   ["Darwin", "arm64", "darwin-arm64"],
   ["MINGW64_NT-10.0", "x86_64", "windows-amd64.exe"],
   ["MSYS_NT-10.0", "aarch64", "windows-arm64.exe"],
-]) {
-  test(`Go extension selects and installs the published ${asset} asset`, async (t) => {
+].flatMap(([system, machine, asset]) => ["gh-cao-", ""].map((prefix) => [system, machine, asset, prefix]))) {
+  test(`Go extension selects and installs the published ${prefix}${asset} asset`, async (t) => {
     const { root, consumer, env } = await createConsumer(t, supportedGhAw);
     await writeFile(path.join(root, "bin", "uname"), `#!/usr/bin/env bash\nif [[ "$1" == -s ]]; then echo "${system}"; else echo "${machine}"; fi\n`, { mode: 0o755 });
     const useLocalAppData = system.startsWith("MSYS");
@@ -1490,12 +1567,13 @@ for (const [system, machine, asset] of [
       ...env,
       HOME: path.join(root, "home"),
       LOCALAPPDATA: path.join(root, "local-app-data"),
+      FAKE_CAO_ASSET_PREFIX: prefix,
       ...((useLocalAppData || useHome) ? { XDG_DATA_HOME: "" } : {}),
     };
-    await runExtensionInstaller(consumer, installEnv);
+    await runExtensionInstaller(consumer, installEnv, prefix);
     const downloads = (await readFile(env.FAKE_CAO_DOWNLOADS, "utf8")).trim().split("\n");
     assert.deepEqual(downloads, [
-      `https://github.com/githubnext/gh-cao/releases/download/v1.2.3/gh-cao-${asset}`,
+      `https://github.com/githubnext/gh-cao/releases/download/v1.2.3/${prefix}${asset}`,
       "https://github.com/githubnext/gh-cao/releases/download/v1.2.3/checksums.txt",
     ]);
     const extensionRoot = useLocalAppData
@@ -1545,7 +1623,7 @@ for (const kind of ["source", "linked", "non-file"]) {
   });
 }
 
-test("quickstart rejects a prerelease as the implicit stable source", async (t) => {
+test("quickstart rejects a non-vX.Y.Z tag as the implicit source", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const result = await runStreamed(consumer, {
     ...env,
@@ -1554,7 +1632,7 @@ test("quickstart rejects a prerelease as the implicit stable source", async (t) 
   }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /Unable to resolve the latest stable CAO release/);
+  assert.match(result.stderr, /Unable to resolve the latest published CAO release/);
   assert.equal(await log(), "");
   await assertNothingInstalled(consumer);
 });

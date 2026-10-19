@@ -296,6 +296,12 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
     assert.equal(controlRepository, consumerRepository);
     assert.equal(initializedPolicy.version, 1);
     assert.equal(initializedPolicy["gh-aw-version"], ghAwVersion);
+    const officialRepository = initializedPolicy["control-plane"]?.marketplace?.registries?.[0]?.repository;
+    assert.match(officialRepository, /^[A-Za-z0-9-]+\/[A-Za-z0-9_.-]+$/);
+    // Published extensions can predate a catalog rename; require the same live repository identity.
+    assert.equal(run("gh", [
+      "api", "--hostname", "github.com", `repos/${officialRepository}`, "--jq", ".full_name",
+    ], consumer).trim(), "githubnext/gh-cao");
     assert.deepEqual(initializedPolicy["control-plane"], {
       scope: {
         "allowed-owners": [controlRepository.split("/")[0]],
@@ -305,7 +311,7 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
         registries: [{
           id: "official",
           name: "Official CAO catalog",
-          repository: "githubnext/gh-cao",
+          repository: officialRepository,
           ref: "main",
           auth: { type: "none" },
         }, {
