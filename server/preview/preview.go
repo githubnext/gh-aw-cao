@@ -1,4 +1,5 @@
-// Package preview exposes the shared Go HTTP server to the native gh-cao CLI.
+// Package preview composes shared Go HTTP serving and workspace operations for
+// local profiles hosted by the cao-dashboard server executable.
 package preview
 
 import (
@@ -56,12 +57,6 @@ func NewWorkspaceOperations(ctx context.Context, options WorkspaceOptions) (*loc
 	}
 	return localops.New(native) //nolint:contextcheck // Durable execution owns cancellation and is closed after HTTP shutdown.
 }
-
-func ExecuteCommand(ctx context.Context, workspace, ghExecutable, command, input string, output func(string, string)) (map[string]any, error) {
-	return localops.ExecuteCommand(ctx, workspace, ghExecutable, command, input, output)
-}
-
-func ParseCommand(command string) ([]string, error) { return localops.ParseCommand(command) }
 
 func LoadCustomViews(workspace string) ([]CustomView, error) {
 	return localops.LoadCustomViews(workspace)

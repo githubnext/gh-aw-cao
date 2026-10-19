@@ -9,14 +9,14 @@ release:
 	bash scripts/build-release.sh "$(VERSION)"
 
 fmt:
-	gofmt -w operator_assets.go cmd internal dashboard/catalog.go dashboard/localpreview dashboard/queryengine
+	gofmt -w operator_assets.go cmd internal dashboard/catalog.go dashboard/queryengine
 
 lint:
-	@test -z "$$(gofmt -l operator_assets.go cmd internal dashboard/catalog.go dashboard/localpreview dashboard/queryengine)" || (gofmt -l operator_assets.go cmd internal dashboard/catalog.go dashboard/localpreview dashboard/queryengine; exit 1)
-	go vet . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/...
+	@test -z "$$(gofmt -l operator_assets.go cmd internal dashboard/catalog.go dashboard/queryengine)" || (gofmt -l operator_assets.go cmd internal dashboard/catalog.go dashboard/queryengine; exit 1)
+	go vet . ./cmd/... ./internal/... ./dashboard ./dashboard/queryengine/...
 
 test:
-	go test -race . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/...
+	go test -race . ./cmd/... ./internal/... ./dashboard ./dashboard/queryengine/...
 
 test-doctor:
 	go test -race -run '^TestDoctorUnit' ./internal/cli

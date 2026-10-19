@@ -15,7 +15,7 @@ on:
       - cmd/**
       - internal/**
       - dashboard/catalog.go
-      - dashboard/localpreview/**
+      - server/internal/localpreview/**
       - dashboard/queryengine/**
       - server/**
       - go.mod
@@ -47,7 +47,7 @@ on:
       - cmd/**
       - internal/**
       - dashboard/catalog.go
-      - dashboard/localpreview/**
+      - server/internal/localpreview/**
       - dashboard/queryengine/**
       - server/**
       - go.mod
@@ -90,10 +90,10 @@ jobs:
       - name: Check formatting
         shell: bash
         run: |
-          golangci-lint fmt --diff . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"
+          golangci-lint fmt --diff . ./cmd/... ./internal/... ./dashboard ./dashboard/queryengine/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"
           test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"
       - name: Lint
-        run: golangci-lint run . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/...
+        run: golangci-lint run . ./cmd/... ./internal/... ./dashboard ./dashboard/queryengine/...
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"

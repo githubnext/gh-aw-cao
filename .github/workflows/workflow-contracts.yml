@@ -68,6 +68,7 @@ jobs:
       - name: Run ${{ matrix.area }} unit contracts
         env:
           CAO_EXECUTABLE: ${{ github.workspace }}/.tmp/gh-cao
+          CAO_DASHBOARD_EXECUTABLE: ${{ github.workspace }}/.tmp/cao-dashboard
         run: npm run test:unit:area -- ${{ matrix.area }}
 
   test:

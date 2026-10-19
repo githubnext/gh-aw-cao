@@ -37,7 +37,7 @@ type Invocation struct {
 type Options struct {
 	Workspace, SourceDirectory, GHExecutable, QueuePath string
 	CaoURL, Repository                                  string
-	// OperatorExecutable defaults to the current gh-cao executable, never cao.sh.
+	// OperatorExecutable overrides native gh cao dispatch, never a repository script.
 	OperatorExecutable  string
 	Admin, Canvas       bool
 	Dashboard           func() map[string]any
@@ -91,9 +91,12 @@ func New(options Options) (*Service, error) {
 		options.GHExecutable = "gh"
 	}
 	if options.OperatorExecutable == "" {
-		options.OperatorExecutable, err = os.Executable()
+		executable, err := os.Executable()
 		if err != nil {
 			return nil, err
+		}
+		if name := strings.TrimSuffix(strings.ToLower(filepath.Base(executable)), ".exe"); name == "gh-cao" {
+			options.OperatorExecutable = executable
 		}
 	}
 	if options.QueuePath == "" {

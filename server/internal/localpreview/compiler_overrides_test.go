@@ -24,7 +24,7 @@ func addCanonicalWorkflow(t *testing.T, databasePath string, workflow object) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec(`INSERT INTO __idb_records VALUES ('gh-aw-cao-dashboard-data','workflows',?,?)`, string(key), string(content)); err != nil {
+	if _, err := database.ExecContext(t.Context(), `INSERT INTO __idb_records VALUES ('gh-aw-cao-dashboard-data','workflows',?,?)`, string(key), string(content)); err != nil {
 		t.Fatal(err)
 	}
 }

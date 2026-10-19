@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/dashboard"
+
 	"github.com/githubnext/gh-aw-cao/server/preview"
 )
 
@@ -603,8 +604,8 @@ func splitDocument(source object) (object, map[string][]byte, error) {
 		pages = append(pages, stub)
 	}
 	status := obj(body["data-status"])
-	shellSources := append(calloutSources, text(status["freshness-source"]), text(status["health-source"]))
-	shellQueries := queryDependencies(body, shellSources)
+	calloutSources = append(calloutSources, text(status["freshness-source"]), text(status["health-source"]))
+	shellQueries := queryDependencies(body, calloutSources)
 	if len(shellQueries) == 0 {
 		delete(body, "queries")
 	} else {

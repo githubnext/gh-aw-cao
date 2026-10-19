@@ -350,6 +350,7 @@ func newRootCommand() *cobra.Command {
 	// documented interface, so keep the command surface as-is.
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.AddCommand(
+		newServeLocalCommand(),
 		newServeCommand(),
 		newServeHostedCommand(),
 		newIngestCommand(),

@@ -1,4 +1,4 @@
-package cli
+package main
 
 import (
 	"context"
@@ -22,9 +22,26 @@ type dashboardProcess struct {
 	Command  string `json:"command"`
 }
 
+func readDashboardProcessRecord(workspace string) ([]byte, error) {
+	root, err := os.OpenRoot(workspace)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	const name = ".cao-dashboard-dev-server.json"
+	info, err := root.Lstat(name)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, errors.New("dashboard process record must be a regular file, not a symlink")
+	}
+	return root.ReadFile(name)
+}
+
 func dashboardProcessIdentity(ctx context.Context, pid int) (dashboardProcess, error) {
 	read := func(field string) (string, error) {
-		output, err := exec.CommandContext(ctx, "ps", "-p", strconv.Itoa(pid), "-o", field+"=").Output()
+		output, err := exec.CommandContext(ctx, "ps", "-p", strconv.Itoa(pid), "-o", field+"=").Output() // #nosec G204 -- Fixed ps query; PID is formatted as an integer.
 		return strings.TrimSpace(string(output)), err
 	}
 	start, err := read("lstart")
@@ -45,7 +62,7 @@ func replaceDashboardProcess(ctx context.Context, workspace string, port int) (f
 		return nil, errors.New("preview replacement requires running from the selected workspace")
 	}
 	path := filepath.Join(workspace, ".cao-dashboard-dev-server.json")
-	content, err := os.ReadFile(path)
+	content, err := readDashboardProcessRecord(workspace)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
@@ -66,10 +83,10 @@ func replaceDashboardProcess(ctx context.Context, workspace string, port int) (f
 			if err != nil || current.Identity == "" || current.Identity != previous.Identity || current.Command != previous.Command {
 				return nil, errors.New("cannot replace preview: recorded process identity changed")
 			}
-			name, err := exec.CommandContext(ctx, "ps", "-p", strconv.Itoa(previous.PID), "-o", "comm=").Output()
-			if err != nil || filepath.Base(strings.TrimSpace(string(name))) != "gh-cao" ||
-				!strings.Contains(current.Command, " dashboard serve") {
-				return nil, errors.New("cannot replace preview: process is not a native gh-cao dashboard")
+			name, err := exec.CommandContext(ctx, "ps", "-p", strconv.Itoa(previous.PID), "-o", "comm=").Output() // #nosec G204 -- Read-only identity query for a numeric PID.
+			if err != nil || filepath.Base(strings.TrimSpace(string(name))) != "cao-dashboard" ||
+				!strings.Contains(current.Command, " serve-local") {
+				return nil, errors.New("cannot replace preview: process is not a native cao-dashboard local server")
 			}
 			directory, err := dashboardProcessDirectory(ctx, previous.PID)
 			if err != nil || directory != workspace {
@@ -121,7 +138,7 @@ func replaceDashboardProcess(ctx context.Context, workspace string, port int) (f
 	}
 
 	return func() error {
-		content, err := os.ReadFile(path)
+		content, err := readDashboardProcessRecord(workspace)
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
@@ -149,7 +166,7 @@ func dashboardProcessDirectory(ctx context.Context, pid int) (string, error) {
 			return "", err
 		}
 	case "darwin":
-		output, err := exec.CommandContext(ctx, "/usr/sbin/lsof", "-a", "-p", strconv.Itoa(pid), "-d", "cwd", "-Fn").Output()
+		output, err := exec.CommandContext(ctx, "/usr/sbin/lsof", "-a", "-p", strconv.Itoa(pid), "-d", "cwd", "-Fn").Output() // #nosec G204 -- Fixed lsof executable and read-only numeric PID query.
 		if err != nil {
 			return "", err
 		}

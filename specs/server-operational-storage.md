@@ -208,13 +208,13 @@ Exhausted capacity MUST fail explicitly rather than silently discard work.
 
 ## Local launcher modes
 
-`gh cao dashboard serve` selects the native local profile; the hosted
+`cao-dashboard serve-local` selects the native local profile; the hosted
 `cao-dashboard serve-hosted` command selects reviewed deployment profiles:
 
 | Invocation | Runtime | Operational authority |
 | --- | --- | --- |
-| `gh cao dashboard serve` | In-process Go server, SQLite by default | Disposable native SQLite canonical projection; no hosted operational adapter, OAuth store or collector |
-| `gh cao dashboard serve --data-backend indexeddb` | The same Go listener | Browser-owned canonical projection; no hosted operational authority |
+| `cao-dashboard serve-local` | Local profile of the hosted Go server executable, SQLite by default | Disposable native SQLite canonical projection; no hosted operational adapter, OAuth store or collector |
+| `cao-dashboard serve-local --data-backend indexeddb` | The same Go listener | Browser-owned canonical projection; no hosted operational authority |
 | `--operational-store redis` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting Redis |
 | `--operational-store memory` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting memory with every volatile-memory guard above |
 | `--operational-store postgres` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting the durable PostgreSQL operational adapter |

@@ -42,7 +42,7 @@ func write(t *testing.T, root, name, value string) string {
 
 func read(t *testing.T, name string) []byte {
 	t.Helper()
-	content, err := os.ReadFile(name)
+	content, err := os.ReadFile(name) // #nosec G304 -- Test-owned fixture path.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func fixture(t *testing.T, workspace string) string {
 		`CREATE TABLE __idb_records(database_name TEXT,store_name TEXT,record_key TEXT,value TEXT)`,
 		`INSERT INTO __idb_records VALUES ('gh-aw-cao-dashboard-data','runs','"run-1"','{"id":"run-1","status":"success"}')`,
 	} {
-		if _, err := db.Exec(statement); err != nil {
+		if _, err := db.ExecContext(t.Context(), statement); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -201,7 +201,6 @@ func TestPrepareRejectsUnsafeOrMalformedArtifacts(t *testing.T) {
 			if err := os.Remove(filepath.Join(data, "payload-hashes.json")); err != nil {
 				t.Fatal(err)
 			}
-
 		},
 		"missing-database": func(t *testing.T, root, data string) {
 			if err := os.Remove(filepath.Join(data, "gh-aw-logs.sqlite")); err != nil {
@@ -230,7 +229,7 @@ func TestPrepareRejectsUnsafeOrMalformedArtifacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := db.Exec(`UPDATE __idb_records SET value='[]'`); err != nil {
+			if _, err := db.ExecContext(t.Context(), `UPDATE __idb_records SET value='[]'`); err != nil {
 				t.Fatal(err)
 			}
 			_ = db.Close()
@@ -241,7 +240,7 @@ func TestPrepareRejectsUnsafeOrMalformedArtifacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := db.Exec(`UPDATE __idb_records SET database_name='unrelated'`); err != nil {
+			if _, err := db.ExecContext(t.Context(), `UPDATE __idb_records SET database_name='unrelated'`); err != nil {
 				t.Fatal(err)
 			}
 			_ = db.Close()
@@ -550,7 +549,7 @@ case "$1 $2" in
   *) exit 3 ;;
 esac
 `)
-	if err := os.Chmod(executable, 0o700); err != nil {
+	if err := os.Chmod(executable, 0o700); err != nil { // #nosec G302 -- Private, trusted executable fixture.
 		t.Fatal(err)
 	}
 	return executable
@@ -620,7 +619,7 @@ func TestArtifactSelectionFailsClosed(t *testing.T) {
 func TestRedactionAndAuthenticationErrors(t *testing.T) {
 	root := testDirectory(t)
 	executable := write(t, root, "fake-gh", "#!/bin/sh\necho 'Bearer sensitivecredential ghp_abcdefghijklmnopqrstuvwx' >&2\nexit 1\n")
-	if err := os.Chmod(executable, 0o700); err != nil {
+	if err := os.Chmod(executable, 0o700); err != nil { // #nosec G302 -- Private, trusted executable fixture.
 		t.Fatal(err)
 	}
 	_, err := Prepare(context.Background(), Options{Workspace: root, Repository: "owner/control", GHExecutable: executable})

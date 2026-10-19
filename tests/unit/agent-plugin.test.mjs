@@ -119,7 +119,10 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
   assert.match(source, /startLocalDashboardPreview/);
   assert.match(source, /requestedEnvironmentVariables: \["GH_TOKEN", "GITHUB_TOKEN"\]/);
   assert.doesNotMatch(source, /executeDashboardCommand|generateDashboardQuery/);
-  assert.match(await readFile(new URL("local-preview.mjs", extensionRoot), "utf8"), /spawnOperator/);
+  const preview = await readFile(new URL("local-preview.mjs", extensionRoot), "utf8");
+  assert.match(preview, /CAO_DASHBOARD_EXECUTABLE/);
+  assert.match(preview, /serve-local/);
+  assert.doesNotMatch(preview, /spawnOperator/);
   assert.match(source, /cao_dashboard_execute_query/);
   assert.match(source, /cao_dashboard_read_data_specification/);
   assert.match(source, /onSessionStart:/);
@@ -159,7 +162,7 @@ test("portable skill validation rejects client-specific top-level fields and bro
     ].join("\n"));
     const fixedErrors = await validateAgentPlugin(directory);
     assert.ok(!fixedErrors.some((error) => error.includes("unsupported skill field")));
-    assert.ok(fixedErrors.some((error) => error.includes("cmd/gh-cao/main.go: missing package file")));
+    assert.ok(fixedErrors.some((error) => error.includes("server/cmd/cao-dashboard/main.go: missing package file")));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

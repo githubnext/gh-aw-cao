@@ -22,7 +22,7 @@ func TestCanvasPreparationUsesFreshOrUnavailableCompilerEvidence(t *testing.T) {
 				write(t, root, "compiler-response.json", string(compilerFileResponse(t, ".github/workflows/demo.lock.yml", version)))
 				script := string(read(t, executable))
 				script = strings.Replace(script, "  'run download')", "  'api repos/octo/repo/contents/.github/workflows/demo.lock.yml') cat compiler-response.json ;;\n  'run download')", 1)
-				if err := os.WriteFile(executable, []byte(script), 0o700); err != nil {
+				if err := os.WriteFile(executable, []byte(script), 0o700); err != nil { // #nosec G306 -- Private, trusted executable fixture.
 					t.Fatal(err)
 				}
 			}

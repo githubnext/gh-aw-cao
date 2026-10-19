@@ -18,7 +18,7 @@ import (
 )
 
 func TestNativeReleaseServesEmbeddedTerminalOffline(t *testing.T) {
-	repository, err := filepath.Abs("../..")
+	repository, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,15 +42,15 @@ func TestNativeReleaseServesEmbeddedTerminalOffline(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	executable := filepath.Join(workspace, "gh-cao")
+	executable := filepath.Join(workspace, "cao-dashboard")
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
 	buildCtx, buildCancel := context.WithTimeout(t.Context(), 90*time.Second)
 	defer buildCancel()
 	build := exec.CommandContext(buildCtx, "go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false",
-		"-ldflags=-s -w -X main.version=offline-terminal-test", "-o", executable, "./cmd/gh-cao")
-	build.Dir = repository
+		"-ldflags=-s -w -X main.version=offline-terminal-test", "-o", executable, "./cmd/cao-dashboard") // #nosec G204 -- Fixed Go build targeting a private test executable.
+	build.Dir = filepath.Join(repository, "server")
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build release-style native executable: %v\n%s", err, output)
@@ -59,16 +59,16 @@ func TestNativeReleaseServesEmbeddedTerminalOffline(t *testing.T) {
 	if err := os.Mkdir(emptyPath, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	log, err := os.Create(filepath.Join(workspace, "native.log"))
+	log, err := os.Create(filepath.Join(workspace, "native.log")) // #nosec G304 -- Fixed log name inside this test's private directory.
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = log.Close() }()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	command := exec.CommandContext(ctx, executable, "dashboard", "serve",
+	command := exec.CommandContext(ctx, executable, "serve-local",
 		"--workspace", workspace, "--data", data, "--canvas", "--port", "0", "--control-stdio",
-		"--gh-executable", filepath.Join(emptyPath, "missing-gh"))
+		"--gh-executable", filepath.Join(emptyPath, "missing-gh")) // #nosec G204 -- Only the executable built by this test is launched.
 	command.Dir = workspace
 	command.Env = []string{
 		"PATH=" + emptyPath, "HOME=" + workspace, "USERPROFILE=" + workspace,

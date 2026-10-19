@@ -7,7 +7,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . && node ./scripts/lint-octicons.mjs && npm run validate:dashboards",
     "test": "vitest run --environment jsdom",
-    "build:preview": "go -C ../.. build -o .tmp/gh-cao ./cmd/gh-cao",
+    "build:preview": "go -C ../../server build -o ../.tmp/cao-dashboard ./cmd/cao-dashboard && go -C ../.. build -o .tmp/gh-cao ./cmd/gh-cao",
     "pretest:e2e": "npm run build:preview",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
     "test:performance": "node ./scripts/build.mjs dist test/performance/fixtures/control-settings.json && node ./test/performance/lighthouse.mjs",
@@ -15,7 +15,7 @@
     "validate:dashboards": "node ./scripts/validate-dashboards.mjs",
     "analyze:dead-views": "node ./scripts/render-dead-views.mjs",
     "analyze:query-graphs": "node ./scripts/validate-dashboards.mjs --render-query-graphs",
-    "dev": "go -C ../.. run ./cmd/gh-cao dashboard serve"
+    "dev": "npm --prefix ../.. run dashboard:local"
   },
   "overrides": {
     "source-map-js": "$source-map-js"

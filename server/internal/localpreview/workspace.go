@@ -312,6 +312,16 @@ func regularFile(root, name string) (string, error) {
 }
 
 func copyTree(ctx context.Context, source, destination, exclude string) error {
+	inputRoot, err := os.OpenRoot(source)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = inputRoot.Close() }()
+	outputRoot, err := os.OpenRoot(destination)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = outputRoot.Close() }()
 	return filepath.WalkDir(source, func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -329,21 +339,20 @@ func copyTree(ctx context.Context, source, destination, exclude string) error {
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(destination, relative)
 		if entry.Type()&os.ModeSymlink != 0 {
 			return errors.New("dashboard artifacts must not contain symbolic links")
 		}
 		if entry.IsDir() {
-			return os.MkdirAll(target, 0o700)
+			return outputRoot.MkdirAll(relative, 0o700)
 		}
 		if !entry.Type().IsRegular() {
 			return errors.New("dashboard artifact contains a non-regular file")
 		}
-		input, err := os.Open(name)
+		input, err := inputRoot.Open(relative)
 		if err != nil {
 			return err
 		}
-		output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		output, err := outputRoot.OpenFile(relative, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 		if err != nil {
 			_ = input.Close()
 			return err
@@ -407,7 +416,7 @@ func atomicWrite(root, name string, content []byte) error {
 }
 
 func readObject(path string) (map[string]any, []byte, error) {
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 -- Callers validate explicit document or artifact paths before parsing.
 	if err != nil {
 		return nil, nil, err
 	}

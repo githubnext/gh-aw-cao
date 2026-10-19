@@ -72,11 +72,12 @@ func compilerUpdateState(installed, latest string) string {
 		}
 	}
 	if comparison == 0 {
-		if len(left.prerelease) == 0 && len(right.prerelease) > 0 {
+		switch {
+		case len(left.prerelease) == 0 && len(right.prerelease) > 0:
 			comparison = 1
-		} else if len(left.prerelease) > 0 && len(right.prerelease) == 0 {
+		case len(left.prerelease) > 0 && len(right.prerelease) == 0:
 			comparison = -1
-		} else {
+		default:
 			for index := 0; index < max(len(left.prerelease), len(right.prerelease)); index++ {
 				if index >= len(left.prerelease) {
 					comparison = -1

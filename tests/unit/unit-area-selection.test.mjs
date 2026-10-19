@@ -46,7 +46,7 @@ test("native dashboard contract jobs install pinned Go and build the production 
 test("site browser runner builds a native preview without Node terminal preparation", () => {
   const manifest = JSON.parse(readFileSync("dashboard/site/package.json", "utf8"));
   assert.equal(manifest.scripts["pretest:e2e"], "npm run build:preview");
-  assert.equal(manifest.scripts["build:preview"], "go -C ../.. build -o .tmp/gh-cao ./cmd/gh-cao");
+  assert.equal(manifest.scripts["build:preview"], "go -C ../../server build -o ../.tmp/cao-dashboard ./cmd/cao-dashboard && go -C ../.. build -o .tmp/gh-cao ./cmd/gh-cao");
   assert.equal(manifest.dependencies["node-pty"], undefined);
   assert.equal(manifest.scripts.postinstall, undefined);
 });

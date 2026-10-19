@@ -42,8 +42,8 @@ test("Docker Go stage preserves both module roots and native embedded resources"
   assert.match(stage, /COPY server\/ \.\//);
   assert.match(stage, /COPY operator_assets\.go \.\.\//);
   assert.match(stage, /COPY dashboard\/ \.\.\/dashboard\//);
-  for (const directory of ["localpreview", "queryengine"]) {
-    assert.ok(readFileSync(new URL(`dashboard/${directory}/${directory === "localpreview" ? "workspace" : "api"}.go`, root)));
+  for (const source of ["server/internal/localpreview/workspace.go", "dashboard/queryengine/api.go"]) {
+    assert.ok(readFileSync(new URL(source, root)));
   }
   const rootModule = readFileSync(new URL("go.mod", root), "utf8");
   const serverModule = readFileSync(new URL("server/go.mod", root), "utf8");

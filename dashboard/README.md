@@ -20,7 +20,7 @@ The dashboard campaign publishes an access-controlled static view of Central Age
 - `dashboard/report`: deterministic collection modules executed by the activity action plus Dashboard Language source adaptation.
 - `dashboard/site`: the bundled Dashboard Language validator, presenter, configuration, and browser runtime.
 - `server/`: the Go HTTP server for both local SQLite previews and hosted PostgreSQL deployments.
-- `gh cao dashboard serve`: native local artifact preparation, live reload, trusted authoring, and command execution through that same Go server.
+- `cao-dashboard serve-local`: native local artifact preparation, live reload, trusted authoring, and command execution through that same Go server executable. `gh-cao` provides operator actions and queries, not HTTP serving.
 
 The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot plus a deterministic `inventory-sources.json` sidecar from the reviewed control policy, installed campaign ownership records, local control workflow inventory, and paginated Actions workflow registries for resolved repositories. Campaign default-branch revisions, the latest stable gh-aw release, and generated lock compiler metadata are collected as independent version evidence. Registry and version lookup failures remain explicit partial evidence, and repository-owned workflows remain standalone rather than becoming campaign workers or rollout authority. An Activity-triggered dashboard build restores the exact triggering run and attempt's cache, or downloads that run's `cao-activity-index` artifact on a cache miss. It never substitutes another run's snapshot or an empty bootstrap. Manual builds can reuse the latest cached snapshot, falling back to a successful default-branch Activity run with a successful `index` job. The browser ingests the activity JSONL and then the sidecar so configured campaigns, including campaigns without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
 
@@ -69,12 +69,12 @@ From the root of a control repository, use the native Go extension and
 authenticated GitHub CLI:
 
 ```bash
-gh cao dashboard serve
-gh cao dashboard serve --repo OWNER/REPOSITORY
-gh cao dashboard serve --data .cao/downloaded-dashboard
+cao-dashboard serve-local
+cao-dashboard serve-local --repo OWNER/REPOSITORY
+cao-dashboard serve-local --data .cao/downloaded-dashboard
 ```
 
-The command requires GitHub CLI authentication with Actions read access. It downloads the latest non-expired `central-agentic-ops-dashboard` artifact, validates successful trusted default-branch workflow provenance and payload hashes, and opens the artifact's canonical SQLite snapshot natively. Dashboard Language is evaluated by the shared Go query engine, including aliases and continuation pages. No Node.js, npm, PostgreSQL, Redis, OAuth setup, or site build is needed. Run the dashboard action first; startup fails rather than substituting missing data. `--data DIRECTORY` selects an explicitly prepared artifact for offline use. In a source checkout, `go run ./cmd/gh-cao dashboard serve` and `npm run dashboard:local` invoke this same native implementation.
+The command requires GitHub CLI authentication with Actions read access. It downloads the latest non-expired `central-agentic-ops-dashboard` artifact, validates successful trusted default-branch workflow provenance and payload hashes, and opens the artifact's canonical SQLite snapshot natively. Dashboard Language is evaluated by the shared Go query engine, including aliases and continuation pages. No Node.js, npm, PostgreSQL, Redis, OAuth setup, or site build is needed. Run the dashboard action first; startup fails rather than substituting missing data. `--data DIRECTORY` selects an explicitly prepared artifact for offline use. In a source checkout, `go -C server build -o ../.tmp/cao-dashboard ./cmd/cao-dashboard` followed by `.tmp/cao-dashboard serve-local` runs this same server; `npm run dashboard:local` is a development convenience for those steps. The canvas launches the installed server binary directly, optionally selected by `CAO_DASHBOARD_EXECUTABLE`.
 
 Open only the unguessable URL printed by the server. Go owns preparation, declarative document composition, HTTP routing, capability-path and Host/Origin checks, static assets, compression, queries, diagnostics, repository memory, revision SSE, CLI output streams, live-reload WebSockets, Copilot authoring, and the durable command executor. The canvas extension is only a transport and trusted-host approval adapter; it does not implement operator commands or query semantics. JavaScript remains in the Actions pipeline and browser UI, not the operator runtime. The listener binds to loopback by default. Use `--port` or `--host` to override its address. `--data-backend indexeddb` retains browser-ingestion previews through the same Go listener; SQLite is the default.
 
@@ -105,7 +105,7 @@ Redis and loses operational state on restart.
 PostgreSQL owns canonical dashboard entities and query execution in both modes.
 The browser never receives database credentials. Canvas, local artifact
 download (`--repo`), replacement, and preview trace options are not available in
-hosted mode. The separate `gh cao dashboard serve` command selects the local SQLite preview described
+hosted mode. The same executable's `cao-dashboard serve-local` command selects the local SQLite preview described
 above. See [`../server/README.md`](../server/README.md) for hosted configuration,
 webhooks, backfill, and recovery guarantees.
 

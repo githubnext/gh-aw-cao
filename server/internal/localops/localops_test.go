@@ -70,7 +70,7 @@ func helperProcess() {
 		}
 		return
 	}
-	if os.Getenv("LOCALOPS_CAPTURE_OPERATOR") == "1" && len(args) > 0 && (args[0] == "campaigns" || args[0] == "repos") {
+	if os.Getenv("LOCALOPS_CAPTURE_OPERATOR") == "1" && len(args) > 0 && (args[0] == "campaigns" || args[0] == "repos" || args[0] == "cao") {
 		raw, err := json.Marshal(args)
 		if err != nil {
 			os.Exit(17)

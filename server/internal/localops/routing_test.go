@@ -65,3 +65,24 @@ func TestLegacyOperatorExecutionPreservesApprovedAndPersistedIdentity(t *testing
 		t.Fatal(actual)
 	}
 }
+
+func TestServerDispatchesOperatorThroughGitHubCLI(t *testing.T) {
+	t.Setenv("LOCALOPS_CAPTURE_OPERATOR", "1")
+	document := fixtureDocument()
+	actionByID(document, "complete")["command"] = "gh cao campaigns enable test-campaign"
+	s := service(t, func(o *Options) {
+		o.OperatorExecutable = ""
+		o.Dashboard = func() map[string]any { return document }
+	})
+	if s.options.OperatorExecutable != "" {
+		t.Fatal("the server selected itself as the operator executable")
+	}
+	completed := waitJob(t, s, enqueue(t, s, "complete")["id"], "completed")
+	var actual []string
+	if err := json.Unmarshal([]byte(strings.TrimSpace(text(completed["stdout"]))), &actual); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(actual, []string{"cao", "campaigns", "enable", "test-campaign"}) {
+		t.Fatalf("server operator dispatch = %v", actual)
+	}
+}

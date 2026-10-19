@@ -31,7 +31,7 @@ func generate() error {
 	executable := flag.String("esbuild", "", "path to the native esbuild binary")
 	modules := flag.String("modules", "", "additional directory containing locked browser packages")
 	flag.Parse()
-	root, err := filepath.Abs("../..")
+	root, err := filepath.Abs("../../..")
 	if err != nil {
 		return err
 	}

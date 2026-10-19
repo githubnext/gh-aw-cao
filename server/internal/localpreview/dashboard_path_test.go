@@ -10,13 +10,12 @@ import (
 	"github.com/githubnext/gh-aw-cao/dashboard"
 )
 
-func fixtureWithoutSite(t *testing.T, root string) string {
+func fixtureWithoutSite(t *testing.T, root string) {
 	t.Helper()
 	data := fixture(t, root)
 	if err := os.Remove(filepath.Join(data, "index.html")); err != nil {
 		t.Fatal(err)
 	}
-	return data
 }
 
 func TestExplicitWorkspaceDashboardDoesNotRequireAnExplicitSite(t *testing.T) {

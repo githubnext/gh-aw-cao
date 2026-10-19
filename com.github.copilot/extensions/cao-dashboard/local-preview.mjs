@@ -1,9 +1,9 @@
+import { spawn } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { spawnOperator } from "./operator.mjs";
 
 /**
- * Start the native operator; JavaScript handles only the canvas lifecycle and
+ * Start the Go server; JavaScript handles only the canvas lifecycle and
  * trusted host approval, never server preparation, queries or command execution.
  * @param {{
  * workingDirectory: string, repository?: string, dataBackend?: "sqlite" | "indexeddb",
@@ -19,12 +19,12 @@ export async function startLocalDashboardPreview({
     throw new Error("Canvas requires trusted CLI action approval.");
   }
   const workspace = await realpath(workingDirectory);
-  const child = spawnOperator(["dashboard", "serve", "--workspace", workspace,
+  const child = spawn(process.env.CAO_DASHBOARD_EXECUTABLE || "cao-dashboard", ["serve-local", "--workspace", workspace,
     "--canvas", "--control-stdio", "--host", "127.0.0.1", "--port", "0",
     "--data-backend", dataBackend, "--gh-executable", ghExecutable,
     ...(repository ? ["--repo", repository] : []),
     ...(dataDirectory ? ["--data", dataDirectory] : []),
-  ], { workingDirectory: workspace });
+  ], { cwd: workspace, stdio: ["pipe", "pipe", "pipe"] });
   const lines = createInterface({ input: child.stdout });
   let stopping = false;
   let closing;

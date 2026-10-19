@@ -137,8 +137,10 @@ deployment-scoped services in separate `cao_operational_*` tables. Operational
 adapters never store dashboard entities or execute dashboard queries.
 The same Go server also serves local previews from a disposable SQLite canonical
 projection, without hosted operational services, PostgreSQL, or Redis.
-`gh cao dashboard serve` prepares verified artifact snapshots, composes and
-watches Dashboard Language documents, and runs the server in-process.
+`cao-dashboard serve-local` prepares verified artifact snapshots, composes and
+watches Dashboard Language documents, and runs the local profile in the same
+Go executable as `serve` and `serve-hosted`. Serving and preparation belong to
+the hosted server infrastructure under `server/`; `gh-cao` does not host HTTP.
 It uses the artifact's canonical SQLite projection directly, without invoking
 JavaScript ingestion, query workers, SDK callbacks or command executors.
 The canvas adapter forwards only lifecycle and trusted-host approval over private
@@ -152,8 +154,9 @@ The optional IndexedDB preview remains available through the same Go listener.
 Local CLI queues retain their separate durable operational SQLite database;
 preview projection disposal must not erase approved command history.
 JavaScript remains the Actions pipeline and browser implementation, not an
-operator runtime. The root Go module imports the server's narrow public
-`preview` package; the server imports the shared root query-engine package.
+operator runtime. The root Go module imports only the server's narrow public
+`operator` facade for action validation/execution, never the HTTP server or local
+preparation packages. The server imports the shared root query-engine package.
 These package dependencies remain acyclic, and both module test suites cover
 the shared evaluator and server boundary.
 Local admin and trusted canvas CLI actions use a separate, single-owner
@@ -520,9 +523,9 @@ reconstructable.
 | `<operation>/operational-value.mjs` | Optional deterministic repository-scoped operational-value computation installed with its package. |
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
-| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go`, `dashboard/localpreview/` | Entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, local dashboard service, SQLite queries, computations and MCP; embeds the dashboard's authoritative contracts and imports the server's narrow public preview package. Actions pipeline commands remain Node-owned. |
-| `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
+| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds authoritative contracts and uses `server/operator/` for action execution. It does not serve HTTP. Actions pipeline commands remain Node-owned. |
+| `dashboard/` | Dashboard campaign, report/source adapters, shared native query evaluator, and static browser application. |
+| `server/` | Host-neutral Go HTTP(S) service with `cao-dashboard serve-local` SQLite preparation and serving under `server/internal/localpreview/`, hosted PostgreSQL profiles, deployed-artifact ingestion, authenticated canonical API, webhook/rebuild control, default operational state, explicit Redis or single-process memory alternatives, query execution, and peer Azure Functions and Coolify deployment profiles. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |

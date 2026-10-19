@@ -64,7 +64,7 @@ func (w *Workspace) prepareBrowserAssets() error {
 		if err != nil {
 			return err
 		}
-		content, err := os.ReadFile(source)
+		content, err := os.ReadFile(source) // #nosec G304 -- regularFile verified the declared site path and rejected escaping symlinks.
 		if err != nil {
 			return err
 		}

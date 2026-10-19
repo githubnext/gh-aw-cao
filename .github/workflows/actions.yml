@@ -9,7 +9,7 @@ on:
     paths:
       - .github/workflows/actions.yml
       - dashboard/site/**
-      - dashboard/localpreview/**
+      - server/internal/localpreview/**
       - dashboard/catalog.go
       - dashboard/queryengine/**
       - cmd/gh-cao/**

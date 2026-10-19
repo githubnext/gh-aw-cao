@@ -138,7 +138,7 @@ test("native server rejects an invalid data backend before startup", async () =>
   try {
     await assert.rejects(startNativeDashboard({
       workspace: artifact.workspace, data: artifact.data, site: artifact.site, dataBackend: "redis",
-    }), /--data-backend must be sqlite, indexeddb or postgres/);
+    }),     /--data-backend must be sqlite or indexeddb; use serve-hosted for PostgreSQL/);
   } finally { await artifact.close(); }
 });
 

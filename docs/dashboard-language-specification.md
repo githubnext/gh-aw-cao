@@ -1420,7 +1420,7 @@ checkbox, unchecked by default, which adds `--auto-merge` only when selected.
 This gh-aw option requires **Create pull request**.
 
 For CLI-action presentation and confirmation, canvas CLI-action mode also
-includes explicitly enabled local admin previews (`gh cao dashboard serve --admin`).
+includes explicitly enabled local admin previews (`cao-dashboard serve-local --admin`).
 This host capability does not change the document vocabulary, copy-only
 restrictions, action authority, or per-run confirmation requirements. Commands
 start headlessly after confirmation in the web interface, without a second

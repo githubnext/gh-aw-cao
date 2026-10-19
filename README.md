@@ -147,7 +147,9 @@ The plugin must be enabled in the client; the `com.github.copilot/extensions/`
 bundle is not automatically discovered as a repository-local extension. The
 canvas requires GitHub CLI authentication with Actions read access and a current
 `central-agentic-ops-dashboard` artifact from a successful dashboard run. It
-launches the installed native `gh cao dashboard serve` command; it never imports
+launches the installed `cao-dashboard serve-local` Go server, not the `gh-cao`
+extension. Set `CAO_DASHBOARD_EXECUTABLE` when the server binary is not on PATH.
+It never imports
 executable modules from the active checkout. Go prepares a temporary workspace
 without relaxing the local server's path restrictions. Workspace campaign documents remain JSON
 data. Closing the canvas or stopping/reloading the extension removes its
@@ -160,7 +162,7 @@ pagination, diagnostics, and revision subscriptions stay behind the preview's
 capability URL. Both canvas and ordinary local previews default to SQLite.
 No Node.js, npm, PostgreSQL, Redis, or hosted OAuth configuration is required.
 Select either backend explicitly with
-`gh cao dashboard serve --data-backend sqlite --repo OWNER/REPOSITORY` or
+`cao-dashboard serve-local --data-backend sqlite --repo OWNER/REPOSITORY` or
 `--data-backend indexeddb`. The canvas open input also accepts
 `dataBackend: "sqlite"` or `"indexeddb"`. SQLite initialization failures stop
 startup rather than silently falling back to IndexedDB.

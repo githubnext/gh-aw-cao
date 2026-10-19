@@ -34,7 +34,7 @@ func gh(ctx context.Context, options Options, arguments ...string) ([]byte, erro
 	if executable == "" {
 		executable = "gh"
 	}
-	command := exec.CommandContext(ctx, executable, arguments...)
+	command := exec.CommandContext(ctx, executable, arguments...) // #nosec G204 -- Operator-configured GitHub CLI with fixed read-only argv, never a shell.
 	command.Dir = options.Workspace
 	command.Env = append(os.Environ(), "GH_PROMPT_DISABLED=1")
 	content, err := command.Output()
@@ -247,7 +247,7 @@ func validateSnapshot(ctx context.Context, directory string) error {
 }
 
 func hashFile(name string) (string, error) {
-	file, err := os.Open(name)
+	file, err := os.Open(name) // #nosec G304 -- Artifact paths passed regularFile containment and symlink checks.
 	if err != nil {
 		return "", err
 	}
@@ -260,7 +260,7 @@ func hashFile(name string) (string, error) {
 }
 
 func validateJSONL(name string) error {
-	file, err := os.Open(name)
+	file, err := os.Open(name) // #nosec G304 -- Artifact paths passed regularFile containment and symlink checks.
 	if err != nil {
 		return err
 	}
@@ -381,7 +381,7 @@ func (w *Workspace) publishData(ctx context.Context) error {
 }
 
 func redactJSONL(name string) ([]byte, error) {
-	file, err := os.Open(name)
+	file, err := os.Open(name) // #nosec G304 -- Artifact paths passed regularFile containment and symlink checks.
 	if err != nil {
 		return nil, err
 	}

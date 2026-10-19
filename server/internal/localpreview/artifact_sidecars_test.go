@@ -18,7 +18,7 @@ func TestNativeSnapshotPreservesCanonicalRecordsAndMemorySidecars(t *testing.T) 
 		`INSERT INTO __idb_records VALUES ('gh-aw-cao-dashboard-data','repositories','"repository:acme%2Fone"','{"id":"repository:acme%2Fone","name":"one"}')`,
 		`INSERT INTO __idb_records VALUES ('gh-aw-cao-dashboard-data','repositories','"repository:acme%2Ftwo"','{"id":"repository:acme%2Ftwo","name":"two"}')`,
 	} {
-		if _, err := database.Exec(statement); err != nil {
+		if _, err := database.ExecContext(t.Context(), statement); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -39,7 +39,7 @@ func TestNativeSnapshotPreservesCanonicalRecordsAndMemorySidecars(t *testing.T) 
 	}
 	defer func() { _ = database.Close() }()
 	var count int
-	if err := database.QueryRow(`SELECT count(*) FROM __idb_records WHERE store_name='repositories'`).Scan(&count); err != nil || count != 2 {
+	if err := database.QueryRowContext(t.Context(), `SELECT count(*) FROM __idb_records WHERE store_name='repositories'`).Scan(&count); err != nil || count != 2 {
 		t.Fatal("preparation dropped records from the native canonical snapshot")
 	}
 	if string(read(t, filepath.Join(w.SourceDirectory, "memory/dashboard/notes.md"))) != "bounded memory\n" ||

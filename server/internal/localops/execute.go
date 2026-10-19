@@ -139,8 +139,12 @@ func executeCommand(ctx context.Context, options Options, invocation Invocation,
 	filtered = append(filtered, "GH_TOKEN="+token)
 	env = filtered
 	if operator {
-		command = options.OperatorExecutable
 		args = nativeOperatorArguments(tokens)
+		if options.OperatorExecutable != "" {
+			command = options.OperatorExecutable
+		} else {
+			args = append([]string{"cao"}, args...)
+		}
 	}
 	if command == "" {
 		return nil, errors.New("operator executable is unavailable")

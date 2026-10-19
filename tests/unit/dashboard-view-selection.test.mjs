@@ -46,7 +46,7 @@ test("selects affected views for native preview implementation and dependency ch
     "cmd/gh-cao/main.go",
     "internal/cli/dashboard.go",
     "dashboard/catalog.go",
-    "dashboard/localpreview/workspace.go",
+    "server/internal/localpreview/workspace.go",
     "dashboard/queryengine/native_engine.go",
     "server/preview/preview.go",
     "server/internal/sqlitex/store.go",

@@ -298,7 +298,7 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       || path === "dashboard/catalog.go"
       || path.startsWith("cmd/gh-cao/")
       || path.startsWith("internal/cli/dashboard")
-      || path.startsWith("dashboard/localpreview/")
+      || path.startsWith("server/internal/localpreview/")
       || path.startsWith("dashboard/queryengine/")
       || path.startsWith("server/preview/")
       || path.startsWith("server/internal/sqlitex/")

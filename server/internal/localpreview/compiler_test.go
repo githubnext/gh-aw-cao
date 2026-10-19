@@ -23,7 +23,7 @@ func workflowRow(path, version string) object {
 }
 
 func TestCompilerReleaseRefreshPreservesSnapshotEvidence(t *testing.T) {
-	rows := []any{}
+	rows := make([]any, 0, 3)
 	for _, version := range []string{"v0.91.5", "v0.92.0", "unknown"} {
 		rows = append(rows, object{
 			"gh-aw-version": version, "gh-aw-current-version": "v0.89.21",
@@ -84,7 +84,7 @@ func TestCompilerReleaseComparisonsPreserveVersionSemantics(t *testing.T) {
 
 func TestLiveCompilerRefreshDeduplicatesRetainedCoordinates(t *testing.T) {
 	paths := []string{"first.md", "first.lock.yml", ".github/workflows/first.md", ".github/workflows/first.lock.yml"}
-	rows := []any{}
+	rows := make([]any, 0, len(paths)+2)
 	for _, path := range paths {
 		rows = append(rows, workflowRow(path, "v0.91.5"))
 	}
@@ -173,7 +173,7 @@ func TestLiveCompilerRefreshRejectsUntrustedCoordinatesAndUnknownRelease(t *test
 }
 
 func TestLiveCompilerReadsAreBoundedAndOverflowIsUnknown(t *testing.T) {
-	rows := []any{}
+	rows := make([]any, 0, 130)
 	for index := range 130 {
 		rows = append(rows, workflowRow(fmt.Sprintf("workflow-%d.md", index), "v0.91.5"))
 	}
@@ -273,7 +273,7 @@ func TestArtifactPreparationRefreshesLatestCompilerRelease(t *testing.T) {
 	}
 	script := string(read(t, executable))
 	script = strings.Replace(script, `printf '{"tag_name":"v0.92.0"}\n'`, "exit 1", 1)
-	if err := os.WriteFile(executable, []byte(script), 0o700); err != nil {
+	if err := os.WriteFile(executable, []byte(script), 0o700); err != nil { // #nosec G306 -- Private, trusted executable fixture.
 		t.Fatal(err)
 	}
 	if next, err := Prepare(context.Background(), Options{Workspace: root, Repository: "owner/control", GHExecutable: executable}); err == nil {

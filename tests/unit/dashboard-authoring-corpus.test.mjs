@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
@@ -22,4 +22,19 @@ test("dashboard lint validates every dashboard.json", () => {
     encoding: "utf8",
     stdio: "pipe",
   });
+});
+
+test("dashboard lint excludes disposable staging without excluding campaign documents", () => {
+  const stagingRoot = resolve(root, ".tmp");
+  mkdirSync(stagingRoot, { recursive: true });
+  const directory = mkdtempSync(resolve(stagingRoot, "dashboard-validator-"));
+  try {
+    writeFileSync(resolve(directory, "dashboard.json"), "not a canonical dashboard");
+    const output = execFileSync("npm", ["--prefix", "dashboard/site", "run", "validate:dashboards"], {
+      cwd: root, encoding: "utf8", stdio: "pipe",
+    });
+    assert.match(output, /Validated [1-9][0-9]* dashboard\.json file/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

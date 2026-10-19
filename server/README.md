@@ -33,21 +33,28 @@ database credentials. It communicates only with the same-origin HTTP(S) API.
 ## Local SQLite preview
 
 ```bash
-gh cao dashboard serve --repo OWNER/REPOSITORY
-gh cao dashboard serve --admin
-gh cao dashboard serve --data .cao/downloaded-dashboard
+cao-dashboard serve-local --repo OWNER/REPOSITORY
+cao-dashboard serve-local --admin
+cao-dashboard serve-local --data .cao/downloaded-dashboard
 ```
 
 Local previews use the same Go server, with native SQLite reads and the shared
-Go Dashboard Language evaluator instead of PostgreSQL. They require the native
-`gh-cao` extension and authenticated GitHub CLI, but no Node.js, npm, external database, hosted OAuth configuration,
+Go Dashboard Language evaluator instead of PostgreSQL. They run in the same
+`cao-dashboard` executable as `serve` and `serve-hosted`, not in the `gh-cao`
+extension. Authenticated artifact acquisition requires GitHub CLI, but no Node.js, npm, external database, hosted OAuth configuration,
 or site build. SQLite is the default; `--data-backend indexeddb` preserves
 browser-ingestion previews through the Go listener.
 
-`gh cao dashboard serve` prepares verified artifacts, composes and watches
+`cao-dashboard serve-local` prepares verified artifacts, composes and watches
 declarative documents, and runs the same Go HTTP implementation in-process.
 It directly reads the artifact's checksummed canonical SQLite snapshot;
 it does not invoke a JavaScript preparation or query worker.
+From the repository root, build with `npm run dashboard:server:build:binary`
+or `go -C server build -o ../.tmp/cao-dashboard ./cmd/cao-dashboard`, then run
+`.tmp/cao-dashboard serve-local`. Local CLI actions invoke the native `gh cao`
+operator hierarchy through the configured GitHub CLI, never the server itself.
+The canvas uses `CAO_DASHBOARD_EXECUTABLE` or `cao-dashboard` on PATH; its
+`CAO_EXECUTABLE` setting selects only the separate operator binary.
 The Go process owns request validation, the random
 capability prefix, same-origin JSON mutations, static assets and gzip,
 native SQLite queries and pagination, diagnostics, revision SSE, repository

@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 export const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
 export const nativeExecutable = process.env.CAO_EXECUTABLE || join(repositoryRoot, ".tmp", "gh-cao");
+export const nativeServerExecutable = process.env.CAO_DASHBOARD_EXECUTABLE || join(repositoryRoot, ".tmp", "cao-dashboard");
 
 /**
  * Produce test artifacts through Actions ingestion, never query-source callbacks.
@@ -100,8 +101,8 @@ export async function startNativeDashboard({
   dataBackend = "sqlite", caoUrl,
   approve = async () => false,
 }) {
-  const child = spawn(nativeExecutable, [
-    "dashboard", "serve", "--workspace", workspace, "--data", data,
+  const child = spawn(nativeServerExecutable, [
+    "serve-local", "--workspace", workspace, "--data", data,
     "--data-backend", dataBackend,
     "--repo", "acme/control", "--port", "0", "--control-stdio",
     ...(canvas ? ["--canvas"] : []), ...(admin ? ["--admin"] : []),

@@ -89,7 +89,7 @@ test("Go extension quality checks cover root-module sources and lint configurati
       "internal/ghcli/gh.go",
       "internal/cli/native_queries.go",
       "dashboard/catalog.go",
-      "dashboard/localpreview/workspace.go",
+      "server/internal/localpreview/workspace.go",
       "dashboard/queryengine/native_engine.go",
       "server/internal/server/server.go",
       "dashboard/site/src/data/queries/database.json",
@@ -125,11 +125,11 @@ test("Go extension quality checks cover root-module sources and lint configurati
   assert.equal(lint["working-directory"] ?? ".", ".");
   assert.equal(format.shell, "bash");
   assert.equal(format.run, [
-    'golangci-lint fmt --diff . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"',
+    'golangci-lint fmt --diff . ./cmd/... ./internal/... ./dashboard ./dashboard/queryengine/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"',
     'test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"',
     "",
   ].join("\n"));
-  assert.equal(lint.run, "golangci-lint run . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/...");
+  assert.equal(lint.run, "golangci-lint run . ./cmd/... ./internal/... ./dashboard ./dashboard/queryengine/...");
   const standalone = steps.find((step) => step.name === "Check standalone execution without Node.js");
   assert.match(standalone.run, /PATH="" "\$binary" pages --json/);
   assert.match(standalone.run, /PATH="" "\$binary" query --database explicit.sqlite --collection runs/);
@@ -204,7 +204,7 @@ test("pull request triggers route frontend, control, server, and test changes se
 test("main pushes retain browser and integration coverage for representative inputs", () => {
   const cases = [
     ["actions.yml", "tests/e2e/dashboard-mobile-live.spec.mjs"],
-    ["actions.yml", "dashboard/localpreview/workspace.go"],
+    ["actions.yml", "server/internal/localpreview/workspace.go"],
     ["actions.yml", "tests/e2e/dashboard-tree-analysis.mjs"],
     ["actions.yml", "self-care/dashboard-fragments/overview.json"],
     ["azure-local-integration.yml", "scripts/azure-local/azure-local.sh"],
@@ -231,7 +231,7 @@ test("native preview changes select browser CI and live view assessments", () =>
       "cmd/gh-cao/main.go",
       "internal/cli/dashboard.go",
       "dashboard/catalog.go",
-      "dashboard/localpreview/workspace.go",
+      "server/internal/localpreview/workspace.go",
       "dashboard/queryengine/native_engine.go",
       "tests/e2e/dashboard-site-fixture.mjs",
       "server/internal/sqlitex/store.go",
