@@ -522,7 +522,8 @@ test("review destinations allow control self-review and isolate other targets", 
   assert.match(precompute, /validateOutputDestination/);
   assert.match(precompute, /repositoryEqual\(safeOutputRepository, targetRepository\)[\s\S]*!repositoryEqual\(safeOutputRepository, controlRepository\)/);
   assert.match(precompute, /review safe_output_repo must differ from target_repo/);
-  assert.match(precompute, /live worker safe_output_repo must equal target_repo/);
+  assert.match(precompute, /const targetBound = role === "worker" \|\| role === "standalone"/);
+  assert.match(precompute, /live \$\{role\} safe_output_repo must equal target_repo/);
   assert.match(precompute, /repositoryEqual\(safeOutputRepository, controlRepository\)\) \{[\s\S]*central-review-shortcut[\s\S]*return/);
   assert.match(precompute, /ghApi\(`repos\/\$\{safeOutputRepository\}`\)/);
   assert.match(precompute, /review safe_output_repo must be accessible/);
