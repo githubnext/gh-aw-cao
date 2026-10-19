@@ -1,7 +1,7 @@
 # Local Azure Functions simulation
 
 This Linux-only harness runs the CAO Azure Functions hosting boundary against
-Azurite and a real Redis container. It uses no Azure subscription, Azure login,
+Azurite and real Redis and PostgreSQL containers. It uses no Azure subscription, Azure login,
 Azure credentials, or production secrets. It does not
 emulate managed identity, Key Vault, deployed networking, Azure edge behavior,
 or Azure Managed Redis TLS; those remain real-Azure smoke-test concerns.
@@ -13,8 +13,8 @@ or Azure Managed Redis TLS; those remain real-Azure smoke-test concerns.
 - A running Docker daemon
 
 Azure Functions Core Tools 4.15.1 is downloaded on first use from its official
-GitHub release and verified by SHA-256. Redis 7.4.7 and Azurite 3.37.0 images
-are pinned by tag and digest.
+GitHub release and verified by SHA-256. Redis 8.2 and Azurite 3.37.0 images
+are pinned by tag and digest. PostgreSQL uses the `postgres:16-alpine` image.
 
 Run the complete suite:
 
@@ -41,16 +41,22 @@ several stacks in parallel. Set `AZURE_LOCAL_WAIT_TIMEOUT` to change the
 
 ## Process model
 
-Each run owns a state directory, a uniquely named Redis container, a uniquely
-named Azurite container, a Functions Core Tools process group, generated
+Each run owns a state directory, uniquely named Redis, PostgreSQL, and
+Azurite containers, a Functions Core Tools process group, generated
 Functions metadata, dynamically published loopback ports, and a unique Redis
 namespace. The state records exact process/container identities; teardown never
 uses global process discovery. Fixed internal container ports are published to
 dynamic host ports to avoid collisions.
 
-Readiness polling verifies Redis `PING`, an Azurite Blob endpoint response, and
+Readiness polling verifies Redis `PING`, PostgreSQL readiness, an Azurite Blob endpoint response, and
 the CAO `/api/readiness` endpoint through Functions Core Tools. Timeouts print
 all available service logs and fail.
+
+Build, canonical database bootstrap, and fixture ingestion failures print the
+failed stage, exit status, and captured output before teardown. Their log files
+remain available alongside the service logs. Fixture ingestion verifies the
+checked-in `server/testdata/deployed-subset/payload-hashes.json` manifest;
+a mismatch fails startup rather than skipping or weakening integrity checks.
 
 ## Repository audit checklist
 
