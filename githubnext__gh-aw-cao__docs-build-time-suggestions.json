@@ -1,6 +1,6 @@
 {
   "source_sha": "2ff48ca50d0ca1a2ec98126391b79c665b2f0b4d",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-10-19T11:43:18Z",
@@ -378,6 +378,34 @@
         39173011411
       ],
       "outcome": "Incomplete evaluation for category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 553fa58dd630481370bf764daab0bc42d99496fb. In the latest 20 completed docs.yml runs from 2026-10-18T22:37:01Z through 2026-10-19T03:30:20Z, 14 runs concluded success, 6 concluded skipped, 0 concluded failure, and 0 were cancelled. Trusted job metadata showed only 2 successful build-bearing docs runs in that bounded sample: schedule 39173669741 and push 39173011411, both on head SHA 553fa58dd630481370bf764daab0bc42d99496fb. All other successful runs completed only schedule-freshness and skipped build plus deploy, while workflow_run callbacks were skipped. Because the mission requires at least 5 comparable successful build-bearing docs runs before assessing scheduling, concurrency, and avoidable rebuilds or recommending a workflow change, no actionable improvement was evaluated in this run and next_category remains unchanged."
+    },
+    {
+      "evaluated_at": "2026-10-19T12:11:00Z",
+      "worker_run_id": 39247739764,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39247314421,
+        39245710738,
+        39244737032,
+        39244460936,
+        39244299894,
+        39243918055,
+        39241639451,
+        39240151247,
+        39238723444,
+        39237320569,
+        39236982114,
+        39235028476,
+        39233749389,
+        39233011213,
+        39232359573,
+        39232175496,
+        39230782194,
+        39229238600,
+        39227764227,
+        39226469303
+      ],
+      "outcome": "Complete evaluation for category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 2ff48ca50d0ca1a2ec98126391b79c665b2f0b4d. In the latest 20 completed docs.yml runs from 2026-10-19T08:57:23Z through 2026-10-19T11:48:42Z, 15 runs concluded success, 5 concluded skipped, and 0 concluded failure or cancelled. Trusted job metadata showed 6 build-bearing successful docs runs (3 push, 3 schedule) with median queue time 0.0s, median full workflow time 89.0s (p90 111.0s), median execution time 89.0s (p90 111.0s), median build job 57.0s (p90 66.5s), and median deploy job 30.0s (p90 30.0s across the 3 deploy-bearing schedule runs). The 9 successful schedule freshness-only runs still spent a median 12.0s end to end, with median schedule-freshness job time 7.0s and median freshness-step time 4.0s. Bounded logs for docs runs 39245710738 and 39244460936 verified cache hits for the setup-node npm cache (~298 MB), the root node_modules cache (~288 MB), and the fixed-key central-agentic-ops-dashboard cache (~54 MB); Find latest CAO Dashboard run and Mount latest CAO Dashboard artifact were skipped in every build-bearing docs run. Like-for-like same-SHA pairs still show the stable duplicate-publication pattern already tracked in open issue #18158: push run 39244460936 was followed 567s later by schedule run 39245710738 on SHA 2ff48ca50d0ca1a2ec98126391b79c665b2f0b4d, push run 39233011213 was followed 302s later by schedule run 39233749389 on SHA 37c9f53cb2bd99c35f5954820ea185a2eb4b6eac, and push run 39227764227 was followed 633s later by schedule run 39229238600 on SHA 6761234103464b8a1049e4936c6732a06b0464d1. Those 3 same-SHA push→schedule pairs consumed 510.0s total, or 170.0s average per duplicate publication cycle. The current docs.yml source still makes schedule-freshness look for the latest successful docs run whose deploy job succeeded, so successful push builds with skipped deploy remain non-current and are republished on the next eligible schedule. However, the underlying stable work and recommended change are already represented by open issue #18158, and the current source/timing evidence does not materially change that case or its acceptance check. In the same evidence window, the latest 20 completed cao-dashboard.yml runs contained 19 skipped callbacks and only 1 successful build (39210914364, 237.0s full, 215.0s build), so paired dashboard evidence does not support a distinct new scheduling recommendation. No new non-duplicate actionable improvement met the threshold for a fresh issue; next_category advances to \"dependency installation and caching\"."
     }
   ]
 }
