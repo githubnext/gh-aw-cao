@@ -55,6 +55,11 @@ Validate it with `coverage.mjs ledger` and the canonical portfolio it names.
 Require `plan.repository == TARGET_REPO`. Verify all file pins before any
 outcome inspection. Read the pinned operational-value skill; never install or
 rewrite it at runtime. Pin the complete dependency closure, not just the module.
+Use that skill's schema 3 authoring/evaluation/reporting pipeline and
+`scripts/report-completeness.mjs`; `report.mjs` only binds campaign identity
+to that shared reporting gate. Do not fork its checks or create a parallel
+measurement system. Turn recurring failures into evidence-backed proposed
+updates to the skill itself, never local exceptions to frozen contracts.
 An `author` task permits only an isolated proposed contract; it cannot inspect
 outcomes or run scoring until a separately reviewed plan pins that contract.
 Never change a frozen acceptance formula after seeing outcomes. Label prior

@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { effectivePolicy, loadPolicyFile } from "../.github/workflows/shared/policy.mjs";
 import { readJsonArchive } from "../.github/skills/add-operational-value/scripts/json-archive.mjs";
-import { buildLedger, digest, localFile, readInventory, selectCohort, validatePlan } from "./coverage.mjs";
+import { buildLedger, digest, localFile, readInventory, reservedWorkKeys, selectCohort, validatePlan } from "./coverage.mjs";
 
 const stateDirectory = ".github/cao/operational-value-coverage";
 const campaignName = "operational-value-coverage";
@@ -27,8 +27,10 @@ export function sweepDecision(plan, inventory, receipts, {
   "Existing measurements are validation-only, never new measurements or replacement contracts");
   assert.ok(workerLane === null || (Number.isInteger(workerLane) && workerLane >= 1 && workerLane <= 4));
   const ledger = buildLedger(plan, receipts);
+  const reserved = new Set(reservedWorkKeys(plan));
   const result = { dispatch: false, state: "waiting-for-review", target: plan.repository,
-    planSha256: digest(plan), summary: ledger.summary, readyCohorts: [], integrationKeys: [], excludedKeys: [],
+    planSha256: digest(plan), summary: ledger.summary, reservations: plan.reservations ?? [],
+    readyCohorts: [], integrationKeys: [], excludedKeys: [...reserved],
     integrationMarker: `<!-- value-coverage-integration:${digest(plan)}:${digest(receipts)} -->` };
   if (ledger.entries.every(entry => terminal.has(entry.status))) return { ...result, state: "complete" };
 
@@ -37,6 +39,7 @@ export function sweepDecision(plan, inventory, receipts, {
     /<!-- value-coverage-work:([a-f0-9]{64}):([12]) -->/g,
   )].map(match => ({ key: match[1], attempt: Number(match[2]), open: pr.state === "open", merged: Boolean(pr.pull_request.merged_at) })));
   for (const entry of ledger.entries.filter(item => !terminal.has(item.status))) {
+    if (reserved.has(entry.key)) continue;
     const attempt = entry.status === "submitted" ? entry.attempts : entry.attempts + 1;
     const relevant = claims.filter(claim => claim.key === entry.key && (claim.open || claim.attempt === attempt));
     if (entry.status === "submitted" || relevant.length > 0) result.excludedKeys.push(entry.key);
@@ -64,7 +67,8 @@ export function sweepDecision(plan, inventory, receipts, {
   } else if (busy.size) result.state = "running";
   else if (ledger.entries.some(entry => !terminal.has(entry.status))
     && ledger.entries.filter(entry => !terminal.has(entry.status)).every(entry =>
-      entry.status === "blocked" || (entry.status === "rework" && entry.attempts >= 2))) result.state = "blocked";
+      reserved.has(entry.key) || entry.status === "blocked"
+      || (entry.status === "rework" && entry.attempts >= 2))) result.state = "blocked";
   return result;
 }
 

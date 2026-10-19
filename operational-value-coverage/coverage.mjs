@@ -1,41 +1,17 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readJsonArchive } from "../.github/skills/add-operational-value/scripts/json-archive.mjs";
+import { digest, fileHash, localFile, verifyPins } from "../.github/skills/add-operational-value/scripts/artifact-files.mjs";
 
-export const digest = value => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+export { digest, fileHash, localFile, verifyPins };
 const sha = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 const gitSha = value => typeof value === "string" && /^[a-f0-9]{40}$/.test(value);
 const slug = value => typeof value === "string" && /^[a-z0-9][a-z0-9-]*$/.test(value);
 const utc = value => typeof value === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(value)
   && Number.isFinite(Date.parse(value));
 const nonempty = value => typeof value === "string" && value.trim().length > 0;
-
-export function localFile(root, file) {
-  assert.ok(typeof file === "string" && file.length > 0 && !file.includes("\\")
-    && !path.isAbsolute(file) && file.split("/").every(part => part && part !== "." && part !== ".."),
-  "Expected a repository-relative file");
-  const base = realpathSync(root);
-  const resolved = path.join(base, file);
-  assert.ok(!lstatSync(resolved).isSymbolicLink() && lstatSync(resolved).isFile(), "Expected a regular file");
-  assert.ok(realpathSync(resolved).startsWith(`${base}${path.sep}`), "File escapes repository");
-  return resolved;
-}
-
-export function fileHash(root, file) {
-  return createHash("sha256").update(readFileSync(localFile(root, file))).digest("hex");
-}
-
-export function verifyPins(root, pins) {
-  assert.ok(Array.isArray(pins) && pins.length > 0 && pins.length <= 4096, "Missing bounded file pins");
-  assert.equal(new Set(pins.map(pin => pin.path)).size, pins.length, "Duplicate file pin");
-  for (const pin of pins) {
-    assert.ok(sha(pin.sha256), "Invalid file digest");
-    assert.equal(fileHash(root, pin.path), pin.sha256, `Pinned file changed: ${pin.path}`);
-  }
-}
 
 export function instrumentFiles(root) {
   const skill = ".github/skills/add-operational-value";
@@ -128,6 +104,7 @@ export function validatePlan(root, plan, inventory, { requireApproved = true } =
       assert.ok(plan.pins.some(pin => pin.path === acquisition.index && pin.sha256 === acquisition.sha256));
     }
   }
+  reservedWorkKeys(plan);
   return plan;
 }
 
@@ -135,6 +112,20 @@ export const workKey = (plan, contract) => digest({
   plan: digest(plan), repository: plan.repository, source: contract.sourceGitBlob,
   workflow: contract.id, contract: contract.sha256, until: plan.until,
 });
+
+export function reservedWorkKeys(plan) {
+  const reservations = plan.reservations === undefined ? [] : plan.reservations;
+  const contracts = new Map(plan.cohorts.flatMap(cohort => cohort.workflows.map(contract => [contract.id, contract])));
+  assert.ok(Array.isArray(reservations) && reservations.length <= contracts.size, "Invalid workflow reservations");
+  const reserved = new Set();
+  return reservations.map(reservation => {
+    assert.ok(slug(reservation.id) && nonempty(reservation.reason)
+      && contracts.has(reservation.id) && !reserved.has(reservation.id),
+    "Reservations require unique assigned workflows and an explicit reason");
+    reserved.add(reservation.id);
+    return workKey(plan, contracts.get(reservation.id));
+  });
+}
 
 export function buildLedger(plan, receipts = []) {
   assert.ok(Array.isArray(receipts) && receipts.length <= 16384, "Invalid bounded receipt log");
@@ -185,7 +176,7 @@ export function selectCohort(plan, ledger, lane, excludedKeys = []) {
   assert.ok(Number.isInteger(lane) && lane >= 1 && lane <= 4);
   assert.equal(ledger.planSha256, digest(plan));
   assert.ok(Array.isArray(excludedKeys) && excludedKeys.every(sha));
-  const excluded = new Set(excludedKeys);
+  const excluded = new Set([...excludedKeys, ...reservedWorkKeys(plan)]);
   return plan.cohorts.find(cohort => cohort.lane === lane && ledger.entries.some(entry =>
     entry.cohort === cohort.id && ["pending", "rework"].includes(entry.status) && entry.attempts < 2
     && !excluded.has(entry.key))) ?? null;

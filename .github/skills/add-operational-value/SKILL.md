@@ -4,7 +4,7 @@ description: "Count demonstrated workflow-enabled improvements over time, with g
 argument-hint: 'OWNER/REPO [WORKFLOW | SOURCE | --goal "GOAL"] [--campaign SLUG]'
 allowed-tools: bash node gh
 metadata:
-  version: "0.18.5"
+  version: "0.18.6"
 ---
 
 # Measure workflow value
@@ -16,8 +16,7 @@ Copy this directory for standalone use: Node.js 24+, plus `git` and authenticate
 
 ## 1. Turn intent into an outcome
 
-Accept a workflow, document or natural-language goal; campaigns are optional.
-From this skill directory:
+Accept a workflow, document or natural-language goal.
 
 ```sh
 node scripts/discover-intent.mjs --root CHECKOUT
@@ -99,14 +98,18 @@ cost evidence. Unknown/zero outcomes cannot be cost denominators.
 
 Keep definitions in Git, observations in the version-keyed evidence archive.
 Render those facts; dashboard/cache retention is not durable history.
-[MemoryOps](https://github.github.com/gh-aw/patterns/memory-ops/) can persist the
-archive; [MonitorOps](https://github.github.com/gh-aw/patterns/monitor-ops/)
-can publish reviews. Neither integration is required or implicitly authorized.
 
 Optional publication: `scripts/wire-workflow.mjs NAME --root CHECKOUT`.
 Explicit campaigns only: `CAMPAIGN/operational-value/NAME.mjs` and
 `scripts/wire-campaign.mjs CAMPAIGN NAME`. Never enroll, deploy, publish or change
 another repository/policy without authorization.
+
+## 3. Scale and improve
+
+Use this pinned skill for every worker. Already measured workflows are validation-only.
+Use `scripts/report-completeness.mjs`, not a parallel reporting gate.
+Propose evidence-backed skill changes with regressions, reviewed versions and
+new pins; never self-install. See [details](references/module-contract.md#reporting-completeness).
 
 See the [operator guide](https://github.com/githubnext/gh-aw-cao/blob/main/docs/operational-value.md)
 for calculations, storage and limitations; the module contract holds detailed

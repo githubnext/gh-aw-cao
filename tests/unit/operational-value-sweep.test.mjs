@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { parse } from "yaml";
-import { digest, fileHash, instrumentFiles, readInventory, workKey } from "../../operational-value-coverage/coverage.mjs";
+import { buildLedger, digest, fileHash, instrumentFiles, readInventory, selectCohort, workKey } from "../../operational-value-coverage/coverage.mjs";
 import { inspectSweep, sweepDecision } from "../../operational-value-coverage/sweep.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
@@ -53,8 +53,24 @@ test("the retained canonical inventory is fully assigned and measured entries re
     cohort.workflows[0].sourceGitBlob = inventory.rows[i].gitBlob;
     cohort.workflows[0].task = inventory.rows[i].measurement.status === "measured" ? "validate" : "author";
   });
+  plan.reservations = [
+    "artifacts-summary", "avenger", "blog-auditor", "cli-consistency-checker",
+    "daily-aw-cross-repo-compile-check", "daily-cli-performance", "daily-credit-limit-test",
+    "daily-model-inventory", "daily-model-resolution", "daily-observability-report",
+    "daily-safe-outputs-conformance", "daily-syntax-error-quality", "step-name-alignment",
+    "weekly-editors-health-check", "workflow-normalizer",
+    "go-logger", "go-pattern-detector", "daily-testify-uber-super-expert",
+    "metrics-collector", "daily-firewall-report", "daily-code-debt-aider", "code-simplifier",
+  ].map(id => ({ id, reason: "Reserved by source-session handoffs; reconcile before remote work on this baseline." }));
   const result = sweepDecision(plan, inventory, []);
   assert.equal(result.summary.assigned, inventory.rows.length);
+  assert.equal(result.reservations.length, 22);
+  const reserved = new Set(plan.reservations.map(reservation => {
+    const cohort = plan.cohorts.find(item => item.workflows[0].id === reservation.id);
+    return workKey(plan, cohort.workflows[0]);
+  }));
+  assert.ok(result.readyCohorts.every(cohort => cohort.keys.every(item => !reserved.has(item))));
+  assert.ok([...reserved].every(item => result.excludedKeys.includes(item)));
   const exemplar = plan.cohorts.find(cohort => cohort.workflows[0].id === "daily-file-diet");
   assert.equal(exemplar.workflows[0].task, "validate");
   exemplar.workflows[0].task = "author";
@@ -72,6 +88,25 @@ test("busy lanes do not enqueue duplicates and workers can inspect their own ass
   assert.equal(sweepDecision(plan, inventory, [], {
     runs: [{ path: ".github/workflows/value-coverage-skill.lock.yml", status: "in_progress" }],
   }).readyCohorts.length, 0);
+});
+
+test("reviewed reservations exclude external owners without consuming attempts or completing work", () => {
+  const { plan, inventory } = fixture(5);
+  plan.reservations = [{ id: "workflow-0", reason: "Reserved by an active local cohort; await its handoff." }];
+  const result = sweepDecision(plan, inventory, []);
+  assert.equal(result.readyCohorts.find(item => item.lane === 1).cohort, "cohort-4");
+  assert.ok(result.excludedKeys.includes(key(plan, 0)));
+  assert.deepEqual(result.reservations, plan.reservations);
+  const ledger = buildLedger(plan);
+  assert.equal(ledger.entries[0].attempts, 0);
+  assert.equal(ledger.summary.disposed, 0);
+  assert.equal(selectCohort(plan, ledger, 1).id, "cohort-4");
+  assert.equal(sweepDecision(plan, inventory, [], {
+    pullRequests: [proposal(plan, 0, { state: "closed", merged: true })],
+  }).integrationKeys.length, 0);
+  plan.reservations = inventory.rows.map(row => ({ id: row.id, reason: "Await the separately owned work." }));
+  assert.equal(sweepDecision(plan, inventory, []).state, "blocked");
+  assert.equal(sweepDecision(plan, inventory, []).dispatch, false);
 });
 
 test("open proposals wait for review while merged staging wakes independent integration", () => {
@@ -184,6 +219,10 @@ test("enabled inspection validates pins, reads paginated work metadata, and fail
   assert.ok(routes.every(route => route.startsWith(`repos/${control}/`)));
   assert.throws(() => inspectSweep(directory, control, { github: () => { throw new Error("API unavailable"); } }), /API unavailable/);
   const noApi = () => { throw new Error("Terminal/blocked ledgers must not call the API"); };
+  write(".github/cao/operational-value-coverage/active.json", { ...plan,
+    reservations: [{ id: "workflow-0", reason: "Separately owned local cohort." }] });
+  assert.equal(inspectSweep(directory, control, { github: noApi }).state, "blocked");
+  write(".github/cao/operational-value-coverage/active.json", plan);
   write(".github/cao/operational-value-coverage/receipts.json", [event(plan, 0, "unavailable")]);
   assert.equal(inspectSweep(directory, control, { github: noApi }).state, "complete");
   write(".github/cao/operational-value-coverage/receipts.json", [event(plan, 0, "submitted"), event(plan, 0, "blocked")]);

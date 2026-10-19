@@ -27,6 +27,69 @@ archive's module-file SHA-256 alone does not identify the transitive closure.
 See [the operator guide's calculation pipeline](https://github.com/githubnext/gh-aw-cao/blob/main/docs/operational-value.md#internals-author-once-harvest-deterministically)
 for stage boundaries, native calculations, scheduling, outputs and current commands.
 
+## Reporting completeness
+
+Every measurement, validation and improvement worker uses this pinned skill,
+not a parallel implementation. The computed File Diet entry remains the
+reporting example, not a new measurement or another workflow's formula.
+
+`scripts/report-completeness.mjs` is the shared structural reporting gate for
+standalone use and coverage campaigns. It exports `reportingChecklist` and
+`validateReportCompleteness(root, expected, manifest)`. Campaign code supplies
+reviewed identity and approval/ledger handling, not another report validator.
+The helper uses the existing timeline validator and pulse renderer; it does
+not collect facts, invoke a model, score a module or accept its own evidence.
+
+`expected` contains `key` (a SHA-256 frozen work identity), `repository`,
+`workflow` (the existing slug field, also for prose goals), `contractSha256`,
+`until` (UTC cutoff), and the reviewed intent `sourcePath`. Derive these from
+the approved contract rather than trusting the manifest.
+
+The version 1 manifest contains the matching key/repository/workflow,
+`disposition` (`native`, `partial`, `unavailable`), `nativeEvaluated`, bounded
+`files: [{path, sha256}]`, `decision` (`rated`, `not-rated`), `cost` (`matched`,
+`not-measured`), and a nonempty `limitation`. Every `reportingChecklist` entry
+has `status` (`verified`, `unavailable`), a reason, and retained `evidence`
+paths covered by the file pins. Paths stay inside the supplied checkout.
+Unavailable reports require `blocker` and `nativeEvaluated: false`.
+
+Native/partial reports additionally name pinned `timeline`, `definitions`,
+`plotInput`, `pulseJson`, `pulseHtml`, and evaluated `metricId`. The helper
+checks contract identity/cutoff, the selected native metric, and exact HTML/JSON
+parity with retained facts. A native disposition requires the primary metric;
+a partial disposition names its facet explicitly. Neither disposition claims
+full-goal completion. All-unknown timelines cannot qualify as evaluated.
+Independent native replay and human semantic review remain required beyond
+this structural gate. Version 0.18.6 adds this reusable gate without changing
+the schema 3 evaluator interface or predecessor measurements.
+
+```sh
+node scripts/report-completeness.mjs CHECKOUT EXPECTED_IDENTITY.json MANIFEST.json
+```
+
+The twelve dimensions are intent/executor, adoption/predecessors, frozen
+contract, collector/replay, evidence identity/cutoff, timeline/definitions,
+HTML/JSON plot, outcome versus contribution, partial/full attainment,
+safeguards/attribution, historical coverage/missing-versus-zero, and
+cost/unrated decision. Equivalent completeness explains unavailable dimensions
+rather than fabricating facts or copying another workflow's native formula.
+
+### Reviewed skill improvement
+
+For automated improvement, retain at least two immutable work keys or
+independent validation failures demonstrating the same defect. Propose the
+smallest change **in this skill**, with a red/green regression, version change
+and compatibility explanation. Test standalone use and preserve accepted
+predecessors, missing/zero distinctions and partial metrics. Human review and
+merge plus a new reviewed plan/pin set precede use by later cohorts; in-flight
+work keeps its previous skill/evaluator versions. Never self-install, revise
+frozen formulas or rescore historical work silently. Campaigns coordinate
+execution and proposals; the skill remains the measurement/reporting authority.
+
+[MemoryOps](https://github.github.com/gh-aw/patterns/memory-ops/) can persist the
+version-keyed archive; [MonitorOps](https://github.github.com/gh-aw/patterns/monitor-ops/)
+can publish reviews. Neither integration is required or implicitly authorized.
+
 ## Exports
 
 `definition` is JSON-compatible and contains:

@@ -36,6 +36,16 @@ test("outcome exposure includes discovery prose before immutable native inspecti
   assert.match(contract, /do not claim blind or ex-ante acceptance/);
 });
 
+test("scaled execution improves the canonical skill through reviewed, versioned regression proposals", () => {
+  const contract = readContract();
+  assert.match(contract, /Every measurement, validation and improvement worker uses this pinned skill/);
+  assert.match(contract, /Already measured workflows are validation-only/);
+  assert.match(contract, /Propose the smallest change \*\*in this skill\*\*/);
+  assert.match(contract, /at least two immutable work keys or independent validation failures/);
+  assert.match(contract, /in-flight work keeps its previous skill\/evaluator versions/);
+  assert.match(contract, /not another report validator/);
+});
+
 test("portable period validation preserves the canonical CAO adapter contract", () => {
   const period = { windowStart: "2026-09-01T00:00:00Z", windowEnd: "2026-09-02T00:00:00Z",
     measurementKind: "interval", coverageStatus: "partial" };

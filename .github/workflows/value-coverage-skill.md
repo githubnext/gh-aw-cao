@@ -71,6 +71,10 @@ Select at most one recurring defect supported by at least two immutable work
 keys/independent validation failures. No such evidence or an open equivalent
 proposal is a noop. Produce a red/green regression, minimal helper/skill patch,
 version-change rationale, compatibility analysis and predecessor preservation.
+Follow the pinned skill's improvement procedure and patch its canonical
+instructions/helpers, not a competing campaign implementation. Exercise the
+skill copied outside CAO as well as the campaign adapter; retain schema 3 and
+update the skill metadata version when behavior changes.
 Verify the existing File Diet reporting contract still holds without rerunning
 it as new coverage. Test missing/malformed evidence, genuine zero, partial
 progress, attribution and historical gaps.

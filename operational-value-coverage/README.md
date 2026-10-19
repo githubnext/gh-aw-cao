@@ -89,7 +89,7 @@ Start from the existing report's `portfolio.json.gz` and digest-linked workflow
 partitions. `coverage.mjs inventory` validates those partitions and reconciles
 counts from actual rows. It does not treat output counts as outcomes. The
 current retained integration is commit
-`c576d538cf9a8463d8d8a7d1de852f90358dfa3c`; inventory revisions/cutoffs are read
+`d536c91d1cbe46826067422f54701edad488ce70`; inventory revisions/cutoffs are read
 from the report, never inferred from that control repository commit.
 
 ```sh
@@ -124,6 +124,13 @@ the campaign package/materializer. The plan schema is enforced by
   formulas. Preserve stricter predecessor measures and rejected predicates.
 - `acquisition`: exact repository/cutoff, `status: "retained"` with pinned
   `index`/`sha256`, or `status: "blocked"` with a visible `reason`.
+- Optional `reservations: [{id, reason}]`: explicitly reserve assigned workflows
+  owned by another cohort. They remain in the full denominator but cannot be
+  measured, validated or integrated by this plan. Reservations consume no
+  attempts, grant no acceptance and are not terminal dispositions. All-reserved
+  pending work is blocked rather than complete. Release requires a reviewed
+  new plan after reconciling the external owner's handoff; never infer a
+  reservation expired because a local session appears idle.
 
 There is deliberately no generated "approved" plan. Plan merge and policy
 activation are separate approvals. A plan grants no repository reach, runtime,
@@ -189,7 +196,11 @@ another backlog item. Inspect its published pulse, retained
 module, timeline and definitions. Its stronger lifetime delivery report and its
 original snapshot contract are distinct; neither replaces the other.
 
-`report.mjs` exposes twelve required checks: intent/effective executor,
+The operational-value skill owns the reusable reporting gate in
+`scripts/report-completeness.mjs`. Campaign `report.mjs` is an identity adapter,
+not a second measurement/reporting implementation. Skill version 0.18.6 moves
+these shared checks into the portable skill without changing existing native
+formulas or observations. Its twelve required checks cover intent/effective executor,
 adoption/predecessors, frozen native contract, collector/independent replay,
 evidence identity/cutoff, timeline/definitions, HTML/JSON plot,
 repository outcome/contribution, partial/full attainment,
@@ -212,7 +223,7 @@ node operational-value-coverage/report.mjs . \
 ```
 
 The structural gate delegates timeline validation, signal semantics and plot
-rendering to the existing skill. It verifies hashes, identity, cutoff and exact
+rendering to the same skill. It verifies hashes, identity, cutoff and exact
 HTML/JSON parity without reimplementing query or measurement semantics.
 Independent native replay and semantic review are **additional required
 checks**, not a claim a manifest can self-certify. In particular, File Diet's

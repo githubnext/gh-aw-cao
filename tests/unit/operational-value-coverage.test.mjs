@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -10,6 +10,7 @@ import { reportingChecklist, validateReport } from "../../operational-value-cove
 import { readJsonArchive } from "../../.github/skills/add-operational-value/scripts/json-archive.mjs";
 import { eventPulse } from "../../.github/skills/add-operational-value/scripts/pulse-model.mjs";
 import { renderPulse } from "../../.github/skills/add-operational-value/scripts/render-pulse.mjs";
+import { reportingChecklist as skillChecklist } from "../../.github/skills/add-operational-value/scripts/report-completeness.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const portfolioPath = "docs/operational-value/gh-aw-workflows/portfolio.json.gz";
@@ -70,6 +71,36 @@ test("canonical portfolio is reconciled from checked partitions, not fixed backl
   assert.ok(summary.dispositions["evidence-unavailable"] > 0);
 });
 
+test("campaign reporting uses the portable operational-value skill without a parallel implementation", t => {
+  assert.equal(reportingChecklist, skillChecklist);
+  const plan = retainedPlan(), contract = plan.cohorts[0].workflows[0], manifest = manifestFor(plan);
+  const temporary = mkdtempSync(path.join(tmpdir(), "value-skill-reporting-"));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const portable = path.join(temporary, "standalone-skill");
+  cpSync(path.join(root, ".github/skills/add-operational-value"), portable, {
+    recursive: true, filter: file => path.basename(file) !== "node_modules",
+  });
+  const checkout = path.join(temporary, "checkout");
+  mkdirSync(checkout);
+  for (const file of manifest.files) {
+    const target = path.join(checkout, file.path);
+    mkdirSync(path.dirname(target), { recursive: true });
+    cpSync(path.join(root, file.path), target);
+  }
+  const expected = { key: workKey(plan, contract), repository: plan.repository, workflow: contract.id,
+    contractSha256: contract.sha256, until: plan.until, sourcePath: `.github/workflows/${contract.id}.md` };
+  writeFileSync(path.join(checkout, "expected.json"), JSON.stringify(expected));
+  writeFileSync(path.join(checkout, "manifest.json"), JSON.stringify(manifest));
+  const result = JSON.parse(execFileSync(process.execPath, [
+    path.join(portable, "scripts/report-completeness.mjs"), checkout, "expected.json", "manifest.json",
+  ], { encoding: "utf8", stdio: "pipe" }));
+  assert.deepEqual(result, validateReport(root, plan, contract, manifest));
+  assert.equal(existsSync(path.join(checkout, "operational-value-coverage")), false);
+  assert.equal(existsSync(path.join(checkout, ".github/workflows/cao.json")), false);
+  assert.equal(existsSync(path.join(portable, "node_modules")), false);
+  assert.doesNotMatch(source("operational-value-coverage/report.mjs"), /eventPulse|renderPulse|timelinePulse/);
+});
+
 test("plan rejects unapproved, changed, duplicated, widened or unpinned work", () => {
   const plan = retainedPlan();
   assert.equal(validatePlan(root, plan, inventory()), plan);
@@ -88,6 +119,11 @@ test("plan rejects unapproved, changed, duplicated, widened or unpinned work", (
     copy => { copy.acquisition[0].status = "fresh"; },
     copy => { copy.repository = "another/repository"; },
     copy => { copy.cohorts[0].workflows[0].task = "measure"; },
+    copy => { copy.reservations = [{ id: "not-assigned", reason: "Unknown reservation." }]; },
+    copy => { copy.reservations = [{ id: "daily-file-diet", reason: "" }]; },
+    copy => { copy.reservations = Array(2).fill({ id: "daily-file-diet", reason: "Duplicate owner." }); },
+    copy => { copy.reservations = "daily-file-diet"; },
+    copy => { copy.reservations = null; },
   ]) {
     const copy = structuredClone(plan); mutate(copy);
     assert.throws(() => validatePlan(root, copy, inventory()));

@@ -534,6 +534,8 @@ test("gh aw add installs the focused Value Coverage campaign contract", { timeou
       ".github/workflows/value-coverage-pump.yml",
       ".github/workflows/shared/policy.mjs",
       ".github/skills/add-operational-value/SKILL.md",
+      ".github/skills/add-operational-value/scripts/artifact-files.mjs",
+      ".github/skills/add-operational-value/scripts/report-completeness.mjs",
       ".github/skills/add-operational-value/scripts/json-archive.mjs",
       ".github/skills/add-operational-value/scripts/render-pulse.mjs",
       ".github/workflows/operational-value-coverage.md",
@@ -557,7 +559,7 @@ test("gh aw add installs the focused Value Coverage campaign contract", { timeou
     assert.equal(readFileSync(join(state, "receipts.json"), "utf8"), '[{"preserve":"accepted-evidence"}]\n');
     assert.equal(existsSync(join(consumer, "docs/operational-value/proof")), false);
     run(process.execPath, ["--input-type=module", "-e",
-      "await import('./operational-value-coverage/coverage.mjs'); await import('./operational-value-coverage/report.mjs'); await import('./operational-value-coverage/sweep.mjs');"], consumer);
+      "await import('./operational-value-coverage/coverage.mjs'); const report = await import('./operational-value-coverage/report.mjs'); await import('./operational-value-coverage/sweep.mjs'); const skill = await import('./.github/skills/add-operational-value/scripts/report-completeness.mjs'); if (report.reportingChecklist !== skill.reportingChecklist) throw new Error('Campaign must use the installed skill reporting gate');"], consumer);
     const orchestrator = readFileSync(join(consumer, ".github/workflows/operational-value-coverage.md"), "utf8");
     assert.doesNotMatch(orchestrator, /^  schedule:/m);
   } finally {
