@@ -590,23 +590,27 @@ compiler declaration can select multiple source repositories:
 
 ```yaml
 on:
-  webhook-gateway: true
-  security-alerts:
+  gateway-dispatch:
     repos:
       - bar/baz
       - foo/*
+    security-alerts: {}
 ```
 
-The upstream compiler places `projects-items` and `security-alerts` directly
-under `on`, alongside roles/bots and native triggers. Each subscribing workflow
-requires the sibling boolean `on.webhook-gateway: true`, independently of the
-repository's `"webhook-gateway": true` in `.github/workflows/aw.json`.
+The upstream compiler places all gateway declarations under `on.gateway-dispatch`;
+roles/bots and other native triggers remain outside that mapping under `on`.
+Shared `repos` belongs inside `gateway-dispatch`, not inside a trigger, and
+currently applies only to code-scanning/Dependabot subscriptions.
+The repository still independently requires `"webhook-gateway": true` in
+`.github/workflows/aw.json`.
 These are compilation gates, not gateway activation or dispatch authority.
-The obsolete `on.gateway` mapping, singular Projects/security spellings, and
-the old repository `webhook-triggers` opt-in are rejected.
-This authoring change leaves the normalized lock manifest and closed v2
-dispatch envelope unchanged; the runtime conformance pin below does not claim
-installed-compiler emission of this syntax.
+The former workflow `on.webhook-gateway` flag, flat triggers, obsolete `on.gateway`,
+singular Projects/security spellings, and old repository `webhook-triggers` opt-in
+are rejected. Explicit `workflow_dispatch` or `repository_dispatch` declarations
+cannot accompany `gateway-dispatch`; a shared-`repos`-only mapping is also invalid.
+For the supported security families, this authoring change leaves the normalized
+lock manifest and closed v2 dispatch envelope unchanged; the runtime conformance
+pin below does not claim installed-compiler emission of this syntax.
 
 Selectors are lowercase, sorted, unique exact names or literal-owner `/*`
 patterns, intersected with reviewed `discovery.repositories` and root scope.
@@ -614,8 +618,8 @@ They never enroll repositories or broaden authority. Both source and workflow
 repository need fresh private inventories; an authenticated source inventory
 may have no workflows. Each source receives an independent grant and batch
 route to the declaring workflow, expiring at the earlier inventory bound.
-Omitted sources in the upstream repos-only syntax select both supported
-security families; CAO reads only the compiled manifest.
+An empty `security-alerts: {}` with shared `repos` selects both supported security
+families; explicit `sources` narrows them. CAO reads only the compiled manifest.
 
 The receiving App needs contents-read
 and the corresponding security-event read permission; the independent dispatch
@@ -640,14 +644,19 @@ configured provider-authenticated readers; notification URLs do not grant access
 or justify attaching credentials to arbitrary origins.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`87d3245cbe0659efb4ba93e3ecf85fa29031f703`; optional interoperability tests
+`71d6daa9ceb8b2a5b05cae86d5f1cd0cd22e8490`; optional interoperability tests
 execute that commit's actual runtime validator/normalizer, including exact and
 wildcard source selection and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not
 supported by that compiler and do not autoactivate. See RFC-033 §13.1 for the
 wire contract, test reproduction, and bounded TLA+ result.
-The upstream specification also defines Jira, Linear, and Azure DevOps resource
-notifications. This bridge does not discover or activate those providers.
+The upstream specification also defines Jira, Linear, Azure DevOps, and generic
+`webhooks: [{type: com.example.release}]` resource notifications. This bridge
+does not support those compiler declarations: artifacts containing them fail
+discovery closed, including mixed security/generic artifacts. Generic identifiers
+do not register or authenticate a source and are not the separate generic
+approved-route contract described above. No receiver support or authority is
+inferred from a declaration.
 
 `projectAssignments` maps an organization project to exactly one enrolled
 repository. It constrains separately approved project subscriptions at admission

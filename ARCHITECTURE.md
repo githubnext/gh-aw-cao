@@ -638,21 +638,30 @@ mock GitHub tests, and separate bounded registry, source-selection and dispatch-
 demonstrate local contracts, not installed-compiler or live GitHub acceptance.
 Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
 context paths, same-event/delivery-ID batching, minimal resource URL/type policy,
-and optional source selectors match github/gh-aw#69772 commit 87d3245. Gateway
+and optional source selectors match github/gh-aw#69772 commit 71d6daa. Gateway
 `aw_context` contains only `webhook`, never supplied items, provenance, or resource
 details. Context resource identities are derived from canonical URLs. The upstream
-contract covers six families; this bridge still discovers only Projects and the
+contract covers seven families; this bridge still discovers only Projects and the
 two security families and activates only delegated security subscriptions.
-External providers remain unsupported; no provider normalization evidence is
+External providers and the compiler's generic `webhook` family remain unsupported;
+artifacts containing unsupported declarations fail discovery closed, including
+mixed security/generic declarations. No provider normalization evidence is
 forwarded. Incompatible persisted inventories remain nonactivating at the current
 policy revision. A higher reviewed gateway policy revision atomically discards
 them, fences old ready/claimed work, and permits bounded rediscovery without
 reinterpreting old payloads or expanding authority.
-Upstream authoring places `projects-items` and `security-alerts` directly under
-`on`, requiring sibling `on.webhook-gateway: true` independently of the
-repository's `.github/workflows/aw.json` opt-in. These compilation gates never
-grant activation or dispatch authority; obsolete `on.gateway` and singular
-trigger spellings are rejected.
+Upstream authoring places all declarations under `on.gateway-dispatch`, with
+shared `repos` selecting only code-scanning/Dependabot sources. The repository's
+`.github/workflows/aw.json` opt-in remains independently required. These compilation
+gates never grant activation or dispatch authority; flat triggers, trigger-local
+`repos`, the former workflow `on.webhook-gateway` flag, obsolete `on.gateway`,
+singular Projects/security spellings, and explicit workflow/repository-dispatch co-declarations
+are rejected. Generic `webhooks` identifiers require independent reviewed source
+enrollment/authentication and are not the gateway's separate generic approved
+route contract; this change adds neither receiver support nor authority.
+Any future generic receiver must match family plus identifier, keep batches
+homogeneous by identifier, and retain the full canonical HTTPS URL without
+inferring repository or issue identity.
 Optional runtime interoperability executes that source's actual validator/
 normalizer, including exact/wildcard sources and whole-batch selector rejection,
 not a hosted workflow or an installed compiler.

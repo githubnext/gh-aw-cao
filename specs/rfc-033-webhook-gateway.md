@@ -134,7 +134,7 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`87d3245cbe0659efb4ba93e3ecf85fa29031f703`, defines a batch-v2 discovery interchange in
+`71d6daa9ceb8b2a5b05cae86d5f1cd0cd22e8490`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
@@ -204,13 +204,25 @@ GitHub notifications carry the single original action, not a state object.
 Missing or unknown policies, old `source_path`/`target_path` declarations,
 URL-only security payloads, and native Projects bodies MUST reject validation,
 never fall back to raw-body forwarding.
-The upstream [gateway specification](https://github.com/github/gh-aw/blob/87d3245cbe0659efb4ba93e3ecf85fa29031f703/docs/src/content/docs/specs/webhook-gateway-specification.md)
-defines all six event families, including provider-normalized activity arrays.
+The upstream [gateway specification](https://github.com/github/gh-aw/blob/71d6daa9ceb8b2a5b05cae86d5f1cd0cd22e8490/docs/src/content/docs/specs/webhook-gateway-specification.md)
+defines seven event families, including provider-normalized activity arrays and
+the generic `webhook` family.
 This bridge still discovers only Projects and the two security families and
 activates only the explicitly delegated security routes. Projects remain
-nonactivating; external providers remain unsupported. No URL or projection
+nonactivating; external providers and generic compiler declarations remain
+unsupported. Artifacts containing unsupported declarations MUST fail discovery
+closed, including mixed security/generic declarations. No URL or projection
 policy supplies enrollment, permissions, or authority.
 Mixed versions, paths, modes, or unsupported projections MUST reject validation.
+
+Upstream `on.gateway-dispatch.webhooks` entries such as
+`[{type: com.example.release}]` emit `event: "webhook"` with one identifier in `types`.
+Any future receiver integration MUST match family plus identifier, batch only one
+identifier, retain the full canonical HTTPS URL without inferring a repository
+or issue ID, and require independent reviewed source enrollment/authentication.
+Generic declarations infer no provider normalization, permissions, registrations,
+or authority. They MUST NOT fall back to this gateway's separate generic approved
+route contract. This change adds no generic receiver support.
 Only explicit v2 declarations may activate through section 6.2. A v1 workflow
 MUST NOT silently receive an incompatible batch or fall back to one dispatch
 per event. The hand-authored `webhook-manifest-v2.json` fixture matches the
@@ -329,25 +341,30 @@ source selection such as:
 
 ```yaml
 on:
-  webhook-gateway: true
-  security-alerts:
+  gateway-dispatch:
     repos:
       - bar/baz
       - foo/*
+    security-alerts: {}
 ```
 
-The upstream compiler places `projects-items` and `security-alerts` directly
-under `on`, alongside roles/bots and native triggers. Each subscribing workflow
-MUST declare the sibling boolean `on.webhook-gateway: true`, independently of
-the repository gate `"webhook-gateway": true` in `.github/workflows/aw.json`.
+The upstream compiler places all declarations under `on.gateway-dispatch`;
+roles/bots and other native triggers remain outside that mapping under `on`.
+Shared `repos` belongs inside `gateway-dispatch` and currently applies only to
+code-scanning/Dependabot subscriptions; trigger-local `repos` is rejected.
+The repository gate `"webhook-gateway": true` in `.github/workflows/aw.json`
+remains independently required.
 These compilation gates MUST NOT be treated as activation or dispatch authority.
-The obsolete `on.gateway` mapping, singular Projects/security spellings, and
-the old repository `webhook-triggers` opt-in are rejected.
-A repos-only declaration selects supported Dependabot and code-scanning
-sources; explicit sources remain authoritative. CAO consumes the compiled
-manifest, not this YAML. The normalized manifest and closed v2 wire contract
-are unchanged; the pinned runtime interoperability evidence does not establish
-installed-compiler emission of this authoring syntax.
+The former workflow `on.webhook-gateway` flag, flat triggers, obsolete
+`on.gateway`, singular Projects/security spellings, and old repository
+`webhook-triggers` opt-in are rejected. Explicit `workflow_dispatch` or
+`repository_dispatch` declarations MUST NOT accompany `gateway-dispatch`.
+A shared-`repos`-only mapping is invalid; `security-alerts: {}` with shared `repos`
+selects supported Dependabot and code-scanning sources, while explicit sources
+remain authoritative. CAO consumes the compiled manifest, not this YAML.
+For the supported security families, the normalized manifest and closed v2 wire
+contract are unchanged; the pinned runtime interoperability evidence does not
+establish installed-compiler emission of this authoring syntax.
 
 **SR-01** A present `repos` MUST be a nonempty bounded array of lowercase, sorted,
 unique strings. Each selector MUST be an exact `owner/repository` or a literal

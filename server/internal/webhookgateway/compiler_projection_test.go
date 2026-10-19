@@ -94,13 +94,46 @@ func TestCompilerMinimalNotificationsRejectMissingAndExtraData(t *testing.T) {
 
 func TestCompilerProjectionDoesNotExpandSupportedFamilies(t *testing.T) {
 	job := compilerBatchJobs(t, "one")[0]
-	for _, event := range []string{"jira_issue", "linear_issue", "azure_devops_issue", "secret_scanning_alert"} {
+	for _, event := range []string{"jira_issue", "linear_issue", "azure_devops_issue", "secret_scanning_alert", "webhook"} {
 		trigger := *job.Subscription.Compiler
 		trigger.Event = event
 		trigger.Types = []string{"created"}
 		if validateCompilerTrigger(trigger, trigger.Dispatch.Workflow, "test", DefaultLimits()) == nil {
 			t.Fatal("projection policy activated an unsupported family", event)
 		}
+	}
+}
+
+func TestCompilerGenericWebhookDeclarationsFailDiscoveryClosed(t *testing.T) {
+	security := *compilerBatchJobs(t, "one")[0].Subscription.Compiler
+	release := security
+	release.Event, release.Repos = "webhook", nil
+	release.Types = []string{"com.example.release"}
+	release.Conditions = []CompilerCondition{{
+		Filter: "data.state", Path: []string{"data", "state"}, Operator: "equals",
+		ValueType: "string", Values: []json.RawMessage{json.RawMessage(`"ready"`)},
+	}}
+	deploy := release
+	deploy.Types = []string{"com.example.deploy"}
+	for _, scenario := range []struct {
+		name         string
+		declarations []CompilerTrigger
+	}{
+		{"single-identifier", []CompilerTrigger{release}},
+		{"distinct-identifiers", []CompilerTrigger{release, deploy}},
+		{"mixed-security-generic", []CompilerTrigger{security, release}},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			manifest, err := json.Marshal(map[string]any{"version": 1, "webhook_subscriptions": scenario.declarations})
+			if err != nil {
+				t.Fatal(err)
+			}
+			mapping := NewTriggerMapping()
+			err = mapping.AddWorkflow(append([]byte("# gh-aw-manifest: "), manifest...), security.Dispatch.Workflow, DefaultLimits())
+			if !errors.Is(err, ErrInvalid) || len(mapping.ByEvent) != 0 {
+				t.Fatal("unsupported compiler declarations produced a partial discovery map", err)
+			}
+		})
 	}
 }
 
