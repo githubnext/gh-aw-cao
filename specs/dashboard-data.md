@@ -4083,6 +4083,23 @@ queryable string key path. This path is selected from the declarative query
 shape, not the query name. Unsupported shapes execute the canonical query
 without reading any derived aggregate store.
 
+## 72.2 Identical view queries in one subscription refresh
+
+The browser worker MAY reuse the last compact complete view payload within one
+subscription flush when the entire compiled dependency graph is identical after
+renaming query identifiers. Canonical source identities, executable clauses,
+literal values, filters, horizon, ordering and resolved parameters MUST remain
+part of the identity. Derived source and query metadata SHALL retain each
+requesting view's identifiers; pagination SHALL execute independently afterward.
+
+Reuse SHALL remain worker-local and bounded to one payload of at most 1,000 rows
+and 1 MiB. It MUST NOT survive a flush or canonical revision change, include
+partial previews or unavailable results, or apply to hosted/GitHub-backed
+sources. Active abort-scoped subscriptions SHALL still receive fresh results
+after canonical updates. The Campaigns page's three full inventory views SHALL
+share identical evaluation without dropping import-evidence quality dependencies
+or changing their authored chart, table, filter or navigation contracts.
+
 ## 72.10 Data-worker heap budgets
 
 The data worker's peak heap SHALL be measured against the deployed

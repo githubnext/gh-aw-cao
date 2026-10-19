@@ -25,6 +25,7 @@ import {
   subscribeCanonicalDatabaseUpgrade
 } from './data/storage/indexeddb.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
+import { createSubscriptionQueryReuse } from './data/queries/subscription-query-reuse.js';
 import { normalizeViewFilters } from './view-filter-contract.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
@@ -526,6 +527,8 @@ function pageScopedSources(sources, requested) {
  * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} [queryContext]
  * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
+ * @param {boolean} [partial]
+ * @param {ReturnType<typeof createSubscriptionQueryReuse>} [reuse]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 async function queryLiveDashboard(
@@ -539,18 +542,19 @@ async function queryLiveDashboard(
   queryContext,
   viewId,
   dashboard = liveDashboard,
-  partial = false
+  partial = false,
+  reuse
 ) {
   return withQueryProgress(() => executeLiveDashboardQuery(
     requested, context, requestContext, signal, pagination, pageId,
-    routeParameters, queryContext, viewId, dashboard, partial
+    routeParameters, queryContext, viewId, dashboard, partial, reuse
   ));
 }
 
 /** @type {typeof queryLiveDashboard} */
 async function executeLiveDashboardQuery(
   requested, context, requestContext, signal, pagination = {}, pageId,
-  routeParameters, queryContext, viewId, dashboard = liveDashboard, partial = false
+  routeParameters, queryContext, viewId, dashboard = liveDashboard, partial = false, reuse
 ) {
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
@@ -587,6 +591,15 @@ async function executeLiveDashboardQuery(
       ...[...requested].filter((name) => !replacedSources.has(name)),
       ...viewPayload.aliases
     ]);
+    const reuseKey = reuse && !partial && !dashboard.hosted && dashboard === liveDashboard
+      && executionRequested.size === viewPayload.aliases.length
+      ? reuse.key(executionQueries, viewPayload.aliases) : undefined;
+    const reused = reuse?.read(reuseKey, viewPayload.aliases);
+    if (reused) {
+      if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
+      debugPerformance('page query reused', { pageId, viewId, requestedSources: [...requested] });
+      return paginateDashboardSources(reused, pagination, continuationRevision(executionQueries, dashboard.revision));
+    }
     const requestedWithDependencies = resolveDashboardQuerySources(executionQueries, executionRequested);
     const nativeSources = dashboard.hosted ? {} : await queryIndexedDatabaseSources(
       indexedDB,
@@ -641,6 +654,7 @@ async function executeLiveDashboardQuery(
         };
       }
     }
+    if (dashboard === liveDashboard) reuse?.write(reuseKey, viewPayload.aliases, responseSources);
     const response = paginateDashboardSources(
       responseSources,
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
@@ -711,6 +725,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
         for (const id of ids) dirtyDashboardSubscriptions.add(id);
         break;
       }
+      const reuse = createSubscriptionQueryReuse();
       for (const id of ids) {
         const subscription = dashboardSubscriptions.get(id);
         if (!subscription) continue;
@@ -771,7 +786,9 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             subscription.routeParameters,
             subscription.queryContext,
             subscription.viewId,
-            queryDashboard
+            queryDashboard,
+            false,
+            reuse
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
             subscription.emitted = true;
