@@ -63,6 +63,7 @@
     "dashboard/cli-terminal-process.mjs",
     "dashboard/cli-terminal-child.mjs",
     "dashboard/dialog-selector.mjs",
+    "dashboard/environment-defaults.mjs",
     "dashboard/grader",
     "dashboard/local-custom-views.mjs",
     "dashboard/local-github-service.mjs",
