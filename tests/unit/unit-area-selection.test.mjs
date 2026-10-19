@@ -9,6 +9,7 @@ test("every root unit test runs in exactly one topical area", () => {
   const partition = partitionUnitTests(files);
   assert.deepEqual(Object.keys(partition), Object.keys(unitTestAreas));
   assert.deepEqual(Object.values(partition).flat().sort(), files);
+  assert.ok(partition.tooling.includes("azure-local-harness.test.mjs"));
   assert.ok(partition.tooling.includes("backfill-stress-report.test.mjs"));
   assert.ok(partition.tooling.includes("source-map-compat.test.mjs"));
   assert.ok(partition.workflows.includes("build-release.test.mjs"));
