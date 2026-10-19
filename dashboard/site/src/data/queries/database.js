@@ -499,6 +499,13 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
       )
     : {};
   const counted = Object.fromEntries(countPlans.map(({ name, source, values, computedLiterals }) => {
+    const input = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (logicalSources[source]);
+    if (input?.metadata?.availability === 'unavailable') {
+      return [name, unavailableResult(
+        /** @type {import('./declarative.js').DashboardQuery} */ (index.get(name)),
+        input.metadata, `input source "${source}" is unavailable`, source
+      )];
+    }
     const metadata = queryMetadata(logicalSources, source, source, true);
     return [name, {
       source: name,

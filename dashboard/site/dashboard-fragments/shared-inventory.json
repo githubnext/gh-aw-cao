@@ -312,16 +312,52 @@
       "limit": 10
     },
     {
+      "name": "campaign-import-audit-count",
+      "subject": "Count retained audit identities for campaign inventory source quality.",
+      "objective": "Retain audit provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical audit IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "from": "audits",
+      "aggregate": { "values": [{ "field": "id", "as": "records", "reducer": "count" }] }
+    },
+    {
+      "name": "campaign-import-domain-count",
+      "subject": "Count retained domain identities for campaign inventory source quality.",
+      "objective": "Retain domain provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical domain IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "from": "domains",
+      "aggregate": { "values": [{ "field": "id", "as": "records", "reducer": "count" }] }
+    },
+    {
+      "name": "campaign-import-tool-count",
+      "subject": "Count retained tool identities for campaign inventory source quality.",
+      "objective": "Retain tool provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical tool IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "from": "tools",
+      "aggregate": { "values": [{ "field": "id", "as": "records", "reducer": "count" }] }
+    },
+    {
+      "name": "campaign-import-issue-count",
+      "subject": "Count retained issue identities for campaign inventory source quality.",
+      "objective": "Retain issue provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical issue IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "from": "issues",
+      "aggregate": { "values": [{ "field": "id", "as": "records", "reducer": "count" }] }
+    },
+    {
       "name": "campaign-workflow-import-evidence",
-      "subject": "Summarize retained import evidence at workflow grain for campaign inventory quality.",
-      "objective": "Preserve import-evidence provenance without materializing per-run ingestion indicators.",
-      "acceptance": "Compose all four retained event sources with the same availability, freshness, and completeness as event-runs; counts describe retained records, not executions or outcomes.",
-      "from": "audit-event-runs",
-      "union": ["domain-event-runs", "tool-event-runs", "issue-event-runs"],
+      "subject": "Compose retained import-source quality for campaign workflow execution totals.",
+      "objective": "Preserve all four import dependencies without counting unused per-run or per-workflow coverage.",
+      "acceptance": "Compose audit, domain, tool, and issue availability, freshness, and completeness exactly as event-runs. The retained-record count carries source quality only; it is not displayed or used as horizon-specific import coverage, executions, or outcomes. Run and AI Credit totals retain their selected horizon.",
+      "from": "campaign-import-audit-count",
+      "union": ["campaign-import-domain-count", "campaign-import-tool-count", "campaign-import-issue-count"],
+      "time": { "range": "all" },
+      "compute": [
+        { "as": "import-scope", "function": "literal", "args": [{ "value": "retained" }] }
+      ],
       "aggregate": {
-        "by": ["organization", "repository", "workflow"],
+        "by": ["import-scope"],
         "values": [
-          { "field": "events", "as": "events", "reducer": "sum" }
+          { "field": "records", "as": "events", "reducer": "sum" }
         ]
       }
     },
@@ -332,6 +368,11 @@
       "acceptance": "Count distinct run-attempt identities and sum aic-total per organization, repository, and workflow; missing retained evidence is not proof of no execution or cost.",
       "from": "runs",
       "compute": [
+        {
+          "as": "import-scope",
+          "function": "literal",
+          "args": [{ "value": "retained" }]
+        },
         {
           "as": "run-attempt-identity",
           "function": "concat",
@@ -344,7 +385,7 @@
         }
       ],
       "aggregate": {
-        "by": ["organization", "repository", "workflow"],
+        "by": ["organization", "repository", "workflow", "import-scope"],
         "values": [
           { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
           { "field": "aic-total", "as": "aic", "reducer": "sum", "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] } }
@@ -356,16 +397,14 @@
       "subject": "Attach retained import-evidence quality to compact workflow execution totals.",
       "objective": "Preserve the public inventory's run and import availability composition after aggregating run evidence.",
       "acceptance": "Keep runs and AI Credits unchanged; unavailable run evidence fails closed and optional import evidence degrades quality exactly as in run-import-status.",
-      "description": "The import-evidence join preserves inventory provenance without per-run ingestion indicators. It follows run aggregation so unavailable run evidence retains the original failure-quality semantics.",
+      "description": "Only source quality is consumed from import evidence. Join its compact retained-source summary after run aggregation; do not build unused run-level import coverage or change horizon-specific execution totals.",
       "from": "campaign-workflow-execution-base",
       "joins": [
         {
           "source": "campaign-workflow-import-evidence",
           "type": "left",
           "on": [
-            { "left": "organization", "right": "organization" },
-            { "left": "repository", "right": "repository" },
-            { "left": "workflow", "right": "workflow" }
+            { "left": "import-scope", "right": "import-scope" }
           ],
           "fields": [{ "field": "events", "as": "imported-events" }]
         }
