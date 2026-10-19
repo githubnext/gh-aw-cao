@@ -586,6 +586,7 @@ main() {
   local catalog_source="githubnext/gh-cao"
   local package_source
   local explicit_source=false
+  local explicit_catalog_source=false
   local setup=false
   local quickstart=false
   local create_repository_requested=false
@@ -651,6 +652,7 @@ main() {
         fi
         catalog_source="$1"
         explicit_source=true
+        explicit_catalog_source=true
         shift
         ;;
     esac
@@ -799,7 +801,8 @@ main() {
   current_extension_asset="gh-cao-$extension_os-$extension_arch$extension_suffix"
   legacy_extension_asset="$extension_os-$extension_arch$extension_suffix"
 
-  if [[ "$catalog_source" =~ ^githubnext/gh-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+  if [[ "$explicit_catalog_source" == true &&
+    "$catalog_source" =~ ^githubnext/gh-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
     extension_release="${BASH_REMATCH[1]}"
     if ! extension_asset="$(resolve_cao_extension_asset \
       "$extension_release" "$current_extension_asset" "$legacy_extension_asset")"; then

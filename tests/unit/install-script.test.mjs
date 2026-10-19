@@ -1309,6 +1309,26 @@ test("installer falls back to a published extension prerelease when stable relea
   assert.match(downloads, /\/v1\.2\.4\/checksums\.txt\n/);
 });
 
+test("implicit quickstart pins the stable catalog while selecting an installable extension release", async (t) => {
+  const { consumer, env } = await createConsumer(t, supportedGhAw);
+  const legacyAsset = `${process.platform === "win32" ? "windows" : process.platform}-${process.arch === "x64" ? "amd64" : "arm64"}${process.platform === "win32" ? ".exe" : ""}`;
+  const result = await runStreamed(consumer, {
+    ...env,
+    CI: "1",
+    FAKE_ADD_FAILURE: "1",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.3",
+    FAKE_CAO_EXTENSION_RELEASE_LIST: [
+      `false\ttrue\tv1.2.4\t${legacyAsset},checksums.txt`,
+      "false\tfalse\tv1.2.3\tcao-runtime-abc.tgz",
+    ].join("\n"),
+  }, ["--quickstart", "--target", "alpha-org/project"]);
+
+  assert.notEqual(result.code, 0);
+  assert.match(result.stdout, /Quickstart selected stable CAO release v1\.2\.3/);
+  const downloads = await readFile(env.FAKE_CAO_DOWNLOADS, "utf8");
+  assert.match(downloads, new RegExp(`/v1\\.2\\.4/${legacyAsset.replace(".", "\\.")}\\n`));
+});
+
 for (const releases of [
   "",
   "false\tfalse\tuntagged-a58de5448231a0eed5d3",
