@@ -94,13 +94,13 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
   @layer starlight.core {
     .docs-hero-intro {
       flex-direction: column;
-      gap: 1.75rem;
+      gap: 1.5rem;
       text-align: center;
     }
 
     .copy {
       flex-direction: column;
-      gap: 1.25rem;
+      gap: 1rem;
       align-items: center;
     }
 
@@ -159,6 +159,7 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
       font-weight: 500 !important;
       line-height: 1.1 !important;
       letter-spacing: -0.03em;
+      text-wrap: balance;
       -webkit-text-fill-color: currentColor;
       hyphens: none !important;
       overflow-wrap: normal !important;
@@ -166,11 +167,11 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
     }
 
     .tagline {
-      max-width: 58ch;
+      max-width: 50ch;
       margin-block-start: 0.25rem;
       color: var(--cao-hero-muted);
       font-size: clamp(1rem, 1.5vw, 1.125rem) !important;
-      line-height: 1.5 !important;
+      line-height: 1.65 !important;
     }
 
     .draft-notice {
@@ -188,6 +189,8 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
     .hero-action {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      min-height: 2.75rem;
       gap: 0.5em;
       border: 1px solid transparent;
       border-radius: 6px;
@@ -264,7 +267,16 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
 
     @media (max-width: 42rem) {
       h1 {
-        font-size: 2.5rem !important;
+        font-size: clamp(2rem, 8.5vw, 2.75rem) !important;
+      }
+
+      .actions {
+        gap: 0.625rem;
+      }
+
+      .hero-action {
+        padding-inline: 0.875rem;
+        font-size: 0.875rem;
       }
     }
 
