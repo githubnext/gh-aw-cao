@@ -1,7 +1,35 @@
 {
-  "source_sha": "e8ecbe91c191b9a7a3f5f8b7d2f13210bc57ff39",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "6761234103464b8a1049e4936c6732a06b0464d1",
+  "next_category": "dependency installation and caching",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-19T09:39:27Z",
+      "worker_run_id": 39231024164,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39230782194,
+        39229238600,
+        39227764227,
+        39226469303,
+        39224225896,
+        39224092487,
+        39223719699,
+        39223660085,
+        39223644921,
+        39221352905,
+        39220421851,
+        39218728260,
+        39217175415,
+        39216376603,
+        39215159384,
+        39212154708,
+        39211292531,
+        39207737281,
+        39206608576,
+        39205541697
+      ],
+      "outcome": "Complete evaluation for category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 6761234103464b8a1049e4936c6732a06b0464d1. In the latest 20 completed docs.yml runs from 2026-10-19T05:37:45Z through 2026-10-19T09:32:04Z, 14 runs concluded success, 5 concluded skipped, 0 concluded failure, and 1 concluded cancelled. Trusted job metadata showed 8 comparable successful build-bearing docs runs with median full execution 82.5s (p90 106.6s), median build job 55.0s (p90 62.4s), median deploy job 27.0s (p90 30.0s), and no measurable queue time. Schedule-freshness already suppressed 7 scheduled rebuilds after 7-10s checks, while logs for successful builds verified repeated cache hits for setup-node npm cache (~313 MB), root node_modules (~302 MB), and the cached CAO dashboard artifact (~57 MB). Two push-triggered builds were followed 5-11 minutes later by schedule-triggered rebuild-and-deploy runs at the same head SHA, but this bounded sample does not include trusted evidence for why deploy is skipped on push or a safe change that would save at least 60s without risking freshness or deployment safety. No actionable scheduling recommendation was emitted; next_category advances to \"dependency installation and caching\"."
+    },
     {
       "evaluated_at": "2026-10-19T08:07:28Z",
       "worker_run_id": 39219934492,
