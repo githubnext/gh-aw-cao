@@ -6,6 +6,7 @@
   "limit": 100,
   "native-aggregates": [
     "repository-run-statistics",
+    "repository-observed-run-counts",
     "repository-workflow-totals",
     "audit-event-runs",
     "domain-event-runs",
@@ -13,6 +14,7 @@
     "issue-event-runs"
   ],
   "import-identity-fields": ["organization", "repository", "workflow", "run", "run-attempt"],
+  "canonicalSources": ["repositories", "runs"],
   "rows": [
     { "repository": "org/alpha", "runs": 6 },
     { "repository": "org/approval", "runs": 1 },

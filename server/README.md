@@ -232,7 +232,7 @@ the same explicit bootstrap/retention commands with `--sqlite PATH`; see that
 guide for the no-PostgreSQL local test command and the limits of SQLite testing.
 
 PostgreSQL is the default when a reviewed host has no backend selector or legacy
-`redis` configuration. Coolify selects it explicitly. No Redis connection or
+`redis` configuration. No Redis connection or
 volatile-memory acknowledgement is required:
 
 ```json
@@ -279,8 +279,7 @@ records and 512 cache entries per pass, never unfinished work.
 
 Standalone collector and backfill roles can share this deployment-scoped
 adapter. OAuth, HTTPS/proxy, authorization, signatures, quota governance, and
-campaign rollout authority remain unchanged. The default Coolify profile now
-selects PostgreSQL, but selection does not migrate
+campaign rollout authority remain unchanged. Selecting PostgreSQL does not migrate
 Redis or memory state, enable collection, provide
 automatic fallback, or dual-write. Use a new operational namespace for a new
 configuration and plan an explicit cutover; changing namespaces invalidates
@@ -592,7 +591,7 @@ flowchart LR
 | Shared API model | `internal/model/` | Defines logical sources, diagnostics, and query metrics. |
 | Telemetry | `internal/telemetry/` | Configures OpenTelemetry trace, metric, and opt-in log providers, exposes the server's tracer, and writes W3C trace/span id response headers. |
 | Local Redis | `docker-compose.yml` | Runs plain Redis on `127.0.0.1:6379`. |
-| Coolify container profile | `Dockerfile`, `coolify/compose.yml` | Builds the dashboard and Go service into a non-root image and runs `serve-hosted` behind an explicitly trusted Coolify TLS proxy. |
+| Container image | `Dockerfile` | Builds the dashboard and Go service into a non-root image for host-neutral deployments. |
 
 ### Host capability profiles
 
@@ -1300,10 +1299,9 @@ platform itself to the same replica count. Do not configure the Upstash REST URL
 or REST token. For the operator procedure, see [Deploying the dashboard with Upstash
 Redis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-upstash.md).
 
-### Coolify container profile
+### Container image
 
-Coolify is a peer deployment profile to Azure Functions; it does not replace or
-modify the Azure Functions + Azure Managed Redis profile. The image reuses
+The host-neutral image uses
 `serve-hosted`, so GitHub OAuth, explicit organization/team authorization,
 server-side encrypted sessions, CSRF checks, webhook signature verification and
 deduplication, shared Redis rate limits, and secret-redacting logging remain the
@@ -1333,65 +1331,50 @@ source tests, and protected-main ancestry. Syft produces an SPDX SBOM, and the
 protected-main `.github/workflows/cao-package-publish.yml` reusable workflow
 revalidates caller authority, source metadata, checksums, and OCI labels before
 attesting both build provenance and the SBOM for the exact OCI digest.
-Those package guarantees apply to consumers of the published image. The native
-Coolify resource builds from repository source instead and does not use the
-published package as its deployment input.
+Those package guarantees apply to consumers of the published image, not to
+locally source-built images.
 
-`server/coolify/compose.yml` expects:
+The Dockerfile includes the base `cao.json` policy. Configure a reviewed
+`control-plane.web.host` before building, or mount a reviewed policy and set
+`CAO_POLICY_PATH` at runtime. Supply database, OAuth, session, and webhook
+credentials through the host's secret manager.
 
-- `CAO_ARTIFACT_VOLUME` as the name of an existing Coolify-managed volume;
-- the public host and the exact private CIDR of Coolify's proxy network;
-- OAuth, session, webhook, and Redis credentials supplied as Coolify secrets.
-
-Configure the resource through the Coolify GitHub App, select protected `main`,
-set the Compose file to `server/coolify/compose.yml`, enable automatic
-deployments, and enable **Include Source Commit in Build**. Compose passes
-Coolify's `SOURCE_COMMIT` to `server/Dockerfile` as the image version and
-revision. The Dockerfile bakes `cao.json` and `cao.coolify.json` into the image,
-generates a deterministic control-plane inventory from that exact checkout,
-and packages the shared policy resolver. Runtime policy or catalog bind mounts
-and **Preserve Repository During Deployment** are not required.
+The `dashboard-runtime` target contains the public server without collection
+tools. The `collector-runtime` target adds Node, the GitHub CLI, a
+checksum-verified policy-pinned gh-aw binary, the Activity projection catalog,
+a deterministic source-bound control-plane inventory, and the shared policy
+resolver. Deploy standalone collection roles without public ingress, keep the
+collection App private key out of admission-only web replicas, and share a
+persistent evidence volume between collector and backfill roles.
 
 The external artifact volume is authoritative input, not checked-in deployment
 data. Before the first start, populate an unattached staging volume with a
 complete `payload-hashes.json` and every referenced inventory, run, and record
 file from a trusted dashboard build. Verify every manifest hash, then atomically
-select that completed volume as `CAO_ARTIFACT_VOLUME` and deploy it; never copy
+mount that completed volume read-only at `/app/source`; never copy
 individual files into the volume attached to a running service. Apply updates
 the same way with a newly staged volume.
 
-The Compose file publishes no host port. Coolify's proxy is the only ingress
-path. The app listens on the private service network, but accepts
+For private proxy ingress, configure the host so only the trusted proxy can
+reach the application. The app accepts
 `X-Forwarded-Host` and `X-Forwarded-Proto` only when the direct connection comes
 from `CAO_TRUSTED_PROXY_CIDRS`; it still requires the forwarded protocol to be
 `https` and the forwarded host to match `CAO_ALLOWED_HOSTS`. Startup fails when
-the CIDR is absent, malformed, or public. Use the narrow subnet Coolify assigns,
+the CIDR is absent, malformed, or public. Use the narrow proxy subnet,
 not `0.0.0.0/0` or an entire RFC1918 range.
 
-Use `rediss://` whenever Coolify or an external provider offers TLS. A
-Coolify-managed Redis service may use plaintext only on the private service
+Use `rediss://` whenever the Redis provider offers TLS. A
+deployment-managed Redis service may use plaintext only on the private service
 network when `control-plane.web.host.redis.allow-private-plaintext` is `true`
 and the endpoint uses a private service hostname or IP. This policy does not
 affect Azure: Azure Functions continues to require `rediss://`.
 
-The GitHub App webhook starts production delivery after a protected `main`
-update. Coolify checks out that commit, builds the Compose service, and replaces
-the running service after health evaluation. No GitHub deployment workflow,
-Coolify API token, public Coolify API endpoint, Tailscale runner access,
-registry credential, or mutable registry tag is required.
-
-This simpler source-build path has a deliberate tradeoff: the deployed image
-does not pass through the official package workflow's Trivy, Grype, Dockle,
-SBOM, or GitHub provenance admission gates. Those checks and attestations still
-protect the published `cao-server` package, but they are not production
-delivery evidence for Coolify. Branch protection, restricted GitHub App
-access, Coolify build isolation, and operator review of failed builds are the
-source-deployment controls.
+Deployment promotion and rollback belong to the application host. Review
+source changes, isolate source builders, and verify readiness before promotion.
 
 #### Rollback
 
-Redeploy the last known-good entry from Coolify's deployment history, or revert
-the responsible commit on `main` and let automatic deployment rebuild it.
+Redeploy the last known-good image digest through the host's deployment process.
 Confirm `/api/readiness`, OAuth login and authorization, a bounded query,
 webhook signature handling, and rate-limit behavior. Redis is disposable: if
 the new binary wrote an unusable projection, clear only that deployment
@@ -2608,8 +2591,7 @@ is unavailable, the log download still succeeds with `redis.status` set to
 `unavailable`. The response uses `Cache-Control: no-store`. Hosted access requires either an authorized
 administrator session or the same bearer GitHub Actions token and OIDC
 provenance required by hosted MCP; local access uses the dashboard bearer
-capability or the configured Actions token and actor. Coolify enables this
-setting and `cao:server*` debug logging by default. The buffer covers the
+capability or the configured Actions token and actor. The buffer covers the
 current process only and does not include logs emitted before it was enabled.
 On the hosted GitHub-authenticated dashboard, administrators can open **Settings → Logs →
 Server logs** to inspect this snapshot as a full-page, preformatted view and

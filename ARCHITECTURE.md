@@ -342,7 +342,6 @@ reclaims only bounded expired state. Sessions, accepted work, enrollment,
 checkpoints, and pending revocations survive process restart under the database's
 configured durability. Backend selection comes from reviewed host policy, with PostgreSQL as the
 selector-free default and explicit legacy Redis configuration preserved.
-The Coolify profile selects PostgreSQL for every role without Redis credentials.
 This is not an operational-state migration, fallback, or campaign rollout change.
 The read-only doctor opens existing
 operational state without initializing it.
@@ -363,7 +362,7 @@ When tracing is active, every API response
 has W3C trace and span headers. JSON failures repeat those identifiers, the
 browser exposes the trace ID as a request ID, and bounded server error logs emit
 the same identifiers so operators and agents can correlate client failures,
-Coolify logs, query and ingestion spans, and Postgres child spans. An
+server logs, query and ingestion spans, and Postgres child spans. An
 observability backend is diagnostic infrastructure only: it cannot become
 dashboard data authority, policy, or rollout authority.
 
@@ -544,7 +543,7 @@ reconstructable.
 | `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Independent, entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds the dashboard's authoritative JSON contracts. Actions pipeline commands remain Node-owned. |
 | `internal/dashboardquery/` | Small independent Go module sharing the bounded local Dashboard Language evaluator and read-only canonical SQLite reader between the extension and explicit local server profile; never a hosted PostgreSQL fallback. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
-| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
+| `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, container image, and Azure Functions deployment profile. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `research/` | Executable notebooks and experimental reference runtimes used to validate proposed computation semantics against canonical data; these are not dashboard production code. |
@@ -928,10 +927,10 @@ all public; that does not authorize non-public targets or other campaigns.
   cannot replace the projection concurrently. Its client exposes the active
   GitHub login and supports explicit account switching through a fresh OAuth
   account-selection flow without combining account authority. Hosted transport
-  is fail-closed: Redis uses TLS by default and always in Azure; a Coolify-managed
+  is fail-closed: Redis uses TLS by default and always in Azure; a deployment-managed
   Redis service may use private plaintext only through an explicit opt-in and a
   private address. A public listener terminates TLS directly, while a private
-  Coolify listener may rely on proxy TLS only when the direct proxy peer belongs
+  container listener may rely on proxy TLS only when the direct proxy peer belongs
   to an explicit private CIDR allow-list. Forwarded hosts must still match the
   public host allow-list and forwarded protocol must be HTTPS. Logout atomically removes active session
   authority before remote token revocation; transient GitHub failures retain
@@ -1021,11 +1020,9 @@ all public; that does not authorize non-public targets or other campaigns.
   Compose deployments select `serve-hosted`, `collect`, `backfill`, or `doctor`
   per service without rebuilding the package. Canonical identities are
   immutable commit or release identities, never mutable channel tags.
-  Conventional Coolify production delivery is independent of the package
-  publisher. A Coolify GitHub App restricted to this repository watches
-  protected `main`; its webhook causes Coolify to check out the selected
-  commit, build `server/Dockerfile` through
-  `server/coolify/compose.yml`, and embed `SOURCE_COMMIT`. The source build
+  Host-neutral source builds use `server/Dockerfile` with explicit version and
+  revision build arguments; deployment promotion and rollback belong to the
+  application host. The source build
   produces a lean admission-only dashboard target and a collector target with
   Node, GitHub CLI, a checksum-verified policy-pinned gh-aw binary, and the
   Activity projection catalog. The collector target also generates a
@@ -1041,16 +1038,10 @@ all public; that does not authorize non-public targets or other campaigns.
   may retain the previous valid inventory. The internet-facing dashboard holds
   the webhook secret but no collection private key. Unexposed collector and
   idempotent backfill services hold the read-only GitHub App key and share a
-  persistent evidence volume; only the dashboard is activated through the
-  proxy after health evaluation. The collection profile leaves
+  persistent evidence volume. The collection profile leaves
   `CAO_SOURCE_DIRECTORY` unset, while one verified activity artifact remains an
   external read-only recovery volume for rollback to the snapshot profile.
-  Production delivery requires no GitHub deployment workflow, Coolify API
-  token, public Coolify API endpoint, runner tailnet access, registry
-  credentials, or mutable registry tag.
-  Coolify owns build logs, deployment history, and operator-initiated rollback
-  to a retained deployment or known-good source revision. The source-built
-  image is not admitted through the package workflow's vulnerability scans,
+  Locally source-built images are not admitted through the package workflow's vulnerability scans,
   hardening check, SBOM, or artifact attestations; those guarantees continue
   to apply only to published packages.
 - Browsers and external clients never receive Redis or Postgres endpoints or

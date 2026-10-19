@@ -1,6 +1,8 @@
 package hosting
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -76,7 +78,21 @@ func TestClassifyMissingConfigReportsEachBlankFieldInPrecedenceOrder(t *testing.
 }
 
 func TestNewRejectsProcessOwnedHostPolicy(t *testing.T) {
-	t.Setenv("CAO_POLICY_PATH", "../../.github/workflows/cao.coolify.json")
+	policyPath := filepath.Join(t.TempDir(), "cao.json")
+	if err := os.WriteFile(policyPath, []byte(`{
+		"version": 1,
+		"control-plane": {
+			"web": {
+				"host": {
+					"target": {"module": "container"},
+					"operational-store": {"backend": "postgres"}
+				}
+			}
+		}
+	}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CAO_POLICY_PATH", policyPath)
 	t.Setenv("CAO_POSTGRES_URL", "postgres://127.0.0.1/example?sslmode=disable")
 	if _, err := New(t.Context(), Config{
 		SiteDirectory:        t.TempDir(),

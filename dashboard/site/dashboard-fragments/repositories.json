@@ -1055,11 +1055,51 @@
       ]
     },
     {
+      "name": "repository-observed-run-counts",
+      "subject": "Count distinct retained run IDs by repository without importing event evidence.",
+      "objective": "Supply the run-volume chart without computing activity health, ingestion coverage, or workflow costs.",
+      "acceptance": "Group by organization and repository coordinate and count distinct retained run IDs, not attempts; missing runs remain missing evidence and global scope and time filters still apply.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            { "field": "organization" },
+            { "value": "/" },
+            { "field": "repository" }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository-coordinate"],
+        "values": [{ "field": "run", "as": "runs", "reducer": "distinct-count" }]
+      }
+    },
+    {
       "name": "repository-run-inventory",
       "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
       "objective": "Compare repository execution volume and choose repositories for drill-down.",
       "acceptance": "Keep up to 100 repository identities and drill links, ordered by run count descending with repository tie-breaks. Zero means no retained runs, not proof of inactivity; preserve unavailable and partial evidence. The Table view retains the full inventory.",
-      "from": "repository-activity",
+      "from": "repository-activity-preview",
+      "joins": [
+        {
+          "source": "repository-observed-run-counts",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository-coordinate" }
+          ],
+          "fields": [{ "field": "runs", "as": "observed-runs" }]
+        }
+      ],
+      "compute": [
+        {
+          "as": "runs",
+          "function": "coalesce",
+          "args": [{ "field": "observed-runs" }, { "value": 0 }]
+        }
+      ],
       "select": [
         { "field": "organization" },
         { "field": "repository" },
@@ -1186,7 +1226,7 @@
             "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
             "objective": "Compare repository execution volume and choose repositories for drill-down.",
             "acceptance": "Show up to 100 repositories by run count descending with stable repository tie-breaks and drill links. Include zero retained runs without claiming inactivity; distinguish empty, partial, and unavailable evidence.",
-            "description": "Distinct retained runs per repository in the selected horizon, ranked by count. Shows up to 100 repositories; the Table view lists the full inventory. Zero means no retained runs, not confirmed inactivity.",
+            "description": "Distinct retained runs per repository in the selected horizon, ranked by count directly from inventory and run evidence without waiting for imported event coverage. Shows up to 100 repositories; the Table view lists the full inventory. Zero means no retained runs, not confirmed inactivity.",
             "data": {
               "source": "repository-run-inventory",
               "order-by": [

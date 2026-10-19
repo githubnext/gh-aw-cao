@@ -23,6 +23,7 @@ func TestRepositoryQueriesUsePostgres(t *testing.T) {
 		"repository-run-statistics", "repository-run-identities",
 		"repository-import-totals", "repository-run-totals",
 		"repository-aic-totals", "repository-activity",
+		"repository-observed-run-counts", "repository-run-inventory",
 	})
 }
 
