@@ -1,0 +1,41 @@
+{
+  "kind": "original-shared-discussion-api-response",
+  "query": "query { repository(owner:\"github\",name:\"gh-aw\") {\n    databaseId discussions(first:100,after:\"Y3Vyc29yOnYyOpK0MjAyNi0wOC0zMVQyMDo1Njo0OFrOAKOerg==\",orderBy:{field:CREATED_AT,direction:DESC}) {\n      nodes { id number url title body createdAt updatedAt }\n      pageInfo { hasNextPage endCursor }\n    }\n  } }",
+  "observedAt": "2026-10-19T15:19:48Z",
+  "inheritedSha256": "d6b79b4f697b59d32778f26b09c85c34df8d9bb393580c0d0145db928f342820",
+  "original": "page-00014.json.gz",
+  "bytes": 870645,
+  "sha256": "d6b79b4f697b59d32778f26b09c85c34df8d9bb393580c0d0145db928f342820",
+  "parts": [
+    {
+      "file": "daily-code-metrics-discussion-page.0.gz",
+      "sha256": "d21ed947959f4f19a83d743529860cb13e96b52b9d2c69e95793fe7a7d7b4d77",
+      "bytes": 56351
+    },
+    {
+      "file": "daily-code-metrics-discussion-page.1.gz",
+      "sha256": "2ae97071364cd29f891505e296ee9bbe141645e072cdf9e77b3e8f20b1b520b5",
+      "bytes": 55963
+    },
+    {
+      "file": "daily-code-metrics-discussion-page.2.gz",
+      "sha256": "e3b90c5e3479167a22513af0bb9324512272556b5f7cb162d46985aa0aa7da6e",
+      "bytes": 52129
+    },
+    {
+      "file": "daily-code-metrics-discussion-page.3.gz",
+      "sha256": "ca873e135c8098b10c44be95d5fd8b9a18457707b8776419d3bfb4c2c1dfce0f",
+      "bytes": 48017
+    },
+    {
+      "file": "daily-code-metrics-discussion-page.4.gz",
+      "sha256": "707f4934c59189a1f5f8cd31348010fe0adbd02ac216c10c880cb6edf54b8d8e",
+      "bytes": 56050
+    },
+    {
+      "file": "daily-code-metrics-discussion-page.5.gz",
+      "sha256": "f2ef325825f6ab3e12b58683b3e49ea1f5fabd50ea8f164a7c3b5bdd6f1ff28c",
+      "bytes": 7558
+    }
+  ]
+}

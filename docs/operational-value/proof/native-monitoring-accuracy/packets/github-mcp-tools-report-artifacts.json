@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/39128039129/artifacts?per_page=100",
+  "observedAt": "2026-10-19T15:32:46Z",
+  "kind": "original-public-api-response",
+  "bytes": 5333,
+  "sha256": "c1de4af3fd159ebe1b6c5cfe9e1ea9ae68226571a8b9f2f0b99aff2294e2e970",
+  "parts": [
+    {
+      "file": "github-mcp-tools-report-artifacts.0.gz",
+      "sha256": "d96993c93f3426960949c05fd1ef52d790a05eb79cd8455ad4436ab6bc3f0835",
+      "bytes": 1066
+    }
+  ]
+}

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>daily-code-metrics - operational value</title><style>:root { color-scheme: light dark; --bg: #fff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0; --panel: #f6f8fa; --blue: #0969da; --cyan: #055d60; --amber: #9a6700; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #f0f6fc; --muted: #a6b0bb; --border: #3d444d; --panel: #151b23; --blue: #79c0ff; --cyan: #56d4dd; --amber: #e3b341; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background-color-default, var(--bg)); color: var(--text-color-default, var(--fg)); font: 15px/1.55 system-ui, sans-serif; }
+main { max-width: 1240px; margin: auto; padding: 32px 28px 48px; }
+h1 { font-size: clamp(24px, 4vw, 36px); line-height: 1.2; margin: 8px 0 16px; }
+h2 { font-size: 19px; margin: 28px 0 6px; }
+h3 { font-size: 17px; margin: 0; }
+p { margin: 8px 0; }
+.eyebrow { font: 13px/1.5 ui-monospace, monospace; overflow-wrap: anywhere; }
+.muted { color: var(--text-color-muted, var(--muted)); }
+.metric-picker { display: block; margin: 24px 0 16px; }
+select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; max-width: 100%; }
+.signal { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; padding: 12px 16px; border: 1px solid var(--border); border-left: 5px solid var(--blue); border-radius: 6px; background: var(--panel); }
+.signal strong { font-size: 20px; text-transform: capitalize; }
+.signal.review, .signal.evidence-needed { border-left-color: var(--amber); }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+.card { padding: 16px; border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+.card strong { font-size: 28px; line-height: 1.2; overflow-wrap: anywhere; }
+.card small { color: var(--muted); }
+.chart { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+svg { display: block; width: 100%; min-width: 900px; }
+.grid { stroke: var(--border); stroke-width: .6; }
+.axis { fill: var(--muted); font: 15px system-ui, sans-serif; }
+.mobile-help { display: none; }
+.bar { fill: var(--blue); opacity: .23; }
+.partial { opacity: .1; stroke: var(--blue); stroke-dasharray: 3 2; }
+.primary, .baseline, .receipt { fill: none; stroke: var(--blue); stroke-width: 2.7; stroke-linejoin: round; }
+.baseline { stroke: var(--muted); stroke-width: 2; stroke-dasharray: 7 5; }
+.receipt { stroke: var(--cyan); stroke-width: 2.2; stroke-dasharray: 2 4; }
+.point, .event { fill: var(--blue); }
+.event { cursor: pointer; stroke: var(--bg); stroke-width: 1; }
+.receipt-event { fill: var(--cyan); }
+.event:focus { outline: none; stroke: var(--fg); stroke-width: 3; r: 6; }
+.event-detail { padding: 18px; margin-top: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow-wrap: anywhere; }
+.evidence-links { display: flex; flex-wrap: wrap; gap: 16px; }
+a { color: var(--blue); }
+li { margin-bottom: 6px; }
+@media (max-width: 1000px) { .mobile-help { display: block; } }
+@media (max-width: 760px) { main { padding: 20px 16px; } .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .card { padding: 12px; } .card strong { font-size: 23px; } }
+</style></head>
+<body><main></main><noscript>This interactive report requires JavaScript. The adjacent pulse JSON contains the same computed facts.</noscript>
+<script type="module">(function mountPulse(document, model) {
+  const node = (tag, text, parent, className) => {
+    const element = document.createElement(tag);
+    if (text != null) element.textContent = text;
+    if (className) element.className = className;
+    parent.append(element);
+    return element;
+  };
+  const svgNode = (tag, attributes, parent, text) => {
+    const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
+    if (text != null) element.textContent = text;
+    parent.append(element);
+    return element;
+  };
+  const format = value => value == null ? "Unknown" : new Intl.NumberFormat("en-US",
+    { maximumFractionDigits: 2 }).format(value);
+  const date = value => new Date(value).toLocaleDateString("en-US", { timeZone: "UTC",
+    year: "numeric", month: "short", day: "numeric" });
+  const main = document.querySelector("main");
+  node("p", `${model.repository} / ${model.workflowSlug}`, main, "eyebrow");
+  node("h1", model.workflowName, main);
+  node("p", `${date(model.window.startAt)} - ${date(model.window.endAt)}. Source: ${model.sourcePath}`, main, "muted");
+  if (model.observedAt) node("p", `Evidence captured ${date(model.observedAt)}; this is a saved report, not a live monitor.`, main, "muted");
+  const label = node("label", "Native measure ", main, "metric-picker");
+  const select = node("select", null, label);
+  select.setAttribute("aria-label", "Native measure");
+  for (const metric of model.metrics) {
+    const option = node("option", metric.name, select);
+    option.value = metric.id;
+  }
+  select.value = model.selectedMetricId;
+  const content = node("section", null, main);
+  const draw = () => {
+    content.replaceChildren();
+    const metric = model.metrics.find(item => item.id === select.value);
+    const events = metric.kind === "events";
+    const status = metric.signal;
+    const heading = node("div", null, content, `signal ${status.attention}`);
+    node("strong", status.status.replaceAll("-", " "), heading);
+    node("span", `Attention: ${status.attention.replaceAll("-", " ")}`, heading);
+    node("p", status.reason, content);
+    node("p", `Basis: ${metric.basis}. Better: ${metric.direction}${metric.target == null ? "" : ` toward ${metric.target}`}.`, content, "muted");
+    if (metric.currentWindow && metric.previousWindow) node("p",
+      `Comparing ${date(metric.currentWindow.startAt)} - ${date(metric.currentWindow.endAt)} with ${date(metric.previousWindow.startAt)} - ${date(metric.previousWindow.endAt)} (UTC, end exclusive).`, content, "muted");
+    const cards = node("div", null, content, "cards");
+    const card = (name, value, detail) => {
+      const element = node("div", null, cards, "card");
+      node("span", name, element, "muted");
+      node("strong", value, element);
+      node("small", detail, element);
+    };
+    card(events ? metric.basis === "workflow-contribution" ? "Observed delivery" : "Observed outcome" : "Latest native value",
+      format(events ? metric.completeTotal : status.current),
+      `${metric.unit}${events && metric.completeTotal == null ? `; observed subtotal ${format(metric.observedTotal)}` : ""}`);
+    card(events ? "Last 28 days" : "Current period", format(status.current),
+      `${metric.unit}${events ? "/week" : ""}; previous ${format(status.previous)}`);
+    card(events ? "91-day baseline" : "Direction-aware change",
+      format(events ? metric.baselineRate : status.directionAwareGain),
+      events ? `${metric.unit}/week; context, not an independent comparison` : `${metric.unit}; not a causal effect`);
+    card(events ? "Since last positive delivery" : "Agreed decision",
+      events ? metric.daysSincePositive == null ? "Unknown" : `${format(metric.daysSincePositive)} days`
+        : model.decision.status,
+      events ? metric.lastPositiveAt ? date(metric.lastPositiveAt) : "No positive event observed" : model.decision.reason);
+    const start = Date.parse(model.window.startAt), end = Date.parse(model.window.endAt);
+    const x = at => 66 + (Date.parse(at) - start) / (end - start) * 990;
+    const chart = (title, caption, values, height = 235) => {
+      node("h2", title, content);
+      node("p", caption, content, "muted");
+      const wrap = node("div", null, content, "chart");
+      const svg = svgNode("svg", { viewBox: `0 0 1100 ${height + 45}`, role: "img", "aria-label": title }, wrap);
+      svgNode("title", {}, svg, `${title}: ${metric.name}`);
+      const { low, high } = values.reduce((range, value) => value == null ? range
+        : { low: Math.min(range.low, value), high: Math.max(range.high, value) }, { low: 0, high: 1 });
+      const y = value => 16 + (high - value) / (high - low) * (height - 38);
+      for (let i = 0; i <= 4; i++) {
+        const value = low + (high - low) * i / 4;
+        svgNode("line", { x1: 66, x2: 1056, y1: y(value), y2: y(value), class: "grid" }, svg);
+        svgNode("text", { x: 58, y: y(value) + 4, "text-anchor": "end", class: "axis" }, svg, format(value));
+      }
+      for (const tick of model.ticks) {
+        svgNode("line", { x1: x(tick.at), x2: x(tick.at), y1: 16, y2: height - 22, class: "grid" }, svg);
+        svgNode("text", { x: x(tick.at), y: height + 4, "text-anchor": "middle", class: "axis" }, svg, tick.label);
+      }
+      return { svg, y, height };
+    };
+    node("p", "Scroll charts horizontally on smaller screens to inspect the full history.", content, "muted mobile-help");
+    const path = (points, field, plot, className, step = false) => {
+      let d = "", connected = false;
+      for (const point of points) {
+        if (point[field] == null) { connected = false; continue; }
+        d += !connected ? `M${x(point.at)},${plot.y(point[field])}`
+          : step ? `H${x(point.at)}V${plot.y(point[field])}` : `L${x(point.at)},${plot.y(point[field])}`;
+        connected = true;
+      }
+      svgNode("path", { d, class: className }, plot.svg);
+    };
+    const top = chart(events ? `${metric.basis === "workflow-contribution" ? "Delivery" : "Outcome"} pulse (${metric.unit}/week)` : `${metric.name} (${metric.unit})`,
+      events ? "Calendar-week bars; solid: trailing 28 days; dashed: trailing 91 days. Faded bars are partial weeks. Blank rates mean insufficient coverage."
+        : "Native observations, not cumulative delivery. Gaps remain unknown; overlapping intervals are not added.",
+      [...metric.series.flatMap(point => [point.value, point.baseline]), ...metric.weekly.map(point => point.rate)]);
+    for (const bucket of metric.weekly) {
+      if (bucket.rate == null) continue;
+      const bar = svgNode("rect", { x: x(bucket.startAt) + 1, width: Math.max(1, x(bucket.endAt) - x(bucket.startAt) - 2),
+        y: Math.min(top.y(0), top.y(bucket.rate)), height: Math.max(1, Math.abs(top.y(0) - top.y(bucket.rate))),
+        class: bucket.partial ? "bar partial" : "bar" }, top.svg);
+      svgNode("title", {}, bar,
+        `${date(bucket.startAt)} - ${date(bucket.endAt)}: ${format(bucket.value)} ${metric.unit}; ${format(bucket.rate)}/week${bucket.partial ? " (partial week, actual exposure)" : ""}`);
+    }
+    path(metric.series, "baseline", top, "baseline");
+    path(metric.series, "value", top, "primary");
+    if (!events) {
+      for (const point of metric.series) {
+        if (point.value == null) continue;
+        const circle = svgNode("circle", { cx: x(point.at), cy: top.y(point.value), r: 3, class: "point" }, top.svg);
+        svgNode("title", {}, circle, `${date(point.at)}: ${format(point.value)} ${metric.unit}; ${point.status}`);
+      }
+    }
+    if (events) {
+      const contribution = metric.basis === "workflow-contribution";
+      const bottom = chart(`Cumulative ${contribution ? "historical delivery" : "observed outcome"} (${metric.unit})`,
+        contribution
+          ? `Solid: all demonstrated contribution. Dotted: receipt-backed subset (${format(metric.receiptTotal)}); corroborated: ${format(metric.observedTotal - metric.receiptTotal)}. Click or focus an event to inspect evidence.`
+          : "Actor-independent native outcomes, not workflow credit. Click or focus an event to inspect evidence.",
+        metric.cumulative.flatMap(point => [point.value, point.receipt]), 190);
+      bottom.svg.setAttribute("role", "group");
+      path(metric.cumulative, "value", bottom, "primary", true);
+      if (contribution) path(metric.cumulative, "receipt", bottom, "receipt", true);
+      const detail = node("aside", null, content, "event-detail");
+      detail.setAttribute("aria-live", "polite");
+      const show = event => {
+        detail.replaceChildren();
+        node("h3", `${date(event.at)}: ${event.label}`, detail);
+        node("p", `${format(event.value)} ${metric.unit}; ${event.attribution}.`, detail);
+        node("p", event.detail, detail);
+        const links = node("p", null, detail, "evidence-links");
+        for (const ref of event.evidence) {
+          const link = node("a", ref.label, links);
+          link.href = ref.url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        }
+      };
+      metric.events.forEach((event, index) => {
+        const mark = svgNode("circle", { cx: x(event.at), cy: bottom.height + 24,
+          r: event.value === 0 ? 3 : 4, tabindex: 0, role: "button",
+          "aria-label": `${event.label}: ${format(event.value)} ${metric.unit}, ${date(event.at)}`,
+          class: event.attribution === "receipt-verified" ? "event receipt-event" : "event",
+          "data-event": index }, bottom.svg);
+        svgNode("title", {}, mark, `${event.label}: ${format(event.value)} ${metric.unit}`);
+        mark.addEventListener("click", () => show(event));
+        mark.addEventListener("focus", () => show(event));
+        mark.addEventListener("keydown", key => {
+          if (key.key === "Enter" || key.key === " ") { key.preventDefault(); show(event); }
+        });
+      });
+      const latest = metric.events.at(-1);
+      if (latest) show(latest);
+      else node("p", "No delivery events observed; inspect coverage before interpreting zero.", detail);
+    }
+    node("h2", "Interpretation and limits", content);
+    const notes = node("ul", null, content);
+    for (const note of metric.notes) node("li", note, notes);
+    node("p", `Decision: ${model.decision.status}. Costs: ${model.cost.status}. ${model.limitation}`, content, "muted");
+    node("p", "Improving/worsening describes measured movement, not statistical significance. Attention means inspect, not disable. A saved report must be regenerated to monitor new work.", content, "muted");
+  };
+  select.addEventListener("change", draw);
+  draw();
+})(document,{"schemaVersion":1,"repository":"github/gh-aw","workflowSlug":"daily-code-metrics","workflowName":"daily-code-metrics","sourcePath":".github/workflows/daily-code-metrics.md","valueFunctionSha256":"8c200e7e75d4471db707339ec3cbf0804fde8332c30feeeb0f65c82f8f37797a","window":{"startAt":"2025-11-11T18:32:38Z","endAt":"2026-10-18T15:00:12Z"},"ticks":[{"at":"2025-12-01T00:00:00.000Z","label":"Dec 2025"},{"at":"2026-01-01T00:00:00.000Z","label":"Jan 2026"},{"at":"2026-02-01T00:00:00.000Z","label":"Feb 2026"},{"at":"2026-03-01T00:00:00.000Z","label":"Mar 2026"},{"at":"2026-04-01T00:00:00.000Z","label":"Apr 2026"},{"at":"2026-05-01T00:00:00.000Z","label":"May 2026"},{"at":"2026-06-01T00:00:00.000Z","label":"Jun 2026"},{"at":"2026-07-01T00:00:00.000Z","label":"Jul 2026"},{"at":"2026-08-01T00:00:00.000Z","label":"Aug 2026"},{"at":"2026-09-01T00:00:00.000Z","label":"Sep 2026"},{"at":"2026-10-01T00:00:00.000Z","label":"Oct 2026"}],"selectedMetricId":"native-fact-accuracy","signal":{"status":"insufficient-evidence","attention":"evidence-needed","current":null,"previous":null,"directionAwareGain":null,"reason":"Need fresh complete mature comparable periods; missing evidence is not zero value.","opportunities":null,"metricId":"native-fact-accuracy","basis":"repository-outcome","unit":"percent"},"metrics":[{"id":"native-fact-accuracy","name":"Workflow inventory count accuracy","role":"primary","formula":"100 * independently accepted / independently assessed facts in this one explicitly bounded native facet; not full report accuracy","direction":"increase","unit":"percent","presentation":{"name":"Bounded factual accuracy","legendLabel":"Bounded fact accuracy","transform":"identity"},"basis":"repository-outcome","kind":"interval","signal":{"status":"insufficient-evidence","attention":"evidence-needed","current":null,"previous":null,"directionAwareGain":null,"reason":"Need fresh complete mature comparable periods; missing evidence is not zero value.","opportunities":null},"currentWindow":{"startAt":"2026-10-11T15:00:12Z","endAt":"2026-10-18T15:00:12Z"},"previousWindow":{"startAt":"2026-10-04T15:00:12Z","endAt":"2026-10-11T15:00:12Z"},"series":[{"at":"2025-11-16T15:00:12Z","value":null,"status":"partial-window","observedAt":"2025-11-16T15:00:12Z"},{"at":"2025-11-23T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-11-23T15:00:12Z"},{"at":"2025-11-30T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-11-30T15:00:12Z"},{"at":"2025-12-07T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-07T15:00:12Z"},{"at":"2025-12-14T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-14T15:00:12Z"},{"at":"2025-12-21T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-21T15:00:12Z"},{"at":"2025-12-28T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-28T15:00:12Z"},{"at":"2026-01-04T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-04T15:00:12Z"},{"at":"2026-01-11T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-11T15:00:12Z"},{"at":"2026-01-18T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-18T15:00:12Z"},{"at":"2026-01-25T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-25T15:00:12Z"},{"at":"2026-02-01T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-01T15:00:12Z"},{"at":"2026-02-08T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-08T15:00:12Z"},{"at":"2026-02-15T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-15T15:00:12Z"},{"at":"2026-02-22T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-22T15:00:12Z"},{"at":"2026-03-01T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-01T15:00:12Z"},{"at":"2026-03-08T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-08T15:00:12Z"},{"at":"2026-03-15T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-15T15:00:12Z"},{"at":"2026-03-22T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-22T15:00:12Z"},{"at":"2026-03-29T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-29T15:00:12Z"},{"at":"2026-04-05T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-05T15:00:12Z"},{"at":"2026-04-12T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-12T15:00:12Z"},{"at":"2026-04-19T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-19T15:00:12Z"},{"at":"2026-04-26T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-26T15:00:12Z"},{"at":"2026-05-03T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-03T15:00:12Z"},{"at":"2026-05-10T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-10T15:00:12Z"},{"at":"2026-05-17T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-17T15:00:12Z"},{"at":"2026-05-24T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-24T15:00:12Z"},{"at":"2026-05-31T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-31T15:00:12Z"},{"at":"2026-06-07T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-07T15:00:12Z"},{"at":"2026-06-14T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-14T15:00:12Z"},{"at":"2026-06-21T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-21T15:00:12Z"},{"at":"2026-06-28T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-28T15:00:12Z"},{"at":"2026-07-05T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-05T15:00:12Z"},{"at":"2026-07-12T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-12T15:00:12Z"},{"at":"2026-07-19T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-19T15:00:12Z"},{"at":"2026-07-26T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-26T15:00:12Z"},{"at":"2026-08-02T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-02T15:00:12Z"},{"at":"2026-08-09T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-09T15:00:12Z"},{"at":"2026-08-16T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-16T15:00:12Z"},{"at":"2026-08-23T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-23T15:00:12Z"},{"at":"2026-08-30T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-30T15:00:12Z"},{"at":"2026-09-06T15:00:12Z","value":100,"status":"incomplete-evidence","observedAt":"2026-09-06T15:00:12Z"},{"at":"2026-09-13T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-13T15:00:12Z"},{"at":"2026-09-20T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-20T15:00:12Z"},{"at":"2026-09-27T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-27T15:00:12Z"},{"at":"2026-10-04T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-04T15:00:12Z"},{"at":"2026-10-11T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-11T15:00:12Z"},{"at":"2026-10-18T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-18T15:00:12Z"}],"weekly":[],"cumulative":[],"events":[],"notes":["Snapshots and overlapping interval aggregates are never summed into lifetime delivery.","Repository movement is not this workflow's causal impact."]},{"id":"native-fact-coverage","name":"Assessment coverage of eligible facet facts","role":"diagnostic","formula":"100 * independently assessed / eligible literal native facts; no eligible facts is null","direction":"increase","unit":"percent","presentation":{"name":"Bounded assessment coverage","legendLabel":"Bounded fact coverage","transform":"identity"},"basis":"diagnostic","kind":"interval","signal":{"status":"insufficient-evidence","attention":"evidence-needed","current":null,"previous":null,"directionAwareGain":null,"reason":"Need fresh complete mature comparable periods; missing evidence is not zero value.","opportunities":null},"currentWindow":{"startAt":"2026-10-11T15:00:12Z","endAt":"2026-10-18T15:00:12Z"},"previousWindow":{"startAt":"2026-10-04T15:00:12Z","endAt":"2026-10-11T15:00:12Z"},"series":[{"at":"2025-11-16T15:00:12Z","value":null,"status":"partial-window","observedAt":"2025-11-16T15:00:12Z"},{"at":"2025-11-23T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-11-23T15:00:12Z"},{"at":"2025-11-30T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-11-30T15:00:12Z"},{"at":"2025-12-07T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-07T15:00:12Z"},{"at":"2025-12-14T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-14T15:00:12Z"},{"at":"2025-12-21T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-21T15:00:12Z"},{"at":"2025-12-28T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-28T15:00:12Z"},{"at":"2026-01-04T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-04T15:00:12Z"},{"at":"2026-01-11T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-11T15:00:12Z"},{"at":"2026-01-18T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-18T15:00:12Z"},{"at":"2026-01-25T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-25T15:00:12Z"},{"at":"2026-02-01T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-01T15:00:12Z"},{"at":"2026-02-08T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-08T15:00:12Z"},{"at":"2026-02-15T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-15T15:00:12Z"},{"at":"2026-02-22T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-22T15:00:12Z"},{"at":"2026-03-01T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-01T15:00:12Z"},{"at":"2026-03-08T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-08T15:00:12Z"},{"at":"2026-03-15T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-15T15:00:12Z"},{"at":"2026-03-22T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-22T15:00:12Z"},{"at":"2026-03-29T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-29T15:00:12Z"},{"at":"2026-04-05T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-05T15:00:12Z"},{"at":"2026-04-12T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-12T15:00:12Z"},{"at":"2026-04-19T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-19T15:00:12Z"},{"at":"2026-04-26T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-26T15:00:12Z"},{"at":"2026-05-03T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-03T15:00:12Z"},{"at":"2026-05-10T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-10T15:00:12Z"},{"at":"2026-05-17T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-17T15:00:12Z"},{"at":"2026-05-24T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-24T15:00:12Z"},{"at":"2026-05-31T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-31T15:00:12Z"},{"at":"2026-06-07T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-07T15:00:12Z"},{"at":"2026-06-14T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-14T15:00:12Z"},{"at":"2026-06-21T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-21T15:00:12Z"},{"at":"2026-06-28T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-28T15:00:12Z"},{"at":"2026-07-05T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-05T15:00:12Z"},{"at":"2026-07-12T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-12T15:00:12Z"},{"at":"2026-07-19T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-19T15:00:12Z"},{"at":"2026-07-26T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-26T15:00:12Z"},{"at":"2026-08-02T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-02T15:00:12Z"},{"at":"2026-08-09T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-09T15:00:12Z"},{"at":"2026-08-16T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-16T15:00:12Z"},{"at":"2026-08-23T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-23T15:00:12Z"},{"at":"2026-08-30T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-30T15:00:12Z"},{"at":"2026-09-06T15:00:12Z","value":100,"status":"incomplete-evidence","observedAt":"2026-09-06T15:00:12Z"},{"at":"2026-09-13T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-13T15:00:12Z"},{"at":"2026-09-20T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-20T15:00:12Z"},{"at":"2026-09-27T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-27T15:00:12Z"},{"at":"2026-10-04T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-04T15:00:12Z"},{"at":"2026-10-11T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-11T15:00:12Z"},{"at":"2026-10-18T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-18T15:00:12Z"}],"weekly":[],"cumulative":[],"events":[],"notes":["Snapshots and overlapping interval aggregates are never summed into lifetime delivery.","Diagnostic movement is not a workflow keep/retire recommendation."]},{"id":"verified-native-facts","name":"Independently verified native facts","role":"diagnostic","formula":"accepted independent native facts, not reports or generated items","direction":"increase","unit":"facts","presentation":{"name":"Verified native facts","legendLabel":"Verified native facts","transform":"identity"},"basis":"diagnostic","kind":"interval","signal":{"status":"insufficient-evidence","attention":"evidence-needed","current":null,"previous":null,"directionAwareGain":null,"reason":"Need fresh complete mature comparable periods; missing evidence is not zero value.","opportunities":null},"currentWindow":{"startAt":"2026-10-11T15:00:12Z","endAt":"2026-10-18T15:00:12Z"},"previousWindow":{"startAt":"2026-10-04T15:00:12Z","endAt":"2026-10-11T15:00:12Z"},"series":[{"at":"2025-11-16T15:00:12Z","value":null,"status":"partial-window","observedAt":"2025-11-16T15:00:12Z"},{"at":"2025-11-23T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-11-23T15:00:12Z"},{"at":"2025-11-30T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-11-30T15:00:12Z"},{"at":"2025-12-07T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-07T15:00:12Z"},{"at":"2025-12-14T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-14T15:00:12Z"},{"at":"2025-12-21T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-21T15:00:12Z"},{"at":"2025-12-28T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2025-12-28T15:00:12Z"},{"at":"2026-01-04T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-04T15:00:12Z"},{"at":"2026-01-11T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-11T15:00:12Z"},{"at":"2026-01-18T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-18T15:00:12Z"},{"at":"2026-01-25T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-01-25T15:00:12Z"},{"at":"2026-02-01T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-01T15:00:12Z"},{"at":"2026-02-08T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-08T15:00:12Z"},{"at":"2026-02-15T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-15T15:00:12Z"},{"at":"2026-02-22T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-02-22T15:00:12Z"},{"at":"2026-03-01T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-01T15:00:12Z"},{"at":"2026-03-08T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-08T15:00:12Z"},{"at":"2026-03-15T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-15T15:00:12Z"},{"at":"2026-03-22T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-22T15:00:12Z"},{"at":"2026-03-29T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-03-29T15:00:12Z"},{"at":"2026-04-05T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-05T15:00:12Z"},{"at":"2026-04-12T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-12T15:00:12Z"},{"at":"2026-04-19T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-19T15:00:12Z"},{"at":"2026-04-26T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-04-26T15:00:12Z"},{"at":"2026-05-03T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-03T15:00:12Z"},{"at":"2026-05-10T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-10T15:00:12Z"},{"at":"2026-05-17T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-17T15:00:12Z"},{"at":"2026-05-24T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-24T15:00:12Z"},{"at":"2026-05-31T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-05-31T15:00:12Z"},{"at":"2026-06-07T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-07T15:00:12Z"},{"at":"2026-06-14T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-14T15:00:12Z"},{"at":"2026-06-21T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-21T15:00:12Z"},{"at":"2026-06-28T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-06-28T15:00:12Z"},{"at":"2026-07-05T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-05T15:00:12Z"},{"at":"2026-07-12T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-12T15:00:12Z"},{"at":"2026-07-19T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-19T15:00:12Z"},{"at":"2026-07-26T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-07-26T15:00:12Z"},{"at":"2026-08-02T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-02T15:00:12Z"},{"at":"2026-08-09T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-09T15:00:12Z"},{"at":"2026-08-16T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-16T15:00:12Z"},{"at":"2026-08-23T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-23T15:00:12Z"},{"at":"2026-08-30T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-08-30T15:00:12Z"},{"at":"2026-09-06T15:00:12Z","value":2,"status":"incomplete-evidence","observedAt":"2026-09-06T15:00:12Z"},{"at":"2026-09-13T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-13T15:00:12Z"},{"at":"2026-09-20T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-20T15:00:12Z"},{"at":"2026-09-27T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-09-27T15:00:12Z"},{"at":"2026-10-04T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-04T15:00:12Z"},{"at":"2026-10-11T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-11T15:00:12Z"},{"at":"2026-10-18T15:00:12Z","value":null,"status":"incomplete-evidence","observedAt":"2026-10-18T15:00:12Z"}],"weekly":[],"cumulative":[],"events":[],"notes":["Snapshots and overlapping interval aggregates are never summed into lifetime delivery.","Diagnostic movement is not a workflow keep/retire recommendation."]}],"decision":{"status":"not-rated","reason":"No agreed native keep bar and review duration.","policy":null},"cost":{"status":"not-measured","total":null,"unit":null,"costPerAcceptedOutcome":null},"limitation":"Native outcome evidence and declared contribution are not causal attribution or a monetary return."});</script></body></html>

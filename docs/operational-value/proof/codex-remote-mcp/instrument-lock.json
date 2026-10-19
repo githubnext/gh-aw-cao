@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "file": ".github/skills/add-operational-value/scripts/collect-output-history.mjs",
+      "sha256": "52ed43049cff5a15209397bee042bbb950aa5fe0628c3c2a6e03c41a5c9e5eea"
+    },
+    {
+      "file": ".github/skills/add-operational-value/scripts/common.mjs",
+      "sha256": "c865f10a46d4ad3e6f20ea2afba98f280910f8e3c7049e2e303e9daf3605a836"
+    },
+    {
+      "file": ".github/skills/add-operational-value/scripts/github-lineage.mjs",
+      "sha256": "f35d6546c78197c49a91b08bf2ac88cba0af37125df726fa6b7c2926c83eccf5"
+    },
+    {
+      "file": ".github/skills/add-operational-value/scripts/json-archive.mjs",
+      "sha256": "18045c03ca00fc5f8cccf2a02486255e03a0df22adddf0c426c9182fc6e2554b"
+    },
+    {
+      "file": "docs/operational-value/proof/codex-remote-mcp/contract.json",
+      "sha256": "18feca04488fd26cbc9a649f371eb91927b38d7304b3595c4237ec16ffc6ff9a"
+    },
+    {
+      "file": "docs/operational-value/proof/codex-remote-mcp/native.mjs",
+      "sha256": "feecdfb90f5da82c3624964f14aaa3df49466e6170511f1872c20f08a5a195b9"
+    },
+    {
+      "file": "docs/operational-value/proof/codex-remote-mcp/originals.json.gz",
+      "sha256": "a9d6791402a2303ec299d23b1a2c0673d5f20523a9c48345f21cd379467d8d9e"
+    },
+    {
+      "file": "scripts/collect-codex-remote-mcp.mjs",
+      "sha256": "0709fb7bff046d05f9865f8d5cf2f5c1e01944513218f917f82f5736e82a124e"
+    },
+    {
+      "file": "scripts/collect-smoke-pydantic.mjs",
+      "sha256": "3001086bb3b8631d7ac953d5263d47a9924faf7a3f7f0bffeda73f62baa50232"
+    },
+    {
+      "file": "scripts/native-smoke-pydantic.mjs",
+      "sha256": "0df4eafb26e80d27ef8c99c7eee66b443518f2c9ed4fed0d5094d2593aebb8f5"
+    }
+  ]
+}

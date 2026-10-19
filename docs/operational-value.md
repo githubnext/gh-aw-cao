@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-70 of 344 is 20.3%, with 274 workflows still unevaluated.
+77 of 344 is 22.4%, with 267 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -759,6 +759,35 @@ Its secret-token fallbacks also mean masked logs cannot establish Actions-token
 credential identity. Full-goal acceptance, workflow contribution, costs and the
 other forty weekly periods remain unknown. Seven-day grouping is an explicit
 retrospective reporting choice, not an exhaustive historical test census.
+
+The separate Codex remote-MCP instrument verifies one native access attempt
+through protected stdout, matching raw/normalized call identities and a unique
+sequential official-backend gateway exchange. Three open issues exist upstream,
+but integrity policy withholds all three before the native result reaches Codex:
+**upstream bytes are not agent readback**. Gateway request records omit IDs; the
+cross-channel corroboration uses exact arguments, uniqueness and enclosing native
+timestamps, not an invented shared request ID. The executed October 3 source did
+not yet call filtering an expected result, so today's policy language is not
+backdated into historical full success. Eight other run identities lack original
+agent jobs; the remaining 39 weekly periods stay unknown.
+
+Six monitoring instruments assess source-specific factual facets in one surviving
+report body each: two workflow-inventory cells, thirty literal mainline commit
+citations, ten extension populations, three JSON tool-mapping facts, fifty-five
+listed new-issue identities and two captured-cache creation-window counts.
+Their accuracy percentages apply **only to those named facets**, not overall
+report quality or a portfolio score. The chronicle's stated 24h05m window does
+not satisfy its 24h requirement. The weekly issue report's opening count has an
+independently established undercount floor of thirty despite correct listed
+new-issue citations. JSON mapping counts do not verify the claimed live-tool
+inventory, and a retained 1000-issue cache is not the entire repository.
+
+These six are explicitly outcome-informed retrospective assessments. The bodies
+are surviving versions observed after cutoff, checked against independently
+retained native facts and allocated by original report-creation cohort.
+**Original publication-time body bytes and accuracy are not established.**
+Other report cohorts/periods, semantic/editorial usefulness, creation receipts,
+causal contribution, full acceptance and matched costs remain unknown.
 
 The work-queue observer investigation retains all 12 initial executions:
 seven belong to an incompatible historical finish-staging goal, and five are

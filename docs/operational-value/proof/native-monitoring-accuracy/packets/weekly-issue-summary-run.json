@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/38267134323",
+  "observedAt": "2026-10-19T15:32:46Z",
+  "kind": "original-public-api-response",
+  "bytes": 13262,
+  "sha256": "2415a660aae988b5ce00f0bf4fc3ea5b5ca64889af6d6cef39be7118d85f5349",
+  "parts": [
+    {
+      "file": "weekly-issue-summary-run.0.gz",
+      "sha256": "4a84f37b3f75364ec38fac61be7aaeca88b8a99e6061d94209025dfd89039f0c",
+      "bytes": 2186
+    }
+  ]
+}

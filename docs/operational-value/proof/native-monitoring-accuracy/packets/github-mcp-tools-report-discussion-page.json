@@ -1,0 +1,36 @@
+{
+  "kind": "original-shared-discussion-api-response",
+  "query": "query { repository(owner:\"github\",name:\"gh-aw\") {\n    databaseId discussions(first:100,after:null,orderBy:{field:CREATED_AT,direction:DESC}) {\n      nodes { id number url title body createdAt updatedAt }\n      pageInfo { hasNextPage endCursor }\n    }\n  } }",
+  "observedAt": "2026-10-19T15:19:24Z",
+  "inheritedSha256": "2f7de53bc97ece01f82fe924f857b13940eb39b4e5ed9f3a69fa58972cb271bf",
+  "original": "page-00001.json.gz",
+  "bytes": 710466,
+  "sha256": "2f7de53bc97ece01f82fe924f857b13940eb39b4e5ed9f3a69fa58972cb271bf",
+  "parts": [
+    {
+      "file": "github-mcp-tools-report-discussion-page.0.gz",
+      "sha256": "b1c536ed6733153c1768d37d80d4b095c8352aa4df2c26b0f0f98b1b04083999",
+      "bytes": 53644
+    },
+    {
+      "file": "github-mcp-tools-report-discussion-page.1.gz",
+      "sha256": "79d785ff2516ae7d8d5dd65524bc41093ed480d31a1a584c36e5886e1f0c9730",
+      "bytes": 50944
+    },
+    {
+      "file": "github-mcp-tools-report-discussion-page.2.gz",
+      "sha256": "37ee43a8855e68a925537c814e8f1fbcfb9637671242673f223262b43eac35e4",
+      "bytes": 53708
+    },
+    {
+      "file": "github-mcp-tools-report-discussion-page.3.gz",
+      "sha256": "f373c616cccdb322caeb10281ae036868196c4c18d05eccc51158b2ceb801ad3",
+      "bytes": 53444
+    },
+    {
+      "file": "github-mcp-tools-report-discussion-page.4.gz",
+      "sha256": "da0e15d37c136a31f746bc08cc87b1066090b5c64a569aced9f3bc5449448748",
+      "bytes": 10265
+    }
+  ]
+}

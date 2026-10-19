@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "interpretation": "Pins production interpreter/helper/source/discovery identities, including transitive portable skill helpers. Native Git objects and packet chunks are validated against pinned manifests during replay.",
+  "files": [
+    {
+      "path": "scripts/native-monitoring-accuracy.mjs",
+      "sha256": "6cce2774cd2c27b36258386a1b2de9d2b087a788660482da8cf2c13f4628beb1"
+    },
+    {
+      "path": "scripts/native-monitoring-value.mjs",
+      "sha256": "dde20e1104f8644660493abb65d3843546770df4bc3db06051561a578acb6cd0"
+    },
+    {
+      "path": "scripts/collect-native-monitoring-accuracy.mjs",
+      "sha256": "cae6d18ef5cca04183c352b782696957243bfc5ffabb834ac3e0ea45d6dec341"
+    },
+    {
+      "path": "scripts/author-native-monitoring-functions.mjs",
+      "sha256": "874d21c7c6f523712db0868b93b0a7ee5f74f126f2f96ac27ca0708cdbdb4725"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/collect-output-history.mjs",
+      "sha256": "52ed43049cff5a15209397bee042bbb950aa5fe0628c3c2a6e03c41a5c9e5eea"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/common.mjs",
+      "sha256": "c865f10a46d4ad3e6f20ea2afba98f280910f8e3c7049e2e303e9daf3605a836"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/github-lineage.mjs",
+      "sha256": "f35d6546c78197c49a91b08bf2ac88cba0af37125df726fa6b7c2926c83eccf5"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/json-archive.mjs",
+      "sha256": "18045c03ca00fc5f8cccf2a02486255e03a0df22adddf0c426c9182fc6e2554b"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/discovery.json",
+      "sha256": "0470c5e84980f055f943fa2f7dca715863d02dc070bc9d37e3690d9685fe396f"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/originals.json",
+      "sha256": "5381df6498eb75be547ca4f28d661544598dbf306f729188c38cf6264655547c"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/daily-code-metrics-run.json",
+      "sha256": "13b1f5fcb98aaa7a35e6a5c62c5bb4a95bd8ed89a7a67afbda3754c95a6e41c8"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/daily-code-metrics-discussion-page.json",
+      "sha256": "0d37c8b4e24d179989cff3b8bd54a724bb2394c2cdcd0a1dd8d59f26efd66b9e"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/daily-repo-chronicle-run.json",
+      "sha256": "eb7f26033207c8389caab1125cf834de1885bfd2ef36c5de1013e35130f632cd"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/daily-repo-chronicle-discussion-page.json",
+      "sha256": "9c440f9da641b1a57eb156e3a9a2ff901d8f7c366671ae69ad5e1e4fed73e6e9"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/repo-tree-map-run.json",
+      "sha256": "1c8e1d5b773bbc7617126510e420bca46c267da27ad26b49260cb367d98765cf"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/repo-tree-map-discussion-page.json",
+      "sha256": "564fe0cee032761e270068a650cb26adfe83996afe3aa6d088da9c2ff042d294"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/github-mcp-tools-report-run.json",
+      "sha256": "9630fd4b5dd68d7a1fb4708b58cae8113dd7ebd84684fb5422bce7865f9b4ee2"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/github-mcp-tools-report-discussion-page.json",
+      "sha256": "4cdb5e676f37b11678e2663382e058eea4d0c8c3f829e2c3fb4518290e24451c"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-run.json",
+      "sha256": "e0d3f176f3f8431876c69a54b9b4a66141bc092763c3e172323c413cbf6858d4"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-discussion-page.json",
+      "sha256": "e03032890f5ca33ed9c2dfa03ab7b6ed8b2fe7e98ccad64d255964906abc1c8e"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/daily-issues-report-run.json",
+      "sha256": "e7141c0c5516087ec00fc825b8745bf4c76609e3ee57b1d2d7781771a46187e3"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/daily-issues-report-discussion-page.json",
+      "sha256": "6951ea0940724c5763c89b7a95738bbfbd7ad09519ac95fc34320e1a5f931cc8"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-01.json",
+      "sha256": "9ca83a5b89e86077f9b2627caab2313c71f7e4825a1a39bf2743edba7f5abd09"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-02.json",
+      "sha256": "85b77146844a2f60a5d0f2b46e95933b7545042fd7b2ff577b6c4903ca076cc0"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-03.json",
+      "sha256": "641101055d3ae74cc5e3c41d6c899c66855ba716c992de0db5b41061b03e4e05"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-04.json",
+      "sha256": "437db85a306715ae82adaf549eff9b62fc00533a70417367d698e72eac2958a2"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-05.json",
+      "sha256": "1193aded16312ab800adcbb4d29507077f87cb0fff6065cc7cd59419627413e2"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-06.json",
+      "sha256": "faffade8f3320d2a1e5213ae8dc264da649b850a873f32058afde28bfbcb94c9"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-07.json",
+      "sha256": "5b4d971541d076aa76287905a0d63827ded86163100c24de7c7f8b4af5b2dcc9"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-08.json",
+      "sha256": "f39e5bf0b79b4e7267a7245186d685f8e0e1107cd29a4bf6009b16fa8e5dba1a"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-09.json",
+      "sha256": "73006fc5c5944ed5a50afed746cbc01d65f69f6c0e6b2e3ac8e5fff44604a098"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-10.json",
+      "sha256": "2258d3a147d16fb809a8e8bb7459780966a8e428dbc81e1b671eb8ab55b0f69f"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-11.json",
+      "sha256": "4170d30a63ca2752e9605faa6eeda678045cfa8b71c019ad9f39f797bf1ddef1"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-12.json",
+      "sha256": "b7ef51a87f5eaacb654accad01eb20e2088a992d123b91b5658028ac92c05030"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-13.json",
+      "sha256": "bc03f247905e2dff1a0ea6ee002ef8dad668a596e22eaec824ba21cfaa73f14f"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-14.json",
+      "sha256": "88334bd825bd566728377ff9e75627cf067a02f6ad0239a49b1734e9732a0a0b"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-15.json",
+      "sha256": "e9766eff10618ec6fee9905cb39e4cd5b4d5375a2cf6cf11ca9fe32698c9acf5"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/weekly-issue-summary-transfer-16.json",
+      "sha256": "11b736c2641d7a89050c85869e0050a8e0c08730e5f8c9161e427fd604b4b213"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/daily-issues-cache.json",
+      "sha256": "a4f1ba333852df13ca780836817790c4e39e0e2c4cd1e133a4529a83fdf5071d"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/packets/daily-issues-report-agent-job.json",
+      "sha256": "10d3002a37b24f4bd0c94c15a3de21780e6d3aaede877fd7d5719ea911d2d169"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/issue-history/history.json.gz",
+      "sha256": "c928eab463ed316f202b08d3343b10358deee00f95ffb243fd9d41350da16f93"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/originals-part-001.json.gz",
+      "sha256": "7d775ea2bc3e84faebeca56c4b3c620543b3971e090dafa26b922bd580f7e12a"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/originals-part-002.json.gz",
+      "sha256": "4402bb01198af8b64be4db69eebdbf5b6b14599809f59247cab92668cc852e71"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/originals-part-003.json.gz",
+      "sha256": "3e19daebca7c47d3975d9e02ebb53b38ace84f9332184ea40b114cf6174481d1"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/originals-part-004.json.gz",
+      "sha256": "c96e14804c560340e105f4a8d957d437a1338dc900bd1648f7cc0aee7cb68e1e"
+    },
+    {
+      "path": "docs/operational-value/proof/native-monitoring-accuracy/originals-part-005.json.gz",
+      "sha256": "c41a70fabdf85a51f33f0c99861a35a7d6b4276ec2ee09ee034a631fd3af6b5e"
+    }
+  ]
+}

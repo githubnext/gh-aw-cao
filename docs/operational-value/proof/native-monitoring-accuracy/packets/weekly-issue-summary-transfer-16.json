@@ -1,0 +1,15 @@
+{
+  "endpoint": "graphql",
+  "query": "query { nodes(ids:[\"I_kwDOPc1QR88AAAABWmpYzw\",\"I_kwDOPc1QR88AAAABWmtfWg\",\"I_kwDOPc1QR88AAAABWmtf-A\",\"I_kwDOPc1QR88AAAABWmtglg\",\"I_kwDOPc1QR88AAAABWmtz7Q\",\"I_kwDOPc1QR88AAAABWm-Udw\",\"I_kwDOPc1QR88AAAABWnGNMQ\",\"I_kwDOPc1QR88AAAABWnJtpg\",\"I_kwDOPc1QR88AAAABWnL6Ww\",\"I_kwDOPc1QR88AAAABWnWmcg\",\"I_kwDOPc1QR88AAAABWncE_w\",\"I_kwDOPc1QR88AAAABWnukJQ\",\"I_kwDOPc1QR88AAAABWny9bg\",\"I_kwDOPc1QR88AAAABWn13EQ\",\"I_kwDOPc1QR88AAAABWoB6Vg\",\"I_kwDOPc1QR88AAAABWoDpCQ\",\"I_kwDOPc1QR88AAAABWoEsZg\",\"I_kwDOPc1QR88AAAABWoEs_Q\",\"I_kwDOPc1QR88AAAABWoFMiA\",\"I_kwDOPc1QR88AAAABWoFQPw\",\"I_kwDOPc1QR88AAAABWoFUOA\",\"I_kwDOPc1QR88AAAABWoFXUA\",\"I_kwDOPc1QR88AAAABWoFang\",\"I_kwDOPc1QR88AAAABWoFeSQ\",\"I_kwDOPc1QR88AAAABWoIcMw\",\"I_kwDOPc1QR88AAAABWoImig\",\"I_kwDOPc1QR88AAAABWo2qpg\",\"I_kwDOPc1QR88AAAABWo3cCA\",\"I_kwDOPc1QR88AAAABWo5jyA\",\"I_kwDOPc1QR88AAAABWpEerA\",\"I_kwDOPc1QR88AAAABWpFpkg\",\"I_kwDOPc1QR88AAAABWpI2MQ\",\"I_kwDOPc1QR88AAAABWpYtdA\",\"I_kwDOPc1QR88AAAABWpgdzA\",\"I_kwDOPc1QR88AAAABWqE45w\",\"I_kwDOPc1QR88AAAABWqHCgQ\",\"I_kwDOPc1QR88AAAABWqHU0Q\",\"I_kwDOPc1QR88AAAABWqPwSw\",\"I_kwDOPc1QR88AAAABWqSZDg\",\"I_kwDOPc1QR88AAAABWqZSaA\",\"I_kwDOPc1QR88AAAABWqcFDQ\",\"I_kwDOPc1QR88AAAABWqfXZw\"]) { ... on Issue { id number createdAt repository { databaseId } timelineItems(first:1,itemTypes:[TRANSFERRED_EVENT]) { totalCount pageInfo { hasNextPage } nodes { __typename } } } } }",
+  "observedAt": "2026-10-19T15:47:30Z",
+  "kind": "original-public-api-response",
+  "bytes": 8420,
+  "sha256": "cba95c2e670f8c0d4fa6971f21eb92a7d912767fbaaf41061879da135b898619",
+  "parts": [
+    {
+      "file": "weekly-issue-summary-transfer-16.0.gz",
+      "sha256": "3163b1427d0a198e6d8a93b318a4cbd4ec4a917ef5c3304b7a11740967d6e90d",
+      "bytes": 714
+    }
+  ]
+}

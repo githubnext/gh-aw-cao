@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/33425686994/artifacts?per_page=100",
+  "observedAt": "2026-10-19T15:32:29Z",
+  "kind": "original-public-api-response",
+  "bytes": 3959,
+  "sha256": "7c95c60038cc4ce28ee0001260c8896b21122a18b02d8811e8e2d28f1917c74f",
+  "parts": [
+    {
+      "file": "daily-code-metrics-artifacts.0.gz",
+      "sha256": "57b6ad061d123f34f817b9f24170f8f7d037a839f4d3771c2c643b915ee2e9f2",
+      "bytes": 848
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "version": "native-access-v1",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "codex-github-remote-mcp-test",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": "Frozen source-defined native predicate after reading the complete modern workflow and original run-identity metadata, before inspecting any original job log, artifact or native result. Historical source differences require explicit profiles, not backdated modern acceptance.",
+  "goal": "Verify that the Codex engine can use GitHub remote MCP to retrieve three open repository issues, or respect an explicitly returned integrity-policy content filter without bypass.",
+  "selection": {
+    "runIds": [37098241608, 29259399398, 23201826964, 23201773478, 23162377961, 23162309145, 23113734036, 23089449419, 23073867522],
+    "runAttempt": 1,
+    "population": "All nine surviving pre-cutoff workflow run identities in a complete 100-item API page, not proof that each started an agent",
+    "requestBudget": 120
+  },
+  "acceptance": {
+    "nativeAccess": "Count distinct source-bound Codex run-attempts with an independently captured, correlated native GitHub remote MCP list_issues invocation and non-error returned result. Direct gh/api/shell fallback, assistant prose, echoed examples, tool declarations and job success do not qualify.",
+    "openIssueReadback": "Count distinct independently returned repository issue identities with concrete numbers, titles and OPEN/open state from an accepted native call requesting three issues from github/gh-aw. All three must be witnessed to establish the source-defined three-issue component. Filtered or missing contents remain unknown, not fabricated issue readbacks.",
+    "filteredAccess": "A concrete independently returned native integrity-policy filter with a concrete found count is an expected access-policy facet, never proof of issue-content readback or permission to bypass.",
+    "binding": "Preserve original public repository identity, run/attempt/job metadata, exact-head editable and compiled sources and protected provider/tool result originals. Verify execution identity, call correlation, host/path and timestamps where the native claim depends on them.",
+    "deduplication": "One accepted native-access observation per stable run-attempt identity. Native issue identities are deduplicated within their opportunity; repeated safety/capability checks are not fresh repository repairs."
+  },
+  "window": { "durationDays": 7, "cadenceDays": 7, "maturationDays": 0 },
+  "limitations": [
+    "Native access, returned issue bytes, policy-filter behavior, full goal completion and workflow-linked delivered contribution remain separate.",
+    "Absent, expired, skipped or incompatible original evidence is unknown, not zero accepted work or a proved failed tool.",
+    "No threshold, aggregate quality score, dollar value, cost, exclusive causation or deployment authority is inferred.",
+    "Current API state is acquisition-time evidence, not reconstructed historical issue state."
+  ]
+}

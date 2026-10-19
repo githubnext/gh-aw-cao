@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "version": "native-monitoring-accuracy-v1",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "skillVersion": "0.18.5",
+  "interpretation": "Author once, deterministically replay; outcome-informed retrospective. Original full census proposals preserved verbatim. Native partial facts do not satisfy every full-goal condition.",
+  "records": [
+    {
+      "slug": "daily-code-metrics",
+      "head": "c21584fb1918182067eed20c764cf90278d81d84",
+      "sourceBlob": "c63916dcb4af37c6f72154b1d9677f04f7009447",
+      "frozenSourceBlob": "60834b8243c279b70589ef02a3ce4b4aa70586a1",
+      "adoption": {
+        "commit": "84f5cb5f6b8e15cda890820676de28daab6e8d1a",
+        "adoptedAt": "2025-11-11T18:32:38Z",
+        "baselineCommit": "4595e47bb4ce446eb2ef713ff2e3ebe15e31b467",
+        "baselineAt": "2025-11-11T18:29:45Z"
+      },
+      "proposal": {
+        "path": ".github/workflows/daily-code-metrics.md",
+        "goal": "Understand codebase health and identify genuine quality improvement opportunities.",
+        "population": "The git-tracked codebase under standardized metrics-glossary scopes at each daily cutoff.",
+        "acceptance": "A selected substantive health outcome requires an independently established standard and direction; code size/churn/complexity alone are descriptive.",
+        "measureKind": "unresolved",
+        "metricName": null,
+        "formula": null,
+        "unit": null,
+        "direction": "increase",
+        "evidencePlan": "Retain exact cloc tracked-file inventory, metric definitions and immutable source; select one independently accepted health outcome before scoring.",
+        "missingReason": "Source defines many measurements and reports, not a single independent quality outcome or direction; no accepted health evidence collected.",
+        "grounding": [
+          {
+            "startLine": 110,
+            "endLine": 110,
+            "quote": "Analyze codebase daily: compute size, quality, health metrics. Track 7/30-day trends."
+          },
+          {
+            "startLine": 121,
+            "endLine": 121,
+            "quote": "Always compute LOC with `cloc --vcs=git --json --quiet .`"
+          }
+        ],
+        "designStatus": "needs-clarification",
+        "limitation": "Consistent file scoping improves measurement reliability but does not make LOC growth or shrinkage an outcome.",
+        "sourceSha256": "98e97555a1a6dc521cb5e0f9d3322f5b04560e138f37a404c4ab1a1287c4016c",
+        "sourceGitBlob": "60834b8243c279b70589ef02a3ce4b4aa70586a1",
+        "sourceUrl": "https://github.com/github/gh-aw/blob/d3915e4a21040c00a6e11e1acb0aac42605abc4c/.github/workflows/daily-code-metrics.md"
+      },
+      "authoring": "Outcome-informed retrospective: source and candidate prose exposed before this explicit native-facet contract. Latest surviving marker-discovered report selected, not a representative or blind sample.",
+      "attribution": "Editable discovery footer corroborated with run identity/path/head; not an authoritative creation receipt.",
+      "selection": "Latest surviving pre-cutoff Discussion with this exact workflow marker in the already fully acquired inventory. One selected report per workflow; all other reports remain unassessed. No random, representative, blind or complete-lifetime claim.",
+      "nativeLabel": "Workflow inventory count accuracy",
+      "population": "The two source-required direct workflow Markdown/lock count cells in the latest surviving marker-discovered report.",
+      "acceptance": "Partial native factual facet: both published direct workflow counts equal the actual immutable run-head regular-file inventory; independently compare the basename sets. This does not accept the source's health score or claim improved repository health.",
+      "limitations": "All other metrics, cloc, trends, recommendations, charts and underlying health outcomes remain unmeasured."
+    },
+    {
+      "slug": "daily-repo-chronicle",
+      "head": "ec6348b39e4a3683e87982d0652dc3fa35f58fb2",
+      "sourceBlob": "358109b1a9e5e7e7b0b68fc428c71a6937e1a6c6",
+      "frozenSourceBlob": "8aae89c4e54d5319b4de2f2bebf00d404f063852",
+      "adoption": {
+        "commit": "f8b649fffd4bfebac96e3560610fe249613fcad1",
+        "adoptedAt": "2025-10-24T16:55:12Z",
+        "baselineCommit": "b2d18ef5bd8e47ceb741855fd5ca7ffcefc9430b",
+        "baselineAt": "2025-10-24T16:33:31Z"
+      },
+      "proposal": {
+        "path": ".github/workflows/daily-repo-chronicle.md",
+        "goal": "Inform readers about real repository progress through a human-agency-first newspaper narrative.",
+        "population": "Recent repository activity and the source's thirty-day chart facts selected for each edition.",
+        "acceptance": "Independent factual/editorial verification and a defined reader-understanding outcome are needed, not merely chart/article production.",
+        "measureKind": "unresolved",
+        "metricName": null,
+        "formula": null,
+        "unit": null,
+        "direction": "increase",
+        "evidencePlan": "Preserve underlying activity facts and claim/attribution mappings; establish an independent comprehension or editorial-acceptance instrument.",
+        "missingReason": "The source supplies dramatic style, charts and editorial principles but no independent reader-benefit instrument; no adjudicated communication evidence acquired.",
+        "grounding": [
+          {
+            "startLine": 73,
+            "endLine": 73,
+            "quote": "a dramatic newspaper editor crafting today's edition"
+          },
+          {
+            "startLine": 186,
+            "endLine": 186,
+            "quote": "## CRITICAL: Human Agency First"
+          }
+        ],
+        "designStatus": "needs-clarification",
+        "limitation": "Editions, charts, audience engagement and an agent's human-agency framing cannot establish informed readers.",
+        "sourceSha256": "106904c03fc77b469b6e4fde61592ad4154a289226aea112a9395c8a6734f55c",
+        "sourceGitBlob": "8aae89c4e54d5319b4de2f2bebf00d404f063852",
+        "sourceUrl": "https://github.com/github/gh-aw/blob/d3915e4a21040c00a6e11e1acb0aac42605abc4c/.github/workflows/daily-repo-chronicle.md"
+      },
+      "authoring": "Outcome-informed retrospective: source and candidate prose exposed before this explicit native-facet contract. Latest surviving marker-discovered report selected, not a representative or blind sample.",
+      "attribution": "Editable discovery footer corroborated with run identity/path/head; not an authoritative creation receipt.",
+      "selection": "Latest surviving pre-cutoff Discussion with this exact workflow marker in the already fully acquired inventory. One selected report per workflow; all other reports remain unassessed. No random, representative, blind or complete-lifetime claim.",
+      "nativeLabel": "Cited mainline commit accuracy",
+      "population": "Distinct literal mainline commit hash citations in the latest surviving marker-discovered edition, compared to the contiguous run-head first-parent prefix in its declared edition window.",
+      "acceptance": "Partial native factual facet: each literal commit hash resolves uniquely in the preserved contiguous mainline prefix, with prefix citation coverage reported separately. Not a claim that prose, human attribution or the complete activity graph is correct.",
+      "limitations": "The edition explicitly spans 24h05m instead of the source-required 24h. Report that nonconformance. History beyond the first older parent, later mainline changes, semantic descriptions, human agency, issue statistics and reader understanding remain unmeasured."
+    },
+    {
+      "slug": "repo-tree-map",
+      "head": "6a89be2bd40aa06a0f7d296c77ad2f328d339a04",
+      "sourceBlob": "bf85ff7de141380ce2bdacf68644f8a199100107",
+      "frozenSourceBlob": "511f7340e278efb978b6634a2aa6432960d485d8",
+      "adoption": {
+        "commit": "33cb17a3587d9c03c953226eca2eaa6cc9881ef1",
+        "adoptedAt": "2025-10-10T20:15:40Z",
+        "baselineCommit": "cc5c04079a3c8cca09aac383d8b5d5e9e353fce7",
+        "baselineAt": "2025-10-10T20:08:45Z"
+      },
+      "proposal": {
+        "path": ".github/workflows/repo-tree-map.md",
+        "goal": "Give readers a quick understanding of repository structure and size distribution.",
+        "population": "Readers investigating the repository snapshot, excluding Git and package-manager directories.",
+        "acceptance": "A correct map must support the intended understanding; metadata accuracy alone does not establish reader comprehension.",
+        "measureKind": "unresolved",
+        "metricName": null,
+        "formula": null,
+        "unit": null,
+        "direction": "increase",
+        "evidencePlan": "Freeze navigation/comprehension tasks and an independent answer key before measuring readers; metadata may be checked against the immutable tree.",
+        "missingReason": "No comprehension instrument, reader cohort or accepted task outcomes was collected or specified.",
+        "grounding": [
+          {
+            "startLine": 146,
+            "endLine": 146,
+            "quote": "The tree map should give a **quick visual understanding** of the repository structure and size distribution"
+          }
+        ],
+        "designStatus": "needs-clarification",
+        "limitation": "A visualization or discussion count is not demonstrated understanding.",
+        "sourceSha256": "ce32dc7a88cece719a7949e9e11ccd1cfae00ab2ed68c4e03273d51d2878088d",
+        "sourceGitBlob": "511f7340e278efb978b6634a2aa6432960d485d8",
+        "sourceUrl": "https://github.com/github/gh-aw/blob/d3915e4a21040c00a6e11e1acb0aac42605abc4c/.github/workflows/repo-tree-map.md"
+      },
+      "authoring": "Outcome-informed retrospective: source and candidate prose exposed before this explicit native-facet contract. Latest surviving marker-discovered report selected, not a representative or blind sample.",
+      "attribution": "Editable discovery footer corroborated with run identity/path/head; not an authoritative creation receipt.",
+      "selection": "Latest surviving pre-cutoff Discussion with this exact workflow marker in the already fully acquired inventory. One selected report per workflow; all other reports remain unassessed. No random, representative, blind or complete-lifetime claim.",
+      "nativeLabel": "Published extension-count accuracy",
+      "population": "Every literal row in the selected surviving report's extension count table, against regular tracked files at the immutable run head.",
+      "acceptance": "Partial fixed-reference assessment: published suffix counts equal independently enumerated Git-tree suffix populations, excluding Git and dependency directories. Native metadata accuracy, not file volume growth, is the outcome facet.",
+      "limitations": "Untracked files and dirty checkout contents are unknown; agreement is with the bound immutable reference only. Disk-allocation sizes, graphical proportions, complete extension coverage and reader comprehension remain unmeasured."
+    },
+    {
+      "slug": "github-mcp-tools-report",
+      "head": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "sourceBlob": "bf73b689b99edcbee5ff6c0f863df907e8a780a3",
+      "frozenSourceBlob": "bf73b689b99edcbee5ff6c0f863df907e8a780a3",
+      "adoption": {
+        "commit": "bc8f484ba768db4ae83dafbb0f1fb8c11ecf00ba",
+        "adoptedAt": "2025-10-11T23:00:59Z",
+        "baselineCommit": "688d6aa1ed11063586bdab778b05fedeb4d0b105",
+        "baselineAt": "2025-10-11T22:38:04Z"
+      },
+      "proposal": {
+        "path": ".github/workflows/github-mcp-tools-report.md",
+        "goal": "Keep comprehensive, accurate documentation of GitHub remote MCP tools and changes.",
+        "population": "Advertised tools in the configured remote all-toolsets server and their source mapping at immutable versions.",
+        "acceptance": "Tool descriptions and mappings must independently match actual advertised behavior; a comprehensive-looking inventory is not sufficient.",
+        "measureKind": "unresolved",
+        "metricName": null,
+        "formula": null,
+        "unit": null,
+        "direction": "increase",
+        "evidencePlan": "Preserve authoritative tool-schema/source snapshots and establish independent documentation-to-behavior conformance checks.",
+        "missingReason": "No independent tool-behavior/documentation verification corpus was collected; discovery counts alone cannot validate descriptions or usefulness.",
+        "grounding": [
+          {
+            "startLine": 49,
+            "endLine": 49,
+            "quote": "Generate a comprehensive report of all tools/functions available in the GitHub MCP remote server by self-inspecting the available tools and creating detailed documentation."
+          }
+        ],
+        "designStatus": "needs-clarification",
+        "limitation": "Tool/report counts and generated mapping entries are output volume rather than documentation benefit.",
+        "sourceSha256": "a9fa77826ca52c43b2e843d983472152eb85deb31a0874b40dac1b01b0e23dd4",
+        "sourceGitBlob": "bf73b689b99edcbee5ff6c0f863df907e8a780a3",
+        "sourceUrl": "https://github.com/github/gh-aw/blob/d3915e4a21040c00a6e11e1acb0aac42605abc4c/.github/workflows/github-mcp-tools-report.md"
+      },
+      "authoring": "Outcome-informed retrospective: source and candidate prose exposed before this explicit native-facet contract. Latest surviving marker-discovered report selected, not a representative or blind sample.",
+      "attribution": "Editable discovery footer corroborated with run identity/path/head; not an authoritative creation receipt.",
+      "selection": "Latest surviving pre-cutoff Discussion with this exact workflow marker in the already fully acquired inventory. One selected report per workflow; all other reports remain unassessed. No random, representative, blind or complete-lifetime claim.",
+      "nativeLabel": "Published mapping-fact accuracy",
+      "population": "Three explicitly repository-mapping facts: unique tool names, total registration entries and toolset categories in the latest surviving report.",
+      "acceptance": "Partial native factual facet: the three claimed JSON-mapping quantities equal the independent JSON blob at the immutable run head. Duplicate registrations remain distinct from unique tool names.",
+      "limitations": "A repository mapping is not live tools/list. No acceptance of advertised runtime tools, schemas, behavior, semantic documentation, access or downstream repairs."
+    },
+    {
+      "slug": "weekly-issue-summary",
+      "head": "ac9ed822513da771920e184c27ddb6db89335426",
+      "sourceBlob": "0d6dae0ef94e1ecbef4d0a0f99df3cb3478c678d",
+      "frozenSourceBlob": "0d6dae0ef94e1ecbef4d0a0f99df3cb3478c678d",
+      "adoption": {
+        "commit": "48f9b10631987ba60a4708fa52123c93f0867be3",
+        "adoptedAt": "2025-10-21T19:39:09Z",
+        "baselineCommit": "80827793bf11a7450dec46ad64587293521b19bd",
+        "baselineAt": "2025-10-21T14:02:57Z"
+      },
+      "proposal": {
+        "path": ".github/workflows/weekly-issue-summary.md",
+        "goal": "Give an accurate, useful overview of recent issues and activity trends.",
+        "population": "Issues opened in the last seven days and declared 30-day chart activity facts.",
+        "acceptance": "Independent event reconstruction and reader-question checks establish correct statistics, complete scope and supported interpretations.",
+        "measureKind": "unresolved",
+        "metricName": null,
+        "formula": null,
+        "unit": null,
+        "direction": "increase",
+        "evidencePlan": "Freeze event/window definitions and independent factual/interpretive questions before assessing summaries.",
+        "missingReason": "No independent summary-usefulness/interpretation instrument or accepted historical summaries collected.",
+        "grounding": [
+          {
+            "startLine": 155,
+            "endLine": 160,
+            "quote": "Analyze all issues opened in the repository ${{ github.repository }} over the last 7 days."
+          }
+        ],
+        "designStatus": "needs-clarification",
+        "limitation": "Issue or chart counts describe inputs/outputs, not the attained quality of the summary.",
+        "sourceSha256": "600d787b0dc9453622e90e0b14c620e78aa1024e22877a0d1d56902228906d55",
+        "sourceGitBlob": "0d6dae0ef94e1ecbef4d0a0f99df3cb3478c678d",
+        "sourceUrl": "https://github.com/github/gh-aw/blob/d3915e4a21040c00a6e11e1acb0aac42605abc4c/.github/workflows/weekly-issue-summary.md"
+      },
+      "authoring": "Outcome-informed retrospective: source and candidate prose exposed before this explicit native-facet contract. Latest surviving marker-discovered report selected, not a representative or blind sample.",
+      "attribution": "Editable discovery footer corroborated with run identity/path/head; not an authoritative creation receipt.",
+      "selection": "Latest surviving pre-cutoff Discussion with this exact workflow marker in the already fully acquired inventory. One selected report per workflow; all other reports remain unassessed. No random, representative, blind or complete-lifetime claim.",
+      "nativeLabel": "Listed new-issue window accuracy",
+      "population": "Every distinct issue URL in the report's explicitly bounded 'Human issues opened this week' list, plus a separately reported lower-bound total-opening contradiction check.",
+      "acceptance": "Partial native factual facet: the listed objects are independent surviving Issue identities whose creation timestamps fall in the exact report-declared seven-day interval and whose independent retained transfer timelines contain zero events. Also preserve independently provable missing opening events when that transfer-free surviving creation lower bound exceeds the claimed total.",
+      "limitations": "No full historical creation ledger is claimed. Missing/deleted/transferred identities are unknown, not invalid. Human identity, authors, titles, labels, states, complete issue-list coverage, charts and interpretations remain unmeasured. A zero undercount floor is not proof of correctness."
+    },
+    {
+      "slug": "daily-issues-report",
+      "head": "ec6348b39e4a3683e87982d0652dc3fa35f58fb2",
+      "sourceBlob": "fb4f2e6f38bc01d9a4967d7438ab72ab03dc2957",
+      "frozenSourceBlob": "fa3cc1823518a5da495f30404134c8c9415924c1",
+      "adoption": {
+        "commit": "2856811db9b18468fab048ba101007eaa3b6b498",
+        "adoptedAt": "2025-11-26T05:58:13Z",
+        "baselineCommit": "b77cfb6157fb6197948ff7288565a5cad12229af",
+        "baselineAt": "2025-11-26T05:20:55Z"
+      },
+      "proposal": {
+        "path": ".github/workflows/daily-issues-report.md",
+        "goal": "Help maintainers understand issue themes and identify real issues needing attention.",
+        "population": "Up to one thousand issues under the source's declared analyzed-issue scope, distinct from repository-wide metrics.",
+        "acceptance": "Independent theme/attention adjudication and a defined maintainer decision outcome must validate report usefulness.",
+        "measureKind": "unresolved",
+        "metricName": null,
+        "formula": null,
+        "unit": null,
+        "direction": "increase",
+        "evidencePlan": "Preserve the full analyzed cohort, metric scopes and independently verified issue classifications/decisions.",
+        "missingReason": "The source specifies clustering, descriptive statistics and reports but no independent semantic classification or decision-benefit instrument; no accepted outcome evidence acquired.",
+        "grounding": [
+          {
+            "startLine": 87,
+            "endLine": 88,
+            "quote": "Generate a daily report analyzing up to 1000 issues from the repository (see `issues_analyzed` in scratchpad/metrics-glossary.md):\n1. Cluster issues by topic/theme using natural language analysis"
+          }
+        ],
+        "designStatus": "needs-clarification",
+        "limitation": "Issue counts, response-time statistics, charts and closed old discussions are not evidence of improved issue handling.",
+        "sourceSha256": "e2b49ba05f6de94230e27319ad5166fb54b8b07aa8502b534d31d59402d75d90",
+        "sourceGitBlob": "fa3cc1823518a5da495f30404134c8c9415924c1",
+        "sourceUrl": "https://github.com/github/gh-aw/blob/d3915e4a21040c00a6e11e1acb0aac42605abc4c/.github/workflows/daily-issues-report.md"
+      },
+      "authoring": "Outcome-informed retrospective: source and candidate prose exposed before this explicit native-facet contract. Latest surviving marker-discovered report selected, not a representative or blind sample.",
+      "attribution": "Editable discovery footer corroborated with run identity/path/head; not an authoritative creation receipt.",
+      "selection": "Latest surviving pre-cutoff Discussion with this exact workflow marker in the already fully acquired inventory. One selected report per workflow; all other reports remain unassessed. No random, representative, blind or complete-lifetime claim.",
+      "nativeLabel": "Captured-cohort date-count accuracy",
+      "population": "The two published seven-day/thirty-day creation counts for the retained 1000-issue cache cohort, with each identity and creation timestamp independently corroborated.",
+      "acceptance": "Partial native factual facet: recompute the two creation-window counts from the actual retained artifact cohort using independent issue-history creation timestamps. Require invariance across independently recorded prefetch completion through Discussion creation so no exact computation timestamp is invented. Effective SDK driver sends the actual prompt, not a deterministic sample replay.",
+      "limitations": "Cache custody is not a signed pre-agent fetch receipt, latest-1000 completeness is not established, and the cache is not proof of analyzer execution. State, labels, triage, clusters, semantics, charts and maintainer benefit remain unmeasured."
+    }
+  ]
+}

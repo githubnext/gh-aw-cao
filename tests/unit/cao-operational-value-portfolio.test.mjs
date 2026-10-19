@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 70);
-  assert.equal(model.totals.workflows - model.totals.measured, 274);
+  assert.equal(model.totals.measured, 77);
+  assert.equal(model.totals.workflows - model.totals.measured, 267);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -375,6 +375,43 @@ test("native smoke and MCP transport partials preserve strict rejections and thr
     assert.equal(row.reportAvailable, true);
     assert.equal(row.evaluationReady, false);
   }
+});
+
+test("surviving monitoring bodies retain bounded factual accuracy and known report defects", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [id, facts, periods] of [
+    ["daily-code-metrics", 2, 49], ["daily-repo-chronicle", 30, 52], ["repo-tree-map", 10, 54],
+    ["github-mcp-tools-report", 3, 54], ["weekly-issue-summary", 55, 52], ["daily-issues-report", 2, 47],
+  ]) {
+    const timeline = measurements.find(row => row.workflowId === id)?.input;
+    assert.ok(timeline);
+    assert.equal(timeline.snapshots.length, periods);
+    const observed = timeline.snapshots.filter(row => row.metrics["verified-native-facts"] !== null);
+    assert.equal(observed.length, 1);
+    assert.equal(observed[0].metrics["verified-native-facts"], facts);
+    assert.equal(observed[0].metrics["native-fact-accuracy"], 100);
+    assert.equal(observed[0].evidence.costs, "not measured");
+    assert.equal(progress.find(row => row.workflowId === id).partial, true);
+  }
+  const weekly = measurements.find(row => row.workflowId === "weekly-issue-summary").input;
+  assert.equal(weekly.snapshots.at(-1).metrics["opening-undercount-floor"], 30);
+  assert.match(progress.find(row => row.workflowId === "daily-repo-chronicle").detail, /24h05m/);
+  assert.match(progress.find(row => row.workflowId === "github-mcp-tools-report").detail, /not proof.*59 live tools/);
+});
+
+test("Codex native access cannot turn filtered upstream issue bytes into agent readback", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const timeline = measurements.find(row => row.workflowId === "codex-github-remote-mcp-test").input;
+  assert.equal(timeline.snapshots.length, 40);
+  assert.deepEqual(timeline.snapshots.map(row => row.metrics["native-access"]).filter(value => value !== null), [1]);
+  assert.equal(timeline.snapshots.at(-1).metrics["native-access"], null);
+  const observed = timeline.snapshots.find(row => row.metrics["native-access"] !== null);
+  assert.equal(observed.metrics["filtered-resources"], 3);
+  assert.equal(observed.metrics["upstream-issues"], 3);
+  assert.equal(observed.evidence.cases[0].agentIssueReadback, null);
+  assert.equal(observed.evidence.cases[0].historicalFilterAcceptanceDeclared, false);
+  assert.equal(observed.evidence.fullGoal, null);
+  assert.equal(progress.find(row => row.workflowId === "codex-github-remote-mcp-test").partial, true);
 });
 
 test("positive partial native evaluations retain unknown completion and open-history labels", async () => {

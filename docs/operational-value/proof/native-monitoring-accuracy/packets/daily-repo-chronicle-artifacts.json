@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/37645630366/artifacts?per_page=100",
+  "observedAt": "2026-10-19T15:32:34Z",
+  "kind": "original-public-api-response",
+  "bytes": 5326,
+  "sha256": "015858c7d6cbc091de843f143cb32719206f58fa6bc084be3602f970cbe3bf87",
+  "parts": [
+    {
+      "file": "daily-repo-chronicle-artifacts.0.gz",
+      "sha256": "4c2f563e66ef5ac2ad957b353985255bd255acedad6067aa1976d4f5dfdd3c57",
+      "bytes": 1061
+    }
+  ]
+}

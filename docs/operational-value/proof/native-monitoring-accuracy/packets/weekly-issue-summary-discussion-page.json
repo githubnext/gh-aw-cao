@@ -1,0 +1,36 @@
+{
+  "kind": "original-shared-discussion-api-response",
+  "query": "query { repository(owner:\"github\",name:\"gh-aw\") {\n    databaseId discussions(first:100,after:\"Y3Vyc29yOnYyOpK0MjAyNi0xMC0xNVQyMDo0NzoyOFrOAKhUHw==\",orderBy:{field:CREATED_AT,direction:DESC}) {\n      nodes { id number url title body createdAt updatedAt }\n      pageInfo { hasNextPage endCursor }\n    }\n  } }",
+  "observedAt": "2026-10-19T15:19:26Z",
+  "inheritedSha256": "9ac2b30297328622536d29e719ad0bf12aa56ba1497338abe05cac6cfca012c4",
+  "original": "page-00002.json.gz",
+  "bytes": 758289,
+  "sha256": "9ac2b30297328622536d29e719ad0bf12aa56ba1497338abe05cac6cfca012c4",
+  "parts": [
+    {
+      "file": "weekly-issue-summary-discussion-page.0.gz",
+      "sha256": "f6a6ba83c2cdb9b348f0cf6b9a1f2dcde934c113fcf694823e3f568d8a749302",
+      "bytes": 54258
+    },
+    {
+      "file": "weekly-issue-summary-discussion-page.1.gz",
+      "sha256": "00876485185d0c3f516eff14ffcbeee199fb040af61f9f0f0331835f737f8ad2",
+      "bytes": 54192
+    },
+    {
+      "file": "weekly-issue-summary-discussion-page.2.gz",
+      "sha256": "c71b1c1615c69a4cc5f5f35385a536980de2d48ab0331427334e1fa837945178",
+      "bytes": 51404
+    },
+    {
+      "file": "weekly-issue-summary-discussion-page.3.gz",
+      "sha256": "751df75001c91de60ab96a5bab35f25e6154ad7bc65f9af7f588cbcb6ebc9211",
+      "bytes": 55656
+    },
+    {
+      "file": "weekly-issue-summary-discussion-page.4.gz",
+      "sha256": "023482e118925f208c957e0dd5546b7361b1b30863bfed18fad2849abedc8a10",
+      "bytes": 26546
+    }
+  ]
+}

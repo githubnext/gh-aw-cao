@@ -50,6 +50,13 @@ import { collectBatch as collectOpenCodeCapabilities, scoreMetric as scoreOpenCo
 import { collectBatch as collectGeminiCapabilities, scoreMetric as scoreGeminiCapabilities } from "../docs/operational-value/proof/functions/smoke-gemini.mjs";
 import { collectBatch as collectKiroCapabilities, scoreMetric as scoreKiroCapabilities } from "../docs/operational-value/proof/functions/smoke-kiro.mjs";
 import { collectBatch as collectCrushCapabilities, scoreMetric as scoreCrushCapabilities } from "../docs/operational-value/proof/functions/smoke-crush.mjs";
+import { collectBatch as collectCodexMcpAccess, scoreMetric as scoreCodexMcpAccess } from "../docs/operational-value/proof/functions/codex-github-remote-mcp-test.mjs";
+import { collectBatch as collectCodeMetricsAccuracy, scoreMetric as scoreCodeMetricsAccuracy } from "../docs/operational-value/proof/functions/daily-code-metrics.mjs";
+import { collectBatch as collectChronicleAccuracy, scoreMetric as scoreChronicleAccuracy } from "../docs/operational-value/proof/functions/daily-repo-chronicle.mjs";
+import { collectBatch as collectTreeMapAccuracy, scoreMetric as scoreTreeMapAccuracy } from "../docs/operational-value/proof/functions/repo-tree-map.mjs";
+import { collectBatch as collectMcpMappingAccuracy, scoreMetric as scoreMcpMappingAccuracy } from "../docs/operational-value/proof/functions/github-mcp-tools-report.mjs";
+import { collectBatch as collectWeeklyIssueAccuracy, scoreMetric as scoreWeeklyIssueAccuracy } from "../docs/operational-value/proof/functions/weekly-issue-summary.mjs";
+import { collectBatch as collectDailyIssueAccuracy, scoreMetric as scoreDailyIssueAccuracy } from "../docs/operational-value/proof/functions/daily-issues-report.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -753,6 +760,55 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "codex-github-remote-mcp-test", sourceGitBlob: "64676ca797c1676d7c11c4d13d4fd99fc6872f41",
+      functionSha256: "d95c564d204c8d004ccb746a9558a543dd12927484ac947ab69321f6a127c879",
+      timelineDigest: "b79d51fde91f130ec2434136f65790b4d525f51ddc1ec135b17222236d8d08e3",
+      reports: "docs/operational-value/proof/codex-remote-mcp/reports/github-gh-aw",
+      collector: collectCodexMcpAccess, scorer: scoreCodexMcpAccess, partialMetricId: "native-access",
+      stage: "one protected native Codex remote-MCP access verified; three resources filtered, not read back",
+      detail: "One original attempt independently joins protected Codex stdout, raw and normalized native call IDs, exact repository/state/limit arguments and one unique sequential official-backend gateway exchange. Three upstream open issues match three concrete integrity-filter resource witnesses; Codex receives an empty list plus the filter, not those upstream titles. Gateway request records omit IDs, so no fabricated shared-ID join is claimed. October 3's source did not yet declare filtering an expected result: modern policy text is not backdated into historical full success. Eight other run identities lack original agent jobs and 39 other weekly periods remain unknown. Full goal, agent issue readback, contribution, costs and keep bar remain unknown." },
+    { workflowId: "daily-code-metrics", sourceGitBlob: "60834b8243c279b70589ef02a3ce4b4aa70586a1",
+      functionSha256: "8c200e7e75d4471db707339ec3cbf0804fde8332c30feeeb0f65c82f8f37797a",
+      timelineDigest: "ad2917c8b7373d9235dbf75bf547fa469f39c5c8eb7f8b84c3e4f107eb551ca9",
+      reports: "docs/operational-value/proof/native-monitoring-accuracy/reports/github-gh-aw",
+      collector: collectCodeMetricsAccuracy, scorer: scoreCodeMetricsAccuracy, partialMetricId: "verified-native-facts",
+      stage: "two surviving-report workflow-inventory cells independently verified; broader metrics unknown",
+      detail: "Two source-required direct Markdown/lock inventory facts match immutable source trees, including actual 297/297 basename sets with no mismatch. This is scoped factual accuracy, not report production, overall usefulness or full-goal acceptance. One surviving body is retrospectively assessed after cutoff and allocated by its original creation cohort; publication-time body bytes/accuracy are not established. Forty-eight other periods, semantic value, causal contribution and costs remain unknown." },
+    { workflowId: "daily-repo-chronicle", sourceGitBlob: "8aae89c4e54d5319b4de2f2bebf00d404f063852",
+      functionSha256: "4b293de61b5b1eb0cddfc83c652ea787f9b136b43ee860aacf77dce38811a8da",
+      timelineDigest: "388f76301f76d9ce2a0e8ae4d49ee75dec478bfbf3f5a940de8b2c3e5a260de2",
+      reports: "docs/operational-value/proof/native-monitoring-accuracy/reports/github-gh-aw",
+      collector: collectChronicleAccuracy, scorer: scoreChronicleAccuracy, partialMetricId: "verified-native-facts",
+      stage: "thirty literal mainline commit citations verified; stated window exceeds the required day",
+      detail: "Thirty cited commit hashes independently match the bound head's contiguous mainline prefix; 100% is accuracy/coverage within that bounded prefix, not full historical graph coverage or semantic summary quality. The report states 24h05m rather than the required 24h, so this is not complete acceptance. The surviving body was observed after cutoff; original publication-time accuracy is unknown. Fifty-one other periods, editorial utility, contribution and costs remain unknown." },
+    { workflowId: "repo-tree-map", sourceGitBlob: "511f7340e278efb978b6634a2aa6432960d485d8",
+      functionSha256: "c983f84e10c9d06c4e9b5063a92fd6f50dcb96092d50f081bd04629a3ba9e512",
+      timelineDigest: "a47aa8b5a5ac5e12c7dd4b4a829330ef98a026bbd3aee6e875a7c7e00095e237",
+      reports: "docs/operational-value/proof/native-monitoring-accuracy/reports/github-gh-aw",
+      collector: collectTreeMapAccuracy, scorer: scoreTreeMapAccuracy, partialMetricId: "verified-native-facts",
+      stage: "ten published extension populations match immutable tracked files; broader map quality unknown",
+      detail: "Ten source-specific extension populations match the immutable tracked-file reference. The predicate does not reconstruct dirty/untracked checkout contents, filesystem sizes or human comprehension. One surviving report body is retrospectively assessed against native facts after cutoff; original body accuracy at publication is not established. Fifty-three other periods, full goal, attribution and costs remain unknown." },
+    { workflowId: "github-mcp-tools-report", sourceGitBlob: "bf73b689b99edcbee5ff6c0f863df907e8a780a3",
+      functionSha256: "0aabf077f43c3098fa2b8a1c6c99c077c9474d306b75b09543d7ebd852c8d114",
+      timelineDigest: "014a97370c3764505d3b5403b5fa3f21d4ea00b29fbcf42496ce1a4fe3249e7d",
+      reports: "docs/operational-value/proof/native-monitoring-accuracy/reports/github-gh-aw",
+      collector: collectMcpMappingAccuracy, scorer: scoreMcpMappingAccuracy, partialMetricId: "verified-native-facts",
+      stage: "three source mapping facts verified; claimed live-tool inventory is not established",
+      detail: "The surviving report correctly states three independently recomputed JSON mapping facts: 106 unique tool names, 107 registrations and 24 toolsets. These are not proof of its claimed 59 live tools, server behavior or a complete tools audit. The outcome-informed retrospective instrument preserves the original census proposal. After-cutoff surviving body assessment is not publication-time body verification. Fifty-three other periods, full goal, contribution and costs remain unknown." },
+    { workflowId: "weekly-issue-summary", sourceGitBlob: "0d6dae0ef94e1ecbef4d0a0f99df3cb3478c678d",
+      functionSha256: "868a03a5c8bd89a91ae906389c25c0236db88edff61990826a1fd5f0c315ad33",
+      timelineDigest: "d0979e4e8aa60e06982ed30b0a57a9e16b48cf09f42848c8f5d4b02fa39d44ff",
+      reports: "docs/operational-value/proof/native-monitoring-accuracy/reports/github-gh-aw",
+      collector: collectWeeklyIssueAccuracy, scorer: scoreWeeklyIssueAccuracy, partialMetricId: "verified-native-facts",
+      stage: "fifty-five listed new-issue identities verified; opening count underreports by at least thirty",
+      detail: "All 55 assessed listed new issues independently belong to the declared seven-day window, with zero retained transfer events. Accuracy here applies only to those listed citations. A separate native diagnostic establishes an opening undercount floor of 30: the report claims 1512 while 1542 surviving transfer-free creations are established. Neither facet proves complete historical graph state, closed/reopened counts or full summary acceptance. The surviving body was observed after cutoff, not preserved at original publication. Fifty-one other periods, contribution and costs remain unknown." },
+    { workflowId: "daily-issues-report", sourceGitBlob: "fa3cc1823518a5da495f30404134c8c9415924c1",
+      functionSha256: "4e516970cf365b334bd84106bac65ac2f17f7915830c7927430772c048da2876",
+      timelineDigest: "b2b49829c0191454f18dff7810314ea278d2e973b623926cf8eff07507c6b237",
+      reports: "docs/operational-value/proof/native-monitoring-accuracy/reports/github-gh-aw",
+      collector: collectDailyIssueAccuracy, scorer: scoreDailyIssueAccuracy, partialMetricId: "verified-native-facts",
+      stage: "two captured-cohort creation-window counts verified; whole-repository statistics unknown",
+      detail: "Two creation-window metrics match the actual retained 1000-issue cache. Every creation identity/timestamp is independently corroborated, and counts remain invariant from independently recorded prefetch completion through Discussion creation. The SDK's sample-named driver sends the real prompt; no sample-replay shortcut is assumed. This remains a captured-cohort facet, not a whole-repository denominator or full report acceptance. After-cutoff surviving body assessment does not establish original publication-time accuracy. Forty-six other periods, contribution and costs remain unknown." },
     { workflowId: "github-remote-mcp-auth-test", sourceGitBlob: "52e724d9ee1508917f2a3173975f30a379d3b0d5",
       functionSha256: "c01b6913eceb53b5f123fb440d66f9e39c0942a7f18829c5769c3277836ade1c",
       timelineDigest: "e6ff14f6d6e95a37be71d94baf2f48f04981bcdbbeabe48786538d99d49da067",

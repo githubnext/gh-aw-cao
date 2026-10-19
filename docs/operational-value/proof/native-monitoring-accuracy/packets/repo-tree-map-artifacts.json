@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/31407479744/artifacts?per_page=100",
+  "observedAt": "2026-10-19T15:32:43Z",
+  "kind": "original-public-api-response",
+  "bytes": 2645,
+  "sha256": "cedcf63b04258dc912a9cd26d281a586c161d0be9017b37b4823b4c15c1f71f2",
+  "parts": [
+    {
+      "file": "repo-tree-map-artifacts.0.gz",
+      "sha256": "c059bbfd24b5ff73de217ebf1a4f7fa3e77cbd6a4bedee477197ceb80ab1c1aa",
+      "bytes": 684
+    }
+  ]
+}
