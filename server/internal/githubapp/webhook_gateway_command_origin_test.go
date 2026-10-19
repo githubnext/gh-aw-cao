@@ -42,3 +42,15 @@ func TestGatewayCommandFinalPreflightRequiresReceivingServerBinding(t *testing.T
 		}
 	}
 }
+
+func TestGatewayNotificationFinalPreflightRequiresReceivingServerBinding(t *testing.T) {
+	s := labelAPISubscription(t, "issues")
+	s.Source.Event, s.Compiler.Event, s.Compiler.CommandFilter = "issues", "issues", nil
+	s.Source.RequiredPermissions = map[string]string{"contents": "read", "issues": "read"}
+	for _, receiving := range []*Client{nil, {config: Config{BaseURL: "https://other.example/api/v3"}}} {
+		dispatcher := WebhookGatewayDispatcher{Receiving: receiving}
+		if err := dispatcher.compilerSourcePreflight(t.Context(), s, nil, GatewayRepository{}); !errors.Is(err, gateway.ErrUnauthorized) {
+			t.Fatal("notification bypassed independent receiving origin binding", err)
+		}
+	}
+}

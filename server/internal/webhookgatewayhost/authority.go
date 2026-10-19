@@ -72,7 +72,7 @@ func currentSubscription(policy gateway.PolicySnapshot, job gateway.Job) (gatewa
 		if subscription.ID != job.Subscription.ID {
 			continue
 		}
-		if !policy.CommandSourceAllowed(subscription) ||
+		if !policy.CompilerSourceAllowed(subscription) ||
 			subscription.Source.External != nil && !gateway.ExternalSourceCurrent(policy, subscription, time.Now()) {
 			return gateway.Subscription{}, gateway.Revision{}, gateway.ErrUnauthorized
 		}
@@ -201,7 +201,7 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 	if subscription.Source.External != nil {
 		return a.checkExternal(ctx, policy, subscription, proof)
 	}
-	if subscription.Compiler != nil && subscription.Compiler.CommandFilter != nil {
+	if subscription.Compiler != nil && subscription.Source.ServerURL != "" {
 		origin, ok := a.Receiving.(interface{ WebhookGatewayServerURL() string })
 		if !ok || origin.WebhookGatewayServerURL() != subscription.Source.ServerURL {
 			return proof, gateway.ErrUnauthorized

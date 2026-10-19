@@ -172,6 +172,9 @@ func ParseWorkflowManifest(data []byte, workflow string, limits Limits) ([]Workf
 }
 
 func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) error {
+	if t.Event == "webhook" || notificationFamily(t.Event) && t.SchemaVersion != 2 {
+		return ErrInvalid
+	}
 	if t.SchemaVersion != 2 && (t.CommandFilter != nil || commandFamily(t.Event)) {
 		return ErrInvalid
 	}
@@ -190,8 +193,12 @@ func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) e
 			d.PayloadProjection == nil || d.PayloadProjection.Policy != compilerProjectionPolicy {
 			return ErrInvalid
 		}
-		switch t.Event {
-		case "dependabot_alert", "code_scanning_alert", "projects_v2_item", "jira_issue", "linear_issue", "azure_devops_issue", "webhook", "slash_command", "label_command":
+		switch {
+		case notificationFamily(t.Event):
+			if validateNotificationDeclaration(t) != nil {
+				return ErrInvalid
+			}
+		case slices.Contains([]string{"dependabot_alert", "code_scanning_alert", "projects_v2_item", "jira_issue", "linear_issue", "azure_devops_issue", "slash_command", "label_command"}, t.Event):
 		default:
 			return ErrInvalid
 		}
@@ -214,9 +221,6 @@ func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) e
 	seen := make(map[string]bool)
 	for _, activity := range t.Types {
 		valid := identifier(activity)
-		if t.Event == "webhook" {
-			valid = genericWebhookType(activity) && len(t.Types) == 1
-		}
 		if !valid || seen[activity] || t.SchemaVersion == 2 && !compilerActivity(t.Event, activity) {
 			return ErrInvalid
 		}
@@ -369,11 +373,10 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 		return nil, ErrInvalid
 	}
 	var matches []WorkflowTrigger
-	key := event.Name
-	if event.Name == "webhook" {
-		key += ":" + event.Action
+	candidates := append([]WorkflowTrigger(nil), m.ByEvent[event.Name]...)
+	if event.Name == "issue_comment" {
+		candidates = append(candidates, m.ByEvent["pull_request_comment"]...)
 	}
-	candidates := append([]WorkflowTrigger(nil), m.ByEvent[key]...)
 	for _, family := range []string{"slash_command", "label_command"} {
 		for _, route := range m.ByEvent[family] {
 			if slices.Contains(route.Declaration.NativeEvents, event.Name) {
@@ -386,6 +389,8 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 		matched := compilerTriggerMatches(t, root, event.Action)
 		if commandFamily(t.Event) {
 			_, _, matched = commandMatch(t, event.Name, root)
+		} else if notificationFamily(t.Event) {
+			matched = notificationSourceMatches(t, event.Name, event.Action, root)
 		}
 		if !matched {
 			continue
@@ -396,6 +401,9 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 }
 
 func compilerTriggerMatches(t CompilerTrigger, root any, action string) bool {
+	if notificationFamily(t.Event) {
+		return notificationSourceMatches(t, notifications.Events[t.Event].Native, action, root)
+	}
 	if commandFamily(t.Event) {
 		return false
 	}
@@ -410,9 +418,6 @@ func compilerTriggerMatches(t CompilerTrigger, root any, action string) bool {
 }
 
 func compilerTriggerKey(t CompilerTrigger) string {
-	if t.Event == "webhook" && len(t.Types) == 1 {
-		return t.Event + ":" + t.Types[0]
-	}
 	return t.Event
 }
 

@@ -129,7 +129,8 @@ func ValidateSubscription(s Subscription, limits Limits) error {
 		return err
 	}
 	external := s.Source.External != nil
-	if commandFamily(s.Source.Event) && s.Compiler == nil || !commandFamily(s.Source.Event) && s.Source.ServerURL != "" {
+	if s.Source.Event == "webhook" || commandFamily(s.Source.Event) && s.Compiler == nil ||
+		(!githubHTMLFamily(s.Source.Event) || s.Compiler == nil) && s.Source.ServerURL != "" {
 		return ErrInvalid
 	}
 	if s.SchemaVersion != "gh-aw.webhook-subscription/v1" ||
@@ -322,7 +323,7 @@ func MatchSubscription(s Subscription, event Event, limits Limits) (bool, error)
 		return false, ErrInvalid
 	}
 	selectedEvent := s.Source.Event == event.Name
-	if s.Compiler != nil && commandFamily(s.Source.Event) {
+	if s.Compiler != nil && githubHTMLFamily(s.Source.Event) {
 		selectedEvent = slices.Contains(s.Compiler.NativeEvents, event.Name)
 	}
 	if s.Source.ID != event.SourceID || !selectedEvent ||
@@ -342,6 +343,8 @@ func MatchSubscription(s Subscription, event Event, limits Limits) (bool, error)
 		matched := compilerTriggerMatches(*s.Compiler, root, event.Action)
 		if commandFamily(s.Source.Event) {
 			_, _, matched = commandMatch(*s.Compiler, event.Name, root)
+		} else if notificationFamily(s.Source.Event) {
+			matched = notificationSourceMatches(*s.Compiler, event.Name, event.Action, root)
 		}
 		if !matched {
 			return false, nil

@@ -213,7 +213,7 @@ func TestCommandAdmissionIsSeparatelyReviewedAndLabelWritesAreExplicit(t *testin
 				t.Fatal(err)
 			}
 			for _, subscription := range result.Subscriptions {
-				if !result.CommandSourceAllowed(subscription) {
+				if !result.CompilerSourceAllowed(subscription) {
 					t.Fatal("registry published an unauthorized command")
 				}
 				if subscription.Source.Event == "label_command" {

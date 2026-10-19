@@ -33,6 +33,10 @@ func validateCompilerSubscription(s Subscription, l Limits) error {
 			!maps.Equal(s.Source.RequiredPermissions, commandPermissions(*t)) {
 			return ErrInvalid
 		}
+	case notificationFamily(t.Event):
+		if !validGitHubServerURL(s.Source.ServerURL) || !maps.Equal(s.Source.RequiredPermissions, notificationPermissions(t.Event)) {
+			return ErrInvalid
+		}
 	case SecurityEventPermission(t.Event) == "" || s.Source.ServerURL != "" ||
 		s.Source.RequiredPermissions[SecurityEventPermission(t.Event)] != "read" ||
 		s.Source.RequiredPermissions["contents"] != "read":
@@ -92,6 +96,9 @@ func buildCompilerDispatchPayload(s Subscription, event Event, root any, l Limit
 	}
 	if commandFamily(s.Source.Event) {
 		return buildCommandDispatchPayload(s, event, root, l)
+	}
+	if notificationFamily(s.Source.Event) {
+		return buildNotificationDispatchPayload(s, event, root, l)
 	}
 	payload, err := compilerProjection(root, event, l)
 	if err != nil {
@@ -166,6 +173,9 @@ func validCompilerNotification(s Subscription, payload map[string]any, action st
 	if commandFamily(s.Source.Event) {
 		return validCommandNotification(s, payload, action, "", bindIdentity)
 	}
+	if notificationFamily(s.Source.Event) {
+		return validNotification(s, payload, action, bindIdentity)
+	}
 	activities, ok := payload["type"].([]any)
 	if !validCompilerFilters(*s.Compiler, payload) || !validCompilerAlertURL(s.Source.Event, payload["url"]) ||
 		!ok || len(activities) != 1 {
@@ -177,6 +187,9 @@ func validCompilerNotification(s Subscription, payload map[string]any, action st
 }
 
 func compilerActivity(event, action string) bool {
+	if notificationFamily(event) {
+		return slices.Contains(notifications.Events[event].Actions, action)
+	}
 	switch event {
 	case "projects_v2_item":
 		return slices.Contains([]string{"archived", "converted", "created", "deleted", "edited", "reordered", "restored"}, action)
@@ -187,8 +200,6 @@ func compilerActivity(event, action string) bool {
 	case "jira_issue", "linear_issue", "azure_devops_issue":
 		return slices.Contains([]string{"opened", "edited", "closed", "reopened", "labeled", "unlabeled", "deleted"}, action) ||
 			event == "azure_devops_issue" && action == "restored"
-	case "webhook":
-		return genericWebhookType(action)
 	case "slash_command":
 		return slices.Contains([]string{"opened", "edited", "reopened", "created"}, action)
 	case "label_command":

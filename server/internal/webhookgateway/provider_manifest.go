@@ -2,12 +2,9 @@ package webhookgateway
 
 import (
 	"reflect"
-	"regexp"
 	"slices"
 	"strings"
 )
-
-var genericProperty = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]*$`)
 
 func providerNativeEvents(event string) []string {
 	switch event {
@@ -23,25 +20,12 @@ func providerNativeEvents(event string) []string {
 }
 
 func validateProviderDeclaration(t CompilerTrigger) error {
-	if commandFamily(t.Event) {
+	if githubHTMLFamily(t.Event) {
 		return nil
 	}
 	if !providerEvent(t.Event) {
 		if t.Provider != "" || t.ActivityNormalization != nil || t.NativeEvents != nil {
 			return ErrInvalid
-		}
-		if t.Event == "webhook" {
-			if t.SchemaVersion != 2 || t.AnyOf != nil {
-				return ErrInvalid
-			}
-			for _, condition := range t.Conditions {
-				for _, segment := range condition.Path {
-					if segment != "*" && !genericProperty.MatchString(segment) ||
-						slices.Contains([]string{"__proto__", "prototype", "constructor"}, segment) {
-						return ErrInvalid
-					}
-				}
-			}
 		}
 		return nil
 	}
@@ -119,8 +103,6 @@ func nativeAction(event string, root map[string]any) string {
 		key = "webhookEvent"
 	case "azure_devops_issue":
 		key = "eventType"
-	case "webhook":
-		key = "type"
 	}
 	value, _ := root[key].(string)
 	if event == "linear_issue" && root["type"] != "Issue" {

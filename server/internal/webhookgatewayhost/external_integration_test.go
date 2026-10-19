@@ -45,9 +45,6 @@ func (d externalAcceptance) DispatchCompiler(_ context.Context, subscription gat
 		return gateway.DispatchResponse{TransportOutcome: "not-sent"}
 	}
 	key := subscription.Source.Event
-	if key == "webhook" {
-		key += ":" + subscription.Compiler.Types[0]
-	}
 	d[key] += len(envelope.Payload.Context.Webhook.Deliveries)
 	return gateway.DispatchResponse{TransportOutcome: "response", Kind: subscription.Destination.Kind, StatusCode: http.StatusNoContent}
 }
@@ -133,7 +130,7 @@ func TestExternalGatewayPostgresConformance(t *testing.T) {
 		t.Fatal(err)
 	}
 	policy, err := loader.Load(ctx)
-	if err != nil || len(policy.Subscriptions) != 5 {
+	if err != nil || len(policy.Subscriptions) != 3 {
 		t.Fatal("external declarations did not activate", err)
 	}
 	_, _, _, destination := authorityFixture()
@@ -152,55 +149,44 @@ func TestExternalGatewayPostgresConformance(t *testing.T) {
 		delivery.Payload["timestamp"], delivery.Payload["webhookTimestamp"] = time.Now().UnixMilli(), time.Now().UnixMilli()
 		handler := gateway.Ingress{SourceID: source.ID, External: true, Secrets: secret, Policies: loader, Queue: queue,
 			Authorizer: ReceiveAuthority{Loader: loader, Queue: queue, State: store}}
-		types := []string{""}
-		if source.Event == "webhook" {
-			types = source.Types
-		}
-		for _, eventType := range types {
-			for _, id := range []string{"one", "two", "one"} {
-				delivery.Payload["id"] = eventType + id
-				if eventType != "" {
-					delivery.Payload["type"] = eventType
-				}
-				body, err := json.Marshal(delivery.Payload)
-				if err != nil {
-					t.Fatal(err)
-				}
-				request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/webhooks/"+source.ID, bytes.NewReader(body))
-				request.Header.Set("Content-Type", "application/json")
-				mac := hmac.New(sha256.New, secret)
-				_, _ = mac.Write(body)
-				signature := hex.EncodeToString(mac.Sum(nil))
-				switch source.Event {
-				case "jira_issue":
-					request.Header.Set("X-Hub-Signature", "sha256="+signature)
-					request.Header.Set("X-Atlassian-Webhook-Identifier", id)
-				case "linear_issue":
-					request.Header.Set("Linear-Signature", signature)
-					request.Header.Set("Linear-Delivery", id)
-				case "azure_devops_issue":
-					request.SetBasicAuth("cao", string(secret))
-				default:
-					request.Header.Set("X-Cao-Signature-256", "sha256="+signature)
-				}
-				response := httptest.NewRecorder()
-				handler.ServeHTTP(response, request)
-				if response.Code != http.StatusAccepted && (source.Event != "linear_issue" || response.Code != http.StatusOK) {
-					t.Fatalf("%s ingress HTTP %d", source.Event, response.Code)
-				}
+		for _, id := range []string{"one", "two", "one"} {
+			delivery.Payload["id"] = id
+			body, err := json.Marshal(delivery.Payload)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/webhooks/"+source.ID, bytes.NewReader(body))
+			request.Header.Set("Content-Type", "application/json")
+			mac := hmac.New(sha256.New, secret)
+			_, _ = mac.Write(body)
+			signature := hex.EncodeToString(mac.Sum(nil))
+			switch source.Event {
+			case "jira_issue":
+				request.Header.Set("X-Hub-Signature", "sha256="+signature)
+				request.Header.Set("X-Atlassian-Webhook-Identifier", id)
+			case "linear_issue":
+				request.Header.Set("Linear-Signature", signature)
+				request.Header.Set("Linear-Delivery", id)
+			case "azure_devops_issue":
+				request.SetBasicAuth("cao", string(secret))
+			}
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusAccepted && (source.Event != "linear_issue" || response.Code != http.StatusOK) {
+				t.Fatalf("%s ingress HTTP %d", source.Event, response.Code)
 			}
 		}
 	}
 	dispatcher := externalAcceptance{}
 	worker := gateway.Worker{Policies: loader, Queue: queue, Authorizer: live, Dispatcher: dispatcher,
 		Owner: "external-contract", HTTPTimeout: time.Second, LeaseDuration: time.Minute}
-	for range 5 {
+	for range 3 {
 		if worked, err := worker.RunOnce(ctx); err != nil || !worked {
 			t.Fatalf("external dispatch worked=%v err=%v", worked, err)
 		}
 	}
-	if len(dispatcher) != 5 {
-		t.Fatal("external providers/generic identifiers shared a batch", dispatcher)
+	if len(dispatcher) != 3 {
+		t.Fatal("external providers shared a batch", dispatcher)
 	}
 	for key, deliveries := range dispatcher {
 		if deliveries != 2 {

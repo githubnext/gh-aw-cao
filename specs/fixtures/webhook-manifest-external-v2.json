@@ -84,54 +84,6 @@
         "max_payload_bytes": 65535,
         "max_request_bytes": 65535
       }
-    },
-    {
-      "schema_version": 2,
-      "event": "webhook",
-      "types": ["com.example.deploy"],
-      "conditions": [],
-      "dispatch": {
-        "repository": "${{ github.repository }}",
-        "method": "repository_dispatch",
-        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
-        "workflow": ".github/workflows/test.lock.yml",
-        "payload_projection": {"policy": "resource-url-types-filters/v2"},
-        "context": {
-          "envelope": "github.event.client_payload",
-          "aw_context": "github.event.client_payload.aw_context",
-          "event": "github.event.client_payload.aw_context.webhook.event",
-          "deliveries": "github.event.client_payload.aw_context.webhook.deliveries",
-          "items": "aw_context.items"
-        },
-        "batch": {"mode": "same-event", "deduplicate_by": "delivery_id"},
-        "max_payload_bytes": 65535,
-        "max_request_bytes": 65535
-      }
-    },
-    {
-      "schema_version": 2,
-      "event": "webhook",
-      "types": ["com.example.release"],
-      "conditions": [
-        {"filter": "data.state", "path": ["data", "state"], "operator": "equals", "value_type": "string", "values": ["ready"]}
-      ],
-      "dispatch": {
-        "repository": "${{ github.repository }}",
-        "method": "repository_dispatch",
-        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
-        "workflow": ".github/workflows/test.lock.yml",
-        "payload_projection": {"policy": "resource-url-types-filters/v2"},
-        "context": {
-          "envelope": "github.event.client_payload",
-          "aw_context": "github.event.client_payload.aw_context",
-          "event": "github.event.client_payload.aw_context.webhook.event",
-          "deliveries": "github.event.client_payload.aw_context.webhook.deliveries",
-          "items": "aw_context.items"
-        },
-        "batch": {"mode": "same-event", "deduplicate_by": "delivery_id"},
-        "max_payload_bytes": 65535,
-        "max_request_bytes": 65535
-      }
     }
   ]
 }

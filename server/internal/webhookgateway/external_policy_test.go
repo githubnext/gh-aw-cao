@@ -30,11 +30,7 @@ func TestExternalEnrollmentStrictDecoding(t *testing.T) {
 				case "noncanonical-url":
 					raw["resourceUrlPrefix"] = "https://example.com/a/../"
 				case "wrong-provider-fields":
-					if source.Event == "webhook" {
-						raw["scope"] = ""
-					} else {
-						raw["urlPath"] = ""
-					}
+					raw["urlPath"] = ""
 				}
 				data, err = json.Marshal(raw)
 				if err != nil {
@@ -59,7 +55,7 @@ func TestProviderManifestsRejectMissingOrAmbiguousContracts(t *testing.T) {
 	_, registry, _ := externalFixture(t)
 	original := registry.Records[0].Workflows[0].Triggers
 	for _, scenario := range []string{"missing-normalization", "unknown-policy", "wrong-provider", "missing-scope",
-		"duplicate-native-event", "wrong-native-event", "azure-missing-closed-states", "azure-closed-states-condition", "generic-multiple-types", "generic-prototype-path", "generic-legacy-version"} {
+		"duplicate-native-event", "wrong-native-event", "azure-missing-closed-states", "azure-closed-states-condition", "generic", "generic-legacy-version"} {
 		t.Run(scenario, func(t *testing.T) {
 			data, err := json.Marshal(original)
 			if err != nil {
@@ -87,12 +83,13 @@ func TestProviderManifestsRejectMissingOrAmbiguousContracts(t *testing.T) {
 			case "azure-closed-states-condition":
 				triggers[2].Conditions = append(triggers[2].Conditions,
 					stringCondition("closed-states", []string{"resource", "fields", "System.State", "newValue"}, "Done"))
-			case "generic-multiple-types":
-				triggers[3].Types = []string{"com.example.deploy", "com.example.release"}
-			case "generic-prototype-path":
-				triggers[4].Conditions[0].Path = []string{"__proto__"}
-			case "generic-legacy-version":
-				triggers[3].SchemaVersion = 1
+			case "generic", "generic-legacy-version":
+				triggers[0].Event = "webhook"
+				triggers[0].Provider, triggers[0].NativeEvents, triggers[0].ActivityNormalization = "", nil, nil
+				triggers[0].Types, triggers[0].Conditions = []string{"com.example.release"}, []CompilerCondition{}
+				if scenario == "generic-legacy-version" {
+					triggers[0].SchemaVersion = 1
+				}
 			}
 			data, err = json.Marshal(map[string]any{"version": 1, "webhook_subscriptions": triggers})
 			if err != nil {

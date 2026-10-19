@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -28,7 +29,7 @@ func validEventIdentity(event EventIdentity, subscription Subscription) bool {
 	source := subscription.Source
 	actionOK := event.Action == "" || identifier(event.Action)
 	if source.External != nil {
-		actionOK = genericWebhookType(event.Action) && validExternalActivities(subscription, event.Action, event.Activities)
+		actionOK = slices.Contains(providerNativeEvents(source.Event), event.Action) && validExternalActivities(subscription, event.Action, event.Activities)
 	} else if len(event.Activities) != 0 {
 		return false
 	}

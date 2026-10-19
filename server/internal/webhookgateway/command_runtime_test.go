@@ -39,12 +39,12 @@ func TestCommandPublishedRuntimeInteroperability(t *testing.T) {
 				}
 				const script = `
 const assert=require('node:assert/strict'), path=require('node:path');
-// SHA-256 pins from github/gh-aw@40c476c070ecb53d9b31ae88c6cc9fab3c9e9045.
+// SHA-256 pins from github/gh-aw@fe4f420f3f4f40bb1ebbcca85af0903d3a967bf3.
 for(const [file,hash] of Object.entries({
- 'gateway_command_webhook.cjs':'2a6e7860dbc0c7d470f83f7db8e5b37392ce3df87383ed6a4620900bf9bade7d',
- 'validate_webhook.cjs':'62d05d02ef3dc60099c1a51dbe1c318dfebf284e5c2ee6a2ac0c4e900334894b',
- 'webhook_resource.cjs':'afaf459b619e9b135c8a7e40cf1808608d4e76065439430e5cc3574e9e875ad0',
- 'webhook_context.cjs':'f304514f81fe8b196792bc5ac1072f55e487607b7e677c2ce860fd50e5c3e385',
+ 'gateway_command_webhook.cjs':'f0b37f9898e63a456120b9961c0392db524abecbb9e93d006c88ed341a0b8202',
+ 'validate_webhook.cjs':'52f2448f6147436e5b480aac5c6610862b0e01665e2fd1bdf8cf5db814e07833',
+ 'webhook_resource.cjs':'0460fc31a103ea74493ea9f97c2bdbc667454316e1c2034849f28bde19e5df85',
+ 'webhook_context.cjs':'c2b9433ae31302e483fbdf92391153ea60ae7cbf722eddf0100a175232bdfb4a',
  'slash_command_matcher.cjs':'ff7fa0a2cbf6cb67041137613122923d7b187f5092235177ca9c216b9054eb53',
 })) assert.equal(require('node:crypto').createHash('sha256').update(require('node:fs').readFileSync(path.join(process.env.WEBHOOK_COMPILER_RUNTIME_DIR,file))).digest('hex'),hash,file);
 const {validateWebhook}=require(path.join(process.env.WEBHOOK_COMPILER_RUNTIME_DIR,'validate_webhook.cjs'));

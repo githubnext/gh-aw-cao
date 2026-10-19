@@ -40,9 +40,6 @@ func externalFixture(t *testing.T) (PolicySnapshot, RegistrySnapshot, []external
 		if delivery.SourceID == "linear" {
 			delivery.Payload["webhookTimestamp"] = time.Now().UnixMilli()
 		}
-		if delivery.SourceID == "generic" {
-			delivery.Payload["timestamp"] = time.Now().UnixMilli()
-		}
 	}
 	base.Policy.ExternalSources = fixture.Sources
 	base.Policy.Discovery.ActivateSecurity = false
@@ -116,7 +113,6 @@ func TestExternalRegistryRequiresIndependentEnrollment(t *testing.T) {
 			case "wrong-scope":
 				for i := range base.Policy.ExternalSources {
 					base.Policy.ExternalSources[i].Scope = "different"
-					base.Policy.ExternalSources[i].Types = []string{"com.example.other"}
 				}
 			case "wrong-destination":
 				for i := range base.Policy.ExternalSources {
@@ -134,7 +130,7 @@ func TestExternalRegistryRequiresIndependentEnrollment(t *testing.T) {
 			}
 			want := 0
 			if scenario == "active" {
-				want = 5
+				want = 3
 			}
 			if len(policy.Subscriptions) != want {
 				t.Fatalf("activated %d subscriptions, want %d", len(policy.Subscriptions), want)
@@ -159,8 +155,7 @@ func TestExternalNotificationsPreserveSelectedActivitiesWithoutResourceBodies(t 
 	for _, delivery := range deliveries {
 		t.Run(delivery.SourceID, func(t *testing.T) {
 			for _, subscription := range policy.Subscriptions {
-				if subscription.Source.ID != delivery.SourceID ||
-					subscription.Source.Event == "webhook" && subscription.Compiler.Types[0] != "com.example.release" {
+				if subscription.Source.ID != delivery.SourceID {
 					continue
 				}
 				jobs := []Job{
@@ -204,38 +199,6 @@ func TestExternalNotificationsPreserveSelectedActivitiesWithoutResourceBodies(t 
 	}
 }
 
-func TestExternalGenericIdentifiersNeverMixInOneBatch(t *testing.T) {
-	base, registry, deliveries := externalFixture(t)
-	policy, err := RegistryPolicy(base, registry, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	var jobs []Job
-	for _, subscription := range policy.Subscriptions {
-		if subscription.Source.Event != "webhook" {
-			continue
-		}
-		root := deliveries[3].Payload
-		root["type"] = subscription.Compiler.Types[0]
-		jobs = append(jobs, externalJob(t, policy, subscription, root, subscription.Compiler.Types[0]))
-	}
-	if len(jobs) != 2 || BatchCompatible(jobs[0], jobs[1]) {
-		t.Fatal("generic identifiers shared a compatibility group")
-	}
-	if _, err := BuildDispatchBatch(jobs); !errors.Is(err, ErrInvalid) {
-		t.Fatal("mixed generic identifiers entered one dispatch", err)
-	}
-	batch, err := BuildDispatchBatch(jobs[:1])
-	if err != nil {
-		t.Fatal(err)
-	}
-	other := jobs[1].Subscription.Compiler.Types[0]
-	wrong := bytes.ReplaceAll(batch, []byte(jobs[0].Subscription.Compiler.Types[0]), []byte(other))
-	if ValidateBatchDispatchPayload(jobs[0].Subscription, wrong, DefaultLimits()) == nil {
-		t.Fatal("one generic subscription accepted another identifier")
-	}
-}
-
 func TestExternalURLsAndNativeScopeFailClosed(t *testing.T) {
 	base, registry, deliveries := externalFixture(t)
 	policy, err := RegistryPolicy(base, registry, time.Now())
@@ -243,9 +206,6 @@ func TestExternalURLsAndNativeScopeFailClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, subscription := range policy.Subscriptions {
-		if subscription.Source.Event == "webhook" && subscription.Compiler.Types[0] != "com.example.release" {
-			continue
-		}
 		row := slices.IndexFunc(deliveries, func(row externalDeliveryFixture) bool { return row.SourceID == subscription.Source.ID })
 		payload, err := json.Marshal(deliveries[row].Payload)
 		if err != nil {
@@ -261,11 +221,9 @@ func TestExternalURLsAndNativeScopeFailClosed(t *testing.T) {
 				t.Fatal("unapproved resource reference/source scope accepted", subscription.Source.Event)
 			}
 		}
-		if subscription.Source.Event != "webhook" {
-			corrupt := bytes.ReplaceAll(payload, []byte(subscription.Source.External.Scope), []byte("different"))
-			if _, err := parseExternalEvent(*subscription.Source.External, "bad", corrupt, DefaultLimits()); err == nil {
-				t.Fatal("provider project/organization scope was inferred")
-			}
+		corrupt := bytes.ReplaceAll(payload, []byte(subscription.Source.External.Scope), []byte("different"))
+		if _, err := parseExternalEvent(*subscription.Source.External, "bad", corrupt, DefaultLimits()); err == nil {
+			t.Fatal("provider project/organization scope was inferred")
 		}
 	}
 }

@@ -134,7 +134,7 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`40c476c070ecb53d9b31ae88c6cc9fab3c9e9045`, defines a batch-v2 discovery interchange in
+`fe4f420f3f4f40bb1ebbcca85af0903d3a967bf3`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
@@ -220,23 +220,19 @@ GitHub notifications carry the single original action, not a state object.
 Missing or unknown policies, old `source_path`/`target_path` declarations,
 URL-only security payloads, and native Projects bodies MUST reject validation,
 never fall back to raw-body forwarding.
-The upstream [gateway specification](https://github.com/github/gh-aw/blob/40c476c070ecb53d9b31ae88c6cc9fab3c9e9045/docs/src/content/docs/specs/webhook-gateway-specification.md)
-defines seven resource families and two command families, including provider-normalized activity arrays and
-the generic `webhook` family.
-This bridge discovers all nine families and activates only explicitly delegated
-security/command routes or independently enrolled external routes. Projects remain
+The upstream [gateway specification](https://github.com/github/gh-aw/blob/fe4f420f3f4f40bb1ebbcca85af0903d3a967bf3/docs/src/content/docs/specs/webhook-gateway-specification.md)
+defines Projects, security, Jira/Linear/Azure, ten GitHub notification families and
+two command families, including provider-normalized activity arrays.
+This bridge activates only explicitly delegated
+security/notification/command routes or independently enrolled provider routes. Projects remain
 nonactivating. Unknown families MUST fail the entire artifact closed. No URL or projection
 policy supplies enrollment, permissions, or authority.
 Mixed versions, paths, modes, or unsupported projections MUST reject validation.
 
-Upstream `on.gateway-dispatch.webhooks` entries such as
-`[{type: com.example.release}]` emit `event: "webhook"` with one identifier in `types`.
-The receiver integration MUST match family plus identifier, batch only one
-identifier, retain the full canonical HTTPS URL without inferring a repository
-or issue ID, and require independent reviewed source enrollment/authentication.
-Generic declarations infer no provider normalization, permissions, registrations,
-or authority. They MUST NOT fall back to this gateway's separate generic approved
-route contract.
+Custom/arbitrary webhook declarations and source enrollments are excluded.
+`on.gateway-dispatch.webhooks` and compiler `event:"webhook"` MUST reject,
+including previously persisted enrollments. They MUST NOT fall back to the
+gateway's separate manually approved route contract or raw-body forwarding.
 Only explicit v2 declarations may activate through section 6.2 or 6.2.2. A v1 workflow
 MUST NOT silently receive an incompatible batch or fall back to one dispatch
 per event. The hand-authored `webhook-manifest-v2.json` fixture matches the
@@ -363,10 +359,11 @@ on:
 ```
 
 The upstream compiler places all declarations under `on.gateway-dispatch`;
-roles/bots and other native triggers remain outside that mapping under `on`.
-Shared `repos` belongs inside `gateway-dispatch` and currently applies only to
-code-scanning/Dependabot subscriptions; trigger-local `repos` is rejected.
-The repository gate `"webhook-gateway": true` in `.github/workflows/aw.json`
+roles/bots and other non-trigger settings remain outside that mapping under `on`.
+Gateway dispatch is exclusive of all other workflow triggers.
+Shared `repos` belongs inside `gateway-dispatch` and applies to GitHub notifications,
+code-scanning/Dependabot and commands; trigger-local `repos` is rejected.
+The repository gate `"gateway-dispatch": true` in `.github/workflows/aw.json`
 remains independently required.
 These compilation gates MUST NOT be treated as activation or dispatch authority.
 The former workflow `on.webhook-gateway` flag, flat triggers, obsolete
@@ -496,15 +493,14 @@ python3 scripts/check-webhook-gateway-model.py --jar "$TLA2TOOLS_JAR" \
 #### 6.2.2. Independently enrolled external sources
 
 Reviewed `externalSources` MAY explicitly enroll at most 64 Jira, Linear,
-Azure DevOps, or generic sources. It requires managed discovery but does not
+or Azure DevOps sources. It requires managed discovery but does not
 depend on `activateSecurity`. Each source MUST bind a unique non-reserved route
 `id`, family `event`, canonical HTTPS `resourceUrlPrefix` ending `/`, unique
 receive-only `secretEnv`, nonempty explicitly enrolled `destinationRepositoryIds`,
 and `expiresAt`. Named providers MUST additionally bind their native `scope`:
 Jira project key, Linear organization ID, or Azure project ID and `collectionId`.
-Generic sources MUST instead bind 1–128 literal `types` and the resource `urlPath`
-JSON Pointer; they MUST NOT infer provider identity or normalization.
-`specs/fixtures/webhook-external-deliveries-v2.json` illustrates all four bindings.
+Custom webhook source enrollment MUST reject.
+`specs/fixtures/webhook-external-deliveries-v2.json` illustrates all three bindings.
 Source additions require restart; declarations MUST NOT register sources.
 
 Jira MUST authenticate raw bytes using native `X-Hub-Signature: sha256=<hex>`
@@ -513,10 +509,6 @@ native `Linear-Signature` HMAC-SHA256, `Linear-Delivery`, and signed
 `webhookTimestamp` within one minute; durable success/filtering returns HTTP 200.
 Azure service hooks MUST use HTTPS Basic authentication with username `cao`,
 a receive-only password, and body `id`; no native HMAC is claimed.
-Generic bridges MUST sign exact raw bytes using HMAC-SHA256 in
-`X-Cao-Signature-256`, with signed stable `id`, literal `type`, integer Unix
-millisecond `timestamp` within five minutes, and the resource URL at the reviewed
-pointer. This protocol MUST NOT imply CloudEvents/provider registration.
 Secrets MUST be 32–512 bytes, resolved only in receive using
 `CAO_GATEWAY_SOURCE_...` and optional `_PREVIOUS` environment names. Secret values
 MUST NOT enter policy, state, errors, or logs; all other roles reject these variables.
@@ -548,7 +540,7 @@ External source authority is current unexpired reviewed enrollment plus native
 authentication, not a live provider resource-access/visibility probe. Source
 GitHub installation/repository/organization IDs remain zero; a separate external
 source ID binds grants and proofs. Source-local delivery IDs MUST be namespaced.
-Each source and generic identifier MUST retain independent tenant/subscription/
+Each source MUST retain independent tenant/subscription/
 batch identity. Grants MUST expire no later than enrollment or destination
 inventory. Current private GitHub destination authority, head, and whole-lock
 digest MUST still be checked independently. Revocation, expiry, inventory
@@ -559,13 +551,13 @@ Conservatively treat external references as restricted/private, never as evidenc
 of actual provider visibility. Workflows MUST use authenticated provider readers
 for all additional resource data. URLs grant no access.
 
-Shared compiler `orgs` MAY select Projects, the two security families and commands,
+Shared compiler `orgs` MAY select Projects, GitHub notifications, the two security families and commands,
 with lowercase/sorted/unique organization names or `*` patterns (1–39 ASCII
 letters/digits/hyphens/stars, no leading/trailing hyphen). Patterns are ORed,
 case-insensitively, and intersect `repos`, project scope, conditions, and reviewed
 source enrollment. Even `*` MUST NOT enroll sources. Registry activation and live
 source preflight MUST verify actual authenticated Organization owner type/ID,
-not infer organization authority from URL owner text. External/generic
+not infer organization authority from URL owner text. External
 declarations MUST NOT receive this GitHub-only metadata.
 
 ### 6.2.3 Native command subscriptions and label consumption
@@ -573,7 +565,7 @@ declarations MUST NOT receive this GitHub-only metadata.
 Command subscriptions MUST use synthetic family `slash_command` or
 `label_command`, unchanged numeric-v2 batching and `resource-url-types-filters/v2`.
 The normative compiler/runner contract is pinned to
-`github/gh-aw@40c476c070ecb53d9b31ae88c6cc9fab3c9e9045`, specifically
+`github/gh-aw@fe4f420f3f4f40bb1ebbcca85af0903d3a967bf3`, specifically
 `gateway_command_webhook.cjs`, `validate_webhook.cjs`, `webhook_resource.cjs` and
 `webhook_context.cjs`. Native slash parsing/matching uses
 `slash_command_matcher.cjs`. Compilation or this receiver implementation MUST
@@ -584,9 +576,8 @@ NOT imply deployment or independently reviewed activation.
 label at most 50), sorted/distinct semantic `events`, and native `strategy`.
 Slash supports `inline`/`centralized`; labels support `inline`/`decentralized`
 and require `remove_label:true`; false or missing metadata MUST reject. Authoring
-omission defaults to true. This mandatory-consumption receiver tightening is
-user-directed ahead of the next upstream publication; pinned `40c476c`
-conformance covers the valid consuming form. Slash MUST omit `remove_label`, including
+omission defaults to true, matching the pinned published contract.
+Slash MUST omit `remove_label`, including
 null. `native_events` MUST be the sorted/distinct native source union and
 `types` the exact action union. `conditions` MUST be empty; `any_of`, `provider`
 and `activity_normalization` MUST be absent. Shared repos/orgs intersect
@@ -632,6 +623,42 @@ the maximum job TTL. Confirmed receipts suppress repeated writes across restart;
 unknown outcomes MUST NOT replay against subsequently reapplied labels.
 Unconfirmed consumption MUST make the batch terminal ambiguous without workflow
 dispatch. Minimal authenticated ID/label reads MUST NOT hydrate notifications.
+
+### 6.2.4 GitHub notification subscriptions
+
+The authoritative catalog is `actions/setup/js/github_notification_webhooks.json`
+at the pinned upstream SHA. The receiver's embedded semantic catalog MUST match
+every native event, action, issue kind, resource path/anchor, URL path, and typed
+filter path/enum/action restriction. Runtime conformance checks that equality.
+All ten notification families require singleton exact `native_events`, a nonempty
+selected subset of catalog actions, and ordinary catalog equality conditions.
+`provider`, `activity_normalization`, `command_filter` and `any_of` MUST be absent.
+
+Activation MUST require separately reviewed `discovery.activateNotifications:true`,
+absent/false by default, fresh private source/destination inventory, shared repos/
+orgs selectors, independent approved routes and current read-only source-category
+permissions. Security or command activation MUST NOT activate notifications.
+Notification declarations MUST NOT grant write permission or enroll sources.
+
+Before durable admission the receiver MUST classify the authenticated original:
+`issues`/`issue_comment` require an issue object with no `pull_request` property;
+`pull_request_comment` requires object-valued original `issue.pull_request`.
+Null/scalar/array or contradictory evidence MUST NOT infer source identity.
+Other PR/discussion families require their original parent objects.
+Canonical HTML URL repository, parent number/commit SHA and comment/review ID
+MUST match original evidence and the independently configured GitHub origin/
+exact Enterprise base path. Review threads MUST use the first delivered comment's
+URL and ID; absent/empty comments or missing canonical evidence are nonactivating,
+without hydration. Deleted resources remain references even if a later
+provider-authenticated workflow read returns not found.
+
+Only `url`, selected singleton original `type`, and actual declared matching
+filter literals may persist/forward. Array selectors MUST exclude unmatched
+elements; changed-label filters apply only to `labeled`/`unlabeled`.
+Bodyless PR `ready_for_review`/`review_requested`, submitted reviews, review threads
+and commit comments MUST NOT widen the narrower command catalog.
+Source registration remains independent of compiler workflow-trigger exclusivity.
+No deployment or hosted interoperability is implied by local runtime conformance.
 
 ## 7. Event subscriptions and generic filters
 

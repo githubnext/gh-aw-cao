@@ -17,11 +17,12 @@ type DiscoveryRepository struct {
 }
 
 type DiscoveryPolicy struct {
-	Repositories     []DiscoveryRepository `json:"repositories"`
-	IntervalSeconds  int64                 `json:"intervalSeconds,omitempty"`
-	ActivateSecurity bool                  `json:"activateSecurity"`
-	ActivateCommands bool                  `json:"activateCommands,omitempty"`
-	ServerURL        string                `json:"serverUrl,omitempty"`
+	Repositories          []DiscoveryRepository `json:"repositories"`
+	IntervalSeconds       int64                 `json:"intervalSeconds,omitempty"`
+	ActivateSecurity      bool                  `json:"activateSecurity"`
+	ActivateCommands      bool                  `json:"activateCommands,omitempty"`
+	ActivateNotifications bool                  `json:"activateNotifications,omitempty"`
+	ServerURL             string                `json:"serverUrl,omitempty"`
 }
 
 func (d *DiscoveryPolicy) UnmarshalJSON(data []byte) error {
@@ -40,7 +41,7 @@ func (d *DiscoveryPolicy) UnmarshalJSON(data []byte) error {
 	if _, explicit := fields["intervalSeconds"]; explicit && result.IntervalSeconds == 0 {
 		return ErrInvalid
 	}
-	for _, key := range []string{"activateCommands", "serverUrl"} {
+	for _, key := range []string{"activateCommands", "activateNotifications", "serverUrl"} {
 		if raw, exists := fields[key]; exists && bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 			return ErrInvalid
 		}
@@ -59,15 +60,20 @@ func (d DiscoveryPolicy) GitHubServerURL() string {
 	return d.ServerURL
 }
 
-// CommandSourceAllowed requires reviewed activation and a separate source-write
-// grant. Neither compiler metadata nor installation credential reach grants it.
-func (p PolicySnapshot) CommandSourceAllowed(s Subscription) bool {
-	if !commandFamily(s.Source.Event) {
+// CompilerSourceAllowed rechecks independent notification/command activation and
+// the separate consuming-label grant. Compiler metadata cannot supply authority.
+func (p PolicySnapshot) CompilerSourceAllowed(s Subscription) bool {
+	notification := s.Compiler != nil && notificationFamily(s.Source.Event)
+	if !commandFamily(s.Source.Event) && !notification {
 		return true
 	}
 	d := p.Policy.Discovery
-	if s.Compiler == nil || d == nil || !d.ActivateCommands || s.Compiler.CommandFilter == nil ||
-		s.Source.ServerURL != d.GitHubServerURL() || validateCommandDeclaration(*s.Compiler, DefaultLimits()) != nil {
+	if s.Compiler == nil || d == nil || s.Source.ServerURL != d.GitHubServerURL() {
+		return false
+	}
+	if notification && (!d.ActivateNotifications || validateNotificationDeclaration(*s.Compiler) != nil) ||
+		!notification && (!d.ActivateCommands || s.Compiler.CommandFilter == nil ||
+			validateCommandDeclaration(*s.Compiler, DefaultLimits()) != nil) {
 		return false
 	}
 	for _, source := range d.Repositories {

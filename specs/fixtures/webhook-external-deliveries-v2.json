@@ -27,16 +27,6 @@
       "secretEnv": "CAO_GATEWAY_SOURCE_AZURE",
       "destinationRepositoryIds": [11],
       "expiresAt": "2030-01-01T00:00:00Z"
-    },
-    {
-      "id": "generic",
-      "event": "webhook",
-      "resourceUrlPrefix": "https://events.example.com/releases/",
-      "types": ["com.example.deploy", "com.example.release"],
-      "urlPath": "/data/url",
-      "secretEnv": "CAO_GATEWAY_SOURCE_GENERIC",
-      "destinationRepositoryIds": [11],
-      "expiresAt": "2030-01-01T00:00:00Z"
     }
   ],
   "deliveries": [
@@ -94,16 +84,6 @@
         }
       },
       "expected": {"url": "https://dev.azure.com/acme/_apis/wit/workItems/42", "type": ["closed", "edited", "labeled", "unlabeled"], "filters": {"project_id": ["azure-project"], "closed-states": ["Done"]}}
-    },
-    {
-      "sourceId": "generic",
-      "payload": {
-        "id": "release-delivery",
-        "type": "com.example.release",
-        "timestamp": 0,
-        "data": {"state": "ready", "url": "https://events.example.com/releases/42", "title": "MUST-NOT-PERSIST"}
-      },
-      "expected": {"url": "https://events.example.com/releases/42", "type": ["com.example.release"], "filters": {"data.state": ["ready"]}}
     }
   ]
 }

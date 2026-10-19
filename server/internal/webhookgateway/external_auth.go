@@ -10,14 +10,14 @@ import (
 )
 
 // AuthenticateExternal verifies the native authentication scheme before interpreting
-// receiver evidence. Generic bridges sign id, type, timestamp and the selected URL.
+// receiver evidence.
 func AuthenticateExternal(source ExternalSource, request *http.Request, body, current, previous []byte, now time.Time, limits Limits) (Event, error) {
 	if validateExternalSource(source) != nil || !now.Before(source.ExpiresAt) ||
 		len(current) < 32 || len(current) > 512 ||
 		len(previous) > 0 && (len(previous) < 32 || len(previous) > 512) {
 		return Event{}, ErrUnauthorized
 	}
-	signatureHeader := "X-Cao-Signature-256"
+	var signatureHeader string
 	switch source.Event {
 	case "jira_issue":
 		signatureHeader = "X-Hub-Signature"
@@ -25,6 +25,8 @@ func AuthenticateExternal(source ExternalSource, request *http.Request, body, cu
 		signatureHeader = "Linear-Signature"
 	case "azure_devops_issue":
 		signatureHeader = "Authorization"
+	default:
+		return Event{}, ErrUnauthorized
 	}
 	validAuthHeader := validHeader(request.Header, signatureHeader, 1024)
 	if source.Event == "azure_devops_issue" {
@@ -78,11 +80,8 @@ func AuthenticateExternal(source ExternalSource, request *http.Request, body, cu
 	if !identifier(delivery) {
 		return Event{}, ErrInvalid
 	}
-	if source.Event == "linear_issue" || source.Event == "webhook" {
+	if source.Event == "linear_issue" {
 		field, maximumAge := "webhookTimestamp", time.Minute
-		if source.Event == "webhook" {
-			field, maximumAge = "timestamp", 5*time.Minute
-		}
 		stamp, ok := at(root, field).(json.Number)
 		if !ok {
 			return Event{}, ErrUnauthorized

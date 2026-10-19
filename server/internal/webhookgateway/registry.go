@@ -140,8 +140,10 @@ func RegistryPolicy(base PolicySnapshot, registry RegistrySnapshot, now time.Tim
 					continue
 				}
 				command := commandFamily(trigger.Event)
+				notification := notificationFamily(trigger.Event)
 				if trigger.SchemaVersion != 2 || command && !config.ActivateCommands ||
-					!command && (!config.ActivateSecurity || SecurityEventPermission(trigger.Event) == "") {
+					notification && !config.ActivateNotifications ||
+					!command && !notification && (!config.ActivateSecurity || SecurityEventPermission(trigger.Event) == "") {
 					continue
 				}
 				for _, source := range config.Repositories {
@@ -204,6 +206,9 @@ func discoveredSecuritySubscription(policy GatewayPolicy, source DiscoveryReposi
 	}
 	if commandFamily(trigger.Event) {
 		s.Source.RequiredPermissions = commandPermissions(trigger)
+		s.Source.ServerURL = policy.Discovery.GitHubServerURL()
+	} else if notificationFamily(trigger.Event) {
+		s.Source.RequiredPermissions = notificationPermissions(trigger.Event)
 		s.Source.ServerURL = policy.Discovery.GitHubServerURL()
 	}
 	revision := Revision{RepositoryID: binding.RepositoryID, CommitSHA: record.CommitSHA,

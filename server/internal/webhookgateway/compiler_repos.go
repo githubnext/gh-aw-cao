@@ -6,7 +6,7 @@ func validateCompilerRepos(t CompilerTrigger, l Limits) error {
 	if t.Repos == nil {
 		return nil
 	}
-	if t.SchemaVersion != 2 || (t.Event != "dependabot_alert" && t.Event != "code_scanning_alert" && !commandFamily(t.Event)) ||
+	if t.SchemaVersion != 2 || (t.Event != "dependabot_alert" && t.Event != "code_scanning_alert" && !githubHTMLFamily(t.Event)) ||
 		len(t.Repos) == 0 || len(t.Repos) > l.MaxArrayItems {
 		return ErrInvalid
 	}

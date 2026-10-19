@@ -3,9 +3,12 @@ package webhookgateway
 import (
 	"encoding/json"
 	"maps"
+	"regexp"
 	"slices"
 	"strings"
 )
+
+var genericProperty = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]*$`)
 
 func validCompilerFilterName(name string) bool {
 	for _, segment := range strings.Split(name, ".") {

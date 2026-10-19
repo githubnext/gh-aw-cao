@@ -56,19 +56,13 @@ func TestExternalCompilerDispatchRechecksDestinationWithoutGitHubSourceInference
 				}
 				subscription := gatewayTestSubscription("repository_dispatch")
 				subscription.Provider = map[string]string{"jira_issue": "jira", "linear_issue": "linear",
-					"azure_devops_issue": "azure-devops", "webhook": "webhook"}[trigger.Event]
+					"azure_devops_issue": "azure-devops"}[trigger.Event]
 				subscription.Source = gateway.Source{ID: source.ID, Event: source.Event, External: &source}
 				subscription.Destination.Fields = nil
 				subscription.Destination.EventType, subscription.Compiler = trigger.Dispatch.EventType, &trigger
 				revision := gateway.Revision{RepositoryID: 42, CommitSHA: strings.Repeat("a", 40),
 					MetadataPath: trigger.Dispatch.Workflow, Digest: gateway.MetadataDigest(lock), CompilerID: "gh-aw-manifest-v1"}
 				projection := fixtures.Deliveries[index].Expected
-				if source.Event == "webhook" {
-					projection = map[string]any{"url": projection["url"], "type": trigger.Types}
-					if len(trigger.Conditions) != 0 {
-						projection["filters"] = fixtures.Deliveries[index].Expected["filters"]
-					}
-				}
 				if scenario == "wrong-url" {
 					projection = map[string]any{"url": "https://unapproved.example/resource/42", "type": projection["type"]}
 				}

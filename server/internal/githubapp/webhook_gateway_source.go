@@ -13,7 +13,7 @@ import (
 func (d WebhookGatewayDispatcher) compilerSourcePreflight(ctx context.Context, subscription gateway.Subscription,
 	payload json.RawMessage, destination GatewayRepository,
 ) error {
-	if subscription.Compiler != nil && subscription.Compiler.CommandFilter != nil &&
+	if subscription.Compiler != nil && subscription.Source.ServerURL != "" &&
 		(d.Receiving == nil || d.Receiving.WebhookGatewayServerURL() != subscription.Source.ServerURL) {
 		return gateway.ErrUnauthorized
 	}

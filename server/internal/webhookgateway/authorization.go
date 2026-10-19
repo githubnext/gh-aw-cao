@@ -75,7 +75,7 @@ func authorize(now time.Time, s Subscription, expectedDigest string, event Event
 		}
 	}
 	eventOK := event.Name == src.Event
-	if checkPayload && s.Compiler != nil && commandFamily(src.Event) {
+	if checkPayload && s.Compiler != nil && githubHTMLFamily(src.Event) {
 		eventOK = slices.Contains(s.Compiler.NativeEvents, event.Name)
 	}
 	if event.SourceID != src.ID || !eventOK ||

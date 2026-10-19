@@ -13,7 +13,7 @@ func validateCompilerOrgs(t CompilerTrigger, l Limits) error {
 		return nil
 	}
 	if t.SchemaVersion != 2 || len(t.Orgs) == 0 || len(t.Orgs) > l.MaxArrayItems ||
-		t.Event != "projects_v2_item" && SecurityEventPermission(t.Event) == "" && !commandFamily(t.Event) {
+		t.Event != "projects_v2_item" && SecurityEventPermission(t.Event) == "" && !githubHTMLFamily(t.Event) {
 		return ErrInvalid
 	}
 	previous := ""

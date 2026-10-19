@@ -1,0 +1,109 @@
+{
+  "common_filters": {
+    "sender": {"path":["sender","login"],"type":"string"},
+    "organization": {"path":["organization","login"],"type":"string"},
+    "repository": {"path":["repository","full_name"],"type":"string"}
+  },
+  "events": {
+    "issues": {
+      "native_event":"issues","actions":["opened","edited","deleted","transferred","pinned","unpinned","closed","reopened","assigned","unassigned","labeled","unlabeled","locked","unlocked","milestoned","demilestoned","typed","untyped","field_added","field_removed"],
+      "path":"issues","anchor":"","url_path":["issue","html_url"],"issue_kind":"issue",
+      "filters":{
+        "number":{"path":["issue","number"],"type":"integer"},
+        "state":{"path":["issue","state"],"type":"string","enum":["open","closed"]},
+        "labels":{"path":["issue","labels","*","name"],"type":"string"},
+        "label":{"path":["label","name"],"type":"string","actions":["labeled","unlabeled"]},
+        "author":{"path":["issue","user","login"],"type":"string"},
+        "assignee":{"path":["issue","assignees","*","login"],"type":"string"}
+      }
+    },
+    "pull_request": {
+      "native_event":"pull_request","actions":["assigned","unassigned","labeled","unlabeled","opened","edited","closed","reopened","synchronize","converted_to_draft","locked","unlocked","enqueued","dequeued","milestoned","demilestoned","ready_for_review","review_requested","review_request_removed","auto_merge_enabled","auto_merge_disabled"],
+      "path":"pull","anchor":"","url_path":["pull_request","html_url"],
+      "filters":{
+        "number":{"path":["pull_request","number"],"type":"integer"},
+        "state":{"path":["pull_request","state"],"type":"string","enum":["open","closed"]},
+        "labels":{"path":["pull_request","labels","*","name"],"type":"string"},
+        "label":{"path":["label","name"],"type":"string","actions":["labeled","unlabeled"]},
+        "author":{"path":["pull_request","user","login"],"type":"string"},
+        "draft":{"path":["pull_request","draft"],"type":"boolean"},
+        "merged":{"path":["pull_request","merged"],"type":"boolean"},
+        "base":{"path":["pull_request","base","ref"],"type":"string"},
+        "head":{"path":["pull_request","head","ref"],"type":"string"}
+      }
+    },
+    "discussion": {
+      "native_event":"discussion","actions":["created","edited","deleted","transferred","pinned","unpinned","labeled","unlabeled","locked","unlocked","category_changed","answered","unanswered"],
+      "path":"discussions","anchor":"","url_path":["discussion","html_url"],
+      "filters":{
+        "number":{"path":["discussion","number"],"type":"integer"},
+        "category":{"path":["discussion","category","slug"],"type":"string"},
+        "labels":{"path":["discussion","labels","*","name"],"type":"string"},
+        "label":{"path":["label","name"],"type":"string","actions":["labeled","unlabeled"]},
+        "author":{"path":["discussion","user","login"],"type":"string"}
+      }
+    },
+    "issue_comment": {
+      "native_event":"issue_comment","actions":["created","edited","deleted"],
+      "path":"issues","anchor":"issuecomment-","url_path":["comment","html_url"],"issue_kind":"issue",
+      "filters":{
+        "number":{"path":["issue","number"],"type":"integer"},
+        "labels":{"path":["issue","labels","*","name"],"type":"string"},
+        "author":{"path":["comment","user","login"],"type":"string"}
+      }
+    },
+    "pull_request_comment": {
+      "native_event":"issue_comment","actions":["created","edited","deleted"],
+      "path":"pull","anchor":"issuecomment-","url_path":["comment","html_url"],"issue_kind":"pull_request",
+      "filters":{
+        "number":{"path":["issue","number"],"type":"integer"},
+        "labels":{"path":["issue","labels","*","name"],"type":"string"},
+        "author":{"path":["comment","user","login"],"type":"string"}
+      }
+    },
+    "pull_request_review": {
+      "native_event":"pull_request_review","actions":["submitted","edited","dismissed"],
+      "path":"pull","anchor":"pullrequestreview-","url_path":["review","html_url"],
+      "filters":{
+        "number":{"path":["pull_request","number"],"type":"integer"},
+        "state":{"path":["review","state"],"type":"string","enum":["approved","changes_requested","commented","dismissed","pending"]},
+        "author":{"path":["review","user","login"],"type":"string"}
+      }
+    },
+    "pull_request_review_comment": {
+      "native_event":"pull_request_review_comment","actions":["created","edited","deleted"],
+      "path":"pull","anchor":"discussion_r","url_path":["comment","html_url"],
+      "filters":{
+        "number":{"path":["pull_request","number"],"type":"integer"},
+        "path":{"path":["comment","path"],"type":"string"},
+        "author":{"path":["comment","user","login"],"type":"string"}
+      }
+    },
+    "pull_request_review_thread": {
+      "native_event":"pull_request_review_thread","actions":["resolved","unresolved"],
+      "path":"pull","anchor":"discussion_r","url_path":["thread","comments","0","html_url"],
+      "filters":{
+        "number":{"path":["pull_request","number"],"type":"integer"},
+        "path":{"path":["thread","comments","*","path"],"type":"string"}
+      }
+    },
+    "discussion_comment": {
+      "native_event":"discussion_comment","actions":["created","edited","deleted"],
+      "path":"discussions","anchor":"discussioncomment-","url_path":["comment","html_url"],
+      "filters":{
+        "number":{"path":["discussion","number"],"type":"integer"},
+        "category":{"path":["discussion","category","slug"],"type":"string"},
+        "author":{"path":["comment","user","login"],"type":"string"}
+      }
+    },
+    "commit_comment": {
+      "native_event":"commit_comment","actions":["created"],
+      "path":"commit","anchor":"commitcomment-","url_path":["comment","html_url"],
+      "filters":{
+        "commit":{"path":["comment","commit_id"],"type":"string"},
+        "path":{"path":["comment","path"],"type":"string"},
+        "author":{"path":["comment","user","login"],"type":"string"}
+      }
+    }
+  }
+}

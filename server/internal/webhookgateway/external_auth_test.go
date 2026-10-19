@@ -29,7 +29,7 @@ func externalRequest(t *testing.T, source ExternalSource, root map[string]any, s
 	case "azure_devops_issue":
 		request.SetBasicAuth("cao", secret)
 	default:
-		request.Header.Set("X-Cao-Signature-256", signWebhook(body, []byte(secret)))
+		t.Fatal("unsupported source fixture", source.Event)
 	}
 	return request, body
 }
@@ -87,19 +87,15 @@ func TestExternalAuthenticationRejectsStaleSignedTimestampsAndDuplicateHeaders(t
 	for _, delivery := range deliveries {
 		source, _ := base.ExternalSource(delivery.SourceID)
 		header := map[string]string{"jira_issue": "X-Hub-Signature", "linear_issue": "Linear-Signature",
-			"azure_devops_issue": "Authorization", "webhook": "X-Cao-Signature-256"}[source.Event]
+			"azure_devops_issue": "Authorization"}[source.Event]
 		request, body := externalRequest(t, source, delivery.Payload, secret)
 		request.Header.Add(header, request.Header.Get(header))
 		if _, err := AuthenticateExternal(source, request, body, []byte(secret), nil, time.Now(), DefaultLimits()); err == nil {
 			t.Fatal("ambiguous authentication headers accepted", source.Event)
 		}
-		if source.Event == "linear_issue" || source.Event == "webhook" {
+		if source.Event == "linear_issue" {
 			for _, delta := range []time.Duration{-10 * time.Minute, 10 * time.Minute} {
-				field := "timestamp"
-				if source.Event == "linear_issue" {
-					field = "webhookTimestamp"
-				}
-				delivery.Payload[field] = time.Now().Add(delta).UnixMilli()
+				delivery.Payload["webhookTimestamp"] = time.Now().Add(delta).UnixMilli()
 				request, body := externalRequest(t, source, delivery.Payload, secret)
 				if _, err := AuthenticateExternal(source, request, body, []byte(secret), nil, time.Now(), DefaultLimits()); err == nil {
 					t.Fatal("stale/future signed delivery accepted", source.Event)

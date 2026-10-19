@@ -10,7 +10,7 @@ import (
 func TestLabelCommandsCannotDisableConsumption(t *testing.T) {
 	base, registry, policy, subscription := commandFixture(t, "label_command")
 	*subscription.Compiler.CommandFilter.RemoveLabel = false
-	if ValidateSubscription(subscription, DefaultLimits()) == nil || policy.CommandSourceAllowed(subscription) {
+	if ValidateSubscription(subscription, DefaultLimits()) == nil || policy.CompilerSourceAllowed(subscription) {
 		t.Fatal("false removal metadata granted a read-only label command")
 	}
 	workflow := &registry.Records[0].Workflows[0]

@@ -13,10 +13,6 @@ func validExternalActivities(s Subscription, native string, activities []string)
 	if s.Compiler == nil || len(activities) == 0 || len(activities) > 8 {
 		return false
 	}
-	if s.Source.Event == "webhook" {
-		return len(activities) == 1 && len(s.Compiler.Types) == 1 &&
-			activities[0] == s.Compiler.Types[0] && native == activities[0]
-	}
 	if !slices.Contains(s.Compiler.NativeEvents, native) ||
 		slices.Contains(activities, "closed") && slices.Contains(activities, "reopened") {
 		return false
@@ -49,7 +45,7 @@ func buildExternalDispatchPayload(s Subscription, event Event, root any, l Limit
 		!compilerTriggerMatches(*s.Compiler, root, event.Action) {
 		return nil, ErrInvalid
 	}
-	resource, err := externalResource(*s.Source.External, root, l)
+	resource, err := externalResource(*s.Source.External, root)
 	if err != nil {
 		return nil, err
 	}

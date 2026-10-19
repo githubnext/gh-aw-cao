@@ -643,10 +643,11 @@ on:
 ```
 
 The upstream compiler places all gateway declarations under `on.gateway-dispatch`;
-roles/bots and other native triggers remain outside that mapping under `on`.
+roles/bots and other non-trigger settings remain outside that mapping under `on`.
+Gateway dispatch is exclusive: all other workflow triggers are rejected.
 Shared `repos` belongs inside `gateway-dispatch`, not inside a trigger, and
-applies to code-scanning/Dependabot and native command subscriptions.
-The repository still independently requires `"webhook-gateway": true` in
+applies to GitHub notifications, code-scanning/Dependabot and native command subscriptions.
+The repository still independently requires `"gateway-dispatch": true` in
 `.github/workflows/aw.json`.
 These are compilation gates, not gateway activation or dispatch authority.
 The former workflow `on.webhook-gateway` flag, flat triggers, obsolete `on.gateway`,
@@ -690,7 +691,7 @@ configured provider-authenticated readers; notification URLs do not grant access
 or justify attaching credentials to arbitrary origins.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`40c476c070ecb53d9b31ae88c6cc9fab3c9e9045`; optional interoperability tests
+`fe4f420f3f4f40bb1ebbcca85af0903d3a967bf3`; optional interoperability tests
 execute that commit's actual runtime validator/normalizer, including exact and
 wildcard source selection, projected filter evidence, and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not
@@ -743,8 +744,7 @@ not another wire field or an authority channel.
 
 Gateway label commands require compiled `remove_label:true`; false metadata is
 rejected, not a read-only activation option. Authoring omission defaults to true.
-This user-directed receiver tightening precedes the next upstream publication;
-the pinned `40c476c` conformance evidence covers the valid consuming form.
+The pinned published contract rejects nonconsuming gateway labels.
 Compiled `remove_label:true` alone cannot write. The exact source row must also
 have independently reviewed `allowLabelRemoval:true`, and the receiving App
 must currently have the selected event category's write permission. This does
@@ -762,10 +762,35 @@ approved enterprise base paths and whole-batch rejection of unselected
 literals/extra fields/old policies. This is local conformance, not deployed or
 hosted interoperability.
 
-### Enrolled Jira, Linear, Azure DevOps, and generic sources
+### GitHub notifications
+
+The published ten-family catalog covers issues, pull requests, discussions,
+issue/PR conversation comments, PR reviews, review comments, review threads,
+discussion comments and commit comments. Activation requires separately reviewed
+`discovery.activateNotifications:true`; omission remains off, independently of
+security and command activation. Source permissions are read-only and neither
+notifications nor their metadata grant label writes.
+
+The receiver checks original event/action, exact typed catalog filters and
+issue-versus-PR source evidence. It binds canonical original HTML URLs to the
+authenticated source repository, parent number or commit SHA, original comment/
+review ID, configured GitHub origin and exact Enterprise base path. Required
+anchors include `issuecomment-N`, `pullrequestreview-N`, `discussion_rN`,
+`discussioncomment-N` and `commitcomment-N`. Review threads require
+`thread.comments[0].html_url` and its original ID; missing evidence never causes
+hydration. Payloads retain only `url`, the selected singleton action in `type`,
+and actual matching declared literals in `filters` when predicates exist.
+
+`ready_for_review`, `review_requested` and submitted reviews are notifications,
+not slash-command sources. The embedded catalog's semantic fields and all actions
+are checked against the actual pinned validator/normalizer in
+`TestNotificationPublishedRuntimeInteroperability`, with public and Enterprise
+base-path cases. These local checks do not claim deployment or hosted acceptance.
+
+### Enrolled Jira, Linear, and Azure DevOps sources
 
 The same compiler-v2 path supports `jira_issue`, `linear_issue`,
-`azure_devops_issue`, and generic `webhook` declarations. Each requires independent
+`azure_devops_issue` declarations. Each requires independent
 reviewed `control-plane.webhook-gateway.externalSources` enrollment, managed
 discovery, gateway enablement, and a fresh compiled declaration in an explicitly
 enrolled private destination. This is separate from `activateSecurity`; that flag
@@ -800,31 +825,10 @@ It never contains the unmatched nonterminal side or the complete configured set,
 and is omitted without a selected lifecycle activity. `closed_states` is
 normalization metadata, not a source-path equality condition.
 
-Generic enrollment instead requires literal `types` and a reviewed `urlPath`
-JSON Pointer, with no inferred provider scope. Example **policy fragment**, not
-an installed enrollment:
-
-```json
-{
-  "id": "releases",
-  "event": "webhook",
-  "resourceUrlPrefix": "https://events.example.com/releases/",
-  "types": ["com.example.release"],
-  "urlPath": "/data/url",
-  "secretEnv": "CAO_GATEWAY_SOURCE_RELEASES",
-  "destinationRepositoryIds": [11],
-  "expiresAt": "2027-01-01T00:00:00Z"
-}
-```
-
-The generic sender signs the **exact raw JSON body** with HMAC-SHA256 in
-`X-Cao-Signature-256: sha256=<hex>`. The signed object requires a stable string
-`id`, literal `type`, integer `timestamp` in current Unix milliseconds (within five
-minutes), and the canonical HTTPS URL at the enrolled pointer. Original source
-properties used by compiled conditions must be present. This is an explicit
-gateway bridge protocol, not implicit CloudEvents support. Generic batches match
-family plus identifier, retain the complete URL without inferring repo/issue IDs,
-and never fall back to the separate generic approved-route envelope.
+Custom/arbitrary webhooks are excluded from this published revision. Compiler
+`event:"webhook"`, authoring `webhooks` arrays and generic `externalSources`
+enrollment reject, including persisted old enrollments. No compatibility fallback
+to a full-body or separately approved manual route is provided.
 
 Secret names must use `CAO_GATEWAY_SOURCE_...`; put values (32–512 bytes) only in
 the receive process environment. Optional `<secretEnv>_PREVIOUS` permits rotation.

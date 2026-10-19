@@ -43,8 +43,6 @@ func validExternalResource(source ExternalSource, text string) bool {
 	case "azure_devops_issue":
 		return (parsed.Host == "dev.azure.com" || azureResourceHost.MatchString(parsed.Host)) &&
 			azureResourcePath.MatchString(parsed.EscapedPath())
-	case "webhook":
-		return true
 	default:
 		return false
 	}
@@ -66,8 +64,8 @@ func textAt(root any, keys ...string) string {
 	return value
 }
 
-func externalResource(source ExternalSource, root any, l Limits) (string, error) {
-	if source.Event != "webhook" && textAt(root, externalScopePath(source.Event)...) != source.Scope {
+func externalResource(source ExternalSource, root any) (string, error) {
+	if textAt(root, externalScopePath(source.Event)...) != source.Scope {
 		return "", ErrUnauthorized
 	}
 	var resource string
@@ -99,12 +97,6 @@ func externalResource(source ExternalSource, root any, l Limits) (string, error)
 			return "", ErrInvalid
 		}
 		resource = source.ResourceURLPrefix + string(id.(json.Number))
-	case "webhook":
-		value, found := lookup(root, source.URLPath, l)
-		if !found {
-			return "", ErrInvalid
-		}
-		resource, _ = value.(string)
 	default:
 		return "", ErrInvalid
 	}
@@ -127,14 +119,10 @@ func parseExternalEvent(source ExternalSource, delivery string, payload []byte, 
 		return Event{}, ErrInvalid
 	}
 	action := nativeAction(source.Event, object)
-	if source.Event == "webhook" {
-		if !slices.Contains(source.Types, action) {
-			return Event{}, ErrUnauthorized
-		}
-	} else if !slices.Contains(providerNativeEvents(source.Event), action) {
+	if !slices.Contains(providerNativeEvents(source.Event), action) {
 		return Event{}, ErrInvalid
 	}
-	if _, err := externalResource(source, root, l); err != nil {
+	if _, err := externalResource(source, root); err != nil {
 		return Event{}, err
 	}
 	return Event{SourceID: source.ID, DeliveryID: delivery, Name: source.Event, Action: action,
@@ -143,6 +131,14 @@ func parseExternalEvent(source ExternalSource, delivery string, payload []byte, 
 
 func subscriptionIdentity(s Subscription, event Event) (EventIdentity, error) {
 	identity := IdentityOf(event)
+	if s.Compiler != nil && notificationFamily(s.Source.Event) {
+		root, err := boundedJSON(event.Payload, DefaultLimits().MaxEventBytes, DefaultLimits())
+		if err != nil || !notificationSourceMatches(*s.Compiler, event.Name, event.Action, root) {
+			return EventIdentity{}, ErrInvalid
+		}
+		identity.Name = s.Source.Event
+		return identity, nil
+	}
 	if s.Compiler != nil && commandFamily(s.Source.Event) {
 		root, err := boundedJSON(event.Payload, DefaultLimits().MaxEventBytes, DefaultLimits())
 		if err != nil {

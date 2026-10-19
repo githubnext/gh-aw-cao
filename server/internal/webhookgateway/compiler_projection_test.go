@@ -108,7 +108,7 @@ func TestCompilerProjectionDoesNotExpandSupportedFamilies(t *testing.T) {
 	}
 }
 
-func TestCompilerGenericWebhookDeclarationsUseDistinctIdentifiers(t *testing.T) {
+func TestCompilerGenericWebhookDeclarationsRemainNonactivating(t *testing.T) {
 	security := *compilerBatchJobs(t, "one")[0].Subscription.Compiler
 	release := security
 	release.Event, release.Repos = "webhook", nil
@@ -134,8 +134,8 @@ func TestCompilerGenericWebhookDeclarationsUseDistinctIdentifiers(t *testing.T) 
 			}
 			mapping := NewTriggerMapping()
 			err = mapping.AddWorkflow(append([]byte("# gh-aw-manifest: "), manifest...), security.Dispatch.Workflow, DefaultLimits())
-			if err != nil || len(mapping.ByEvent) != len(scenario.declarations) {
-				t.Fatal("distinct generic identifiers conflicted in discovery", err)
+			if !errors.Is(err, ErrInvalid) || len(mapping.ByEvent) != 0 {
+				t.Fatal("excluded generic family entered discovery", err)
 			}
 		})
 	}

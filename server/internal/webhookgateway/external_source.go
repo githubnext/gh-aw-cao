@@ -18,8 +18,6 @@ type ExternalSource struct {
 	ResourceURLPrefix        string    `json:"resourceUrlPrefix"`
 	Scope                    string    `json:"scope,omitempty"`
 	CollectionID             string    `json:"collectionId,omitempty"`
-	Types                    []string  `json:"types,omitempty"`
-	URLPath                  string    `json:"urlPath,omitempty"`
 	SecretEnv                string    `json:"secretEnv"`
 	DestinationRepositoryIDs []int64   `json:"destinationRepositoryIds"`
 	ExpiresAt                time.Time `json:"expiresAt"`
@@ -40,11 +38,9 @@ func (s *ExternalSource) UnmarshalJSON(data []byte) error {
 	if strictDecode(data, &source) != nil {
 		return ErrInvalid
 	}
-	for _, field := range []string{"scope", "collectionId", "types", "urlPath"} {
+	for _, field := range []string{"collectionId"} {
 		_, present := fields[field]
-		forbidden := source.Event == "webhook" && (field == "scope" || field == "collectionId") ||
-			source.Event != "webhook" && (field == "types" || field == "urlPath") ||
-			source.Event != "azure_devops_issue" && field == "collectionId"
+		forbidden := source.Event != "azure_devops_issue"
 		if present && forbidden {
 			return ErrInvalid
 		}
@@ -54,9 +50,6 @@ func (s *ExternalSource) UnmarshalJSON(data []byte) error {
 }
 
 var externalSecretName = regexp.MustCompile(`^CAO_GATEWAY_SOURCE_[A-Z0-9_]+$`)
-var genericTypePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$`)
-
-func genericWebhookType(value string) bool { return genericTypePattern.MatchString(value) }
 
 func eventProvider(event string) string {
 	switch event {
@@ -66,14 +59,12 @@ func eventProvider(event string) string {
 		return "linear"
 	case "azure_devops_issue":
 		return "azure-devops"
-	case "webhook":
-		return "webhook"
 	default:
 		return ""
 	}
 }
 
-func providerEvent(event string) bool { return event != "webhook" && eventProvider(event) != "" }
+func providerEvent(event string) bool { return eventProvider(event) != "" }
 
 func validateExternalSource(source ExternalSource) error {
 	if !identifier(source.ID) || len(source.ID) > 64 || source.ID == "." || source.ID == ".." ||
@@ -91,30 +82,13 @@ func validateExternalSource(source ExternalSource) error {
 		}
 		seen[repository] = true
 	}
-	if source.Event == "webhook" {
-		if source.Scope != "" || source.CollectionID != "" || len(source.Types) == 0 || len(source.Types) > 128 {
-			return ErrInvalid
-		}
-		if source.URLPath == "" || len(source.URLPath) > 256 {
-			return ErrInvalid
-		}
-		if _, err := pointer(source.URLPath, DefaultLimits()); err != nil {
-			return err
-		}
-		types := make(map[string]bool)
-		for _, name := range source.Types {
-			if !genericWebhookType(name) || types[name] {
-				return ErrInvalid
-			}
-			types[name] = true
-		}
-	} else if strings.TrimSpace(source.Scope) == "" || len(source.Scope) > 256 ||
+	if strings.TrimSpace(source.Scope) == "" || len(source.Scope) > 256 ||
 		strings.ContainsAny(source.Scope, "\r\n") || strings.ContainsAny(source.CollectionID, "\r\n") ||
-		len(source.Types) != 0 || source.URLPath != "" || len(source.CollectionID) > 256 ||
+		len(source.CollectionID) > 256 ||
 		(source.Event == "azure_devops_issue") != (strings.TrimSpace(source.CollectionID) != "") {
 		return ErrInvalid
 	}
-	if source.Event != "webhook" && !validExternalResource(source, source.ResourceURLPrefix+"1") {
+	if !validExternalResource(source, source.ResourceURLPrefix+"1") {
 		// Linear uses an issue identifier rather than an integer.
 		if source.Event != "linear_issue" || !validExternalResource(source, source.ResourceURLPrefix+"APP-1") {
 			return ErrInvalid
@@ -178,9 +152,6 @@ func externalScopePath(event string) []string {
 func externalDeclarationMatches(source ExternalSource, trigger CompilerTrigger) bool {
 	if source.Event != trigger.Event || trigger.SchemaVersion != 2 {
 		return false
-	}
-	if trigger.Event == "webhook" {
-		return len(trigger.Types) == 1 && slices.Contains(source.Types, trigger.Types[0])
 	}
 	for _, condition := range trigger.Conditions {
 		if reflect.DeepEqual(condition.Path, externalScopePath(trigger.Event)) {

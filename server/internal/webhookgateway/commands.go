@@ -58,6 +58,7 @@ func commandFamily(event string) bool { return event == "slash_command" || event
 var commandToken = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*`)
 var commandPattern = regexp.MustCompile(`^(\*|[^/*][^/*]*\*?)$`)
 var githubServerOrigin = regexp.MustCompile(`^https://[a-z0-9.-]+(:[1-9][0-9]*)?(/[a-zA-Z0-9._~%+-]+)*$`)
+var githubCommitID = regexp.MustCompile(`^[a-f0-9]{40}$`)
 
 func commandWhitespace(r rune) bool {
 	return r >= '\t' && r <= '\r' || r == ' ' || r == '\u00a0' || r == '\u1680' ||
@@ -179,8 +180,22 @@ func commandMatch(t CompilerTrigger, native string, root any) (semantic, literal
 			continue
 		}
 		if native == "issue_comment" {
-			pr := at(root, "issue", "pull_request") != nil
-			if pr != (event == "pull_request_comment") {
+			issue, ok := at(root, "issue").(map[string]any)
+			if !ok {
+				continue
+			}
+			pr, exists := issue["pull_request"]
+			_, object := pr.(map[string]any)
+			if event == "issue_comment" && exists || event == "pull_request_comment" && (!exists || !object) {
+				continue
+			}
+		}
+		if event == "issues" {
+			issue, ok := at(root, "issue").(map[string]any)
+			if !ok {
+				continue
+			}
+			if _, exists := issue["pull_request"]; exists {
 				continue
 			}
 		}
@@ -222,7 +237,14 @@ func validGitHubServerURL(origin string) bool {
 
 func commandURLParts(s Subscription, text, semantic string) (string, string, bool) {
 	definition, ok := commandEvents[semantic]
-	if !ok || !validGitHubServerURL(s.Source.ServerURL) {
+	if !ok {
+		return "", "", false
+	}
+	return githubResourceParts(s, text, definition.kind, definition.anchor, false)
+}
+
+func githubResourceParts(s Subscription, text, kind, anchor string, commit bool) (string, string, bool) {
+	if !validGitHubServerURL(s.Source.ServerURL) || len(text) > 4096 {
 		return "", "", false
 	}
 	parsed, err := url.Parse(text)
@@ -233,28 +255,20 @@ func commandURLParts(s Subscription, text, semantic string) (string, string, boo
 		return "", "", false
 	}
 	parts := strings.Split(strings.TrimPrefix(parsed.Path, base.Path+"/"), "/")
-	if len(parts) != 4 || !RepositoryNameOK(parts[0]+"/"+parts[1]) || parts[2] != definition.kind ||
-		!regexpDecimalID.MatchString(parts[3]) {
+	if len(parts) != 4 || !RepositoryNameOK(parts[0]+"/"+parts[1]) || parts[2] != kind {
 		return "", "", false
 	}
-	number, err := strconv.ParseInt(parts[3], 10, 64)
-	if err != nil || number > 9007199254740991 {
+	if commit && !githubCommitID.MatchString(parts[3]) || !commit && !validResourceNumber(parts[3]) {
 		return "", "", false
 	}
-	if definition.anchor == "" {
+	if anchor == "" {
 		if parsed.Fragment != "" || strings.Contains(text, "#") {
 			return "", "", false
 		}
-	} else if !strings.HasPrefix(parsed.Fragment, definition.anchor) ||
-		!regexpDecimalID.MatchString(strings.TrimPrefix(parsed.Fragment, definition.anchor)) ||
+	} else if !strings.HasPrefix(parsed.Fragment, anchor) ||
+		!validResourceNumber(strings.TrimPrefix(parsed.Fragment, anchor)) ||
 		parsed.RawFragment != "" {
 		return "", "", false
-	}
-	if definition.anchor != "" {
-		id, err := strconv.ParseInt(strings.TrimPrefix(parsed.Fragment, definition.anchor), 10, 64)
-		if err != nil || id > 9007199254740991 {
-			return "", "", false
-		}
 	}
 	return parts[0] + "/" + parts[1], parts[3], true
 }

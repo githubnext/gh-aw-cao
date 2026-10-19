@@ -49,9 +49,6 @@ func TestExternalPublishedRuntimeInteroperability(t *testing.T) {
 					state := at(root, "resource", "fields", "System.State").(map[string]any)
 					state["oldValue"], state["newValue"] = "Closed", "Active"
 				}
-				if subscription.Source.Event == "webhook" {
-					root["type"] = subscription.Compiler.Types[0]
-				}
 				jobs := []Job{externalJob(t, policy, subscription, root, "one"), externalJob(t, policy, subscription, root, "two")}
 				payload, err := BuildDispatchBatch(jobs)
 				if err != nil {
@@ -73,7 +70,6 @@ const normalized = normalizeWebhookContext(request.client_payload.aw_context);
 assert.equal(normalized.items.length, 1);
 assert.equal(normalized.items[0].repo, '');
 assert.equal(normalized.items[0].url, normalized.webhook.deliveries[0].payload.url);
-if (normalized.webhook.event === 'webhook') assert.equal(normalized.items[0].item_number, '');
 for (const invalid of [
   {...event.client_payload, _gateway: {}},
   {...event.client_payload, aw_context: {...event.client_payload.aw_context, items: []}},

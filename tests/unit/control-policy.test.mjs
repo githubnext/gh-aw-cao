@@ -86,6 +86,10 @@ test("webhook discovery is explicitly scoped and projects bind one enrolled repo
   assert.equal(parsed["control-plane"]["webhook-gateway"].enabled, false);
   assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateSecurity, true);
   assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateCommands, undefined);
+  assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateNotifications, undefined);
+  const notifications = structuredClone(document);
+  notifications["control-plane"]["webhook-gateway"].discovery.activateNotifications = true;
+  assert.equal(parsePolicy(JSON.stringify(notifications))["control-plane"]["webhook-gateway"].discovery.activateNotifications, true);
   const commands = structuredClone(document);
   commands["control-plane"]["webhook-gateway"].discovery.activateCommands = true;
   commands["control-plane"]["webhook-gateway"].discovery.serverUrl = "https://github.com";
@@ -108,6 +112,8 @@ test("webhook discovery is explicitly scoped and projects bind one enrolled repo
     g => { g.discovery.extraAuthority = true; },
     g => { g.discovery.activateCommands = null; },
     g => { g.discovery.activateCommands = "true"; },
+    g => { g.discovery.activateNotifications = null; },
+    g => { g.discovery.activateNotifications = "true"; },
     g => { g.discovery.repositories[0].allowLabelRemoval = true; },
     g => { g.discovery.repositories[0].allowLabelRemoval = null; },
     g => { g.discovery.serverUrl = "https://github.com/"; },
@@ -142,7 +148,7 @@ test("external webhook sources require reviewed destination, native scope, and r
       },
     },
   };
-  assert.equal(parsePolicy(JSON.stringify(document))["control-plane"]["webhook-gateway"].externalSources.length, 4);
+  assert.equal(parsePolicy(JSON.stringify(document))["control-plane"]["webhook-gateway"].externalSources.length, 3);
   assert.equal(schema.$defs.webhookGateway.properties.externalSources.items.$ref, "#/$defs/webhookExternalSource");
   for (const mutate of [
     g => { delete g.discovery; },
@@ -165,11 +171,9 @@ test("external webhook sources require reviewed destination, native scope, and r
     g => { g.externalSources[1].resourceUrlPrefix = "https://linear.app/issue/"; },
     g => { delete g.externalSources[2].collectionId; },
     g => { g.externalSources[2].resourceUrlPrefix = "https://unapproved.example/_apis/wit/workItems/"; },
-    g => { g.externalSources[3].scope = "not-inferred"; },
-    g => { g.externalSources[3].types = ["com.example.release", "com.example.release"]; },
-    g => { g.externalSources[3].types = ["*"]; },
-    g => { g.externalSources[3].urlPath = "/data/~2"; },
-    g => { g.externalSources[3].urlPath = "/data".repeat(33); },
+    g => { g.externalSources[0].event = "webhook"; },
+    g => { g.externalSources[0].types = ["com.example.release"]; },
+    g => { g.externalSources[0].urlPath = "/data/url"; },
   ]) {
     const invalid = structuredClone(document);
     mutate(invalid["control-plane"]["webhook-gateway"]);
