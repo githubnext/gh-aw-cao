@@ -189,6 +189,47 @@ func TestSnapshotDiagnostics(t *testing.T) {
 	}
 }
 
+func TestSnapshotRuntimeSourcesUseServerRegistry(t *testing.T) {
+	store, _ := localSnapshot(t)
+	err := store.WithReadTransaction(t.Context(), func(ctx context.Context, r dashboardstore.Reader) error {
+		for _, name := range []string{
+			"collection-health", "github-quota-usage", "simulation-days",
+			"cli-commands", "cli-command-summary", "cli-command-statuses",
+		} {
+			t.Run(name, func(t *testing.T) {
+				calls := 0
+				sources, _, err := r.ExecuteSQLPlanWithOptions(ctx, nil, []string{name}, dashboardstore.ExecutionOptions{
+					Runtime: func(_ context.Context, requested string) (model.Source, error) {
+						calls++
+						if requested != name {
+							t.Fatalf("wrong runtime source %q", requested)
+						}
+						return model.Source{Source: name, Rows: []model.Row{{"id": name}},
+							Metadata: model.Metadata{"availability": "available", "completeness": "complete", "freshness": "current"}}, nil
+					},
+				})
+				if err != nil || calls != 1 || len(sources[name].Rows) != 1 {
+					t.Fatalf("registered source was not resolved: calls=%d sources=%v err=%v", calls, sources, err)
+				}
+			})
+		}
+		calls := 0
+		_, _, err := r.ExecuteSQLPlanWithOptions(ctx, nil, []string{"$notRegistered"}, dashboardstore.ExecutionOptions{
+			Runtime: func(context.Context, string) (model.Source, error) {
+				calls++
+				return model.Source{}, nil
+			},
+		})
+		if err == nil || calls != 0 {
+			t.Fatalf("unknown root reached the runtime provider: calls=%d err=%v", calls, err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSnapshotRejectsUnsupportedSchemaAndTracksStoreChanges(t *testing.T) {
 	store, path := localSnapshot(t)
 	before, err := store.State(t.Context())

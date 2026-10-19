@@ -69,17 +69,6 @@ type sqlCompiler struct {
 // Structured SQL values are wire projections only; this compiler creates no
 // stored JSON documents and has no row-evaluator fallback.
 func CompileSQL(definitions []Definition, requested []string, resolve SQLSourceResolver) (SQLPlan, error) {
-	if err := Validate(definitions); err != nil {
-		return SQLPlan{}, err
-	}
-	order, err := Dependencies(definitions, requested)
-	if err != nil {
-		return SQLPlan{}, err
-	}
-	index := make(map[string]Definition, len(definitions))
-	for _, definition := range definitions {
-		index[definition.Name] = definition
-	}
 	compiler := sqlCompiler{}
 	relations := map[string]SQLRelation{}
 	load := func(name string) error {
@@ -101,30 +90,16 @@ func CompileSQL(definitions []Definition, requested []string, resolve SQLSourceR
 		relations[name] = compiler.materialize(relation, name, "source", 0)
 		return nil
 	}
-	for _, name := range order {
-		definition, derived := index[name]
-		if !derived {
-			if err := load(name); err != nil {
-				return SQLPlan{}, err
-			}
-			continue
-		}
-		inputs := append([]string{definition.From}, definition.Union...)
-		for _, join := range definition.Joins {
-			inputs = append(inputs, join.Source)
-		}
-		for _, input := range inputs {
-			if _, derived := index[input]; !derived {
-				if err := load(input); err != nil {
-					return SQLPlan{}, err
-				}
-			}
-		}
+	err := WalkPlan(definitions, requested, load, func(definition Definition) error {
 		relation, err := compiler.definition(definition, relations)
 		if err != nil {
-			return SQLPlan{}, fmt.Errorf("query %q: %w", name, err)
+			return fmt.Errorf("query %q: %w", definition.Name, err)
 		}
-		relations[name] = relation
+		relations[definition.Name] = relation
+		return nil
+	})
+	if err != nil {
+		return SQLPlan{}, err
 	}
 	outputs := make(map[string]SQLRelation, len(requested))
 	for _, name := range requested {

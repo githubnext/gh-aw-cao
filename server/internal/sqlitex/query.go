@@ -38,10 +38,6 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 	if err != nil {
 		return nil, metrics, err
 	}
-	index := map[string]query.Definition{}
-	for _, definition := range definitions {
-		index[definition.Name] = definition
-	}
 	roots := map[string]model.Metadata{}
 	cache := map[string][]map[string]any{}
 	evaluator := dashboardquery.NewEvaluator(ctx)
@@ -80,35 +76,17 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 		}
 		return retain(name, rows)
 	}
-	for _, name := range order {
+	err = query.WalkPlan(definitions, requested, loadRoot, func(definition query.Definition) error {
 		if err := ctx.Err(); err != nil {
-			return nil, metrics, err
-		}
-		definition, derived := index[name]
-		if !derived {
-			if err := loadRoot(name); err != nil {
-				return nil, metrics, err
-			}
-			continue
-		}
-		inputs := append([]string{definition.From}, definition.Union...)
-		for _, join := range definition.Joins {
-			inputs = append(inputs, join.Source)
-		}
-		for _, input := range inputs {
-			if _, derived := index[input]; !derived {
-				if err := loadRoot(input); err != nil {
-					return nil, metrics, err
-				}
-			}
+			return err
 		}
 		content, err := json.Marshal(definition)
 		if err != nil {
-			return nil, metrics, err
+			return err
 		}
 		var plan map[string]any
 		if err := json.Unmarshal(content, &plan); err != nil {
-			return nil, metrics, err
+			return err
 		}
 		rows, err := evaluator.Execute(plan, func(input string) ([]map[string]any, error) {
 			rows, exists := cache[input]
@@ -118,12 +96,13 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 			return rows, nil
 		})
 		if err != nil {
-			return nil, metrics, err
+			return err
 		}
 		metrics.QueryCount++
-		if err := retain(name, rows); err != nil {
-			return nil, metrics, err
-		}
+		return retain(definition.Name, rows)
+	})
+	if err != nil {
+		return nil, metrics, err
 	}
 	output := make(map[string]model.Source, len(requested))
 	for _, name := range requested {
@@ -188,9 +167,7 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 			"as-of": state.EvaluatedAt.Format("2006-01-02T15:04:05.999999999Z07:00"),
 		}}, nil
 	}
-	switch name {
-	case "collection-health", "github-quota-usage", "simulation-days", "$marketplacePackages",
-		"cli-commands", "cli-command-summary", "cli-command-statuses":
+	if postgresx.IsRuntimeSource(name) {
 		if options.Runtime != nil {
 			return options.Runtime(ctx, name)
 		}

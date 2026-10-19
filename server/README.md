@@ -57,7 +57,9 @@ Only loopback listeners are accepted; HTTP is supported locally, with optional
 query, canonical API, diagnostics, revision events, and optional MCP protocols
 remain in use. Queries execute in Go against one consistent SQLite read
 transaction, using the same bounded local Dashboard Language evaluator as
-`gh cao`. Intermediate results are bounded to 200,000 rows and wire results to
+`gh cao`. Both storage paths share the server's query validation, dependency
+traversal, generated runtime-source registry, and source-quality propagation;
+only storage reads and query execution differ. Intermediate results are bounded to 200,000 rows and wire results to
 100,000 rows per source; ordinary continuation pagination remains available. Snapshot
 quality is reported as unknown rather than verified complete or current.
 In-place SQLite commits update revisions and active subscriptions without a

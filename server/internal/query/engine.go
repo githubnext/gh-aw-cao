@@ -168,6 +168,46 @@ func Dependencies(definitions []Definition, requested []string) ([]string, error
 	return order, err
 }
 
+// WalkPlan resolves every root before visiting its dependent definition.
+// The loader owns source authorization, including optional join/union inputs.
+func WalkPlan(definitions []Definition, requested []string, load func(string) error, visit func(Definition) error) error {
+	if err := Validate(definitions); err != nil {
+		return err
+	}
+	order, err := Dependencies(definitions, requested)
+	if err != nil {
+		return err
+	}
+	index := make(map[string]Definition, len(definitions))
+	for _, definition := range definitions {
+		index[definition.Name] = definition
+	}
+	for _, name := range order {
+		definition, derived := index[name]
+		if !derived {
+			if err := load(name); err != nil {
+				return err
+			}
+			continue
+		}
+		inputs := append([]string{definition.From}, definition.Union...)
+		for _, join := range definition.Joins {
+			inputs = append(inputs, join.Source)
+		}
+		for _, input := range inputs {
+			if _, derived := index[input]; !derived {
+				if err := load(input); err != nil {
+					return err
+				}
+			}
+		}
+		if err := visit(definition); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func alias(field SelectedField) string {
 	if field.As != "" {
 		return field.As
