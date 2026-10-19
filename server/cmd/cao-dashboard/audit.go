@@ -16,10 +16,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/audit"
+	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/operational"
 	"github.com/githubnext/gh-aw-cao/server/internal/server"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
+
+var auditCommandLog = debuglogger.New("cao:dashboard:audit")
 
 // newAuditCommand verifies and exports the tamper-evident audit table for
 // compliance evidence and SIEM backfill.
@@ -100,9 +103,9 @@ func verifyAudit(ctx context.Context, store operational.AuditLog, anchors []oper
 		return err
 	}
 	auditLog = auditLog.WithStore(store)
-	attrs := []slog.Attr{slog.Int64("events", result.Events), slog.Int64("first_sequence", result.FirstSequence),
-		slog.Int64("last_sequence", result.LastSequence), slog.String("last_hash", result.LastHash),
-		slog.Int("anchors_checked", result.AnchorsChecked), slog.Int("anchors_expired", result.AnchorsExpired)}
+	attrs := verifyAttrs(result)
+	auditCommandLog.Printf("audit chain verified: events=%d anchors_checked=%d anchors_expired=%d failed=%t",
+		result.Events, result.AnchorsChecked, result.AnchorsExpired, verifyErr != nil)
 	if verifyErr != nil {
 		_ = auditLog.Record(ctx, "audit.verify_failed", audit.Failure, attrs...)
 		return verifyErr
@@ -114,21 +117,32 @@ func verifyAudit(ctx context.Context, store operational.AuditLog, anchors []oper
 	return encoder.Encode(result)
 }
 
+// verifyAttrs describes a verification result as audit record attributes.
+func verifyAttrs(result operational.AuditVerification) []slog.Attr {
+	return []slog.Attr{slog.Int64("events", result.Events), slog.Int64("first_sequence", result.FirstSequence),
+		slog.Int64("last_sequence", result.LastSequence), slog.String("last_hash", result.LastHash),
+		slog.Int("anchors_checked", result.AnchorsChecked), slog.Int("anchors_expired", result.AnchorsExpired)}
+}
+
 func exportAudit(ctx context.Context, store operational.AuditLog, filter operational.AuditFilter, out io.Writer) error {
 	encoder := json.NewEncoder(out)
 	filter.Limit = operational.AuditListLimit
+	exported, pages := 0, 0
 	for {
 		events, err := store.ListAudit(ctx, filter)
 		if err != nil {
 			return err
 		}
+		pages++
 		for _, event := range events {
 			if err := encoder.Encode(event); err != nil {
 				return err
 			}
 			filter.AfterSequence = event.Sequence
+			exported++
 		}
 		if len(events) < filter.Limit {
+			auditCommandLog.Printf("audit export complete: events=%d pages=%d", exported, pages)
 			return nil
 		}
 	}
