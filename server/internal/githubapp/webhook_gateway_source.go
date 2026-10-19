@@ -3,6 +3,8 @@ package githubapp
 import (
 	"context"
 	"encoding/json"
+	"strings"
+	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
@@ -11,6 +13,12 @@ import (
 func (d WebhookGatewayDispatcher) compilerSourcePreflight(ctx context.Context, subscription gateway.Subscription,
 	payload json.RawMessage, destination GatewayRepository,
 ) error {
+	if subscription.Source.External != nil {
+		if !time.Now().Before(subscription.Source.External.ExpiresAt) {
+			return gateway.ErrUnauthorized
+		}
+		return gateway.ValidateBatchDispatchPayload(subscription, payload, gateway.DefaultLimits())
+	}
 	source := destination
 	if subscription.Source.RepositoryID != destination.ID {
 		if d.Receiving == nil {
@@ -30,6 +38,11 @@ func (d WebhookGatewayDispatcher) compilerSourcePreflight(ctx context.Context, s
 	}
 	if source.ID != subscription.Source.RepositoryID || !source.Private || source.Visibility != "private" ||
 		source.Disabled || source.Archived {
+		return gateway.ErrUnauthorized
+	}
+	owner, _, _ := strings.Cut(source.FullName, "/")
+	if !gateway.CompilerOrganizationMatches(*subscription.Compiler, owner, source.OwnerID, source.OwnerType) ||
+		subscription.Compiler.Orgs != nil && source.OwnerID != subscription.Source.OrganizationID {
 		return gateway.ErrUnauthorized
 	}
 	return gateway.CompilerBatchRepository(subscription, payload, source.FullName)

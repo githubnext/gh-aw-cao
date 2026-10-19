@@ -28,11 +28,11 @@ func readWebhook(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 		!validHeader(r.Header, "X-Hub-Signature-256", 71) {
 		return nil, errInvalidWebhook
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, MaxWebhookBodyBytes))
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
+	return readWebhookBody(w, r)
+}
+
+func readWebhookBody(w http.ResponseWriter, r *http.Request) ([]byte, error) {
+	return io.ReadAll(http.MaxBytesReader(w, r.Body, MaxWebhookBodyBytes))
 }
 
 func validHeader(headers http.Header, key string, limit int) bool {

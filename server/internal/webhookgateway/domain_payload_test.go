@@ -3,6 +3,7 @@ package webhookgateway
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -10,7 +11,7 @@ import (
 func TestDomainJobPersistsOnlyCompiledProjectionAndCommonIdentity(t *testing.T) {
 	_, event, job, snapshot := domainFixture(t)
 	if string(job.Payload) != `{"inputs":{"action":"edited"},"ref":"main"}` ||
-		job.Event != IdentityOf(event) {
+		!reflect.DeepEqual(job.Event, IdentityOf(event)) {
 		t.Fatalf("job did not compile the projection: %+v", job.Event)
 	}
 	encoded, err := json.Marshal(job)

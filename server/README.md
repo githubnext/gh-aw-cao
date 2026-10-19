@@ -345,8 +345,9 @@ uses exactly `client_payload:{schema_version:2,aw_context:{webhook:{event,
 deliveries:[{delivery_id,payload},...]}}}`. All distinct deliveries are retained;
 the compiler derives the unique affected-resource array at `aw_context.items`.
 It does not trust a supplied item list or infer latest state. Compiler security
-payloads contain exactly `{"url":"<canonical GitHub API alert URL>","type":["<original action>"]}`
-under the required `resource-url-types/v1` projection policy. Native alert bodies,
+payloads require `{"url":"<canonical GitHub API alert URL>","type":["<original action>"]}`
+plus only declared matching `filters` when predicates exist,
+under the required `resource-url-types-filters/v1` projection policy. Native alert bodies,
 URL-only legacy payloads, and additional resource details are rejected.
 Approved artifact revision
 evidence stays in immutable durable provenance and the typed compiler-dispatch
@@ -625,7 +626,8 @@ The receiving App needs contents-read
 and the corresponding security-event read permission; the independent dispatch
 App needs contents-write. Each projected security payload contains exactly its
 canonical GitHub API `url` and `type` array containing the original action,
-never raw alerts, severities, resource details, or secret values. Filters run
+plus only explicitly selected matching filter literals, never raw alerts or
+unselected resource details. Filters run
 against the authenticated original delivery before projection. The bridge checks
 the signed source identity at ingress and binds every URL to the authenticated
 current source repository before dispatch, and reapplies selectors. Cross-source
@@ -637,26 +639,108 @@ the complete framed request before deduplication.
 
 Declaration v2 must specify `dispatch.batch:{mode:"same-event",
 deduplicate_by:"delivery_id"}`, exactly
-`dispatch.payload_projection:{"policy":"resource-url-types/v1"}`, and the fixed
+`dispatch.payload_projection:{"policy":"resource-url-types-filters/v1"}`, and the fixed
 context paths in RFC-033 §6.1. Missing/unknown projection policies do not activate.
 All additional resource data must be retrieved inside the workflow through
 configured provider-authenticated readers; notification URLs do not grant access
 or justify attaching credentials to arbitrary origins.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`71d6daa9ceb8b2a5b05cae86d5f1cd0cd22e8490`; optional interoperability tests
+`6f8a4ec5419be5e4e217d5edf0f9ea8f6d34e822`; optional interoperability tests
 execute that commit's actual runtime validator/normalizer, including exact and
-wildcard source selection and rejection of any out-of-selector delivery. An installed
+wildcard source selection, projected filter evidence, and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not
 supported by that compiler and do not autoactivate. See RFC-033 §13.1 for the
 wire contract, test reproduction, and bounded TLA+ result.
-The upstream specification also defines Jira, Linear, Azure DevOps, and generic
-`webhooks: [{type: com.example.release}]` resource notifications. This bridge
-does not support those compiler declarations: artifacts containing them fail
-discovery closed, including mixed security/generic artifacts. Generic identifiers
-do not register or authenticate a source and are not the separate generic
-approved-route contract described above. No receiver support or authority is
-inferred from a declaration.
+Every delivery now follows `resource-url-types-filters/v1`: `url` and `type` are
+required, and `filters` is required only when predicates exist. Its flat keys are
+compiled condition names and its values are nonempty distinct homogeneous scalar
+arrays containing only matching literals actually observed in that delivery.
+Include all shared conditions and one complete matching `any_of` group, never
+cross-combined transition pairs or unselected source-array elements. With no
+predicates, omit `filters`. Old `resource-url-types/v1` inventories are nonactivating.
+
+Optional shared `on.gateway-dispatch.orgs` selects GitHub organizations with
+literal names or `*` patterns (case-insensitive, 1–39 ASCII letters/digits/hyphens/
+stars, no leading/trailing hyphen). Compiled selectors are lowercase/sorted/unique.
+They intersect `repos`, reviewed enrollment and project scope; `*` grants nothing.
+Activation and egress verify actual Organization owner type/ID through authenticated
+source binding, not merely a URL owner name. External triggers ignore this shared
+authoring option and do not receive `orgs` metadata.
+
+### Enrolled Jira, Linear, Azure DevOps, and generic sources
+
+The same compiler-v2 path supports `jira_issue`, `linear_issue`,
+`azure_devops_issue`, and generic `webhook` declarations. Each requires independent
+reviewed `control-plane.webhook-gateway.externalSources` enrollment, managed
+discovery, gateway enablement, and a fresh compiled declaration in an explicitly
+enrolled private destination. This is separate from `activateSecurity`; that flag
+does not grant external source authority. No provider registration or rollout is
+automatic.
+
+Each source has a unique `id` (its `/webhooks/<id>` endpoint), `event`,
+canonical HTTPS `resourceUrlPrefix` ending `/`, `secretEnv`,
+`destinationRepositoryIds` selected only from `discovery.repositories`, and
+`expiresAt`. Provider sources additionally require:
+
+| Family | Reviewed source binding | Native authentication |
+| --- | --- | --- |
+| `jira_issue` | `scope`: project key; prefix `https://TENANT.atlassian.net/rest/api/3/issue/` (API 2 also supported) | `X-Hub-Signature: sha256=<hex HMAC-SHA256 of raw body>`; `X-Atlassian-Webhook-Identifier` |
+| `linear_issue` | `scope`: organization ID; prefix `https://linear.app/WORKSPACE/issue/` | `Linear-Signature` raw hex HMAC-SHA256; `Linear-Delivery`; signed `webhookTimestamp` within one minute |
+| `azure_devops_issue` | `scope`: project ID; `collectionId`: collection ID; collection-qualified canonical work item API prefix | Service-hook HTTPS Basic authentication, username `cao`, password from `secretEnv`; HTTPS-authenticated body `id` |
+
+Azure uses native `workItemId` for updates, never the update/revision ID; version-1
+snapshot fallback requires the upstream contract's snapshot evidence. Azure native
+bodies are protected by HTTPS and Basic authentication, not a claimed provider HMAC.
+Jira resolution/label changelogs, Linear `updatedFrom`, and Azure state/tag deltas
+are interpreted only in the receiver under the compiled normalization policy.
+All established activities survive, including `edited` for updates. Missing or
+ambiguous evidence does not imply a lifecycle transition. Native bodies are
+discarded; only the reference, activities and declared matching literals persist.
+
+Generic enrollment instead requires literal `types` and a reviewed `urlPath`
+JSON Pointer, with no inferred provider scope. Example **policy fragment**, not
+an installed enrollment:
+
+```json
+{
+  "id": "releases",
+  "event": "webhook",
+  "resourceUrlPrefix": "https://events.example.com/releases/",
+  "types": ["com.example.release"],
+  "urlPath": "/data/url",
+  "secretEnv": "CAO_GATEWAY_SOURCE_RELEASES",
+  "destinationRepositoryIds": [11],
+  "expiresAt": "2027-01-01T00:00:00Z"
+}
+```
+
+The generic sender signs the **exact raw JSON body** with HMAC-SHA256 in
+`X-Cao-Signature-256: sha256=<hex>`. The signed object requires a stable string
+`id`, literal `type`, integer `timestamp` in current Unix milliseconds (within five
+minutes), and the canonical HTTPS URL at the enrolled pointer. Original source
+properties used by compiled conditions must be present. This is an explicit
+gateway bridge protocol, not implicit CloudEvents support. Generic batches match
+family plus identifier, retain the complete URL without inferring repo/issue IDs,
+and never fall back to the separate generic approved-route envelope.
+
+Secret names must use `CAO_GATEWAY_SOURCE_...`; put values (32–512 bytes) only in
+the receive process environment. Optional `<secretEnv>_PREVIOUS` permits rotation.
+Dispatch, discover and local roles reject provider secret variables. All source
+routes require HTTPS outside numeric loopback; configure native webhook setup
+explicitly in each provider. Source additions require receiver restart; removal,
+expiry, revision changes and inventory invalidation revoke/fence queued authority.
+Linear responds HTTP 200 only after successful durable admission or filtering;
+storage/policy/authority failures never receive a success acknowledgement.
+
+External source authority is current reviewed enrollment plus native
+authentication, **not** a provider resource-access or visibility probe. References
+are conservatively restricted/private, destinations remain private and freshly
+authorized, and workflows must fetch all other data using authenticated provider
+readers. URLs are neither credentials nor permission grants. See
+`specs/fixtures/webhook-external-deliveries-v2.json` for all four illustrative
+enrollments and `TestExternalGatewayPostgresConformance` for durable local coverage;
+neither establishes hosted provider delivery or deployment.
 
 `projectAssignments` maps an organization project to exactly one enrolled
 repository. It constrains separately approved project subscriptions at admission

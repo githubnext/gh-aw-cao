@@ -30,11 +30,14 @@ func CompilerRepositoryMatches(t CompilerTrigger, repository string) bool {
 	if !RepositoryNameOK(repository) || validateCompilerRepos(t, DefaultLimits()) != nil {
 		return false
 	}
+	owner, _, _ := strings.Cut(strings.ToLower(repository), "/")
+	if !compilerOrgNameMatches(t, owner) {
+		return false
+	}
 	if t.Repos == nil {
 		return true
 	}
 	repository = strings.ToLower(repository)
-	owner, _, _ := strings.Cut(repository, "/")
 	for _, selector := range t.Repos {
 		if selector == repository || selector == owner+"/*" {
 			return true

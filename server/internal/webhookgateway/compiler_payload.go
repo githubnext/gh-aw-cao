@@ -12,10 +12,19 @@ func validateCompilerSubscription(s Subscription, l Limits) error {
 	t := s.Compiler
 	id := strings.TrimSuffix(strings.TrimPrefix(t.Dispatch.Workflow, ".github/workflows/"), ".lock.yml")
 	if t.SchemaVersion != 2 || !identifier(id) || t.Dispatch.Workflow != ".github/workflows/"+id+".lock.yml" ||
-		s.Source.ID != CompilerSourceID || SecurityEventPermission(t.Event) == "" || t.Event != s.Source.Event ||
-		s.Source.RepositoryID <= 0 || t.Repos == nil && s.Source.RepositoryID != s.Destination.RepositoryID ||
+		t.Event != s.Source.Event ||
 		s.Destination.Kind != "repository_dispatch" || s.Destination.EventType != t.Dispatch.EventType ||
-		len(s.Destination.Fields) != 0 || len(s.Source.ProjectIDs) != 0 ||
+		len(s.Destination.Fields) != 0 || len(s.Source.ProjectIDs) != 0 {
+		return ErrInvalid
+	}
+	if s.Source.External != nil {
+		if !externalDeclarationMatches(*s.Source.External, *t) ||
+			!slices.Contains(s.Source.External.DestinationRepositoryIDs, s.Destination.RepositoryID) {
+			return ErrInvalid
+		}
+	} else if s.Source.ID != CompilerSourceID || SecurityEventPermission(t.Event) == "" ||
+		t.Orgs != nil && s.Source.OrganizationID <= 0 ||
+		s.Source.RepositoryID <= 0 || t.Repos == nil && s.Source.RepositoryID != s.Destination.RepositoryID ||
 		s.Source.RequiredPermissions[SecurityEventPermission(t.Event)] != "read" ||
 		s.Source.RequiredPermissions["contents"] != "read" {
 		return ErrInvalid
@@ -69,8 +78,14 @@ func positiveSafeInteger(value any) bool {
 }
 
 func buildCompilerDispatchPayload(s Subscription, event Event, root any, l Limits) (json.RawMessage, error) {
+	if s.Source.External != nil {
+		return buildExternalDispatchPayload(s, event, root, l)
+	}
 	payload, err := compilerProjection(root, event, l)
 	if err != nil {
+		return nil, err
+	}
+	if err := addCompilerFilters(payload, *s.Compiler, root); err != nil {
 		return nil, err
 	}
 	if !validCompilerNotification(s, payload, event.Action, true) {
@@ -119,12 +134,21 @@ func validateCompilerProperties(job Job, properties map[string]any, l Limits, bi
 	if !validCompilerNotification(s, root, job.Event.Action, bindIdentity) {
 		return ErrInvalid
 	}
+	if bindIdentity && s.Source.External != nil {
+		activities, ok := notificationActivities(root)
+		if !ok || !slices.Equal(activities, job.Event.Activities) {
+			return ErrInvalid
+		}
+	}
 	return nil
 }
 
 func validCompilerNotification(s Subscription, payload map[string]any, action string, bindIdentity bool) bool {
+	if s.Source.External != nil {
+		return validExternalNotification(s, payload)
+	}
 	activities, ok := payload["type"].([]any)
-	if len(payload) != 2 || !validCompilerAlertURL(s.Source.Event, payload["url"]) ||
+	if !validCompilerFilters(*s.Compiler, payload) || !validCompilerAlertURL(s.Source.Event, payload["url"]) ||
 		!ok || len(activities) != 1 {
 		return false
 	}
@@ -141,6 +165,11 @@ func compilerActivity(event, action string) bool {
 		return slices.Contains([]string{"appeared_in_branch", "closed_by_user", "created", "fixed", "reopened", "reopened_by_user", "updated_assignment"}, action)
 	case "dependabot_alert":
 		return slices.Contains([]string{"assignees_changed", "auto_dismissed", "auto_reopened", "created", "dismissed", "fixed", "reintroduced", "reopened", "withdrawn"}, action)
+	case "jira_issue", "linear_issue", "azure_devops_issue":
+		return slices.Contains([]string{"opened", "edited", "closed", "reopened", "labeled", "unlabeled", "deleted"}, action) ||
+			event == "azure_devops_issue" && action == "restored"
+	case "webhook":
+		return genericWebhookType(action)
 	default:
 		return false
 	}

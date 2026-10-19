@@ -215,7 +215,7 @@ assert.equal(context.items.length, 1);
 assert.equal(context.items[0].item_number, '42');
 assert.equal(context.items[0].repo, 'approved/exact');
 const projection = request.client_payload.aw_context.webhook.deliveries[0].payload;
-assert.deepEqual(Object.keys(projection).sort(), ['type', 'url']);
+assert.deepEqual(Object.keys(projection).sort(), ['filters', 'type', 'url']);
 assert.deepEqual(projection.type, ['created']);
 const subscription = JSON.parse(process.env.GH_AW_WEBHOOK_SUBSCRIPTIONS)[0];
 for (const activity of subscription.types) {
@@ -234,9 +234,9 @@ for (const invalid of [
   rejected.client_payload.aw_context.webhook.deliveries[1].payload = invalid;
   assert.throws(() => validateWebhook(rejected));
 }
-for (const payload_projection of [undefined, {}, {policy: 'unknown/v1'},
+for (const payload_projection of [undefined, {}, {policy: 'unknown/v1'}, {policy: 'resource-url-types/v1'},
   {source_path: ['alert', 'url'], target_path: ['url']},
-  {policy: 'resource-url-types/v1', source_path: ['alert', 'url']}]) {
+  {policy: 'resource-url-types-filters/v1', source_path: ['alert', 'url']}]) {
   const subscriptions = JSON.parse(process.env.GH_AW_WEBHOOK_SUBSCRIPTIONS);
   subscriptions[0].dispatch.payload_projection = payload_projection;
   assert.throws(() => validateWebhook(event, {...process.env, GH_AW_WEBHOOK_SUBSCRIPTIONS: JSON.stringify(subscriptions)}));
@@ -291,7 +291,18 @@ const context = normalizeWebhookContext(request.client_payload.aw_context);
 assert.equal(context.items.length, 1);
 assert.equal(context.items[0].repo, process.env.EXPECTED_SOURCE_REPOSITORY);
 assert.deepEqual(context.webhook.deliveries[0].payload.type, ['created']);
-assert.deepEqual(Object.keys(context.webhook.deliveries[0].payload).sort(), ['type', 'url']);
+assert.deepEqual(Object.keys(context.webhook.deliveries[0].payload).sort(), ['filters', 'type', 'url']);
+const selected = JSON.parse(process.env.GH_AW_WEBHOOK_SUBSCRIPTIONS);
+selected[0].orgs = ['bar*', 'foo*'];
+assert.equal(validateWebhook(event, {...process.env, GH_AW_WEBHOOK_SUBSCRIPTIONS: JSON.stringify(selected)}).skipped, false);
+const owner = process.env.EXPECTED_SOURCE_REPOSITORY.split('/')[0];
+selected[0].orgs = [owner];
+const orgEnv = {...process.env, GH_AW_WEBHOOK_SUBSCRIPTIONS: JSON.stringify(selected)};
+assert.equal(validateWebhook(event, orgEnv).skipped, false);
+const otherOrg = JSON.parse(JSON.stringify(event));
+otherOrg.client_payload.aw_context.webhook.deliveries[1].payload.url =
+  'https://api.github.com/repos/' + (owner === 'bar' ? 'foo/one' : 'bar/baz') + '/dependabot/alerts/42';
+assert.throws(() => validateWebhook(otherOrg, orgEnv));
 for (const repository of ['bar/other', 'foobar/one', 'unselected/repo']) {
   const rejected = JSON.parse(JSON.stringify(event));
   rejected.client_payload.aw_context.webhook.deliveries[1].payload.url =

@@ -64,7 +64,16 @@ func authorize(now time.Time, s Subscription, expectedDigest string, event Event
 		return cancel("subscription-revision-changed")
 	}
 	src, dst, grant := s.Source, s.Destination, snapshot.Grant
-	if event.InstallationID != src.InstallationID ||
+	externalID := ""
+	if src.External != nil {
+		externalID = src.ID
+		if !now.Before(src.External.ExpiresAt) {
+			return cancel("source-enrollment-expired")
+		}
+	}
+	if event.SourceID != src.ID || event.Name != src.Event ||
+		snapshot.ExternalSourceID != externalID || grant.ExternalSourceID != externalID ||
+		event.InstallationID != src.InstallationID ||
 		snapshot.SourceInstallationID != src.InstallationID ||
 		snapshot.ReceivingInstallationID != src.InstallationID ||
 		event.RepositoryID != src.RepositoryID || snapshot.SourceRepositoryID != src.RepositoryID ||

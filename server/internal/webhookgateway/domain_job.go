@@ -40,8 +40,12 @@ func NewJob(now time.Time, id string, event Event, s Subscription, digest string
 	if err := json.Unmarshal(data, &frozen); err != nil {
 		return Job{}, ErrInvalid
 	}
+	identity, err := subscriptionIdentity(s, event)
+	if err != nil {
+		return Job{}, err
+	}
 	return Job{ID: id, DeliveryID: event.DeliveryID, Subscription: frozen,
-		SubscriptionDigest: digest, Event: IdentityOf(event), Payload: payload,
+		SubscriptionDigest: digest, Event: identity, Payload: payload,
 		State: Ready, Version: 1, CreatedAt: now, NotBefore: now,
 		ExpiresAt: now.Add(durationSeconds(s.Delivery.TTLSeconds))}, nil
 }

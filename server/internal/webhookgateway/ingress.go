@@ -20,6 +20,7 @@ type Ingress struct {
 	Authorizer Authorizer
 	Limits     Limits
 	Discovery  DiscoveryObserver
+	External   bool
 
 	mu       sync.Mutex
 	revision QueueRevision
@@ -71,9 +72,13 @@ func (h *Ingress) candidates(snapshot PolicySnapshot, event Event) []Subscriptio
 func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, end := gatewayStage(r.Context(), "ingress", r.Header.Get("X-GitHub-Event"))
 	outcome := "invalid"
+	var event Event
 	defer func() { end(outcome) }()
 	respond := func(status int, classification string) {
 		outcome = classification
+		if h.External && event.Name == "linear_issue" && status >= 200 && status < 300 {
+			status = http.StatusOK
+		}
 		w.WriteHeader(status)
 	}
 	if r.Method != http.MethodPost {
@@ -90,7 +95,11 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		respond(http.StatusServiceUnavailable, "unavailable")
 		return
 	}
-	body, err := readWebhook(w, r)
+	readBody := readWebhook
+	if h.External {
+		readBody = readWebhookBody
+	}
+	body, err := readBody(w, r)
 	if err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
@@ -100,6 +109,21 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	var authenticatedPolicy PolicySnapshot
+	var externalSource ExternalSource
+	if h.External {
+		authenticatedPolicy, err = h.Policies.Load(ctx)
+		if err != nil {
+			respond(http.StatusServiceUnavailable, "unavailable")
+			return
+		}
+		var enrolled bool
+		externalSource, enrolled = authenticatedPolicy.ExternalSource(h.SourceID)
+		if !enrolled {
+			respond(http.StatusForbidden, "auth_denied")
+			return
+		}
+	}
 	current, previous, err := h.Secrets.WebhookSecrets(ctx, h.SourceID)
 	if err != nil {
 		respond(http.StatusServiceUnavailable, "unavailable")
@@ -107,13 +131,19 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	_, signatureEnd := gatewayStage(ctx, "signature", r.Header.Get("X-GitHub-Event"))
 	signatureOK := validSignature(body, r.Header.Get("X-Hub-Signature-256"), current, previous)
+	if h.External {
+		event, err = AuthenticateExternal(externalSource, r, body, current, previous, time.Now(), h.Limits)
+		signatureOK = err == nil
+	}
 	if !signatureOK {
 		signatureEnd("auth_denied")
 		respond(http.StatusUnauthorized, "auth_denied")
 		return
 	}
 	signatureEnd("authenticated")
-	event, err := ParseEvent(r.Header.Get("X-GitHub-Delivery"), r.Header.Get("X-GitHub-Event"), body, h.Limits)
+	if !h.External {
+		event, err = ParseEvent(r.Header.Get("X-GitHub-Delivery"), r.Header.Get("X-GitHub-Event"), body, h.Limits)
+	}
 	if err != nil {
 		respond(http.StatusBadRequest, "invalid")
 		return
@@ -139,7 +169,7 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	snapshot, err := h.Policies.Load(ctx)
-	if err != nil {
+	if err != nil || h.External && snapshot.Revision != authenticatedPolicy.Revision {
 		respond(http.StatusServiceUnavailable, "unavailable")
 		return
 	}
@@ -182,10 +212,15 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond(http.StatusBadRequest, "invalid")
 			return
 		}
+		identity, err := subscriptionIdentity(subscription, event)
+		if err != nil {
+			respond(http.StatusBadRequest, "invalid")
+			return
+		}
 		job := Job{
 			ID:         MetadataDigest([]byte(event.SourceID + "\x00" + event.DeliveryID + "\x00" + subscription.ID)),
 			DeliveryID: event.DeliveryID, Subscription: subscription, SubscriptionDigest: revision.Digest,
-			Event: IdentityOf(event), Payload: payload, QueueRevision: snapshot.Revision, State: Ready, Version: 1,
+			Event: identity, Payload: payload, QueueRevision: snapshot.Revision, State: Ready, Version: 1,
 			TraceParent: traceParent,
 			CreatedAt:   now, ExpiresAt: now.Add(time.Duration(subscription.Delivery.TTLSeconds) * time.Second), NotBefore: now,
 		}

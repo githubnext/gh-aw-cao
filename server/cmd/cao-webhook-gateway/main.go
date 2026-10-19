@@ -41,13 +41,23 @@ func main() {
 	}
 }
 
-type environmentSecrets struct{}
+type environmentSecrets struct{ Policies gateway.PolicyProvider }
 
-func (environmentSecrets) WebhookSecrets(context.Context, string) ([]byte, []byte, error) {
-	current := []byte(os.Getenv("CAO_GATEWAY_WEBHOOK_SECRET"))
-	previous := []byte(os.Getenv("CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET"))
-	if len(current) < 32 || (len(previous) > 0 && len(previous) < 32) {
-		return nil, nil, errors.New("gateway webhook secret is missing or too short")
+func (e environmentSecrets) WebhookSecrets(ctx context.Context, id string) ([]byte, []byte, error) {
+	currentName, previousName := "CAO_GATEWAY_WEBHOOK_SECRET", "CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET"
+	if e.Policies != nil && id != "" {
+		policy, err := e.Policies.Load(ctx)
+		if err != nil {
+			return nil, nil, gateway.ErrUnavailable
+		}
+		if source, found := policy.ExternalSource(id); found {
+			currentName, previousName = source.SecretEnv, source.SecretEnv+"_PREVIOUS"
+		}
+	}
+	current := []byte(os.Getenv(currentName))
+	previous := []byte(os.Getenv(previousName))
+	if len(current) < 32 || len(current) > 512 || (len(previous) > 0 && (len(previous) < 32 || len(previous) > 512)) {
+		return nil, nil, errors.New("gateway webhook secret must contain 32 to 512 bytes")
 	}
 	return current, previous, nil
 }
@@ -164,6 +174,14 @@ func run(ctx context.Context, args []string) error {
 }
 
 func validateRoleCredentials(role string) error {
+	if role != "receive" {
+		for _, entry := range os.Environ() {
+			name, value, _ := strings.Cut(entry, "=")
+			if strings.HasPrefix(name, "CAO_GATEWAY_SOURCE_") && value != "" {
+				return errors.New("provider signing credentials belong only in the receiving process")
+			}
+		}
+	}
 	if role == "local" || role == "discover" {
 		for _, name := range []string{"CAO_GATEWAY_RECEIVE_KEY_FILE", "CAO_GATEWAY_DISPATCH_KEY_FILE",
 			"CAO_GATEWAY_WEBHOOK_SECRET", "CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET"} {
@@ -195,7 +213,7 @@ func serve(ctx context.Context, address, certificate, privateKey string, policy 
 			return errors.New("plaintext gateway must listen on numeric loopback behind an HTTPS proxy")
 		}
 	}
-	secrets := environmentSecrets{}
+	secrets := environmentSecrets{Policies: loader}
 	if _, _, err := secrets.WebhookSecrets(ctx, ""); err != nil {
 		return err
 	}
@@ -226,6 +244,15 @@ func serve(ctx context.Context, address, certificate, privateKey string, policy 
 	})
 	sources := make(map[string]bool)
 	slots := make(chan struct{}, 64)
+	for _, source := range policy.Policy.ExternalSources {
+		if _, _, err := secrets.WebhookSecrets(ctx, source.ID); err != nil {
+			return err
+		}
+		sources[source.ID] = true
+		mux.Handle("/webhooks/"+source.ID, boundedIngress(slots, &gateway.Ingress{
+			SourceID: source.ID, External: true, Secrets: secrets, Policies: loader, Queue: queue, Authorizer: authorizer,
+		}))
+	}
 	if policy.Policy.Discovery != nil {
 		managed, ok := loader.(webhookgatewayhost.RegistryLoader)
 		if !ok {

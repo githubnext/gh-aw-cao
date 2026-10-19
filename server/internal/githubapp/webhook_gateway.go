@@ -170,7 +170,7 @@ func (d WebhookGatewayDispatcher) dispatchWithQuota(ctx context.Context, subscri
 	destination := subscription.Destination
 	result := webhookgateway.DispatchResponse{Kind: destination.Kind, TransportOutcome: "not-sent"}
 	if d.Client == nil || d.Client.config.AppID <= 0 || subscription.AppID != d.Client.config.AppID ||
-		subscription.Provider != "github" || webhookgateway.ValidateBatchDispatchPayload(subscription, payload, webhookgateway.DefaultLimits()) != nil {
+		webhookgateway.ValidateBatchDispatchPayload(subscription, payload, webhookgateway.DefaultLimits()) != nil {
 		return result, githubquota.ResponseQuota{}
 	}
 	if subscription.Compiler != nil && (revision == nil || webhookgateway.ValidateCompilerRevision(subscription, *revision) != nil) {

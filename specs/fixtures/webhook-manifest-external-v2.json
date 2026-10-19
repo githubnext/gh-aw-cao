@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "webhook_subscriptions": [
+    {
+      "schema_version": 2,
+      "event": "jira_issue",
+      "provider": "jira",
+      "native_events": ["jira:issue_created", "jira:issue_deleted", "jira:issue_updated"],
+      "activity_normalization": {"policy": "jira-issue/v1"},
+      "types": ["opened", "edited", "closed", "reopened", "labeled", "unlabeled", "deleted"],
+      "conditions": [
+        {"filter": "project", "path": ["issue", "fields", "project", "key"], "operator": "equals", "value_type": "string", "values": ["APP"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "context": {
+          "envelope": "github.event.client_payload",
+          "aw_context": "github.event.client_payload.aw_context",
+          "event": "github.event.client_payload.aw_context.webhook.event",
+          "deliveries": "github.event.client_payload.aw_context.webhook.deliveries",
+          "items": "aw_context.items"
+        },
+        "batch": {"mode": "same-event", "deduplicate_by": "delivery_id"},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 2,
+      "event": "linear_issue",
+      "provider": "linear",
+      "native_events": ["create", "remove", "update"],
+      "activity_normalization": {"policy": "linear-issue/v1"},
+      "types": ["opened", "edited", "closed", "reopened", "labeled", "unlabeled", "deleted"],
+      "conditions": [
+        {"filter": "organization-id", "path": ["organizationId"], "operator": "equals", "value_type": "string", "values": ["linear-org"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "context": {
+          "envelope": "github.event.client_payload",
+          "aw_context": "github.event.client_payload.aw_context",
+          "event": "github.event.client_payload.aw_context.webhook.event",
+          "deliveries": "github.event.client_payload.aw_context.webhook.deliveries",
+          "items": "aw_context.items"
+        },
+        "batch": {"mode": "same-event", "deduplicate_by": "delivery_id"},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 2,
+      "event": "azure_devops_issue",
+      "provider": "azure-devops",
+      "native_events": ["workitem.created", "workitem.deleted", "workitem.restored", "workitem.updated"],
+      "activity_normalization": {"policy": "azure-devops-issue/v1", "closed_states": ["Done"]},
+      "types": ["opened", "edited", "closed", "reopened", "labeled", "unlabeled", "deleted", "restored"],
+      "conditions": [
+        {"filter": "project_id", "path": ["resourceContainers", "project", "id"], "operator": "equals", "value_type": "string", "values": ["azure-project"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "context": {
+          "envelope": "github.event.client_payload",
+          "aw_context": "github.event.client_payload.aw_context",
+          "event": "github.event.client_payload.aw_context.webhook.event",
+          "deliveries": "github.event.client_payload.aw_context.webhook.deliveries",
+          "items": "aw_context.items"
+        },
+        "batch": {"mode": "same-event", "deduplicate_by": "delivery_id"},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 2,
+      "event": "webhook",
+      "types": ["com.example.deploy"],
+      "conditions": [],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "context": {
+          "envelope": "github.event.client_payload",
+          "aw_context": "github.event.client_payload.aw_context",
+          "event": "github.event.client_payload.aw_context.webhook.event",
+          "deliveries": "github.event.client_payload.aw_context.webhook.deliveries",
+          "items": "aw_context.items"
+        },
+        "batch": {"mode": "same-event", "deduplicate_by": "delivery_id"},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 2,
+      "event": "webhook",
+      "types": ["com.example.release"],
+      "conditions": [
+        {"filter": "data.state", "path": ["data", "state"], "operator": "equals", "value_type": "string", "values": ["ready"]}
+      ],
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "payload_projection": {"policy": "resource-url-types-filters/v1"},
+        "context": {
+          "envelope": "github.event.client_payload",
+          "aw_context": "github.event.client_payload.aw_context",
+          "event": "github.event.client_payload.aw_context.webhook.event",
+          "deliveries": "github.event.client_payload.aw_context.webhook.deliveries",
+          "items": "aw_context.items"
+        },
+        "batch": {"mode": "same-event", "deduplicate_by": "delivery_id"},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    }
+  ]
+}

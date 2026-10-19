@@ -127,12 +127,21 @@ func ValidateSubscription(s Subscription, limits Limits) error {
 	if err != nil {
 		return err
 	}
-	if s.SchemaVersion != "gh-aw.webhook-subscription/v1" || s.Provider != "github" ||
+	external := s.Source.External != nil
+	if s.SchemaVersion != "gh-aw.webhook-subscription/v1" ||
+		(!external && s.Provider != "github") || external && s.Provider != eventProvider(s.Source.Event) ||
 		!identifier(s.ID) || !identifier(s.TenantID) || s.AppID <= 0 ||
-		!identifier(s.Source.ID) || !identifier(s.Source.Event) || s.Source.InstallationID <= 0 ||
+		!identifier(s.Source.ID) || !identifier(s.Source.Event) || !external && s.Source.InstallationID <= 0 ||
 		s.Source.RepositoryID < 0 || s.Source.OrganizationID < 0 ||
-		(s.Source.RepositoryID == 0 && s.Source.OrganizationID == 0) ||
+		(!external && s.Source.RepositoryID == 0 && s.Source.OrganizationID == 0) ||
 		s.Destination.InstallationID <= 0 || s.Destination.RepositoryID <= 0 {
+		return ErrInvalid
+	}
+	if external && (validateExternalSource(*s.Source.External) != nil || s.Source.ID != s.Source.External.ID ||
+		s.Source.Event != s.Source.External.Event || s.Compiler == nil ||
+		s.Source.InstallationID != 0 || s.Source.RepositoryID != 0 || s.Source.OrganizationID != 0 ||
+		len(s.Source.ProjectIDs) != 0 || len(s.Source.RequiredPermissions) != 0 ||
+		len(s.Source.IdentityConstraints) != 0) {
 		return ErrInvalid
 	}
 	seen := map[string]bool{}
@@ -297,7 +306,12 @@ func MatchSubscription(s Subscription, event Event, limits Limits) (bool, error)
 	if err != nil {
 		return false, err
 	}
-	parsed, err := ParseEvent(event.DeliveryID, event.Name, event.Payload, l)
+	var parsed Event
+	if s.Source.External != nil {
+		parsed, err = parseExternalEvent(*s.Source.External, event.DeliveryID, event.Payload, l)
+	} else {
+		parsed, err = ParseEvent(event.DeliveryID, event.Name, event.Payload, l)
+	}
 	if err != nil || parsed.InstallationID != event.InstallationID ||
 		parsed.RepositoryID != event.RepositoryID || parsed.OrganizationID != event.OrganizationID ||
 		parsed.Action != event.Action {
@@ -397,6 +411,9 @@ func JobDimensions(j Job) Dimensions {
 		strconv.FormatInt(s.Destination.RepositoryID, 10)
 	source := strconv.FormatInt(s.Source.InstallationID, 10) + ":" +
 		strconv.FormatInt(s.Source.RepositoryID, 10) + ":" + strconv.FormatInt(s.Source.OrganizationID, 10)
+	if s.Source.External != nil {
+		source = "external:" + s.Source.ID
+	}
 	return Dimensions{App: app, Tenant: s.TenantID, Source: source, Destination: destination,
 		Workflow: destination + ":" + s.Destination.Kind + ":" + s.Destination.Workflow + ":" + s.Destination.EventType}
 }

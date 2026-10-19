@@ -64,10 +64,11 @@ func RegistryDigest(control QueueRevision, records []RepositoryInventory) (strin
 			workflows[workflow.Path] = true
 			events := make(map[string]bool)
 			for _, trigger := range workflow.Triggers {
-				if events[trigger.Event] || validateCompilerTrigger(trigger, workflow.Path, id, DefaultLimits()) != nil {
+				key := compilerTriggerKey(trigger)
+				if events[key] || validateCompilerTrigger(trigger, workflow.Path, id, DefaultLimits()) != nil {
 					return "", ErrInvalid
 				}
-				events[trigger.Event] = true
+				events[key] = true
 			}
 		}
 		record.CheckedAt, record.AttemptedAt = time.Time{}, time.Time{}
@@ -132,6 +133,12 @@ func RegistryPolicy(base PolicySnapshot, registry RegistrySnapshot, now time.Tim
 		}
 		for _, workflow := range record.Workflows {
 			for _, trigger := range workflow.Triggers {
+				if eventProvider(trigger.Event) != "" {
+					if err := appendExternalSubscriptions(&base, binding, record, workflow, trigger, now); err != nil {
+						return PolicySnapshot{}, err
+					}
+					continue
+				}
 				if !config.ActivateSecurity || trigger.SchemaVersion != 2 || SecurityEventPermission(trigger.Event) == "" {
 					continue
 				}
@@ -141,7 +148,8 @@ func RegistryPolicy(base PolicySnapshot, registry RegistrySnapshot, now time.Tim
 						continue
 					}
 					sourceRecord, found := available[source.RepositoryID]
-					if !found {
+					owner, _, _ := strings.Cut(source.Repository, "/")
+					if !found || !CompilerOrganizationMatches(trigger, owner, sourceRecord.OwnerID, sourceRecord.OwnerType) {
 						continue
 					}
 					subscription, revision, grant, err := discoveredSecuritySubscription(base.Policy, source, sourceRecord, binding, record, workflow, trigger)

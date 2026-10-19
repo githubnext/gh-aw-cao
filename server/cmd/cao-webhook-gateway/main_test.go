@@ -11,6 +11,20 @@ import (
 	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
 )
 
+func TestProviderSecretsAreReceiveOnly(t *testing.T) {
+	t.Setenv("CAO_GATEWAY_SOURCE_JIRA", strings.Repeat("x", 32))
+	for _, role := range []string{"dispatch", "discover", "local"} {
+		if err := validateRoleCredentials(role); err == nil || strings.Contains(err.Error(), strings.Repeat("x", 32)) {
+			t.Fatal("provider credential escaped receive process or appeared in an error", role)
+		}
+	}
+	t.Setenv("CAO_GATEWAY_RECEIVE_KEY_FILE", "")
+	t.Setenv("CAO_GATEWAY_DISPATCH_KEY_FILE", "")
+	if err := validateRoleCredentials("receive"); err != nil {
+		t.Fatal("receive role rejected its native verification secret", err)
+	}
+}
+
 func TestRoleCredentialIsolation(t *testing.T) {
 	for _, name := range []string{"CAO_GATEWAY_RECEIVE_KEY_FILE", "CAO_GATEWAY_DISPATCH_KEY_FILE",
 		"CAO_GATEWAY_WEBHOOK_SECRET", "CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET"} {

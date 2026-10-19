@@ -177,8 +177,9 @@ func TestCompilerDispatchRechecksCurrentHeadAndWholeArtifact(t *testing.T) {
 					"schema_version": 2, "aw_context": map[string]any{"webhook": map[string]any{
 						"event": trigger.Event, "deliveries": []any{map[string]any{
 							"delivery_id": "delivery", "payload": map[string]any{
-								"url":  "https://api.github.com/repos/" + projectionRepository + "/dependabot/alerts/42",
-								"type": []string{"created"},
+								"url":     "https://api.github.com/repos/" + projectionRepository + "/dependabot/alerts/42",
+								"type":    []string{"created"},
+								"filters": map[string]any{"severity": []string{"critical"}},
 							},
 						}},
 					}},

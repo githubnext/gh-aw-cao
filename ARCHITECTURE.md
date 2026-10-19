@@ -521,9 +521,10 @@ payloads or weakening ingress digest-conflict rejection. RFC-034 defines this
 non-authoritative profile, its TLA+ model, and executable conformance traces.
 
 Receive and dispatch are separate processes and credential domains. Receive
-verifies bounded raw deliveries with HMAC secrets and holds no App private keys.
+verifies bounded raw deliveries with source-specific HMAC secrets (or Azure
+service-hook HTTPS Basic credentials) and holds no App private keys.
 Dispatch holds independent receiving-App read and dispatch-App private keys, but
-no HMAC secret. It primes 30-second admission authorization proofs in the existing
+no ingress credentials. It primes 30-second admission authorization proofs in the existing
 operational `StateStore`, even with an empty queue. One primer loop retains a
 rotating cursor across deadline-limited rounds so slow or failed subscriptions
 cannot always starve later routes. Egress independently rechecks
@@ -603,12 +604,16 @@ Explicit `activateSecurity` delegates only compiler-supported Dependabot and
 code-scanning repository events with batch-capable declaration v2 to compiler
 routes, with private-only live checks,
 event/contents-read permission checks, bounded grants expiring at inventory
-freshness, and exact URL/type-only security notifications under required
-`dispatch.payload_projection: {"policy":"resource-url-types/v1"}`. Missing or
+freshness, and minimal security notifications under required
+`dispatch.payload_projection: {"policy":"resource-url-types-filters/v1"}`. Missing or
 unknown policies and legacy projections fail closed, without a native-body
 fallback. Original deliveries are authenticated, classified, and filtered before
 projection; GitHub `type` contains exactly the original action, bound to durable
-event identity. All additional data must be resolved inside the workflow through
+event identity. Optional `filters` contains only observed matching literals for
+every shared condition and one complete matching alternative, never unselected
+array elements, nested source objects, or cross-combined transition pairs. It is
+omitted without predicates. The old `resource-url-types/v1` policy is nonactivating.
+All additional data must be resolved inside the workflow through
 configured provider-authenticated readers; notification URLs never grant access.
 Canonical HTTPS api.github.com
 alert URLs must agree with signed source repository/number at ingress and
@@ -637,16 +642,24 @@ subscriptions; discovery does not autoactivate Projects. Hand-authored fixtures,
 mock GitHub tests, and separate bounded registry, source-selection and dispatch-batch TLA+ models
 demonstrate local contracts, not installed-compiler or live GitHub acceptance.
 Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
-context paths, same-event/delivery-ID batching, minimal resource URL/type policy,
-and optional source selectors match github/gh-aw#69772 commit 71d6daa. Gateway
+context paths, same-event/delivery-ID batching, minimal URL/type/matching-filter policy,
+and optional source selectors match github/gh-aw#69772 commit 6f8a4ec. Gateway
 `aw_context` contains only `webhook`, never supplied items, provenance, or resource
-details. Context resource identities are derived from canonical URLs. The upstream
-contract covers seven families; this bridge still discovers only Projects and the
-two security families and activates only delegated security subscriptions.
-External providers and the compiler's generic `webhook` family remain unsupported;
-artifacts containing unsupported declarations fail discovery closed, including
-mixed security/generic declarations. No provider normalization evidence is
-forwarded. Incompatible persisted inventories remain nonactivating at the current
+details. Context resource identities are derived from canonical URLs. Discovery
+supports Projects, both security families, Jira, Linear, Azure DevOps, and generic
+`webhook` declarations. Projects remain discovery-only. Reviewed, expiring
+`externalSources` independently binds each external route's family, canonical
+HTTPS resource prefix, provider scope/collection or literal generic identifiers
+and URL pointer, receive-only secret environment name, and explicitly enrolled
+private destination IDs. Enrollment is required even when security delegation is
+disabled; declarations alone never register sources. Source additions require
+restart. Current enrollment plus native authentication establishes external source
+authority, not a live provider resource-access or visibility probe. External
+references are conservatively restricted; current private GitHub destination
+identity, head and whole-lock digest are still independently checked. Source-local
+delivery IDs are namespaced, and generic batches are homogeneous by identifier.
+Native bodies and normalization evidence are never persisted or forwarded.
+Incompatible persisted inventories remain nonactivating at the current
 policy revision. A higher reviewed gateway policy revision atomically discards
 them, fences old ready/claimed work, and permits bounded rediscovery without
 reinterpreting old payloads or expanding authority.
@@ -658,10 +671,22 @@ gates never grant activation or dispatch authority; flat triggers, trigger-local
 singular Projects/security spellings, and explicit workflow/repository-dispatch co-declarations
 are rejected. Generic `webhooks` identifiers require independent reviewed source
 enrollment/authentication and are not the gateway's separate generic approved
-route contract; this change adds neither receiver support nor authority.
-Any future generic receiver must match family plus identifier, keep batches
+route contract. Generic routes match family plus identifier, keep batches
 homogeneous by identifier, and retain the full canonical HTTPS URL without
 inferring repository or issue identity.
+Optional compiler `orgs` is a lowercase/sorted/unique bounded list of GitHub
+organization names or `*` patterns. It intersects `repos`, project scopes and
+reviewed source enrollment, never widens scope or enumerates App inventory.
+Registry activation and live source preflight require authenticated Organization
+owner type/ID, not merely matching URL owner text; external families reject this
+GitHub-only metadata and retain their mandatory native scopes.
+Jira/Linear HMAC and Azure HTTPS Basic authentication are source-specific; Linear
+also checks signed timestamps within one minute and acknowledges durable success
+with HTTP 200. Generic bridges sign the exact body using HMAC-SHA256, require
+signed id/type/timestamp (within five minutes), and select the canonical resource
+URL only through the reviewed JSON Pointer. Receiver and admission policy
+revisions must agree. All derived provider activities, including edited on
+updates, survive projection; immutable activity evidence binds durable jobs.
 Optional runtime interoperability executes that source's actual validator/
 normalizer, including exact/wildcard sources and whole-batch selector rejection,
 not a hosted workflow or an installed compiler.

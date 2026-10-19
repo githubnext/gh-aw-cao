@@ -461,6 +461,35 @@
         }
       }
     },
+    "webhookExternalSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "event", "resourceUrlPrefix", "secretEnv", "destinationRepositoryIds", "expiresAt"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$", "not": { "enum": ["compiler", ".", ".."] } },
+        "event": { "enum": ["jira_issue", "linear_issue", "azure_devops_issue", "webhook"] },
+        "resourceUrlPrefix": { "type": "string", "format": "uri", "maxLength": 2048, "pattern": "^https://[^?#]+/$" },
+        "scope": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "collectionId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "types": { "type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$" } },
+        "urlPath": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^/(?:[^~]|~[01])*$" },
+        "secretEnv": { "type": "string", "maxLength": 128, "pattern": "^CAO_GATEWAY_SOURCE_[A-Z0-9_]+$", "not": { "pattern": "_PREVIOUS$" } },
+        "destinationRepositoryIds": { "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": { "type": "integer", "minimum": 1 } },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "event": { "const": "webhook" } } },
+          "then": { "required": ["types", "urlPath"], "not": { "anyOf": [{ "required": ["scope"] }, { "required": ["collectionId"] }] } },
+          "else": { "required": ["scope"], "not": { "anyOf": [{ "required": ["types"] }, { "required": ["urlPath"] }] } }
+        },
+        {
+          "if": { "properties": { "event": { "const": "azure_devops_issue" } } },
+          "then": { "required": ["collectionId"] },
+          "else": { "not": { "required": ["collectionId"] } }
+        }
+      ]
+    },
     "webhookGateway": {
       "type": "object",
       "additionalProperties": false,
@@ -473,6 +502,7 @@
         "dispatchAppId": { "type": "integer", "minimum": 1 },
         "namespace": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
         "workers": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "externalSources": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/webhookExternalSource" } },
         "discovery": {
           "type": "object",
           "additionalProperties": false,

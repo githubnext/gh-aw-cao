@@ -40,6 +40,7 @@ type GatewayPolicy struct {
 	Workers            int                 `json:"workers"`
 	Discovery          *DiscoveryPolicy    `json:"discovery,omitempty"`
 	ProjectAssignments []ProjectAssignment `json:"projectAssignments,omitempty"`
+	ExternalSources    []ExternalSource    `json:"externalSources,omitempty"`
 }
 
 type PolicySnapshot struct {
@@ -133,7 +134,7 @@ func (l PolicyLoader) Load(ctx context.Context) (PolicySnapshot, error) {
 	if json.Unmarshal(document.ControlPlane.Gateway, &fields) != nil {
 		return PolicySnapshot{}, ErrInvalid
 	}
-	for _, name := range []string{"discovery", "projectAssignments"} {
+	for _, name := range []string{"discovery", "projectAssignments", "externalSources"} {
 		if bytes.Equal(bytes.TrimSpace(fields[name]), []byte("null")) {
 			return PolicySnapshot{}, ErrInvalid
 		}
@@ -198,8 +199,11 @@ func (l PolicyLoader) Load(ctx context.Context) (PolicySnapshot, error) {
 		if err != nil {
 			return PolicySnapshot{}, err
 		}
-		if subscription.Compiler != nil || subscription.Source.ID == CompilerSourceID {
+		if subscription.Compiler != nil || subscription.Source.ID == CompilerSourceID || subscription.Source.External != nil {
 			return PolicySnapshot{}, errors.New("gateway compiler subscriptions require the managed registry")
+		}
+		if _, external := result.ExternalSource(subscription.Source.ID); external {
+			return PolicySnapshot{}, errors.New("gateway source identity conflicts with external enrollment")
 		}
 		if subscription.AppID != policy.DispatchAppID {
 			return PolicySnapshot{}, errors.New("gateway subscription dispatch identity is not approved")
@@ -221,6 +225,11 @@ func (l PolicyLoader) Load(ctx context.Context) (PolicySnapshot, error) {
 	}
 	if l.cache != nil {
 		if l.cache.snapshot.Revision.Revision > 0 {
+			for _, source := range policy.ExternalSources {
+				if _, found := l.cache.snapshot.ExternalSource(source.ID); !found {
+					return PolicySnapshot{}, errors.New("gateway receiving source addition requires restart")
+				}
+			}
 			sources := make(map[string]bool)
 			for _, subscription := range l.cache.snapshot.Subscriptions {
 				sources[subscription.Source.ID] = true
@@ -244,6 +253,9 @@ func validateGatewayPolicy(p GatewayPolicy) error {
 		return errors.New("invalid gateway identity, version, or operational limits")
 	}
 	if err := ValidateDiscoveryPolicy(p); err != nil {
+		return err
+	}
+	if err := validateExternalSources(p); err != nil {
 		return err
 	}
 	return ValidateQueueOptions(p.Queue)

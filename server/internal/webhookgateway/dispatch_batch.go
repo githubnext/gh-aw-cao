@@ -25,6 +25,7 @@ type batchProvenance struct {
 func BatchCompatible(a, b Job) bool {
 	return a.SubscriptionDigest == b.SubscriptionDigest && a.QueueRevision == b.QueueRevision &&
 		a.Event.SourceID == b.Event.SourceID && a.Event.Name == b.Event.Name &&
+		(a.Event.Name != "webhook" || a.Event.Action == b.Event.Action) &&
 		a.Event.InstallationID == b.Event.InstallationID && a.Event.RepositoryID == b.Event.RepositoryID &&
 		a.Event.OrganizationID == b.Event.OrganizationID && reflect.DeepEqual(a.Subscription, b.Subscription)
 }

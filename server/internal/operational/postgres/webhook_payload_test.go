@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 	"time"
 
@@ -38,7 +39,7 @@ func TestWebhookPersistsOnlyCompiledPayloadAndTrustedIdentity(t *testing.T) {
 		t.Fatal("raw unapproved event data persisted")
 	}
 	claimed := claimWebhook(t, q)
-	if claimed.Event != wg.IdentityOf(event) || !bytes.Contains(claimed.Payload, []byte(`"approved":"safe"`)) {
+	if !reflect.DeepEqual(claimed.Event, wg.IdentityOf(event)) || !bytes.Contains(claimed.Payload, []byte(`"approved":"safe"`)) {
 		t.Fatalf("trusted identity or compiled payload lost: %+v", claimed.Event)
 	}
 	dispatchWebhook(t, q, claimed)

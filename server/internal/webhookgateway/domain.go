@@ -37,13 +37,14 @@ type Event struct {
 
 // EventIdentity retains only signed common identities, never the webhook body.
 type EventIdentity struct {
-	SourceID       string `json:"sourceId"`
-	DeliveryID     string `json:"deliveryId"`
-	Name           string `json:"name"`
-	Action         string `json:"action,omitempty"`
-	InstallationID int64  `json:"installationId"`
-	RepositoryID   int64  `json:"repositoryId,omitempty"`
-	OrganizationID int64  `json:"organizationId,omitempty"`
+	SourceID       string   `json:"sourceId"`
+	DeliveryID     string   `json:"deliveryId"`
+	Name           string   `json:"name"`
+	Action         string   `json:"action,omitempty"`
+	InstallationID int64    `json:"installationId"`
+	RepositoryID   int64    `json:"repositoryId,omitempty"`
+	OrganizationID int64    `json:"organizationId,omitempty"`
+	Activities     []string `json:"activities,omitempty"`
 }
 
 // IdentityOf copies the non-payload portion of a verified event.
@@ -85,6 +86,7 @@ type Source struct {
 	ProjectIDs          []string             `json:"projectIds,omitempty"`
 	IdentityConstraints []IdentityConstraint `json:"identityConstraints,omitempty"`
 	RequiredPermissions map[string]string    `json:"requiredPermissions,omitempty"`
+	External            *ExternalSource      `json:"external,omitempty"`
 }
 
 // IdentityConstraint is compiler-declared scalar equality or allowed-value membership,
@@ -170,6 +172,7 @@ type Revision struct {
 
 // AdminGrant is supplied by reviewed control policy, never by the metadata artifact.
 type AdminGrant struct {
+	ExternalSourceID          string    `json:"externalSourceId,omitempty"`
 	SubscriptionID            string    `json:"subscriptionId"`
 	Digest                    string    `json:"digest"`
 	SourceInstallationID      int64     `json:"sourceInstallationId"`
@@ -188,6 +191,7 @@ type AdminGrant struct {
 // AuthorizationSnapshot is fresh shell evidence bound to one claim and next attempt.
 // Accessible=false with Complete=true means observed revocation; incomplete checks defer.
 type AuthorizationSnapshot struct {
+	ExternalSourceID          string     `json:"externalSourceId,omitempty"`
 	CheckedAt                 time.Time  `json:"checkedAt"`
 	ExpiresAt                 time.Time  `json:"expiresAt"`
 	Complete                  bool       `json:"complete"`

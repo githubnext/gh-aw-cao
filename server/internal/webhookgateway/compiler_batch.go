@@ -95,9 +95,11 @@ func validateCompilerBatch(s Subscription, payload json.RawMessage, l Limits) er
 		if err != nil || !ok || !validCompilerNotification(s, object, "", false) {
 			return ErrInvalid
 		}
-		parts := strings.Split(strings.TrimPrefix(object["url"].(string), "https://api.github.com/repos/"), "/")
-		if len(parts) != 5 || !CompilerRepositoryMatches(*s.Compiler, parts[0]+"/"+parts[1]) {
-			return ErrInvalid
+		if s.Source.External == nil {
+			parts := strings.Split(strings.TrimPrefix(object["url"].(string), "https://api.github.com/repos/"), "/")
+			if len(parts) != 5 || !CompilerRepositoryMatches(*s.Compiler, parts[0]+"/"+parts[1]) {
+				return ErrInvalid
+			}
 		}
 	}
 	return nil

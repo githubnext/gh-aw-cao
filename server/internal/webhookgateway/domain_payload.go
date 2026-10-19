@@ -26,8 +26,14 @@ func validTraceParent(value string) bool {
 
 func validEventIdentity(event EventIdentity, subscription Subscription) bool {
 	source := subscription.Source
+	actionOK := event.Action == "" || identifier(event.Action)
+	if source.External != nil {
+		actionOK = genericWebhookType(event.Action) && validExternalActivities(subscription, event.Action, event.Activities)
+	} else if len(event.Activities) != 0 {
+		return false
+	}
 	return event.SourceID == source.ID && event.Name == source.Event &&
-		identifier(event.DeliveryID) && (event.Action == "" || identifier(event.Action)) &&
+		identifier(event.DeliveryID) && actionOK &&
 		event.InstallationID == source.InstallationID &&
 		event.RepositoryID >= 0 && event.OrganizationID >= 0 &&
 		event.RepositoryID == source.RepositoryID &&

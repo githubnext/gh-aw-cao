@@ -105,6 +105,56 @@ test("webhook discovery is explicitly scoped and projects bind one enrolled repo
   }
 });
 
+test("external webhook sources require reviewed destination, native scope, and receive-only secret bindings", () => {
+  const sources = JSON.parse(readFileSync(join(root, "specs/fixtures/webhook-external-deliveries-v2.json"), "utf8")).sources;
+  const document = {
+    version: 1, "gh-aw-version": "v0.92.5",
+    "control-plane": {
+      scope: { "allowed-repositories": ["acme/private"] },
+      "webhook-gateway": {
+        version: 1, enabled: false, revision: 1, receivingAppId: 1, dispatchAppId: 2,
+        namespace: "gateway", workers: 1, artifacts: [], grants: [], externalSources: sources,
+        discovery: { activateSecurity: false, repositories: [
+          { repository: "acme/private", repositoryId: 11, receivingInstallationId: 7, dispatchInstallationId: 8 },
+        ] },
+      },
+    },
+  };
+  assert.equal(parsePolicy(JSON.stringify(document))["control-plane"]["webhook-gateway"].externalSources.length, 4);
+  assert.equal(schema.$defs.webhookGateway.properties.externalSources.items.$ref, "#/$defs/webhookExternalSource");
+  for (const mutate of [
+    g => { delete g.discovery; },
+    g => { g.externalSources = null; },
+    g => { g.externalSources.push(structuredClone(g.externalSources[0])); },
+    g => { g.externalSources[0].secret = "forbidden"; },
+    g => { g.externalSources[0].id = "compiler"; },
+    g => { g.externalSources[0].secretEnv = "GH_TOKEN"; },
+    g => { g.externalSources[0].secretEnv += "_PREVIOUS"; },
+    g => { g.externalSources[1].secretEnv = g.externalSources[0].secretEnv; },
+    g => { g.externalSources[0].expiresAt = null; },
+    g => { g.externalSources[0].destinationRepositoryIds = [99]; },
+    g => { g.externalSources[0].destinationRepositoryIds = [11, 11]; },
+    g => { g.externalSources[0].resourceUrlPrefix = "http://example.atlassian.net/rest/api/3/issue/"; },
+    g => { g.externalSources[0].resourceUrlPrefix = "https://user@example.atlassian.net/rest/api/3/issue/"; },
+    g => { g.externalSources[0].resourceUrlPrefix += "?token=forbidden"; },
+    g => { g.externalSources[0].resourceUrlPrefix = "https://example.atlassian.net/issue/"; },
+    g => { g.externalSources[0].scope = ""; },
+    g => { g.externalSources[0].types = []; },
+    g => { g.externalSources[1].resourceUrlPrefix = "https://linear.app/issue/"; },
+    g => { delete g.externalSources[2].collectionId; },
+    g => { g.externalSources[2].resourceUrlPrefix = "https://unapproved.example/_apis/wit/workItems/"; },
+    g => { g.externalSources[3].scope = "not-inferred"; },
+    g => { g.externalSources[3].types = ["com.example.release", "com.example.release"]; },
+    g => { g.externalSources[3].types = ["*"]; },
+    g => { g.externalSources[3].urlPath = "/data/~2"; },
+    g => { g.externalSources[3].urlPath = "/data".repeat(33); },
+  ]) {
+    const invalid = structuredClone(document);
+    mutate(invalid["control-plane"]["webhook-gateway"]);
+    assert.throws(() => parsePolicy(JSON.stringify(invalid)), undefined, String(mutate));
+  }
+});
+
 function effective(policy, {
   campaignName = "dependabot",
   role = "orchestrator",

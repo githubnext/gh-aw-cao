@@ -9,7 +9,7 @@ import (
 )
 
 const MaxWorkflowArtifactBytes = 8 << 20
-const compilerProjectionPolicy = "resource-url-types/v1"
+const compilerProjectionPolicy = "resource-url-types-filters/v1"
 
 // CompilerCondition preserves gh-aw's typed equality and array traversal paths.
 type CompilerCondition struct {
@@ -54,13 +54,22 @@ type CompilerDispatch struct {
 // CompilerTrigger is the numeric-versioned discovery contract emitted by gh-aw,
 // not the separately approved Subscription or a grant of dispatch authority.
 type CompilerTrigger struct {
-	SchemaVersion int                   `json:"schema_version"`
-	Event         string                `json:"event"`
-	Repos         []string              `json:"repos,omitempty"`
-	Types         []string              `json:"types"`
-	Conditions    []CompilerCondition   `json:"conditions"`
-	AnyOf         [][]CompilerCondition `json:"any_of,omitempty"`
-	Dispatch      CompilerDispatch      `json:"dispatch"`
+	Provider              string                 `json:"provider,omitempty"`
+	NativeEvents          []string               `json:"native_events,omitempty"`
+	ActivityNormalization *ActivityNormalization `json:"activity_normalization,omitempty"`
+	SchemaVersion         int                    `json:"schema_version"`
+	Event                 string                 `json:"event"`
+	Repos                 []string               `json:"repos,omitempty"`
+	Orgs                  []string               `json:"orgs,omitempty"`
+	Types                 []string               `json:"types"`
+	Conditions            []CompilerCondition    `json:"conditions"`
+	AnyOf                 [][]CompilerCondition  `json:"any_of,omitempty"`
+	Dispatch              CompilerDispatch       `json:"dispatch"`
+}
+
+type ActivityNormalization struct {
+	Policy       string   `json:"policy"`
+	ClosedStates []string `json:"closed_states,omitempty"`
 }
 
 type WorkflowTrigger struct {
@@ -123,9 +132,11 @@ func ParseWorkflowManifest(data []byte, workflow string, limits Limits) ([]Workf
 	}
 	for _, item := range items {
 		declaration := item.(map[string]any)
-		if repos, exists := declaration["repos"]; exists {
-			if list, ok := repos.([]any); !ok || len(list) == 0 {
-				return nil, ErrInvalid
+		for _, selector := range []string{"repos", "orgs"} {
+			if values, exists := declaration[selector]; exists {
+				if list, ok := values.([]any); !ok || len(list) == 0 {
+					return nil, ErrInvalid
+				}
 			}
 		}
 		if _, ok := declaration["conditions"].([]any); !ok {
@@ -149,17 +160,19 @@ func ParseWorkflowManifest(data []byte, workflow string, limits Limits) ([]Workf
 	seen := make(map[string]bool)
 	digest := MetadataDigest(data)
 	for _, declaration := range declarations {
-		if err := validateCompilerTrigger(declaration, workflow, id, l); err != nil || seen[declaration.Event] {
+		key := compilerTriggerKey(declaration)
+		if err := validateCompilerTrigger(declaration, workflow, id, l); err != nil || seen[key] {
 			return nil, ErrInvalid
 		}
-		seen[declaration.Event] = true
+		seen[key] = true
 		result = append(result, WorkflowTrigger{ArtifactSHA256: digest, ManifestVersion: 1, Declaration: declaration})
 	}
 	return result, nil
 }
 
 func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) error {
-	if validateCompilerRepos(t, l) != nil {
+	if validateCompilerRepos(t, l) != nil || validateCompilerOrgs(t, l) != nil ||
+		t.AnyOf != nil && len(t.AnyOf) == 0 {
 		return ErrInvalid
 	}
 	d := t.Dispatch
@@ -174,9 +187,12 @@ func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) e
 			return ErrInvalid
 		}
 		switch t.Event {
-		case "dependabot_alert", "code_scanning_alert", "projects_v2_item":
+		case "dependabot_alert", "code_scanning_alert", "projects_v2_item", "jira_issue", "linear_issue", "azure_devops_issue", "webhook":
 		default:
 			return ErrInvalid
+		}
+		if err := validateProviderDeclaration(t); err != nil {
+			return err
 		}
 	} else if d.Batch != nil || d.PayloadProjection != nil {
 		return ErrInvalid
@@ -190,7 +206,11 @@ func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) e
 	}
 	seen := make(map[string]bool)
 	for _, activity := range t.Types {
-		if !identifier(activity) || seen[activity] || t.SchemaVersion == 2 && !compilerActivity(t.Event, activity) {
+		valid := identifier(activity)
+		if t.Event == "webhook" {
+			valid = genericWebhookType(activity) && len(t.Types) == 1
+		}
+		if !valid || seen[activity] || t.SchemaVersion == 2 && !compilerActivity(t.Event, activity) {
 			return ErrInvalid
 		}
 		seen[activity] = true
@@ -213,12 +233,26 @@ func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) e
 			return err
 		}
 	}
+	if t.SchemaVersion == 2 {
+		for _, group := range compilerConditionGroups(t) {
+			for _, condition := range group {
+				if condition.ValueType == "integer" {
+					for _, value := range conditionOperands(condition) {
+						number, err := value.(json.Number).Int64()
+						if err != nil || number < -9007199254740991 || number > 9007199254740991 {
+							return ErrInvalid
+						}
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 
 func validateCompilerConditions(conditions []CompilerCondition, l Limits) error {
 	for _, c := range conditions {
-		if c.Filter == "" || len(c.Filter) > l.MaxPathBytes || c.Operator != "equals" ||
+		if !validCompilerFilterName(c.Filter) || len(c.Filter) > l.MaxPathBytes || c.Operator != "equals" ||
 			len(c.Path) == 0 || len(c.Path) > l.MaxPathSegments || len(c.Values) == 0 {
 			return ErrInvalid
 		}
@@ -232,11 +266,17 @@ func validateCompilerConditions(conditions []CompilerCondition, l Limits) error 
 		if pathBytes > l.MaxPathBytes {
 			return ErrInvalid
 		}
+		seen := make(map[string]bool)
 		for _, raw := range c.Values {
 			value, err := boundedJSON(raw, l.MaxMetadataBytes, l)
 			if err != nil {
 				return err
 			}
+			key := scalarKey(value)
+			if seen[key] {
+				return ErrInvalid
+			}
+			seen[key] = true
 			switch c.ValueType {
 			case "string":
 				if _, ok := value.(string); !ok {
@@ -296,7 +336,7 @@ func (m *TriggerMapping) AddWorkflow(data []byte, workflow string, limits Limits
 		return ErrCapacity
 	}
 	for _, trigger := range triggers {
-		event := trigger.Declaration.Event
+		event := compilerTriggerKey(trigger.Declaration)
 		m.ByEvent[event] = append(m.ByEvent[event], trigger)
 		slices.SortFunc(m.ByEvent[event], func(a, b WorkflowTrigger) int {
 			return strings.Compare(a.Declaration.Dispatch.Workflow, b.Declaration.Dispatch.Workflow)
@@ -318,11 +358,15 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 		return nil, err
 	}
 	object, ok := root.(map[string]any)
-	if !ok || object["action"] != event.Action {
+	if !ok || nativeAction(event.Name, object) != event.Action {
 		return nil, ErrInvalid
 	}
 	var matches []WorkflowTrigger
-	for _, route := range m.ByEvent[event.Name] {
+	key := event.Name
+	if event.Name == "webhook" {
+		key += ":" + event.Action
+	}
+	for _, route := range m.ByEvent[key] {
 		t := route.Declaration
 		if !compilerTriggerMatches(t, root, event.Action) {
 			continue
@@ -333,10 +377,24 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 }
 
 func compilerTriggerMatches(t CompilerTrigger, root any, action string) bool {
-	return slices.Contains(t.Types, action) && compilerConditionsMatch(root, t.Conditions) &&
+	selected := slices.Contains(t.Types, action)
+	if providerEvent(t.Event) {
+		activities := providerActivities(t, root)
+		selected = slices.Contains(t.NativeEvents, action) && slices.ContainsFunc(activities, func(activity string) bool {
+			return slices.Contains(t.Types, activity)
+		})
+	}
+	return selected && compilerConditionsMatch(root, t.Conditions) &&
 		(len(t.AnyOf) == 0 || slices.ContainsFunc(t.AnyOf, func(group []CompilerCondition) bool {
 			return compilerConditionsMatch(root, group)
 		}))
+}
+
+func compilerTriggerKey(t CompilerTrigger) string {
+	if t.Event == "webhook" && len(t.Types) == 1 {
+		return t.Event + ":" + t.Types[0]
+	}
+	return t.Event
 }
 
 func compilerConditionsMatch(root any, conditions []CompilerCondition) bool {

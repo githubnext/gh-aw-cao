@@ -280,7 +280,7 @@ function validateControlPlane(control) {
 function validateWebhookGateway(gateway, scope) {
   const path = "control-plane.webhook-gateway";
   assertMapping(gateway, path);
-  assertKeys(gateway, ["version", "enabled", "revision", "receivingAppId", "dispatchAppId", "namespace", "artifacts", "grants", "queue", "workers", "discovery", "projectAssignments"], path);
+  assertKeys(gateway, ["version", "enabled", "revision", "receivingAppId", "dispatchAppId", "namespace", "artifacts", "grants", "queue", "workers", "discovery", "projectAssignments", "externalSources"], path);
   assertInteger(gateway.version, `${path}.version`, 1, 1);
   assertBoolean(gateway.enabled, `${path}.enabled`);
   for (const key of ["revision", "receivingAppId", "dispatchAppId"]) assertInteger(gateway[key], `${path}.${key}`, 1);
@@ -336,6 +336,7 @@ function validateWebhookGateway(gateway, scope) {
       discoveryRepositories.add(repository.repositoryId);
     }
   }
+  if ("externalSources" in gateway) validateGatewayExternalSources(gateway.externalSources, discoveryRepositories, `${path}.externalSources`);
   if ("projectAssignments" in gateway) {
     if (!Array.isArray(gateway.projectAssignments) || gateway.projectAssignments.length > 128) {
       throw new PolicyError(`${path}.projectAssignments must contain at most 128 entries`);
@@ -388,6 +389,59 @@ function validateWebhookGateway(gateway, scope) {
         assertKeys(rate, ["capacity", "period"], `${path}.queue.rates`);
         assertInteger(rate.capacity, `${path}.queue.rates.capacity`, 1);
         assertInteger(rate.period, `${path}.queue.rates.period`, 1);
+      }
+    }
+  }
+}
+
+function validateGatewayExternalSources(sources, repositories, path) {
+  if (!Array.isArray(sources) || sources.length > 64) throw new PolicyError(`${path} must contain at most 64 sources`);
+  const ids = new Set(), secrets = new Set();
+  for (const source of sources) {
+    assertMapping(source, path);
+    assertKeys(source, ["id", "event", "resourceUrlPrefix", "scope", "collectionId", "types", "urlPath", "secretEnv", "destinationRepositoryIds", "expiresAt"], path);
+    assertString(source.id, `${path}.id`, /^[A-Za-z0-9._-]{1,64}$/);
+    assertOneOf(source.event, `${path}.event`, ["jira_issue", "linear_issue", "azure_devops_issue", "webhook"]);
+    assertString(source.secretEnv, `${path}.secretEnv`, /^CAO_GATEWAY_SOURCE_[A-Z0-9_]+$/);
+    if (["compiler", ".", ".."].includes(source.id) || ids.has(source.id) || secrets.has(source.secretEnv) ||
+        source.secretEnv.length > 128 || source.secretEnv.endsWith("_PREVIOUS")) {
+      throw new PolicyError(`${path} requires distinct source and receive-only secret identities`);
+    }
+    ids.add(source.id);
+    secrets.add(source.secretEnv);
+    assertString(source.expiresAt, `${path}.expiresAt`, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/);
+    if (!Number.isFinite(Date.parse(source.expiresAt))) throw new PolicyError(`${path}.expiresAt must be a timestamp`);
+    if (!Array.isArray(source.destinationRepositoryIds) || source.destinationRepositoryIds.length < 1 ||
+        source.destinationRepositoryIds.length > 64 || new Set(source.destinationRepositoryIds).size !== source.destinationRepositoryIds.length ||
+        source.destinationRepositoryIds.some(id => !Number.isSafeInteger(id) || !repositories.has(id))) {
+      throw new PolicyError(`${path} requires explicitly enrolled destination repositories`);
+    }
+    assertString(source.resourceUrlPrefix, `${path}.resourceUrlPrefix`, /^https:\/\/.{1,2040}\/$/);
+    let prefix;
+    try { prefix = new URL(source.resourceUrlPrefix); } catch { throw new PolicyError(`${path} requires a canonical HTTPS resource prefix`); }
+    if (source.resourceUrlPrefix.length > 2048 || prefix.href !== source.resourceUrlPrefix || prefix.username || prefix.password || prefix.search || prefix.hash ||
+        /[?#\\\s]/.test(source.resourceUrlPrefix)) throw new PolicyError(`${path} requires a canonical HTTPS resource prefix`);
+    if (source.event === "webhook") {
+      if ("scope" in source || "collectionId" in source) throw new PolicyError(`${path} generic sources do not infer provider scope`);
+      assertUniqueStrings(source.types, `${path}.types`, /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/);
+      if (source.types.length < 1 || source.types.length > 128) throw new PolicyError(`${path}.types requires 1 to 128 identifiers`);
+      assertString(source.urlPath, `${path}.urlPath`, /^\/(?:[^~]|~[01])*$/);
+      if (source.urlPath.length > 256 || source.urlPath.split("/").length > 33) throw new PolicyError(`${path}.urlPath exceeds pointer limits`);
+    } else {
+      assertString(source.scope, `${path}.scope`, /^.{1,256}$/);
+      if (!source.scope.trim() || "types" in source || "urlPath" in source) throw new PolicyError(`${path} requires explicit provider scope`);
+      if (source.event === "azure_devops_issue") {
+        assertString(source.collectionId, `${path}.collectionId`, /^.{1,256}$/);
+        if (!source.collectionId.trim() || !(prefix.hostname === "dev.azure.com" || /^[A-Za-z0-9-]+\.visualstudio\.com$/.test(prefix.hostname)) ||
+            !/^\/[A-Za-z0-9_-]+(?:\/(?:[A-Za-z0-9_.-]|%[0-9A-Fa-f]{2})+)?\/_apis\/wit\/work[Ii]tems\/$/.test(prefix.pathname)) {
+          throw new PolicyError(`${path} requires an enrolled Azure collection work item prefix`);
+        }
+      } else if ("collectionId" in source) {
+        throw new PolicyError(`${path}.collectionId is Azure-only`);
+      }
+      if (source.event === "jira_issue" && !/^\/rest\/api\/[23]\/issue\/$/.test(prefix.pathname)) throw new PolicyError(`${path} requires a Jira REST issue prefix`);
+      if (source.event === "linear_issue" && (prefix.origin !== "https://linear.app" || !/^\/[A-Za-z0-9_-]+\/issue\/$/.test(prefix.pathname) || prefix.pathname.startsWith("/issue/"))) {
+        throw new PolicyError(`${path} requires a workspace-qualified Linear issue prefix`);
       }
     }
   }

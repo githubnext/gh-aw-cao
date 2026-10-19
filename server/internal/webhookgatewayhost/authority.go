@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
@@ -70,6 +71,9 @@ func currentSubscription(policy gateway.PolicySnapshot, job gateway.Job) (gatewa
 	for _, subscription := range policy.Subscriptions {
 		if subscription.ID != job.Subscription.ID {
 			continue
+		}
+		if subscription.Source.External != nil && !gateway.ExternalSourceCurrent(policy, subscription, time.Now()) {
+			return gateway.Subscription{}, gateway.Revision{}, gateway.ErrUnauthorized
 		}
 		revision := policy.Revisions[subscription.ID]
 		expected, err := json.Marshal(subscription)
@@ -152,6 +156,9 @@ func (a LiveAuthority) Authorize(ctx context.Context, job gateway.Job) (gateway.
 		DestinationRepositoryID:   subscription.Destination.RepositoryID,
 		CurrentRevision:           revision, Grant: policy.Grants[subscription.ID],
 	}
+	if subscription.Source.External != nil {
+		proof.ExternalSourceID = subscription.Source.ID
+	}
 	proof, err = a.check(ctx, policy, subscription, proof)
 	if err != nil {
 		return gateway.AuthorizationSnapshot{}, err
@@ -190,6 +197,9 @@ func authorityFailure(proof gateway.AuthorizationSnapshot, err error) (gateway.A
 }
 
 func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot, subscription gateway.Subscription, proof gateway.AuthorizationSnapshot) (gateway.AuthorizationSnapshot, error) {
+	if subscription.Source.External != nil {
+		return a.checkExternal(ctx, policy, subscription, proof)
+	}
 	receiver, _, err := a.Receiving.WebhookGatewayInstallation(ctx, subscription.Source.InstallationID)
 	if err != nil {
 		return authorityFailure(proof, err)
@@ -266,7 +276,17 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 		if subscription.Compiler != nil && !gateway.CompilerRepositoryMatches(*subscription.Compiler, source.FullName) {
 			proof.SourceAccessible = false
 		}
+		if subscription.Compiler != nil && subscription.Compiler.Orgs != nil {
+			owner, _, _ := strings.Cut(source.FullName, "/")
+			proof.SourceAccessible = proof.SourceAccessible && source.OwnerType == "Organization" &&
+				strings.EqualFold(owner, receiver.AccountLogin) &&
+				gateway.CompilerOrganizationMatches(*subscription.Compiler, receiver.AccountLogin, receiver.AccountID, receiver.AccountType)
+		}
 	}
+	return a.checkDestination(ctx, policy, subscription, proof, dispatcher.AccountID)
+}
+
+func (a LiveAuthority) checkDestination(ctx context.Context, policy gateway.PolicySnapshot, subscription gateway.Subscription, proof gateway.AuthorizationSnapshot, ownerID int64) (gateway.AuthorizationSnapshot, error) {
 	destination, _, err := a.Dispatch.WebhookGatewayRepository(ctx, subscription.Destination.InstallationID, subscription.Destination.RepositoryID)
 	if err != nil {
 		return authorityFailure(proof, err)
@@ -274,7 +294,7 @@ func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot,
 	proof.DestinationAccessible = proof.DestinationAccessible && destination.ID == subscription.Destination.RepositoryID &&
 		destination.Private && destination.Visibility == "private" &&
 		!destination.Disabled && !destination.Archived && policy.RepositoryAllowed(destination.FullName) &&
-		destination.OwnerID == dispatcher.AccountID
+		destination.OwnerID == ownerID
 	proof.DestinationVisibility = destination.Visibility
 	if subscription.Compiler != nil && proof.SourceAccessible && proof.DestinationAccessible {
 		workflows, ok := a.Dispatch.(WorkflowAuthority)

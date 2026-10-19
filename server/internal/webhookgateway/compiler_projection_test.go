@@ -17,7 +17,7 @@ func TestCompilerProjectionPolicyIsRequiredForEveryDeclaredFamily(t *testing.T) 
 	}
 	for _, trigger := range triggers {
 		t.Run(trigger.Declaration.Event, func(t *testing.T) {
-			for _, policy := range []string{"", "unknown/v1", "resource-url-types/v2"} {
+			for _, policy := range []string{"", "unknown/v1", "resource-url-types/v1", "resource-url-types/v2"} {
 				declaration := trigger.Declaration
 				declaration.Dispatch.PayloadProjection = &CompilerProjection{Policy: policy}
 				if validateCompilerTrigger(declaration, declaration.Dispatch.Workflow, "test", DefaultLimits()) == nil {
@@ -40,9 +40,9 @@ func TestCompilerProjectionPolicyIsRequiredForEveryDeclaredFamily(t *testing.T) 
 	for _, projection := range []string{
 		`{}`, `null`, `{"policy":"unknown/v1"}`,
 		`{"source_path":["alert","url"],"target_path":["url"]}`,
-		`{"policy":"resource-url-types/v1","source_path":["alert","url"]}`,
+		`{"policy":"resource-url-types-filters/v1","source_path":["alert","url"]}`,
 	} {
-		data := strings.ReplaceAll(fixture, `{"policy":"resource-url-types/v1"}`, projection)
+		data := strings.ReplaceAll(fixture, `{"policy":"resource-url-types-filters/v1"}`, projection)
 		if _, err := ParseWorkflowManifest([]byte(data), ".github/workflows/test.lock.yml", DefaultLimits()); err == nil {
 			t.Fatalf("unsupported projection declaration accepted: %s", projection)
 		}
@@ -94,7 +94,7 @@ func TestCompilerMinimalNotificationsRejectMissingAndExtraData(t *testing.T) {
 
 func TestCompilerProjectionDoesNotExpandSupportedFamilies(t *testing.T) {
 	job := compilerBatchJobs(t, "one")[0]
-	for _, event := range []string{"jira_issue", "linear_issue", "azure_devops_issue", "secret_scanning_alert", "webhook"} {
+	for _, event := range []string{"secret_scanning_alert", "unknown"} {
 		trigger := *job.Subscription.Compiler
 		trigger.Event = event
 		trigger.Types = []string{"created"}
@@ -104,7 +104,7 @@ func TestCompilerProjectionDoesNotExpandSupportedFamilies(t *testing.T) {
 	}
 }
 
-func TestCompilerGenericWebhookDeclarationsFailDiscoveryClosed(t *testing.T) {
+func TestCompilerGenericWebhookDeclarationsUseDistinctIdentifiers(t *testing.T) {
 	security := *compilerBatchJobs(t, "one")[0].Subscription.Compiler
 	release := security
 	release.Event, release.Repos = "webhook", nil
@@ -130,8 +130,8 @@ func TestCompilerGenericWebhookDeclarationsFailDiscoveryClosed(t *testing.T) {
 			}
 			mapping := NewTriggerMapping()
 			err = mapping.AddWorkflow(append([]byte("# gh-aw-manifest: "), manifest...), security.Dispatch.Workflow, DefaultLimits())
-			if !errors.Is(err, ErrInvalid) || len(mapping.ByEvent) != 0 {
-				t.Fatal("unsupported compiler declarations produced a partial discovery map", err)
+			if err != nil || len(mapping.ByEvent) != len(scenario.declarations) {
+				t.Fatal("distinct generic identifiers conflicted in discovery", err)
 			}
 		})
 	}
@@ -176,10 +176,13 @@ func TestCompilerFiltersOriginalDeliveryBeforeMinimalProjection(t *testing.T) {
 				Projection map[string]any `json:"payload"`
 			} `json:"client_payload"`
 		}
-		if err := json.Unmarshal(jobs[0].Payload, &stored); err != nil ||
+		decoder := json.NewDecoder(bytes.NewReader(jobs[0].Payload))
+		decoder.UseNumber()
+		if err := decoder.Decode(&stored); err != nil ||
 			!reflect.DeepEqual(stored.ClientPayload.Projection["type"], []any{"created"}) ||
-			len(stored.ClientPayload.Projection) != 2 {
-			t.Fatal("durable payload was not exactly url and original action", err)
+			len(stored.ClientPayload.Projection) != 3 ||
+			!validCompilerFilters(*subscription.Compiler, stored.ClientPayload.Projection) {
+			t.Fatal("durable payload was not exactly URL, original action and matching filter literals", err)
 		}
 		family := strings.TrimSuffix(strings.ReplaceAll(subscription.Source.Event, "_", "-"), "-alert")
 		raw := []byte(`{"action":"created","installation":{"id":10},"organization":{"id":12},

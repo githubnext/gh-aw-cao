@@ -31,7 +31,7 @@ exactly-once workflow execution, and immediate global revocation guarantees.
 ## 2. Architecture and trust boundaries
 
 ```text
-GitHub -- signed bytes --> receive deployment -- atomic admission --> PostgreSQL
+GitHub/providers -- authenticated bytes --> receive -- atomic admission --> PostgreSQL
 trusted revision approval ---------> subscription registry             |
                                                                       v
 GitHub <-- bounded workflow_dispatch -- dispatch deployment <-- fenced claims
@@ -134,15 +134,15 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`71d6daa9ceb8b2a5b05cae86d5f1cd0cd22e8490`, defines a batch-v2 discovery interchange in
+`6f8a4ec5419be5e4e217d5edf0f9ea8f6d34e822`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
 this parser accepts it. Declaration v2 and the runtime envelope below match that
 upstream source. A local interoperability test executes its actual runtime;
 the declaration fixture is hand-authored, not installed-compiler output.
-Section 6.2 defines the private-repository security
-activation bridge. Other compiler event families remain discovery-only.
+Section 6.2 defines the private-repository security activation bridge and
+section 6.2.2 independent external-source enrollment. Projects remain discovery-only.
 
 Workflow dispatch accepts a branch or tag ref, not an arbitrary guarantee of
 execution at the metadata SHA. Use a protected, policy-approved revision
@@ -165,10 +165,11 @@ Manifest `version: 1` carries `webhook_subscriptions`. Its omission or an empty
 array denotes no webhook subscriptions; native triggers MUST NOT be inferred
 as webhook routes. Explicit null is invalid. Each declaration uses numeric
 `schema_version: 1` or `2`, `event`, `types`, `conditions`, optional `any_of`,
-optional v2 security `repos` (section 6.2.1), and
+optional v2 security `repos` and GitHub-only `orgs` (section 6.2.1), provider
+`provider`/`native_events`/`activity_normalization` metadata, and
 `dispatch`. Unrelated top-level manifest fields are permitted; unknown
 declaration, condition, dispatch, or context properties MUST fail closed.
-Duplicate JSON keys, repeated events in one workflow, conflicting workflow
+Duplicate JSON keys, repeated family/identifier pairs in one workflow, conflicting workflow
 identities, and unsupported predicate operations MUST be rejected.
 
 The deterministic mapping indexes original webhook event names to all declared
@@ -198,32 +199,37 @@ Batch-capable v2 MUST declare the following fixed mapping and batching policy:
 ```
 
 Every v2 declaration MUST additionally declare exactly
-`payload_projection: {"policy":"resource-url-types/v1"}`. The complete delivery
-payload is exactly `{"url":"<canonical resource URL>","type":["<activity>"]}`.
+`payload_projection: {"policy":"resource-url-types-filters/v1"}`. The complete delivery
+payload requires `url` and `type`, plus `filters` when predicates exist.
+`filters` MUST be a flat map from compiled condition names to nonempty distinct
+homogeneous scalar arrays. It MUST contain only actual matching literals from
+the authenticated original delivery, accepted by every applicable condition for
+that name, and cover all shared conditions plus one complete matching `any_of`
+alternative. It MUST NOT include unmatched array elements, sibling fields, nested
+source objects, or cross-combined transition pairs. Without predicates it MUST
+be omitted. The old `resource-url-types/v1` policy MUST remain nonactivating.
 GitHub notifications carry the single original action, not a state object.
 Missing or unknown policies, old `source_path`/`target_path` declarations,
 URL-only security payloads, and native Projects bodies MUST reject validation,
 never fall back to raw-body forwarding.
-The upstream [gateway specification](https://github.com/github/gh-aw/blob/71d6daa9ceb8b2a5b05cae86d5f1cd0cd22e8490/docs/src/content/docs/specs/webhook-gateway-specification.md)
+The upstream [gateway specification](https://github.com/github/gh-aw/blob/6f8a4ec5419be5e4e217d5edf0f9ea8f6d34e822/docs/src/content/docs/specs/webhook-gateway-specification.md)
 defines seven event families, including provider-normalized activity arrays and
 the generic `webhook` family.
-This bridge still discovers only Projects and the two security families and
-activates only the explicitly delegated security routes. Projects remain
-nonactivating; external providers and generic compiler declarations remain
-unsupported. Artifacts containing unsupported declarations MUST fail discovery
-closed, including mixed security/generic declarations. No URL or projection
+This bridge discovers all seven families and activates only explicitly delegated
+security routes or independently enrolled external routes. Projects remain
+nonactivating. Unknown families MUST fail the entire artifact closed. No URL or projection
 policy supplies enrollment, permissions, or authority.
 Mixed versions, paths, modes, or unsupported projections MUST reject validation.
 
 Upstream `on.gateway-dispatch.webhooks` entries such as
 `[{type: com.example.release}]` emit `event: "webhook"` with one identifier in `types`.
-Any future receiver integration MUST match family plus identifier, batch only one
+The receiver integration MUST match family plus identifier, batch only one
 identifier, retain the full canonical HTTPS URL without inferring a repository
 or issue ID, and require independent reviewed source enrollment/authentication.
 Generic declarations infer no provider normalization, permissions, registrations,
 or authority. They MUST NOT fall back to this gateway's separate generic approved
-route contract. This change adds no generic receiver support.
-Only explicit v2 declarations may activate through section 6.2. A v1 workflow
+route contract.
+Only explicit v2 declarations may activate through section 6.2 or 6.2.2. A v1 workflow
 MUST NOT silently receive an incompatible batch or fall back to one dispatch
 per event. The hand-authored `webhook-manifest-v2.json` fixture matches the
 inspected source contract; it does not establish installed-compiler support.
@@ -399,9 +405,9 @@ installation/repository. Missing either capability MUST block dispatch.
 
 Security dispatch context MUST use section 13.1's compiler-v2 envelope.
 The current compiler supports Dependabot and code-scanning alerts, not
-secret-scanning declarations. Its only projected payload is
-`{"url":"...","type":["<original action>"]}` from each matching original event's
-`alert.url` and `action`. Both keys MUST be present, with no additional data,
+secret-scanning declarations. Its projected payload contains `url` and
+`type` from each matching original event's `alert.url` and `action`, and only
+the declared matching `filters` when predicates exist. Both reference keys MUST be present,
 and the singleton type MUST belong to the event family and selected declaration.
 Retained notifications MUST bind that type to their immutable original activity.
 The URL MUST be a canonical
@@ -413,8 +419,9 @@ source identity, including explicitly selected cross-repository routes.
 Enterprise API origins are not supported by this bridge.
 Private source identities and predicates are checked before projection, and
 original activity/immutable IDs remain separate durable event identity.
-Raw alerts, secret values, titles, bodies, severities, transition evidence, and
-sender provenance MUST NOT persist or be forwarded. All further resource data
+Raw alerts, unselected resource details, native transition evidence, and
+sender provenance MUST NOT persist or be forwarded. Explicitly compiled
+predicates may retain only their matching scalar literals. All further resource data
 MUST be resolved inside the workflow through a configured provider-authenticated
 reader so the provider enforces access. A URL is a reference, not authority;
 denied or unavailable reads MUST NOT fall back to native webhook content or
@@ -457,7 +464,7 @@ deployment acceptance.
 
 The selector, independent-authority and real PostgreSQL signed-ingress/worker
 cases derive from SR-01–SR-04. They cover exact/wildcard intersection, distinct
-receiving installations, source-only inventories, URL/type-only two-delivery batches
+receiving installations, source-only inventories, minimal URL/type/filter two-delivery batches
 per source, source invalidation and destination withdrawal.
 `WebhookSecuritySources.tla` separately abstracts selector matching as a set of
 sources and exhaustively checks its intersection with enrollment/private state,
@@ -477,6 +484,70 @@ python3 scripts/check-webhook-gateway-model.py --jar "$TLA2TOOLS_JAR" \
 python3 scripts/check-webhook-gateway-model.py --jar "$TLA2TOOLS_JAR" \
   --model specs/tla/WebhookSecuritySources.tla
 ```
+
+#### 6.2.2. Independently enrolled external sources
+
+Reviewed `externalSources` MAY explicitly enroll at most 64 Jira, Linear,
+Azure DevOps, or generic sources. It requires managed discovery but does not
+depend on `activateSecurity`. Each source MUST bind a unique non-reserved route
+`id`, family `event`, canonical HTTPS `resourceUrlPrefix` ending `/`, unique
+receive-only `secretEnv`, nonempty explicitly enrolled `destinationRepositoryIds`,
+and `expiresAt`. Named providers MUST additionally bind their native `scope`:
+Jira project key, Linear organization ID, or Azure project ID and `collectionId`.
+Generic sources MUST instead bind 1–128 literal `types` and the resource `urlPath`
+JSON Pointer; they MUST NOT infer provider identity or normalization.
+`specs/fixtures/webhook-external-deliveries-v2.json` illustrates all four bindings.
+Source additions require restart; declarations MUST NOT register sources.
+
+Jira MUST authenticate raw bytes using native `X-Hub-Signature: sha256=<hex>`
+and use `X-Atlassian-Webhook-Identifier` for retry identity. Linear MUST verify
+native `Linear-Signature` HMAC-SHA256, `Linear-Delivery`, and signed
+`webhookTimestamp` within one minute; durable success/filtering returns HTTP 200.
+Azure service hooks MUST use HTTPS Basic authentication with username `cao`,
+a receive-only password, and body `id`; no native HMAC is claimed.
+Generic bridges MUST sign exact raw bytes using HMAC-SHA256 in
+`X-Cao-Signature-256`, with signed stable `id`, literal `type`, integer Unix
+millisecond `timestamp` within five minutes, and the resource URL at the reviewed
+pointer. This protocol MUST NOT imply CloudEvents/provider registration.
+Secrets MUST be 32–512 bytes, resolved only in receive using
+`CAO_GATEWAY_SOURCE_...` and optional `_PREVIOUS` environment names. Secret values
+MUST NOT enter policy, state, errors, or logs; all other roles reject these variables.
+Authentication and admission MUST bind one unchanged effective policy revision.
+
+The receiver MUST bind native scope and resource identity before original-source
+conditions and projection. Jira issue.self MUST equal the enrolled REST prefix
+plus the same decimal issue.id. Linear MUST use a workspace-qualified canonical
+issue URL and the enrolled organization. Azure MUST bind collection/project IDs
+and use the work item ID, never an update/revision ID; version-1 snapshot fallback
+requires the published contract's evidence. Jira resolution/label changelogs,
+Linear updatedFrom and Azure state/tag deltas MUST follow the declared
+normalization policy, without hydration or guessed state history. All established
+activities MUST survive, including edited for updates. Missing/ambiguous
+transition evidence MUST NOT establish a lifecycle or label transition.
+
+External source authority is current unexpired reviewed enrollment plus native
+authentication, not a live provider resource-access/visibility probe. Source
+GitHub installation/repository/organization IDs remain zero; a separate external
+source ID binds grants and proofs. Source-local delivery IDs MUST be namespaced.
+Each source and generic identifier MUST retain independent tenant/subscription/
+batch identity. Grants MUST expire no later than enrollment or destination
+inventory. Current private GitHub destination authority, head, and whole-lock
+digest MUST still be checked independently. Revocation, expiry, inventory
+invalidation and policy changes MUST fail closed and fence queued authority.
+Native bodies and normalization evidence MUST NOT persist or cross the wire;
+only URLs, activities and declared matching filter literals may remain.
+Conservatively treat external references as restricted/private, never as evidence
+of actual provider visibility. Workflows MUST use authenticated provider readers
+for all additional resource data. URLs grant no access.
+
+Shared compiler `orgs` MAY select only Projects and the two security families,
+with lowercase/sorted/unique organization names or `*` patterns (1–39 ASCII
+letters/digits/hyphens/stars, no leading/trailing hyphen). Patterns are ORed,
+case-insensitively, and intersect `repos`, project scope, conditions, and reviewed
+source enrollment. Even `*` MUST NOT enroll sources. Registry activation and live
+source preflight MUST verify actual authenticated Organization owner type/ID,
+not infer organization authority from URL owner text. External/generic
+declarations MUST NOT receive this GitHub-only metadata.
 
 ## 7. Event subscriptions and generic filters
 
@@ -573,12 +644,14 @@ actual event contract supplies the needed fields. This limitation remains true e
 
 ## 9. Grants at admission and immediately before dispatch
 
-Admission MUST validate receiver/source installation activity, source repository
+For GitHub sources, admission MUST validate receiver/source installation activity, source repository
 membership, applicable event permissions, trusted active subscription revision,
 subscriber/destination installation activity and dispatch capability, source and
 destination immutable identities, visibility/confidentiality policy, and the
 control repository's reviewed rollout policy. These form an intersection, not a
 union. A source installation grant never authorizes a subscriber implicitly.
+External source authority instead follows §6.2.2; current destination checks and
+the reviewed rollout intersection remain mandatory for every source family.
 Root allowed-repository and allowed-owner restrictions apply by intersection,
 not union. Root-scope changes MUST bump the gateway revision because its
 effective policy digest changes; same-revision digest changes conflict.
@@ -627,9 +700,11 @@ private keys. It obtains admission evidence only from fresh trusted proofs.
 The dispatcher alone loads both receiver-App and dispatcher-App private keys:
 the former supports fresh source authorization reads, the latter approved
 destination dispatch. Every egress authorization independently rechecks live
-source/destination installation and repository access, current root-policy
+GitHub destination access, source authority, current root-policy
 scope, exact approved revision, and grant; it MUST NOT reuse an admission proof
-as authority to send. The dispatcher owns token minting and dispatch egress,
+as authority to send. GitHub sources require live source installation/repository
+access; external sources require current reviewed enrollment under §6.2.2,
+without claiming live provider access. The dispatcher owns token minting and dispatch egress,
 not public webhook ingress.
 Both CLI roles are explicit and an unset role fails closed. Receive startup
 rejects either App-key file environment variable; dispatch startup rejects
