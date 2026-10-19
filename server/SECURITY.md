@@ -106,7 +106,7 @@ and health distinguishes an available service from ready data.
 process-only configuration resolved by the deployment's secret manager. They
 are never accepted as hosted command-line flags, returned by APIs, or written
 to logs. Hosted Redis uses `rediss://` with certificate and hostname
-verification by default; only the explicit Coolify private-network exception
+verification by default; only the explicit private-network opt-in
 permits plaintext. The core service imports no cloud identity or
 secret-management SDK.
 
@@ -245,56 +245,29 @@ separate `serve` developer profile. The private plaintext Redis opt-in is for a
 deployment-managed private service network, never public or cross-network
 Redis.
 
-## Coolify profile
+## Container deployments
 
-The Coolify profile uses the same `serve-hosted` authentication and application
-security boundary. It does not add a bypass for OAuth, organization/team
-authorization, CSRF, webhook signatures, shared rate limits, or logging
-redaction.
+The host-neutral image runs as numeric user/group `65532`. The deployment
+operator must drop Linux capabilities, enable `no-new-privileges`, use a
+read-only root filesystem, and restrict ingress to the configured TLS or
+trusted-proxy boundary. Inject secrets at runtime through the host's secret
+manager, never through Dockerfile instructions, image labels, or health checks.
 
-Coolify terminates public TLS. The container has no published port and accepts
-the private HTTP hop only when `CAO_TRUSTED_PROXY_CIDRS` names the exact Coolify
-proxy network. A caller outside those prefixes cannot make its forwarded
-headers authoritative. Host matching remains exact and forwarded protocol must
-be `https`. Broad, malformed, public, or missing CIDRs fail startup.
+Stage the complete trusted dashboard artifact in an unattached volume, verify
+its `payload-hashes.json` manifest, and select it atomically before mounting it
+read-only. Never populate a live attached artifact volume or treat a placeholder
+as deployment data.
 
-The image runs as numeric user/group `65532`, drops Linux capabilities, enables
-`no-new-privileges`, uses a read-only root filesystem, and mounts only the
-trusted dashboard artifact from a pre-populated external named volume
-read-only. The volume must be staged, hash-verified against
-`payload-hashes.json`, and atomically selected before first start or update;
-never populate the live attached volume, and do not treat a placeholder as
-deployment data. The repository does not supply deployment data. Secrets are
-injected by Coolify and are not present in the Dockerfile, Compose file, image
-labels, or health check.
+Use the private `collector-runtime` target for standalone collection and
+backfill roles, with a persistent evidence volume and no public ingress.
+Admission-only web replicas must not receive the collection App private key.
 
-`rediss://` remains preferred. `redis://` is acceptable only for a
-Coolify-managed Redis service isolated on the same private network, after the
-explicit plaintext opt-in. Network isolation and Redis authentication remain
-operator responsibilities. Azure Functions ignores this hosted opt-in and
-continues to require `rediss://` to Azure Managed Redis.
-
-Deployment uses a Git-backed Coolify resource restricted to protected `main`.
-The Coolify GitHub App supplies source access and the webhook that starts an
-automatic deployment. Coolify checks out the selected commit, builds
-`server/Dockerfile` through the checked-in Compose file, embeds
-`SOURCE_COMMIT`, and evaluates container health before activation. Production
-delivery needs no GitHub deployment environment, Coolify API token, public
-Coolify API endpoint, registry credential, or mutable registry tag.
-
-This source-build boundary does not admit the deployed image through the
-official package workflow's vulnerability scans, hardening check, SBOM, or
-GitHub artifact attestation. Those controls continue to protect published
-packages, not the native Coolify build. Restrict GitHub App repository access,
-protect `main`, review source and Compose changes, isolate the Coolify builder,
-and treat failed or unexpected builds as deployment failures.
-
-Operational rollback means redeploying a retained Coolify deployment or
-reverting to a known-good source commit, then checking readiness, OAuth
-authorization, queries, webhook verification, and rate limits. If required,
-rebuild the disposable Redis namespace from the retained artifact rather than
-treating Redis as rollback authority. Rollback is operator-controlled and is
-not automatically verified by a repository-owned API client.
+Official package scans, hardening checks, SBOMs, and attestations apply to
+published packages, not to locally source-built images. Source review, builder
+isolation, deployment promotion, and rollback remain operator responsibilities.
+After rollback, verify readiness, OAuth authorization, queries, webhook
+signatures, and rate limits; never treat operational caches as rollback
+authority.
 
 ## Upstash profile
 

@@ -83,7 +83,7 @@ Hosted startup requires this modular `web.host` policy. Flat host objects,
 
 | App target module | Use |
 | --- | --- |
-| `container` | Coolify, Railway, Render, Kubernetes, VMs, and similar process-owned hosts. |
+| `container` | Railway, Render, Kubernetes, VMs, and similar process-owned hosts. |
 | `azure-functions` | Azure Functions' platform-owned listener and trusted platform proxy. |
 | `generic` | A new platform with explicit reviewed capabilities. |
 
@@ -125,12 +125,12 @@ builds require no host framework or private dependency.
 
 ### Example compositions
 
-Coolify and other container platforms pair the `container` target with any
+Container platforms pair the `container` target with any
 compatible Redis module:
 
 ```json
 {
-  "target": { "module": "container", "name": "coolify" },
+  "target": { "module": "container", "name": "hosted-dashboard" },
   "redis": { "module": "redis-cloud", "tls": { "mode": "required" } }
 }
 ```
@@ -395,7 +395,7 @@ Use the reported URI and port rather than assuming a default.
 The `upstash` module fixes serialized sessions, process namespace isolation, one
 replica, required TLS, and disabled server-side collection. The `generic` module
 is the only Redis module that accepts explicit consistency capability fields.
-Local Redis, Azure Functions, Coolify, and Upstash are compositions of target and
+Local Redis, Azure Functions, and Upstash are compositions of target and
 Redis modules; they are not separate shared request implementations.
 
 ## Verify

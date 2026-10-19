@@ -663,19 +663,12 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
 });
 
-test("deployed integration rejects a stale hosted dashboard backfill", () => {
+test("deployed integration checks Pages without the retired hosted dashboard", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "dashboard-deployed-integration.yml"), "utf8");
-  const backfillTest = readFileSync(join(root, "tests", "integration", "dashboard-hosted-backfill.test.mjs"), "utf8");
 
-  assert.match(workflow, /Test hosted dashboard backfill freshness[\s\S]*?node --test tests\/integration\/dashboard-hosted-backfill\.test\.mjs/);
-  assert.match(workflow, /steps\.backfill\.outcome == 'failure' \|\| steps\.test\.outcome == 'failure'/);
-  assert.match(backfillTest, /https:\/\/cao\.githubnext\.com\/api\/health/);
-  const server = readFileSync(join(root, "server", "internal", "server", "server.go"), "utf8");
-  assert.match(server, /register\("GET \/api\/health", a\.health\)/);
-  assert.match(backfillTest, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/agent-summary\.json/);
-  assert.match(backfillTest, /HOSTED_BACKFILL_MAX_LAG_MINUTES/);
-  assert.match(backfillTest, /hostedEvaluatedAt/);
-  assert.match(backfillTest, /publishedGeneratedAt/);
+  assert.match(workflow, /run: npm run test:e2e:dashboard-deployed/);
+  assert.match(workflow, /if: steps\.test\.outcome == 'failure'/);
+  assert.doesNotMatch(workflow, /dashboard-hosted-backfill|steps\.backfill|cao\.githubnext\.com/);
 });
 
 test("Documentation site uses stock Starlight without external themes", () => {

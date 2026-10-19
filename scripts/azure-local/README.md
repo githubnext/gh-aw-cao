@@ -2,7 +2,7 @@
 
 This Linux-only harness runs the CAO Azure Functions hosting boundary against
 Azurite and a real Redis container. It uses no Azure subscription, Azure login,
-Azure credentials, production secrets, or Coolify configuration. It does not
+Azure credentials, or production secrets. It does not
 emulate managed identity, Key Vault, deployed networking, Azure edge behavior,
 or Azure Managed Redis TLS; those remain real-Azure smoke-test concerns.
 

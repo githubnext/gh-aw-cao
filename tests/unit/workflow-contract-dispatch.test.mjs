@@ -234,7 +234,6 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["self-care-glossary.md", "self-care", "glossary"],
     ["self-care-open-source-failures.md", "self-care", "open-source-failures"],
     ["self-care-pages-health.md", "self-care", "pages-health"],
-    ["self-care-hosted-health.md", "self-care", "hosted-health"],
     ["self-care-primer-brand-checker.md", "self-care", "primer-brand-checker"],
     ["self-care-reactive-ui-expert.md", "self-care", "reactive-ui-expert"],
     ["self-care-release-blogger.md", "self-care", "release-blogger"],
