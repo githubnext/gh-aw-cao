@@ -1,3 +1,4 @@
+// @vitest-environment node
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openCanonicalDatabase, DATABASE_NAME, scanCanonicalCollection } from '../../src/data/storage/indexeddb.js';
