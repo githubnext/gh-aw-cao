@@ -83,9 +83,10 @@ test("landing page keeps the hero and supporting copy concise", () => {
 test("landing page explains and illustrates governed cross-repository dispatch", () => {
   assert.match(hero, /Execution policy/);
   assert.match(hero, /Control where workflows run\./);
-  assert.match(hero, /\.dispatch-story \{[\s\S]*?width: min\(calc\(100% - 2rem\), 86rem\)/);
+  assert.match(hero, /\.product-story \{[^}]*width: min\(calc\(100% - 2rem\), 76rem\)/);
+  assert.match(hero, /\.dispatch-story \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*gap: 0\.75rem/);
   assert.match(hero, /\.dispatch-story > \.section-eyebrow \{[\s\S]*?justify-self: center/);
-  assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[\s\S]*?max-width: 64rem/);
+  assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[^}]*max-width: 60ch/);
   assert.match(hero, /@media \(min-width: 64rem\) \{[\s\S]*?\.dispatch-story h2 \{[\s\S]*?white-space: nowrap/);
   assert.match(hero, /Run workflows centrally across enrolled repositories and organizations/);
   assert.match(hero, /Reviewed policy sets the scope/);
@@ -277,8 +278,8 @@ test("landing page uses a theme-aware blueprint background", () => {
   assert.match(hero, /--cao-story-text: #b1bac4/);
   assert.match(hero, /--cao-section-accent-start: 12%/);
   assert.match(hero, /--cao-section-accent-start: 16%/);
-  assert.match(hero, /--cao-page-grid-major: rgba\(63, 185, 80, 0\.22\)/);
-  assert.match(hero, /--cao-page-glow: rgba\(63, 185, 80, 0\.22\)/);
+  assert.match(hero, /--cao-page-grid-major: rgba\(63, 185, 80, 0\.1\)/);
+  assert.match(hero, /--cao-page-glow: rgba\(63, 185, 80, 0\.14\)/);
   assert.match(hero, /radial-gradient\(ellipse 58rem 42rem at 76% 8%/);
   assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.product-story::before \{[\s\S]*?display: none/);
   assert.match(hero, /\.section-eyebrow::before \{[\s\S]*?border-radius: 1px/);
