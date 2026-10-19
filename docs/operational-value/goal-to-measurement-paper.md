@@ -411,9 +411,13 @@ Separate focused tests cover all-period attainment and misses, mixed evidence,
 repository-only bars that cannot grant workflow credit, malformed policies,
 missing or zero opportunities, provisional/stale/future evidence, gaps,
 overlapping intervals, newer unavailable assessments and report tampering.
-The production verifier also requires the selected review metric to return
-null for missing or malformed evidence. A poor-value recommendation cannot
-authorize disabling a workflow.
+The production verifier requires primary, review and selected signal metrics to
+return null for missing or malformed evidence. An explicit partial-contribution
+bar does not require an unrelated full-goal metric to be known; that stronger
+acceptance claim remains separate and unknown. Selecting repository health as
+the headline must not relabel the contribution curve: the two can move in
+opposite directions. A poor-value recommendation cannot authorize disabling a
+workflow.
 
 The local benchmark adds 79 report-level checks over the existing temporal
 scenarios, bringing the reference receipt from 221 to **300 checks**. Those

@@ -95,7 +95,7 @@ export function reviewValue(timeline) {
     const contributionIntervals = policy.basis !== "workflow-contribution" || definition.evidence.measurementKind === "interval";
     const ready = contributionIntervals && !stale && recent.length === policy.periods && adjacent
       && recent.every(period => period.status === "complete" && period.eligibleCount > 0
-        && finite(period.metrics[primary.id]) && finite(period.metrics[policy.metricId])
+        && finite(period.metrics[policy.metricId])
         && (policy.basis !== "workflow-contribution"
           || timestamp(definition.evidence.measurementKind === "interval" ? period.window.startAt : period.window.endAt)
             >= timestamp(definition.adoption.adoptedAt)));

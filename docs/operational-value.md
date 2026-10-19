@@ -341,7 +341,9 @@ including **13 receipt-backed** contributions. Current 28-day delivery is
 **0 files/week**, versus **1 file/week** over 91 days; the adjacent-window signal
 is **worsening / review**. The last positive linked merge was August 25,
 approximately 54 days earlier, while 53 oversized files remain.
-This is a signal to inspect the workflow's downstream delivery, not to erase
+The repository's oversized-file population grew from 16 to 53; that health
+curve neither cancels the 48 linked reductions nor attributes the growth to this
+workflow. This is a signal to inspect the workflow's downstream delivery, not to erase
 its previous value or claim it caused repository growth. Coverage is the
 surviving discovered issue cohort and explicit merge links; deleted outputs,
 full behavior preservation and financial return are not established.
@@ -377,6 +379,9 @@ Set the optional native bounds, number of periods, basis and rationale in
 No bar is assumed: without one the decision is **not rated**, while observed
 values are still reported. A bar applied only to repository attainment can
 report **goal met/missed**, not credit or retire a particular workflow.
+An explicitly agreed partial-contribution bar can be reviewed while full goal
+acceptance remains unknown; only that named bar is being assessed. Selecting
+repository health as the headline does not relabel the contribution curve.
 Recommendations never authorize disabling a workflow or changing CAO policy.
 
 Costs are explicitly **not measured** in this review. Native accepted quantities

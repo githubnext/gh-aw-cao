@@ -79,6 +79,20 @@ test("native outcomes and contribution remain separate, with unknown costs and n
   assert.equal(reviewValue(range).decision.status, "mixed");
 });
 
+test("an explicit partial-contribution bar does not require unrelated full-goal acceptance", () => {
+  const timeline = fixture([2, 4]);
+  timeline.snapshots.forEach(row => { row.metrics.outcome = null; });
+  const report = reviewValue(timeline);
+  assert.equal(report.current.value, null);
+  assert.equal(report.current.status, "unavailable");
+  assert.equal(report.recentComparison.status, "unavailable");
+  assert.deepEqual(report.periods.map(row => row.metrics.linked), [2, 4]);
+  assert.equal(report.decision.status, "keep-candidate");
+  assert.equal(report.decision.policy.metricId, "linked");
+  delete timeline.valueFunction.definition.review;
+  assert.equal(reviewValue(timeline).decision.status, "not-rated");
+});
+
 test("repository attainment cannot earn the workflow credit or a retirement recommendation", () => {
   const review = { ...policy, metricId: "outcome", basis: "repository-outcome", minimum: 75 };
   assert.equal(reviewValue(fixture([1, 2], review)).decision.status, "goal-met");
@@ -110,13 +124,9 @@ test("unknown or zero opportunities and incomplete outcome evidence never become
     Object.assign(timeline.snapshots[1].evidence, changes);
     assert.equal(reviewValue(timeline).decision.status, "insufficient-evidence", JSON.stringify(changes));
   }
-  for (const metric of ["outcome", "linked"]) {
-    const timeline = fixture();
-    timeline.snapshots[1].metrics[metric] = null;
-    const report = reviewValue(timeline);
-    assert.equal(report.decision.status, "insufficient-evidence");
-    if (metric === "outcome") assert.equal(report.recentComparison.status, "unavailable");
-  }
+  const timeline = fixture();
+  timeline.snapshots[1].metrics.linked = null;
+  assert.equal(reviewValue(timeline).decision.status, "insufficient-evidence");
 });
 
 test("review requires genuinely mature, fresh and consecutive periods, not lifetime totals or stale backfills", () => {
@@ -235,6 +245,9 @@ export function scoreMetric(id, evidence) {
     );
     writeFileSync(module, badScorer);
     assert.throws(() => run("verify-value-function.mjs", [module]), /review metric linked must return null/);
+    writeFileSync(module, badScorer.replace(`review: ${JSON.stringify(policy)},`,
+      'signal: { metricId: "linked", basis: "workflow-contribution" },'));
+    assert.throws(() => run("verify-value-function.mjs", [module]), /signal metric linked must return null/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

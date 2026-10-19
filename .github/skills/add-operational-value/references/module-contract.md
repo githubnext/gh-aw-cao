@@ -61,13 +61,15 @@ for stage boundaries, native calculations, scheduling, outputs and current comma
 - `validationExamples: { targetAttained, targetMissed, missing, malformed }`:
   evidence objects exercised against every metric. Attainment must be better in
   the declared direction (not always numerically higher). Missing and malformed
-  primary evidence must score null.
+  evidence for primary, review and signal metrics must score null.
 - Optional `review`: a native keep/change policy, described below. It does not
   change scoring, grant authority or add a second module interface.
 - Optional `signal: { metricId, basis }` selects an existing metric for the
   interactive pulse; basis is `repository-outcome` or `workflow-contribution`.
   Contributions must be diagnostic metrics. Without it, use the review's
   selection, otherwise the actor-independent primary. No keep bar is inferred.
+  Headline selection does not relabel other declared curves. Signal and review
+  must not assign different bases to the same metric.
 
 `collectBatch(requests, context)` accepts an array of
 `{ windowStart, windowEnd, observedAt, repository? }` requests. Starts are
@@ -706,7 +708,10 @@ the workflow on the strength of other actors' work.
 
 Decisions require the declared number of fresh, complete, mature consecutive
 periods, finite reviewed values, and an explicit positive `evidence.eligibleCount`
-in each period. Unknown counts, zero opportunities, provisional evidence,
+in each period. Review only the named metric's frozen bar: an unrelated unknown
+primary must not cancel independently established progress. A partial-progress
+bar does not establish full goal acceptance. Unknown counts, zero opportunities,
+provisional evidence,
 missing values and stale or future assessments produce
 `insufficient-evidence`. Interval periods must abut without overlap; snapshot
 cutoffs must follow the declared cadence. **Workflow-contribution decisions

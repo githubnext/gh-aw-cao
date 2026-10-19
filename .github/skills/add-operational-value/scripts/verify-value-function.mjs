@@ -120,9 +120,10 @@ for (const metric of metrics) {
   if (results.targetAttained == null || results.targetMissed == null || !attainedIsBetter) {
     fail(`${metric.id} validation examples do not improve in the declared ${metric.direction} direction`);
   }
-  if ((metric.role === "primary" || metric.id === definition.review?.metricId)
+  if ((metric.role === "primary" || metric.id === definition.review?.metricId || metric.id === definition.signal?.metricId)
     && (results.missing !== null || results.malformed !== null)) {
-    fail(`${metric.role === "primary" ? "primary" : "review"} metric ${metric.id} must return null for missing and malformed evidence`);
+    const purpose = metric.role === "primary" ? "primary" : metric.id === definition.review?.metricId ? "review" : "signal";
+    fail(`${purpose} metric ${metric.id} must return null for missing and malformed evidence`);
   }
 }
 

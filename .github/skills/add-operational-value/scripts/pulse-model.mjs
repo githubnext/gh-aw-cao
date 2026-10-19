@@ -25,6 +25,7 @@ export function signalPolicy(definition) {
   const metric = definition.metrics.find(metric => metric.id === policy?.metricId);
   if (!policy || Object.keys(policy).some(key => !["metricId", "basis"].includes(key))
     || !metric || !["repository-outcome", "workflow-contribution"].includes(policy.basis)
+    || (definition.review?.metricId === policy.metricId && definition.review.basis !== policy.basis)
     || (policy.basis === "workflow-contribution" && metric.role !== "diagnostic")) {
     throw new Error("Invalid signal policy: select an existing metric and explicit outcome/contribution basis");
   }
@@ -77,6 +78,7 @@ export function timelinePulse(timeline) {
   const cadence = definition.evidence.window.cadenceDays * DAY;
   const metrics = definition.metrics.map(metric => {
     const basis = metric.id === policy.metricId ? policy.basis
+      : metric.id === definition.review?.metricId ? definition.review.basis
       : metric.role === "primary" ? "repository-outcome" : "diagnostic";
     const latest = review.periods.at(-1);
     const previous = review.periods.findLast(period => period !== latest && (kind === "interval"

@@ -4,15 +4,15 @@ description: "Count demonstrated workflow-enabled improvements over time, with g
 argument-hint: 'OWNER/REPO [WORKFLOW | SOURCE | --goal "GOAL"] [--campaign SLUG]'
 allowed-tools: bash node gh
 metadata:
-  version: "0.18.5"
+  version: "0.19.0"
 ---
 
 # Measure workflow value
 
 Answer: **What useful outcome is this workflow delivering over time?**
 Deliver a deterministic function and repeatable report, not a generic score.
-Copy this directory for standalone use: Node.js 24+, plus `git` and authenticated
-`gh` for GitHub acquisition. Only optional campaign discovery needs npm/YAML.
+Copy this directory; Node.js 24+, `git` and authenticated `gh`.
+Only optional campaign discovery needs npm/YAML.
 
 ## 1. Turn intent into an outcome
 
@@ -48,6 +48,8 @@ contracts and rejected predicates. Separate:
   implementation. Credit shared contribution, not sole authorship.
 - **Decision:** Explicit agreed native keep bar and complete periods; otherwise
   **not rated**. Never invent weights, thresholds, dollars or causation.
+
+Health and delivery can move oppositely; selecting a headline does not relabel them.
 
 Measured partial improvement counts as value despite unknown full completion.
 Report safeguards and attribution confidence separately. Preserve the stricter
@@ -96,6 +98,7 @@ are not repeated new work. `definition.signal` selects attention;
 `definition.review` optionally defines a repeatable verdict. Advice is never
 authority to disable a workflow. Show costs as **not measured** without matched
 cost evidence. Unknown/zero outcomes cannot be cost denominators.
+Historical delivery is not current health or current-period delivery.
 
 Keep definitions in Git, observations in the version-keyed evidence archive.
 Render those facts; dashboard/cache retention is not durable history.

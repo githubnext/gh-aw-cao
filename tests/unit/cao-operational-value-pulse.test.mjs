@@ -211,6 +211,27 @@ test("decrease and target directions describe native improvement without complem
   }
 });
 
+test("repository health and contribution retain opposing curves regardless of headline selection", () => {
+  for (const improvingRepository of [true, false]) {
+    const input = timeline(improvingRepository ? [4, 2] : [2, 4]);
+    input.snapshots.forEach((row, index) => {
+      row.metrics.outcome = improvingRepository === (index === 1) ? 80 : 40;
+    });
+    input.valueFunction.definition.signal = { metricId: "outcome", basis: "repository-outcome" };
+    input.valueFunction.definition.review = { metricId: "linked", basis: "workflow-contribution",
+      periods: 2, minimum: 1, rationale: "Synthetic owner-agreed contribution bar, not repository health." };
+    const model = timelinePulse(input);
+    assert.equal(model.selectedMetricId, "outcome");
+    assert.equal(model.metrics[0].basis, "repository-outcome");
+    assert.equal(model.metrics[1].basis, "workflow-contribution");
+    assert.equal(model.metrics[0].signal.status, improvingRepository ? "improving" : "worsening");
+    assert.equal(model.metrics[1].signal.status, improvingRepository ? "worsening" : "improving");
+    assert.equal(model.decision.status, "keep-candidate");
+    input.valueFunction.definition.signal = { metricId: "linked", basis: "repository-outcome" };
+    assert.throws(() => timelinePulse(input), /Invalid signal policy/);
+  }
+});
+
 test("snapshot states compare by cadence but never earn workflow delivery or cumulative credit", () => {
   const input = timeline();
   input.valueFunction.definition.evidence.measurementKind = "snapshot";
@@ -351,6 +372,19 @@ test("File Diet reuses the generic ledger with its real 48/13 oracle and worseni
   assert.equal(model.signal.attention, "review");
   assert.equal(model.signal.opportunities, 53);
   assert.equal(model.cumulative.at(-1).value, 48);
+  assert.equal(eventPulse(input).decision.status, "not-rated");
+  const withoutReceipts = structuredClone(input);
+  withoutReceipts.events.forEach(event => { event.attribution = "corroborated"; });
+  const corroborated = focus(withoutReceipts);
+  assert.equal(corroborated.observedTotal, 48);
+  assert.equal(corroborated.receiptTotal, 0);
+  assert.equal(corroborated.cumulative.at(-1).value, 48);
+  assert.equal(corroborated.signal.current, 0, "historical delivery is not current-period delivery");
+  withoutReceipts.coverage[0].status = "unknown";
+  const unavailable = focus(withoutReceipts);
+  assert.equal(unavailable.observedTotal, 48);
+  assert.equal(unavailable.completeTotal, null);
+  assert.equal(unavailable.signal.current, null, "missing coverage is not an observed current zero");
 });
 
 test("the report CLI publishes reusable machine-readable and file-backed visual artifacts", () => {
