@@ -18,7 +18,6 @@ const startup = vi.hoisted(() => ({
   startDashboardData: vi.fn(async () => {})
 }));
 const tableCapacity = vi.hoisted(() => ({
-  applyTableQuerySafetyLimits: vi.fn((queries) => queries),
   browserTableCapacityDecision: vi.fn(() => ({ rowLimit: 25000 })),
   logTableCapacityDecision: vi.fn()
 }));
@@ -149,7 +148,7 @@ describe("dashboard app page-chunk debug logging", () => {
         return new Response(JSON.stringify(stubDashboardSchema({ id: "overview", chunk: "dashboard-pages/overview.json" })), { status: 200 });
       }
       return new Response(JSON.stringify({
-        page: { id: "overview", views: [{ data: { source: "observations" }, prompt: "auto" }] },
+        page: { id: "overview", views: [{ mark: "table", data: { source: "observations" }, prompt: "auto" }] },
         queries: [{ name: "observations", from: "runs", subject: "Inspect runs" }]
       }), { status: 200 });
     }));
@@ -159,6 +158,11 @@ describe("dashboard app page-chunk debug logging", () => {
     await vi.waitFor(() => expect(presenter.renderDashboard.mock.calls.some(
       ([argument]) => argument.document.dashboard.queries?.some((query) => query.name === "observations")
     )).toBe(true));
+    expect(presenter.renderDashboard.mock.calls.find(
+      ([argument]) => argument.document.dashboard.queries?.some((query) => query.name === "observations")
+    )?.[0].document.dashboard.queries).toEqual([
+      { name: "observations", from: "runs", subject: "Inspect runs" }
+    ]);
 
     vi.unstubAllGlobals();
   });

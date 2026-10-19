@@ -199,23 +199,20 @@ export async function startDashboardData(options) {
    * @param {string} pageId
    * @param {DashboardSources} sources
    * @param {Record<string, { sourceName: string, viewId: string }>} bindings
+   * @param {{ sourceNames: string[], viewId?: string }} scope
    * @param {Pick<PageLoadOptions, 'routeParameters' | 'queryContext'>} [pageOptions]
    */
-  const bindContinuations = (pageId, sources, bindings, pageOptions = {}) => bindSourceContinuations(
+  const bindContinuations = (pageId, sources, bindings, scope, pageOptions = {}) => bindSourceContinuations(
     sources,
     Object.keys(bindings),
-    (requested, pagination) => {
-      const binding = bindings[requested[0]];
+    (_requested, pagination) => {
       return loadCanonicalDashboardPage(
-        [...new Set(requested.flatMap((alias) => {
-          const sourceName = bindings[alias]?.sourceName;
-          return sourceName ? [sourceName] : [];
-        }))],
+        scope.sourceNames,
         dashboardContext,
         pagination,
         {
           pageId,
-          viewId: binding?.viewId,
+          viewId: scope.viewId,
           routeParameters: pageOptions.routeParameters,
           queryContext: pageOptions.queryContext,
         },
@@ -303,7 +300,7 @@ export async function startDashboardData(options) {
       sourceNames,
       pageOptions: { ...pageOptions, pageId },
       pagination,
-      transform: (sources) => bindContinuations(pageId, sources, paginatedSources, pageOptions)
+      transform: (sources) => bindContinuations(pageId, sources, paginatedSources, { sourceNames }, pageOptions)
     });
   };
   loadPageSources.subscribeViewSources = (pageId, viewId, sourceNames, pageOptions) => {
@@ -314,7 +311,9 @@ export async function startDashboardData(options) {
       sourceNames: [...new Set(sourceNames)],
       pageOptions: { ...pageOptions, pageId, viewId },
       pagination: continuationRequests(Object.keys(bindings)),
-      transform: (sources) => bindContinuations(pageId, sources, bindings, pageOptions)
+      transform: (sources) => bindContinuations(pageId, sources, bindings, {
+        sourceNames: [...new Set(sourceNames)], viewId
+      }, pageOptions)
     });
   };
   loadPageSources.subscribeBackgroundSources = async (sourceNames, pageOptions) => {

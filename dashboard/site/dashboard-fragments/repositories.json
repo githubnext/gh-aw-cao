@@ -1367,6 +1367,7 @@
       "description": "Choose the next operational investigation for the selected repository.",
       "icon": "repo",
       "class-name": "repository-detail-page",
+      "query-binding": "page",
       "route": {
         "hash-query-parameter": "repository",
         "navigation-page": "repositories",

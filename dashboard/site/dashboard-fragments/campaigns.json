@@ -116,17 +116,10 @@
       "subject": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
       "objective": "Choose an active campaign workflow whose observed execution warrants inspection.",
       "acceptance": "Listed workflows match active declared orchestrator or worker inventory entries; runs and AI Credits agree with the selected-horizon inventory, and absence is not evidence of disabled authority or no executions. Rollout mode is context, not permission to change policy.",
-      "description": "Campaign workflows projected from lean canonical inventory, with display names and drill-down links computed only for the active list.",
+      "description": "Campaign workflows projected from lean canonical inventory, with shared declaration names and active-only workflow drill-down links.",
       "from": "campaign-workflow-inventory",
       "filter": {
         "predicates": [
-          {
-            "field": "workflow-role",
-            "in": [
-              "orchestrator",
-              "worker"
-            ]
-          },
           {
             "field": "workflow-active",
             "equals": "true"
@@ -134,44 +127,6 @@
         ]
       },
       "compute": [
-        {
-          "as": "campaign-title",
-          "function": "title-case",
-          "args": [{ "field": "campaign" }]
-        },
-        {
-          "as": "campaign-display-name",
-          "function": "coalesce",
-          "args": [{ "field": "campaign-name" }, { "field": "campaign-title" }, { "value": "Repository-owned" }]
-        },
-        {
-          "as": "workflow-display-name",
-          "function": "coalesce",
-          "args": [{ "field": "workflow-name" }, { "field": "workflow" }]
-        },
-        {
-          "as": "encoded-repository",
-          "function": "url-encode",
-          "args": [{ "field": "repository" }]
-        },
-        {
-          "as": "repository-dashboard-href",
-          "function": "concat",
-          "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
-        },
-        {
-          "as": "repository-dashboard-label",
-          "function": "concat",
-          "args": [{ "value": "View " }, { "field": "repository" }, { "value": " repository dashboard" }]
-        },
-        {
-          "as": "repository-dashboard-link",
-          "function": "dashboard-link",
-          "args": [
-            { "field": "repository-link" }, { "field": "repository-dashboard-href" },
-            { "field": "repository-dashboard-label" }, { "field": "repository" }
-          ]
-        },
         {
           "as": "workflow-identity",
           "function": "concat",
@@ -259,6 +214,47 @@
           "field": "workflow-name",
           "direction": "asc"
         }
+      ]
+    },
+    {
+      "name": "campaign-repository-declarations",
+      "subject": "List active declared campaign workflows and their owning repositories without execution evidence.",
+      "objective": "Inspect campaign repository topology without computing unused run totals or import coverage.",
+      "acceptance": "Preserve active orchestrator and worker identities, display names, rollout context, links, and ordering. Declaration counts are not target enrollment, dispatch coverage, or execution totals. Empty inventory and unavailable workflow evidence remain distinct.",
+      "description": "Declaration-only repository topology. Run totals and import-evidence quality belong to execution views, not this inventory.",
+      "from": "campaign-workflow-declarations",
+      "filter": {
+        "predicates": [
+          { "field": "workflow-active", "equals": "true" }
+        ]
+      },
+      "select": [
+        { "field": "campaign" },
+        { "field": "campaign-display-name", "as": "campaign-name" },
+        { "field": "organization" },
+        { "field": "repository-slug", "as": "repository" },
+        { "field": "workflow" },
+        { "field": "workflow-display-name", "as": "workflow-name" },
+        { "field": "workflow-role" },
+        { "field": "declared-mode", "as": "rollout-mode" },
+        { "field": "workflow-active" },
+        { "field": "repository-dashboard-link", "as": "repository-link" }
+      ],
+      "order-by": [
+        { "field": "repository", "direction": "asc" },
+        { "field": "workflow", "direction": "asc" }
+      ]
+    },
+    {
+      "name": "campaign-repository-inventory",
+      "subject": "Present declared campaign repository topology in workflow display order.",
+      "objective": "Filter and search projected repository coordinates and workflow names without time-filtering structural declarations.",
+      "acceptance": "Preserve the campaign workflow list's stable ordering and declaration-only evidence quality; runtime horizons must not remove declared workflows.",
+      "from": "campaign-repository-declarations",
+      "order-by": [
+        { "field": "campaign-name", "direction": "asc" },
+        { "field": "workflow-role", "direction": "asc" },
+        { "field": "workflow-name", "direction": "asc" }
       ]
     },
     {
@@ -591,6 +587,7 @@
       "class-name": "campaigns-page",
       "description": "Identify centrally managed campaigns that require deeper CAO operational review.",
       "mode-indicator": true,
+      "query-binding": "page",
       "definition": {
         "data-state": {
           "availability": true
@@ -1324,7 +1321,7 @@
           "acceptance": "Counts reflect observed campaign workflows, not authorization or complete coverage.",
           "description": "Distribution of campaign workflows across associated repositories.",
           "data": {
-            "source": "campaign-workflows",
+            "source": "campaign-repository-inventory",
             "route-field": "campaign"
           },
           "mark": "chart",
@@ -1376,7 +1373,7 @@
           "id": "campaign-repository-table",
           "title": "Associated repositories",
           "data": {
-            "source": "campaign-workflows",
+            "source": "campaign-repository-inventory",
             "route-field": "campaign",
             "order-by": [
               {

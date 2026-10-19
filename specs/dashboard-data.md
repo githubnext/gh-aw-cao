@@ -88,6 +88,18 @@ evidence or a cause. The `routing-run` drill-down SHALL list each run's
 resolution roles with configured-to-resolved model, status, cause, engine and
 provider, showing unknown values rather than manufacturing rows.
 
+Run drill-down queries SHALL constrain complete run partitions before projecting
+Audit evidence, using canonical run identities and the Audit run index. This
+constraint MUST preserve all attempts until session selection, all events and
+accounting phases within the selected run, and reactive refreshes. A constraint
+may cross a window only on its partition keys and may narrow a joined source
+only through a preserved mandatory equality key. Cross-run history and
+observational baselines MUST retain their required evidence. Tables SHALL use
+canonical pagination and fail-closed output budgets, not synthesize semantic
+source-query limits before view scope. All authored query limits, including a
+displayed source's limit, remain semantic boundaries and MUST NOT be moved across
+scope.
+
 The Model routing page currently provides adoption, objective/classifier
 dimensions, label-to-pick counts, workflow stability, exclusive AIC/token
 attribution, complete-cost distributions and observational baselines, deviation
@@ -642,7 +654,12 @@ Canonical write APIs SHALL prepare these keys after pruning redundant fields;
 canonical read APIs SHALL remove them. Equivalent native query plans MAY
 evaluate declared row-local expressions on distinct indexed keys, read only
 matching observations, and obtain grouped event counts from indexes before
-materializing bounded results. Such plans MUST preserve observation grain,
+materializing bounded results. An unchanged single-field string equality MAY
+seek its encoded tuple directly only after verifying index coverage and excluding
+non-string tuples; nullable, coercible, structured, or computed values retain
+normal dictionary evaluation. The Domain runs table SHALL consume its declared
+`domain-run-records` query and return only the paginated view alias, not an
+additional unbounded `domains` collection. Such plans MUST preserve observation grain,
 run attempts, null and missing values, ordering, provenance, pagination, and
 unavailable inputs. Unsupported plans retain normal fail-closed execution, and
 an oversized selected scope MUST NOT be truncated or have its limits raised.

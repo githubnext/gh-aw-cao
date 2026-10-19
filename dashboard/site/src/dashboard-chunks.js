@@ -139,6 +139,7 @@ export function dashboardPageSourcesAreIndependentlyBound(page, reusableViews = 
 export function dashboardPageSourceNames(document, pageId, viewMode, backend = dashboardDataBackend()) {
   const page = dashboardPage(document, pageId);
   if (!page || backend !== 'all' && !pageCapabilityAvailable(page)) return [];
+  if (page['query-binding'] === 'page') viewMode = undefined;
   const indexed = backendSourceIndex(page, backend)?.sourceNames ?? stringList(page['source-names']);
   if (!dashboardPageIsLoaded(page) && !viewMode && (indexed.length > 0 || backendSourceIndex(page, backend))) return indexed;
   const payload = dashboardPagePayload(page, document.dashboard.views);

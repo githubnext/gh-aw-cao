@@ -546,14 +546,14 @@
         { "left": "cache-read-tokens", "right": "cache-read-tokens" }, { "left": "cache-write-tokens", "right": "cache-write-tokens" },
         { "left": "correlation-position", "right": "correlation-position" }
       ], "fields": [{ "field": "routing-agent-name", "as": "correlated-owner" }] }],
-      "select": [{ "field": "event" }, { "field": "correlated-owner" }]
+      "select": [{ "field": "routing-run-key" }, { "field": "event" }, { "field": "correlated-owner" }]
     },
     {
       "name": "routing-attributed-accounting", "from": "routing-exact-accounting",
       "subject": "Assign every accounting record to exactly one exclusive bucket.",
       "objective": "Keep exact and correlated sub-agent ownership distinct.",
       "acceptance": "Phase wins over purpose; missing ownership remains unsplit or unattributed.",
-      "joins": [{ "source": "routing-correlated-accounting", "type": "left", "on": [{ "left": "event", "right": "event" }], "fields": [{ "field": "correlated-owner", "as": "correlated-owner" }] }],
+      "joins": [{ "source": "routing-correlated-accounting", "type": "left", "on": [{ "left": "routing-run-key", "right": "routing-run-key" }, { "left": "event", "right": "event" }], "fields": [{ "field": "correlated-owner", "as": "correlated-owner" }] }],
       "compute": [
         { "as": "agent-name", "function": "coalesce", "args": [{ "field": "exact-owner" }, { "field": "correlated-owner" }] },
         { "as": "unknown-agent", "function": "equals-any", "args": [{ "field": "agent-name" }, { "value": null }] },
@@ -1515,13 +1515,13 @@
       "intent": "Inspect one run's authoritative routing timeline and coverage.",
       "subject": "Unified-session model routing facts for one run.",
       "objective": "Trace proxy decisions and missing accounting without exposing content.",
-      "acceptance": "Untimed facts have no invented timestamp and agent-written outcomes remain advisory.",
+      "acceptance": "Scope complete run partitions before session selection and accounting joins; preserve every attempt until latest-session selection. Untimed facts have no invented timestamp and agent-written outcomes remain advisory.",
       "route": { "hash-query-parameter": "routing-run", "navigation-page": "model-routing" },
       "description": "Trace one run's proxy decisions, advisory reports, accounting and collection coverage.",
       "views": [
         {
           "id": "routing-run-cost", "title": "Agent-phase accounting coverage", "mark": "table", "layout": "full",
-          "data": { "source": "routing-cost-runs", "route-field": "routing-run-key", "query-context": false },
+          "data": { "source": "routing-cost-runs", "route-field": "routing-run-key", "limit": 1, "query-context": false },
           "encoding": { "columns": [
             { "field": "routing-state", "title": "State" }, { "field": "pick", "title": "Pick" },
             { "field": "harness-status", "title": "Harness report" }, { "field": "cost-complete", "title": "Complete" },

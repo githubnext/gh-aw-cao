@@ -3,7 +3,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizedRunShard } from './normalized-shard.js';
+import { normalizedActivityShards, normalizedRunShard } from './normalized-shard.js';
+import { queryDashboardSourceObservations } from '../../src/data/queries/ingestion.js';
 import { expect, test } from '@playwright/test';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -328,6 +329,51 @@ test('built inventory tables resolve partial-source queries through the producti
     await expect(active.locator('[aria-busy="true"]')).toHaveCount(0);
   }
 });
+
+for (const mode of ['table', 'card']) {
+  test(`page-bound Campaigns preserves its ${mode} preview while event records are still loading`, async ({ context, page }) => {
+    const recordsName = shardName.replace('gh-aw-logs-runs/', 'gh-aw-logs-records/');
+    const shards = normalizedActivityShards(logs, queryDashboardSourceObservations(inventory).observations);
+    let releaseRecords = () => {};
+    const recordsReady = new Promise((resolve) => { releaseRecords = () => resolve(undefined); });
+    await context.route(`${origin}/payload-hashes.json`, route => route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ [shardName]: 'a'.repeat(64), [recordsName]: 'c'.repeat(64) })
+    }));
+    await context.route(`${origin}/${shardName}`, route => route.fulfill({
+      contentType: 'application/x-ndjson', body: shards.runs
+    }));
+    await context.route(`${origin}/${recordsName}`, async route => {
+      if (route.request().method() !== 'HEAD') await recordsReady;
+      await route.fulfill({ contentType: 'application/x-ndjson', body: shards.records });
+    });
+    await page.addInitScript(() => {
+      Reflect.set(window, '__dashboardImportComplete', false);
+      document.addEventListener('dashboard-data', event => {
+        if (event instanceof CustomEvent && event.detail?.kind === 'refresh' && event.detail.status === 'completed') {
+          Reflect.set(window, '__dashboardImportComplete', true);
+        }
+      });
+    });
+    try {
+      await page.goto(`${origin}/#page-campaigns`);
+      await page.getByRole('button', { name: 'Explore data', exact: true }).click();
+      const active = page.locator('[data-page-id="campaigns"]');
+      await active.locator(`[data-view-mode-value="${mode}"]`).click();
+      const inventoryView = active.locator('[data-view-id="campaigns-inventory"]');
+      await expect(inventoryView.locator('a[href="#page-campaign-insights?campaign=dependabot"]:visible').first()).toBeVisible();
+      await expect(inventoryView).toContainText('Dependabot');
+      expect(await inventoryView.locator('[aria-label$="is being calculated"]').count()).toBeGreaterThan(0);
+      expect(await page.evaluate(() => Reflect.get(window, '__dashboardImportComplete'))).toBe(false);
+    } finally {
+      releaseRecords();
+    }
+    await page.waitForFunction(() => Reflect.get(window, '__dashboardImportComplete') === true);
+    const active = page.locator('[data-page-id="campaigns"]');
+    await expect(active.locator('[aria-label$="is being calculated"]')).toHaveCount(0);
+    await expect(active.locator('[data-view-state="unavailable"]')).toHaveCount(0);
+  });
+}
 
 test('built dashboard preserves supported campaign icons outside its inline core', async ({ context, page }) => {
   await context.route(`${origin}/inventory-sources.json`, (route) => route.fulfill({

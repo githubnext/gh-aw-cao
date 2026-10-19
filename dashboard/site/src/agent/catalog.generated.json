@@ -543,7 +543,7 @@
         "campaign-insight-tab-counts",
         "campaign-issue-tab-counts",
         "campaign-problem-tab-counts",
-        "campaign-workflows"
+        "campaign-repository-inventory"
       ]
     },
     {
@@ -1137,7 +1137,7 @@
       "intent": "Inspect one run's authoritative routing timeline and coverage.",
       "subject": "Unified-session model routing facts for one run.",
       "objective": "Trace proxy decisions and missing accounting without exposing content.",
-      "acceptance": "Untimed facts have no invented timestamp and agent-written outcomes remain advisory.",
+      "acceptance": "Scope complete run partitions before session selection and accounting joins; preserve every attempt until latest-session selection. Untimed facts have no invented timestamp and agent-written outcomes remain advisory.",
       "experimental": false,
       "parameters": [
         {
@@ -1411,7 +1411,8 @@
         }
       ],
       "queries": [
-        "domain-route-record"
+        "domain-route-record",
+        "domain-run-records"
       ]
     },
     {
@@ -1877,17 +1878,93 @@
       }
     },
     {
-      "id": "campaign-workflow-import-evidence",
-      "subject": "Summarize retained import evidence at workflow grain for campaign inventory quality.",
-      "objective": "Preserve import-evidence provenance without materializing per-run ingestion indicators.",
-      "acceptance": "Compose all four retained event sources with the same availability, freshness, and completeness as event-runs; counts describe retained records, not executions or outcomes.",
+      "id": "campaign-import-audit-count",
+      "subject": "Count retained audit identities for campaign inventory source quality.",
+      "objective": "Retain audit provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical audit IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
       "description": "",
       "parameters": [],
       "sources": [
-        "audit-event-runs",
-        "domain-event-runs",
-        "issue-event-runs",
-        "tool-event-runs"
+        "audits"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "audits"
+        ]
+      }
+    },
+    {
+      "id": "campaign-import-domain-count",
+      "subject": "Count retained domain identities for campaign inventory source quality.",
+      "objective": "Retain domain provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical domain IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "domains"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "domains"
+        ]
+      }
+    },
+    {
+      "id": "campaign-import-tool-count",
+      "subject": "Count retained tool identities for campaign inventory source quality.",
+      "objective": "Retain tool provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical tool IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "tools"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "tools"
+        ]
+      }
+    },
+    {
+      "id": "campaign-import-issue-count",
+      "subject": "Count retained issue identities for campaign inventory source quality.",
+      "objective": "Retain issue provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical issue IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "issues"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "issues"
+        ]
+      }
+    },
+    {
+      "id": "campaign-workflow-import-evidence",
+      "subject": "Compose retained import-source quality for campaign workflow execution totals.",
+      "objective": "Preserve all four import dependencies without counting unused per-run or per-workflow coverage.",
+      "acceptance": "Compose audit, domain, tool, and issue availability, freshness, and completeness exactly as event-runs. The retained-record count carries source quality only; it is not displayed or used as horizon-specific import coverage, executions, or outcomes. Run and AI Credit totals retain their selected horizon.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "campaign-import-audit-count",
+        "campaign-import-domain-count",
+        "campaign-import-issue-count",
+        "campaign-import-tool-count"
       ],
       "used-by-pages": [],
       "execution": {
@@ -1925,7 +2002,7 @@
       "subject": "Attach retained import-evidence quality to compact workflow execution totals.",
       "objective": "Preserve the public inventory's run and import availability composition after aggregating run evidence.",
       "acceptance": "Keep runs and AI Credits unchanged; unavailable run evidence fails closed and optional import evidence degrades quality exactly as in run-import-status.",
-      "description": "The import-evidence join preserves inventory provenance without per-run ingestion indicators. It follows run aggregation so unavailable run evidence retains the original failure-quality semantics.",
+      "description": "Only source quality is consumed from import evidence. Join its compact retained-source summary after run aggregation; do not build unused run-level import coverage or change horizon-specific execution totals.",
       "parameters": [],
       "sources": [
         "campaign-workflow-execution-base",
@@ -1945,15 +2022,34 @@
       }
     },
     {
+      "id": "campaign-workflow-declarations",
+      "subject": "Project reusable campaign workflow declarations without execution evidence.",
+      "objective": "Share declaration display fields between structural topology and execution inventory without joining runs or import evidence.",
+      "acceptance": "Preserve raw organization, repository, workflow and declaration fields for joins. Select orchestrator and worker roles once, retaining inactive and unknown declarations; only list consumers select active entries. Display defaults and repository links do not establish execution, enrollment or authority.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "campaign-workflow-inventory",
       "subject": "Project declared campaign workflows with lean execution and configuration evidence.",
-      "objective": "Provide campaign totals and lists without unused ingestion, failure, or dashboard-link computations.",
+      "objective": "Provide campaign totals and lists from shared declarations with separate execution and import-quality evidence.",
       "acceptance": "Keep all declared orchestrators and workers, including inactive and unobserved entries; preserve inventory ordering, configuration defaults, execution totals, and import-evidence quality.",
       "description": "Lean campaign inventory with execution totals that retain the public workflow inventory's evidence-quality dependencies.",
       "parameters": [],
       "sources": [
-        "campaign-workflow-execution-totals",
-        "workflows"
+        "campaign-workflow-declarations",
+        "campaign-workflow-execution-totals"
       ],
       "used-by-pages": [],
       "execution": {
@@ -3236,7 +3332,7 @@
       "subject": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
       "objective": "Choose an active campaign workflow whose observed execution warrants inspection.",
       "acceptance": "Listed workflows match active declared orchestrator or worker inventory entries; runs and AI Credits agree with the selected-horizon inventory, and absence is not evidence of disabled authority or no executions. Rollout mode is context, not permission to change policy.",
-      "description": "Campaign workflows projected from lean canonical inventory, with display names and drill-down links computed only for the active list.",
+      "description": "Campaign workflows projected from lean canonical inventory, with shared declaration names and active-only workflow drill-down links.",
       "parameters": [
         {
           "name": "campaign",
@@ -3247,7 +3343,6 @@
         "campaign-workflow-inventory"
       ],
       "used-by-pages": [
-        "campaign-repositories",
         "campaign-workflows"
       ],
       "execution": {
@@ -3259,6 +3354,51 @@
           "issues",
           "runs",
           "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-repository-declarations",
+      "subject": "List active declared campaign workflows and their owning repositories without execution evidence.",
+      "objective": "Inspect campaign repository topology without computing unused run totals or import coverage.",
+      "acceptance": "Preserve active orchestrator and worker identities, display names, rollout context, links, and ordering. Declaration counts are not target enrollment, dispatch coverage, or execution totals. Empty inventory and unavailable workflow evidence remain distinct.",
+      "description": "Declaration-only repository topology. Run totals and import-evidence quality belong to execution views, not this inventory.",
+      "parameters": [],
+      "sources": [
+        "campaign-workflow-declarations"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-repository-inventory",
+      "subject": "Present declared campaign repository topology in workflow display order.",
+      "objective": "Filter and search projected repository coordinates and workflow names without time-filtering structural declarations.",
+      "acceptance": "Preserve the campaign workflow list's stable ordering and declaration-only evidence quality; runtime horizons must not remove declared workflows.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-repository-declarations"
+      ],
+      "used-by-pages": [
+        "campaign-repositories"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
           "workflows"
         ]
       }
@@ -14892,6 +15032,32 @@
       ],
       "used-by-pages": [
         "domain-insights",
+        "domain-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "domains"
+        ]
+      }
+    },
+    {
+      "id": "domain-run-records",
+      "subject": "Retained run-linked observations for the selected domain.",
+      "objective": "Find related runs without returning the unscoped domain collection alongside the paginated view.",
+      "acceptance": "Preserve every domain observation field, exact route scope, filtering, ordering, total count, provenance and related-run links; only the bounded view payload crosses the worker boundary.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "domain",
+          "field": "domain"
+        }
+      ],
+      "sources": [
+        "domains"
+      ],
+      "used-by-pages": [
         "domain-runs"
       ],
       "execution": {

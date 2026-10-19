@@ -133,6 +133,42 @@ it('compiles distinct aliases when two views filter the same source differently'
   expect(results[dashboardViewAliasName('operations', page.views[1], 1, 'runs')].rows).toEqual([sources.runs.rows[1]]);
 });
 
+it('shares equivalent scoped graphs but keeps view-specific limits and contexts separate', () => {
+  const queries = [
+    { name: 'base', from: 'runs', select: [{ field: 'run' }, { field: 'run-conclusion' }] },
+    { name: 'selected', from: 'base' }
+  ];
+  const page = { views: [
+    { id: 'short', mark: 'element', data: { source: 'selected', limit: 1 } },
+    { id: 'long', mark: 'element', data: { source: 'selected', limit: 2 } },
+    { id: 'failures', mark: 'element', data: { source: 'selected', filters: { 'run-conclusion': 'failure' } } }
+  ] };
+  const compiled = compileDashboardViewPayloadQueries(page, 'shared', { queries });
+  const result = executeDashboardQueries(compiled.queries, {
+    runs: { source: 'runs', metadata, rows: [
+      { run: '1', 'run-conclusion': 'success' },
+      { run: '2', 'run-conclusion': 'failure' }
+    ] }
+  }, compiled.aliases);
+  expect(result[compiled.aliases[0]].rows.map(row => row.run)).toEqual(['1']);
+  expect(result[compiled.aliases[1]].rows.map(row => row.run)).toEqual(['1', '2']);
+  expect(result[compiled.aliases[2]].rows.map(row => row.run)).toEqual(['2']);
+  expect(compiled.queries.filter(query => String(query.name).endsWith(':dependency:base'))).toHaveLength(2);
+});
+
+it('retains a derived source needed by an unscoped view alongside its contextual alias', () => {
+  const queries = [{ name: 'selected', from: 'runs' }];
+  const page = { 'query-binding': 'page', views: [
+    { id: 'all', mark: 'metric', data: { source: 'selected', 'query-context': false } },
+    { id: 'filtered', mark: 'metric', data: { source: 'selected' } }
+  ] };
+  const compiled = compileDashboardViewPayloadQueries(page, 'mixed', {
+    queries, queryContext: { filters: { 'run-conclusion': ['failure'] } }
+  });
+  expect(compiled.replacedSources).not.toContain('selected');
+  expect(compiled.aliases).toEqual(['view:mixed:filtered:selected']);
+});
+
 it('compiles the generated identifier for an unnamed bound view regardless of page mode', () => {
   const page = {
     views: [{ mark: 'table', data: { source: 'runs', filters: { 'run-conclusion': 'success' } } }]
@@ -467,6 +503,110 @@ it('applies route scope after a declared query creates the route field', () => {
   }, payload.aliases);
 
   expect(results[payload.aliases[0]].rows).toEqual([{ run: '3', campaign: 'beta' }]);
+});
+
+it('scopes complete window partitions and equality-joined partitions before execution', () => {
+  const definitions = [
+    {
+      name: 'attempts', from: 'observations',
+      window: [{ operation: 'row-number', field: 'attempt', as: 'position',
+        groupby: ['run'], 'order-by': [{ field: 'clock', direction: 'desc' }, { field: 'attempt', direction: 'desc' }] }]
+    },
+    {
+      name: 'costs', from: 'accounting',
+      aggregate: { by: ['run'], values: [{ field: 'aic', as: 'aic', reducer: 'sum' }] }
+    },
+    {
+      name: 'latest', from: 'attempts',
+      filter: { predicates: [{ field: 'position', equals: 1 }] },
+      joins: [{ source: 'costs', type: 'left', on: [{ left: 'run', right: 'run' }], fields: [{ field: 'aic', as: 'aic' }] }]
+    }
+  ];
+  const payload = compileDashboardViewPayloadQueries({
+    route: { 'hash-query-parameter': 'run' },
+    views: [{ id: 'detail', data: { source: 'latest', 'route-field': 'run' } }]
+  }, 'detail', { queries: definitions, routeParameters: { run: 'a' } });
+  const results = executeDashboardQueries(payload.queries, {
+    observations: { source: 'observations', metadata, rows: [
+      { run: 'a', attempt: 1, clock: 20 }, { run: 'a', attempt: 2, clock: 10 }, { run: 'b', attempt: 3, clock: 30 }
+    ] },
+    accounting: { source: 'accounting', metadata, rows: [{ run: 'a', aic: 2 }, { run: 'b', aic: 999 }] }
+  }, payload.aliases);
+  expect(results[payload.aliases[0]].rows).toEqual([{ run: 'a', attempt: 1, clock: 20, position: 1, aic: 2 }]);
+  for (const source of ['observations', 'accounting']) {
+    expect(payload.queries).toEqual(expect.arrayContaining([expect.objectContaining({
+      from: source, filter: { predicates: [{ field: 'run', equals: 'a' }] }
+    })]));
+  }
+});
+
+it('keeps cross-run history and baseline joins outside a run constraint', () => {
+  const definitions = [
+    {
+      name: 'history', from: 'observations',
+      window: [{ operation: 'previous', field: 'model', as: 'previous-model',
+        groupby: ['workflow'], 'order-by': [{ field: 'clock', direction: 'asc' }] }]
+    },
+    {
+      name: 'baseline', from: 'accounting',
+      aggregate: { by: ['workflow'], values: [{ field: 'aic', as: 'baseline-aic', reducer: 'median' }] }
+    },
+    {
+      name: 'detail', from: 'history',
+      joins: [{ source: 'baseline', type: 'left', on: [{ left: 'workflow', right: 'workflow' }], fields: [{ field: 'baseline-aic', as: 'baseline-aic' }] }]
+    }
+  ];
+  const payload = compileDashboardViewPayloadQueries({
+    route: { 'hash-query-parameter': 'run' },
+    views: [{ id: 'detail', data: { source: 'detail', 'route-field': 'run' } }]
+  }, 'detail', { queries: definitions, routeParameters: { run: 'a' } });
+  const results = executeDashboardQueries(payload.queries, {
+    observations: { source: 'observations', metadata, rows: [
+      { run: 'b', workflow: 'worker', clock: 10, model: 'old' },
+      { run: 'a', workflow: 'worker', clock: 20, model: 'new' }
+    ] },
+    accounting: { source: 'accounting', metadata, rows: [
+      { run: 'a', workflow: 'worker', aic: 2 }, { run: 'b', workflow: 'worker', aic: 10 }
+    ] }
+  }, payload.aliases);
+  expect(results[payload.aliases[0]].rows).toEqual([
+    { run: 'a', workflow: 'worker', clock: 20, model: 'new', 'previous-model': 'old', 'baseline-aic': 6 }
+  ]);
+  expect(payload.queries.filter(query => ['observations', 'accounting'].includes(String(query.from)))
+    .every(query => !query.filter)).toBe(true);
+});
+
+it.each([false, true])('preserves authored root and dependency caps before scope (bounded ancestor: %s)', (bounded) => {
+  const definitions = [
+    { name: 'candidates', from: 'observations', ...(bounded ? { limit: 1 } : {}) },
+    { name: 'detail', from: 'candidates', limit: 1 }
+  ];
+  const payload = compileDashboardViewPayloadQueries({
+    route: { 'hash-query-parameter': 'run' },
+    views: [{ id: 'detail', mark: 'table', data: { source: 'detail', 'route-field': 'run' } }]
+  }, 'detail', { queries: definitions, routeParameters: { run: 'a' } });
+  const results = executeDashboardQueries(payload.queries, {
+    observations: { source: 'observations', metadata, rows: [{ run: 'b' }, { run: 'a' }, { run: 'a' }] }
+  }, payload.aliases);
+  expect(results[payload.aliases[0]].rows).toEqual([]);
+  expect(payload.queries.find(query => query.name === payload.aliases[0])?.limit).toBeUndefined();
+});
+
+it('scopes table payloads without synthesizing semantic source query caps', () => {
+  const definitions = [
+    { name: 'candidates', from: 'observations' },
+    { name: 'detail', from: 'candidates' }
+  ];
+  const payload = compileDashboardViewPayloadQueries({
+    route: { 'hash-query-parameter': 'run' },
+    views: [{ id: 'detail', mark: 'table', data: { source: 'detail', 'route-field': 'run' } }]
+  }, 'detail', { queries: definitions, routeParameters: { run: 'a' } });
+  const results = executeDashboardQueries(payload.queries, {
+    observations: { source: 'observations', metadata, rows: [{ run: 'b' }, { run: 'a' }] }
+  }, payload.aliases);
+  expect(results[payload.aliases[0]].rows).toEqual([{ run: 'a' }]);
+  expect(payload.queries.every(query => query.limit === undefined)).toBe(true);
+  expect(definitions.every(query => !Object.hasOwn(query, 'limit'))).toBe(true);
 });
 
 it('applies the selected horizon before derived repository totals aggregate runs', () => {

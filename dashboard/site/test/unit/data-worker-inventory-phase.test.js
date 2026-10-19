@@ -206,6 +206,60 @@ it('publishes inventory-only sources before historical shards finish ingesting',
     .some((source) => JSON.stringify(source.rows).includes('Self Care'))).toBe(true);
   expect(posted.some(({ id }) => id === 1)).toBe(false);
 
+  const pagePreviewContext = {
+    ...previewContext,
+    queries: [...previewContext.queries, {
+      name: 'package-record-summary', from: 'package-execution-summary',
+      joins: [{
+        source: 'tools', type: 'left',
+        on: [{ left: 'id', right: 'run' }], fields: [{ field: 'id', as: 'evidence' }]
+      }]
+    }],
+    pages: [{
+      id: 'page-preview', kind: 'custom', 'query-binding': 'page',
+      views: [
+        { id: 'complete-chart', mark: 'chart', data: { source: 'package-record-summary' } },
+        { id: 'package-table', mark: 'table', data: {
+          source: 'package-record-summary', 'partial-source': 'marketplace-package-summary'
+        } },
+        { id: 'run-table', mark: 'table', data: {
+          source: 'package-record-summary', 'partial-source': 'run-summary'
+        } }
+      ]
+    }]
+  };
+  listeners.get('message')?.({ data: {
+    operation: 'subscribe-canonical-dashboard', subscriptionId: 'page-preview',
+    sourceNames: ['package-record-summary'], pageId: 'page-preview', context: pagePreviewContext
+  } });
+  const pagePreviews = () => posted.filter(({ subscriptionId, partial }) =>
+    subscriptionId === 'page-preview' && partial === true);
+  await waitFor('the inventory-phase page preview', () => pagePreviews().length === 1);
+  const packageAlias = 'view:page-preview:package-table:package-record-summary';
+  const runAlias = 'view:page-preview:run-table:package-record-summary';
+  expect(pagePreviews()[0]).toMatchObject({
+    data: { [packageAlias]: {
+      rows: [{ 'package-name': 'Self Care' }], metadata: { 'projection-state': 'pending' }
+    } }
+  });
+  expect(Object.keys(/** @type {object} */ (pagePreviews()[0].data))).toEqual([packageAlias]);
+
+  listeners.get('message')?.({ data: {
+    operation: 'subscribe-canonical-dashboard', subscriptionId: 'filtered-page-preview',
+    sourceNames: ['package-record-summary'], pageId: 'page-preview', context: pagePreviewContext,
+    queryContext: { filters: { campaign: ['selected'] } }
+  } });
+  listeners.get('message')?.({ data: {
+    operation: 'subscribe-canonical-dashboard', subscriptionId: 'backend-preview',
+    sourceNames: ['package-record-summary'], pageId: 'backend-preview',
+    context: { ...pagePreviewContext, pages: [{
+      ...pagePreviewContext.pages[0], id: 'backend-preview',
+      views: [
+        pagePreviewContext.pages[0].views[0],
+        { ...pagePreviewContext.pages[0].views[1], requires: { backend: 'hosted' } }
+      ]
+    }] }
+  } });
   releaseRuns();
   await waitFor('the runs subscription to be published before record ingestion',
     () => posted.some(({ subscriptionId }) => subscriptionId === 'runs'));
@@ -215,6 +269,14 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   const { processDataRequest } = await import('../../src/data-worker.js');
   expect(await processDataRequest({ operation: 'read-dashboard-snapshot' })).toBeNull();
   expect(posted.some(({ id }) => id === 1)).toBe(false);
+  await waitFor('the run-phase page preview', () => pagePreviews().length === 2);
+  expect(pagePreviews()[1]).toMatchObject({ data: {
+    [packageAlias]: { rows: [{ 'package-name': 'Self Care' }], metadata: { 'projection-state': 'pending' } },
+    [runAlias]: { rows: [{ run: '404' }], metadata: { 'projection-state': 'pending' } }
+  } });
+  expect(Object.keys(/** @type {object} */ (pagePreviews()[1].data)).sort()).toEqual([packageAlias, runAlias].sort());
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'filtered-page-preview')).toBe(false);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'backend-preview')).toBe(false);
 
   releaseRecords();
   await waitFor('the ingestion request to complete', () => posted.some(({ id }) => id === 1));
@@ -227,4 +289,20 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   await waitFor('the completed preview subscription', () => posted.some(
     ({ subscriptionId, partial }) => subscriptionId === 'late-preview' && partial !== true
   ));
+  await waitFor('the complete page projection', () => posted.some(
+    ({ subscriptionId, partial }) => subscriptionId === 'page-preview' && partial !== true
+  ));
+  const completePage = posted.find(({ subscriptionId, partial }) =>
+    subscriptionId === 'page-preview' && partial !== true);
+  expect(Object.keys(/** @type {object} */ (completePage?.data))).toHaveLength(3);
+  expect(Object.values(/** @type {Record<string, { metadata: Record<string, unknown> }>} */ (completePage?.data))
+    .every(({ metadata }) => metadata['projection-state'] !== 'pending')).toBe(true);
+  expect(posted.some(({ subscriptionId, partial }) => subscriptionId === 'filtered-page-preview' && partial)).toBe(false);
+  await waitFor('the backend-eligible complete projection', () => posted.some(
+    ({ subscriptionId, partial }) => subscriptionId === 'backend-preview' && partial !== true
+  ));
+  const backendPage = posted.find(({ subscriptionId }) => subscriptionId === 'backend-preview');
+  expect(Object.keys(/** @type {object} */ (backendPage?.data))).toEqual([
+    'view:backend-preview:complete-chart:package-record-summary'
+  ]);
 }, 30_000);

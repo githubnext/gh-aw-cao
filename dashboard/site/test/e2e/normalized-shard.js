@@ -2,10 +2,10 @@ import { adaptCachedGhAwJsonl } from '../../src/data/adapters/gh-aw-logs.js';
 import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
 
-/** @param {string} jsonl */
-export function normalizedActivityShards(jsonl) {
-  const batch = normalize(adaptCachedGhAwJsonl(jsonl).observations);
-  const sourceRecords = jsonl.trim().split('\n').filter(Boolean).length;
+/** @param {string} jsonl @param {import('../../src/data/model/schema.js').CanonicalObservation[]} [observations] */
+export function normalizedActivityShards(jsonl, observations = []) {
+  const batch = normalize([...adaptCachedGhAwJsonl(jsonl).observations, ...observations]);
+  const sourceRecords = jsonl.trim().split('\n').filter(Boolean).length + observations.length;
   /**
    * @param {'runs' | 'records'} phase
    * @param {(keyof import('../../src/data/model/schema.js').CanonicalBatch)[]} collections

@@ -109,6 +109,15 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
         await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('main_agent');
         await expect(page.locator('[data-view-id="routing-run-requests"]')).toContainText('as_selected');
         await expect(page.locator('[data-view-id="routing-run-timeline"]')).toContainText('firewall.model_routing');
+        await page.getByRole('textbox', { name: 'Routing state', exact: true }).fill('unrouted');
+        await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('No per-response accounting evidence');
+        await page.getByRole('textbox', { name: 'Routing state', exact: true }).fill('');
+        await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('main_agent');
+        await page.evaluate(() => { location.hash = '#page-routing-run?routing-run=octo%2Fapi%3A999'; });
+        await expect(page.locator('[data-view-id="routing-run-cost"]')).toContainText('no retained verified workflow identity');
+        await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('No per-response accounting evidence');
+        await page.evaluate(() => { location.hash = '#page-routing-run?routing-run=octo%2Fapi%3A101'; });
+        await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('main_agent');
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       });
     }

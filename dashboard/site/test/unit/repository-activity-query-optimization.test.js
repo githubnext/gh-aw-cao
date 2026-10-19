@@ -12,6 +12,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import runInventoryContract from '../fixtures/repository-run-inventory-contract.json' with { type: 'json' };
+import overviewContract from '../fixtures/repository-overview-contract.json' with { type: 'json' };
 
 /** @typedef {import('../../src/presenter.js').LogicalSourceInput} Source */
 /** @typedef {import('../../src/data/queries/declarative.js').DashboardQuery} Query */
@@ -171,6 +172,38 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('repository activity query optimization', () => {
+  it.each(contexts)('shares the overview dependency graph without changing scoped values or quality for %j', async (queryContext) => {
+    const sources = await canonicalSources();
+    sources.audits.metadata = {
+      ...sources.audits.metadata, completeness: 'partial', freshness: 'stale',
+      'as-of': '2026-09-01T00:00:00Z'
+    };
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === overviewContract.page);
+    expect(page['query-binding']).toBe(overviewContract['query-binding']);
+    expect(page.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual(overviewContract.views);
+    const options = {
+      queries, queryContext, routeParameters: overviewContract.route,
+      sourceNames: [overviewContract.source], evaluatedAt: '2026-09-24T00:00:00Z'
+    };
+    const combined = compileDashboardViewPayloadQueries(page, overviewContract.page, options);
+    const shared = workerQuery(combined.queries, sources, combined.aliases);
+    const budget = createDashboardQueryBudget();
+    Object.values(executeDashboardQueries(combined.queries, sources, combined.aliases, { budget })).map(result => result.rows);
+    let independentOperations = 0;
+    let dependencyCount = 0;
+    for (const viewId of overviewContract.views) {
+      const independent = compileDashboardViewPayloadQueries(page, overviewContract.page, { ...options, viewId });
+      expect(shared[independent.aliases[0]]).toEqual(workerQuery(independent.queries, sources, independent.aliases)[independent.aliases[0]]);
+      const independentBudget = createDashboardQueryBudget();
+      Object.values(executeDashboardQueries(independent.queries, sources, independent.aliases, { budget: independentBudget })).map(result => result.rows);
+      independentOperations += independentBudget.operations;
+      dependencyCount ||= independent.queries.filter((query) => String(query.name).endsWith(`:dependency:${overviewContract['shared-dependency']}`)).length;
+    }
+    expect(dependencyCount).toBeGreaterThan(0);
+    expect(combined.queries.filter((query) => String(query.name).endsWith(`:dependency:${overviewContract['shared-dependency']}`))).toHaveLength(dependencyCount);
+    expect(budget.operations).toBeLessThan(independentOperations * 0.4);
+  });
+
   it('keeps native aggregate inputs row-local and joins only narrow import identities or repository totals', async () => {
     const sources = await canonicalSources();
     const nativeNames = runInventoryContract['native-aggregates'];

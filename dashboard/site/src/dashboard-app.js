@@ -9,13 +9,12 @@
       import { startDashboardAppUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { cliActionTemplateContext } from "./cli-action-template.js";
-      import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
+      import { browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { startConsoleLogCapture } from "./console-log-capture.js";
       import { DashboardServerError, usesRemoteDataBackend } from "./remote-data-backend.js";
       import {
         dashboardPageChunkPath,
         dashboardPageIsLoaded,
-        dashboardTableSourceNames as collectDashboardTableSourceNames,
         mergeDashboardPage,
         normalizeDashboardPageChunk,
         splitDashboardDocument,
@@ -72,7 +71,6 @@
       let dashboardPageChunkLoads = new Map();
       let dashboardSchemaRevision = 0;
       const loadedDashboardPages = new Set();
-      const loadedDashboardTableSources = new Set();
       /** @type {import('./presenter.js').PresentationDocument} */
       let dashboardDocument;
       const tableCapacityDecision = browserTableCapacityDecision(window);
@@ -99,14 +97,9 @@
       };
       /**
        * @param {DashboardQueryDefinition[]} queries
-       * @param {string[]} tableSourceNames
        */
-      const mergeDashboardQueries = (queries, tableSourceNames) => {
-        for (const sourceName of tableSourceNames) loadedDashboardTableSources.add(sourceName);
-        const limitedQueries = /** @type {DashboardQueryDefinition[]} */ (
-          applyTableQuerySafetyLimits(queries, [...loadedDashboardTableSources])
-        );
-        for (const query of limitedQueries) {
+      const mergeDashboardQueries = (queries) => {
+        for (const query of queries) {
           if (typeof query?.name !== "string") continue;
           const existingIndex = dashboardQueries.findIndex((candidate) => candidate?.name === query.name);
           if (existingIndex >= 0) dashboardQueries.splice(existingIndex, 1, query);
@@ -126,7 +119,7 @@
           mergeDashboardPage(stub, chunk.page)
         );
         dashboardDocument.dashboard.pages.splice(pageIndex, 1, mergedPage);
-        mergeDashboardQueries(chunk.queries, collectDashboardTableSourceNames(dashboardDocument, pageId));
+        mergeDashboardQueries(chunk.queries);
         loadedDashboardPages.add(pageId);
         return mergedPage;
       };
@@ -146,7 +139,6 @@
         );
         dashboardPageChunkLoads.clear();
         loadedDashboardPages.clear();
-        loadedDashboardTableSources.clear();
         syncDashboardContext();
       };
       /**
@@ -158,7 +150,7 @@
         if (!page || !pageCapabilityAvailable(page)) return;
         if (dashboardPageIsLoaded(page)) {
           if (!loadedDashboardPages.has(pageId)) {
-            mergeDashboardQueries([], collectDashboardTableSourceNames(dashboardDocument, pageId));
+            mergeDashboardQueries([]);
             loadedDashboardPages.add(pageId);
           }
           return;
@@ -346,7 +338,6 @@
         const previousDashboardQueries = [...dashboardQueries];
         const previousDashboardPageChunks = dashboardPageChunks;
         const previousLoadedDashboardPages = new Set(loadedDashboardPages);
-        const previousLoadedDashboardTableSources = new Set(loadedDashboardTableSources);
         try {
           resetDashboardState(schema);
           updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader));
@@ -371,8 +362,6 @@
           dashboardQueries.splice(0, dashboardQueries.length, ...previousDashboardQueries);
           loadedDashboardPages.clear();
           for (const pageId of previousLoadedDashboardPages) loadedDashboardPages.add(pageId);
-          loadedDashboardTableSources.clear();
-          for (const sourceName of previousLoadedDashboardTableSources) loadedDashboardTableSources.add(sourceName);
           syncDashboardContext();
           try {
             renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader);
