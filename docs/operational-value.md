@@ -264,6 +264,16 @@ digest-checked acquisition partitions live beside the report under
 not retained. The acquisition happened after the cutoff, so current graph state
 is not claimed to be historical state at that cutoff.
 
+The standalone report has sortable **Signal**, **Evaluation coverage** and
+**Evidence freshness** columns, plus status selection and direct evidence links.
+Its headline shows the native-evaluated percentage, count and remaining work;
+55 of 344 is 16.0%, with 289 workflows still unevaluated.
+Coverage shows periods with native values, not full-goal acceptance. Stale reports,
+historical-only values, unknowns and scoped negatives remain distinct; freshness is
+relative to the frozen cutoff, not today's date. Presentation orders and status
+groups are compiled from the retained portfolio; browser controls only display
+those precomputed rows. This portable file report does not query the CAO dashboard.
+
 This is **not a completed value evaluation of all 344 workflows**. Fifty-five native
 evaluations are linked: File Diet's lifetime structural contributions, the
 rendering verifier's repository conformance, Go Test Parallelizer's unchanged-body

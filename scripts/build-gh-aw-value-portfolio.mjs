@@ -8,6 +8,7 @@ import { renderPulse } from "../.github/skills/add-operational-value/scripts/ren
 import { timelinePulse } from "../.github/skills/add-operational-value/scripts/pulse-model.mjs";
 import { censusDigest, readCensusJson, writeCensusJson } from "./operational-value-census-io.mjs";
 import { fileDietValueEvents } from "./build-file-diet-value-events.mjs";
+import { renderPortfolioTable } from "./workflow-portfolio-table.mjs";
 import { readLifetime } from "./measure-file-diet-lifetime.mjs";
 import { collectBatch as collectNativeTools, scoreMetric as scoreNativeTools } from "../docs/operational-value/proof/functions/smoke-test-tools.mjs";
 import { collectBatch as collectLockfileStatistics, scoreMetric as scoreLockfileStatistics } from "../docs/operational-value/proof/functions/lockfile-stats.mjs";
@@ -135,12 +136,12 @@ export function hostMeasurementReady(index, timeline, functionSha256) {
     "observed-proofs", "native-host-assertion-index"));
 }
 
-const page = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8">
+const page = (title, body, head = "") => `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>${text(title)}</title>
 <style>body{font:16px/1.5 system-ui,sans-serif;max-width:1100px;margin:auto;padding:24px;color:#1f2328;background:#fff}
 table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:12px;border-bottom:1px solid #d1d9e0;vertical-align:top}
 a{color:#0969da}code{overflow-wrap:anywhere}dt{font-weight:600}dd{margin:0 0 16px}p{max-width:85ch}.scroll{overflow:auto}</style>
-</head><body><main>${body}</main></body></html>\n`;
+${head}</head><body><main>${body}</main></body></html>\n`;
 
 export function writeWorkflowPortfolio(directory, portfolio) {
   mkdirSync(directory, { recursive: true });
@@ -205,18 +206,16 @@ ${workflow.discovery.mergedCandidates} candidates observed merged before the cut
   }
   flush();
   writeCensusJson(path.join(directory, "portfolio.json.gz"), { ...metadata, progressUpdatedAt, partitions });
-  const rows = workflows.map(workflow => `<tr><td><a href="${text(links.get(workflow.id))}">${text(workflow.id)}</a></td>
-<td>${text(workflow.measurement.status)}${workflow.measurement.progress?.partial ? " (partial; open history)" : ""}${workflow.measurement.progress
-    ? `<br><small>Function ${workflow.measurement.progress.functionReady ? "ready" : "pending"} &middot;
-Evidence ${workflow.measurement.progress.evidenceReady ? "acquired" : workflow.measurement.progress.blocked ? "unavailable" : "pending"} &middot;
-Evaluation ${workflow.measurement.progress.evaluationReady ? "complete" : workflow.measurement.progress.reportAvailable ? "gap report" : "pending"} &middot;
-Plot ${workflow.measurement.progress.plotReady ? "complete" : workflow.measurement.progress.reportAvailable ? "gap plot" : "pending"}</small>` : ""}</td>
-<td>${text(workflow.measurement.signal ? `${workflow.measurement.signal.status} (${workflow.measurement.signal.basis}; ${workflow.measurement.signal.unit})` : "Not measured")}</td>
-<td>${text(workflow.measurement.attention)}</td>
-<td>${workflow.discovery.markerLinkedOutputs}</td></tr>`).join("\n");
+  copyFileSync(new URL("./workflow-portfolio-table.css", import.meta.url), path.join(directory, "portfolio.css"));
+  const percentage = portfolio.totals.workflows
+    ? (100 * portfolio.totals.measured / portfolio.totals.workflows).toFixed(1) : "0.0";
   writeFileSync(path.join(directory, "index.html"), page(`${portfolio.repository} workflow value`,
     `<h1>${text(portfolio.repository)} operational-value coverage</h1>
-<p><strong>${portfolio.totals.workflows} workflows inventoried; ${portfolio.totals.measured} have native evaluations.</strong>
+<p><strong>${percentage}% native evaluation coverage: ${portfolio.totals.measured} / ${portfolio.totals.workflows} workflows.</strong>
+${portfolio.totals.workflows - portfolio.totals.measured} still lack a native evaluation.</p>
+${renderPortfolioTable(workflows, links)}
+<details class="report-context"><summary>Scope, evidence and limitations</summary>
+<p>${portfolio.totals.workflows} workflows inventoried; ${portfolio.totals.measured} have native evaluations.
 ${portfolio.totals.inProgress} are in progress;
 ${portfolio.totals.evidenceUnavailable} have functions but no measured native outcomes;
 ${portfolio.totals.needsInstrumentation} need instrumentation;
@@ -224,7 +223,7 @@ ${portfolio.totals.needsOutcomeContract} need goal/acceptance contracts;
 ${portfolio.totals.needsIntentReview} have changed intent sources requiring review.</p>
 <p><strong>Target: native evaluations for all ${portfolio.totals.workflows} workflows.
 ${portfolio.totals.workflows - portfolio.totals.measured} remain without a native evaluation.</strong>
-An inventory, implemented checker or refreshed report does not complete this target.</p>
+Native evaluation can establish a partial outcome; it does not imply full workflow attainment.</p>
 <p>${text(portfolio.limitation)}</p>
 <p>Coverage updated: <time datetime="${text(progressUpdatedAt)}">${text(progressUpdatedAt)}</time>.
 Retained gap reports do not count as measured evaluations. Temporary API pauses are unfinished acquisition, not proof of absent outcomes.</p>
@@ -239,8 +238,7 @@ ${portfolio.acquisition.unknownWorkflowMarkers} identify workflows outside the f
 ${portfolio.acquisition.markerErrors} have marker parse/scope conflicts.</p>
 <p>Marker counts are discovery diagnostics, not good-work scores. Missing measurements are not failures or zero delivery.
 Native units and shared credits are not added across workflows.</p>
-<div class="scroll"><table><thead><tr><th>Workflow</th><th>Evaluation coverage</th><th>Signal and basis</th><th>Attention</th><th>Marker-linked outputs</th></tr></thead>
-<tbody>${rows}</tbody></table></div>`));
+</details>`, '<link rel="stylesheet" href="portfolio.css">'));
 }
 
 export async function currentPortfolioInputs() {
