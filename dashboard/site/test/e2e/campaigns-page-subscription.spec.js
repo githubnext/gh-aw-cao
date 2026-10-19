@@ -2,6 +2,67 @@ import { authoritativeDashboard, expect, registerSmokeRoutes, test } from './hel
 
 registerSmokeRoutes();
 
+test('page-bound Campaigns loads its second page through the production continuation loader', async ({ page }) => {
+  const dashboard = authoritativeDashboard.dashboard;
+  const campaigns = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaigns');
+  const model = { ...authoritativeDashboard, dashboard: { ...dashboard, pages: [campaigns] } };
+  await page.route('http://dashboard.test/paged-campaign-sources.json', route => {
+    const metadata = { 'as-of': new Date().toISOString(), completeness: 'complete', freshness: 'fresh' };
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      campaigns: { metadata, rows: Array.from({ length: 31 }, (_, index) => ({
+        campaign: `campaign-${String(index).padStart(2, '0')}`,
+        'campaign-name': `Campaign ${String(index).padStart(2, '0')}`,
+        'campaign-mode': 'review', 'campaign-enabled': true
+      })) },
+      ...Object.fromEntries(['repositories', 'workflows', 'runs', 'audits', 'tools', 'domains', 'issues']
+        .map(name => [name, { metadata, rows: [] }]))
+    }) });
+  });
+  const result = await page.evaluate(async documentModel => {
+    const { startDashboardData } = await import(`${location.origin}/src/data/startup.js`);
+    const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
+    const { dashboardPageSourceNames, dashboardPagePaginatedSourceBindings } = await import(`${location.origin}/src/presenter.js`);
+    /** @type {import('../../src/presenter.js').PageSourceLoader | undefined} */
+    let loader;
+    const controller = new AbortController();
+    const context = { pages: documentModel.dashboard.pages, queries: documentModel.dashboard.queries };
+    await loadCanonicalDashboardSources(`${location.origin}/paged-campaign-sources.json`, [], context);
+    /** @type {Parameters<typeof import('../../src/data/startup.js').startDashboardData>[0]} */
+    const startupOptions = {
+      browserWindow: window, document,
+      sourceUrl: `${location.origin}/paged-campaign-sources.json`,
+      dashboardContext: context,
+      pageSourceNames: (id, mode) => dashboardPageSourceNames(documentModel, id, mode),
+      pagePaginatedSourceBindings: id => dashboardPagePaginatedSourceBindings(documentModel, id),
+      render: (_sources, _state, load) => { loader = load; }
+    };
+    const stop = await startDashboardData(startupOptions);
+    try {
+      if (!loader) throw new Error('Production page loader was not registered.');
+      const sources = await loader('campaigns', {
+        signal: controller.signal, onUpdate: () => {}, queryContext: { viewMode: 'table' }
+      });
+      const alias = 'view:campaigns:campaigns-inventory:campaign-inventory';
+      const first = sources[alias];
+      if (!first?.continuationToken || !first.loadContinuation) throw new Error('Missing Campaigns continuation.');
+      const next = await first.loadContinuation(first.continuationToken);
+      return {
+        firstRows: first.rows.length, nextRows: next.rows.length,
+        campaigns: [...first.rows, ...next.rows].map(row => row.campaign),
+        queryName: next.metadata['query-name'], continuation: next.continuationToken
+      };
+    } finally {
+      controller.abort();
+      stop();
+    }
+  }, model);
+  expect(result.firstRows).toBe(25);
+  expect(result.nextRows).toBe(6);
+  expect(result.campaigns).toEqual(Array.from({ length: 31 }, (_, index) => `campaign-${String(index).padStart(2, '0')}`));
+  expect(result.queryName).toBe('view:campaigns:campaigns-inventory:campaign-inventory');
+  expect(result.continuation).toBeUndefined();
+});
+
 test('Campaigns uses the shared page binding and refreshes its charts, table, and navigation', async ({ page }) => {
   const dashboard = authoritativeDashboard.dashboard;
   const campaigns = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaigns');

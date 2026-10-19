@@ -249,6 +249,17 @@ it('publishes inventory-only sources before historical shards finish ingesting',
     sourceNames: ['package-record-summary'], pageId: 'page-preview', context: pagePreviewContext,
     queryContext: { filters: { campaign: ['selected'] } }
   } });
+  listeners.get('message')?.({ data: {
+    operation: 'subscribe-canonical-dashboard', subscriptionId: 'backend-preview',
+    sourceNames: ['package-record-summary'], pageId: 'backend-preview',
+    context: { ...pagePreviewContext, pages: [{
+      ...pagePreviewContext.pages[0], id: 'backend-preview',
+      views: [
+        pagePreviewContext.pages[0].views[0],
+        { ...pagePreviewContext.pages[0].views[1], requires: { backend: 'hosted' } }
+      ]
+    }] }
+  } });
   releaseRuns();
   await waitFor('the runs subscription to be published before record ingestion',
     () => posted.some(({ subscriptionId }) => subscriptionId === 'runs'));
@@ -265,6 +276,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   } });
   expect(Object.keys(/** @type {object} */ (pagePreviews()[1].data)).sort()).toEqual([packageAlias, runAlias].sort());
   expect(posted.some(({ subscriptionId }) => subscriptionId === 'filtered-page-preview')).toBe(false);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'backend-preview')).toBe(false);
 
   releaseRecords();
   await waitFor('the ingestion request to complete', () => posted.some(({ id }) => id === 1));
@@ -286,4 +298,11 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   expect(Object.values(/** @type {Record<string, { metadata: Record<string, unknown> }>} */ (completePage?.data))
     .every(({ metadata }) => metadata['projection-state'] !== 'pending')).toBe(true);
   expect(posted.some(({ subscriptionId, partial }) => subscriptionId === 'filtered-page-preview' && partial)).toBe(false);
+  await waitFor('the backend-eligible complete projection', () => posted.some(
+    ({ subscriptionId, partial }) => subscriptionId === 'backend-preview' && partial !== true
+  ));
+  const backendPage = posted.find(({ subscriptionId }) => subscriptionId === 'backend-preview');
+  expect(Object.keys(/** @type {object} */ (backendPage?.data))).toEqual([
+    'view:backend-preview:complete-chart:package-record-summary'
+  ]);
 }, 30_000);

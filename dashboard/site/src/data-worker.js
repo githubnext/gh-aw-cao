@@ -483,7 +483,8 @@ function subscriptionPartialViews(subscription, phase = publicationPhase) {
       || Object.keys(subscription.routeParameters ?? {}).length) return [];
   const page = subscription.context.pages.find((candidate) => candidate?.id === subscription.pageId);
   return dashboardPartialViewSources(page, {
-    views: subscription.context.views, viewId: subscription.viewId, sourceNames: subscription.sourceNames
+    views: subscription.context.views, viewId: subscription.viewId, sourceNames: subscription.sourceNames,
+    backend: subscription.hostedSources !== undefined || liveDashboard?.hosted ? 'hosted' : 'static'
   }).filter(({ partialSource }) => isPhaseSubscription(subscription, phase, [partialSource]));
 }
 

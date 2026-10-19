@@ -198,13 +198,14 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
 
 /**
  * @param {unknown} page
- * @param {{ views?: unknown, viewId?: string, sourceNames: string[] }} options
+ * @param {{ views?: unknown, viewId?: string, sourceNames: string[], backend?: import('../../view-availability.js').DashboardDataBackend }} options
  */
 export function dashboardPartialViewSources(page, options) {
   const payload = pagePayload(page, options.views);
   if (!options.viewId && payload['query-binding'] !== 'page') return [];
   if (options.viewId && options.sourceNames.length !== 1) return [];
   return (payload.views ?? []).flatMap((view, index) => {
+    if (options.backend && !viewBackendAvailable(view, options.backend)) return [];
     if (!isPlainObject(view) || !isPlainObject(view.data)) return [];
     const viewId = typeof view.id === 'string' ? view.id : `view-${index + 1}`;
     if (options.viewId && options.viewId !== viewId) return [];
