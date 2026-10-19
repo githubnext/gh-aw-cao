@@ -580,7 +580,10 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     }
 
     :global(:root[data-theme="dark"]) .product-story {
-      background: var(--cao-page-bg);
+      background:
+        radial-gradient(ellipse 80% 120% at 0% 0%, rgba(63, 185, 80, 0.16), transparent 70%),
+        radial-gradient(ellipse 80% 120% at 100% 100%, rgba(63, 185, 80, 0.1), transparent 72%),
+        rgba(13, 17, 23, 0.88);
     }
 
     :global(:root[data-theme="dark"]) .product-story::before {

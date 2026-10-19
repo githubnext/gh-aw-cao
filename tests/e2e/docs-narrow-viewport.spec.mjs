@@ -386,8 +386,11 @@ for (const { name, viewport } of [
         await expect(pageCanvas).toHaveCSS("background-image", "none");
         await expect(page.locator(".hierarchy-hero")).toHaveCSS("background-image", "none");
         for (const story of await page.locator(".product-story").all()) {
-          await expect(story).toHaveCSS("background-color", "rgb(0, 0, 0)");
-          await expect(story).toHaveCSS("background-image", "none");
+          await expect(story).toHaveCSS("background-color", "rgba(13, 17, 23, 0.88)");
+          const background = await story.evaluate((element) => getComputedStyle(element).backgroundImage);
+          expect(background.match(/radial-gradient\(/g)).toHaveLength(2);
+          expect(background).toContain("rgba(63, 185, 80, 0.16)");
+          expect(background).toContain("rgba(63, 185, 80, 0.1)");
           expect(await story.evaluate((element) => getComputedStyle(element, "::before").display))
             .toBe("none");
         }

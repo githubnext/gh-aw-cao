@@ -268,7 +268,7 @@ test("the campaign catalog remains independent of setup wizard configuration", (
   assert.doesNotMatch(catalog, /controlPolicy|configuredOperationEntries|selectConfiguredOperations/);
 });
 
-test("landing page keeps dark backgrounds plain black and the light blueprint intact", () => {
+test("landing page keeps the dark canvas black with green story highlights and the light blueprint intact", () => {
   assert.match(hero, /--cao-page-grid-minor: rgba\(26, 127, 55,/);
   assert.match(hero, /--cao-page-grid-major: rgba\(26, 127, 55,/);
   assert.match(hero, /:global\(:root\[data-theme="dark"\] \.content-panel:has\(\.hierarchy-hero\)\)/);
@@ -281,7 +281,11 @@ test("landing page keeps dark backgrounds plain black and the light blueprint in
   assert.match(darkCanvas, /background-image: none;/);
   assert.doesNotMatch(darkCanvas, /gradient\(/);
   assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.hierarchy-hero \{[^}]*background-image: none;/);
-  assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.product-story \{\s*background: var\(--cao-page-bg\);/);
+  const darkStory = hero.match(/:global\(:root\[data-theme="dark"\]\) \.product-story \{([^}]+)\}/)?.[1];
+  assert.ok(darkStory);
+  assert.match(darkStory, /radial-gradient\(ellipse 80% 120% at 0% 0%, rgba\(63, 185, 80, 0\.16\), transparent 70%\)/);
+  assert.match(darkStory, /radial-gradient\(ellipse 80% 120% at 100% 100%, rgba\(63, 185, 80, 0\.1\), transparent 72%\)/);
+  assert.match(darkStory, /rgba\(13, 17, 23, 0\.88\)/);
   assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.product-story::before \{[\s\S]*?display: none/);
   assert.match(hero, /\.section-eyebrow::before \{[\s\S]*?border-radius: 1px/);
   assert.doesNotMatch(hero, /--section-accent: #(?:58a6ff|a371f7)/);
