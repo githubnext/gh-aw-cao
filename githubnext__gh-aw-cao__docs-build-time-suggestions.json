@@ -1,6 +1,6 @@
 {
   "source_sha": "65898a4c4adbbbecca2d4d565075a29f0abcf4b3",
-  "next_category": "artifact transfer and Pages packaging",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-10-19T03:28:46Z",
@@ -552,6 +552,35 @@
         38960914874
       ],
       "outcome": "Complete evaluation for category \"reusable dashboard generation\" on source SHA 65898a4c4adbbbecca2d4d565075a29f0abcf4b3. In the latest 20 completed docs.yml runs from 2026-10-19T11:48:30Z through 2026-10-19T15:24:20Z, 14 runs concluded success, 5 concluded skipped, 0 concluded failure or cancelled, and 1 concluded action_required. Trusted job metadata showed 6 comparable successful build-bearing docs runs (3 push, 3 schedule) with median queue time 0.0s, median full workflow time 133.5s (p90 171.0s), median execution time 133.5s (p90 171.0s), median build job 76.5s (p90 80.0s), and median deploy job 45.0s (p90 65.0s across the 3 schedule deploys). The latest 20 successful cao-dashboard.yml runs in the same 14-day window had median full duration 201.0s (p90 352.9s) and median build job 183.5s (p90 335.1s). Dashboard build step timings still show Upgrade fallback activity data as the dominant repeated cost at 131.5s median (p90 256.7s), while Assemble Dashboard Language site remained 4.0s median, Install dashboard build dependencies 4.0s median, and Upload dashboard artifact 9.0s median. Bounded logs for dashboard runs 39210914364 and 39044082669 verified exact-key activity cache hits followed by the same recycle-cache, hash-payloads, ingest-jsonl, and hash-payloads commands anyway; bounded docs logs for runs 39272637335 and 39274809340 verified cache hits for setup-node npm, root node_modules, and central-agentic-ops-dashboard plus repeated 65.3 MB github-pages uploads. This still supports the existing dashboard-ready activity bundle recommendation already tracked by open issue #18929, and the current source and timing evidence do not materially change that case or justify a second issue. next_category advances to \"artifact transfer and Pages packaging\"."
+    },
+    {
+      "evaluated_at": "2026-10-19T16:39:00Z",
+      "worker_run_id": 39285469788,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        39282342892,
+        39280630923,
+        39279122178,
+        39277723705,
+        39277652756,
+        39274809340,
+        39274369070,
+        39273158274,
+        39272637335,
+        39270711610,
+        39270658018,
+        39268853935,
+        39268620307,
+        39265268199,
+        39263931277,
+        39261919025,
+        39260120054,
+        39259842645,
+        39259603776,
+        39257445153,
+        39210914364
+      ],
+      "outcome": "Complete evaluation for category \"artifact transfer and Pages packaging\" on source SHA 65898a4c4adbbbecca2d4d565075a29f0abcf4b3. In the latest 20 completed docs.yml runs from 2026-10-19T13:07:12Z through 2026-10-19T16:27:24Z, 14 runs concluded success, 4 concluded skipped, 1 concluded cancelled, 1 concluded action_required, and 0 concluded failure. Trusted job metadata showed 8 comparable successful build-bearing docs runs (5 schedule, 3 push) with median queue time 4.0s (p90 37.0s), median full execution time 129.0s (p90 868.3s), median build job time 78.0s (p90 128.3s), and median deploy job time 45.0s (p90 76.6s across the 5 deploy-bearing runs). Within those runs, Upload Pages artifact stayed at 11.0s median (p90 12.0s) while repeatedly uploading a ~65.3 MB github-pages artifact, and bounded logs for docs runs 39274809340 and 39279122178 verified cache hits for the setup-node npm cache (~298 MB), the root node_modules cache (~288 MB), and the central-agentic-ops-dashboard cache (~54 MB). The current same-SHA push\u2192schedule pair 39274809340\u219239277723705 repeated the 65.3 MB Pages upload because the push run still skipped deploy, but that underlying work is already represented by open issue #18158 and the current source/timing evidence does not materially change that case. The visible outlier schedule run 39279122178 then waited 1538s between build completion and deploy start even though Deploy Pages itself took 6s, which indicates scheduling/backlog behavior rather than artifact packaging cost. In the paired relevant cao-dashboard.yml evidence, the lone successful run 39210914364 still uploaded its 61.7 MB central-agentic-ops-dashboard artifact in 9s and docs continued restoring that cache in 2s median, so dashboard artifact transfer is not the dominant cost in this category. No new non-duplicate artifact-transfer or Pages-packaging recommendation met the threshold to save at least 60s or 15 percent of median execution time without weakening correctness, freshness, or deployment safety. next_category advances to \"scheduling, concurrency, and avoidable rebuilds\"."
     }
   ]
 }
