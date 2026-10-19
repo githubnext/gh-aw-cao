@@ -636,6 +636,58 @@ test('workflow route queries return bounded records and subscribed aggregates th
   expect(Object.values(result.missing).every((source) => source.rows.length === 0)).toBe(true);
 });
 
+test('Domain runs returns bounded aliases and refreshes its abort-scoped subscription', async ({ page, context }) => {
+  const initial = databaseTables();
+  initial.domains.rows.push({ ...initial.domains.rows[0], event: 'unrelated-domain', domain: 'other.example' });
+  await context.route('http://dashboard.test/domain-initial.json', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify(initial)
+  }));
+  await context.route('http://dashboard.test/domain-updated.json', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify(databaseTables('domain-refresh', '12346'))
+  }));
+  const result = await page.evaluate(async () => {
+    const processor = await import(`${location.origin}/src/data-processor.js`);
+    const { dashboard } = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const source = 'domain-run-records';
+    const alias = 'view:domain-runs:domain-runs-table:domain-run-records';
+    const options = {
+      pageId: 'domain-runs', viewId: 'domain-runs-table',
+      routeParameters: { domain: 'api.github.com' }
+    };
+    const pagination = { [alias]: { limit: 1 } };
+    const initial = await processor.loadCanonicalDashboardSources(
+      `${location.origin}/domain-initial.json`, [source], dashboard, pagination, options
+    );
+    const lifetime = new AbortController();
+    let deliveries = 0;
+    try {
+      const refreshed = await new Promise((resolve, reject) => {
+        processor.subscribeCanonicalDashboardView('domain-runs-refresh', [source], dashboard, (/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ payload) => {
+          deliveries++;
+          if (deliveries === 1) {
+            processor.refreshCanonicalDashboardSources(
+              `${location.origin}/domain-updated.json`, [source], dashboard, pagination, options
+            ).catch(reject);
+          } else if (payload[alias]?.metadata['total-row-count'] === 4) resolve(payload);
+        }, pagination, { ...options, signal: lifetime.signal, onError: reject });
+      });
+      return { initial, refreshed };
+    } finally { lifetime.abort(); }
+  });
+  const alias = 'view:domain-runs:domain-runs-table:domain-run-records';
+  for (const payload of [result.initial, result.refreshed]) {
+    expect(Object.keys(payload)).toEqual([alias]);
+    expect(payload[alias].rows).toHaveLength(1);
+    expect(payload[alias].rows[0]).toMatchObject({
+      domain: 'api.github.com', repository: 'gh-cao',
+      'run-attempt': 2, 'run-link': { href: expect.stringMatching(/actions\/runs\/1234[56]/) }
+    });
+    expect(payload[alias].continuationToken).toBeTruthy();
+  }
+  expect(result.initial[alias].metadata['total-row-count']).toBe(2);
+  expect(result.refreshed[alias].metadata['total-row-count']).toBe(4);
+});
+
 test('data worker avoids unavailable legacy boundaries on initial and navigated requests', async ({ context, page }) => {
   await context.route('http://dashboard.test/canonical-warning-sources.json', async (route) => {
     await route.fulfill({

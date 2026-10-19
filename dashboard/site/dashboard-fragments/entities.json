@@ -9,6 +9,13 @@
       "select": [{ "field": "domain" }, { "field": "run-link" }]
     },
     {
+      "name": "domain-run-records",
+      "subject": "Retained run-linked observations for the selected domain.",
+      "objective": "Find related runs without returning the unscoped domain collection alongside the paginated view.",
+      "acceptance": "Preserve every domain observation field, exact route scope, filtering, ordering, total count, provenance and related-run links; only the bounded view payload crosses the worker boundary.",
+      "from": "domains"
+    },
+    {
       "name": "tool-route-record",
       "subject": "Project the selected MCP tool header and one retained run link.",
       "objective": "Identify the selected MCP tool and open a retained run before investigating its call evidence.",
@@ -262,7 +269,7 @@
           "title": "Related runs",
           "description": "Run records related to this domain.",
           "data": {
-            "source": "domains",
+            "source": "domain-run-records",
             "arguments": [
               {
                 "name": "domain",

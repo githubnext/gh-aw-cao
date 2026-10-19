@@ -1411,7 +1411,8 @@
         }
       ],
       "queries": [
-        "domain-route-record"
+        "domain-route-record",
+        "domain-run-records"
       ]
     },
     {
@@ -14892,6 +14893,32 @@
       ],
       "used-by-pages": [
         "domain-insights",
+        "domain-runs"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "domains"
+        ]
+      }
+    },
+    {
+      "id": "domain-run-records",
+      "subject": "Retained run-linked observations for the selected domain.",
+      "objective": "Find related runs without returning the unscoped domain collection alongside the paginated view.",
+      "acceptance": "Preserve every domain observation field, exact route scope, filtering, ordering, total count, provenance and related-run links; only the bounded view payload crosses the worker boundary.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "domain",
+          "field": "domain"
+        }
+      ],
+      "sources": [
+        "domains"
+      ],
+      "used-by-pages": [
         "domain-runs"
       ],
       "execution": {

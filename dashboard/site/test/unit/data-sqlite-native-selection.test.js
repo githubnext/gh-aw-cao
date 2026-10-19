@@ -92,6 +92,24 @@ afterEach(() => {
 });
 
 describe('real SQLite native record selection', () => {
+  it('retains the ordinary SQLite path when tuple-key cursors are unsupported', async () => {
+    const factory = sqliteFactory();
+    vi.stubGlobal('IDBKeyRange', SqliteIDBKeyRange);
+    const canonical = evidence();
+    canonical.audits = Array.from({ length: 101 }, (_, index) => ({
+      id: `audit:${index}`, runId: 'run:42', summary: index === 0 ? 'selected' : `other-${index}`
+    }));
+    await upsertCanonicalBatch(factory, canonical);
+    const query = {
+      name: 'selected-audit', from: 'audits',
+      filter: { predicates: [{ field: 'event-summary', equals: 'selected' }] },
+      select: [{ field: 'event' }]
+    };
+    expect(await queryIndexedDatabaseSources(factory, sources, [query], [query.name])).toEqual({});
+    const result = await loadDatabaseQuerySources(factory, sources, { queries: [query], sourceNames: [query.name] });
+    expect(result[query.name].rows).toEqual([{ event: 'audit:0' }]);
+  });
+
   it('reduces production repository run statistics in bounded SQLite scans before joins', async () => {
     const factory = sqliteFactory();
     vi.stubGlobal('IDBKeyRange', SqliteIDBKeyRange);

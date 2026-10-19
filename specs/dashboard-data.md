@@ -642,7 +642,12 @@ Canonical write APIs SHALL prepare these keys after pruning redundant fields;
 canonical read APIs SHALL remove them. Equivalent native query plans MAY
 evaluate declared row-local expressions on distinct indexed keys, read only
 matching observations, and obtain grouped event counts from indexes before
-materializing bounded results. Such plans MUST preserve observation grain,
+materializing bounded results. An unchanged single-field string equality MAY
+seek its encoded tuple directly only after verifying index coverage and excluding
+non-string tuples; nullable, coercible, structured, or computed values retain
+normal dictionary evaluation. The Domain runs table SHALL consume its declared
+`domain-run-records` query and return only the paginated view alias, not an
+additional unbounded `domains` collection. Such plans MUST preserve observation grain,
 run attempts, null and missing values, ordering, provenance, pagination, and
 unavailable inputs. Unsupported plans retain normal fail-closed execution, and
 an oversized selected scope MUST NOT be truncated or have its limits raised.

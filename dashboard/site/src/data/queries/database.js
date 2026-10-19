@@ -325,11 +325,12 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     if (unavailable) {
       return [name, executeRowLocalRecordGraph(plan.queries, { [source]: unavailable }, name, budget)];
     }
-    const keyReadId = `${plan.store}:${plan.indexName}`;
+    const keyReadId = JSON.stringify([plan.store, plan.indexName, plan.exactKey]);
     let keyRead = keyReads.get(keyReadId);
     if (!keyRead) {
       keyRead = readCollectionQueryKeys(indexedDB, plan.store, plan.indexName, {
-        maxKeys: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.spend(1)
+        maxKeys: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.spend(1),
+        exactKey: plan.exactKey
       });
       keyReads.set(keyReadId, keyRead);
     }
@@ -742,9 +743,41 @@ function indexedRecordKeySelectionPlan(index, definition) {
   });
   return {
     source, store, indexName: candidate.indexName, keyField, queries,
+    exactKey: exactRecordSelectionKey(recordProjection, stages, candidate.covered),
     projection: projection ? pruned[0] : undefined,
     keyQueries: projection ? pruned.slice(1) : pruned
   };
+}
+
+/**
+ * Only invert unchanged scalar projections, never computed labels. Storage
+ * additionally proves that all indexed tuples contain strings before using
+ * this shortcut; coercible or structured values retain dictionary evaluation.
+ * @param {import('./declarative.js').DashboardQuery} projection
+ * @param {Array<{ definition: import('./declarative.js').DashboardQuery }>} stages
+ * @param {Set<string>} covered
+ */
+function exactRecordSelectionKey(projection, stages, covered) {
+  if (covered.size !== 1) return undefined;
+  const [rawField] = covered;
+  const computed = new Set((projection.compute ?? []).map((field) => field.as));
+  let fields = new Set((projection.select ?? []).filter((field) => (
+    field.field === rawField && !computed.has(field.field)
+  )).map((field) => field.as ?? field.field));
+  for (const { definition } of stages) {
+    for (const field of definition.compute ?? []) fields.delete(field.as);
+    const predicate = definition.filter?.predicates?.find((predicate) => (
+      fields.has(predicate.field) && !predicate.optional
+      && typeof predicate.equals === 'string' && !predicate.in
+      && predicate.includes === undefined && predicate.gte === undefined && predicate.lt === undefined
+    ));
+    if (predicate) return JSON.stringify([predicate.equals]);
+    if (definition.select) {
+      fields = new Set(definition.select.filter((field) => fields.has(field.field))
+        .map((field) => field.as ?? field.field));
+    }
+  }
+  return undefined;
 }
 
 /**

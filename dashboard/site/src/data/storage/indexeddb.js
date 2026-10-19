@@ -1375,7 +1375,7 @@ export async function queryCollectionCountGroups(indexedDB, storeName, plan) {
  * @param {IDBFactory} indexedDB
  * @param {typeof ENTITY_STORES[number]} storeName
  * @param {string} indexName
- * @param {{ maxKeys: number, checkpoint?: () => void }} options
+ * @param {{ maxKeys: number, checkpoint?: () => void, exactKey?: string }} options
  * @returns {Promise<Array<{ key: string, row: Record<string, unknown> }> | null>}
  */
 export async function readCollectionQueryKeys(indexedDB, storeName, indexName, options) {
@@ -1392,6 +1392,18 @@ export async function readCollectionQueryKeys(indexedDB, storeName, indexName, o
       return null;
     }
     const fields = CANONICAL_QUERY_INDEX_FIELDS[indexName];
+    if (options.exactKey !== undefined && fields.length === 1) {
+      // JSON string tuples sort before every non-string tuple. Check the tail
+      // without scanning the string dictionary, retaining coercion semantics.
+      const nonString = await requestResult(index.openKeyCursor(IDBKeyRange.lowerBound('[#')));
+      options.checkpoint?.();
+      if (!nonString) {
+        await done;
+        if (options.maxKeys < 1) throw new Error(`IndexedDB query keys exceeded max-input-rows of ${options.maxKeys}`);
+        const [value] = JSON.parse(options.exactKey);
+        return [{ key: options.exactKey, row: { [fields[0]]: value } }];
+      }
+    }
     /** @type {Array<{ key: string, row: Record<string, unknown> }>} */
     const rows = [];
     try {
