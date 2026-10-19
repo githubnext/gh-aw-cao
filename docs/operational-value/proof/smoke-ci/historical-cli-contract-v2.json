@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "smoke-ci-native-effects-v2",
+  "predecessor": {
+    "path": "contract-v1.json",
+    "sha256": "cb857b5bf7b395084949fbcc65469ef29e2148bbdadf042cbd093afd919c4e51",
+    "status": "Unchanged strict samples-reference acceptance; no historical run may be relabeled as this profile."
+  },
+  "design": "Additive retrospective source-grounded CLI-era partial facet, frozen before inspecting original native attempt results. Census run status is discovery only and did not select acceptance.",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceHead": "9ecb2ebf6b7518ca5eb32f0f248279b51c81f6b4",
+  "sourceBlob": "9f4219f69b3c4b580f6cfe09c7d8d12ba0e1800c",
+  "effectiveExecution": "engine.command overrides agent execution. The natural-language prompt is intent, not proof that its requested cache/issue/update/label actions ran.",
+  "eligibleOpportunity": "Original pull_request event attempt with this exact source/compiled command profile and original triggering PR identity. Non-PR noop branches have no comment-effect opportunity and are not failures of the samples contract.",
+  "partialEffect": {
+    "operation": "add_comment",
+    "expectedBody": "\u2705 smoke-ci: safeoutputs CLI comment + comment-memory run (RUN_ID)",
+    "predicate": "Original protected processing receipt or independently captured native comment proves this exact body was persisted on the original triggering PR, with stable comment identity and original native creation timestamp.",
+    "unit": "independently verified persisted CLI comments",
+    "assignment": "Native comment creation timestamp, inclusive window start and exclusive window end; deduplicate stable comment identity across observations."
+  },
+  "requestValidity": "A source-bound original safeoutputs add_comment request is intrinsic request creation only, not a persisted comment.",
+  "nonattainment": "An original protected failure/denial receipt can establish a failed requested effect; green/red job conclusions alone cannot establish either outcome.",
+  "fullAcceptance": "Unknown unless comment-memory persistence, restored cross-run cache/repo-memory bytes and relevant hide-older semantics are independently established. The declared prompt's unexecuted actions are not acceptance evidence.",
+  "contribution": "Protected processor identity plus run/attempt, source and triggering target join can establish shared workflow contribution. An editable issue footer is insufficient.",
+  "comparability": "Compare only compatible same-profile complete disjoint periods. Do not compare CLI-era comment counts to five-sample-era effect counts.",
+  "missingness": "Partial selected attempts are not a full period cohort. Missing logs/receipts/native state remain null. No samples-era opportunity is manufactured from a CLI run.",
+  "costs": "Not measured; no LLM invocation is inferred from engine configuration when engine.command overrides it.",
+  "decision": "Not rated; no keep threshold or cost evidence supplied."
+}

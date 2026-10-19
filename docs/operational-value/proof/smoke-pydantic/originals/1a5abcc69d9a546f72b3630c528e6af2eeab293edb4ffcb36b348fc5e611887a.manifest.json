@@ -1,0 +1,28 @@
+{
+  "repository": "pydantic/pydantic-ai",
+  "revision": "4f6799896fcb386cc5d0af7e84b4b17c17dd14c3",
+  "path": "src/pydantic_ai_harness/gh-aw/pydantic.md",
+  "endpoint": "repos/pydantic/pydantic-ai/contents/src/pydantic_ai_harness/gh-aw/pydantic.md?ref=4f6799896fcb386cc5d0af7e84b4b17c17dd14c3",
+  "complete": true,
+  "startedAt": "2026-10-19T12:31:55.201Z",
+  "status": 200,
+  "headers": {
+    "content-length": "57805",
+    "content-type": "application/json; charset=utf-8",
+    "date": "Mon, 19 Oct 2026 12:31:55 GMT",
+    "etag": "\"511d7739e450de70cd4553ad750b620497b2e87b\"",
+    "x-github-request-id": "F76F:398757:135926:1CB304:6AD60DBB",
+    "x-ratelimit-limit": "15000",
+    "x-ratelimit-remaining": "14429",
+    "x-ratelimit-reset": "1792414484",
+    "x-ratelimit-resource": "core"
+  },
+  "response": "import.response.json",
+  "responseBytes": 57805,
+  "responseSha256": "0f64775dcabac4bc2ec0213fd60cdadab7e2809d6b09573ac8e86cfcf3b1516e",
+  "gitBlob": "511d7739e450de70cd4553ad750b620497b2e87b",
+  "blob": "511d7739e450de70cd4553ad750b620497b2e87b.blob",
+  "blobBytes": 41113,
+  "blobSha256": "809081bce856643cd1cb24df78f24c389ad54d30f7619647770edc77d05d3be7",
+  "finishedAt": "2026-10-19T12:31:55.846Z"
+}

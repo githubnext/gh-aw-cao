@@ -267,14 +267,14 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-55 of 344 is 16.0%, with 289 workflows still unevaluated.
+56 of 344 is 16.3%, with 288 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
 groups are compiled from the retained portfolio; browser controls only display
 those precomputed rows. This portable file report does not query the CAO dashboard.
 
-This is **not a completed value evaluation of all 344 workflows**. Fifty-five native
+This is **not a completed value evaluation of all 344 workflows**. Fifty-six native
 evaluations are linked: File Diet's lifetime structural contributions, the
 rendering verifier's repository conformance, Go Test Parallelizer's unchanged-body
 parallel activations, and six engine-conformance workflows' independently proven
@@ -434,7 +434,7 @@ reports remain separate rather than backdating the functions or plotting fixture
 as history. All four preserve original owned packages and discovery lineage,
 with costs, full accepted delivery and workflow contribution unmeasured.
 Fourteen other source-matched outcome proposals still need independent instruments,
-230 need outcome-contract authoring, and 11 changed source blobs need intent
+224 need outcome-contract authoring, and 11 changed source blobs need intent
 review. These are remaining measurement tasks or evidence gaps, not workflow
 failures or zero-value results. A steady repository conformance signal is not
 claimed as workflow delivery.
@@ -444,7 +444,7 @@ correctness, native Redis service-port operations and SDK file/read-back effects
 They follow the File Diet outcome-first path: inspect real downstream evidence,
 measure the smallest independently verified useful change, and separate broader
 acceptance and attribution. Assignment and fixture-only instruments are not
-native evaluations. The target remains all 344 workflows, with 289 still lacking
+native evaluations. The target remains all 344 workflows, with 288 still lacking
 native evaluations at this cutoff; refreshing this inventory does not complete it.
 
 Changeset now adds a real structural partial evaluation, not just an instrument:
@@ -493,10 +493,30 @@ absence proofs enable the standard nine-period frozen report without erasing
 the preserved earlier rejection. Neither case establishes comparable movement,
 a complete execution census, a keep recommendation or measured costs.
 
-Two further source-first investigations cover Pydantic's actual file-tool and
-transport behavior and deterministic CI sample replay's persisted safe-output
-effects. Neither assignment counts as a function or native evaluation; an LLM
-invocation is not required for a workflow's deterministic useful effects.
+Pydantic adds one source-bound native Python filesystem-read case, deduplicating
+three successful README reads in the October 17 authenticated trace. Strict
+`read_file` conformance remains separate: that tool was never invoked in the
+complete selected trace, so the scoped strict count is zero. The October 9
+console-only mention lacks native arguments and returned bytes and remains
+unknown, as do all ten earlier periods. Calculator output is not a standalone
+model answer; host gateway listings do not prove agent-usable MCP or transport.
+Persistence, full acceptance, complete history, costs and keep decisions remain
+unknown. Actual workflow introduction is proven, but its initial goal differs;
+later README acceptance is not backdated.
+
+CI replay's forensic evaluator is implemented but **does not add native
+coverage**. Fifteen original comments across two candidate PRs contain no accepted
+unchanged source message. Unbound triggering targets, unknown executed workflow
+revisions and expired original logs prevent a zero-effects claim. All 184 periods
+remain unknown, with original predicates, compressed reports and failure receipts
+preserved. An LLM invocation is not required for deterministic useful effects,
+but an unused prompt and a successful replay do not establish those effects.
+
+Two parallel documentation cohorts now own six further workflows: designer
+drift, documentation healing/updating, unbloating, developer-guide consolidation
+and Claude onboarding barriers. They share acquisition and mechanical checks
+while keeping separate goals and frozen acceptance predicates. Assignments,
+edit counts and merged candidates do not increase native coverage.
 
 The work-queue observer investigation retains all 12 initial executions:
 seven belong to an incompatible historical finish-staging goal, and five are

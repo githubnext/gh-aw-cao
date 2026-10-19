@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "smoke-ci-persisted-message-line-v3",
+  "design": "Additive retrospective source-grounded postcondition facet, frozen before reading target comment bodies. Strict v1 sample effects and v2 exact CLI/trigger-target acceptance remain unchanged.",
+  "source": {
+    "workflowBlob": "9f4219f69b3c4b580f6cfe09c7d8d12ba0e1800c",
+    "compiledBlob": "dbbf0942dcc7a1558ddd7c868cc5d5ae28b8f41d",
+    "handlerBlob": "7078fc56482700e6e4fdd60ceb6055abbb1476eb",
+    "basis": "The deterministic command specifies a literal comment message; the handler transforms user content with optional headers, tracking metadata and footers before native issues.createComment. Thus exact whole-body equality is a separate stricter facet."
+  },
+  "goal": "Measure the independently observable partial postcondition that the source-defined smoke test message was persisted as native PR comment content.",
+  "eligiblePopulation": "Selected original public github/gh-aw PR comment identities, discovered from the selected smoke-ci run's retained output graph. Partial population only; no complete workflow-run or PR cohort claim.",
+  "predicate": "A verified native PR identity belongs to repositoryId1036865607; its native comment has a stable ID and matching issue_url/html_url; body contains exactly one complete line equal to the source command's literal message with the selected original run ID substituted; created_at equals updated_at and is before the frozen cutoff and no earlier than the selected run creation. The native creation timestamp assigns the period.",
+  "expectedMessageLine": "\u2705 smoke-ci: safeoutputs CLI comment + comment-memory run (RUN_ID)",
+  "historicalCustody": "The current API snapshot is not backdated wholesale. Only an unchanged native comment with equal creation/update timestamps can establish this creation-time content facet; edited comments, current PR state, labels, footers and current issue bodies cannot reconstruct historical acceptance.",
+  "deduplication": "Count each repository-native comment node ID once, regardless of repeated acquisition, run references or observation requests.",
+  "unit": "persisted source-defined message lines",
+  "direction": "increase",
+  "measurement": "Native creation events in inclusive-start/exclusive-end disjoint daily periods. Other periods remain missing, never zero.",
+  "strictAcceptance": "Does not prove this was the triggering PR, which workflow revision executed, original CLI request validity, protected processing success, hide-older semantics, comment-memory or cross-run restoration. Those remain null unless separately proven.",
+  "contribution": "Literal run ID plus matching timing is corroboration only; it is not a protected creation receipt, sole causation, or verified workflow contribution. Any actor establishing the same native postcondition is counted.",
+  "costs": "Not measured.",
+  "decision": "Not rated.",
+  "predecessors": [
+    "contract-v1.json",
+    "historical-cli-contract-v2.json"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "smoke-pydantic-native-v1",
+  "frozenBeforeNativeResultInspection": true,
+  "interpretation": "Historical source-grounded reconstruction, not ex-ante acceptance or a causal experiment.",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "referenceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourcePath": ".github/workflows/smoke-pydantic.md",
+  "sourceGitBlob": "39e64a09ad74877e7533d69f858e9a479f9ce318",
+  "goal": "Verify Pydantic AI inference, safeoutputs MCP availability and an actual read_file read of root README.md; persist the prescribed report and conditional PR outputs.",
+  "primary": {
+    "id": "native-read-cases",
+    "opportunity": "An original smoke-pydantic Pydantic AI engine service lifetime with the source-prescribed README capability test.",
+    "acceptance": "A protected native invocation/result pair proves read_file returned the first line of root README.md, matching the immutable checkout bytes at the actual run revision. A quote, arithmetic answer, issue, green job, declaration or shell read alone is insufficient.",
+    "formula": "Count distinct runId/attempt service lifetimes with an accepted root README file-tool read, once per lifetime.",
+    "unit": "verified read cases",
+    "direction": "increase",
+    "actorIndependent": true
+  },
+  "facets": {
+    "inference": "Native provider request/response evidence bound to the Pydantic engine proves the prescribed 2+2 answer; an issue claim alone is insufficient.",
+    "mcpAvailability": "Protected native tool enumeration or a successful safeoutputs MCP invocation proves actual availability; configuration alone is insufficient.",
+    "transport": "Independent native protocol or transport receipt, bound to the invocation, proves the transport actually used; source configuration is not execution proof.",
+    "safeOutputPersistence": "A protected safe-output consumer receipt binds the run/attempt and emitted create_issue payload to the actual persistent issue identity. Agent output or editable footer alone is not persistence proof.",
+    "fullGoal": "All three source-prescribed tests plus persisted required issue; for pull_request events also the prescribed comment and success-only label. Exact source/import/compiled applicability and all required receipts must be established.",
+    "contribution": "Protected original producer execution identity binds an accepted native effect to smoke-pydantic. Corroborated editable issue links remain discovery only.",
+    "costs": "Only matching actual workflow-version/run/period costs, separately reported; no invented credits, dollars, time saved or cost per unknown outcome."
+  },
+  "evidencePolicy": {
+    "sourceApplicability": "Inspect and pin coherent source/import/compiled profiles before native-result inspection. Older incompatible profiles stay unknown, not retrospectively failed. Introduction and applicability are separate.",
+    "discovery": "Use production readOutputHistory over every partition, follow forward and reverse relatedCandidates to closure, retain absent references. Discovery is not outcome evidence.",
+    "scope": "At most two initial native run attempts; a partial population remains partial. No borrowed engine-conformance or other workflow cases.",
+    "deduplication": "Deduplicate the same case within runId/attempt service lifetime before assigning the native effect timestamp to an interval.",
+    "clock": "Native invocation and completion ordering must be valid and not after observedAt or the frozen cutoff. Interval starts inclusive and ends exclusive.",
+    "periods": "Seven-day duration and cadence, zero maturation; cutoff-aligned disjoint periods. Missing periods null, not zero; known per-case nonattainment is not complete-population zero.",
+    "missing": "Preserve proven narrow native subtotals through missing other facets or incomplete population coverage. Missing intrinsic read evidence remains null.",
+    "adoption": "Prove actual initial source/compiled addition against its real parent. Missing objects do not prove exhaustion or absence. Do not fabricate a temporal anchor to satisfy the evaluator.",
+    "decision": "Not rated: no source-defined native keep bar, complete-history requirement or causal attribution rule has been supplied."
+  }
+}

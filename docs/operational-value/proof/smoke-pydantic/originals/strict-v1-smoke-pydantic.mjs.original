@@ -1,0 +1,132 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { readJsonArchive } from "../../../../.github/skills/add-operational-value/scripts/json-archive.mjs";
+import {
+  cutoff, epochNs, introduction, nativeDigest, repository, validateRequest,
+} from "../../../../scripts/native-smoke-pydantic.mjs";
+import { proofRoot, sha256 } from "../../../../scripts/collect-smoke-pydantic.mjs";
+
+const acceptance = JSON.parse(readFileSync(path.join(proofRoot, "acceptance.json"), "utf8"));
+const anchor = introduction();
+const facets = [
+  ["native-read-cases", "Verified README reads", "read", "primary"],
+  ["inference-cases", "Verified inference", "inference", "diagnostic"],
+  ["mcp-cases", "Available safeoutputs MCP", "mcpAvailability", "diagnostic"],
+  ["transport-cases", "Verified transport", "transport", "diagnostic"],
+  ["persisted-issues", "Receipt-bound issues", "safeOutputPersistence", "diagnostic"],
+  ["full-goal-cases", "Complete source goal", "fullGoal", "diagnostic"],
+  ["linked-read-cases", "Workflow-linked reads", "contribution", "diagnostic"],
+];
+const example = status => ({
+  contractVersion: acceptance.contractVersion,
+  coverageStatus: "partial",
+  cases: [{ id: "example/1", facets: Object.fromEntries(facets.map(([, , key]) => [key, status])) }],
+});
+
+export const definition = {
+  schemaVersion: 3,
+  slug: "smoke-pydantic",
+  repository,
+  workflowName: "Smoke Pydantic AI",
+  sourcePath: acceptance.sourcePath,
+  intent: {
+    goal: acceptance.goal,
+    acceptance: acceptance.primary.acceptance,
+    temporalAnchor: "workflow-adoption",
+  },
+  adoption: anchor,
+  evaluation: { mode: "attainment-only" },
+  interpretation: acceptance.interpretation,
+  referenceRevision: acceptance.referenceRevision,
+  sourceGitBlob: acceptance.sourceGitBlob,
+  acceptanceSha256: sha256(readFileSync(path.join(proofRoot, "acceptance.json"))),
+  contract: acceptance,
+  sourceProfiles: JSON.parse(readFileSync(path.join(proofRoot, "source-review.json"), "utf8")),
+  evidence: {
+    key: acceptance.contractVersion,
+    repositories: [repository],
+    opportunity: acceptance.primary.opportunity,
+    filters: ["Original smoke-pydantic only", "One native case per run/attempt service lifetime",
+      "Coherent reviewed source profile", "Actual immutable README bytes", "Native timestamps within requested interval"],
+    collection: "Offline digest-checked original native receipts and Git source custody; complete production output-history discovery. Partial run selection never establishes a complete population.",
+    measurementKind: "interval",
+    window: { durationDays: 7, cadenceDays: 7, maturationDays: 0 },
+  },
+  model: {
+    architecture: "Source-specific deterministic native-capability checker; no inference model during intake, scoring or reporting.",
+    recommendation: "Native partial verification is separate from full acceptance, contribution, coverage and costs.",
+    presentation: { label: "Verified native cases", betterLabel: "More independently verified cases" },
+  },
+  summary: { nativeLabel: "verified capability cases per disjoint period" },
+  metrics: facets.map(([id, name, facet, role]) => ({
+    id, name, role,
+    formula: `Count distinct accepted ${facet} cases in the retained assessed subset; null when none can be assessed.`,
+    direction: "increase",
+    unit: id === "persisted-issues" ? "receipt-bound issues" : "verified cases",
+    presentation: { name, legendLabel: name.slice(0, 24), transform: "identity" },
+  })),
+  signal: { metricId: "linked-read-cases", basis: "workflow-contribution" },
+  validationExamples: {
+    targetAttained: example("passed"),
+    targetMissed: example("failed"),
+    missing: { contractVersion: acceptance.contractVersion, cases: [] },
+    malformed: { contractVersion: acceptance.contractVersion, cases: "not native cases" },
+  },
+};
+
+export function scoreMetric(id, evidence) {
+  const facet = facets.find(([metricId]) => metricId === id)?.[2];
+  if (!facet || !evidence || evidence.contractVersion !== acceptance.contractVersion
+    || !Array.isArray(evidence.cases) || !evidence.cases.length) return null;
+  const ids = new Set();
+  let accepted = 0, assessed = 0;
+  for (const row of evidence.cases) {
+    if (!row || typeof row.id !== "string" || !row.id || ids.has(row.id)
+      || !row.facets || typeof row.facets !== "object") return null;
+    ids.add(row.id);
+    const status = row.facets[facet];
+    if (!["passed", "failed", "unknown"].includes(status)) return null;
+    if (status !== "unknown") assessed++;
+    if (status === "passed") accepted++;
+  }
+  return assessed ? accepted : null;
+}
+
+export async function collectBatch(requests) {
+  if (!Array.isArray(requests)) throw new Error("Measurement requests must be an array");
+  requests.forEach(validateRequest);
+  const { collectNative } = await import("../../../../scripts/native-smoke-pydantic.mjs");
+  const native = collectNative();
+  return requests.map(request => {
+    const withinCutoff = epochNs(request.windowEnd) <= epochNs(cutoff);
+    const inside = at => epochNs(at) >= epochNs(request.windowStart) && epochNs(at) < epochNs(request.windowEnd);
+    const cases = withinCutoff ? native.cases.filter(row =>
+      epochNs(row.availableAt) <= epochNs(request.observedAt)
+      && (inside(row.at) || Object.values(row.facetAt).some(inside))).map(row => ({
+      ...row,
+      facets: Object.fromEntries(Object.entries(row.facets).map(([key, status]) =>
+        [key, row.facetAt[key] && !inside(row.facetAt[key]) ? "unknown" : status])),
+    })) : [];
+    const evidence = {
+      contractVersion: acceptance.contractVersion,
+      windowStart: request.windowStart, windowEnd: request.windowEnd,
+      observedAt: request.observedAt, measurementKind: "interval",
+      coverageStatus: cases.length ? "partial" : "missing",
+      maturityStatus: cases.length ? "mature" : "unavailable",
+      eligibleCount: null,
+      retainedAttemptCount: cases.length,
+      assessedCount: cases.filter(row => Object.values(row.facets).some(status => status !== "unknown")).length,
+      populationDigest: cases.length ? nativeDigest(cases.map(row => row.id)) : null,
+      missingReason: withinCutoff
+        ? native.missingReason
+        : "Requested period exceeds the frozen evidence cutoff.",
+      cases,
+      costs: null,
+    };
+    return {
+      evidence,
+      provenance: native.provenance,
+      commit: acceptance.referenceRevision,
+    };
+  });
+}

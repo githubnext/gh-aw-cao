@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 import { readOutputHistory } from "../.github/skills/add-operational-value/scripts/collect-output-history.mjs";
 import { workflowPortfolio } from "../.github/skills/add-operational-value/scripts/portfolio-model.mjs";
 import { escapeXml, sha256File } from "../.github/skills/add-operational-value/scripts/common.mjs";
@@ -28,6 +29,8 @@ import { collectBatch as collectSdkEffects, scoreMetric as scoreSdkEffects } fro
 import { collectBatch as collectRedisCases, scoreMetric as scoreRedisCases } from "../docs/operational-value/proof/functions/smoke-service-ports.mjs";
 import { collectBatch as collectSmallModel, scoreMetric as scoreSmallModel } from "../docs/operational-value/proof/functions/smoke-copilot-small.mjs";
 import { collectBatch as collectDriveMemory, scoreMetric as scoreDriveMemory } from "../docs/operational-value/proof/functions/smoke-drive.mjs";
+import { collectBatch as collectPydanticReads, scoreMetric as scorePydanticReads } from "../docs/operational-value/proof/functions/smoke-pydantic.mjs";
+import { collectBatch as collectCiReplay, scoreMetric as scoreCiReplay } from "../docs/operational-value/proof/functions/smoke-ci.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -70,12 +73,15 @@ export function nativeGapReportReady(timeline, functionSha256, metricId, provena
         && row.kind === provenanceKind && row.ref === provenanceRef)));
 }
 
+const retainedHtml = filename => filename.endsWith(".gz")
+  ? gunzipSync(readFileSync(filename)).toString("utf8") : readFileSync(filename, "utf8");
+
 function verifyNativePlot(timeline, plotPath, workflowId) {
   const model = timelinePulse(timeline);
   if (timeline.repository !== "github/gh-aw" || model.workflowSlug !== workflowId
     || model.sourcePath !== `.github/workflows/${workflowId}.md`
     || model.window.endAt !== "2026-10-18T15:00:12Z"
-    || readFileSync(plotPath, "utf8") !== renderPulse(model)) {
+    || retainedHtml(plotPath) !== renderPulse(model)) {
     throw new Error(`${workflowId} report identity or rendered evidence changed`);
   }
 }
@@ -101,7 +107,7 @@ async function retainNativePendingReport(progress, entry) {
     functionReady: entry.functionReady ?? true, evidenceReady: partialMeasured,
     evaluationReady: partialMeasured, plotReady: partialMeasured,
     ...(partialMeasured ? { partial: true } : {}),
-    reportAvailable: true, reportPath, blocked: false,
+    reportAvailable: true, reportPath, blocked: entry.blocked ?? false,
     ...(entry.diagnosticReportPath ? { diagnosticReportPath: entry.diagnosticReportPath } : {}),
     stage: entry.stage, detail: entry.detail });
   return timeline;
@@ -148,10 +154,11 @@ export function writeWorkflowPortfolio(directory, portfolio) {
   const copyRetainedReport = (sourcePath, filename) => {
     const source = realpathSync(sourcePath);
     if (!source.startsWith(`${realpathSync("docs/operational-value")}${path.sep}`)
-      || path.basename(source) !== filename) {
+      || ![filename, `${filename}.gz`].includes(path.basename(source))) {
       throw new Error("Retained report must be a workflow-owned operational-value report");
     }
-    copyFileSync(source, path.join(directory, filename));
+    if (source.endsWith(".gz")) writeFileSync(path.join(directory, filename), retainedHtml(source));
+    else copyFileSync(source, path.join(directory, filename));
   };
   const { workflows, ...metadata } = portfolio;
   const progressUpdatedAt = new Date().toISOString();
@@ -727,6 +734,21 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "smoke-pydantic", sourceGitBlob: "39e64a09ad74877e7533d69f858e9a479f9ce318",
+      functionSha256: "20bdc5ccbf59985d9ebab4ff7e05d454cbf153d45cfb9a8dd232f69a4f354faf",
+      timelineDigest: "918eb5021dc3a7a088d47e993b8bc9cf328e92efd3a36c77a3d9ebd68620f55e",
+      reports: "docs/operational-value/proof/smoke-pydantic/reports/github-gh-aw",
+      collector: collectPydanticReads, scorer: scorePydanticReads, partialMetricId: "linked-python-read-cases",
+      stage: "one native Python README read measured; strict read_file absent, full goal unknown",
+      detail: "The October17 original authenticated recorder contains three successful native run_code pathlib reads of the immutable run-head README first line, deduplicated to one producer-bound Python filesystem-read case. This is not read_file conformance: that tool is absent from the complete selected canonical trace, establishing scoped strict zero, while the October9 console-only mention/429 remains unknown. Eleven disjoint periods retain one partial positive period and ten unknown periods. Calculator outputs are not standalone model answers; host tools/list responses without request IDs do not prove agent-usable MCP or transport. Original protected consumers report incomplete signals and empty applied items, not prescribed persistence. Actual workflow introduction is proven, but its initial write/bash/git goal differs and the later goal is not backdated. Full acceptance, complete-population totals, comparable movement, full-period costs and keep decision remain unknown/not rated; the strict predecessor remains unchanged." },
+    { workflowId: "smoke-ci", sourceGitBlob: "435a00b593ced2327e01fd84c7cc93fdb45f8fae",
+      functionSha256: "ec52879d626e67a8f964ab21693e9c286bc2b431f2c86c175bf72f95804153d7",
+      timelineDigest: "67461160fa91f0267c29c0491cfaec1bd3d3d4933535dc65ad91d2130f40e4c6",
+      timelinePath: "docs/operational-value/proof/smoke-ci/report/smoke-ci-timeline.json.gz",
+      plotPath: "docs/operational-value/proof/smoke-ci/report/smoke-ci-pulse.html.gz",
+      collector: collectCiReplay, scorer: scoreCiReplay, blocked: true,
+      stage: "native qualification rejected; candidate originals do not establish workflow effects",
+      detail: "Two original PR-event attempts from disjoint days retain candidate PR comment populations of nine and six. None contains the unchanged source-defined message line, but empty original pull_requests arrays leave both targets unbound and actual executed workflow revisions remain unknown. The first protected logs expired with HTTP410 and its artifact inventory is empty; neither is native zero. All184 disjoint periods, strict samples acceptance, historical CLI facet, independent postcondition and contribution remain unknown. Exact source/compiled/processor originals, all prior predicates and lossless failure receipts are retained. The forensic function and gap report replay deterministically; this is not a new native evaluation, proof of absent samples-era runs, complete history, measured cost or a keep/retire decision." },
     { workflowId: "smoke-drive", sourceGitBlob: "b807269a21552c0e6ac518da7c44056024047e95",
       functionSha256: "d125c8322ca0fa41e242fc5b6e1404ae18e90e3b1580a570389e23d2c50098ed",
       timelineDigest: "1f991e818f65712ffe1b409fcad16799b4d7911570ebf32594056fb4bf145e5e",
@@ -828,12 +850,20 @@ export async function currentPortfolioInputs() {
     if (entry.partialMetricId) measurements.push({ workflowId: entry.workflowId, input: timeline });
   }
   for (const assignment of [
-    { workflowId: "smoke-pydantic", sourceGitBlob: "39e64a09ad74877e7533d69f858e9a479f9ce318",
-      stage: "source-first Pydantic file-tool and transport acceptance under authoring",
-      detail: "An isolated session is deriving native README first-line read and transport predicates from exact source/imports before evaluating original execution receipts. Known text, inference output and successful jobs are not file-tool evidence. Assignment establishes no function, native outcome, full acceptance or workflow contribution." },
-    { workflowId: "smoke-ci", sourceGitBlob: "435a00b593ced2327e01fd84c7cc93fdb45f8fae",
-      stage: "source-first deterministic sample replay effects under authoring",
-      detail: "An isolated session is deriving independent expected-effect predicates from deterministic sample replay and safe-output sources. The prompt is not sent to an agent; neither an LLM invocation nor replay-driver success defines acceptance. Original persisted effects remain unmeasured, and assignment is not native evaluation." },
+    ...[
+      ["designer-drift-audit", "91261191d20f97e8c511ed9690db4dd283ea35b9"],
+      ["daily-doc-healer", "424b398cdf60be1db7f87708e3d67012eafc81ac"],
+      ["daily-doc-updater", "02aebaffb8fbe3201e5a5c8a0ee6acf2e9be24cb"],
+    ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
+      stage: "documentation accuracy cohort: source-grounded contract and native repairs under investigation",
+      detail: "One isolated cohort shares source custody and evidence acquisition while deriving separate native accuracy predicates for each workflow. Actual documented-contract or factual repairs must be independently verified; edit counts, claims and merged candidates are not accepted outcomes. No function or native evaluation is established by this assignment." })),
+    ...[
+      ["unbloat-docs", "fd6994d6473be8d40b22805f406b20e0848da8ea"],
+      ["developer-docs-consolidator", "56150ba5b670e7b088c45e7106ebafbe3946d75a"],
+      ["claude-code-user-docs-review", "040ec6b88ae91baa0af077daf9b23401f90be806"],
+    ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
+      stage: "documentation consolidation cohort: preserved facts and adoption barriers under investigation",
+      detail: "One isolated cohort derives independent per-workflow definitions while sharing content custody and mechanical checks. Fewer words, files or duplicated passages alone do not establish preserved essential facts or removed adoption barriers. Verified partial outcomes remain separate from semantic usability and full acceptance; assignment is not native coverage." })),
     { workflowId: "artifacts-summary", sourceGitBlob: "f692218fe9dfec7d6de9cea16e0d0098f5d69603",
       stage: "native inventory reconciler retained; original reports and page sequences missing",
       detail: "The owned native decoder, ten-source closure and 22-test reconciliation instrument are retained. All 11 issue candidates remain discovery; Discussions are outside the issue/PR inventory. Six artifact records totaling 111,598,804 bytes are not proof of report accuracy. Original report bodies and contemporaneous complete workflow/run/artifact pages are missing. The frozen evaluator rejection and separate all-null prospective report remain preserved, not admitted as native outcomes. Full native measurement and contribution remain unknown." },

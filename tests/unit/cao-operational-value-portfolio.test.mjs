@@ -196,7 +196,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
   for (const id of ["daily-model-resolution", "daily-model-inventory",
     "daily-credit-limit-test", "daily-aw-cross-repo-compile-check", "avenger",
     "step-name-alignment", "workflow-normalizer", "cli-consistency-checker", "daily-syntax-error-quality",
-    "artifacts-summary", "smoke-pydantic", "smoke-ci"]) {
+    "artifacts-summary", "designer-drift-audit", "daily-doc-healer", "daily-doc-updater",
+    "unbloat-docs", "developer-docs-consolidator", "claude-code-user-docs-review"]) {
     const row = model.workflows.find(workflow => workflow.id === id);
     assert.equal(row.measurement.status, "evaluation-in-progress");
     for (const key of ["functionReady", "evidenceReady", "evaluationReady", "plotReady"]) {
@@ -208,6 +209,30 @@ test("the retained repository-wide proof replays coverage rather than promoting 
   assert.equal(model.totals.needsInstrumentation + model.totals.needsOutcomeContract
     + model.totals.needsIntentReview + model.totals.inProgress + model.totals.evidenceUnavailable + model.totals.measured, 344);
   assert.equal(archived.historyIndexSha256, censusDigest(acquired.index));
+});
+
+test("Pydantic native Python read does not satisfy strict read_file or full goal, and CI gaps stay unmeasured", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const pydantic = measurements.find(entry => entry.workflowId === "smoke-pydantic").input;
+  assert.equal(pydantic.snapshots.length, 11);
+  const latest = pydantic.snapshots.at(-1);
+  assert.equal(latest.metrics["native-read-cases"], 0);
+  assert.equal(latest.metrics["python-filesystem-read-cases"], 1);
+  assert.equal(latest.metrics["linked-python-read-cases"], 1);
+  for (const id of ["inference-cases", "mcp-cases", "transport-cases", "persisted-issues", "full-goal-cases"]) {
+    assert.equal(latest.metrics[id], null);
+  }
+  assert.ok(pydantic.snapshots.slice(0, -1).every(snapshot =>
+    Object.values(snapshot.metrics).every(value => value === null)));
+  assert.equal(progress.find(row => row.workflowId === "smoke-pydantic").partial, true);
+  assert.equal(measurements.some(row => row.workflowId === "smoke-ci"), false);
+  const ci = progress.find(row => row.workflowId === "smoke-ci");
+  assert.equal(ci.functionReady, true);
+  assert.equal(ci.blocked, true);
+  assert.equal(ci.reportAvailable, true);
+  for (const key of ["evidenceReady", "evaluationReady", "plotReady"]) assert.equal(ci[key], false);
+  assert.match(readFileSync("docs/operational-value/gh-aw-workflows/smoke-ci-pulse.html", "utf8"),
+    /<!doctype html>/i);
 });
 
 test("positive partial native evaluations retain unknown completion and open-history labels", async () => {

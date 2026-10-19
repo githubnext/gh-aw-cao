@@ -155,6 +155,14 @@ execution without inventing standalone arguments. Preserve the source's output
 projection, such as an INFO prefix, rather than fabricating unobserved bytes.
 Deduplicate each delivered case within its service lifetime before assigning
 disjoint periods; repeated tool calls are not repeated improvements.
+Keep exact-tool conformance separate from independently captured operation
+effects: a native Python filesystem read is not a `read_file` invocation.
+Console-derived tool-shaped entries do not prove native arguments or returned
+bytes. Likewise, a host gateway's tool listing is not agent-usable MCP or
+request/response correlation when original envelopes omit the shared ID.
+Resolve the effective executor before interpreting prose: command overrides and
+deterministic sample replay can bypass the agent. Version historical source-era
+predicates separately; an unused prompt and replay success are not output effects.
 For memory goals, separate same-run readback from independently restored
 cross-run bytes. Protected proof that execution never started establishes
 nonattainment in that attempt, not loss or correctness of stored state.

@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "cutoff": "2026-10-18T15:00:12Z",
+  "acquisitionStatus": "bounded-two-native-candidates-preserved",
+  "attempts": [
+    {
+      "runId": 29535137680,
+      "attempt": 1,
+      "files": [
+        {
+          "role": "run",
+          "file": "native/4f0b661fdc2dfe3b556e1300daf414795e93a2a44ade750dbf086667aaeece91.original.gz",
+          "bytes": 11405,
+          "sha256": "4f0b661fdc2dfe3b556e1300daf414795e93a2a44ade750dbf086667aaeece91",
+          "endpoint": "repos/github/gh-aw/actions/runs/29535137680",
+          "status": 200,
+          "headers": {
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:34:41 GMT",
+            "etag": "W/\"879b8ef3ff9424c4021831e5907b2ebbd520487b1aa59efd1feb38903f473768\"",
+            "x-github-request-id": "F0E1:1D1C60:9E2C35:E40D3D:6AD60E61",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14917",
+            "x-ratelimit-reset": "1792414721",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:34:41.702Z",
+          "manifestSha256": "6b4a6c4d8c8992786afd664c5832502a4145ff318dca724a6754b8b5f8d7df51"
+        },
+        {
+          "role": "artifacts",
+          "file": "native/244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c.original.gz",
+          "bytes": 32,
+          "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+          "endpoint": "repos/github/gh-aw/actions/runs/29535137680/artifacts?per_page=100",
+          "status": 200,
+          "headers": {
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:34:43 GMT",
+            "etag": "W/\"b1b029c0c59560772f08888b67c6a5369ea431dacd6adef6ce9e85da0233de3f\"",
+            "x-github-request-id": "FC35:81BF7:A0F55E:E9B1B8:6AD60E63",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14916",
+            "x-ratelimit-reset": "1792414721",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:34:43.975Z",
+          "manifestSha256": "6b4a6c4d8c8992786afd664c5832502a4145ff318dca724a6754b8b5f8d7df51"
+        },
+        {
+          "role": "jobs",
+          "file": "native/80fcc0d4f145929cb2ffd5c5f96ff4d75813cf097c7d0949759be3d4f31f97f0.original.gz",
+          "bytes": 24750,
+          "sha256": "80fcc0d4f145929cb2ffd5c5f96ff4d75813cf097c7d0949759be3d4f31f97f0",
+          "endpoint": "repos/github/gh-aw/actions/runs/29535137680/attempts/1/jobs?per_page=100",
+          "status": 200,
+          "headers": {
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:37:17 GMT",
+            "etag": "W/\"44e8eaab17cdb0bf4dc9c571d49bceea90b83c0c79cd578cd02640420c69a423\"",
+            "x-github-request-id": "EB3C:A0569:A83EA9:F31388:6AD60EFC",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14907",
+            "x-ratelimit-reset": "1792414721",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:37:17.917Z",
+          "manifestSha256": "2971b085abef5ce1bf0c1ec538e4b3d2b820cd53703f3ab03fb321dba5e23701"
+        },
+        {
+          "role": "expired-logs",
+          "file": "native/78b014480960b06f5823febafb9c97a2bbadb76ea905fcc2bed5c5b66bbc01f5.original.gz",
+          "bytes": 149,
+          "sha256": "78b014480960b06f5823febafb9c97a2bbadb76ea905fcc2bed5c5b66bbc01f5",
+          "endpoint": "repos/github/gh-aw/actions/runs/29535137680/attempts/1/logs",
+          "status": 410,
+          "headers": {
+            "content-length": "149",
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:37:19 GMT",
+            "x-github-request-id": "F5E7:11CC35:AE774D:FBFC94:6AD60EFF",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14906",
+            "x-ratelimit-reset": "1792414721",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:37:19.920Z",
+          "manifestSha256": "2971b085abef5ce1bf0c1ec538e4b3d2b820cd53703f3ab03fb321dba5e23701"
+        },
+        {
+          "role": "pr",
+          "file": "native/83e9290769b5975fd6342fcc46d640234525880703b628e6bb53fe92dfb3177e.original.gz",
+          "bytes": 22050,
+          "sha256": "83e9290769b5975fd6342fcc46d640234525880703b628e6bb53fe92dfb3177e",
+          "endpoint": "repos/github/gh-aw/pulls/46077",
+          "status": 200,
+          "headers": {
+            "content-length": "22050",
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:37:17 GMT",
+            "etag": "\"9c33c04a663b855f492b39127fb4958d3140c5bde6263fb35cefd50d3b164263\"",
+            "x-github-request-id": "F2DF:29C844:A7EF98:F266A4:6AD60EFC",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14332",
+            "x-ratelimit-reset": "1792414484",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:37:17.228Z",
+          "manifestSha256": "23a59f14d3499bc7d76060a0836f39a2aa6bc03ac550e15aaacdb6f5bc65112c"
+        },
+        {
+          "role": "comments",
+          "file": "native/e090ac9dac4511d025590ce83194c8506b4567dfe6210c7353575729a14b0efd.original.gz",
+          "bytes": 37868,
+          "sha256": "e090ac9dac4511d025590ce83194c8506b4567dfe6210c7353575729a14b0efd",
+          "endpoint": "repos/github/gh-aw/issues/46077/comments?per_page=100",
+          "status": 200,
+          "headers": {
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:37:19 GMT",
+            "etag": "W/\"bd89ed5327a27ca3686db10a704b90b2e4970b194095d7ea3772571ba05908e5\"",
+            "x-github-request-id": "E839:1DBA9D:A4DF81:EE7882:6AD60EFE",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14329",
+            "x-ratelimit-reset": "1792414484",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:37:19.367Z",
+          "manifestSha256": "23a59f14d3499bc7d76060a0836f39a2aa6bc03ac550e15aaacdb6f5bc65112c"
+        },
+        {
+          "role": "discovery-issue",
+          "file": "native/2b1ee90cf156533001231d03febbe177da1b6eff2bf000878b901038c70fd3d2.original.gz",
+          "bytes": 6617,
+          "sha256": "2b1ee90cf156533001231d03febbe177da1b6eff2bf000878b901038c70fd3d2",
+          "endpoint": "repos/github/gh-aw/issues/46086",
+          "status": 200,
+          "headers": {
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:37:21 GMT",
+            "etag": "W/\"700b47579f6025dc62c011c9671d3701b62b9700ee1aee629e7e4708247fa87d\"",
+            "x-github-request-id": "F394:23F607:AA6174:F64514:6AD60F01",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14326",
+            "x-ratelimit-reset": "1792414484",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:37:21.440Z",
+          "manifestSha256": "23a59f14d3499bc7d76060a0836f39a2aa6bc03ac550e15aaacdb6f5bc65112c"
+        }
+      ]
+    },
+    {
+      "runId": 28377305309,
+      "attempt": 1,
+      "files": [
+        {
+          "role": "run",
+          "file": "native/9140d0dfe30e15a57b3ccfaea2a7499f6a0dc2b8f74af940ea638881c58c868b.original.gz",
+          "bytes": 11587,
+          "sha256": "9140d0dfe30e15a57b3ccfaea2a7499f6a0dc2b8f74af940ea638881c58c868b",
+          "endpoint": "repos/github/gh-aw/actions/runs/28377305309",
+          "status": 200,
+          "headers": {
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:43:14 GMT",
+            "etag": "W/\"2ede78a536cbf7f3d96bdcbe7a79d04352a67b5dfbf4be2a825845bd88d228ca\"",
+            "x-github-request-id": "EFCB:8B0D8:B9467C:10AB251:6AD61062",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14855",
+            "x-ratelimit-reset": "1792414721",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:43:14.647Z",
+          "manifestSha256": "05e9794a0002980315638cca5a29062b7bc441f8cceb3d971bf73a8ca5244c22"
+        },
+        {
+          "role": "pr",
+          "file": "native/b5e073cc6fd455f0a9dca8282cf0b903f66c9179907190ad29fc8fd4fa5c82bb.original.gz",
+          "bytes": 17500,
+          "sha256": "b5e073cc6fd455f0a9dca8282cf0b903f66c9179907190ad29fc8fd4fa5c82bb",
+          "endpoint": "repos/github/gh-aw/pulls/42250",
+          "status": 200,
+          "headers": {
+            "content-length": "17500",
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:43:16 GMT",
+            "etag": "\"d353b2a9c80ae64761111bd0ee9e59250025ef94af60d8fe90605d420bc519cd\"",
+            "x-github-request-id": "E78C:122D0A:B60052:107C43A:6AD61064",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14023",
+            "x-ratelimit-reset": "1792414484",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:43:16.786Z",
+          "manifestSha256": "05e9794a0002980315638cca5a29062b7bc441f8cceb3d971bf73a8ca5244c22"
+        },
+        {
+          "role": "comments",
+          "file": "native/ef3eb358ef9248e885be6aa41202091773f310e5248952d44cca8d93d8579a57.original.gz",
+          "bytes": 30162,
+          "sha256": "ef3eb358ef9248e885be6aa41202091773f310e5248952d44cca8d93d8579a57",
+          "endpoint": "repos/github/gh-aw/issues/42250/comments?per_page=100",
+          "status": 200,
+          "headers": {
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 19 Oct 2026 12:43:18 GMT",
+            "etag": "W/\"9817dd986a1d2d1d63a299bddd77a12a64dcd322f2c27705188e95da0dc566d5\"",
+            "x-github-request-id": "E818:73BEE:B0D5BC:100A6C4:6AD61066",
+            "x-ratelimit-limit": "15000",
+            "x-ratelimit-remaining": "14022",
+            "x-ratelimit-reset": "1792414484",
+            "x-ratelimit-resource": "core"
+          },
+          "receivedAt": "2026-10-19T12:43:18.883Z",
+          "manifestSha256": "05e9794a0002980315638cca5a29062b7bc441f8cceb3d971bf73a8ca5244c22"
+        }
+      ]
+    }
+  ],
+  "missingReason": "Executed workflow revision and triggering PR are not independently bound; original attempt logs expired with HTTP410. Current target snapshots are not wholesale historical state.",
+  "interpretation": "An empty local acquisition is unavailable evidence, not zero attempts, zero effects, a complete cohort or native acceptance.",
+  "discoveryReceipts": [
+    {
+      "file": "native-discovery/7e7962c3db2c03528603dffce2237b30e0e67c0859d4692641ad5197e84a7004.json.gz",
+      "bytes": 27816,
+      "sha256": "7e7962c3db2c03528603dffce2237b30e0e67c0859d4692641ad5197e84a7004",
+      "endpoint": "repos/github/gh-aw/actions/workflows/smoke-ci.lock.yml/runs?created=%3C%3D2026-10-18T15%3A00%3A12Z&per_page=2",
+      "method": "GET",
+      "status": 200,
+      "receivedAt": "2026-10-19T12:26:31.262Z",
+      "inventoryComplete": false,
+      "limitation": "Only first two workflow-run entries before cutoff. Pagination remains; not an execution census or proof that samples-era runs do not exist."
+    }
+  ]
+}

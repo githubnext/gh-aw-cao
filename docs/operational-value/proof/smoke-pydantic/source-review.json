@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "reviewedBeforeNativeResultInspection": true,
+  "referenceProfile": {
+    "sourceGitBlob": "39e64a09ad74877e7533d69f858e9a479f9ce318",
+    "compiledGitBlob": "970bf8971b00ee0aafe924cb19a52e713607fda8",
+    "importRepository": "pydantic/pydantic-ai",
+    "importRevision": "4f6799896fcb386cc5d0af7e84b4b17c17dd14c3",
+    "importPath": "src/pydantic_ai_harness/gh-aw/pydantic.md",
+    "importGitBlob": "511d7739e450de70cd4553ad750b620497b2e87b",
+    "engine": "pydantic-ai",
+    "harnessVersion": "0.56.0",
+    "cli": "clai2",
+    "workspace": "Native session.init cwd must identify the checkout; source LocalWorkspace('.') and spawn cwd=GITHUB_WORKSPACE bind local filesystem tools to that checkout."
+  },
+  "nativeAuthority": {
+    "recorder": "Installed Pydantic FunctionToolCallEvent/FunctionToolResultEvent and TextPart callbacks emit canonical records; shell/model stdout is sunk separately.",
+    "frameSelection": "Use the first native GH-AW-SESSION-KEY header and only matching GH-AW-SESSION frames, matching the pinned parser's allowlist. Keep malformed-frame diagnostics.",
+    "binding": "Require original public metadata, exact producer path/run/attempt/head, protected agent execution step, provider-digest-checked original agent ZIP, and artifact agent_execution run/attempt evidence.",
+    "read": "Require an ordered native read_file invocation/result pair, unambiguous root README path, native success and returned first-line bytes equal the immutable run-head README blob. Unsupported output projections remain unknown.",
+    "mcp": "A successful native create_issue MCP tool invocation establishes availability under the reviewed default Coder plus MCP composition; it does not establish persistent issue creation.",
+    "inference": "A recorder-captured assistant TextPart containing the prescribed short arithmetic answer establishes the narrow model response; prompt text or output issue claims do not.",
+    "deduplication": "One accepted case of each facet per run/attempt service lifetime; repeated tool calls do not multiply useful effects."
+  },
+  "initialProfile": {
+    "sourceGitBlob": "3f18d68fd4879a7e4b7d5b507a1dc2515529a3f3",
+    "compiledGitBlob": "06170cd9a152bc4ec53d46c88bb6da5d375a2330",
+    "goal": "Write a run-specific test file, verify it with bash cat, and run git log; append safe-output JSON lines.",
+    "applicability": "Incompatible with the later inference/MCP/read_file goal. Introduction is established, but no later acceptance is backdated to this era."
+  },
+  "runProfiles": [
+    {
+      "runId": 38984441491,
+      "attempt": 1,
+      "headSha": "354b5c3423ea95046f4db235f9fea7bb2885aaa8",
+      "sourceGitBlob": "39e64a09ad74877e7533d69f858e9a479f9ce318",
+      "compiledGitBlob": "27f3d4956bb7ac7c12c92d5a01bce4f5e474938e",
+      "readmeGitBlob": "3256c0de0441f39b1fc5cca047528c8562ec7bf5",
+      "runtime": "canonical-framed-clai2",
+      "review": "Actual run-head source, compiled recorder/parser, immutable README and exact imported source were inspected before native results."
+    },
+    {
+      "runId": 37862661287,
+      "attempt": 1,
+      "headSha": "e6b87a4f169c7d194aa5f862f9b6e983ad11d3ae",
+      "sourceGitBlob": "e604196f28aaa5d518939d6ed5a3a2333d90e759",
+      "compiledGitBlob": "e425f72675576cc0f0e4fa1beeb2ff5436278bfc",
+      "readmeGitBlob": "09e12bd6dc0e2cf620569fff7e76ff6c19c278ab",
+      "importRevision": "319d72ccf220427e59b9f4e61f17d7be52c90d68",
+      "importGitBlob": "4eb0d9726a6e0f47f970e1150818465bed15c07f",
+      "harnessVersion": "0.35.0",
+      "runtime": "legacy-pai-console",
+      "review": "Same three prescribed goals. Exact historical import, compiled legacy parser and immutable README inspected before native results. The parser manufactures tool-use/result-shaped entries from console text with empty arguments; those derived entries are not native read proof. Preserve the older runtime profile without promoting it to the newer framed recorder's guarantees."
+    }
+  ],
+  "fullAcceptanceOracle": "Not implemented: partial native receipts do not prove report correctness, persistent issue creation, conditional PR comment/label behavior, all transport guarantees or the complete source goal.",
+  "remainingSourceReview": "None for the two selected attempts. Every source/compiled/README/import profile was reviewed before native-result inspection."
+}

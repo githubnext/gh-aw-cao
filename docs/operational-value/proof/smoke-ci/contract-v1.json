@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "smoke-ci-native-effects-v1",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "referenceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceBlob": "435a00b593ced2327e01fd84c7cc93fdb45f8fae",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "design": "Retrospective source-grounded fixed-reference acceptance, frozen before inspecting native results; not ex-ante.",
+  "goal": "For original deterministic smoke-ci sample opportunities, establish that configured safe-output requests produce their intended repository effects.",
+  "population": "Original run attempts whose exact head source and compiled replay establish applicability of this five-sample reference profile. Other eras remain unassessed, not failures.",
+  "measurement": {
+    "kind": "interval",
+    "durationDays": 1,
+    "cadenceDays": 1,
+    "maturationDays": 0,
+    "unit": "independently verified persisted sample effects",
+    "deduplication": "repositoryId/runId/attempt/sample operation/target stable identity",
+    "assignment": "Native effect timestamp in inclusive-start exclusive-end period, never acquisition time."
+  },
+  "effects": [
+    {
+      "id": "create_issue",
+      "predicate": "A repository-native issue creation receipt/state binds its stable identity to the original sample request, has title '[smoke-ci] safe-outputs samples replay', and preserves the run-specific deterministic body text.",
+      "partial": "Creation alone does not establish close-older semantics or label transitions."
+    },
+    {
+      "id": "add_comment",
+      "predicate": "A repository-native comment creation receipt/state on the same temporary-ID-resolved issue has body 'smoke-ci samples replay comment for run RUN_ID.' and its own stable identity.",
+      "partial": "Comment creation does not establish hide-older-comments semantics."
+    },
+    {
+      "id": "add_labels",
+      "predicate": "An independently captured native labeled event or API processing receipt proves ai-generated was applied to the resolved issue by this operation.",
+      "partial": "A current ai-generated label or initial create-issue label is not proof that the add-labels operation changed state."
+    },
+    {
+      "id": "remove_labels",
+      "predicate": "An independently captured native unlabeled event or API processing receipt proves ai-generated was removed from the resolved issue by this operation.",
+      "partial": "Current absence alone is insufficient; add/remove ordering cannot be inferred from final labels."
+    },
+    {
+      "id": "update_issue",
+      "predicate": "An independently captured native issue-body update receipt/state on the resolved issue preserves the original body and appends 'smoke-ci samples replay confirmed the update-issue handler for run RUN_ID.'.",
+      "partial": "A valid update request or replay-driver completion is not an update effect."
+    }
+  ],
+  "fullAcceptance": "All five effects plus temporary-ID resolution, limits/allowed-label restrictions, close-older-issues key behavior, hide-older-comments behavior and protected processor execution are independently established under the exact run source. Unknown safeguards mean full acceptance is null, not false.",
+  "requestValidity": "Separate intrinsic diagnostic: original captured requests must equal the source-derived samples after authoritative run-expression substitution. Requests do not establish persisted effects.",
+  "contribution": "Original protected processing receipts must link run/attempt, exact head, request and stable target effect. Editable markers are discovery only. Missing strong attribution does not erase independently proven native effects.",
+  "missingness": "Absent receipts, source mismatches, ambiguous clocks, unknown target identity, unobserved histories or partial acquisition never imply zero effects or a complete population.",
+  "costs": "Not measured without matching original period/version costs; no inferred LLM invocation because samples bypass the agent.",
+  "decision": "Not rated: no native keep threshold or required number of complete periods is supplied.",
+  "excludedProxies": [
+    "green jobs",
+    "replay-driver completion",
+    "generated sample fixtures",
+    "agent explanation",
+    "issue counts",
+    "separate daily-safe-outputs-conformance cases",
+    "update-pull-request declaration without a sample",
+    "same-run memory writes as cross-run memory restoration"
+  ]
+}

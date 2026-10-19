@@ -17,6 +17,16 @@ const readContract = () => [
   "SKILL.md", "references/module-contract.md",
 ].map(file => readFileSync(path.join(scripts, "..", file), "utf8")).join("\n").replace(/\s+/g, " ");
 
+test("authoring distinguishes effective execution, exact tool conformance and independent operation effects", () => {
+  const contract = readContract();
+  assert.match(contract, /effective executor first/);
+  assert.match(contract, /samples runner can bypass the agent prompt/);
+  assert.match(contract, /native Python filesystem read is not a `read_file` invocation/);
+  assert.match(contract, /Console-derived tool-shaped entries do not prove native arguments or returned bytes/);
+  assert.match(contract, /tool listing is not agent-usable MCP/);
+  assert.match(contract, /Version historical source-era predicates separately/);
+});
+
 test("portable period validation preserves the canonical CAO adapter contract", () => {
   const period = { windowStart: "2026-09-01T00:00:00Z", windowEnd: "2026-09-02T00:00:00Z",
     measurementKind: "interval", coverageStatus: "partial" };

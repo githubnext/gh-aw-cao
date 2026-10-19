@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "smoke-pydantic-native-v2",
+  "parentContractVersion": "smoke-pydantic-native-v1",
+  "interpretation": "Explicit additive historical partial instrument, authored after original native inspection. Not ex-ante acceptance, and not a relaxation of the preserved strict read_file contract.",
+  "authorization": "Preserve proven narrow native effects separately from full source-goal acceptance.",
+  "metricId": "python-filesystem-read-cases",
+  "name": "Native Python README reads",
+  "acceptance": "Within the reviewed canonical Pydantic service, an ordered native run_code invocation/result executes a closed literal pathlib root-README read/first-line projection and successfully returns the immutable README first line. The source-owned LocalWorkspace('.')/GITHUB_WORKSPACE binding and native session.init cwd must be retained.",
+  "requestGrammar": "from pathlib import Path; assign readme_content = Path('README.md').read_text(); return readme_content.splitlines()[0], as three newline-delimited Python statements. Only whitespace and quote-style variants of this closed grammar are supported; no target code is executed during replay.",
+  "result": "Native tool success and exact returned first-line text; an assistant quote, guessed text, calculator value, console-only tool mention or independently unbound output does not pass.",
+  "unit": "verified Python read cases",
+  "formula": "Count once per runId/attempt service lifetime, not once per repeated invocation.",
+  "direction": "increase",
+  "workflowContribution": "The same native partial is original-producer-linked only when its provider-digest-checked agent artifact and protected attempt/source identities are established. This is demonstrated shared contribution, not a causal repository-improvement claim.",
+  "unchangedStrictMetrics": "native-read-cases still requires the actual read_file tool; inference-cases does not credit run_code calculator output. Agent MCP availability, transport, persistent prescribed output and full goal stay independently nullable.",
+  "nonClaims": [
+    "This is not a read_file invocation.",
+    "This is not a standalone model arithmetic response.",
+    "This is not proof the safeoutputs MCP tools were usable by the agent.",
+    "This is not full smoke-test acceptance or a complete historical total.",
+    "No keep bar, dollars, saved time or causal effect is invented."
+  ],
+  "predecessor": "predecessor-v1.json preserves the strict definition, code, native rejection/unknown observations and reports byte-for-byte."
+}

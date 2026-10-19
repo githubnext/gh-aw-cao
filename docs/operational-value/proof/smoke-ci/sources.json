@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "records": [
+    {
+      "label": "actual addition",
+      "type": "commit",
+      "gitObject": "42fe9bee6733515d6e875be9e929d3b9b11126db",
+      "bytes": 1128,
+      "sha256": "34f3dd36bb4324e4c24e0c1b7cbcb59ae9523707fe8acb613b4c7f68453aa673",
+      "file": "sources/original-objects.json.br",
+      "member": "42fe9bee6733515d6e875be9e929d3b9b11126db"
+    },
+    {
+      "label": "42fe9bee6733515d6e875be9e929d3b9b11126db:root",
+      "type": "tree",
+      "gitObject": "d1071d6a472150eb5e6846f2a02e8ac88aaa7bb6",
+      "bytes": 1785,
+      "sha256": "ac45a7273cedf539a2ffd49559c88fbae625df41a52e7e7cff9e7e411caf98ed",
+      "file": "sources/original-objects.json.br",
+      "member": "d1071d6a472150eb5e6846f2a02e8ac88aaa7bb6"
+    },
+    {
+      "label": "42fe9bee6733515d6e875be9e929d3b9b11126db:.github",
+      "type": "tree",
+      "gitObject": "1ce107da4f5b5caf8ae530c9a481fc03d01d8a2b",
+      "bytes": 705,
+      "sha256": "d012719791beaac29401011409feffbcdb811d4afc33a8f80e969bf947d028f6",
+      "file": "sources/original-objects.json.br",
+      "member": "1ce107da4f5b5caf8ae530c9a481fc03d01d8a2b"
+    },
+    {
+      "label": "42fe9bee6733515d6e875be9e929d3b9b11126db:.github/workflows",
+      "type": "tree",
+      "gitObject": "dae564e0142f4b68c200fcd1e8a20f2448497903",
+      "bytes": 21758,
+      "sha256": "35c5c38cc959b7799bc820114472bfd85ba2040f6e3cea6d9492195d55fe469d",
+      "file": "sources/original-objects.json.br",
+      "member": "dae564e0142f4b68c200fcd1e8a20f2448497903"
+    },
+    {
+      "label": "actual first parent",
+      "type": "commit",
+      "gitObject": "a7e0dfb04765978f1048e37339e50462cb1fa612",
+      "bytes": 1159,
+      "sha256": "3d348865987e8de6c880e061e71b346371028d986d241c920af6937cd0ec534b",
+      "file": "sources/original-objects.json.br",
+      "member": "a7e0dfb04765978f1048e37339e50462cb1fa612"
+    },
+    {
+      "label": "a7e0dfb04765978f1048e37339e50462cb1fa612:root",
+      "type": "tree",
+      "gitObject": "d244ae1a8adcc6daf4ed30b4203154ec436a74b1",
+      "bytes": 1785,
+      "sha256": "9e932d41fad2fed7a504a2ecb7de441dcf6724110fb7a8cb9daae768c9b63185",
+      "file": "sources/original-objects.json.br",
+      "member": "d244ae1a8adcc6daf4ed30b4203154ec436a74b1"
+    },
+    {
+      "label": "a7e0dfb04765978f1048e37339e50462cb1fa612:.github",
+      "type": "tree",
+      "gitObject": "9c8cee73caac16c761bf5488368776b0917acdb8",
+      "bytes": 705,
+      "sha256": "df5a0f3dc5af300b95903951a213551b09be6911903849dd9dbad07aac708221",
+      "file": "sources/original-objects.json.br",
+      "member": "9c8cee73caac16c761bf5488368776b0917acdb8"
+    },
+    {
+      "label": "a7e0dfb04765978f1048e37339e50462cb1fa612:.github/workflows",
+      "type": "tree",
+      "gitObject": "ae41820fea9939bc6b43a4d8494bff37270fd462",
+      "bytes": 21674,
+      "sha256": "e5a4d32b56f7a75529a4fcc8262ebf3d4bca93207bcfbaa797b9bf863d69c27b",
+      "file": "sources/original-objects.json.br",
+      "member": "ae41820fea9939bc6b43a4d8494bff37270fd462"
+    },
+    {
+      "label": "c86377ec47b38f0b5af463277ee55d1d03d08da8:.github/workflows/smoke-ci.md",
+      "type": "blob",
+      "gitObject": "435a00b593ced2327e01fd84c7cc93fdb45f8fae",
+      "bytes": 2435,
+      "sha256": "5bfc916e29005266e09defe6d607cf6758efcdde5aef6cbfa18e60845084e218",
+      "file": "sources/original-objects.json.br",
+      "member": "435a00b593ced2327e01fd84c7cc93fdb45f8fae"
+    },
+    {
+      "label": "9ecb2ebf6b7518ca5eb32f0f248279b51c81f6b4:.github/workflows/smoke-ci.md",
+      "type": "blob",
+      "gitObject": "9f4219f69b3c4b580f6cfe09c7d8d12ba0e1800c",
+      "bytes": 4782,
+      "sha256": "21234688299610e912032039639628e05258a8f89deabb6d6647600abbe9f1e9",
+      "file": "sources/original-objects.json.br",
+      "member": "9f4219f69b3c4b580f6cfe09c7d8d12ba0e1800c"
+    },
+    {
+      "label": "c86377ec47b38f0b5af463277ee55d1d03d08da8:pkg/workflow/samples_replay.go",
+      "type": "blob",
+      "gitObject": "b889576d6002777b40cdb5bf6e7d8f5870473c84",
+      "bytes": 13548,
+      "sha256": "13168413b48ebfd44ee068b9b075c13f97be37fbdc874f43751db2ec27bbcf16",
+      "file": "sources/original-objects.json.br",
+      "member": "b889576d6002777b40cdb5bf6e7d8f5870473c84"
+    },
+    {
+      "label": "frozen samples compiled workflow",
+      "type": "blob",
+      "gitObject": "6a947c51b5a786279cf8ebda6645db373301bebe",
+      "bytes": 119821,
+      "sha256": "1665d423d1581f1bb126cbdd3143b9a5eea301316e480b62384525f8510bbb61",
+      "file": "sources/original-objects.json.br",
+      "providerReceipt": {
+        "endpoint": "repos/github/gh-aw/git/blobs/6a947c51b5a786279cf8ebda6645db373301bebe",
+        "method": "GET",
+        "status": 200,
+        "startedAt": "2026-10-19T12:32:01.906Z",
+        "receivedAt": "2026-10-19T12:32:02.440Z",
+        "originalResponseBytes": 165370,
+        "originalResponseSha256": "5ebc17cf33be1926f3daaa26a8a107432efe6d346db897ce3b431a3265ae2b44",
+        "manifestSha256": "45f64fe571821233be90a2a912b7e3fcd0fb081af8c2b85bc303470ec7ea5bd4",
+        "interpretation": "Complete Git-verified original blob retained; encoded provider envelope is not a replay dependency."
+      },
+      "member": "6a947c51b5a786279cf8ebda6645db373301bebe"
+    },
+    {
+      "label": "actual adoption workflow source",
+      "type": "blob",
+      "gitObject": "10911c56fd7f0d10b7f888867a0677f2f4693de1",
+      "bytes": 932,
+      "sha256": "5d6f5fdd5815c4a60d6c3f0a0902a5b9a9d4ccab81afca0e37ee00b552bbf851",
+      "file": "sources/original-objects.json.br",
+      "providerReceipt": {
+        "endpoint": "repos/github/gh-aw/git/blobs/10911c56fd7f0d10b7f888867a0677f2f4693de1",
+        "method": "GET",
+        "status": 200,
+        "startedAt": "2026-10-19T12:32:04.047Z",
+        "receivedAt": "2026-10-19T12:32:04.509Z",
+        "originalResponseBytes": 1563,
+        "originalResponseSha256": "dcc979ab115a413f73648c3bf69ddbd5e72d61a2007af959234e93b091c9346e",
+        "manifestSha256": "45f64fe571821233be90a2a912b7e3fcd0fb081af8c2b85bc303470ec7ea5bd4",
+        "interpretation": "Complete Git-verified original blob retained; encoded provider envelope is not a replay dependency."
+      },
+      "member": "10911c56fd7f0d10b7f888867a0677f2f4693de1"
+    },
+    {
+      "label": "actual adoption compiled workflow",
+      "type": "blob",
+      "gitObject": "f09e78eaaf65700ed224e80ca32d7a96bc21a8f9",
+      "bytes": 59309,
+      "sha256": "9e68e71ad9a2cca6a313205486c1353e617813e9e1cc3f095aef22e23e08f897",
+      "file": "sources/original-objects.json.br",
+      "providerReceipt": {
+        "endpoint": "repos/github/gh-aw/git/blobs/f09e78eaaf65700ed224e80ca32d7a96bc21a8f9",
+        "method": "GET",
+        "status": 200,
+        "startedAt": "2026-10-19T12:32:06.114Z",
+        "receivedAt": "2026-10-19T12:32:06.617Z",
+        "originalResponseBytes": 81995,
+        "originalResponseSha256": "2376f612cd6b4e0adb0731794f07470447160a6bbba56acd514aec730618a5cb",
+        "manifestSha256": "45f64fe571821233be90a2a912b7e3fcd0fb081af8c2b85bc303470ec7ea5bd4",
+        "interpretation": "Complete Git-verified original blob retained; encoded provider envelope is not a replay dependency."
+      },
+      "member": "f09e78eaaf65700ed224e80ca32d7a96bc21a8f9"
+    },
+    {
+      "label": "frozen deterministic replay driver",
+      "type": "blob",
+      "gitObject": "b985ab5c518a3d77076cd0962b63c7e62c186032",
+      "bytes": 26914,
+      "sha256": "b054dd5a23f5552415a84a643aed1a2eb70c161f7d40eb18b247d7b0683367c5",
+      "file": "sources/original-objects.json.br",
+      "providerReceipt": {
+        "endpoint": "repos/github/gh-aw/git/blobs/b985ab5c518a3d77076cd0962b63c7e62c186032",
+        "method": "GET",
+        "status": 200,
+        "startedAt": "2026-10-19T12:32:08.227Z",
+        "receivedAt": "2026-10-19T12:32:08.760Z",
+        "originalResponseBytes": 37365,
+        "originalResponseSha256": "cc2ca3009b500ad2157ddecdee44e1e69d649487b882a07826647caa0cdbabcc",
+        "manifestSha256": "45f64fe571821233be90a2a912b7e3fcd0fb081af8c2b85bc303470ec7ea5bd4",
+        "interpretation": "Complete Git-verified original blob retained; encoded provider envelope is not a replay dependency."
+      },
+      "member": "b985ab5c518a3d77076cd0962b63c7e62c186032"
+    },
+    {
+      "label": "historical CLI reference source; not proof of selected host execution",
+      "type": "blob",
+      "gitObject": "7078fc56482700e6e4fdd60ceb6055abbb1476eb",
+      "bytes": 42025,
+      "sha256": "a7d37206787f12257bf27981916e880ef0db14bb910762f9923b2e85ded10de9",
+      "file": "sources/original-objects.json.br",
+      "providerReceipt": {
+        "endpoint": "repos/github/gh-aw/git/blobs/7078fc56482700e6e4fdd60ceb6055abbb1476eb",
+        "method": "GET",
+        "status": 200,
+        "startedAt": "2026-10-19T12:34:40.988Z",
+        "receivedAt": "2026-10-19T12:34:41.719Z",
+        "originalResponseBytes": 58183,
+        "originalResponseSha256": "5c3d1912b6bb860bc0792acbfb8879caeaa862ae941bf5a7a56d3d279dfb5049",
+        "manifestSha256": "ec8a45664f91e9a2c76c81f29ed48c4e5a44e7b48acb4915b1fc12f2fa642bf5",
+        "interpretation": "Complete Git-verified original blob retained; encoded provider envelope is not a replay dependency."
+      },
+      "member": "7078fc56482700e6e4fdd60ceb6055abbb1476eb"
+    },
+    {
+      "label": "historical CLI reference source; not proof of selected host execution",
+      "type": "blob",
+      "gitObject": "dbbf0942dcc7a1558ddd7c868cc5d5ae28b8f41d",
+      "bytes": 108728,
+      "sha256": "f64998d73de663aa739965bbec996f63219e4fc1252d0078b2eaa2cb2f0f680e",
+      "file": "sources/original-objects.json.br",
+      "providerReceipt": {
+        "endpoint": "repos/github/gh-aw/git/blobs/dbbf0942dcc7a1558ddd7c868cc5d5ae28b8f41d",
+        "method": "GET",
+        "status": 200,
+        "startedAt": "2026-10-19T12:34:43.326Z",
+        "receivedAt": "2026-10-19T12:34:43.864Z",
+        "originalResponseBytes": 150086,
+        "originalResponseSha256": "726d23d60ba0d63af47b48cb8adc630ad884f71aba3300c4033989d3c46ae1b1",
+        "manifestSha256": "ec8a45664f91e9a2c76c81f29ed48c4e5a44e7b48acb4915b1fc12f2fa642bf5",
+        "interpretation": "Complete Git-verified original blob retained; encoded provider envelope is not a replay dependency."
+      },
+      "member": "dbbf0942dcc7a1558ddd7c868cc5d5ae28b8f41d"
+    }
+  ],
+  "adoption": {
+    "commit": "42fe9bee6733515d6e875be9e929d3b9b11126db",
+    "parent": "a7e0dfb04765978f1048e37339e50462cb1fa612",
+    "adoptedAt": "2026-04-18T11:23:19Z",
+    "parentAt": "2026-04-18T11:12:12Z",
+    "sourceAdded": true,
+    "caveat": "Workflow introduction is independently established; original agent era is not the later samples era."
+  }
+}

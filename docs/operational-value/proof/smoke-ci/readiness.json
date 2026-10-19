@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "workflow": "github/gh-aw:.github/workflows/smoke-ci.md",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "functionReadiness": {
+    "schema3Definition": true,
+    "sourceCustodyVerified": true,
+    "localOriginalCollectorReady": true,
+    "referenceSamplesNativeEvidenceReady": false,
+    "nativeAttainmentMeasured": false,
+    "independentFreshReplay": true,
+    "status": "Forensic evaluator implemented; native qualification rejected, not an all-unknown success."
+  },
+  "contracts": {
+    "strictSamples": "contract-v1.json",
+    "historicalCliPartial": "historical-cli-contract-v2.json",
+    "independentPostcondition": "persisted-postcondition-contract-v3.json",
+    "classification": "Retrospective source-grounded, never ex-ante",
+    "predecessorFunction": {
+      "path": "predecessor/function-v1.mjs.gz",
+      "decodedSha256": "99c46b9ff9909607a878c7a3a19e6a968ac85e67cf523459085928272b88b37f"
+    }
+  },
+  "nativeEffects": {
+    "acceptedQuantity": null,
+    "qualifiedNativeEvaluation": false,
+    "selectedAttempts": 2,
+    "capturedNativeComments": 15,
+    "capturedCommentsByCandidate": [9, 6],
+    "matchingUnchangedSourceMessageLines": 0,
+    "interpretation": "No accepted native postcondition in either captured candidate. This does not prove zero workflow effects, because target/execution binding and historical coverage are missing."
+  },
+  "artifactPins": {
+    "function": "docs/operational-value/proof/functions/smoke-ci.mjs",
+    "functionSha256": "ec52879d626e67a8f964ab21693e9c286bc2b431f2c86c175bf72f95804153d7",
+    "timeline": "report/smoke-ci-timeline.json.gz",
+    "timelineStoredSha256": "f66031c17720d50daabee1d94b94163e06843cce167cc5a06bcc82c4f7adba89",
+    "report": "report/smoke-ci-pulse.html.gz",
+    "reportStoredSha256": "f89aba86fcc49cff47b33c9504ccc79c0def45113fb2771a78e37f8bcb1f2b83",
+    "snapshotSha256": "e0fbfc5739c70694f044179793b3f31a63b69efd939c9f48dcb269ea771c1d23",
+    "baseline": "2ff48ca50d0ca1a2ec98126391b79c665b2f0b4d",
+    "verifiedSeedMembers": 35
+  },
+  "fullAcceptance": null,
+  "workflowContribution": null,
+  "historyCoverage": {
+    "discoveryPartitions": 346,
+    "discoveryEntities": 58048,
+    "exactWorkflowRoots": 140,
+    "forwardReverseClosure": 2937,
+    "retainedClosureEntities": 2921,
+    "absentReferences": 16,
+    "nativeCompleteCohort": false,
+    "dailyPeriodsEvaluated": 184,
+    "disjointPeriodsWithCandidateOriginals": 2,
+    "periodsWithAcceptedMetricValues": 0,
+    "latestPeriodAcceptance": null,
+    "countsAreAcceptance": false,
+    "actualWorkflowIntroduction": "2026-04-18T11:23:19Z",
+    "samplesEraTransitionCandidate": "6d300f335a73ccf3ac19d18750589df8c8a21154",
+    "samplesEraTransitionProvenAgainstParent": false
+  },
+  "costs": {
+    "status": "not measured",
+    "amount": null,
+    "llmInvocationRequired": false,
+    "reason": "Both deterministic samples replay and historical engine.command can bypass an agent; model configuration is not usage evidence."
+  },
+  "decision": {
+    "status": "not rated",
+    "reason": "No native keep threshold, complete comparable period cohort or matched cost evidence established."
+  },
+  "blockers": [
+    "Both selected PR-event runs have empty original pull_requests arrays; discovery PR42250 and PR46077 are candidate targets, not independently bound original triggering targets.",
+    "Executed workflow revisions are unknown. The selected head bac2e68f9cadf7429c0923276c439037950fcc13 is absent from the local Git object cache; current PR heads do not identify historical execution.",
+    "Original attempt29535137680/1 logs returned HTTP410. Its artifact inventory is zero; neither expiry nor job conclusions prove native zero.",
+    "The two bounded inventory entries predate the deterministic samples era. Pagination remains, so this is not proof that samples-era runs do not exist.",
+    "None of the15 retained candidate comments satisfies the independently frozen unchanged message-line predicate. Acceptance was not relaxed after inspection.",
+    "Complete historical coverage, original request validity, full safe-output semantics, comment-memory and cross-run persistence are unavailable.",
+    "Coordinator acquisition for this bounded assignment is finished. Qualification requires new authoritative evidence, not more fixture-only validation."
+  ],
+  "reusableSkillImprovement": "Resolve the effective executor before converting prose intent into acceptance: features.samples and engine.command can bypass the agent entirely. Freeze separate source-era predicates, and measure original protected receipts plus persisted effects rather than the unused prompt or replay completion.",
+  "authority": "Read-only measurement only; no campaign enrollment, deployment, model calls, dispatches, target code execution or remote writes."
+}
