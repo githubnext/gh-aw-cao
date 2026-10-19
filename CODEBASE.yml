@@ -35,7 +35,6 @@ structure:
   dashboard_data: dashboard/site/src/data/
   dashboard_go_server: server/
   dashboard_server_contract: server/spec/
-  dashboard_coolify_profile: server/coolify/
   dashboard_upstash_profile: server/internal/server/hosted.go
   dashboard_container: server/Dockerfile
   workflow_sources: .github/workflows/*.md
@@ -196,9 +195,9 @@ components:
   dashboard_external_host:
     path: server/hosting/
     responsibility: expose the complete hosted CAO handler and cancellation-aware application startup to a separately owned HTTP listener without exporting Redis or authentication internals
-  dashboard_coolify_deployment:
-    path: server/coolify/
-    responsibility: let a repository-scoped Coolify GitHub App watch protected main, build a lean admission-only dashboard target plus private collector and backfill targets from the checked-out source commit, package a deterministic source-bound control-plane inventory with the minimal shared policy resolver, retain collection evidence in a persistent volume, and keep one external read-only activity artifact available only for snapshot-profile rollback
+  dashboard_container_build:
+    path: server/Dockerfile
+    responsibility: build host-neutral dashboard and collector targets from a source revision, package a deterministic source-bound control-plane inventory with the minimal shared policy resolver, and leave deployment promotion and rollback to the application host
   dashboard_observability:
     path: server/internal/telemetry/, server/internal/server/, dashboard/site/src/remote-data-backend.js
     responsibility: export vendor-neutral OTLP traces and metrics plus explicitly enabled DEBUG-selected logs, correlate bounded server errors and browser failures through matching W3C trace/span identifiers, and keep exporter credentials and internal failure details outside responses and logs
@@ -340,7 +339,7 @@ dependencies:
   - dashboard_https_server -> dashboard_canonical_api
   - dashboard_https_server -> dashboard_http_contract
   - dashboard_external_host -> dashboard_https_server
-  - dashboard_coolify_deployment -> dashboard_https_server
+  - dashboard_container_build -> dashboard_https_server
   - dashboard_server_package -> dashboard_server_package_publisher
   - dashboard_server_package_publisher -> dashboard_https_server
   - dashboard_upstash_deployment -> dashboard_https_server
@@ -469,7 +468,7 @@ invariants:
   - "Hosted query-result cache identities MUST include definitions, parameters, pagination, schema and current authorization class, not ingestion revisions; entries retain their original evidence revision and evaluation time for a fixed five-minute lifetime without ingestion invalidation or renewal on data egress, and atomic expiry and oldest-first eviction MUST bound result/index memory and entry count; the Redis adapter MUST NOT change global Redis eviction policy."
   - "All Redis server profiles MUST apply a configurable Redis cache-pressure budget (default 200,000,000 bytes, capped at 80% of provider-reported maxmemory). Scripted memory introspection gates atomic admission and outgoing-allocation reservations; unsupported providers MUST explicitly disable disposable-cache admission and serving while retaining protected storage. Provider-compatible startup/30-second maintenance MUST use one namespace cursor pass, fresh final pressure evidence, and only current-namespace disposable-cache reclamation. Preserve sessions, queues, quota state, revocation retries and other namespaces; report unattainable protected-state pressure; never change Redis configuration or imply a cluster-wide, process-RSS or persistence-disk cap."
   - "Operational consumers MUST receive narrow typed service contracts, never raw commands, physical keys, scripts, concrete adapter assertions, or backend-name branches. Capability snapshots describe per-feature process/deployment scope and volatile/restart persistence; atomicity, CAS, ownership and isolation are mandatory. Composition MUST reject missing or typed-nil enabled services and stop owned work before closing storage."
-  - "PostgreSQL is the default operational adapter for selector-free reviewed hosts and local serve; Coolify explicitly selects PostgreSQL without Redis credentials. Explicit Redis configuration remains supported and credentials alone MUST NOT override reviewed selection. Memory MUST require OAuth, HTTPS, explicit single-process and volatile-state acknowledgements, and one instance shared by HTTP, quota, workers, projector and backfill; it MUST reject platform listeners, admission-only topology, separate worker/backfill processes and multiple replicas. PostgreSQL operational storage MUST remain independent of canonical entities, generated schema and query execution; there is no automatic migration, failover or dual write."
+  - "PostgreSQL is the default operational adapter for selector-free reviewed hosts and local serve. Explicit Redis configuration remains supported and credentials alone MUST NOT override reviewed selection. Memory MUST require OAuth, HTTPS, explicit single-process and volatile-state acknowledgements, and one instance shared by HTTP, quota, workers, projector and backfill; it MUST reject platform listeners, admission-only topology, separate worker/backfill processes and multiple replicas. PostgreSQL operational storage MUST remain independent of canonical entities, generated schema and query execution; there is no automatic migration, failover or dual write."
   - "The PostgreSQL operational adapter MUST serialize atomic transitions and accounting per namespace, use database-time expiry, require identical replica capacity settings, reserve atomic session revocation capacity, bound disposable caches separately from protected state, release transactions between cancellation-aware queue polling, and run application-owned bounded expiry maintenance. Doctor MUST inspect existing state without initializing it."
   - "Memory budgets MUST bound protected accounting bytes/entries separately from disposable caches without claiming RSS equivalence. Cache pressure MUST NOT evict accepted work; active limiter buckets MUST NOT be evicted to reset limits, and session admission MUST preserve capacity for atomic revocation staging."
   - "Memory restart MUST invalidate CAO sessions and pending login state but does not expire or revoke GitHub tokens; pending revocations and acknowledged unfinished work may be lost by explicit acceptance. Complete fresh GitHub scope enumeration MUST gate admission/workers and serialize with withdrawals; partial scope MUST NOT justify erasure or ignored out-of-scope responses. Recovery reuses retained evidence and existing projection/backfill, requires fresh quota observations, and reports incomplete history/capacity rather than successful truncation. The protected rebuild action reruns backfill even with a populated lake."
@@ -484,7 +483,7 @@ invariants:
   - "cao.json MUST remain the only rollout policy; cao.<deployment>.json profiles MAY extend only control-plane.web.host and MUST reject traversal, cycles, duplicate keys, and any authority or campaign override."
   - "The CAO server package MUST require stable release identities in exact vX.Y.Z form on protected main history; admit manual branch dispatch only for original and rerun actors with maintain or admin permission when the executing workflow is current protected main and the requested source branch is at its current head; keep manual dispatch identities separate from main and release identities; run lint, test, and image build/scanning as separate jobs; test exact sources; gate Dockerfile and workflow security with Hadolint, actionlint, and zizmor; preserve raw static-check outputs in a short-lived artifact even on failure; independently gate high/critical CVEs with Trivy and Grype; check container hardening with Dockle; generate an SPDX SBOM with Syft; keep lint, test, build, and scanner execution outside the package-write security domain; pass only a checksummed candidate and exact metadata to the protected-main reusable publisher; revalidate caller, source, checksum, metadata, and OCI labels before publication; publish only immutable commit or exact stable release identities; attest provenance and SBOM for the exact OCI digest; expose the multi-role server for downstream Docker Compose command selection; emit privacy-safe core.info milestones for JavaScript control checks; and never publish mutable channel tags."
   - "Package and delivery step summaries MUST use non-nested details sections and disclose only check scope, policy, and outcome; they MUST NOT reproduce vulnerability records, SBOM contents, image inventory, credentials, endpoints, payloads, registry responses, or adapter responses."
-  - "Coolify production delivery MUST use a repository-scoped Coolify GitHub App and automatic deployments from protected main; build server/Dockerfile through server/coolify/compose.yml from the selected source commit; embed SOURCE_COMMIT; bake the base and Coolify policy profiles into the image; package a deterministic control-plane inventory from that exact source plus only the shared runtime policy resolver; run the public dashboard in admission-only mode without the collection private key; run unexposed collector and idempotent backfill roles with a checksum-verified policy-pinned gh-aw toolchain and shared persistent evidence volume; resolve reviewed deployment policy, overlay exact operational enrollment, and use a short-lived control-repository installation token for live inventory enrichment; fail the first canonical ingestion without valid campaign inventory and retain only a previously valid inventory on later transient refresh failure; leave CAO_SOURCE_DIRECTORY unset in the collection profile; retain one authoritative activity artifact as an external read-only recovery volume for snapshot-profile rollback; require no GitHub deployment workflow, Coolify API token, public Coolify API endpoint, runner tailnet access, registry credentials, or mutable registry tag; and treat package-workflow scans, hardening checks, SBOMs, and attestations as guarantees for published packages rather than admission evidence for the source-built production image."
+  - "Host-neutral source builds MUST use server/Dockerfile with explicit version and revision build arguments, package a deterministic source-bound control-plane inventory and only the shared runtime policy resolver, and leave deployment promotion and rollback to the application host. Separate collection deployments MUST keep the collection private key out of admission-only public replicas, run unexposed collector and idempotent backfill roles with a checksum-verified policy-pinned gh-aw toolchain and shared persistent evidence volume, resolve reviewed policy over exact operational enrollment, and use short-lived control-repository installation authority for inventory enrichment. First ingestion MUST fail without valid campaign inventory; later transient refresh failure may retain only a previously valid inventory. Collection leaves CAO_SOURCE_DIRECTORY unset and retains a verified external read-only artifact for snapshot rollback. Package scans, hardening checks, SBOMs, and attestations apply to published packages, not locally source-built images."
   - "Hosted server telemetry MUST use standard OTEL runtime configuration; exporter endpoints and headers MUST remain deployment secrets and MUST NOT enter policy, browser state, or logs. When tracing is active, API error bodies, response headers, browser request IDs, and bounded server error logs MUST carry matching W3C trace identifiers without exposing internal exceptions, query payloads, source rows, or storage credentials."
   - "Observability backends are diagnostic infrastructure only and MUST NOT become dashboard data stores, policy authorities, rollout authorities, or sources of operational evidence."
   - "Hosted logout and account switching MUST remove active session authority before remote token revocation; failed GitHub revocations MUST retain encrypted credentials in the selected operational pending-revocation queue for bounded maintenance retries through credential expiry; Redis and PostgreSQL retries survive restart, while the explicitly acknowledged memory exception is process-lifetime only."
@@ -598,9 +597,9 @@ flows:
     - dashboard_canonical_api
     - dashboard_language_queries
     - dashboard_ui
-  activity_dashboard_coolify:
+  activity_dashboard_collection:
     - dashboard_publisher
-    - dashboard_coolify_deployment
+    - dashboard_container_build
     - policy_resolution
     - dashboard_collection_credentials
     - dashboard_server_collection
@@ -617,9 +616,6 @@ flows:
     - redis_operational_store
     - dashboard_language_queries
     - dashboard_ui
-  coolify_source_delivery:
-    - dashboard_coolify_deployment
-    - dashboard_https_server
   activity_cli:
     - gh_aw_logs
     - activity_jsonl_shards
@@ -645,7 +641,7 @@ generation:
     path: CODEBASE.yml
     source: ARCHITECTURE.md
     compilation_skill: .github/skills/codebase-model/SKILL.md
-  coolify_static_control_plane_inventory:
+  dashboard_static_control_plane_inventory:
     source: aw.yml, campaign aw.yml files, .github/workflows workflow sources, compiled lock files, campaign records, intelligence declarations, and cao.json
     output: collector image /app/catalog/control-plane-inventory.json
     command: REPORT_ROOT=/workspace REPORT_INVENTORY=/tmp/control-plane-inventory.json REPORT_INVENTORY_STATIC=true node activity/inventory.mjs
@@ -729,8 +725,8 @@ commands:
       tests: go test ./...
       redis_up: docker compose up -d
       redis_down: docker compose down
-      coolify_contract_tests: node --test ../tests/unit/coolify-deployment-contract.test.mjs
-      coolify_image_build: docker build -f Dockerfile ..
+      container_contract_tests: node --test ../tests/unit/dashboard-container-contract.test.mjs
+      container_image_build: docker build -f Dockerfile ..
 
 validation:
   go_extension_command_refs:

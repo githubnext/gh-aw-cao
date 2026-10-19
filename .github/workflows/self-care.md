@@ -62,7 +62,7 @@ imports:
       campaign: self-care
       role: orchestrator
       read_repository: ${{ github.repository }}
-      dispatch_max: 21
+      dispatch_max: 20
       orchestrator_credits: 200
       worker_credits_per_target: 5000
       read_actions: read
@@ -90,8 +90,8 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [self-care-accessibility-checker, self-care-agent-discoverability, self-care-code-improvement, self-care-dashboard-data-schema, self-care-dashboard-debug-logging, self-care-dashboard-performance, self-care-data-acquisition-audit, self-care-dashboard-language-refactor, self-care-dashboard-review, self-care-docs-build-time-investigator, self-care-docs-maintainer, self-care-documentation-discoverability, self-care-glossary, self-care-hosted-health, self-care-open-source-failures, self-care-pages-health, self-care-primer-brand-checker, self-care-reactive-ui-expert, self-care-release-blogger, self-care-server-go-logging, self-care-specs-maintainer]
-    max: 21
+    workflows: [self-care-accessibility-checker, self-care-agent-discoverability, self-care-code-improvement, self-care-dashboard-data-schema, self-care-dashboard-debug-logging, self-care-dashboard-performance, self-care-data-acquisition-audit, self-care-dashboard-language-refactor, self-care-dashboard-review, self-care-docs-build-time-investigator, self-care-docs-maintainer, self-care-documentation-discoverability, self-care-glossary, self-care-open-source-failures, self-care-pages-health, self-care-primer-brand-checker, self-care-reactive-ui-expert, self-care-release-blogger, self-care-server-go-logging, self-care-specs-maintainer]
+    max: 20
   threat-detection: false
 
 source: githubnext/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
@@ -101,7 +101,7 @@ source: githubnext/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
 
 ## Discovery
 
-This operation is exclusively for `githubnext/gh-aw-cao`. Select that repository when its precomputed candidate mode is either `review` or `live`. Treat every other repository as ineligible, regardless of apparent need, and record the skip reason in the standard report. The resolved mode narrows worker dispatch: `live` permits the full SelfCare portfolio, while `review` permits only `self-care-hosted-health`.
+This operation is exclusively for `githubnext/gh-aw-cao`. Select that repository only when its precomputed candidate mode is `live`. Treat every other repository and every non-live candidate as ineligible, regardless of apparent need, and record the skip reason in the standard report. Never promote a `review` candidate to `live`.
 
 The single eligible repository contains the documentation site and dashboard maintained by the SelfCare workers. Do not discover, rank, or dispatch work to any other repository.
 
@@ -118,7 +118,6 @@ The single eligible repository contains the documentation site and dashboard mai
 - `self-care-docs-maintainer`: scans recent merged pull request diffs and ADR changes, verifies them against current repository files, and opens one focused draft pull request for an evidenced documentation correction.
 - `self-care-documentation-discoverability`: audits the deployed `llms.txt` entry point against ten bounded development tasks and maintains one issue for deterministic routing defects.
 - `self-care-glossary`: scans recent merged pull requests and default-branch code changes, then opens one focused draft pull request when repository evidence supports a glossary update.
-- `self-care-hosted-health`: evaluates production availability, CAO MCP data, and OTEL MCP telemetry, then publishes one current health issue with contention and memory-pressure findings.
 - `self-care-data-acquisition-audit`: reviews gh-aw logs, GitHub API access, predownloads, indexing, and caching, then opens one focused draft pull request when the acquisition audit is stale.
 - `self-care-dashboard-language-refactor`: replaces one over-specialized dashboard view with tested reusable subcomponents configured through Dashboard Language and opens one focused draft pull request.
 - `self-care-open-source-failures`: scans the dashboard activity snapshot for clustered failures across represented public projects and files one digest plus focused remediation issues.
@@ -129,12 +128,12 @@ The single eligible repository contains the documentation site and dashboard mai
 - `self-care-server-go-logging`: refactors one Go server subsystem with privacy-preserving internal logging and focused unit tests that use real code without mocks, then opens one focused draft pull request.
 - `self-care-specs-maintainer`: scans recently merged pull requests for behavior changes missing from the normative specifications and opens one focused draft pull request that fixes them in W3C specification style.
 
-For a selected `live` target, dispatch every non-cadence-limited worker. Dispatch `self-care-agent-discoverability`, `self-care-dashboard-data-schema`, `self-care-data-acquisition-audit`, `self-care-docs-maintainer`, `self-care-glossary`, `self-care-release-blogger`, and `self-care-specs-maintainer` only when no run of the respective workflow is in progress or started during the preceding 24 hours. Inspect at most the ten most recent runs of each workflow to make this decision. Dispatch `self-care-documentation-discoverability` only when no run of that workflow is queued, in progress, or started during the preceding seven days. Inspect at most its ten most recent runs. Dispatch `self-care-pages-health` only when no run of that workflow is queued, in progress, or started during the preceding six hours. Inspect at most the 20 most recent Pages Health workflow runs to make this decision. For a selected target in either `review` or `live` mode, dispatch `self-care-hosted-health` only when no run of that workflow is queued, in progress, or started during the preceding four hours. Inspect at most its 20 most recent runs. If any run history is unavailable or ambiguous, fail closed by not dispatching the affected cadence-limited worker and record the incomplete cadence check. Never dispatch a worker other than `self-care-hosted-health` in review mode, and never dispatch any worker for another repository.
+For a selected `live` target, dispatch every non-cadence-limited worker. Dispatch `self-care-agent-discoverability`, `self-care-dashboard-data-schema`, `self-care-data-acquisition-audit`, `self-care-docs-maintainer`, `self-care-glossary`, `self-care-release-blogger`, and `self-care-specs-maintainer` only when no run of the respective workflow is in progress or started during the preceding 24 hours. Inspect at most the ten most recent runs of each workflow to make this decision. Dispatch `self-care-documentation-discoverability` only when no run of that workflow is queued, in progress, or started during the preceding seven days. Inspect at most its ten most recent runs. Dispatch `self-care-pages-health` only when no run of that workflow is queued, in progress, or started during the preceding six hours. Inspect at most the 20 most recent Pages Health workflow runs to make this decision. If any run history is unavailable or ambiguous, fail closed by not dispatching the affected cadence-limited worker and record the incomplete cadence check. Never dispatch any worker in review mode or for another repository.
 
 ## Completion
 
 Finish with the standard orchestrator report inherited from `shared/control.md`. Preserve `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`, including every standard field. Use exact precomputed totals for repositories scanned and distinguish eligible, selected, skipped, and deferred repositories. Use `0`, `none`, or `not applicable` for every empty field.
 
-In `Outcome`, additionally state whether the sole authorized target was selected and its resolved mode, whether every non-cadence-limited SelfCare worker was dispatched when the mode was `live`, whether the agent discoverability, dashboard data schema, data acquisition audit, docs maintainer, glossary, release blogger, and specs maintainer workers were daily-eligible and dispatched when applicable, whether the documentation discoverability worker was weekly-eligible and dispatched when applicable, whether the Pages Health worker was six-hour-eligible and dispatched when applicable, and whether Hosted Health was four-hour-eligible and dispatched in either mode.
+In `Outcome`, additionally state whether the sole authorized target was selected and its resolved mode, whether every non-cadence-limited SelfCare worker was dispatched when the mode was `live`, whether the agent discoverability, dashboard data schema, data acquisition audit, docs maintainer, glossary, release blogger, and specs maintainer workers were daily-eligible and dispatched when applicable, whether the documentation discoverability worker was weekly-eligible and dispatched when applicable, and whether the Pages Health worker was six-hour-eligible and dispatched when applicable.
 
 {{#runtime-import? .github/cao/self-care.md}}

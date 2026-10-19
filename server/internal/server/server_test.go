@@ -205,7 +205,7 @@ func TestHostedProxyHeadersAreTrustedOnlyOnLoopbackBoundary(t *testing.T) {
 	}
 }
 
-func TestCoolifyProxyCIDRsFailClosed(t *testing.T) {
+func TestHostedProxyCIDRsFailClosed(t *testing.T) {
 	prefixes, err := parseTrustedProxyPrefixes("10.42.0.0/24,fd00:42::/64")
 	if err != nil {
 		t.Fatal(err)

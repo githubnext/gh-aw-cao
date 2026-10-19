@@ -539,10 +539,7 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
     policy["control-plane"].campaigns["self-care"].workers.glossary.workflow,
     "self-care-glossary",
   );
-  assert.equal(
-    policy["control-plane"].campaigns["self-care"].workers["hosted-health"].workflow,
-    "self-care-hosted-health",
-  );
+  assert.equal(policy["control-plane"].campaigns["self-care"].workers["hosted-health"], undefined);
   assert.equal(
     policy["control-plane"].campaigns["self-care"].workers["docs-maintainer"].workflow,
     "self-care-docs-maintainer",
