@@ -1,6 +1,7 @@
 ---
 import DispatchIllustration from "./DispatchIllustration.astro";
 import HeroIntro from "./HeroIntro.astro";
+import LandingSlideshow from "./LandingSlideshow.astro";
 import TerminalDemo from "./TerminalDemo.astro";
 import ThemeImage from "./ThemeImage.astro";
 import dashboardCampaignValue from "../assets/product/cao-dashboard-campaign-value-mobile.png";
@@ -11,7 +12,12 @@ import dashboardRunHistory from "../assets/product/cao-dashboard-run-history-mob
 import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-history-mobile-light.png";
 ---
 
-<div class="hierarchy-hero">
+<div data-slideshow-slides>
+<section class="cao-title-slide" data-slideshow-slide aria-label="Presentation title">
+  <p>Monitor. Govern. Scale.</p>
+  <h1>Central Agentic Ops</h1>
+</section>
+<div class="hierarchy-hero" data-slideshow-slide>
   <HeroIntro />
 
   <div class="hero-visual">
@@ -43,7 +49,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   </div>
 </div>
 
-<section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal>
+<section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal data-slideshow-slide>
   <p class="section-eyebrow">Execution policy</p>
   <h2 id="dispatch-title">Control where workflows run.</h2>
   <p>
@@ -59,7 +65,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   </figure>
 </section>
 
-<section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal>
+<section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
     <p class="section-eyebrow">Reusable workflows, central Ops</p>
     <h2 id="terminal-title">Reuse what works.</h2>
@@ -70,7 +76,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   <TerminalDemo />
 </section>
 
-<section class="product-story runs-story" aria-labelledby="runs-title" data-reveal>
+<section class="product-story runs-story" aria-labelledby="runs-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
     <p class="section-eyebrow">Local workflows, central visibility</p>
     <h2 id="runs-title">Monitor what runs.</h2>
@@ -79,7 +85,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       and its evidence.
     </p>
   </div>
-  <figure class="product-frame product-shot product-shot-mobile product-shot-runs">
+  <figure class="product-frame product-shot product-shot-mobile product-shot-runs" data-slideshow-snippet="Workflow run history">
     <ThemeImage
       dark={dashboardRunHistory}
       light={dashboardRunHistoryLight}
@@ -92,7 +98,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   </figure>
 </section>
 
-<section class="product-story value-story reverse" aria-labelledby="value-title" data-reveal>
+<section class="product-story value-story reverse" aria-labelledby="value-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
     <p class="section-eyebrow">Earn trust before expanding autonomy</p>
     <h2 id="value-title">Roll out safely.</h2>
@@ -101,7 +107,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       not just successful runs: execution success is not an accepted outcome.
     </p>
   </div>
-  <figure class="product-frame product-shot product-shot-mobile product-shot-value">
+  <figure class="product-frame product-shot product-shot-mobile product-shot-value" data-slideshow-snippet="Operational value">
     <ThemeImage
       dark={dashboardCampaignValue}
       light={dashboardCampaignValueLight}
@@ -113,6 +119,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     />
   </figure>
 </section>
+</div>
+<LandingSlideshow />
 
 <script>
   const revealTargets = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -138,6 +146,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
 <style>
   @layer starlight.core {
+    .cao-title-slide { display: none; }
+
     :global(.content-panel:has(.hierarchy-hero)) {
       --cao-page-bg: #f7faf8;
       --cao-page-grid-minor: rgba(26, 127, 55, 0.025);
@@ -199,7 +209,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       background-image: none;
     }
 
-    :global(.sl-container:has(> .hierarchy-hero)) {
+    :global(.sl-container:has(> [data-slideshow-slides])) {
       width: 100%;
       max-width: none;
       padding-inline: 0;

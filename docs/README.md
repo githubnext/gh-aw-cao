@@ -24,3 +24,10 @@ hero:
       variant: secondary
       icon: right-arrow
 ---
+
+<!-- The desktop header's Start slideshow button presents this landing page.
+Use arrow keys, Page Up/Down, Home/End, or the navigation buttons; Escape exits.
+Drawing tools annotate slides, and code snippets or dashboard previews expand
+on click. Code edits and annotations are discarded when the presentation closes.
+The runtime is adapted from github/gh-aw at
+9bf555c835e3a2086c4448de45e75ecc803e6950 under the root MIT license. -->

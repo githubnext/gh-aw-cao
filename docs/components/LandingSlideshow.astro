@@ -1,0 +1,235 @@
+---
+// Adapted from github/gh-aw (MIT), revision 9bf555c835e3a2086c4448de45e75ecc803e6950.
+import { Icon } from "@astrojs/starlight/components";
+import SlideshowDrawing from "./SlideshowDrawing.astro";
+import SlideshowSnippet from "./SlideshowSnippet.astro";
+---
+
+<span class="slideshow-error" data-slideshow-error role="alert" hidden></span>
+
+<dialog id="landing-slideshow" aria-label="Central Agentic Ops presentation">
+  <div class="slideshow-viewport" data-slideshow-viewport>
+    <div class="slideshow-stage" data-slideshow-stage>
+      <svg class="slideshow-ink" data-slideshow-ink role="img" aria-label="Slide annotations" preserveAspectRatio="none"></svg>
+    </div>
+  </div>
+  <div class="slideshow-controls" role="group" aria-label="Slide navigation">
+    <span class="slideshow-hint">Arrow keys to navigate · Esc to exit</span>
+    <SlideshowDrawing />
+    <button type="button" data-slideshow-previous aria-label="Previous slide">
+      <Icon name="left-caret" size="1.25rem" />
+    </button>
+    <span data-slideshow-status role="status" aria-live="polite" aria-atomic="true"></span>
+    <button type="button" data-slideshow-next aria-label="Next slide">
+      <Icon name="right-caret" size="1.25rem" />
+    </button>
+    <button type="button" data-slideshow-close aria-label="Exit slideshow" autofocus>
+      <Icon name="close" size="1.25rem" />
+    </button>
+  </div>
+  <SlideshowSnippet />
+</dialog>
+
+<script>
+  let cleanup = () => {};
+
+  function initialize() {
+    cleanup();
+    const trigger = document.querySelector<HTMLButtonElement>("[data-slideshow-trigger]");
+    const errorMessage = document.querySelector<HTMLElement>("[data-slideshow-error]");
+    const deck = document.querySelector<HTMLElement>("[data-slideshow-slides]");
+    if (!trigger || !errorMessage || !deck?.querySelector(":scope > [data-slideshow-slide]")) return;
+    const controller = new AbortController();
+    const { signal } = controller;
+    const desktop = window.matchMedia("(min-width: 50rem)");
+    let runtime: import("../scripts/slideshow").SlideshowController | undefined;
+    trigger.hidden = false;
+    trigger.addEventListener("click", async () => {
+      if (!desktop.matches || trigger.disabled) return;
+      trigger.disabled = true;
+      trigger.setAttribute("aria-busy", "true");
+      errorMessage.hidden = true;
+      try {
+        if (!runtime) {
+          const { createSlideshow } = await import("../scripts/slideshow");
+          if (signal.aborted) return;
+          runtime = createSlideshow(trigger);
+        }
+        runtime.open();
+      } catch (error) {
+        if (signal.aborted) return;
+        console.error("Unable to load the slideshow:", error);
+        errorMessage.textContent = "Unable to load the slideshow. Reload the page and try again.";
+        errorMessage.hidden = false;
+      } finally {
+        if (!signal.aborted) {
+          trigger.disabled = false;
+          trigger.removeAttribute("aria-busy");
+        }
+      }
+    }, { signal });
+    cleanup = () => {
+      controller.abort();
+      runtime?.destroy();
+      trigger.hidden = true;
+      trigger.disabled = false;
+      trigger.removeAttribute("aria-busy");
+      errorMessage.hidden = true;
+    };
+  }
+
+  initialize();
+  document.addEventListener("astro:page-load", initialize);
+  document.addEventListener("astro:before-swap", () => cleanup());
+</script>
+
+<style>
+  .slideshow-error[hidden] { display: none; }
+  dialog :global(button:focus-visible) {
+    outline: 3px solid var(--sl-color-accent-high);
+    outline-offset: 3px;
+  }
+  .slideshow-error {
+    position: fixed;
+    inset: calc(var(--sl-nav-height) + 1rem) 1rem auto;
+    z-index: var(--sl-z-index-menu);
+    padding: 1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+  }
+  :global(html:has(#landing-slideshow[open])) { overflow: hidden; }
+  #landing-slideshow {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background-color: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    font-family: var(--sl-font);
+    overflow: hidden;
+  }
+  #landing-slideshow[open] { display: flex; flex-direction: column; }
+  .slideshow-viewport {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .slideshow-stage { position: relative; width: 100%; height: 100%; flex: none; }
+  dialog[open] .slideshow-stage { view-transition-name: cao-slide; }
+  .slideshow-ink { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+  .slideshow-ink[data-tool]:not([data-tool="pointer"]) { pointer-events: auto; touch-action: none; cursor: crosshair; }
+  dialog :global([data-slideshow-slides]) {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: var(--cao-slide-width, 76rem);
+    transform-origin: top left;
+  }
+  dialog :global([data-slideshow-slide]) {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: var(--cao-slide-height, 0px);
+    margin: 0;
+    padding: 3rem;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    align-content: center;
+  }
+  dialog :global([data-slideshow-slide][hidden]),
+  dialog :global([data-slideshow-hide]) { display: none !important; }
+  dialog :global(.cao-title-slide:not([hidden])) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    text-align: center;
+  }
+  dialog :global(.cao-title-slide p) {
+    color: var(--cao-story-eyebrow);
+    font: 600 1rem/1.5 "Mona Sans Mono", monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  dialog :global(.cao-title-slide h1) {
+    max-width: 18ch;
+    margin: 0;
+    color: var(--cao-story-heading);
+    font-size: 5rem;
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+  dialog :global(.hierarchy-hero) { grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr); }
+  dialog :global(.product-story:not(.dispatch-story)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  dialog :global([data-reveal]) { opacity: 1; transform: none; transition: none; }
+  .slideshow-controls {
+    z-index: 2;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 4.5rem;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--sl-color-gray-5);
+    background: color-mix(in srgb, var(--sl-color-bg-nav) 90%, transparent);
+    color: var(--sl-color-text);
+    font-size: 0.8125rem;
+  }
+  .slideshow-hint { margin-inline-end: auto; color: var(--sl-color-gray-2); }
+  .slideshow-controls :global(button) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.375rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    cursor: pointer;
+  }
+  .slideshow-controls :global(button:hover) { background: var(--sl-color-gray-6); }
+  .slideshow-controls :global(button:disabled) { opacity: 0.4; cursor: default; }
+  [data-slideshow-status] {
+    max-width: min(40vw, 30rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  [data-slideshow-close] { margin-inline-start: auto; }
+  @media (max-width: 70rem) { .slideshow-hint { display: none; } }
+  @media print { #landing-slideshow { display: none; } }
+</style>
+
+<style is:global>
+  html[data-slideshow-direction="forward"] { --cao-slide-offset: 100vw; }
+  html[data-slideshow-direction="backward"] { --cao-slide-offset: -100vw; }
+  html[data-slideshow-direction]::view-transition { pointer-events: none; }
+  html[data-slideshow-direction]::view-transition-old(root),
+  html[data-slideshow-direction]::view-transition-new(root) { animation: none; }
+  html[data-slideshow-direction]::view-transition-group(cao-slide) { animation-duration: 280ms; animation-timing-function: ease; }
+  html[data-slideshow-direction]::view-transition-old(cao-slide) { animation: cao-slide-out 280ms ease-in-out both; }
+  html[data-slideshow-direction]::view-transition-new(cao-slide) { animation: cao-slide-in 280ms ease-in-out both; }
+  @keyframes cao-slide-out { to { transform: translateX(calc(-1 * var(--cao-slide-offset))); } }
+  @keyframes cao-slide-in { from { transform: translateX(var(--cao-slide-offset)); } to { transform: translateX(0); } }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-slideshow-direction]::view-transition-group(cao-slide),
+    html[data-slideshow-direction]::view-transition-old(cao-slide),
+    html[data-slideshow-direction]::view-transition-new(cao-slide) { animation: none; }
+  }
+</style>
