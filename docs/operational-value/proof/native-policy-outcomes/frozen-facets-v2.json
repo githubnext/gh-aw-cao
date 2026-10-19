@@ -1,0 +1,31 @@
+{
+  "version": "native-policy-outcomes/2.0.0",
+  "predecessor": "frozen-contracts.json",
+  "authoring": "Outcome-informed retrospective. Candidate titles, bodies, patches and immutable source transitions were inspected before these bounded facets were selected.",
+  "network": {
+    "correction": "At the landed Claude transition, engine domain sets are already explicit network.allowed opt-ins, not unconditional access. Preserve v1; do not describe this as removal from every workflow's automatic defaults.",
+    "quantity": "Distinct concrete infrastructure domains no longer granted by the named claude transport set while still independently available through explicit containers, linux-distros or playwright opt-in.",
+    "acceptance": "Compare actual-parent and landed-commit JSON plus the Go embed/loader/named-set resolution at both revisions. Count a concrete prior Claude entry only if covered by a retained infrastructure category, absent from all after-Claude host/subdomain patterns, and the entire ecosystems map is unchanged. Wildcard entries are not finite native domains and are excluded. Deduplicate engine/domain across the lifetime.",
+    "conservativeMatching": "Treat both literal suffixes and wildcard suffixes as covering descendant hosts; conservatively treat wildcard apex as covered for after-state rejection. No claim about actual outbound traffic or all compiler configurations.",
+    "notAccepted": "Style changes, loader refactors, new labels, or unchanged effective named-set coverage.",
+    "fullAcceptance": "Unknown; no historical full compiler, egress or engine-functionality replay."
+  },
+  "setup": {
+    "quantity": "Distinct independently reproduced credential-at-rest condition repairs, not the number of test cases.",
+    "conditions": [
+      {
+        "id": "repo-memory-origin-token-persistence",
+        "acceptance": "Run only the original source's origin-URL assignment and original git remote-add statement against an isolated local empty Git repository and a non-secret marker. The marker is persisted in the old .git/config but absent from the new .git/config, and the new origin still names the same HTTPS target. Never clone or contact that target."
+      },
+      {
+        "id": "mcp-wrapper-group-world-readability",
+        "acceptance": "Run the unchanged native wrapper generator and original source's bounded wrapper-write statements in an isolated directory using a dummy API-key marker. Independently stat/read the file on fresh creation and replacement of a pre-existing 0755 file. Both old cases retain group/world readability; both new cases retain the marker and owner execution without group/world readability. Count one repaired condition, not two cases."
+      }
+    ],
+    "limitations": "These are bounded differential reproductions of the concrete filesystem condition, not complete action execution, network authentication, sandbox isolation, race freedom, symlink safety or comprehensive regression acceptance."
+  },
+  "model": {
+    "retained": "Original v1 acceptance is unchanged. No replacement proxy based on declarations, reports or successful jobs is introduced.",
+    "gap": "The discovered workflow-linked objects are failed/incomplete investigations. Two independent original job graphs prove preparation-step failure, not native model-boundary acceptance. Source model history exists but is not itself an independently completed TLC replay."
+  }
+}

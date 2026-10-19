@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "scope": "github/gh-aw at c86377ec47b38f0b5af463277ee55d1d03d08da8, cutoff 2026-10-18T15:00:12Z",
+  "nativeCoverage": {
+    "weekly-network-domains-audit": {
+      "status": "bounded-native-subtotal",
+      "value": 3,
+      "unit": "concrete infrastructure hosts removed from explicit Claude transport",
+      "period": ["2026-10-11T15:00:12Z", "2026-10-18T15:00:12Z"],
+      "accepted": {
+        "issue": 57408,
+        "pullRequest": 67811,
+        "commit": "265d5505030a25835fac0c7650820888db288730",
+        "hosts": ["cdn.playwright.dev", "ghcr.io", "playwright.download.prss.microsoft.com"]
+      },
+      "missingPeriods": 8,
+      "knownPeriods": 1,
+      "strictAcceptance": "Full minimality, engine behavior and actual runtime egress remain unknown.",
+      "correction": "Engine domain sets at this transition are already explicit network.allowed opt-ins; no claim of removed unconditional access."
+    },
+    "daily-action-setup-security-audit": {
+      "status": "bounded-native-subtotal",
+      "value": 2,
+      "unit": "independently reproduced credential-at-rest conditions repaired",
+      "accepted": [
+        {"issue": 54696, "pullRequest": 54701, "commit": "dd2a92d6e897d438fb7c4054800816d6ad029f7d", "condition": "Dummy credential no longer persisted by native Git remote-add origin construction", "period": ["2026-08-16T15:00:12Z", "2026-08-23T15:00:12Z"]},
+        {"issue": 55582, "pullRequest": 55587, "commit": "b9974fb67d6b01fbd40caaf03ad4d2413ea3cabd", "condition": "Dummy-key-bearing native wrappers change from 0755 to 0700 on fresh and existing-file writes", "period": ["2026-08-23T15:00:12Z", "2026-08-30T15:00:12Z"]}
+      ],
+      "missingPeriods": 9,
+      "knownPeriods": 2,
+      "strictAcceptance": "Complete action execution, authentication, races, sandbox safety and comprehensive regression preservation are unknown. Neither remote clone nor the generated wrapper is executed."
+    },
+    "daily-workflow-security-model": {
+      "status": "gap-not-native-coverage",
+      "value": null,
+      "missingPeriods": 15,
+      "knownPeriods": 0,
+      "independentBlockers": [
+        {"runId": 38516258798, "jobId": 115695792653, "step": "Prepare pinned TLA+ runtime"},
+        {"runId": 38855400841, "jobId": 116825759086, "step": "Prepare pinned TLA+ runtime"}
+      ],
+      "reason": "No independently retained completed TLC replay for an additional model boundary. Existing model source history is retained as source evidence, not a native outcome. Failure/incomplete issues and hypothetical scorer fixtures do not satisfy the strict original acceptance."
+    }
+  },
+  "rejectedOrOutsideFacet": [
+    {"workflow": "weekly-network-domains-audit", "issue": 55356, "pullRequest": 55382, "reason": "Vendor endpoints moved into a newly added opt-in. This is not the frozen unchanged-infrastructure-ecosystem facet; no invented zero or broad safety conclusion."},
+    {"workflow": "weekly-network-domains-audit", "issue": 67959, "pullRequest": 67987, "reason": "No merged implementation established by acquired original PR graph. No native delivery credited."},
+    {"workflow": "weekly-network-domains-audit", "issue": 67961, "pullRequest": 67988, "reason": "No merged implementation established by acquired original PR graph. Wildcard overlap report alone is not a repair."},
+    {"workflow": "weekly-network-domains-audit", "issue": 67960, "pullRequest": 67989, "reason": "Threat-detection telemetry is a distinct condition outside the verified finite Claude/infrastructure facet; retained as a possible useful outcome, not counted without its own defining oracle."},
+    {"workflow": "daily-action-setup-security-audit", "issue": 62521, "pullRequests": [62991, 66121], "reason": "Acquired PR receipts do not establish a landed setup installer repair. Broader hardening proposals and unrelated edits cannot substitute for the source-goal condition."},
+    {"workflow": "daily-workflow-security-model", "issues": [65512, 66027, 66451, 66790, 67117, 67347, 67626, 67888, 68327, 68613, 69260], "reason": "Surviving workflow-linked candidate objects are failure/incomplete reports. No accepted model-boundary delivery is inferred."}
+  ],
+  "common": {
+    "attribution": "Issue-to-PR cross-reference graph corroborates links, but editable workflow markers are not creation receipts. Workflow contribution remains null rather than being equated to repository improvement.",
+    "safeguards": "Bounded native postconditions verified; full safeguards remain separately unknown.",
+    "costs": "Not measured.",
+    "decision": "Not rated.",
+    "discussions": "Only digest/identity metadata for incidentally mentioning Discussions retained; current bodies are not historical or correctness evidence.",
+    "coverage": "Two native partial-coverage workflows plus one honest gap report; never three newly measured workflows."
+  },
+  "validation": {
+    "focusedTests": "node --test tests/unit/native-policy-outcomes.test.mjs",
+    "moduleChecks": "verify-value-function.mjs --collector for all three modules",
+    "skillReports": "evaluate.mjs --end 2026-10-18T15:00:12Z --no-runs for all three modules",
+    "lint": "Scoped npm exec --no -- eslint passed.",
+    "workflowCompile": "npm run compile passed with 72 workflows.",
+    "typecheckBlocker": "npm run typecheck:cao could not run the TypeScript compiler: installed tooling resolves a non-TypeScript tsc command that reports 'This is not the tsc command you are looking for'. No type-check success is claimed. Owned implementation is ECMAScript; no TypeScript sources were changed."
+  },
+  "replay": {
+    "commands": ["node --test tests/unit/native-policy-outcomes.test.mjs", "node scripts/replay-native-policy-outcomes.mjs /absolute/path/to/fresh-receipt.json"],
+    "requirements": "Node.js 24+, POSIX filesystem, local git and bash only. Replay consumes owned preserved originals and generated skill timelines; it does not need the private Discussion directory, shared Git cache, GitHub credentials or live APIs."
+  }
+}

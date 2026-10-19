@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-native-cleanup-integration-replay",
+  "tests": 8,
+  "collectorChecks": 3,
+  "standardRefreshes": 6,
+  "completeTimelinesEqualExceptGeneratedAt": true,
+  "timelineHashes": {
+    "stale-pr-cleanup": "dd450143b80f90b880842b7f5ad8f3c01f53ab77bd7e8ef8b0c15f810ad9ae63",
+    "draft-pr-cleanup": "e9d24d8485f188bc34e10b971429e81e75717222efbe35710f2f3852c2b7339e",
+    "sub-issue-closer": "2921e52f4bfb770009edb1c64b2f41f4855b02b83c6d7282cfa532e2ac382f1a"
+  },
+  "networkDeniedByOSAndProbed": true,
+  "originalWorkspaceReadDeniedAndProbed": true,
+  "sharedSessionCachesDeniedByOS": true,
+  "gitCheckoutAndNodeModulesAbsent": true,
+  "targetCodeExecuted": false,
+  "qualifiedWorkflows": [
+    "sub-issue-closer"
+  ],
+  "gapWorkflows": [
+    "stale-pr-cleanup",
+    "draft-pr-cleanup"
+  ],
+  "nativeParentClosures": 2,
+  "receiptLinkedContributionSubset": 2,
+  "fullAcceptance": null,
+  "costs": null
+}

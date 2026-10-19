@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "workflow": "gpclean",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": "Source-goal-informed retrospective contract frozen before inspecting candidate audit bodies or results.",
+  "adoption": {
+    "commit": "6d4da0d7134d21def02c6cfb27e00bf3d5851507",
+    "committedAt": "2026-02-11T15:18:10Z",
+    "status": "Discovery identity only until original addition/source custody is acquired."
+  },
+  "goal": "For actual versioned Go dependency opportunities, deliver accurate license findings and actionable dependency-condition improvements, independently verified against immutable dependency reachability and original package license declarations, measured in native units per disjoint week.",
+  "strictAcceptance": {
+    "unit": "independently verified dependency license findings",
+    "requirements": [
+      "Exact module/version exists in the source-era selected Go dependency closure.",
+      "An original version-bound license declaration independently establishes the reported license fact.",
+      "The finding matches that native fact without substituting a repository's current license for its historical module version.",
+      "A claimed transitive chain must be independently reachable; an SPDX label alone does not establish a dependency relationship.",
+      "A claimed delivered removal additionally requires actual-parent native dependency closure evidence before and after implementation."
+    ]
+  },
+  "partialAcceptance": {
+    "unit": "independently accurate version-bound license classification facts",
+    "predicate": "The exact stated package/version and its declared license fact agree with an independently retained immutable original; broader transitive reachability, removal, remediation suitability and legal compatibility remain separate when unavailable.",
+    "classification": "Compare explicit license identifiers or original declarations mechanically. GPL-family identifiers are descriptive source facts, not a legal determination of compatibility or obligations.",
+    "incorrectFindings": "Explicit mismatches remain retained native negative observations. An issue, merge, claimed check or successful run is not acceptance.",
+    "missingFacts": "Absent original version/license or dependency identity remains null, never a clean bill or exhaustive zero."
+  },
+  "timeAndIdentity": {
+    "cadenceDays": 7,
+    "interval": "[start,end)",
+    "deduplication": "Repository, stable finding identity, immutable module version and native condition; no repeat delivery credit from snapshots.",
+    "bodyVersion": "After-cutoff surviving bodies do not establish original publication-time bytes or accuracy.",
+    "historicalGoal": "Verify actual applicable source/policy eras before assigning native observations."
+  },
+  "separateUnknowns": [
+    "Full license audit coverage and actual complete transitive closure.",
+    "Legal license compatibility and downstream obligations.",
+    "Quality and suitability of proposed replacements.",
+    "Full behavior preservation and comprehensive safeguards.",
+    "Original creation receipts, exclusive causation, matched costs and native keep bar."
+  ],
+  "decision": "not-rated",
+  "deploymentAuthority": "None. Read-only acquisition and local deterministic verification only."
+}

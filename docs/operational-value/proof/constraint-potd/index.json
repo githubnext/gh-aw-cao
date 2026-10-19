@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "records": [
+    {
+      "number": 58462,
+      "kind": "n-queens",
+      "runId": 33868062846,
+      "head": "82239c030d6a1ef6ec8b87a80a1346eeef211f8d"
+    },
+    {
+      "number": 64465,
+      "kind": "sudoku",
+      "runId": 36708905984,
+      "head": "e3a4902476fd0e346d26684530773eb4d0de8900"
+    },
+    {
+      "number": 54778,
+      "kind": "latin-square",
+      "runId": 32570488547,
+      "head": "004e949a0f1006d3f4622b2a1c14ede80cdda73d"
+    },
+    {
+      "number": 57139,
+      "kind": "graph-coloring",
+      "runId": 33308908522,
+      "head": "2c515bf3bee5919feca96efd955370ef1d881f9f"
+    }
+  ],
+  "receipts": {
+    "repository": {
+      "file": "originals/repository.json.gz",
+      "archiveSha256": "778231e33aa91440d64b0b1fc79e79b419f5b15f691d5b99fc60b39b1112725a",
+      "bodySha256": "59dbbc77222e9b8be68619666672ff45c9bcd779e16e1196d92cd10d62421fa4"
+    },
+    "adoption": {
+      "file": "originals/adoption.json.gz",
+      "archiveSha256": "b3fc089ebd74fbfbe77be52d4301de3b91a6935804c5cd8e3a6989ec79fe1837",
+      "bodySha256": "5db444a21a37e0c03e746596c92f8a8cd5cc37c6c4f831a8bd91f31c8e0018ee"
+    },
+    "frozen-md": {
+      "file": "originals/frozen-md.json.gz",
+      "archiveSha256": "c92cc0c0b9705198ba61f7aef96449c228c1f792102edfde9992d06d83aad3e1",
+      "bodySha256": "6a6625005577245d4ee9c5820de6458af9adb7d76e07a29d2a0862aa01473acb"
+    },
+    "frozen-lock-yml": {
+      "file": "originals/frozen-lock-yml.json.gz",
+      "archiveSha256": "eb176131ac5b2066cc120176fe796861cc3075fc14f91a5a313acf6648168c78",
+      "bodySha256": "85a5f953b3047753201ae8847b84aa824edaa245df2f1de6f291aaaec6f03eaa"
+    },
+    "discussion-58462": {
+      "file": "originals/discussion-58462.json.gz",
+      "archiveSha256": "20e8fdaf98e280ca1a2d88598bf06c146720cb35f714afd130f7bfae9ec15e73",
+      "bodySha256": "fb70c22eb69edc231c3468710cc7f230f597db768f3ef19ec6a7d1243a33fa04"
+    },
+    "run-33868062846": {
+      "file": "originals/run-33868062846.json.gz",
+      "archiveSha256": "c0a7cda0aa831c365bd745b4d07c0a6793738178a05ed4e164fefcf9a12ca695",
+      "bodySha256": "3f3d549cf7aa44ed97d05a69595ccac888200b713414ed3a95a10723e0dffe7e"
+    },
+    "source-58462-md": {
+      "file": "originals/source-58462-md.json.gz",
+      "archiveSha256": "0acdadac28d8c7134841f59aefd1b09a41d744d0235b6c0bdf768b41f259334d",
+      "bodySha256": "269a7a0d31cfd77c7c695143b39a169f5ff25bcb54c7947eaa0bfed3a6d5c56f"
+    },
+    "source-58462-lock-yml": {
+      "file": "originals/source-58462-lock-yml.json.gz",
+      "archiveSha256": "e47ef77e33a31e2347959641bfc776cc50d05c2d02678577b61cef8d1a16ebd7",
+      "bodySha256": "546a83a8a37d0fcf4d8a88dce0250e9af3a4d013aae2aa1d3f417354b19ce9c8"
+    },
+    "discussion-64465": {
+      "file": "originals/discussion-64465.json.gz",
+      "archiveSha256": "36f7cc4504cc2f4d6f49901f0f26ce30cb56f405ac1067b40e2dd385266d71c3",
+      "bodySha256": "30333b5f828217458c187a4ade5f69f2990483ac46da36ab760a3d0fb4a70154"
+    },
+    "run-36708905984": {
+      "file": "originals/run-36708905984.json.gz",
+      "archiveSha256": "93facb1e8acf6cf83a1c7cdfce37b51d637846cfdef03672df87ca724205c4c6",
+      "bodySha256": "792dffc07f8b3810c4c06626ed6ba26c6d87ae9ab2361a004a00b25dd1718804"
+    },
+    "source-64465-md": {
+      "file": "originals/source-64465-md.json.gz",
+      "archiveSha256": "841abcb88f526ad776d53a1772c4a50337d8de21cbcfc6d152ed0514e1bc395c",
+      "bodySha256": "e4b429355ec7a8e9f67b6c16edcc3bfe0f64bb12efde8d813c93ed17ece1a0d2"
+    },
+    "source-64465-lock-yml": {
+      "file": "originals/source-64465-lock-yml.json.gz",
+      "archiveSha256": "5eb307e80abdb79a01cdf034dfebccef8b3d03de19ef06419612f58742ce4af8",
+      "bodySha256": "102e4a38e59796af234bbe82eb0dca09d17a3af610a2e495300bc24bab7f1028"
+    },
+    "discussion-54778": {
+      "file": "originals/discussion-54778.json.gz",
+      "archiveSha256": "68a937a6f51ed84d43e5e33b33f4281dd66ea1b284c01531bc645c2b5c03581a",
+      "bodySha256": "e73c9f66768e226a7daba535c16859d3f821c1e282fb81617f7dbd4827f0d294"
+    },
+    "run-32570488547": {
+      "file": "originals/run-32570488547.json.gz",
+      "archiveSha256": "16c46f47c8692df345d6096844ab4c1a8f9077cdd446230f15bf417492b1ae35",
+      "bodySha256": "617b2403d95dbf3443cda468f654fc0509914394e10b1b2496ce1dba7c7746d8"
+    },
+    "source-54778-md": {
+      "file": "originals/source-54778-md.json.gz",
+      "archiveSha256": "a4e7c86c8388c77dce46b07d7d82dcfaaed756e40385d3319c96fee7930c707a",
+      "bodySha256": "410ed4fc1d2066ea765bb56618d92a35045e69122c5a489babf49d6c6cdfbdd5"
+    },
+    "source-54778-lock-yml": {
+      "file": "originals/source-54778-lock-yml.json.gz",
+      "archiveSha256": "e2d72278d9a16e1d036539137ae4555f956ef2676fa8e04513310696866a14e3",
+      "bodySha256": "f28cc1e2b3627ccf8db5fa6deac04e0474bde367e777f34587458321f866fc09"
+    },
+    "discussion-57139": {
+      "file": "originals/discussion-57139.json.gz",
+      "archiveSha256": "a24ade69beffedd4d3907bcf8e3a9fcf7dc835d3d147103a13a7296ddfbd8648",
+      "bodySha256": "eea9be8e2028f03638827a74b52f38ecaa67fd2b332cec421b966a553274d866"
+    },
+    "run-33308908522": {
+      "file": "originals/run-33308908522.json.gz",
+      "archiveSha256": "2eae36fa93e0afb3b538489dc619c7a34accc63bdeffbe0b6a82732720c1438b",
+      "bodySha256": "20d1c9b6ef69a2409195968787fded8e0c10297ca1564489047e8ace12df789c"
+    },
+    "source-57139-md": {
+      "file": "originals/source-57139-md.json.gz",
+      "archiveSha256": "d4e0986ed2e42b01432d4bac09a426ab0beb6fc7e1a5b658097921749e41964d",
+      "bodySha256": "95b9f130175ffc612e9b89beb721717fe477b3e816b18f989c6af7c62fb2e103"
+    },
+    "source-57139-lock-yml": {
+      "file": "originals/source-57139-lock-yml.json.gz",
+      "archiveSha256": "6ec6d8c4a6c9359140474a6e498f901486d295e6e4844f4da99e82b6ea373d9b",
+      "bodySha256": "333d0fa9a40636f8574d763be4e8fa2663b50dda7e23258b20813f067280f806"
+    }
+  },
+  "selection": "Four selected surviving lessons: latest retained title-matched candidate in each initially supported mathematical class. Discovery is not a complete outcome census.",
+  "contribution": "Editable run markers corroborate candidate lineage only; original creation receipts remain unavailable.",
+  "bodyVersion": "Original GraphQL bytes acquired after cutoff. Native correctness concerns the surviving body, not original publication-time bytes."
+}

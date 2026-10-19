@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "version": "native-cleanup/1.0.0",
+  "authoring": "Source-history-informed retrospective instrument. This original contract was written after source/executor history and before candidate discovery. Any outcome-informed narrower facet must preserve this file.",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "cadenceDays": 7,
+  "maturationDays": 0,
+  "deduplication": "Stable repository entity ID and closure-event identity; one delivered closure per entity lifetime, assigned only to its first qualifying closure interval. Reopening is a separately reported safeguard, never another delivery.",
+  "population": "Bounded, discovery-selected public outputs; not a census of eligible opportunities. Periods outside retained native evidence remain null, never zero.",
+  "workflowContribution": "A comment/marker is discovery or corroboration, not a creation receipt. Receipt-qualified attribution requires run identity, workflow source at the run SHA, and actual safe-output application targeting the same entity and transition.",
+  "decision": "Not rated: no agreed native keep bar. No dollars or causation.",
+  "instruments": {
+    "stale-pr-cleanup": {
+      "goal": "Reduce the 30+ day stale PR backlog without discarding genuine work.",
+      "originalAcceptance": "An open PR with pre-action updatedAt older than 30 days and no keep-open, blocked, awaiting-review, do-not-close or hold label is correctly classified in A/B/C order and closed unmerged, with the source-required comment and label. Human non-draft ambiguity defaults to warning; maintainer/admin closure needs superseded evidence.",
+      "nativeFacet": "Independently verified source-eligible unmerged stale PR closures. Source eligibility, draft/bot status as applicable, label history and the actual closure transition must be established independently of the cleanup comment.",
+      "unit": "verified stale PRs retired",
+      "safeguards": "Correct classification precedence, role protection, communications, reopen behavior and full opportunity coverage are separate from the native closure facet.",
+      "adoption": "b8294a1711663f8f63311de25c6a6b3f3290f712",
+      "ruleHistory": "30-day threshold and A/B/C/D classification unchanged since adoption. Later changes affect imports, engine, transport, runtime and reporting, not eligibility."
+    },
+    "draft-pr-cleanup": {
+      "goal": "Retire inactive draft PRs to reduce clutter and triage burden.",
+      "originalAcceptance": "An open draft with no keep-draft, blocked or awaiting-review label and at least 14 days since ALL relevant activity is closed unmerged after warning, retaining stale-draft and a helpful closure comment. Activity includes commits, comments, label changes, review requests/reviews and title/body updates.",
+      "nativeFacet": "Independently verified source-eligible inactive draft PR closures. Historical draft state, actual inactivity and exemption state, and open-to-closed-unmerged transition are required independently of the cleanup comment.",
+      "unit": "verified inactive drafts retired",
+      "safeguards": "Warning timing, complete communication, draft-rate goal, full opportunity coverage and subsequent reopens remain separately assessed.",
+      "adoption": "a96483b9a8de5909650a958fec868347deddf40f",
+      "ruleHistory": "10-13-day warning and 14+-day closure policy unchanged since adoption. 2026-10-14 disables shell routes and requires native MCP permission handling; it does not retroactively change eligibility."
+    },
+    "sub-issue-closer": {
+      "goal": "Close open parent issues whose nonempty sub-issue set is 100% closed, bottom-up.",
+      "originalAcceptance": "A nonempty, complete historical parent-child graph immediately before closure has every child closed. The parent transitions from open to closed/completed, receives a correct explanatory comment, and recursive ancestors are processed bottom-up within limits.",
+      "nativeFacet": "Verified parent closures after every member of its nonempty historical child set closed. Graph membership and all child lifecycle timestamps must be independently established; a task-list or self-reported completion count is insufficient.",
+      "unit": "completed parents retired",
+      "safeguards": "Communication, recursion completeness, run limits and all eligible opportunity coverage remain separate.",
+      "adoption": "f107352c6f358baca6db404713f95e8762d0ca8c",
+      "ruleHistory": "All nonempty children closed remains the rule since adoption. Tool transport, reporting and Copilot-to-Codex-to-Pi engine changes are not new goal activations."
+    }
+  }
+}

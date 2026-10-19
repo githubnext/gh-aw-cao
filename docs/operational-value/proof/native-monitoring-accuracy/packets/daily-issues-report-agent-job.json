@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/jobs/112849617560",
+  "observedAt": "2026-10-19T15:42:42Z",
+  "kind": "original-public-api-response",
+  "bytes": 13125,
+  "sha256": "a90e1dbf6e96819502d2a5b1edc93be509982a03d85f8619edb8a8e5d5881301",
+  "parts": [
+    {
+      "file": "daily-issues-report-agent-job.0.gz",
+      "sha256": "35e7880b7575cb1b0bbf0ad1f2a14b1899755ea8b577c0d467c946660ee7e54a",
+      "bytes": 1823
+    }
+  ]
+}

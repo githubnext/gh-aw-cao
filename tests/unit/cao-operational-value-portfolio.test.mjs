@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 70);
-  assert.equal(model.totals.workflows - model.totals.measured, 274);
+  assert.equal(model.totals.measured, 82);
+  assert.equal(model.totals.workflows - model.totals.measured, 262);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -375,6 +375,109 @@ test("native smoke and MCP transport partials preserve strict rejections and thr
     assert.equal(row.reportAvailable, true);
     assert.equal(row.evaluationReady, false);
   }
+});
+
+test("surviving monitoring bodies retain bounded factual accuracy and known report defects", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [id, facts, periods] of [
+    ["daily-code-metrics", 2, 49], ["daily-repo-chronicle", 30, 52], ["repo-tree-map", 10, 54],
+    ["github-mcp-tools-report", 3, 54], ["weekly-issue-summary", 55, 52], ["daily-issues-report", 2, 47],
+  ]) {
+    const timeline = measurements.find(row => row.workflowId === id)?.input;
+    assert.ok(timeline);
+    assert.equal(timeline.snapshots.length, periods);
+    const observed = timeline.snapshots.filter(row => row.metrics["verified-native-facts"] !== null);
+    assert.equal(observed.length, 1);
+    assert.equal(observed[0].metrics["verified-native-facts"], facts);
+    assert.equal(observed[0].metrics["native-fact-accuracy"], 100);
+    assert.equal(observed[0].evidence.costs, "not measured");
+    assert.equal(progress.find(row => row.workflowId === id).partial, true);
+  }
+  const weekly = measurements.find(row => row.workflowId === "weekly-issue-summary").input;
+  assert.equal(weekly.snapshots.at(-1).metrics["opening-undercount-floor"], 30);
+  assert.match(progress.find(row => row.workflowId === "daily-repo-chronicle").detail, /24h05m/);
+  assert.match(progress.find(row => row.workflowId === "github-mcp-tools-report").detail, /not proof.*59 live tools/);
+});
+
+test("GPL facts and native parent cleanup preserve useful partials and exclude PR cleanup gaps", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const license = measurements.find(row => row.workflowId === "gpclean")?.input;
+  assert.ok(license);
+  assert.equal(license.snapshots.length, 36);
+  assert.deepEqual(license.snapshots.map(row => row.metrics["verified-license-facts"]).filter(value => value !== null), [6]);
+  assert.equal(license.snapshots.at(-1).metrics["verified-license-facts"], null);
+  assert.match(progress.find(row => row.workflowId === "gpclean").detail, /not.*legal compatibility/);
+  const parent = measurements.find(row => row.workflowId === "sub-issue-closer")?.input;
+  assert.ok(parent);
+  assert.equal(parent.snapshots.length, 44);
+  assert.deepEqual(parent.snapshots.map(row => row.metrics.native).filter(value => value !== null), [2]);
+  assert.equal(parent.snapshots.at(-1).metrics.contribution, 2);
+  assert.equal(parent.snapshots.at(-1).metrics.full, null);
+  for (const id of ["stale-pr-cleanup", "draft-pr-cleanup"]) {
+    assert.equal(measurements.some(row => row.workflowId === id), false);
+    const gap = progress.find(row => row.workflowId === id);
+    assert.equal(gap.blocked, true);
+    assert.equal(gap.evaluationReady, false);
+    assert.equal(gap.reportAvailable, true);
+  }
+});
+
+test("mathematically correct worked examples remain distinct from complete educational acceptance", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const timeline = measurements.find(row => row.workflowId === "constraint-solving-potd")?.input;
+  assert.ok(timeline);
+  assert.equal(timeline.snapshots.length, 33);
+  assert.deepEqual(timeline.snapshots.map(row => row.metrics["verified-worked-instances"]).filter(value => value !== null), [1, 1, 1]);
+  assert.equal(timeline.snapshots.at(-1).metrics["verified-worked-instances"], null);
+  const records = timeline.snapshots.flatMap(row => row.evidence.records);
+  assert.equal(records.length, 4);
+  assert.equal(records.find(row => row.number === 64465).inspection.status, "missing");
+  assert.equal(timeline.snapshots.at(-1).evidence.fullAcceptance, null);
+  const row = progress.find(row => row.workflowId === "constraint-solving-potd");
+  assert.equal(row.partial, true);
+  assert.match(row.detail, /original publication-time accuracy/);
+});
+
+test("native policy repairs preserve distinct units and do not credit preparation failures", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [id, values, periods] of [
+    ["weekly-network-domains-audit", [3], 9],
+    ["daily-action-setup-security-audit", [1, 1], 11],
+  ]) {
+    const timeline = measurements.find(row => row.workflowId === id)?.input;
+    assert.ok(timeline);
+    assert.equal(timeline.snapshots.length, periods);
+    assert.deepEqual(timeline.snapshots.map(row => row.metrics["native-deliveries"]).filter(value => value !== null), values);
+    const observed = timeline.snapshots.filter(row => row.metrics["native-deliveries"] !== null);
+    for (const row of observed) {
+      assert.equal(row.evidence.fullAcceptance, null);
+      assert.equal(row.evidence.contribution, null);
+      assert.equal(row.evidence.costs, null);
+    }
+    assert.equal(progress.find(row => row.workflowId === id).partial, true);
+  }
+  assert.match(progress.find(row => row.workflowId === "weekly-network-domains-audit").detail, /not unconditional engine defaults/);
+  assert.equal(measurements.some(row => row.workflowId === "daily-workflow-security-model"), false);
+  const gap = progress.find(row => row.workflowId === "daily-workflow-security-model");
+  assert.equal(gap.blocked, true);
+  assert.equal(gap.reportAvailable, true);
+  assert.equal(gap.evaluationReady, false);
+  assert.match(gap.detail, /fifteen periods remain unknown/);
+});
+
+test("Codex native access cannot turn filtered upstream issue bytes into agent readback", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const timeline = measurements.find(row => row.workflowId === "codex-github-remote-mcp-test").input;
+  assert.equal(timeline.snapshots.length, 40);
+  assert.deepEqual(timeline.snapshots.map(row => row.metrics["native-access"]).filter(value => value !== null), [1]);
+  assert.equal(timeline.snapshots.at(-1).metrics["native-access"], null);
+  const observed = timeline.snapshots.find(row => row.metrics["native-access"] !== null);
+  assert.equal(observed.metrics["filtered-resources"], 3);
+  assert.equal(observed.metrics["upstream-issues"], 3);
+  assert.equal(observed.evidence.cases[0].agentIssueReadback, null);
+  assert.equal(observed.evidence.cases[0].historicalFilterAcceptanceDeclared, false);
+  assert.equal(observed.evidence.fullGoal, null);
+  assert.equal(progress.find(row => row.workflowId === "codex-github-remote-mcp-test").partial, true);
 });
 
 test("positive partial native evaluations retain unknown completion and open-history labels", async () => {

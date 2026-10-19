@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw",
+  "observedAt": "2026-10-19T15:31:41Z",
+  "kind": "original-public-api-response",
+  "bytes": 7185,
+  "sha256": "04b74e80a7c6f1121c97039adf9e1f90f3c96b57852cd2212a8588f813e8030b",
+  "parts": [
+    {
+      "file": "repository.0.gz",
+      "sha256": "0c88616d3c9030f0558e669ad3d714b379ebb17e5c730b209bdf4157e15c5f45",
+      "bytes": 1735
+    }
+  ]
+}

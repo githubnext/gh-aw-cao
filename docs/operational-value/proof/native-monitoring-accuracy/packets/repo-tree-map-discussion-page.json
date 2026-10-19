@@ -1,0 +1,41 @@
+{
+  "kind": "original-shared-discussion-api-response",
+  "query": "query { repository(owner:\"github\",name:\"gh-aw\") {\n    databaseId discussions(first:100,after:\"Y3Vyc29yOnYyOpK0MjAyNi0wOC0xMlQxMzoxOTo0NlrOAKG_ZQ==\",orderBy:{field:CREATED_AT,direction:DESC}) {\n      nodes { id number url title body createdAt updatedAt }\n      pageInfo { hasNextPage endCursor }\n    }\n  } }",
+  "observedAt": "2026-10-19T15:20:01Z",
+  "inheritedSha256": "0c49e5e47c84ce34964421596e38f2499bc3891bb9cfb0f6243c3bc4cd2ef291",
+  "original": "page-00022.json.gz",
+  "bytes": 852812,
+  "sha256": "0c49e5e47c84ce34964421596e38f2499bc3891bb9cfb0f6243c3bc4cd2ef291",
+  "parts": [
+    {
+      "file": "repo-tree-map-discussion-page.0.gz",
+      "sha256": "e85792b49b5588f76b38f818058729b04d926cc92dfb78ea2c723f08e91b8056",
+      "bytes": 57324
+    },
+    {
+      "file": "repo-tree-map-discussion-page.1.gz",
+      "sha256": "fa9280c37cdb8405c9a1aad2feee99be0a8bee99a7be0bd026a44e68c4f6c648",
+      "bytes": 54684
+    },
+    {
+      "file": "repo-tree-map-discussion-page.2.gz",
+      "sha256": "04829d40faa7b0c8837e64d1516f7732be26dac5f97f5853ece7050cb38ecdef",
+      "bytes": 57914
+    },
+    {
+      "file": "repo-tree-map-discussion-page.3.gz",
+      "sha256": "280624b1b0a6a19c685132e47c34751b3d3802e177ff4442e4e4829f139fc04b",
+      "bytes": 53732
+    },
+    {
+      "file": "repo-tree-map-discussion-page.4.gz",
+      "sha256": "515abbf4edaba291cfa50ac1407aab1fde3a94070538234b1fed64976574b0dc",
+      "bytes": 55031
+    },
+    {
+      "file": "repo-tree-map-discussion-page.5.gz",
+      "sha256": "313d3d4062d015a49733a6dfc1da0289cf29037b72750d10246c9bfc182e8bf6",
+      "bytes": 1508
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "kind": "original-shared-discussion-api-response",
+  "query": "query { repository(owner:\"github\",name:\"gh-aw\") {\n    databaseId discussions(first:100,after:\"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wOFQwMjo1Mjo1NVrOAKdvcg==\",orderBy:{field:CREATED_AT,direction:DESC}) {\n      nodes { id number url title body createdAt updatedAt }\n      pageInfo { hasNextPage endCursor }\n    }\n  } }",
+  "observedAt": "2026-10-19T15:19:30Z",
+  "inheritedSha256": "093283732542e487061923473b7beab8c7117ca9d219ff56eae043f858902fdb",
+  "original": "page-00004.json.gz",
+  "bytes": 686787,
+  "sha256": "093283732542e487061923473b7beab8c7117ca9d219ff56eae043f858902fdb",
+  "parts": [
+    {
+      "file": "daily-issues-report-discussion-page.0.gz",
+      "sha256": "e384cb4205d6e86f67218587e721736ffc2358092cc08e17f7bbbe56aec82023",
+      "bytes": 56124
+    },
+    {
+      "file": "daily-issues-report-discussion-page.1.gz",
+      "sha256": "d8d6d431577210bab2db4fe9f69078c068ea72dd305ecc7db0fd643adfb64c66",
+      "bytes": 51754
+    },
+    {
+      "file": "daily-issues-report-discussion-page.2.gz",
+      "sha256": "219d93da96e2155218897aece0ef273a6171d8d344e068ef60f302c4f53f5f18",
+      "bytes": 54257
+    },
+    {
+      "file": "daily-issues-report-discussion-page.3.gz",
+      "sha256": "8716683b73efa360105020c6c9c051ca5e35f23f68db616cd006deb8be8a641b",
+      "bytes": 53925
+    },
+    {
+      "file": "daily-issues-report-discussion-page.4.gz",
+      "sha256": "d069730e09e8238acf1ae184fa0c46aef56264fa1fc88ed0efcdf968e52b4bb2",
+      "bytes": 3257
+    }
+  ]
+}

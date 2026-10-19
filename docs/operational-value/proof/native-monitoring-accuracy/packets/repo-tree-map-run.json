@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/31407479744",
+  "observedAt": "2026-10-19T15:32:35Z",
+  "kind": "original-public-api-response",
+  "bytes": 12291,
+  "sha256": "1ffadd798ad95afb72eafb58c7c0fc79661ccb15491a325ed371c2c38f0b8f46",
+  "parts": [
+    {
+      "file": "repo-tree-map-run.0.gz",
+      "sha256": "7cf872b65c4d5c22f52b034744144242fc367b3a7744a1b7358331efd64043b2",
+      "bytes": 1855
+    }
+  ]
+}

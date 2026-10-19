@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-action-setup-security-audit",
+  "workflowName": "daily-action-setup-security-audit: independently established native outcomes",
+  "sourcePath": ".github/workflows/daily-action-setup-security-audit.md",
+  "valueFunctionSha256": "6d516bbf9ca86ac15c98939418a656587b053f4ee72d7c20e15f046786718c18",
+  "window": {
+    "startAt": "2026-08-06T05:48:54Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "native-deliveries",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "native-deliveries",
+    "basis": "repository-outcome",
+    "unit": "credential-at-rest conditions repaired"
+  },
+  "metrics": [
+    {
+      "id": "native-deliveries",
+      "name": "credential-at-rest conditions repaired",
+      "role": "primary",
+      "formula": "Sum distinct independently established native condition repairs delivered within the disjoint period; null when defining evidence is unavailable.",
+      "direction": "increase",
+      "unit": "credential-at-rest conditions repaired",
+      "presentation": {
+        "name": "credential-at-rest conditions repaired",
+        "legendLabel": "Native deliveries",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-08-09T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-08-09T15:00:12Z"
+        },
+        {
+          "at": "2026-08-16T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-16T15:00:12Z"
+        },
+        {
+          "at": "2026-08-23T15:00:12Z",
+          "value": 1,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-23T15:00:12Z"
+        },
+        {
+          "at": "2026-08-30T15:00:12Z",
+          "value": 1,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-30T15:00:12Z"
+        },
+        {
+          "at": "2026-09-06T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-06T15:00:12Z"
+        },
+        {
+          "at": "2026-09-13T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-13T15:00:12Z"
+        },
+        {
+          "at": "2026-09-20T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-20T15:00:12Z"
+        },
+        {
+          "at": "2026-09-27T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-27T15:00:12Z"
+        },
+        {
+          "at": "2026-10-04T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-04T15:00:12Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

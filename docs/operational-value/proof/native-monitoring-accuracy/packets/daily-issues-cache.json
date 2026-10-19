@@ -1,0 +1,184 @@
+{
+  "kind": "original-retained-artifact-member",
+  "endpoint": "repos/github/gh-aw/actions/artifacts/11490843117/zip",
+  "artifactId": 11490843117,
+  "runId": 37637981390,
+  "member": "issues-2026-10-07.json",
+  "archiveSha256": "653a1a69e01af8a5294d59bcdc9c1ee5c3935a4a5f46b7c23f8b138732e4c51d",
+  "observedAt": "2026-10-19T15:35:44Z",
+  "limitation": "Cache artifact member, not a signed pre-agent creation receipt; source API creation timestamps are corroborated independently. Other cache fields remain unverified.",
+  "bytes": 5747063,
+  "sha256": "b916d26808ec578839d85382481f1c6c4806ba8bb21b6a007d234581666b7629",
+  "parts": [
+    {
+      "file": "daily-issues-cache.0.gz",
+      "sha256": "a6fcf5022f2c66774712810c72fea8a836475c2c245700731710673095327479",
+      "bytes": 32052
+    },
+    {
+      "file": "daily-issues-cache.1.gz",
+      "sha256": "223cd6317a172c6e2ff7a1bde7a6bb0e540f7946fa818bcc765d8b4645a65238",
+      "bytes": 26728
+    },
+    {
+      "file": "daily-issues-cache.2.gz",
+      "sha256": "1aeb777a79319d178ea0fd20a95172510047b53394b0c0322274dba883a4fe83",
+      "bytes": 31910
+    },
+    {
+      "file": "daily-issues-cache.3.gz",
+      "sha256": "61d62d5db46897b482794fc1d5f8220a1fd23a76ecf1d7b3c4fb841d1210f3f9",
+      "bytes": 30021
+    },
+    {
+      "file": "daily-issues-cache.4.gz",
+      "sha256": "e713bfc93947ebcc4ca30c19a3e3ab05983a748aedc6d671f16f1ec06fe97399",
+      "bytes": 19721
+    },
+    {
+      "file": "daily-issues-cache.5.gz",
+      "sha256": "386ae415a377243ec5ce015e80e32316f59abc8cae69df2f48ad8bcb126df82a",
+      "bytes": 27090
+    },
+    {
+      "file": "daily-issues-cache.6.gz",
+      "sha256": "6bca0d6277eb750a1b2ed872d220eb33573fb91429f1fa00c940c33afa3ee138",
+      "bytes": 26594
+    },
+    {
+      "file": "daily-issues-cache.7.gz",
+      "sha256": "b12bbcc643251f364ea58ae4e0047e39308d4d55b0d11aa550e727d71687d595",
+      "bytes": 28689
+    },
+    {
+      "file": "daily-issues-cache.8.gz",
+      "sha256": "253b81956b2db7b1d8861c16ba1074ac952508e828769304831cbd22a110dd73",
+      "bytes": 31654
+    },
+    {
+      "file": "daily-issues-cache.9.gz",
+      "sha256": "c73da3fa3698d5c4c2697bfb247bf069fe1bcf992ecf57621a0dfd72b5c77f0c",
+      "bytes": 40153
+    },
+    {
+      "file": "daily-issues-cache.10.gz",
+      "sha256": "97d1472a64f8b2001e845804ee3818376f840f1f179d0cd352cda695549110ce",
+      "bytes": 30834
+    },
+    {
+      "file": "daily-issues-cache.11.gz",
+      "sha256": "49a86218c2c7908b55f8931765c234700defe69de820f3bfa6dd433ff8dabaac",
+      "bytes": 44738
+    },
+    {
+      "file": "daily-issues-cache.12.gz",
+      "sha256": "6526e6627a7eef523866278a405399d090e4cd25c72526ad1d40e44028adbbb6",
+      "bytes": 34598
+    },
+    {
+      "file": "daily-issues-cache.13.gz",
+      "sha256": "40c8ee1c2527720a4f848f2bfba4881650d30ee5aed752e69851530a6b3acf6a",
+      "bytes": 36716
+    },
+    {
+      "file": "daily-issues-cache.14.gz",
+      "sha256": "03071f2f86f3b2d6717809b007dc417a9fec59a6eeb72bfe38e51b8dabbcd745",
+      "bytes": 29967
+    },
+    {
+      "file": "daily-issues-cache.15.gz",
+      "sha256": "bde8ed401e5befa71fe455f8a39196dc432e1499d97e4bafdb73b277a3b0afd0",
+      "bytes": 28899
+    },
+    {
+      "file": "daily-issues-cache.16.gz",
+      "sha256": "edc6afc25af2f2f6fd6a26ea499099b53c53fbaed1a1d319ec43ab33887fde00",
+      "bytes": 31746
+    },
+    {
+      "file": "daily-issues-cache.17.gz",
+      "sha256": "544fe2d6bab5f376a3cbca9a655cf5304c20a4df23f38228d43b8f298457211b",
+      "bytes": 42793
+    },
+    {
+      "file": "daily-issues-cache.18.gz",
+      "sha256": "be4805e335c525cdf5d0fb120b7fba1e90f4fd67839fa3516ba64c0c715c6ed8",
+      "bytes": 36161
+    },
+    {
+      "file": "daily-issues-cache.19.gz",
+      "sha256": "4df31175ece885efb7ac1233ce58ac4d1e74d875347742595813abc2459f6330",
+      "bytes": 29265
+    },
+    {
+      "file": "daily-issues-cache.20.gz",
+      "sha256": "08d790ac690366c900911db587f28da2dcb9d581d07dc167995440e4cf2dbdfd",
+      "bytes": 30978
+    },
+    {
+      "file": "daily-issues-cache.21.gz",
+      "sha256": "62a0f6f708533a1f6b7b51d89535ae05fd7d85d8363bba9f76280f7405daf3e8",
+      "bytes": 41645
+    },
+    {
+      "file": "daily-issues-cache.22.gz",
+      "sha256": "8b64bdccd9f320daf05bd7a9a2df625bc0595e2fe368fa2b2e3b4fb9aad02cdc",
+      "bytes": 29948
+    },
+    {
+      "file": "daily-issues-cache.23.gz",
+      "sha256": "6938fc9999ef6ab604209ddfb50d081e5183bbe6482e28feb978b827e9f0b46e",
+      "bytes": 31373
+    },
+    {
+      "file": "daily-issues-cache.24.gz",
+      "sha256": "f20ddb46d7b2a18aabb5df725d45f96f3d734f7ca05d7ace4234d51c4d128158",
+      "bytes": 44708
+    },
+    {
+      "file": "daily-issues-cache.25.gz",
+      "sha256": "a842f1a4e61e507d0ba254d2ca10365490ed6f92f6954385f3e90f28cfbe56f7",
+      "bytes": 34800
+    },
+    {
+      "file": "daily-issues-cache.26.gz",
+      "sha256": "2071c6061a79b95a3f9565a941285f84a8a7d394e9241c4f0a42560c82f519a1",
+      "bytes": 41188
+    },
+    {
+      "file": "daily-issues-cache.27.gz",
+      "sha256": "8c7c56b117fb8172c8f68224859e1a018eaee3dd0d6261c57385dc5425633102",
+      "bytes": 34277
+    },
+    {
+      "file": "daily-issues-cache.28.gz",
+      "sha256": "85fcc41755fe2885fa0185316b64973601cda20c319d512853212d7df90c8b00",
+      "bytes": 35527
+    },
+    {
+      "file": "daily-issues-cache.29.gz",
+      "sha256": "2c4b99f2fd5bf09437c56362579c0d524a21cbb53fc3f10d69de315484a26dd4",
+      "bytes": 51098
+    },
+    {
+      "file": "daily-issues-cache.30.gz",
+      "sha256": "ad9d98e73794324411d56aaec41dc72ae177ab411cf785796c6c4da214c60bf9",
+      "bytes": 44379
+    },
+    {
+      "file": "daily-issues-cache.31.gz",
+      "sha256": "2aeca94cbcaaf7057c316a215de46115db6a0d3ab916684098e9f76478e55de5",
+      "bytes": 29596
+    },
+    {
+      "file": "daily-issues-cache.32.gz",
+      "sha256": "39b9ee5dd976e4a4df996d61415d04d74ea373dd560bce0ee5ba87edbdc9e694",
+      "bytes": 27910
+    },
+    {
+      "file": "daily-issues-cache.33.gz",
+      "sha256": "55d1e2754b2ff004d62728ec44fe04a56761788e5c7c22d0b76e906f031a5d92",
+      "bytes": 23217
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/39128039129",
+  "observedAt": "2026-10-19T15:32:43Z",
+  "kind": "original-public-api-response",
+  "bytes": 12862,
+  "sha256": "39e0558fcd4694758fb8ce51239a1e0d962af20b940e6e5dae358b21f8f89fee",
+  "parts": [
+    {
+      "file": "github-mcp-tools-report-run.0.gz",
+      "sha256": "00cebdee3f0db4eb2fa6361278f4f4b926644c7a353b6500ea0e820e3441b3e0",
+      "bytes": 2042
+    }
+  ]
+}

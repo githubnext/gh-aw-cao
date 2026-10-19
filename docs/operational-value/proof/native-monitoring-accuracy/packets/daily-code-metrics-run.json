@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/33425686994",
+  "observedAt": "2026-10-19T15:31:43Z",
+  "kind": "original-public-api-response",
+  "bytes": 12345,
+  "sha256": "48d560b92baddff6d9d43039bec6e7d736225c25ab40d344f1cdb91e1a3dc7f4",
+  "parts": [
+    {
+      "file": "daily-code-metrics-run.0.gz",
+      "sha256": "ed34d78c3b36cef8c3b528ba8b8833cb66c4b35415b73a222a41abf4d84be8a4",
+      "bytes": 1862
+    }
+  ]
+}

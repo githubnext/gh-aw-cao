@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "cutoff": "2026-10-18T15:00:12Z",
+  "interpretation": "Six non-null independently evaluated bounded native facets, one selected surviving report per workflow. Not six complete lifetime goals; not 344 completed reports. All unassessed periods remain unknown. Original full-goal census proposals are unchanged.",
+  "bodySemantics": "Retrospective assessment of surviving bodies observed after cutoff, allocated to report-creation cohorts. Original publication-time/cutoff bodies and their factual accuracy remain unknown; no historical body revision is reconstructed.",
+  "results": [
+    {
+      "slug": "daily-code-metrics",
+      "eligible": 2,
+      "assessed": 2,
+      "accepted": 2,
+      "accuracyPercent": 100,
+      "coveragePercent": 100,
+      "observedPeriods": 1,
+      "unmeasuredPeriods": 48,
+      "openingUndercountFloor": null,
+      "fullAcceptance": null,
+      "contribution": null,
+      "costs": "not measured",
+      "nativeDetail": {
+        "facts": {
+          "total_workflows": 297,
+          "lockfile_count": 297,
+          "missingLocks": [],
+          "extraLocks": []
+        },
+        "eligibility": "Both source-required workflow counts in the explicit Workflow Metrics table.",
+        "unmeasured": "LOC, cloc scope, code quality, churn, trends, charts, reader benefit, and creation-time custody."
+      },
+      "nativeEvidenceSha256": "ee0ea594824263bbb3cc7591e7c773acc6b9dc7b5db3b7500a25763c3044e8c8",
+      "snapshotsSha256": "aa0f30481d3d670b3ffb6b421948d7f62078a8ce9cadc1ae9edf71a34dc2c287",
+      "nativeLabel": "Workflow inventory count accuracy",
+      "limitations": "All other metrics, cloc, trends, recommendations, charts and underlying health outcomes remain unmeasured."
+    },
+    {
+      "slug": "daily-repo-chronicle",
+      "eligible": 30,
+      "assessed": 30,
+      "accepted": 30,
+      "accuracyPercent": 100,
+      "coveragePercent": 100,
+      "observedPeriods": 1,
+      "unmeasuredPeriods": 51,
+      "openingUndercountFloor": null,
+      "fullAcceptance": null,
+      "contribution": null,
+      "costs": "not measured",
+      "nativeDetail": {
+        "prefix": {
+          "rows": [
+            {
+              "oid": "ec6348b39e4a3683e87982d0652dc3fa35f58fb2",
+              "at": "2026-10-07T13:58:18Z"
+            },
+            {
+              "oid": "3cd8e4219e0f73a322bd4d80a19227be2c0fe3fa",
+              "at": "2026-10-07T13:28:38Z"
+            },
+            {
+              "oid": "6979d575bc2919b6476f3c416b2d81830dc90269",
+              "at": "2026-10-07T12:17:18Z"
+            },
+            {
+              "oid": "620abdf126440386e9e53c1c08047b9e59edea9a",
+              "at": "2026-10-07T11:44:19Z"
+            },
+            {
+              "oid": "74eca33967003bd30acf0fd81979ad61d89f77b9",
+              "at": "2026-10-07T11:14:24Z"
+            },
+            {
+              "oid": "677092697ac088fe3c6f900958ac4e7a6f3c0cb0",
+              "at": "2026-10-07T11:07:46Z"
+            },
+            {
+              "oid": "d3168fb7424405f6e35b47a9511b7f0d5e9771e3",
+              "at": "2026-10-07T11:05:43Z"
+            },
+            {
+              "oid": "7a8c55aeb8b1a3809b79a8d47dcdb50f9cdf2b92",
+              "at": "2026-10-07T10:49:16Z"
+            },
+            {
+              "oid": "159176925e67c3d9ae51a67a63c63c2b59426f98",
+              "at": "2026-10-07T10:48:33Z"
+            },
+            {
+              "oid": "64f66a628044b4b4164d32bb96b2dfc765e3aa98",
+              "at": "2026-10-07T10:48:04Z"
+            },
+            {
+              "oid": "75d94bcb77d7d9f9937d8aba2397a36aac989362",
+              "at": "2026-10-07T10:47:41Z"
+            },
+            {
+              "oid": "02ecda03d8dfab87c9f8983dfda3fe4c737ae160",
+              "at": "2026-10-07T10:43:34Z"
+            },
+            {
+              "oid": "5651c8daeec3d86abae90c902912de4a2ce93185",
+              "at": "2026-10-07T10:42:56Z"
+            },
+            {
+              "oid": "bf34cd141812a16dcf029cf2e01816d725636da3",
+              "at": "2026-10-07T10:39:03Z"
+            },
+            {
+              "oid": "bc4077afff4a0fa6ece05e0853ea1e27d083c9d1",
+              "at": "2026-10-07T10:35:59Z"
+            },
+            {
+              "oid": "8c5258660d2355c6b15c59e9efa44cca521d70de",
+              "at": "2026-10-07T05:07:18Z"
+            },
+            {
+              "oid": "eb630401185f815b2fe95ee814efb5694584cddf",
+              "at": "2026-10-06T23:40:26Z"
+            },
+            {
+              "oid": "e1e92fd32fed5e2234139d31ad112baab1ae24d3",
+              "at": "2026-10-06T23:17:25Z"
+            },
+            {
+              "oid": "ace080ce67e4f4f6c51bebb40387c25553291c4a",
+              "at": "2026-10-06T22:56:26Z"
+            },
+            {
+              "oid": "382f4b025fefaa7d6b2492c3608f098340bf6536",
+              "at": "2026-10-06T22:21:33Z"
+            },
+            {
+              "oid": "37c0b1980ec9ce6acbc42681e7e3da736a2b39d9",
+              "at": "2026-10-06T22:02:39Z"
+            },
+            {
+              "oid": "3fd44f8dc17a5fcdc45f653e7826853456b1839e",
+              "at": "2026-10-06T19:52:30Z"
+            },
+            {
+              "oid": "0d0a4b854ca46614353f8b40b76de3a6724499f8",
+              "at": "2026-10-06T19:26:05Z"
+            },
+            {
+              "oid": "401a4f2df34eaa84aa801b202b58efadfc9acad9",
+              "at": "2026-10-06T19:03:49Z"
+            },
+            {
+              "oid": "02e6afb14c6eebdc278c1cf7a2bbffe2852421fa",
+              "at": "2026-10-06T18:52:41Z"
+            },
+            {
+              "oid": "7a5aaccea7ee9620214fe4f9f38451f2f9c89512",
+              "at": "2026-10-06T18:05:59Z"
+            },
+            {
+              "oid": "9a631f399d77d17a7da4adadaf0760accca2547e",
+              "at": "2026-10-06T17:48:13Z"
+            },
+            {
+              "oid": "ffc93b2f3118eae982d395381bdcd81cf8e1fc67",
+              "at": "2026-10-06T17:16:08Z"
+            },
+            {
+              "oid": "ea26db6a5beb68ae37d97613f3e9c7923d92d515",
+              "at": "2026-10-06T16:04:42Z"
+            },
+            {
+              "oid": "240d76ec4d2bab6ef0b868965af54a4847f58aad",
+              "at": "2026-10-06T15:59:40Z"
+            }
+          ],
+          "boundary": "aff9425169dd4c52ecb4cad6e68cc5f0dbcea240",
+          "limitation": "Contiguous first-parent prefix of the bound checkout, stopped at first older parent; no claim about time inversions beyond that boundary or main updates after checkout."
+        },
+        "prefixCoverage": 100,
+        "covered": 30,
+        "declaredWindow": {
+          "start": "2026-10-06T15:41:00Z",
+          "end": "2026-10-07T15:46:00Z"
+        },
+        "sourceDurationConformance": false,
+        "unmeasured": "Cited mainline-membership only: descriptions, human agency, PR merges, issue statistics, release facts and reader benefit. Declared edition is 24h05m, not source-required 24h; this is not full temporal conformance."
+      },
+      "nativeEvidenceSha256": "071bfe28027f42688603882b77b3097703e439ca49e98d09d04fc11a41026a18",
+      "snapshotsSha256": "a38010ee3ac56be964f170bed575dccf9f248381ce5cdc0e3f00037cdc5aa924",
+      "nativeLabel": "Cited mainline commit accuracy",
+      "limitations": "The edition explicitly spans 24h05m instead of the source-required 24h. Report that nonconformance. History beyond the first older parent, later mainline changes, semantic descriptions, human agency, issue statistics and reader understanding remain unmeasured."
+    },
+    {
+      "slug": "repo-tree-map",
+      "eligible": 10,
+      "assessed": 10,
+      "accepted": 10,
+      "accuracyPercent": 100,
+      "coveragePercent": 100,
+      "observedPeriods": 1,
+      "unmeasuredPeriods": 53,
+      "openingUndercountFloor": null,
+      "fullAcceptance": null,
+      "contribution": null,
+      "costs": "not measured",
+      "nativeDetail": {
+        "reference": "Regular tracked files in the immutable run head; exclude .git/node_modules/vendor path segments; suffix uses the final extension.",
+        "unmeasured": "This is fixed immutable-reference agreement, not proof of checkout cleanliness, untracked files, disk allocation sizes, bar scale, complete extension coverage or comprehension."
+      },
+      "nativeEvidenceSha256": "7cfa8ad0aee26993220c7348f61edcfbd81f34b281993878eabd7488759e1833",
+      "snapshotsSha256": "84eb8fa05d9efb93d2c0198557347a804d3d68c91e5875580379fd05b75da6e1",
+      "nativeLabel": "Published extension-count accuracy",
+      "limitations": "Untracked files and dirty checkout contents are unknown; agreement is with the bound immutable reference only. Disk-allocation sizes, graphical proportions, complete extension coverage and reader comprehension remain unmeasured."
+    },
+    {
+      "slug": "github-mcp-tools-report",
+      "eligible": 3,
+      "assessed": 3,
+      "accepted": 3,
+      "accuracyPercent": 100,
+      "coveragePercent": 100,
+      "observedPeriods": 1,
+      "unmeasuredPeriods": 53,
+      "openingUndercountFloor": null,
+      "fullAcceptance": null,
+      "contribution": null,
+      "costs": "not measured",
+      "nativeDetail": {
+        "facts": {
+          "toolsets": 24,
+          "entries": 107,
+          "unique": 106
+        },
+        "unmeasured": "Live tools/list envelopes, live server version, behavioral descriptions, permission reach, claimed 59 live tools, and downstream mapping repairs."
+      },
+      "nativeEvidenceSha256": "0bd0cdd1287d2cbb4a18f39493decad35e46e1fd23d4fec3340bb979448d73cb",
+      "snapshotsSha256": "7095b4fabcfb488d6fc3fb4e61b5e7e3482948cd1aa9087ecae27f492e2fe501",
+      "nativeLabel": "Published mapping-fact accuracy",
+      "limitations": "A repository mapping is not live tools/list. No acceptance of advertised runtime tools, schemas, behavior, semantic documentation, access or downstream repairs."
+    },
+    {
+      "slug": "weekly-issue-summary",
+      "eligible": 55,
+      "assessed": 55,
+      "accepted": 55,
+      "accuracyPercent": 100,
+      "coveragePercent": 100,
+      "observedPeriods": 1,
+      "unmeasuredPeriods": 51,
+      "openingUndercountFloor": 30,
+      "fullAcceptance": null,
+      "contribution": null,
+      "costs": "not measured",
+      "nativeDetail": {
+        "declaredWindow": {
+          "start": "2026-10-05T15:04:00Z",
+          "end": "2026-10-12T15:04:00Z"
+        },
+        "reportedOpenings": 1512,
+        "survivingIndependentOpenings": 1542,
+        "openingUndercountFloor": 30,
+        "transferHistory": {
+          "candidates": 1542,
+          "observed": 1542,
+          "transferFree": 1542,
+          "excludedUnknownOrTransferred": 0
+        },
+        "unmeasured": "New-issue citation creation-window correctness only, not titles, human identity, comments, state, labels, complete listing, narrative or reader decisions. Only surviving identities with zero transfer events in the independent API's retained timeline support the creation lower bound; never an exhaustive original ledger. Zero detected undercount does not establish correctness."
+      },
+      "nativeEvidenceSha256": "f9887e25a21551729c2bc37713b98dec78ae83340ccc02445233f1cb724d54be",
+      "snapshotsSha256": "cfc93c1fa3e0505603b3bc1d70584043ccaf9b92d39a63a2e8f408d8e332160a",
+      "nativeLabel": "Listed new-issue window accuracy",
+      "limitations": "No full historical creation ledger is claimed. Missing/deleted/transferred identities are unknown, not invalid. Human identity, authors, titles, labels, states, complete issue-list coverage, charts and interpretations remain unmeasured. A zero undercount floor is not proof of correctness."
+    },
+    {
+      "slug": "daily-issues-report",
+      "eligible": 2,
+      "assessed": 2,
+      "accepted": 2,
+      "accuracyPercent": 100,
+      "coveragePercent": 100,
+      "observedPeriods": 1,
+      "unmeasuredPeriods": 46,
+      "openingUndercountFloor": null,
+      "fullAcceptance": null,
+      "contribution": null,
+      "costs": "not measured",
+      "nativeDetail": {
+        "facts": {
+          "issues_analyzed": 1000,
+          "issues_opened_7d": 1000,
+          "issues_opened_30d": 1000
+        },
+        "corroboratedCreationIdentities": 1000,
+        "temporalRobustness": "Every count invariant between independently recorded prefetch completion and surviving Discussion creation; no invented exact analyzer timestamp.",
+        "unmeasured": "Retained cache is not signed pre-agent custody or proof all latest 1000 issues were analyzed. Only independently corroborated creation-window counts for this captured cohort; open/closed state, labels, themes, charts, semantic usefulness, complete fetch scope and actual computation execution remain unverified."
+      },
+      "nativeEvidenceSha256": "dd27ac455bf1aa349ed95a6ca02b5d7b6ba91a567f2fa266ff9e0d025c181c75",
+      "snapshotsSha256": "d36f64a371ced467d9aedd6f1a34f68f4c88f1dcbd6f7bf37ea6d3601ff1d88f",
+      "nativeLabel": "Captured-cohort date-count accuracy",
+      "limitations": "Cache custody is not a signed pre-agent fetch receipt, latest-1000 completeness is not established, and the cache is not proof of analyzer execution. State, labels, triage, clusters, semantics, charts and maintainer benefit remain unmeasured."
+    }
+  ]
+}

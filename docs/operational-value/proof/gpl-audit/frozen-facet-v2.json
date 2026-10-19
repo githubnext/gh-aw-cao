@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "version": "2.0.0",
+  "authoring": "Outcome-informed retrospective bounded facet after inspecting one substantive finding and 54 failure/incomplete issue bodies. The original v1 strict contract is preserved unchanged.",
+  "goal": "Independently verify the reported GPL-family presence for exact versioned packages, without claiming legal compatibility, complete dependency reachability or remediation.",
+  "nativeUnit": "independently corroborated version-bound GPL-family presence facts",
+  "acceptance": [
+    "The surviving issue explicitly names the exact module/version and claims GPL-family licensing.",
+    "The versioned Go module ZIP is independently acquired from the public Go module proxy.",
+    "The canonical Go module directory checksum matches the exact module/version entry in the immutable run-head go.sum.",
+    "The ZIP root's original license declaration explicitly contains GNU General Public License text or an explicit GPL-family SPDX identifier.",
+    "Count one package/version fact once in its original report-creation cohort. Missing native ZIP, checksum or license declaration remains null."
+  ],
+  "notAcceptance": [
+    "Detailed conjunctive license expressions, legal compatibility, contamination or distribution obligations.",
+    "Complete dependency reachability, direct/runtime usage, eligibility of development tools or a complete audit.",
+    "Correctness of proposed replacements, removal delivery, full goal acceptance, safeguards, receipt-verified contribution or costs.",
+    "Original publication-time body accuracy; acquired originals describe a surviving body version."
+  ],
+  "decision": "not-rated"
+}

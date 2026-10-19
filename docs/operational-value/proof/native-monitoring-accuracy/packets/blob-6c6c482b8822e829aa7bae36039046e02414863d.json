@@ -1,0 +1,19 @@
+{
+  "endpoint": "repos/github/gh-aw/git/blobs/6c6c482b8822e829aa7bae36039046e02414863d",
+  "observedAt": "2026-10-19T15:32:40Z",
+  "kind": "original-public-api-response",
+  "bytes": 184974,
+  "sha256": "199bb263bc2c63d97dbbc0dedd20853958ce9bd19fd800c041449a5d0df2d117",
+  "parts": [
+    {
+      "file": "blob-6c6c482b8822e829aa7bae36039046e02414863d.0.gz",
+      "sha256": "adfeb358a6904862012814f52b74417580c604eb80ec21b673e8761ebd8a95f9",
+      "bytes": 50649
+    },
+    {
+      "file": "blob-6c6c482b8822e829aa7bae36039046e02414863d.1.gz",
+      "sha256": "99bfacefbe96e58b9d4faceecf3fb983bf17dcfea360c868a2e48af69b44f92f",
+      "bytes": 5859
+    }
+  ]
+}

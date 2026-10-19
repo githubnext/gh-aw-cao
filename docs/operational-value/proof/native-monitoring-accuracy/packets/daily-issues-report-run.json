@@ -1,0 +1,14 @@
+{
+  "endpoint": "repos/github/gh-aw/actions/runs/37637981390",
+  "observedAt": "2026-10-19T15:32:52Z",
+  "kind": "original-public-api-response",
+  "bytes": 12573,
+  "sha256": "77b4c181444c14e08021df3506b97bada1b081bfa61a062db3532b1f33da6396",
+  "parts": [
+    {
+      "file": "daily-issues-report-run.0.gz",
+      "sha256": "bdd651b77a085b614bd267d1b50e2fe560af2691211a5cb7ebcc17cf1cc225c1",
+      "bytes": 1938
+    }
+  ]
+}

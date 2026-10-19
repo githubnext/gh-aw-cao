@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-70 of 344 is 20.3%, with 274 workflows still unevaluated.
+82 of 344 is 23.8%, with 262 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -457,6 +457,50 @@ groups are compiled from the retained portfolio; browser controls only display
 those precomputed rows. This portable file report does not query the CAO dashboard.
 
 This is **not a completed value evaluation of all 344 workflows**. Linked native
+policy-outcome evaluations establish three concrete infrastructure hosts removed
+from the explicit Claude transport opt-in, and two independently reproduced
+credential-at-rest condition repairs: origin-token persistence and wrapper
+permissions for both fresh and existing files. The wrapper repair counts once,
+not once per test case. Named engine sets were already explicit `network.allowed`
+opt-ins, not unconditional engine access. These are heterogeneous native units,
+not a combined value score. Preserved v1 contracts remain separate from the
+explicitly outcome-informed retrospective v2 facets. Full acceptance, comprehensive
+safeguards, receipt-verified contribution and costs remain unknown. The security
+model retains a separate all-unknown gap report: eleven failure/incomplete issues
+and two original pinned-runtime preparation failures do not establish completed
+TLC exploration or native boundary acceptance.
+
+The constraint-solving lesson instrument independently verifies three explicit
+worked instances: a 4-Queens placement, an order-four Latin square and a proper
+coloring of a fully enumerated five-vertex graph. The finite mathematical oracle
+checks every defining witness constraint; it does not execute lesson code or
+trust a claimed solution. A fourth selected Sudoku lesson supplies only a partial
+input, not a complete witness, and remains unknown. Three measured periods do
+not establish a trend or full lesson quality. These surviving body versions were
+acquired after cutoff; original publication-time accuracy, general model
+correctness, optimality, educational usefulness, nonrepetition and contribution
+remain separately unmeasured.
+
+The GPL audit partial corroborates six exact-version GPL-presence facts: original
+Go module ZIP checksums match immutable run-head `go.sum` entries, and their root
+license terms match an independently retained complete GNU GPL3 reference. This
+does **not** validate legal compatibility, detailed conjunctive license
+expressions, eligibility of development tools, complete transitive reachability
+or remediation recommendations. Fifty-four other failure/incomplete-style issue
+objects are not native audit completion. Preserved strict v1 acceptance remains
+separate from the explicitly outcome-informed retrospective v2 factual partial.
+
+The sub-issue cleanup instrument establishes two parent closures: one after all
+22 historically linked children were closed, and its own parent two seconds
+later. Original applied-output receipts independently link both transitions
+and comments to the exact workflow/source revision. The two receipt-linked
+contributions are a subset of those same two closures, not additional value or
+sole causation. This does not prove underlying child-task quality, exhaustive
+cleanup or full acceptance. Stale-PR and draft-PR cleanup retain genuine
+all-unknown gap reports: a failed warning and an active-draft no-op are not
+eligible applied cleanup, and historical pre-action state is never synthesized.
+
+Other linked native
 evaluations include File Diet's lifetime structural contributions, the
 rendering verifier's repository conformance, Go Test Parallelizer's unchanged-body
 parallel activations, and six engine-conformance workflows' independently proven
@@ -759,6 +803,35 @@ Its secret-token fallbacks also mean masked logs cannot establish Actions-token
 credential identity. Full-goal acceptance, workflow contribution, costs and the
 other forty weekly periods remain unknown. Seven-day grouping is an explicit
 retrospective reporting choice, not an exhaustive historical test census.
+
+The separate Codex remote-MCP instrument verifies one native access attempt
+through protected stdout, matching raw/normalized call identities and a unique
+sequential official-backend gateway exchange. Three open issues exist upstream,
+but integrity policy withholds all three before the native result reaches Codex:
+**upstream bytes are not agent readback**. Gateway request records omit IDs; the
+cross-channel corroboration uses exact arguments, uniqueness and enclosing native
+timestamps, not an invented shared request ID. The executed October 3 source did
+not yet call filtering an expected result, so today's policy language is not
+backdated into historical full success. Eight other run identities lack original
+agent jobs; the remaining 39 weekly periods stay unknown.
+
+Six monitoring instruments assess source-specific factual facets in one surviving
+report body each: two workflow-inventory cells, thirty literal mainline commit
+citations, ten extension populations, three JSON tool-mapping facts, fifty-five
+listed new-issue identities and two captured-cache creation-window counts.
+Their accuracy percentages apply **only to those named facets**, not overall
+report quality or a portfolio score. The chronicle's stated 24h05m window does
+not satisfy its 24h requirement. The weekly issue report's opening count has an
+independently established undercount floor of thirty despite correct listed
+new-issue citations. JSON mapping counts do not verify the claimed live-tool
+inventory, and a retained 1000-issue cache is not the entire repository.
+
+These six are explicitly outcome-informed retrospective assessments. The bodies
+are surviving versions observed after cutoff, checked against independently
+retained native facts and allocated by original report-creation cohort.
+**Original publication-time body bytes and accuracy are not established.**
+Other report cohorts/periods, semantic/editorial usefulness, creation receipts,
+causal contribution, full acceptance and matched costs remain unknown.
 
 The work-queue observer investigation retains all 12 initial executions:
 seven belong to an incompatible historical finish-staging goal, and five are

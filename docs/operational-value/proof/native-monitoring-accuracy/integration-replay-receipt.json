@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "canonicalReplayRoot": true,
+  "networkDenied": true,
+  "allWorktreesAndSessionStateDenied": true,
+  "noGitOrNodeModules": true,
+  "externalCommandsDeniedExceptStandardShasum": true,
+  "guardProbesPassed": true,
+  "testsPassed": 9,
+  "comparison": "Whole timeline identical except generatedAt",
+  "results": [
+    {
+      "slug": "daily-code-metrics",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 49,
+      "knownNative": [
+        {
+          "native-fact-accuracy": 100,
+          "native-fact-coverage": 100,
+          "verified-native-facts": 2
+        }
+      ]
+    },
+    {
+      "slug": "daily-repo-chronicle",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 52,
+      "knownNative": [
+        {
+          "native-fact-accuracy": 100,
+          "native-fact-coverage": 100,
+          "verified-native-facts": 30
+        }
+      ]
+    },
+    {
+      "slug": "repo-tree-map",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 54,
+      "knownNative": [
+        {
+          "native-fact-accuracy": 100,
+          "native-fact-coverage": 100,
+          "verified-native-facts": 10
+        }
+      ]
+    },
+    {
+      "slug": "github-mcp-tools-report",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 54,
+      "knownNative": [
+        {
+          "native-fact-accuracy": 100,
+          "native-fact-coverage": 100,
+          "verified-native-facts": 3
+        }
+      ]
+    },
+    {
+      "slug": "weekly-issue-summary",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 52,
+      "knownNative": [
+        {
+          "native-fact-accuracy": 100,
+          "native-fact-coverage": 100,
+          "verified-native-facts": 55,
+          "opening-undercount-floor": 30
+        }
+      ]
+    },
+    {
+      "slug": "daily-issues-report",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 47,
+      "knownNative": [
+        {
+          "native-fact-accuracy": 100,
+          "native-fact-coverage": 100,
+          "verified-native-facts": 2
+        }
+      ]
+    }
+  ]
+}
