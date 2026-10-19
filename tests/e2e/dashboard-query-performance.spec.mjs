@@ -7,6 +7,7 @@ import {
   deployedDashboardUrl,
   deployedStorageContext,
   configureDeployedStorageQuota,
+  DEPLOYED_REFRESH_TIMEOUT_MS,
   DEPLOYED_STORAGE_QUOTA_BYTES,
   legacyPhaseJsonToJsonl,
   shouldIgnoreRequestFailure,
@@ -228,7 +229,7 @@ test(`benchmarks every dashboard query against settled deployed data (shard ${sh
       const events = window.__dashboardPerformanceEvents ?? [];
       return events.some(({ detail }) =>
         detail?.kind === "refresh" && ["completed", "failed"].includes(detail?.status));
-    }, null, { timeout: 300_000 });
+    }, null, { timeout: DEPLOYED_REFRESH_TIMEOUT_MS });
     expect(browserErrors, "Deployed data must refresh successfully before benchmarking").toEqual([]);
     expect(failedRequests, "The deployed snapshot must be available in full").toEqual([]);
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true", {

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { parse } from "yaml";
 import config from "../playwright/configs/dashboard-query-performance.config.mjs";
+import { DEPLOYED_REFRESH_TIMEOUT_MS } from "../e2e/dashboard-deployed-refresh-helpers.mjs";
 import {
   DEFAULT_OVERVIEW_REQUEST_BUDGET_MS,
   QUERY_CHUNK_SIZE,
@@ -26,6 +27,13 @@ test("dashboard query benchmark runs serially with enough time for deployed data
   assert.equal(config.workers, 1);
   assert.equal(config.timeout, 1_800_000);
   assert.equal(QUERY_CHUNK_SIZE, 25);
+});
+
+test("query benchmarking waits for the full deployed refresh budget", () => {
+  const source = readFileSync(resolve(root, "tests/e2e/dashboard-query-performance.spec.mjs"), "utf8");
+  assert.match(source, /detail\?\.kind === "refresh"[\s\S]*?timeout: DEPLOYED_REFRESH_TIMEOUT_MS/);
+  assert.equal(DEPLOYED_REFRESH_TIMEOUT_MS, 600_000);
+  assert.ok(config.timeout > DEPLOYED_REFRESH_TIMEOUT_MS);
 });
 
 test("Overview request budget allows the measured deployed-data baseline", () => {
