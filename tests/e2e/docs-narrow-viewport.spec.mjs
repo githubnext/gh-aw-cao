@@ -97,13 +97,11 @@ test("CAO introduction shows the product and leads to monitoring before optional
   await expect(content).toContainText("GitHub Agentic Workflows (AWs) are AI-powered workflows");
   await expect(content).toContainText("A successful run is not automatically a successful outcome.");
   await expect(content.locator("table tbody tr")).toHaveCount(3);
-  await expect(content.locator("details")).toHaveCount(2);
-  for (const details of await content.locator("details").all()) {
-    await expect(details).not.toHaveAttribute("open", "");
-    await details.locator("summary").click();
-    await expect(details).toHaveAttribute("open", "");
-    await details.locator("summary").click();
-  }
+  await expect(content.locator("details")).toHaveCount(0);
+  await expect(content.locator("table")).not.toContainText(/campaign/i);
+  const campaignLink = content.getByRole("link", { name: "explore optional campaigns", exact: true });
+  await expect(campaignLink).toHaveAttribute("href", "/gh-aw-cao/catalog/");
+  expect((await content.innerText()).match(/campaign/gi)).toHaveLength(1);
   const image = content.getByAltText(/^CAO Repositories chart view/);
   await image.scrollIntoViewIfNeeded();
   await expect(image).toBeVisible();
@@ -115,11 +113,16 @@ test("CAO introduction shows the product and leads to monitoring before optional
     .toHaveAttribute("href", "https://githubnext.github.io/gh-aw-cao/cao/#page-repositories");
   const diagram = content.locator(".mermaid svg");
   await expect(diagram).toBeVisible();
-  await expect(diagram).toContainText("Observe existing workflows");
-  await expect(diagram).toContainText("Execute participating campaigns (optional)");
+  await expect(diagram).toContainText("Existing AWs");
+  await expect(diagram).toContainText("CAO Activity");
+  await expect(diagram).toContainText("Shared dashboard");
+  await expect(diagram).not.toContainText(/campaign/i);
 
   const setupLinks = content.getByRole("link", { name: "Set up CAO and monitor your workflows", exact: true });
   await expect(setupLinks).toHaveCount(2);
+  expect(await setupLinks.last().evaluate((element) =>
+    Boolean(element.compareDocumentPosition(document.querySelector('main a[href="/gh-aw-cao/catalog/"]')) & Node.DOCUMENT_POSITION_FOLLOWING),
+  )).toBe(true);
   await expect(setupLinks.first()).toHaveAttribute("href", "/gh-aw-cao/setup-quickstarts/");
   expect(await setupLinks.first().evaluate((element) =>
     Boolean(element.compareDocumentPosition(document.querySelector("main h2")) & Node.DOCUMENT_POSITION_FOLLOWING),

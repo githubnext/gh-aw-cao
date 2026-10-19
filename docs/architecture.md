@@ -67,14 +67,23 @@ collection flow and data-quality behavior.
 - missing authority, authentication, routing, or eligibility fails closed.
 
 :::caution[The control plane is not a universal policy boundary]
-Central Agentic Ops governs participating catalog workflows. Use GitHub rulesets, Actions policy, protected environments, CODEOWNERS, and credential scoping to govern other automation.
+Central Agentic Ops governs participating campaigns, not every observed workflow
+or every workflow in a target repository. Merely hosting a workflow in the
+control repository does not apply CAO rollout policy. Use GitHub rulesets,
+Actions policy, protected environments, CODEOWNERS, and credential scoping to
+govern other automation.
+
+Extending CAO's scope, enablement, and review controls to directly invoked
+workers and standalone scheduled or event-driven AWs is a **future direction,
+not an available governance integration today**. AW remains responsible for
+execution capabilities and safe outputs.
 :::
 
 ## Detailed References
 
 | Read | When you need to understand |
 | --- | --- |
-| [What Is Central Agentic Ops?](architecture-at-a-glance.md) | How ready-made or custom campaigns scale across GitHub from one place |
+| [What Is Central Agentic Ops?](architecture-at-a-glance.md) | How to monitor existing Agentic Workflows and understand their collected evidence |
 | [Deployment and Governance](deployment-and-governance.md) | Organization and enterprise topologies, ownership, target enrollment, provenance, reporting identity, and the broader governance boundary |
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
 | [Orchestrators and Workers](orchestrators-and-workers.md) | Campaign-specific authority, worker enforcement, eligibility, and worker ceilings |
