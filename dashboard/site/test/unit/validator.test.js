@@ -283,10 +283,10 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('validates explicit custom-page query binding without accepting coerced values', () => {
+  it.each(['repository-detail', 'campaigns'])('validates %s page query binding without accepting coerced values', (pageId) => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find(
-      (/** @type {{ id?: string }} */ candidate) => candidate.id === 'repository-detail'
+      (/** @type {{ id?: string }} */ candidate) => candidate.id === pageId
     );
     for (const binding of ['page', 'view', undefined]) {
       page['query-binding'] = binding;

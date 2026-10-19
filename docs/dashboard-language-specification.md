@@ -301,7 +301,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `requires`, `form`, `definition` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `query-binding`, `requires`, `form`, `definition` |
 | Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `query-binding`, `requires`, `form`, `route`, `views`, `sections` |
 | Page `requires` | `capability` |
 | Page `form` | `title`, `description`, `update`, `fields` |
@@ -1202,7 +1202,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-021:** Unless `view-mode-control` is `false`, a presenter **MUST** expose every presentation mode represented by the page's essential views, add a card presentation for every table, and order available controls as **Chart**, **Cards**, **Table**. It **MUST** expose the same modes through keyboard-operable desktop and mobile controls when two or more modes are available, and **MUST NOT** expose a mode control when only one mode is available. Supplemental views remain discoverable through their disclosure controls and **MUST NOT** add presentation modes.
 - **DLS-PAGE-022:** `pull-refresh`, when present, **MUST** be Boolean and defaults to `false`. When `true`, a presenter **MUST** enable a mobile pull-down gesture that requests a dashboard refresh only while that page is active and its scroller is already at its top; the presenter **MUST NOT** wire the gesture to any other page or infer eligibility from a page `id` or built-in page name.
 - **DLS-PAGE-023:** `mode-indicator`, when present, **MUST** be Boolean and defaults to `false`. When `true`, a presenter **MUST** read a `mode` value from the page's URL query string and render a **Review** or **Live** badge beside the page title only when that value is exactly `review` or `live`; the presenter **MUST NOT** show the badge for any page that does not declare `mode-indicator: true`, and **MUST NOT** infer eligibility from a page `id` or built-in page name.
-- **DLS-PAGE-024:** A custom page's `query-binding`, when present, **MUST** be `view` or `page` and defaults to `view`. `page` **MUST** bind active ordinary views through one abort-scoped canonical subscription, preserve distinct view payload aliases and query contexts, and reevaluate on database changes. Equivalent dependencies **MAY** share evaluation only within that request. Named elements that own subscriptions **MUST** retain their ownership.
+- **DLS-PAGE-024:** A page's `query-binding`, when present, **MUST** be `view` or `page` and defaults to `view`. `page` **MUST** bind active ordinary views through one abort-scoped canonical subscription, preserve distinct view payload aliases and query contexts, and reevaluate on database changes. Equivalent dependencies **MAY** share evaluation only within that request. Named elements that own subscriptions **MUST** retain their ownership.
 
 ---
 
@@ -1396,7 +1396,7 @@ available source retains the page content with an explicit partial-data notice.
 Routes may supply `availability-message` and `partial-message` to explain
 those states in user-facing terms.
 
-A custom page may declare `query-binding: page` to evaluate its active ordinary
+A built-in or custom page may declare `query-binding: page` to evaluate its active ordinary
 views together in one abort-scoped canonical query subscription. The default,
 `query-binding: view`, keeps ordinary views independently subscribed. Page
 binding is useful when multiple widgets consume the same expensive derived
@@ -1406,7 +1406,11 @@ and evidence quality. Different route, time, search, or local-filter contexts
 must not be conflated. Named elements that own their subscriptions retain that
 ownership. Database changes refresh the active subscription; leaving the page
 or changing its query context cancels and replaces it. This is request-local
-work sharing, not a cross-request result cache.
+work sharing, not a cross-request result cache. Repository overview and Campaigns
+both opt in to this same mechanism; neither requires a worker result cache.
+Their page declarations are JSON-only. The generic presenter interprets the
+binding flag, and the canonical compiler shares equivalent scoped dependency
+graphs without inferring behavior from page, view, or source identifiers.
 
 | Semantic view | `mark` values | Required encoding |
 |---|---|---|

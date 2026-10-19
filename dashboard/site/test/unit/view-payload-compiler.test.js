@@ -156,6 +156,19 @@ it('shares equivalent scoped graphs but keeps view-specific limits and contexts 
   expect(compiled.queries.filter(query => String(query.name).endsWith(':dependency:base'))).toHaveLength(2);
 });
 
+it('retains a derived source needed by an unscoped view alongside its contextual alias', () => {
+  const queries = [{ name: 'selected', from: 'runs' }];
+  const page = { 'query-binding': 'page', views: [
+    { id: 'all', mark: 'metric', data: { source: 'selected', 'query-context': false } },
+    { id: 'filtered', mark: 'metric', data: { source: 'selected' } }
+  ] };
+  const compiled = compileDashboardViewPayloadQueries(page, 'mixed', {
+    queries, queryContext: { filters: { 'run-conclusion': ['failure'] } }
+  });
+  expect(compiled.replacedSources).not.toContain('selected');
+  expect(compiled.aliases).toEqual(['view:mixed:filtered:selected']);
+});
+
 it('compiles the generated identifier for an unnamed bound view regardless of page mode', () => {
   const page = {
     views: [{ mark: 'table', data: { source: 'runs', filters: { 'run-conclusion': 'success' } } }]

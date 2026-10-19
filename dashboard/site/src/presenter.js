@@ -79,7 +79,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, ['query-binding']?: 'view'|'page', form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**

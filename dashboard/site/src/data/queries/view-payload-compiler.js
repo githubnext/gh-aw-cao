@@ -87,6 +87,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   /** @type {Array<Record<string, unknown>>} */
   const queries = [];
   const replacedSources = new Set();
+  const unaliasedSources = new Set();
   /** @type {Map<string, { replacesSource: boolean, dependencies: Array<Record<string, unknown>>, query: Record<string, unknown> }>} */
   const scopedGraphs = new Map();
 
@@ -130,7 +131,10 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileRoutePredicates(routeField, routeValue),
         ...localPredicates
       ];
-      if (usesNativeSource(view, sourceName, predicates, useQueryContext ? options.queryContext : undefined, resolvedQueries)) return;
+      if (usesNativeSource(view, sourceName, predicates, useQueryContext ? options.queryContext : undefined, resolvedQueries)) {
+        unaliasedSources.add(sourceName);
+        return;
+      }
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
       const search = useQueryContext && !isOptions ? options.queryContext?.search : undefined;
@@ -174,6 +178,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     });
   });
 
+  for (const source of unaliasedSources) replacedSources.delete(source);
   debugViewPayloadCompiler({
     event: 'compiled',
     pageId,

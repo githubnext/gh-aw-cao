@@ -591,6 +591,7 @@
       "class-name": "campaigns-page",
       "description": "Identify centrally managed campaigns that require deeper CAO operational review.",
       "mode-indicator": true,
+      "query-binding": "page",
       "definition": {
         "data-state": {
           "availability": true
