@@ -228,8 +228,8 @@ components:
     path: specs/computations.md
     responsibility: define deterministic partitioned measures that transform canonical evidence into bounded actionable insights
   package_operational_value:
-    path: <operation>/operational-value.mjs
-    responsibility: compute timestamped repository-scoped metrics for installed packages through the cao operational-value command
+    path: .github/operational-value.mjs or <operation>/operational-value.mjs
+    responsibility: optionally publish deterministic repository-outcome functions from stated goals, documents or workflow intent through cao operational-value; standalone observations omit campaign metadata and require neither gh-aw nor campaign policy; prospective contract activation is not workflow adoption; explicit evaluation archives accepted evidence separately from rolling projections
   package_problem_clustering:
     path: <operation>/problem-clustering.mjs
     responsibility: compute bounded package problem rows from a private Activity SQLite snapshot through the cao cluster-problems command

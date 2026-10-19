@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-aw-cross-repo-compile-check",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "workflowBlob": "a4726c28d67f33d3d45e0ff288aaffdfd0498233",
+  "workflowSha256": "65b165e903b32c5fcd5e5845991f7a60c49942ccd2e4144a0e71942d6d405608",
+  "compiledBlob": "d467506953667aaa20c50b9e539cb1bbfdabb927",
+  "compiledSha256": "ac3bc374ab1882577fabc6428fc4749030d3595895861c1a31a47ad71c7c2925",
+  "readiness": {
+    "currentSourceReviewed": true,
+    "nativeDefinitionImplemented": true,
+    "nativeResultDecoderImplemented": true,
+    "portableBatchCollectorImplemented": true,
+    "collectorInterfaceVerified": true,
+    "standardEvaluationArtifactsGenerated": true,
+    "plotArtifactGenerated": true,
+    "nativeOutcomeMeasured": false,
+    "nativePlotContainsMeasuredValues": false,
+    "independentProtectedCheckerSourceReviewed": false,
+    "selectedPublicCohortKnown": false,
+    "compilerBinaryAndToolchainKnown": false,
+    "historicalAdoptionVerified": false,
+    "baselineEvidenceExhausted": false,
+    "workflowContributionEstablished": false,
+    "costs": "not-measured",
+    "decision": "not-rated",
+    "status": "implemented-instrument-native-evidence-blocked"
+  },
+  "contract": {
+    "outcome": "For the frozen source-defined top twenty public repositories, attain repository-wide strict compilation after one native automatic fix pass under one fixed assessed compiler, demonstrated by original independent protected native compiler results.",
+    "primaryMetric": "100 * compatibleRepositories / eligibleCount, in percent; only complete accepted twenty-repository assessments yield a number.",
+    "partialMetric": "Known compiling workflows, in workflows; independent valid native results survive unknown full repository compatibility.",
+    "counterfactual": "Compatible sources count regardless of actor. Removing this workflow and its outputs does not remove the outcome.",
+    "measurementKind": "snapshot",
+    "durationDays": 1,
+    "cadenceDays": 1,
+    "maturationDays": 0,
+    "evaluationMode": "attainment-only",
+    "temporalAnchor": "contract-activation",
+    "activatedAt": "2026-10-18T15:00:12Z",
+    "historicalInterpretation": "The phenomenon predates this contract. No historical reference has yet been reconstructed; unacquired is not unreconstructable. Do not backdate the frozen current source into earlier intent/compiler eras.",
+    "comparability": "Freeze repository identities and exact compiler/toolchain/environment before outcomes. Retain source inventory counts. Changed star-ranked cohorts or compiler fallback create different comparison eras; snapshots are not additive deliveries.",
+    "transformations": "One exact native fix --write invocation, including its internal codemod convergence and documented scaffold/cleanup effects; preserve complete original diff and inventories. No manual edits, workflow removal, disabled codemods or reduced validation.",
+    "projection": "A future independently protected replay can add --json solely to obtain the native ValidationResult array. The decoder checks original stdout/stderr digests, strict command, whole-process status, batch errors, selected-workflow coverage and environment completeness.",
+    "authority": "The native input ledger has no accepted protected checker source. Arbitrary reports or source pins fail closed. Adding an independent protected producer requires explicit source/receipt review and a versioned contract change.",
+    "zeroVersusMissing": "Missing native original results, selection, compiler identity or access are null/unknown, never zero incompatibility, a clean result or an assumed twenty observed opportunities.",
+    "excludedClaims": [
+      "Runtime correctness or exhaustive compatibility",
+      "Repository repairs delivered by the dry-run migration pass",
+      "Causal or exclusive workflow contribution",
+      "Savings, synthetic utility weights or invented keep bars",
+      "Issue, PR, run, report, cache-write or LLM-evaluation counts as native outcomes"
+    ]
+  },
+  "sourceReview": {
+    "completePreservedSources": 11,
+    "completeDecodedBytes": 299650,
+    "losslessArchive": "sources.json.gz",
+    "providerReceiptArchive": "compiled-provider.json.gz",
+    "workflow": "Complete mission, discovery/ranking, make-build/fallback, clone, inventory, before/fix/after, cache, clustering, issue, no-op and incomplete branches read.",
+    "imports": "Complete reporting and OTLP imports read; neither imports another file or establishes compile acceptance.",
+    "compiled": "All 2591 lines reviewed. Activation, agent, conclusion, detection, evals, push_evals_state, safe_outputs and update_cache_memory do not contain an independently protected per-target native compile checker. Compile/fix commands are runtime-loaded agent instructions. Agent-writable cache-memory is uploaded and persisted; upload/job success does not establish the native results.",
+    "nativeContract": "Complete compilation-process specification, compile arguments/config/orchestrator/pipeline, fix command and codemod registry read. Native batch/process errors, default selection, strict checks, fix convergence/scaffolding and infrastructure-sensitive pin/import resolution are preserved as distinct gates.",
+    "actualParentCheck": {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "parent": "64b168bfd0bc790a98d7bef51c49bf74ffc6fe21",
+      "sourceBlobInParent": "a4726c28d67f33d3d45e0ff288aaffdfd0498233",
+      "compiledBlobInParent": "d467506953667aaa20c50b9e539cb1bbfdabb927",
+      "conclusion": "Both files already existed unchanged in the actual first parent. The frozen revision is not workflow adoption.",
+      "historyGap": "Read-only --follow --diff-filter=A traversal stopped at missing promisor object dbaa9953c4016469a0891b939e6cae9e18672ed4 with lazy fetching disabled. No shallow boundary or first output was substituted for actual adoption."
+    }
+  },
+  "discovery": {
+    "archive": "discovery.json.gz",
+    "productionReader": ".github/skills/add-operational-value/scripts/collect-output-history.mjs:readOutputHistory",
+    "verifiedPartitions": 346,
+    "verifiedEntities": 58048,
+    "selectedEntities": 162,
+    "selectedIssues": 162,
+    "selectedPullRequests": 0,
+    "distinctReferencedRuns": 110,
+    "earliestSelectedCreation": "2026-04-17T05:05:35Z",
+    "latestSelectedCreation": "2026-10-16T08:55:21Z",
+    "interpretation": "Retained complete shared index and all selected normalized identities. These are discovery only; editable markers, issue state and links are not protected compile receipts or historical native outcomes."
+  },
+  "evaluation": {
+    "endAt": "2026-10-19T09:57:11Z",
+    "directory": "evaluation/github-gh-aw",
+    "snapshots": 1,
+    "compatibleRepositories": null,
+    "compatibleWorkflows": null,
+    "eligibleCount": null,
+    "coverageStatus": "unknown",
+    "completeHistory": false,
+    "attention": "evidence-needed",
+    "decision": "not-rated",
+    "cost": "not-measured",
+    "fixtureObservationsInNativeHistory": 0,
+    "command": "node .github/skills/add-operational-value/scripts/evaluate.mjs --end 2026-10-19T09:57:11Z --output-dir docs/operational-value/proof/daily-aw-cross-repo-compile-check/evaluation --function docs/operational-value/proof/functions/daily-aw-cross-repo-compile-check.mjs --no-runs github/gh-aw daily-aw-cross-repo-compile-check"
+  },
+  "validation": {
+    "focusedTests": "node --test tests/unit/daily-aw-cross-repo-compile-check-value.test.mjs",
+    "passed": 12,
+    "failed": 0,
+    "collectorVerification": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/daily-aw-cross-repo-compile-check.mjs",
+    "collectorVerificationPassed": true,
+    "syntaxChecksPassed": true,
+    "eslint": "Unavailable: node_modules/eslint/bin/eslint.js is absent. No install was attempted because acquisition/installs were prohibited.",
+    "bootstrap": "Verified archive, adjacent manifest and all 32 seed member sizes/SHA-256s before extraction. Seed command scripts required local executable bits for the standard evaluator's direct shebang invocation; bootstrap changes are excluded from this handoff."
+  },
+  "openEvidenceScopes": [
+    {
+      "kind": "historical-source-lineage",
+      "required": "Actual workflow/compiled-workflow addition and its real first parent, with coherent imported and native compiler profiles. Never infer adoption from the first retained issue.",
+      "endpointsForCoordinatorReviewOnly": [
+        "repos/github/gh-aw/commits?path=.github/workflows/daily-aw-cross-repo-compile-check.md&until=2026-10-18T15%3A00%3A12Z&per_page=100",
+        "repos/github/gh-aw/git/commits/dbaa9953c4016469a0891b939e6cae9e18672ed4"
+      ],
+      "acquisitionAuthorized": false
+    },
+    {
+      "kind": "original-selection-and-cache-discovery",
+      "required": "Original selected-top20, candidates, ranking, public/archive metadata and immutable source inventory. The preserved inventory's one run/artifact is a discovery candidate, not a complete history or independent compile result.",
+      "runId": 38876282648,
+      "runHeadSha": "8511e85c201de2246138137847c031b12724b578",
+      "artifactId": 12036290066,
+      "artifactName": "cache-memory",
+      "artifactDigest": "sha256:11bd167a93eec0be65ceb9612ce3257b6932b0c1ad678ab33bee2bb63a0a1c7d",
+      "endpointsForCoordinatorReviewOnly": [
+        "repos/github/gh-aw/actions/runs/38876282648",
+        "repos/github/gh-aw/actions/runs/38876282648/artifacts?per_page=100",
+        "repos/github/gh-aw/actions/artifacts/12036290066/zip",
+        "repos/github/gh-aw/contents/.github/workflows/daily-aw-cross-repo-compile-check.md?ref=8511e85c201de2246138137847c031b12724b578",
+        "repos/github/gh-aw/contents/.github/workflows/daily-aw-cross-repo-compile-check.lock.yml?ref=8511e85c201de2246138137847c031b12724b578"
+      ],
+      "limitation": "An agent-writable cache may help discovery but cannot independently attest native compiler execution. Historical source profiles must be reviewed before accepting any old observation.",
+      "acquisitionAuthorized": false
+    },
+    {
+      "kind": "native-compile-proof",
+      "required": "Original independently protected native invocation receipts with compiler binary/build/environment identity, full before/after target source and import/pin inventories, exact allowed transformation proof, native per-workflow results, process/batch errors and source cutoff.",
+      "blockedOn": "A reviewed independent protected checker source and actual target/receipt identities are not available. No target endpoints can be exactly resolved before authentic original selection is known.",
+      "endpointsForCoordinatorReviewOnly": [],
+      "acquisitionAuthorized": false,
+      "executionAuthorized": false
+    },
+    {
+      "kind": "baseline-and-contribution",
+      "required": "Comparable pre-adoption native observations and independently verified contribution/creation lineage, if those claims are requested later.",
+      "status": "unknown-unacquired-not-exhausted",
+      "acquisitionAuthorized": false
+    }
+  ],
+  "safety": {
+    "networkCallsByWorker": 0,
+    "remoteWorkflowExecution": false,
+    "fetchedSourceCompilation": false,
+    "installs": false,
+    "dispatches": false,
+    "credentialChanges": false,
+    "remoteWrites": false,
+    "campaignEnrollment": false,
+    "commits": false,
+    "pullRequests": false,
+    "deployment": false,
+    "otherWorkflowChanges": false,
+    "handoffExcludesSeed": true
+  }
+}

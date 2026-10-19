@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-copilot-routed-steering",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "37b511534b9402b78f7f62b9e161dc2f29fe364b1f3a39e66993575f3c5acc3c",
+  "inventoryRuns": 48,
+  "observations": 48,
+  "proven": 0,
+  "partitions": [
+    {
+      "file": "smoke-copilot-routed-steering-observations-001.json.gz",
+      "count": 40,
+      "sha256": "4ea989c8d0c0bd0d939c5fd5d5be914eeef9e5e28f9059701d3eb5b1ed202ca8"
+    },
+    {
+      "file": "smoke-copilot-routed-steering-observations-002.json.gz",
+      "count": 8,
+      "sha256": "ba2d63a9dfe0009018b9ae9f18ba5cba19ee563c62043c0ca3ac5e09937e2881"
+    }
+  ],
+  "acquiredAt": "2026-10-18T19:23:01.938Z",
+  "rerunPolicy": "Only initial attempts; later artifact reuse cannot create duplicate native proof.",
+  "producer": {
+    "path": "scripts/collect-host-assertion-evidence.mjs",
+    "sha256": "5d9871f74bbed3f96ca3a63eb2c7768cd982412341ffb35bfbf5b5d019c54849"
+  }
+}

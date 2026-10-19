@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "smoke-drive",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceBlob": "b807269a21552c0e6ac518da7c44056024047e95",
+  "designBoundary": "Frozen before opening native execution outcomes. Source, source-history availability and issue/PR discovery identities inspected only.",
+  "intent": "For native drive-memory invocations, establish exact current-run text write/readback and independently verified restored persistence, with actual repository access.",
+  "period": {
+    "measurementKind": "interval",
+    "durationDays": 7,
+    "cadenceDays": 7,
+    "maturationDays": 0,
+    "matching": "Credit each distinct repository/run/attempt once at its protected command completion timestamp; interval start inclusive, end exclusive."
+  },
+  "claims": {
+    "sameRun": "Original attempt-bound command execution and result establish writing exactly run_id=<actual numeric run id> plus LF to /tmp/gh-aw/drive-memory/smoke-drive.txt and reading those exact bytes back. Retain command, output, exit status and attempt/source identity. Agent PASS or editable issue text is not accepted.",
+    "restoredPersistence": "A prior independently accepted producer write is bound to a protected persisted drive receipt/state version, and a distinct later attempt restores that same state and independently reads matching bytes before replacing the file. Same-run readback is insufficient.",
+    "repositoryAccess": "Original attempt-bound git log --oneline -1 execution in the target checkout returns a real commit independently matched to retained immutable repository identity.",
+    "fullGoal": "Restored persistence, exact current-run write/readback, .txt-only drive contents, actual repository access, applicable source/import obligations and trigger-appropriate safe outputs are independently established. First-run absence is separate, not failure or proof of restoration."
+  },
+  "separation": {
+    "partialValue": "Count independently demonstrated same-run exact write/readback even when persistence, reporting or repository-access evidence is missing.",
+    "attribution": "Attempt-bound originals may establish workflow-linked execution, not exclusive causation.",
+    "discovery": "Complete supplied issue/PR bidirectional candidate closure, with absent references retained; candidates are not accepted outcomes. Comments and deleted/edited-away outputs are outside this discovery inventory.",
+    "missing": "Missing protected commands, receipts, source bytes, timing or cohort coverage produce null for the dependent claim. Demonstrated failures do not become missing. A retained subset is a lower bound, not a complete weekly total.",
+    "history": "Preserve standard frozen unresolved acceptance. This instrument is an explicit same-source retrospective reconstruction, not evidence of ex-ante historical adoption. Verify actual introduction and parent; never use shallow history boundary or oldest output as adoption.",
+    "recentMovement": "Only abutting equal-duration periods with complete comparable native evidence may establish recent movement. No fallback across gaps.",
+    "cost": "not measured",
+    "keep": "not rated"
+  },
+  "skillImprovement": "For memory smoke tests, expose exact same-run write/readback, protected cross-run restoration, repository access and reporting as separate facets; do not let an issue PASS or green job substitute for persistence."
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "smoke-copilot-small",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "fd2c6bfd12686d9d41a06728fa1e810b9662c6fb",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "designBoundary": "Frozen after source/import and discovery-identity inspection, before native execution outcome inspection. Retrospective fixed-reference facets require actual historical source applicability; no invented prospective activation.",
+  "goal": "Verify actual file write/readback and arithmetic execution by the small Copilot smoke workflow; retain full original-haiku and imported acceptance separately.",
+  "population": "Distinct retained smoke-copilot-small run attempts whose original source requires the same file path, three-line readback and Bash arithmetic; issue markers and related identities are discovery only.",
+  "primary": "Count run attempts with protected typed successful Bash execution of echo $((6 * 7)) and native output exactly 42.",
+  "fileFacet": "Count attempts with protected successful cat readback of /tmp/smoke-copilot-small-RUN_ID.txt containing exactly three nonempty lines. A successful write to that exact path must be retained separately to prove write-plus-readback.",
+  "acceptance": [
+    "Do not infer tool execution from agent prose, issue PASS, source text, a green run or a known answer.",
+    "Join immutable run repository ID, workflow path, attempt, head revision and original source to protected producer execution receipts; preserve each era.",
+    "Read structured tool-call start/completion records, require matched IDs, native successful execution status and exact command/output. Reject unrelated tools, errors, quoted prose, mismatched run paths and conflicting completions.",
+    "Three-line readback is a narrow file-shape facet, not originality, haiku quality, software-testing relevance, provider identity or full workflow success.",
+    "Full acceptance additionally requires original testing haiku, actual write/readback, actual arithmetic, small-alias provider/model resolution and contemporaneously applicable imports including Playwright JS title equality, browser closure and session artifact verification.",
+    "Positive observed facets remain established when broader safeguards or coverage are unknown. Unknown history and uninspected attempts are null, not zero."
+  ],
+  "temporal": {
+    "measurementKind": "interval",
+    "durationDays": 7,
+    "cadenceDays": 7,
+    "maturationDays": 0,
+    "timestamp": "Retained producer execution completion timestamp, never issue creation or acquisition time.",
+    "boundaries": "Inclusive start, exclusive end; count each run/attempt once.",
+    "comparison": "Partial retained cohorts do not establish complete comparable weekly coverage."
+  },
+  "classification": "Attainment-only unless actual symmetric pre-adoption evidence is established; smoke capability predates this workflow, historical evidence availability is separate.",
+  "rejected": ["issues opened", "PASS text", "green runs", "84 discovery candidates as 84 successes"],
+  "costs": "not measured",
+  "keepBar": null
+}

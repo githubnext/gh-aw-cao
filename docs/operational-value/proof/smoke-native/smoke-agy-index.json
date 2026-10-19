@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-agy",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "complete": true,
+  "producer": {
+    "path": "scripts/collect-smoke-native-evidence.mjs",
+    "sha256": "fc7786ea2f631e524879f840a818c1084eed92d9a9bdaaa54f29f2cab16a9334"
+  },
+  "contractSha256": "267265fd7738221465c0e32f7e8c12397563d8d4c75bff1e463b0999978622a4",
+  "inventoryRuns": 5,
+  "observations": 5,
+  "partitions": [
+    {
+      "file": "smoke-agy-observations-001.json.gz",
+      "sha256": "9eb8b29036b95f26d9eaf946564dab3672b88a458a2536adf0468ac335f4b47a",
+      "rows": 5
+    }
+  ],
+  "outputHistory": {
+    "index": "../../gh-aw-workflows/evidence/history.json.gz",
+    "indexSha256": "9df26d055118ce577189c011705636e8fc634ba8eb42fd3fd3c3bc4e79af3929",
+    "totalEntities": 58048,
+    "candidates": 0,
+    "partitions": [],
+    "candidateRunGaps": [],
+    "limitation": "Issue/PR bodies are editable discovery references. Their PASS claims and publishing/closure are not native behavioral proof."
+  },
+  "acquisition": {
+    "runInventory": "All branch names, every retained attempt, created within true adoption and frozen cutoff.",
+    "trust": "Immutable execution lock and actions tree must independently match frozen first-parent mainline history; exact frozen checker/environment hashes required. Branch name alone neither grants nor denies evidence.",
+    "limitations": [
+      "Actions API inventories cannot reconstruct deleted runs or expired logs/artifacts.",
+      "Historical editions without the exact approved host checker remain missing, not behavioral failures.",
+      "No upstream write, dispatch, deployment or fabricated test evidence was used."
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "command": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+  "args": [
+    "--test",
+    "tests/unit/operational-value-smoke-service-ports.test.mjs"
+  ],
+  "status": 0,
+  "signal": null,
+  "stdout": "✔ acceptance preserves exact source scope without restart durability or invented keep bar (0.671917ms)\n✔ native RESP framing rejects truncation, trailing bytes, wrong byte length and nesting abuse (0.383417ms)\n✔ PING checks native protocol response, not an agent explanation or TCP success (0.165208ms)\n✔ round-trip requires an observed SET before exact GET in one session, but no restart (0.30025ms)\n✔ INFO must return native server data, not empty, prose or health text (0.201333ms)\n✔ partial native operation parsing remains useful without full integration proof (0.063417ms)\n✔ raw CLI stdout is parsed without executing commands or trusting prose/exit status alone (0.152375ms)\n✔ uploaded native transcript parses but does not authenticate itself (23.685958ms)\n✔ actual independent original host frames admit three cases and one host-bound session (48.766ms)\n✔ provider/run/attempt/head, compiled source and protected/client conflicts fail closed (231.895333ms)\n✔ missing compiled boundary or host allowance does not erase independently proven protocol cases (94.085125ms)\n✔ each persistent session/case is delivered once even when another tool call repeats it (47.040792ms)\n✔ discovery includes reverse and forward transitive closure and absent references (0.196166ms)\n✔ synthetic validation is separate from authenticated native history and cannot be promoted (0.334583ms)\n✔ collector reports actual lower-bound cases while preserving unknown population and empty cohorts (202.141584ms)\n✔ adjacent inclusive-start/exclusive-end cohorts do not recount the native event (458.32025ms)\n✔ standard interface collector verification runs without network or target execution (328.863083ms)\nℹ tests 17\nℹ suites 0\nℹ pass 17\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1488.709125\n",
+  "stderr": ""
+}

@@ -1,0 +1,2651 @@
+import { nativeMultiPrModule } from "../../../../scripts/native-smoke-multi-pr-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativeMultiPrModule({
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-multi-pr",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "edc4cd49f2c9fb6ce86eaebcb9c74108b4da325a",
+  "until": "2026-10-18T15:00:12Z",
+  "directory": "docs/operational-value/proof/smoke-multi-pr-native",
+  "adoption": { "commit" : "b58fd691e7da212fa79b9408b3aa0bfc69b00b24" , "adoptedAt" : "2026-02-21T02:35:50Z" , "baselineCommit" : "3b6ab5488e05abd34d6a599d61459477e45d5299" , "baselineAt" : "2026-02-21T02:18:44Z" },
+  "nativeContract": {
+    "primary": "verified-payload-deliveries",
+    "unit": "branch payloads",
+    "cadenceDays": 7,
+    "population": "Every retained initial workflow execution before the cutoff; reruns are separately inventoried and never double-credit an initial execution.",
+    "acceptedEvidence": "A source-bound protected create-pull-request operation receipt binds the original branch/base/head identities to immutable target-tree pre/post bytes. The base lacks the expected file; the head changes exactly that file with the run-specific required content, unchanged supplied bytes and no sibling payload. CRLF cases retain every carriage return. Each case is credited once, at the native delivery receipt.",
+    "partialProgress": "Each independently verified branch payload counts even when its sibling or the summary-comment acceptance is unknown. Two PRs or a merge do not prove payload delivery.",
+    "contentPolicy": "Documentation and original configuration cases have the source's four required LF lines. CRLF cases have the first four required CRLF lines and the final CRLF annotation, accepting the literal annotation or the six-line expansion produced by the source's actual Bash printf; preserve the exact representation and report it separately. A nonempty printable timestamp must parse as a date.",
+    "missing": "Missing/expired operations, original head/base receipts, supplied payload bytes, source identity or immutable target trees remain null; no successes are inferred from run/job status or editable PR bodies.",
+    "historicalEras": "Original config case and later CRLF case are different predicates; keep profile-specific quantities and do not infer a comparable trend across the switch.",
+    "fullAcceptance": "Exactly two correct separate branches from main in one initial execution, matching intended bytes, plus protected proof of the required summary comment. Contribution is receipt-bound, not sole attribution; costs unmeasured.",
+    "antecedent": "The multi-PR test opportunities are introduced with this workflow. Generic PR creation existed earlier but is not the same test; no invented pre-adoption baseline.",
+    "canonicalSources": "Canonical run/tool/issue summaries do not contain original Git trees, binary payloads or protected patch/application receipts. Immutable Git plus retained Actions artifacts/logs are required; no dashboard query is substituted."
+  },
+  "profiles": [
+    {
+      "revision": "5fdf98e4d2117e37d3260de02f7783ecce16ea49",
+      "at": "2026-09-21T16:58:35Z",
+      "workflowGitBlob": "edc4cd49f2c9fb6ce86eaebcb9c74108b4da325a",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 2 days",
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": { "gh-aw-detection" : false },
+        "sandbox": {
+          "agent": { "id" : "awf" }
+        }
+      }
+    },
+    {
+      "revision": "45277dcb8f19d6890098a8c2c588834d1d08ecb7",
+      "at": "2026-08-25T15:22:34Z",
+      "workflowGitBlob": "3ba470365a1411f92144450639ad956b23ca10f8",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 2 days",
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": { "gh-aw-detection" : false },
+        "sandbox": {
+          "agent": { "runtime" : "cloud-hypervisor" , "id" : "awf" }
+        }
+      }
+    },
+    {
+      "revision": "fe9156568bf7e845e7ab097b6dbccd3f2e679b22",
+      "at": "2026-08-20T20:54:00Z",
+      "workflowGitBlob": "2d861da49695fd4f4c10a391b47e7fd76d5eab40",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": { "gh-aw-detection" : false },
+        "sandbox": {
+          "agent": { "runtime" : "cloud-hypervisor" , "id" : "awf" }
+        }
+      }
+    },
+    {
+      "revision": "31d54a7cd7466bb4bb025985dfad631952ac1c7b",
+      "at": "2026-08-17T00:52:52Z",
+      "workflowGitBlob": "98911f117f873f8476c3af0d0ea92918cc852226",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": { "gh-aw-detection" : false },
+        "sandbox": {
+          "agent": { "id" : "awf" }
+        }
+      }
+    },
+    {
+      "revision": "a147264e7a887b334d3b9c845875d3a2ad7d3d4a",
+      "at": "2026-08-15T04:45:48Z",
+      "workflowGitBlob": "5348167040c408e7688ddce0654222c9c3bccb58",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": { "gh-aw-detection" : false },
+        "sandbox": {
+          "agent": { "id" : "awf" , "sudo" : false }
+        }
+      }
+    },
+    {
+      "revision": "0de69c52ac006859a3739bc13c26dadbb997be58",
+      "at": "2026-08-08T03:23:07Z",
+      "workflowGitBlob": "34a5033635c903b644abe3481f79e2d9591bc133",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": { "gh-aw-detection" : false },
+        "sandbox": {
+          "agent": { "id" : "awf" , "sudo" : false }
+        }
+      }
+    },
+    {
+      "revision": "e123c10207028f35dd37390e62cc2ce80374348a",
+      "at": "2026-08-08T01:13:15Z",
+      "workflowGitBlob": "737796e10d73ba42fd0b18b9936454e18e93553a",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": { "gh-aw-detection" : false },
+        "sandbox": {
+          "agent": { "id" : "awf" , "runtime" : "docker-sbx" , "sudo" : true }
+        }
+      }
+    },
+    {
+      "revision": "1170fc484978ff65b6e026755866aea0af490710",
+      "at": "2026-07-07T06:08:34Z",
+      "workflowGitBlob": "3094733a97cde762a199e317b5f66fb69bb7c9bd",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": { "gh-aw-detection" : false }
+      }
+    },
+    {
+      "revision": "33ae87ae331774efd917d521c36b272263a8c1e8",
+      "at": "2026-06-25T23:29:22Z",
+      "workflowGitBlob": "04905d11367528b6f836165a69c8a9305d227450",
+      "taskSha256": "9fb90a10570979392c18b814488d3225571144bfa9ca08b5ac01f398d7293a07",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": { "gh-aw-detection" : false }
+      }
+    },
+    {
+      "revision": "b963dc5429d08de7f8f13e1223805195fb256dd3",
+      "at": "2026-06-20T16:11:31Z",
+      "workflowGitBlob": "3051cd3cddf4a23c9bb628bedaeafcc76fe8328d",
+      "taskSha256": "9fb90a10570979392c18b814488d3225571144bfa9ca08b5ac01f398d7293a07",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": { "gh-aw-detection" : true }
+      }
+    },
+    {
+      "revision": "e8ca23ae1dcde800d1b19e7c73bf5dfe30b6efb5",
+      "at": "2026-06-18T12:58:44Z",
+      "workflowGitBlob": "03b56572f1137545312c37679f8d737b2e0bcaef",
+      "taskSha256": "9fb90a10570979392c18b814488d3225571144bfa9ca08b5ac01f398d7293a07",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "64a66de2e17a1d19a25b08a999d9e18cf84ebde2",
+      "at": "2026-06-08T00:29:41Z",
+      "workflowGitBlob": "0aba2433b8e0a69e627501d8619d75059a8c9656",
+      "taskSha256": "9fb90a10570979392c18b814488d3225571144bfa9ca08b5ac01f398d7293a07",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "ae50ebcc389c1c3258921687fe84145895695ee7",
+      "at": "2026-06-03T22:15:00Z",
+      "workflowGitBlob": "9805334eb31a04086b224d4e2ed840e9f9860eab",
+      "taskSha256": "fb2c77bd63aea888411124eb70890cacc96373342038aa55d1a6c62c81d80960",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "148e6173d21d6865e805b25e713cd2cb181bc6f0",
+      "at": "2026-05-17T14:26:59Z",
+      "workflowGitBlob": "d2497a59f8d479d9163b9e7192d42d6864232f9c",
+      "taskSha256": "fb2c77bd63aea888411124eb70890cacc96373342038aa55d1a6c62c81d80960",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "054d63207ce4f87fc1392d1c48f412efa1c27508",
+      "at": "2026-05-14T20:25:56Z",
+      "workflowGitBlob": "65afcdb23cfba1db4e1b09ef301209d2a2f9541b",
+      "taskSha256": "fb2c77bd63aea888411124eb70890cacc96373342038aa55d1a6c62c81d80960",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "f3c24880af69f8e5c7d6b6c17ee116583137f979",
+      "at": "2026-04-30T23:11:29Z",
+      "workflowGitBlob": "697155e199e0c1062b65d9de0e0ddafacb56c855",
+      "taskSha256": "fb2c77bd63aea888411124eb70890cacc96373342038aa55d1a6c62c81d80960",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "d555622544af59f5fb656eb485ddf3a88c02948d",
+      "at": "2026-04-28T05:12:16Z",
+      "workflowGitBlob": "382a62faa66ea537cfe2561a8681e1c87a07d1d8",
+      "taskSha256": "3afd8f91aee4aa908d1f3d5c638c95969ad1886a272439de66945877171cbe95",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "25fed92bcba25c4a0eb7765a29d05bec8f81ec3b",
+      "at": "2026-04-18T01:02:45Z",
+      "workflowGitBlob": "ac6453f339c232a19e63d8e150056b5305533038",
+      "taskSha256": "3afd8f91aee4aa908d1f3d5c638c95969ad1886a272439de66945877171cbe95",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "mount-as-clis": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ],
+        "features": { "mcp-cli" : true }
+      }
+    },
+    {
+      "revision": "a22c643988ada8ef06d44ab9d6b7f4f1a9ad1629",
+      "at": "2026-04-16T19:54:20Z",
+      "workflowGitBlob": "46b3798a475f5649af8fe8920d1a19de7cebe3df",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "mount-as-clis": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ],
+        "features": { "mcp-cli" : true }
+      }
+    },
+    {
+      "revision": "69fd9ea957177b975197b41bab2f9feca6f341cf",
+      "at": "2026-04-16T00:09:36Z",
+      "workflowGitBlob": "fe31583f3f9330f03ec56c328450470c0e0fdd5e",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ],
+        "features": { "mcp-cli" : true }
+      }
+    },
+    {
+      "revision": "ad056e58f8e50808e55bab01f18aadbd0847c155",
+      "at": "2026-04-14T16:56:50Z",
+      "workflowGitBlob": "3829593c1064c21ad45c141824b9ce2c505ae654",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "c816157bbd6053b70a81e00763298b272f4fe8cf",
+      "at": "2026-04-05T01:46:52Z",
+      "workflowGitBlob": "d8658324709b2fab6e34442eeb1ab563032d9749",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "296262211b372a13b451ca9400369ac152db75d6",
+      "at": "2026-04-02T19:13:13Z",
+      "workflowGitBlob": "a45506e908f01425bf9c99aa971e86b925504126",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "be086b27a3619a6bfa5939cd1d92fd7ca76e5747",
+      "at": "2026-03-15T21:33:30Z",
+      "workflowGitBlob": "af689d422f06876966edc75f59191ee9cdf5234d",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "e45ae5cd786aa0bfbf907306f7949859d060f419",
+      "at": "2026-03-15T18:34:32Z",
+      "workflowGitBlob": "be494d3520f859ec8f318dbd708d13dceb06b4ba",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-url-domains": [
+            "default-redaction"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "4dc2684ff140b371e372ec5c684497198c61b1dc",
+      "at": "2026-03-03T15:09:14Z",
+      "workflowGitBlob": "569de5833a22b886e707b9771c3c4b3903b6f877",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "fe2713ba4bb447a2e38905f4a47920531bc59cdd",
+      "at": "2026-02-24T04:25:20Z",
+      "workflowGitBlob": "ff60f03f351bd972e21632225d5d8cd79ffd14f3",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "8cb3b78bd9dbda56bd1e2caed0d97b95489b0840",
+      "at": "2026-02-24T03:10:10Z",
+      "workflowGitBlob": "8cf0465fe2359af3cd381cfc9e6e83a75d1c38d3",
+      "taskSha256": "a230da689852f613664e949842049d0fc828ef080b45df2da39adf11aa4242fd",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "b58fd691e7da212fa79b9408b3aa0bfc69b00b24",
+      "at": "2026-02-21T02:35:50Z",
+      "workflowGitBlob": "4f6df82933bd0387a5a306d25062b96d2a9f3310",
+      "taskSha256": "85ca0ec4aaa1aed8005cb902d74b586183fd42b37bb87a4b0c73b6e3660d8059",
+      "era": "configuration",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": { "contents" : "read" , "pull-requests" : "read" },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *"
+          ]
+        },
+        "safe-outputs": {
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": { "hide-older-comments" : true , "max" : 1 },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    }
+  ],
+  "frozenContractSha256": "d5d787be36ba5d0e5a33015c119a5008082eec3c81c2e1cd661164e7a5593de0",
+  "reviewedHosts": [
+    "f4b0e792259570f6b857e205bb69bae4f5342b64d9cbb25f1b52bd6e93de25d5",
+    "a4e494e3305f7c9f67d294aa6d346a2a5944b786c09390670ae234015468dd23",
+    "39ce418eef0864fac26401ee0e567e6345c9349125d90ff8a27291c9df0545ec",
+    "bf7b4c77be87552be852bf0c7d4c06d10bb2c869ade44ee261ba23809b5ac067",
+    "7e6ff383789ae1fd1020606013df4ffa932b94aaf0df80e7d5de5b4afcbc7a7c",
+    "6d48717c33d9565e3b759c4f4f89117cf5cb0a598dde16b3a367324bf33935b3",
+    "637242fb107401f059d03407fd83726cb00130465f409153ffc4282b14374f77",
+    "429e3e17090b0cb7d167f67cfb26526b5e57636dbad1b48d87a9c84514dce72a",
+    "b68dd8be4ecaa8236733ccc9816016931df68a10c01a5a2421bf11a1335bd594",
+    "585cb4d834fe8214270b9dc9a91aa05eee5d826b4328dd56ea84666c250267a7",
+    "057ebbb4c00b4c0577e9e0eeeaa906602e2034633cb2287cc8075605a080f2bd",
+    "3ec6dd2be600984ed7c3b56e63cf900f14cf463334f3cd12b5f75199ac49bdbc",
+    "7ef6024df991a2c3297125bb3c21cf3faace03952216ae38425f6618b25fa6cd",
+    "fd34f14a1f1b4a721dcc15eb7665eb52af828145d88e2d59bce065916d29b318",
+    "7dd3cd76ec2e5e6979a9f67c5dcac8ef781e53ab0300fc8af08758c53429024a",
+    "b160bb1b8d407ef0a3200d3fbe7aee22144bc395819efb2cd76bbcbf1e131e41",
+    "a5b497ac5bacd6fe021c9e63f4a4a8c093693b079a06954b928021fb874288a3",
+    "ebe0b8ecc5fe26a582dbf4f9fe70ebdc1397acdf7567e10cf65ee78b3109066c",
+    "9af1919756d82d23bbd9be8ea5c7467015611c98bb552807a5f6f2028f06309b",
+    "0e24834ffb105d5a16c2e0646dc2176a8411a81658e8dc21dcac747918837d02",
+    "8dbeacf84d42216345f266775300160e0952f15d43450b4c8526fc5bb3f5ecf9",
+    "28ef35cc43453e2e40f04a91c64e51c39b90b4d17953697716f49915453fff1d",
+    "c8ebe926e780ab2fae202c7bf7f6461c4bd1b6283b4e23dfa6d68f543d543896",
+    "6718fa1c75d6157647735720ef357ebf64d4b344de4f17b14bf22aeb61cc86ec",
+    "f0077fa55ee4918554a8a58ade0ec742cbc8558adbd4aa9cb3f5d6d8cde25de8",
+    "68e237cd372cc542d2859a2a5ccad1e4991f83de723de107f3ae65146d71b2a2",
+    "21726a88ec0086db73c0ca062f2f4e72bdea1b81248763c6e1eabcbc96686565"
+  ],
+  "artifactProducers": {
+    "f4b0e792259570f6b857e205bb69bae4f5342b64d9cbb25f1b52bd6e93de25d5": { "jobSha256" : "83a7987753da0055779303a83c8f66efd2c390a20124ab29270ad6b4ee44c316" , "uploadStepSha256" : "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "a4e494e3305f7c9f67d294aa6d346a2a5944b786c09390670ae234015468dd23": { "jobSha256" : "53c83f837848c7469bd146061277643901848521b7232146b54c448e720c20d8" , "uploadStepSha256" : "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "39ce418eef0864fac26401ee0e567e6345c9349125d90ff8a27291c9df0545ec": { "jobSha256" : "b42dcc541e091b7870fedbd64eff9ff8b2c69af17248240fd92a0048a988bf85" , "uploadStepSha256" : "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "bf7b4c77be87552be852bf0c7d4c06d10bb2c869ade44ee261ba23809b5ac067": { "jobSha256" : "b42dcc541e091b7870fedbd64eff9ff8b2c69af17248240fd92a0048a988bf85" , "uploadStepSha256" : "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "7e6ff383789ae1fd1020606013df4ffa932b94aaf0df80e7d5de5b4afcbc7a7c": { "jobSha256" : "c9b95ee3db686b515d5c9e88be0e22baf9b78c755721520062e723cb8e3896fd" , "uploadStepSha256" : "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "6d48717c33d9565e3b759c4f4f89117cf5cb0a598dde16b3a367324bf33935b3": { "jobSha256" : "d8de3e57b0d13e2d80b7cdfcecb38ab1d25a93c96a4c4c8b8cdd7ef9fafa939f" , "uploadStepSha256" : "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "637242fb107401f059d03407fd83726cb00130465f409153ffc4282b14374f77": { "jobSha256" : "a74cdce9c5cfd9065d140eaae4b6348e09f4b03757ebd7629f6538b07ac8f3af" , "uploadStepSha256" : "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "429e3e17090b0cb7d167f67cfb26526b5e57636dbad1b48d87a9c84514dce72a": { "jobSha256" : "1ddc413ff9707e09a6a6f80ed2b41931c136c1ad5ab14357e4a12210712c6963" , "uploadStepSha256" : "e357f75176e5bdd33e2c6ec08173ca612271ba6cf5daddf1b9bebe258dc62141" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "b68dd8be4ecaa8236733ccc9816016931df68a10c01a5a2421bf11a1335bd594": { "jobSha256" : "7aa3e817b8c41adfbdcb62242af4fe3813c3022cf0df3a0b501e4d2b62759cb5" , "uploadStepSha256" : "e357f75176e5bdd33e2c6ec08173ca612271ba6cf5daddf1b9bebe258dc62141" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "585cb4d834fe8214270b9dc9a91aa05eee5d826b4328dd56ea84666c250267a7": { "jobSha256" : "27bb3d3fa2db655b1dcbfb8afdda01a9bb06fbcd232a2b3e938c67c109afe851" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "057ebbb4c00b4c0577e9e0eeeaa906602e2034633cb2287cc8075605a080f2bd": { "jobSha256" : "75de97064dca867b11806de444d42352c4170d9fcebd3322381d641cd166840f" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "3ec6dd2be600984ed7c3b56e63cf900f14cf463334f3cd12b5f75199ac49bdbc": { "jobSha256" : "fefcd3ac4a4a12134a3406a0c1ceecabb95a72646a7e4ee5fedee59614b0bb3e" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "7ef6024df991a2c3297125bb3c21cf3faace03952216ae38425f6618b25fa6cd": { "jobSha256" : "4aed28b7bfe4875c4517a8b290c39fc1c3aa6bc7da401669ced30e1da5c2bf44" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "fd34f14a1f1b4a721dcc15eb7665eb52af828145d88e2d59bce065916d29b318": { "jobSha256" : "4aed28b7bfe4875c4517a8b290c39fc1c3aa6bc7da401669ced30e1da5c2bf44" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "7dd3cd76ec2e5e6979a9f67c5dcac8ef781e53ab0300fc8af08758c53429024a": { "jobSha256" : "ae4a403211dc14de3c0165be60e40729e713203f77348f5b598bf822ecab4fb3" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "b160bb1b8d407ef0a3200d3fbe7aee22144bc395819efb2cd76bbcbf1e131e41": { "jobSha256" : "fdc2589229acad78829afdc282c9dff62e9c281314ee0d0c178924cf7b4820bf" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "a5b497ac5bacd6fe021c9e63f4a4a8c093693b079a06954b928021fb874288a3": { "jobSha256" : "fdc2589229acad78829afdc282c9dff62e9c281314ee0d0c178924cf7b4820bf" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "ebe0b8ecc5fe26a582dbf4f9fe70ebdc1397acdf7567e10cf65ee78b3109066c": { "jobSha256" : "140406e728b1c4b9698d7ea04c7e2a53c1061318f406e919c48ab472422fd1ae" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "9af1919756d82d23bbd9be8ea5c7467015611c98bb552807a5f6f2028f06309b": { "jobSha256" : "b912bbe236083751edbd17852681528e9f7147cb399ed5aea98424b8d4ce3c29" , "uploadStepSha256" : "543a26ee0dec8f84967201f6d04bb0bf9a2e844ccac74381aa5a60c12c1dcbe8" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "0e24834ffb105d5a16c2e0646dc2176a8411a81658e8dc21dcac747918837d02": { "jobSha256" : "d93bb2c4159f36f03722657d0c0b0a09fdd92f840b1c977999cc758422fb3391" , "uploadStepSha256" : "25ca573199c094446693f4d1a801b2fface804d2aba4e146fd652065dd2b69b6" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "8dbeacf84d42216345f266775300160e0952f15d43450b4c8526fc5bb3f5ecf9": { "jobSha256" : "a9119c0d26725249be1534be82871d9a5ba53938038ea823aa4c8a858facf442" , "uploadStepSha256" : "fe327c6dde087fdd1e7adcb4946abf0e1e9880f9db0985931c36192cb0c293f6" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "28ef35cc43453e2e40f04a91c64e51c39b90b4d17953697716f49915453fff1d": { "jobSha256" : "f266f2bdcd2733dd7836bf151aae4caf093743fd37e30cc427f3c9a9a811ce33" , "uploadStepSha256" : "16a1f777e3b4dca778c32c83e4bf127dc42b8967d3cbeb93b1d254868740fff7" , "jobName" : "Agent" , "stepName" : "Upload agent artifacts" },
+    "c8ebe926e780ab2fae202c7bf7f6461c4bd1b6283b4e23dfa6d68f543d543896": { "jobSha256" : "939f4199b4f342a5d01420761a78e7286c7ce7a29c0b31ee25e1a936b6ee3bab" , "uploadStepSha256" : "070f5342fb4e3edea9dbf0ac806f38b2d07551955b2dbbc5194a332b271f9331" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "6718fa1c75d6157647735720ef357ebf64d4b344de4f17b14bf22aeb61cc86ec": { "jobSha256" : "e221c10304e2c935a744c20f8319728e96c16e1abc237ab128f2ea13e422618e" , "uploadStepSha256" : "070f5342fb4e3edea9dbf0ac806f38b2d07551955b2dbbc5194a332b271f9331" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "f0077fa55ee4918554a8a58ade0ec742cbc8558adbd4aa9cb3f5d6d8cde25de8": { "jobSha256" : "ce6513ff7d8223a05e54105d9452258e9d24abdf215b43949c44c8bc3869d34b" , "uploadStepSha256" : "b549afe82e20daa4f9f08d8cf079ea1901df785812d28719e8022810cc65ec4c" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "68e237cd372cc542d2859a2a5ccad1e4991f83de723de107f3ae65146d71b2a2": { "jobSha256" : "5725663cdb22dcf2793801057cba0040e6af6c36a9330af96b1ddb9fff5880c1" , "uploadStepSha256" : "b549afe82e20daa4f9f08d8cf079ea1901df785812d28719e8022810cc65ec4c" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" },
+    "21726a88ec0086db73c0ca062f2f4e72bdea1b81248763c6e1eabcbc96686565": { "jobSha256" : "55d53507044442f3d41c145aa7139c9791a064546807cdb2782923ce66b94cf0" , "uploadStepSha256" : "1def2e64bb5c49ec71f0f27784b0eb598f62e0364e2acb7e632117c76b27b202" , "jobName" : "agent" , "stepName" : "Upload agent artifacts" }
+  },
+  "interpreterSha256": "9fa7d8d93434671a0ae0d05ee3b275420bba437de96d7e6a44f5fdab10cbde58",
+  "sourceReviewSha256": "050e4b0ea92d5d24ae509ef1cdca03e7a7c97cde752444aa72c9839c9d0b594c",
+  "validationExamples": {
+    "targetAttained": {
+      "valid": true,
+      "observations": [
+        {
+          "run": { "id" : 1 , "headSha" : "15f08681299f7f92ccb2ab885ef6b488b6fb3e04" , "attempt" : 1 , "at" : "2026-10-16T12:00:00Z" },
+          "era": "crlf",
+          "cases": [
+            {
+              "kind": "doc",
+              "source": {
+                "checkout": "15f08681299f7f92ccb2ab885ef6b488b6fb3e04",
+                "workflowGitBlob": "3ba470365a1411f92144450639ad956b23ca10f8",
+                "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+                "compiledGitBlob": "f5ed174869492560925dd24a129b76ccfd574927",
+                "jobSha256": "d1791183ee7c67aef8afe61959efe24ab8904317333ee68c9c6845c339f63db0",
+                "runtime": [
+                  { "path" : "actions/setup/js/create_pull_request.cjs" , "gitBlob" : "f2a47731604a202ba4c35e82f6376cd626344e5e" , "sha256" : "cdfd8bc2dca8e499473e9a18a4858a9dbb2186e263b134f924e51379109faae7" },
+                  { "path" : "actions/setup/js/push_signed_commits.cjs" , "gitBlob" : "ed06cbca1cdcf44596e7c8434a6336a1fc5b721e" , "sha256" : "4f19a7174e3cb4f50cf39801a03d3a20674b536cff1bd21df70d93213aca7012" },
+                  { "path" : "actions/setup/js/generate_git_patch.cjs" , "gitBlob" : "01e0d636ca801de98e7a46516d9ae2819a4b3342" , "sha256" : "224188865ae93217e8f0c25095e3265cf14ac9e7d3f03c776576ce8c98122801" },
+                  { "path" : "actions/setup/js/process_safe_outputs.cjs" , "gitBlob" : "63a936fa753211c6ae13e504ae0f94744939a5cb" , "sha256" : "af6bd02e96271a45bcd94667246049c9193bf4d87b79c6eec13cd6f06c38d4f7" }
+                ],
+                "actionGitBlob": "d4aaa59ec1442c317b0168ca3377c2920e55bc17",
+                "hostProfileSha256": "f4b0e792259570f6b857e205bb69bae4f5342b64d9cbb25f1b52bd6e93de25d5"
+              },
+              "payload": {
+                "branch": "smoke-multi-pr-doc-1-1",
+                "runId": 1,
+                "artifactId": 1,
+                "archiveSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "providerDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "producer": {
+                  "jobSha256": "83a7987753da0055779303a83c8f66efd2c390a20124ab29270ad6b4ee44c316",
+                  "uploadStepSha256": "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde",
+                  "jobName": "agent",
+                  "stepName": "Upload agent artifacts",
+                  "job": { "id" : 2 , "name" : "agent" , "run_id" : 1 , "run_attempt" : 1 , "head_sha" : "15f08681299f7f92ccb2ab885ef6b488b6fb3e04" },
+                  "step": { "name" : "Upload agent artifacts" , "number" : 20 , "status" : "completed" , "conclusion" : "success" , "started_at" : "2026-10-16T12:00:40Z" , "completed_at" : "2026-10-16T12:00:42Z" },
+                  "artifactCreatedAt": "2026-10-16T12:00:41Z"
+                },
+                "patchBase64": "RnJvbSBiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQpTdWJqZWN0OiBmaXh0dXJlCgpkaWZmIC0tZ2l0IGEvdG1wLXNtb2tlLW11bHRpLXByLWRvYy0xLTEudHh0IGIvdG1wLXNtb2tlLW11bHRpLXByLWRvYy0xLTEudHh0Cm5ldyBmaWxlIG1vZGUgMTAwNjQ0CmluZGV4IDAwMDAwMDAuLmNmMjczZDcKLS0tIC9kZXYvbnVsbAorKysgYi90bXAtc21va2UtbXVsdGktcHItZG9jLTEtMS50eHQKQEAgLTAsMCArMSw0IEBACitEb2N1bWVudGF0aW9uIHNtb2tlIHRlc3QgZm9yIG11bHRpLVBSIHdvcmtmbG93CitSdW4gSUQ6IDEKK0NyZWF0ZWQgYXQ6IDIwMjYtMTAtMTZUMTI6MDA6MzBaCitQUjogMSBvZiAyCi0tIAoyLjUwLjEK",
+                "patchSha256": "b7f6c753591dc245e0b4ff6327f79ace26243ae0379645c55f0f435a920def0e",
+                "appliedPayloadSha256": "8a63eec183aaad549572d1dfa03924ec629df385cd4d7ef817be5aede1963272",
+                "nativeGitVersion": "git version 2.50.1"
+              },
+              "operation": {
+                "jobId": 1,
+                "step": { "name" : "Process Safe Outputs" , "number" : 11 , "status" : "completed" , "conclusion" : "success" , "started_at" : "2026-10-16T12:01:00Z" , "completed_at" : "2026-10-16T12:02:00Z" },
+                "logSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "lines": [
+                  { "at" : "2026-10-16T12:01:00Z" , "message" : "Base branch for github/gh-aw: main" },
+                  { "at" : "2026-10-16T12:01:01Z" , "message" : "pushSignedCommits: creating remote branch smoke-multi-pr-doc-1-1 at parent OID 9969ac6524ca6ccf66e21a2c28a4a225c3a46375" },
+                  { "at" : "2026-10-16T12:01:02Z" , "message" : "pushSignedCommits: remote branch smoke-multi-pr-doc-1-1 created successfully" },
+                  { "at" : "2026-10-16T12:01:03Z" , "message" : "pushSignedCommits: calling createCommitOnBranch mutation (expectedHeadOid=9969ac6524ca6ccf66e21a2c28a4a225c3a46375)" },
+                  { "at" : "2026-10-16T12:01:04Z" , "message" : "pushSignedCommits: signed commit created: b4ea95e69a9e78f66df869df1a8b0ec2e6a4b1bb" },
+                  { "at" : "2026-10-16T12:01:05Z" , "message" : "Created pull request #1: https://github.com/github/gh-aw/pull/1" }
+                ],
+                "number": 1,
+                "proof": {
+                  "baseBranch": "main",
+                  "lines": [
+                    { "at" : "2026-10-16T12:01:00Z" , "message" : "Base branch for github/gh-aw: main" },
+                    { "at" : "2026-10-16T12:01:01Z" , "message" : "pushSignedCommits: creating remote branch smoke-multi-pr-doc-1-1 at parent OID 9969ac6524ca6ccf66e21a2c28a4a225c3a46375" },
+                    { "at" : "2026-10-16T12:01:02Z" , "message" : "pushSignedCommits: remote branch smoke-multi-pr-doc-1-1 created successfully" },
+                    { "at" : "2026-10-16T12:01:03Z" , "message" : "pushSignedCommits: calling createCommitOnBranch mutation (expectedHeadOid=9969ac6524ca6ccf66e21a2c28a4a225c3a46375)" },
+                    { "at" : "2026-10-16T12:01:04Z" , "message" : "pushSignedCommits: signed commit created: b4ea95e69a9e78f66df869df1a8b0ec2e6a4b1bb" },
+                    { "at" : "2026-10-16T12:01:05Z" , "message" : "Created pull request #1: https://github.com/github/gh-aw/pull/1" }
+                  ],
+                  "branch": "smoke-multi-pr-doc-1-1",
+                  "base": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "branchCreated": true,
+                  "expectedParent": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "head": "b4ea95e69a9e78f66df869df1a8b0ec2e6a4b1bb",
+                  "number": 1,
+                  "at": "2026-10-16T12:01:05Z"
+                }
+              },
+              "target": {
+                "base": {
+                  "id": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "content": "dHJlZSA1M2M3MzQzOGM1ZDZjY2ZmY2FiNjU5NmQzY2Y1NDRhM2ZmMjYwMWU4CmF1dGhvciBGaXh0dXJlIDxmaXh0dXJlQGV4YW1wbGUuaW52YWxpZD4gMTc5MjE1MjAwMCArMDAwMApjb21taXR0ZXIgRml4dHVyZSA8Zml4dHVyZUBleGFtcGxlLmludmFsaWQ+IDE3OTIxNTIwMDAgKzAwMDAKCkZpeHR1cmUK"
+                },
+                "head": {
+                  "id": "b4ea95e69a9e78f66df869df1a8b0ec2e6a4b1bb",
+                  "content": "dHJlZSBiOTE5MmRkODdmMGQ4YTBhMDUyYTIwZDFiYzk3MjRkYWNkYzI5MmUxCnBhcmVudCA5OTY5YWM2NTI0Y2E2Y2NmNjZlMjFhMmMyOGE0YTIyNWMzYTQ2Mzc1CmF1dGhvciBGaXh0dXJlIDxmaXh0dXJlQGV4YW1wbGUuaW52YWxpZD4gMTc5MjE1MjAwMCArMDAwMApjb21taXR0ZXIgRml4dHVyZSA8Zml4dHVyZUBleGFtcGxlLmludmFsaWQ+IDE3OTIxNTIwMDAgKzAwMDAKCkZpeHR1cmUK"
+                },
+                "baseTree": { "id" : "53c73438c5d6ccffcab6596d3cf544a3ff2601e8" , "content" : "MTAwNjQ0IFJFQURNRS5tZACqqqqqqqqqqqqqqqqqqqqqqqqqqg==" },
+                "headTree": { "id" : "b9192dd87f0d8a0a052a20d1bc9724dacdc292e1" , "content" : "MTAwNjQ0IFJFQURNRS5tZACqqqqqqqqqqqqqqqqqqqqqqqqqqjEwMDY0NCB0bXAtc21va2UtbXVsdGktcHItZG9jLTEtMS50eHQAzyc9e6ZiOt1rcHXSNm0z4iNIJmw=" },
+                "blob": { "id" : "cf273d7ba6623add6b7075d2366d33e22348266c" , "content" : "RG9jdW1lbnRhdGlvbiBzbW9rZSB0ZXN0IGZvciBtdWx0aS1QUiB3b3JrZmxvdwpSdW4gSUQ6IDEKQ3JlYXRlZCBhdDogMjAyNi0xMC0xNlQxMjowMDozMFoKUFI6IDEgb2YgMgo=" }
+              }
+            },
+            {
+              "kind": "crlf",
+              "source": {
+                "checkout": "15f08681299f7f92ccb2ab885ef6b488b6fb3e04",
+                "workflowGitBlob": "3ba470365a1411f92144450639ad956b23ca10f8",
+                "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+                "compiledGitBlob": "f5ed174869492560925dd24a129b76ccfd574927",
+                "jobSha256": "d1791183ee7c67aef8afe61959efe24ab8904317333ee68c9c6845c339f63db0",
+                "runtime": [
+                  { "path" : "actions/setup/js/create_pull_request.cjs" , "gitBlob" : "f2a47731604a202ba4c35e82f6376cd626344e5e" , "sha256" : "cdfd8bc2dca8e499473e9a18a4858a9dbb2186e263b134f924e51379109faae7" },
+                  { "path" : "actions/setup/js/push_signed_commits.cjs" , "gitBlob" : "ed06cbca1cdcf44596e7c8434a6336a1fc5b721e" , "sha256" : "4f19a7174e3cb4f50cf39801a03d3a20674b536cff1bd21df70d93213aca7012" },
+                  { "path" : "actions/setup/js/generate_git_patch.cjs" , "gitBlob" : "01e0d636ca801de98e7a46516d9ae2819a4b3342" , "sha256" : "224188865ae93217e8f0c25095e3265cf14ac9e7d3f03c776576ce8c98122801" },
+                  { "path" : "actions/setup/js/process_safe_outputs.cjs" , "gitBlob" : "63a936fa753211c6ae13e504ae0f94744939a5cb" , "sha256" : "af6bd02e96271a45bcd94667246049c9193bf4d87b79c6eec13cd6f06c38d4f7" }
+                ],
+                "actionGitBlob": "d4aaa59ec1442c317b0168ca3377c2920e55bc17",
+                "hostProfileSha256": "f4b0e792259570f6b857e205bb69bae4f5342b64d9cbb25f1b52bd6e93de25d5"
+              },
+              "payload": {
+                "branch": "smoke-multi-pr-crlf-1-2",
+                "runId": 1,
+                "artifactId": 2,
+                "archiveSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "providerDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "producer": {
+                  "jobSha256": "83a7987753da0055779303a83c8f66efd2c390a20124ab29270ad6b4ee44c316",
+                  "uploadStepSha256": "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde",
+                  "jobName": "agent",
+                  "stepName": "Upload agent artifacts",
+                  "job": { "id" : 2 , "name" : "agent" , "run_id" : 1 , "run_attempt" : 1 , "head_sha" : "15f08681299f7f92ccb2ab885ef6b488b6fb3e04" },
+                  "step": { "name" : "Upload agent artifacts" , "number" : 20 , "status" : "completed" , "conclusion" : "success" , "started_at" : "2026-10-16T12:00:40Z" , "completed_at" : "2026-10-16T12:00:42Z" },
+                  "artifactCreatedAt": "2026-10-16T12:00:41Z"
+                },
+                "patchBase64": "RnJvbSBiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQpTdWJqZWN0OiBmaXh0dXJlCgpkaWZmIC0tZ2l0IGEvdG1wLXNtb2tlLW11bHRpLXByLWNybGYtMS0yLnR4dCBiL3RtcC1zbW9rZS1tdWx0aS1wci1jcmxmLTEtMi50eHQKbmV3IGZpbGUgbW9kZSAxMDA2NDQKaW5kZXggMDAwMDAwMC4uMDhhMmUxZQotLS0gL2Rldi9udWxsCisrKyBiL3RtcC1zbW9rZS1tdWx0aS1wci1jcmxmLTEtMi50eHQKQEAgLTAsMCArMSw1IEBACitDUkxGIHNtb2tlIHRlc3QgZm9yIG11bHRpLVBSIHdvcmtmbG93DQorUnVuIElEOiAxDQorQ3JlYXRlZCBhdDogMjAyNi0xMC0xNlQxMjowMDozMFoNCitQUjogMiBvZiAyDQorTGluZSBlbmRpbmc6IENSTEYgKFdpbmRvd3Mtc3R5bGUgXHJcbikNCi0tIAoyLjUwLjEK",
+                "patchSha256": "282f29a42d421cd562028270310e9fef082c4d3d5089551aae267207f74625d9",
+                "appliedPayloadSha256": "3d0171694b19724439b1025cc662206d875b7bf63744b01b2fce3c3f2e4ca338",
+                "nativeGitVersion": "git version 2.50.1"
+              },
+              "operation": {
+                "jobId": 1,
+                "step": { "name" : "Process Safe Outputs" , "number" : 11 , "status" : "completed" , "conclusion" : "success" , "started_at" : "2026-10-16T12:01:00Z" , "completed_at" : "2026-10-16T12:02:00Z" },
+                "logSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "lines": [
+                  { "at" : "2026-10-16T12:01:00Z" , "message" : "Base branch for github/gh-aw: main" },
+                  { "at" : "2026-10-16T12:01:01Z" , "message" : "pushSignedCommits: creating remote branch smoke-multi-pr-crlf-1-2 at parent OID 9969ac6524ca6ccf66e21a2c28a4a225c3a46375" },
+                  { "at" : "2026-10-16T12:01:02Z" , "message" : "pushSignedCommits: remote branch smoke-multi-pr-crlf-1-2 created successfully" },
+                  { "at" : "2026-10-16T12:01:03Z" , "message" : "pushSignedCommits: calling createCommitOnBranch mutation (expectedHeadOid=9969ac6524ca6ccf66e21a2c28a4a225c3a46375)" },
+                  { "at" : "2026-10-16T12:01:04Z" , "message" : "pushSignedCommits: signed commit created: 71d3d02317613671bf7aeb41d2f811f32d86b0fe" },
+                  { "at" : "2026-10-16T12:01:05Z" , "message" : "Created pull request #2: https://github.com/github/gh-aw/pull/2" }
+                ],
+                "number": 2,
+                "proof": {
+                  "baseBranch": "main",
+                  "lines": [
+                    { "at" : "2026-10-16T12:01:00Z" , "message" : "Base branch for github/gh-aw: main" },
+                    { "at" : "2026-10-16T12:01:01Z" , "message" : "pushSignedCommits: creating remote branch smoke-multi-pr-crlf-1-2 at parent OID 9969ac6524ca6ccf66e21a2c28a4a225c3a46375" },
+                    { "at" : "2026-10-16T12:01:02Z" , "message" : "pushSignedCommits: remote branch smoke-multi-pr-crlf-1-2 created successfully" },
+                    { "at" : "2026-10-16T12:01:03Z" , "message" : "pushSignedCommits: calling createCommitOnBranch mutation (expectedHeadOid=9969ac6524ca6ccf66e21a2c28a4a225c3a46375)" },
+                    { "at" : "2026-10-16T12:01:04Z" , "message" : "pushSignedCommits: signed commit created: 71d3d02317613671bf7aeb41d2f811f32d86b0fe" },
+                    { "at" : "2026-10-16T12:01:05Z" , "message" : "Created pull request #2: https://github.com/github/gh-aw/pull/2" }
+                  ],
+                  "branch": "smoke-multi-pr-crlf-1-2",
+                  "base": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "branchCreated": true,
+                  "expectedParent": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "head": "71d3d02317613671bf7aeb41d2f811f32d86b0fe",
+                  "number": 2,
+                  "at": "2026-10-16T12:01:05Z"
+                }
+              },
+              "target": {
+                "base": {
+                  "id": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "content": "dHJlZSA1M2M3MzQzOGM1ZDZjY2ZmY2FiNjU5NmQzY2Y1NDRhM2ZmMjYwMWU4CmF1dGhvciBGaXh0dXJlIDxmaXh0dXJlQGV4YW1wbGUuaW52YWxpZD4gMTc5MjE1MjAwMCArMDAwMApjb21taXR0ZXIgRml4dHVyZSA8Zml4dHVyZUBleGFtcGxlLmludmFsaWQ+IDE3OTIxNTIwMDAgKzAwMDAKCkZpeHR1cmUK"
+                },
+                "head": {
+                  "id": "71d3d02317613671bf7aeb41d2f811f32d86b0fe",
+                  "content": "dHJlZSA0YmI1OTU3OGQ3NmIzNWE2ZTQxOGQ0YjEyZWEzMGYyNzg4MGZmYjg5CnBhcmVudCA5OTY5YWM2NTI0Y2E2Y2NmNjZlMjFhMmMyOGE0YTIyNWMzYTQ2Mzc1CmF1dGhvciBGaXh0dXJlIDxmaXh0dXJlQGV4YW1wbGUuaW52YWxpZD4gMTc5MjE1MjAwMCArMDAwMApjb21taXR0ZXIgRml4dHVyZSA8Zml4dHVyZUBleGFtcGxlLmludmFsaWQ+IDE3OTIxNTIwMDAgKzAwMDAKCkZpeHR1cmUK"
+                },
+                "baseTree": { "id" : "53c73438c5d6ccffcab6596d3cf544a3ff2601e8" , "content" : "MTAwNjQ0IFJFQURNRS5tZACqqqqqqqqqqqqqqqqqqqqqqqqqqg==" },
+                "headTree": { "id" : "4bb59578d76b35a6e418d4b12ea30f27880ffb89" , "content" : "MTAwNjQ0IFJFQURNRS5tZACqqqqqqqqqqqqqqqqqqqqqqqqqqjEwMDY0NCB0bXAtc21va2UtbXVsdGktcHItY3JsZi0xLTIudHh0AAii4eQ8txMlMQSI3k7eSTHKinYJ" },
+                "blob": {
+                  "id": "08a2e1e43cb71325310488de4ede4931ca8a7609",
+                  "content": "Q1JMRiBzbW9rZSB0ZXN0IGZvciBtdWx0aS1QUiB3b3JrZmxvdw0KUnVuIElEOiAxDQpDcmVhdGVkIGF0OiAyMDI2LTEwLTE2VDEyOjAwOjMwWg0KUFI6IDIgb2YgMg0KTGluZSBlbmRpbmc6IENSTEYgKFdpbmRvd3Mtc3R5bGUgXHJcbikNCg=="
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "targetMissed": {
+      "valid": true,
+      "observations": [
+        {
+          "run": { "id" : 1 , "headSha" : "15f08681299f7f92ccb2ab885ef6b488b6fb3e04" , "attempt" : 1 , "at" : "2026-10-16T12:00:00Z" },
+          "era": "crlf",
+          "cases": [
+            {
+              "kind": "doc",
+              "source": {
+                "checkout": "15f08681299f7f92ccb2ab885ef6b488b6fb3e04",
+                "workflowGitBlob": "3ba470365a1411f92144450639ad956b23ca10f8",
+                "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+                "compiledGitBlob": "f5ed174869492560925dd24a129b76ccfd574927",
+                "jobSha256": "d1791183ee7c67aef8afe61959efe24ab8904317333ee68c9c6845c339f63db0",
+                "runtime": [
+                  { "path" : "actions/setup/js/create_pull_request.cjs" , "gitBlob" : "f2a47731604a202ba4c35e82f6376cd626344e5e" , "sha256" : "cdfd8bc2dca8e499473e9a18a4858a9dbb2186e263b134f924e51379109faae7" },
+                  { "path" : "actions/setup/js/push_signed_commits.cjs" , "gitBlob" : "ed06cbca1cdcf44596e7c8434a6336a1fc5b721e" , "sha256" : "4f19a7174e3cb4f50cf39801a03d3a20674b536cff1bd21df70d93213aca7012" },
+                  { "path" : "actions/setup/js/generate_git_patch.cjs" , "gitBlob" : "01e0d636ca801de98e7a46516d9ae2819a4b3342" , "sha256" : "224188865ae93217e8f0c25095e3265cf14ac9e7d3f03c776576ce8c98122801" },
+                  { "path" : "actions/setup/js/process_safe_outputs.cjs" , "gitBlob" : "63a936fa753211c6ae13e504ae0f94744939a5cb" , "sha256" : "af6bd02e96271a45bcd94667246049c9193bf4d87b79c6eec13cd6f06c38d4f7" }
+                ],
+                "actionGitBlob": "d4aaa59ec1442c317b0168ca3377c2920e55bc17",
+                "hostProfileSha256": "f4b0e792259570f6b857e205bb69bae4f5342b64d9cbb25f1b52bd6e93de25d5"
+              },
+              "payload": {
+                "branch": "smoke-multi-pr-doc-1-1",
+                "runId": 1,
+                "artifactId": 1,
+                "archiveSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "providerDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "producer": {
+                  "jobSha256": "83a7987753da0055779303a83c8f66efd2c390a20124ab29270ad6b4ee44c316",
+                  "uploadStepSha256": "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde",
+                  "jobName": "agent",
+                  "stepName": "Upload agent artifacts",
+                  "job": { "id" : 2 , "name" : "agent" , "run_id" : 1 , "run_attempt" : 1 , "head_sha" : "15f08681299f7f92ccb2ab885ef6b488b6fb3e04" },
+                  "step": { "name" : "Upload agent artifacts" , "number" : 20 , "status" : "completed" , "conclusion" : "success" , "started_at" : "2026-10-16T12:00:40Z" , "completed_at" : "2026-10-16T12:00:42Z" },
+                  "artifactCreatedAt": "2026-10-16T12:00:41Z"
+                },
+                "patchBase64": "RnJvbSBiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQpTdWJqZWN0OiBmaXh0dXJlCgpkaWZmIC0tZ2l0IGEvdG1wLXNtb2tlLW11bHRpLXByLWRvYy0xLTEudHh0IGIvdG1wLXNtb2tlLW11bHRpLXByLWRvYy0xLTEudHh0Cm5ldyBmaWxlIG1vZGUgMTAwNjQ0CmluZGV4IDAwMDAwMDAuLmNmMjczZDcKLS0tIC9kZXYvbnVsbAorKysgYi90bXAtc21va2UtbXVsdGktcHItZG9jLTEtMS50eHQKQEAgLTAsMCArMSw0IEBACitEb2N1bWVudGF0aW9uIHNtb2tlIHRlc3QgZm9yIG11bHRpLVBSIHdvcmtmbG93CitSdW4gSUQ6IDEKK0NyZWF0ZWQgYXQ6IDIwMjYtMTAtMTZUMTI6MDA6MzBaCitQUjogMSBvZiAyCi0tIAoyLjUwLjEK",
+                "patchSha256": "b7f6c753591dc245e0b4ff6327f79ace26243ae0379645c55f0f435a920def0e",
+                "appliedPayloadSha256": "8a63eec183aaad549572d1dfa03924ec629df385cd4d7ef817be5aede1963272",
+                "nativeGitVersion": "git version 2.50.1"
+              },
+              "operation": {
+                "jobId": 1,
+                "step": { "name" : "Process Safe Outputs" , "number" : 11 , "status" : "completed" , "conclusion" : "success" , "started_at" : "2026-10-16T12:01:00Z" , "completed_at" : "2026-10-16T12:02:00Z" },
+                "logSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "lines": [
+                  { "at" : "2026-10-16T12:01:00Z" , "message" : "Base branch for github/gh-aw: main" },
+                  { "at" : "2026-10-16T12:01:01Z" , "message" : "pushSignedCommits: creating remote branch smoke-multi-pr-doc-1-1 at parent OID 9969ac6524ca6ccf66e21a2c28a4a225c3a46375" },
+                  { "at" : "2026-10-16T12:01:02Z" , "message" : "pushSignedCommits: remote branch smoke-multi-pr-doc-1-1 created successfully" },
+                  { "at" : "2026-10-16T12:01:03Z" , "message" : "pushSignedCommits: calling createCommitOnBranch mutation (expectedHeadOid=9969ac6524ca6ccf66e21a2c28a4a225c3a46375)" },
+                  { "at" : "2026-10-16T12:01:04Z" , "message" : "pushSignedCommits: signed commit created: b4ea95e69a9e78f66df869df1a8b0ec2e6a4b1bb" },
+                  { "at" : "2026-10-16T12:01:05Z" , "message" : "Created pull request #1: https://github.com/github/gh-aw/pull/1" }
+                ],
+                "number": 1,
+                "proof": {
+                  "baseBranch": "main",
+                  "lines": [
+                    { "at" : "2026-10-16T12:01:00Z" , "message" : "Base branch for github/gh-aw: main" },
+                    { "at" : "2026-10-16T12:01:01Z" , "message" : "pushSignedCommits: creating remote branch smoke-multi-pr-doc-1-1 at parent OID 9969ac6524ca6ccf66e21a2c28a4a225c3a46375" },
+                    { "at" : "2026-10-16T12:01:02Z" , "message" : "pushSignedCommits: remote branch smoke-multi-pr-doc-1-1 created successfully" },
+                    { "at" : "2026-10-16T12:01:03Z" , "message" : "pushSignedCommits: calling createCommitOnBranch mutation (expectedHeadOid=9969ac6524ca6ccf66e21a2c28a4a225c3a46375)" },
+                    { "at" : "2026-10-16T12:01:04Z" , "message" : "pushSignedCommits: signed commit created: b4ea95e69a9e78f66df869df1a8b0ec2e6a4b1bb" },
+                    { "at" : "2026-10-16T12:01:05Z" , "message" : "Created pull request #1: https://github.com/github/gh-aw/pull/1" }
+                  ],
+                  "branch": "smoke-multi-pr-doc-1-1",
+                  "base": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "branchCreated": true,
+                  "expectedParent": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "head": "b4ea95e69a9e78f66df869df1a8b0ec2e6a4b1bb",
+                  "number": 1,
+                  "at": "2026-10-16T12:01:05Z"
+                }
+              }
+            },
+            {
+              "kind": "crlf",
+              "source": {
+                "checkout": "15f08681299f7f92ccb2ab885ef6b488b6fb3e04",
+                "workflowGitBlob": "3ba470365a1411f92144450639ad956b23ca10f8",
+                "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+                "compiledGitBlob": "f5ed174869492560925dd24a129b76ccfd574927",
+                "jobSha256": "d1791183ee7c67aef8afe61959efe24ab8904317333ee68c9c6845c339f63db0",
+                "runtime": [
+                  { "path" : "actions/setup/js/create_pull_request.cjs" , "gitBlob" : "f2a47731604a202ba4c35e82f6376cd626344e5e" , "sha256" : "cdfd8bc2dca8e499473e9a18a4858a9dbb2186e263b134f924e51379109faae7" },
+                  { "path" : "actions/setup/js/push_signed_commits.cjs" , "gitBlob" : "ed06cbca1cdcf44596e7c8434a6336a1fc5b721e" , "sha256" : "4f19a7174e3cb4f50cf39801a03d3a20674b536cff1bd21df70d93213aca7012" },
+                  { "path" : "actions/setup/js/generate_git_patch.cjs" , "gitBlob" : "01e0d636ca801de98e7a46516d9ae2819a4b3342" , "sha256" : "224188865ae93217e8f0c25095e3265cf14ac9e7d3f03c776576ce8c98122801" },
+                  { "path" : "actions/setup/js/process_safe_outputs.cjs" , "gitBlob" : "63a936fa753211c6ae13e504ae0f94744939a5cb" , "sha256" : "af6bd02e96271a45bcd94667246049c9193bf4d87b79c6eec13cd6f06c38d4f7" }
+                ],
+                "actionGitBlob": "d4aaa59ec1442c317b0168ca3377c2920e55bc17",
+                "hostProfileSha256": "f4b0e792259570f6b857e205bb69bae4f5342b64d9cbb25f1b52bd6e93de25d5"
+              },
+              "payload": {
+                "branch": "smoke-multi-pr-crlf-1-2",
+                "runId": 1,
+                "artifactId": 2,
+                "archiveSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "providerDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "producer": {
+                  "jobSha256": "83a7987753da0055779303a83c8f66efd2c390a20124ab29270ad6b4ee44c316",
+                  "uploadStepSha256": "bcb0b0614a53ad1aad54c9dc4c013a88ad73990a4d1cc82912d2060a39376dde",
+                  "jobName": "agent",
+                  "stepName": "Upload agent artifacts",
+                  "job": { "id" : 2 , "name" : "agent" , "run_id" : 1 , "run_attempt" : 1 , "head_sha" : "15f08681299f7f92ccb2ab885ef6b488b6fb3e04" },
+                  "step": { "name" : "Upload agent artifacts" , "number" : 20 , "status" : "completed" , "conclusion" : "success" , "started_at" : "2026-10-16T12:00:40Z" , "completed_at" : "2026-10-16T12:00:42Z" },
+                  "artifactCreatedAt": "2026-10-16T12:00:41Z"
+                },
+                "patchBase64": "RnJvbSBiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQpTdWJqZWN0OiBmaXh0dXJlCgpkaWZmIC0tZ2l0IGEvdG1wLXNtb2tlLW11bHRpLXByLWNybGYtMS0yLnR4dCBiL3RtcC1zbW9rZS1tdWx0aS1wci1jcmxmLTEtMi50eHQKbmV3IGZpbGUgbW9kZSAxMDA2NDQKaW5kZXggMDAwMDAwMC4uMDhhMmUxZQotLS0gL2Rldi9udWxsCisrKyBiL3RtcC1zbW9rZS1tdWx0aS1wci1jcmxmLTEtMi50eHQKQEAgLTAsMCArMSw1IEBACitDUkxGIHNtb2tlIHRlc3QgZm9yIG11bHRpLVBSIHdvcmtmbG93CitSdW4gSUQ6IDEKK0NyZWF0ZWQgYXQ6IDIwMjYtMTAtMTZUMTI6MDA6MzBaCitQUjogMiBvZiAyCitMaW5lIGVuZGluZzogQ1JMRiAoV2luZG93cy1zdHlsZSBcclxuKQotLSAKMi41MC4xCg==",
+                "patchSha256": "fa6e271e60eb5b2928da0a98d975a580b9c20fbb5a9d89a1ffa96ae16d35f445",
+                "appliedPayloadSha256": "8ff932caffbdcef9ea74b516f06e85de6f8c72ddda500380bc0d0a4706804d04",
+                "nativeGitVersion": "git version 2.50.1"
+              },
+              "operation": {
+                "jobId": 1,
+                "step": { "name" : "Process Safe Outputs" , "number" : 11 , "status" : "completed" , "conclusion" : "success" , "started_at" : "2026-10-16T12:01:00Z" , "completed_at" : "2026-10-16T12:02:00Z" },
+                "logSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "lines": [
+                  { "at" : "2026-10-16T12:01:00Z" , "message" : "Base branch for github/gh-aw: main" },
+                  { "at" : "2026-10-16T12:01:01Z" , "message" : "pushSignedCommits: creating remote branch smoke-multi-pr-crlf-1-2 at parent OID 9969ac6524ca6ccf66e21a2c28a4a225c3a46375" },
+                  { "at" : "2026-10-16T12:01:02Z" , "message" : "pushSignedCommits: remote branch smoke-multi-pr-crlf-1-2 created successfully" },
+                  { "at" : "2026-10-16T12:01:03Z" , "message" : "pushSignedCommits: calling createCommitOnBranch mutation (expectedHeadOid=9969ac6524ca6ccf66e21a2c28a4a225c3a46375)" },
+                  { "at" : "2026-10-16T12:01:04Z" , "message" : "pushSignedCommits: signed commit created: 71d3d02317613671bf7aeb41d2f811f32d86b0fe" },
+                  { "at" : "2026-10-16T12:01:05Z" , "message" : "Created pull request #2: https://github.com/github/gh-aw/pull/2" }
+                ],
+                "number": 2,
+                "proof": {
+                  "baseBranch": "main",
+                  "lines": [
+                    { "at" : "2026-10-16T12:01:00Z" , "message" : "Base branch for github/gh-aw: main" },
+                    { "at" : "2026-10-16T12:01:01Z" , "message" : "pushSignedCommits: creating remote branch smoke-multi-pr-crlf-1-2 at parent OID 9969ac6524ca6ccf66e21a2c28a4a225c3a46375" },
+                    { "at" : "2026-10-16T12:01:02Z" , "message" : "pushSignedCommits: remote branch smoke-multi-pr-crlf-1-2 created successfully" },
+                    { "at" : "2026-10-16T12:01:03Z" , "message" : "pushSignedCommits: calling createCommitOnBranch mutation (expectedHeadOid=9969ac6524ca6ccf66e21a2c28a4a225c3a46375)" },
+                    { "at" : "2026-10-16T12:01:04Z" , "message" : "pushSignedCommits: signed commit created: 71d3d02317613671bf7aeb41d2f811f32d86b0fe" },
+                    { "at" : "2026-10-16T12:01:05Z" , "message" : "Created pull request #2: https://github.com/github/gh-aw/pull/2" }
+                  ],
+                  "branch": "smoke-multi-pr-crlf-1-2",
+                  "base": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "branchCreated": true,
+                  "expectedParent": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "head": "71d3d02317613671bf7aeb41d2f811f32d86b0fe",
+                  "number": 2,
+                  "at": "2026-10-16T12:01:05Z"
+                }
+              },
+              "target": {
+                "base": {
+                  "id": "9969ac6524ca6ccf66e21a2c28a4a225c3a46375",
+                  "content": "dHJlZSA1M2M3MzQzOGM1ZDZjY2ZmY2FiNjU5NmQzY2Y1NDRhM2ZmMjYwMWU4CmF1dGhvciBGaXh0dXJlIDxmaXh0dXJlQGV4YW1wbGUuaW52YWxpZD4gMTc5MjE1MjAwMCArMDAwMApjb21taXR0ZXIgRml4dHVyZSA8Zml4dHVyZUBleGFtcGxlLmludmFsaWQ+IDE3OTIxNTIwMDAgKzAwMDAKCkZpeHR1cmUK"
+                },
+                "head": {
+                  "id": "71d3d02317613671bf7aeb41d2f811f32d86b0fe",
+                  "content": "dHJlZSA0YmI1OTU3OGQ3NmIzNWE2ZTQxOGQ0YjEyZWEzMGYyNzg4MGZmYjg5CnBhcmVudCA5OTY5YWM2NTI0Y2E2Y2NmNjZlMjFhMmMyOGE0YTIyNWMzYTQ2Mzc1CmF1dGhvciBGaXh0dXJlIDxmaXh0dXJlQGV4YW1wbGUuaW52YWxpZD4gMTc5MjE1MjAwMCArMDAwMApjb21taXR0ZXIgRml4dHVyZSA8Zml4dHVyZUBleGFtcGxlLmludmFsaWQ+IDE3OTIxNTIwMDAgKzAwMDAKCkZpeHR1cmUK"
+                },
+                "baseTree": { "id" : "53c73438c5d6ccffcab6596d3cf544a3ff2601e8" , "content" : "MTAwNjQ0IFJFQURNRS5tZACqqqqqqqqqqqqqqqqqqqqqqqqqqg==" },
+                "headTree": { "id" : "4bb59578d76b35a6e418d4b12ea30f27880ffb89" , "content" : "MTAwNjQ0IFJFQURNRS5tZACqqqqqqqqqqqqqqqqqqqqqqqqqqjEwMDY0NCB0bXAtc21va2UtbXVsdGktcHItY3JsZi0xLTIudHh0AAii4eQ8txMlMQSI3k7eSTHKinYJ" },
+                "blob": {
+                  "id": "08a2e1e43cb71325310488de4ede4931ca8a7609",
+                  "content": "Q1JMRiBzbW9rZSB0ZXN0IGZvciBtdWx0aS1QUiB3b3JrZmxvdw0KUnVuIElEOiAxDQpDcmVhdGVkIGF0OiAyMDI2LTEwLTE2VDEyOjAwOjMwWg0KUFI6IDIgb2YgMg0KTGluZSBlbmRpbmc6IENSTEYgKFdpbmRvd3Mtc3R5bGUgXHJcbikNCg=="
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "missing": { "valid" : false },
+    "malformed": { "valid" : true , "observations" : "not-an-array" }
+  }
+});

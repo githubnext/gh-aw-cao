@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-aider",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "complete": true,
+  "producer": {
+    "path": "scripts/collect-smoke-native-evidence.mjs",
+    "sha256": "fc7786ea2f631e524879f840a818c1084eed92d9a9bdaaa54f29f2cab16a9334"
+  },
+  "contractSha256": "c62028e6d5c0a2a32ce3cd7bc872e4fef339db3490549b3ad67376b609076560",
+  "inventoryRuns": 517,
+  "observations": 547,
+  "partitions": [
+    {
+      "file": "smoke-aider-observations-001.json.gz",
+      "sha256": "de5d05a895fddae8082045ffca20739c9797d9ce5de7f77b7c2953b6379fbcdb",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-002.json.gz",
+      "sha256": "8b1cfbf6a362315604a4b4d9c91a18857c4b4cf1f8ad5024ac26653f0cebe9d6",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-003.json.gz",
+      "sha256": "e98ea65033eac7731b70e58a6b918bc7172fe7c72f43d27518cc81862b740168",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-004.json.gz",
+      "sha256": "81b774124cdbabc117f5574dbf570024f645a4cdb293f84e743dbcf730740d88",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-005.json.gz",
+      "sha256": "bb8f542dff4cbc9b0db6b620b7beef9dc4173343d293740fb50c6c212a70b88a",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-006.json.gz",
+      "sha256": "322798602e149b7279be886da062f97ee81930f5dec0e2a4d1e71ead9b0cd531",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-007.json.gz",
+      "sha256": "929dd2b30df39772ff3bc174ec4fc350f6dc3891c4890a63a7d8ba92b51661e6",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-008.json.gz",
+      "sha256": "b5dc865bd90ff720acd45dbcb5c990e7e09309e79f970e585fdbc7dc75b142db",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-009.json.gz",
+      "sha256": "428c64168fe2ab26d56a1a0547840b19b54178459dfd271fc7dd4e6fd6f87274",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-010.json.gz",
+      "sha256": "ef72806044f310a5784a388a74bffa29ffb1db30b5d2b6e1e66d9ec00ecffc3d",
+      "rows": 50
+    },
+    {
+      "file": "smoke-aider-observations-011.json.gz",
+      "sha256": "d04c5561f5fbe217a6ca214c510c60984c881136b1ab0386a814bda313c66600",
+      "rows": 47
+    }
+  ],
+  "outputHistory": {
+    "index": "../../gh-aw-workflows/evidence/history.json.gz",
+    "indexSha256": "9df26d055118ce577189c011705636e8fc634ba8eb42fd3fd3c3bc4e79af3929",
+    "totalEntities": 58048,
+    "candidates": 33,
+    "partitions": [
+      {
+        "file": "smoke-aider-output-candidates-001.json.gz",
+        "sha256": "c7dd170a656ef56300bc2540af26145de102ee0551eca8140981ce8c9b751c9d",
+        "rows": 33
+      }
+    ],
+    "candidateRunGaps": [],
+    "limitation": "Issue/PR bodies are editable discovery references. Their PASS claims and publishing/closure are not native behavioral proof."
+  },
+  "acquisition": {
+    "runInventory": "All branch names, every retained attempt, created within true adoption and frozen cutoff.",
+    "trust": "Immutable execution lock and actions tree must independently match frozen first-parent mainline history; exact frozen checker/environment hashes required. Branch name alone neither grants nor denies evidence.",
+    "limitations": [
+      "Actions API inventories cannot reconstruct deleted runs or expired logs/artifacts.",
+      "Historical editions without the exact approved host checker remain missing, not behavioral failures.",
+      "No upstream write, dispatch, deployment or fabricated test evidence was used."
+    ]
+  }
+}

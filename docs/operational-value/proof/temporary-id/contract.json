@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 3,
+  "workflowId": "smoke-temporary-id",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "24368e226f6cc0c5ddbf45d8c35a6a500ba3a94d",
+  "until": "2026-10-18T15:00:12Z",
+  "goal": "For temporary-ID smoke opportunities, resolve the six directed issue-body references into the correct real issues and establish the two requested parent-child relationships, independently joined to protected safe-output receipts.",
+  "acceptance": "A protected initial-attempt host receipt maps aw_test01, aw_test02 and aw_test03 to distinct stable GitHub issues; independent cutoff-valid bodies prove the six exact directed references, complete historical graph facts prove both children belong to that parent, and a protected comment receipt proves targeting of the mapped parent. Each known resolved reference counts independently of other missing dimensions.",
+  "adoption": {
+    "commit": "4ed2c95a341c3ea6cd872eb56de39358f18ac9e5",
+    "adoptedAt": "2026-02-13T15:36:25Z",
+    "baselineCommit": "61a00a615413ca2828ecce73b41857cccf9a9628",
+    "baselineAt": "2026-02-13T15:30:18Z"
+  },
+  "filters": [
+    "Only github/gh-aw, exact immutable reviewed workflow profiles and a protected safe_outputs host execution bind the mapping; editable body markers are discovery only.",
+    "Initial attempt only; reruns remain inventoried but do not inflate delivered references.",
+    "The six body slots are parent-to-child1, parent-to-child2, child1-to-parent, child1-to-child2, child2-to-parent and child2-to-child1.",
+    "Two native graph links are measured separately; a Related to footer or fallback comment is not a parent relationship.",
+    "Mutable bodies observed after cutoff require a platform last-edit/update timestamp no later than cutoff; otherwise their historical state is unknown.",
+    "Current graph edges require exhaustive historical add/remove facts to reconstruct the cutoff; current graph state alone is not backdated.",
+    "No proof from successful runs, jobs, agent summaries, evals, unresolved placeholders, issue existence, edited footer IDs or group-parent issues.",
+    "Empty populations and all-unknown populations score null, never zero. A known incorrect slot scores zero only for that assessed dimension.",
+    "3-8 versus original 4-8 format, agent engine, telemetry and report-format changes do not alter the fixed aw_test01/02/03 goal. Other source changes require review.",
+    "The source describes the third ID as eight characters, but all three actual fixtures have six suffix characters. No broad length-coverage claim is made."
+  ],
+  "collection": "Acquire the complete cutoff-bounded Actions inventory and every attempt, reuse the complete shared output-history discovery partitions, inspect all matching issue identities, acquire protected host job/log/artifact receipts, pin immutable workflow/runtime source, and independently project GitHub bodies and parent/sub-issue histories. Offline scoring never calls GitHub.",
+  "antecedent": {
+    "outcome": "Correct cross-references and parent-child issue graphs can exist without this workflow.",
+    "result": "pre-existing-but-not-reconstructable",
+    "reason": "No retained pre-adoption protected temporary-ID mapping and matching historical bodies/graph receipts are supplied. The workflow was actually added against its first parent, rather than inferred from a shallow boundary. No pre-adoption baseline or zero is invented."
+  },
+  "metricDisposition": {
+    "correctBodyReferences": "primary direct native quantity",
+    "correctParentChildEdges": "diagnostic direct native quantity",
+    "fullTripletWithComment": "diagnostic full acceptance",
+    "allIssuesCreatedEquals3": "identity/completeness gate, not outcome",
+    "temporaryIdResolutionRateAtLeast0.95": "experiment guardrail only; the exact six slots must have correct targets",
+    "aicAndDuration": "not measured; no matching independently retained cost exposure",
+    "agentEvalAndSummary": "rejected self-assertion proxies",
+    "groupParentAndIssueClosure": "normal lifecycle, not acceptance or rejection of temporary-ID behavior",
+    "lengthCoverage": "not demonstrated by these fixed same-length fixture IDs"
+  },
+  "signal": "Native resolved-reference counts only. No keep bar, trend, causation or cost claim without complete comparable periods."
+}

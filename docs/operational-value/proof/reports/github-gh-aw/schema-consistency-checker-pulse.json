@@ -1,0 +1,807 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "schema-consistency-checker",
+  "workflowName": "Schema Consistency Checker",
+  "sourcePath": ".github/workflows/schema-consistency-checker.md",
+  "valueFunctionSha256": "2600c83a845328ec196e29ef740e62f2acc4367626f85a10618cb4b2e1d2a4ad",
+  "window": {
+    "startAt": "2025-10-23T02:57:38Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2025-11-01T00:00:00.000Z",
+      "label": "Nov 2025"
+    },
+    {
+      "at": "2025-12-01T00:00:00.000Z",
+      "label": "Dec 2025"
+    },
+    {
+      "at": "2026-01-01T00:00:00.000Z",
+      "label": "Jan 2026"
+    },
+    {
+      "at": "2026-02-01T00:00:00.000Z",
+      "label": "Feb 2026"
+    },
+    {
+      "at": "2026-03-01T00:00:00.000Z",
+      "label": "Mar 2026"
+    },
+    {
+      "at": "2026-04-01T00:00:00.000Z",
+      "label": "Apr 2026"
+    },
+    {
+      "at": "2026-05-01T00:00:00.000Z",
+      "label": "May 2026"
+    },
+    {
+      "at": "2026-06-01T00:00:00.000Z",
+      "label": "Jun 2026"
+    },
+    {
+      "at": "2026-07-01T00:00:00.000Z",
+      "label": "Jul 2026"
+    },
+    {
+      "at": "2026-08-01T00:00:00.000Z",
+      "label": "Aug 2026"
+    },
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "unresolved-local-references",
+  "signal": {
+    "status": "steady",
+    "attention": "not-indicated",
+    "current": 0,
+    "previous": 0,
+    "directionAwareGain": 0,
+    "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+    "opportunities": 314,
+    "metricId": "unresolved-local-references",
+    "basis": "repository-outcome",
+    "unit": "references"
+  },
+  "metrics": [
+    {
+      "id": "unused-root-definitions",
+      "role": "diagnostic",
+      "name": "Unreachable root schema definitions",
+      "unit": "definitions",
+      "direction": "decrease",
+      "formula": "Count root $defs entries not reachable from the evaluation root through applicable schema children and resolved local references.",
+      "presentation": {
+        "name": "Unreachable root schema definitions",
+        "legendLabel": "Unused definitions",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 314
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2025-10-30T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-10-30T02:57:38Z"
+        },
+        {
+          "at": "2025-11-06T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-11-06T02:57:38Z"
+        },
+        {
+          "at": "2025-11-13T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-11-13T02:57:38Z"
+        },
+        {
+          "at": "2025-11-20T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-11-20T02:57:38Z"
+        },
+        {
+          "at": "2025-11-27T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-11-27T02:57:38Z"
+        },
+        {
+          "at": "2025-12-04T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-12-04T02:57:38Z"
+        },
+        {
+          "at": "2025-12-11T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-12-11T02:57:38Z"
+        },
+        {
+          "at": "2025-12-18T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-12-18T02:57:38Z"
+        },
+        {
+          "at": "2025-12-25T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-12-25T02:57:38Z"
+        },
+        {
+          "at": "2026-01-01T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-01T02:57:38Z"
+        },
+        {
+          "at": "2026-01-08T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-08T02:57:38Z"
+        },
+        {
+          "at": "2026-01-15T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-15T02:57:38Z"
+        },
+        {
+          "at": "2026-01-22T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-22T02:57:38Z"
+        },
+        {
+          "at": "2026-01-29T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-29T02:57:38Z"
+        },
+        {
+          "at": "2026-02-05T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-05T02:57:38Z"
+        },
+        {
+          "at": "2026-02-12T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-12T02:57:38Z"
+        },
+        {
+          "at": "2026-02-19T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-19T02:57:38Z"
+        },
+        {
+          "at": "2026-02-26T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-02-26T02:57:38Z"
+        },
+        {
+          "at": "2026-03-05T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-03-05T02:57:38Z"
+        },
+        {
+          "at": "2026-03-12T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-03-12T02:57:38Z"
+        },
+        {
+          "at": "2026-03-19T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-03-19T02:57:38Z"
+        },
+        {
+          "at": "2026-03-26T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-03-26T02:57:38Z"
+        },
+        {
+          "at": "2026-04-02T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-04-02T02:57:38Z"
+        },
+        {
+          "at": "2026-04-09T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-04-09T02:57:38Z"
+        },
+        {
+          "at": "2026-04-16T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-04-16T02:57:38Z"
+        },
+        {
+          "at": "2026-04-23T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-04-23T02:57:38Z"
+        },
+        {
+          "at": "2026-04-30T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-04-30T02:57:38Z"
+        },
+        {
+          "at": "2026-05-07T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-05-07T02:57:38Z"
+        },
+        {
+          "at": "2026-05-14T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-05-14T02:57:38Z"
+        },
+        {
+          "at": "2026-05-21T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-05-21T02:57:38Z"
+        },
+        {
+          "at": "2026-05-28T02:57:38Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-05-28T02:57:38Z"
+        },
+        {
+          "at": "2026-06-04T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-04T02:57:38Z"
+        },
+        {
+          "at": "2026-06-11T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-06-11T02:57:38Z"
+        },
+        {
+          "at": "2026-06-18T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-06-18T02:57:38Z"
+        },
+        {
+          "at": "2026-06-25T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-06-25T02:57:38Z"
+        },
+        {
+          "at": "2026-07-02T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-07-02T02:57:38Z"
+        },
+        {
+          "at": "2026-07-09T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-07-09T02:57:38Z"
+        },
+        {
+          "at": "2026-07-16T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-07-16T02:57:38Z"
+        },
+        {
+          "at": "2026-07-23T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-07-23T02:57:38Z"
+        },
+        {
+          "at": "2026-07-30T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-07-30T02:57:38Z"
+        },
+        {
+          "at": "2026-08-06T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-08-06T02:57:38Z"
+        },
+        {
+          "at": "2026-08-13T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-08-13T02:57:38Z"
+        },
+        {
+          "at": "2026-08-20T02:57:38Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-08-20T02:57:38Z"
+        },
+        {
+          "at": "2026-08-27T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-27T02:57:38Z"
+        },
+        {
+          "at": "2026-09-03T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-03T02:57:38Z"
+        },
+        {
+          "at": "2026-09-10T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-10T02:57:38Z"
+        },
+        {
+          "at": "2026-09-17T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-17T02:57:38Z"
+        },
+        {
+          "at": "2026-09-24T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-24T02:57:38Z"
+        },
+        {
+          "at": "2026-10-01T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-01T02:57:38Z"
+        },
+        {
+          "at": "2026-10-08T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-08T02:57:38Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-15T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-15T02:57:38Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "unresolved-local-references",
+      "role": "primary",
+      "name": "Unresolved local schema references",
+      "unit": "references",
+      "direction": "decrease",
+      "formula": "Count declared local $ref occurrences whose native JSON Pointer resolution is absent or does not target a valid Draft-7 schema object/boolean.",
+      "presentation": {
+        "name": "Unresolved local schema references",
+        "legendLabel": "Unresolved references",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 314
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2025-10-30T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-10-30T02:57:38Z"
+        },
+        {
+          "at": "2025-11-06T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-11-06T02:57:38Z"
+        },
+        {
+          "at": "2025-11-13T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-11-13T02:57:38Z"
+        },
+        {
+          "at": "2025-11-20T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-11-20T02:57:38Z"
+        },
+        {
+          "at": "2025-11-27T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-11-27T02:57:38Z"
+        },
+        {
+          "at": "2025-12-04T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-12-04T02:57:38Z"
+        },
+        {
+          "at": "2025-12-11T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-12-11T02:57:38Z"
+        },
+        {
+          "at": "2025-12-18T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-12-18T02:57:38Z"
+        },
+        {
+          "at": "2025-12-25T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2025-12-25T02:57:38Z"
+        },
+        {
+          "at": "2026-01-01T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-01T02:57:38Z"
+        },
+        {
+          "at": "2026-01-08T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-08T02:57:38Z"
+        },
+        {
+          "at": "2026-01-15T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-15T02:57:38Z"
+        },
+        {
+          "at": "2026-01-22T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-22T02:57:38Z"
+        },
+        {
+          "at": "2026-01-29T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-29T02:57:38Z"
+        },
+        {
+          "at": "2026-02-05T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-05T02:57:38Z"
+        },
+        {
+          "at": "2026-02-12T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-12T02:57:38Z"
+        },
+        {
+          "at": "2026-02-19T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-19T02:57:38Z"
+        },
+        {
+          "at": "2026-02-26T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-26T02:57:38Z"
+        },
+        {
+          "at": "2026-03-05T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-05T02:57:38Z"
+        },
+        {
+          "at": "2026-03-12T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-12T02:57:38Z"
+        },
+        {
+          "at": "2026-03-19T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-19T02:57:38Z"
+        },
+        {
+          "at": "2026-03-26T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-26T02:57:38Z"
+        },
+        {
+          "at": "2026-04-02T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-02T02:57:38Z"
+        },
+        {
+          "at": "2026-04-09T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-09T02:57:38Z"
+        },
+        {
+          "at": "2026-04-16T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-16T02:57:38Z"
+        },
+        {
+          "at": "2026-04-23T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-23T02:57:38Z"
+        },
+        {
+          "at": "2026-04-30T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-30T02:57:38Z"
+        },
+        {
+          "at": "2026-05-07T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-07T02:57:38Z"
+        },
+        {
+          "at": "2026-05-14T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-14T02:57:38Z"
+        },
+        {
+          "at": "2026-05-21T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-21T02:57:38Z"
+        },
+        {
+          "at": "2026-05-28T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-28T02:57:38Z"
+        },
+        {
+          "at": "2026-06-04T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-04T02:57:38Z"
+        },
+        {
+          "at": "2026-06-11T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-11T02:57:38Z"
+        },
+        {
+          "at": "2026-06-18T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-18T02:57:38Z"
+        },
+        {
+          "at": "2026-06-25T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-25T02:57:38Z"
+        },
+        {
+          "at": "2026-07-02T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-02T02:57:38Z"
+        },
+        {
+          "at": "2026-07-09T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-09T02:57:38Z"
+        },
+        {
+          "at": "2026-07-16T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-16T02:57:38Z"
+        },
+        {
+          "at": "2026-07-23T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-23T02:57:38Z"
+        },
+        {
+          "at": "2026-07-30T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-30T02:57:38Z"
+        },
+        {
+          "at": "2026-08-06T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-06T02:57:38Z"
+        },
+        {
+          "at": "2026-08-13T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-13T02:57:38Z"
+        },
+        {
+          "at": "2026-08-20T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-20T02:57:38Z"
+        },
+        {
+          "at": "2026-08-27T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-27T02:57:38Z"
+        },
+        {
+          "at": "2026-09-03T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-03T02:57:38Z"
+        },
+        {
+          "at": "2026-09-10T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-10T02:57:38Z"
+        },
+        {
+          "at": "2026-09-17T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-17T02:57:38Z"
+        },
+        {
+          "at": "2026-09-24T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-24T02:57:38Z"
+        },
+        {
+          "at": "2026-10-01T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-01T02:57:38Z"
+        },
+        {
+          "at": "2026-10-08T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-08T02:57:38Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-15T02:57:38Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-15T02:57:38Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

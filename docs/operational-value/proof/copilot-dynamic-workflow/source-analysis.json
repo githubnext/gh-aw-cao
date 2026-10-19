@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflow": "smoke-copilot-dynamic-workflow",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "c9663c6985318c8e2d0dfa833f62ca06873541c7",
+  "until": "2026-10-18T15:00:12Z",
+  "status": "blocked-native-runtime-evidence",
+  "measured": false,
+  "sourceReview": {
+    "workflowImports": [],
+    "engine": {
+      "id": "copilot",
+      "version": "1.0.92",
+      "dynamicWorkflows": true,
+      "arguments": ["--experimental"]
+    },
+    "triggers": ["workflow_dispatch", "workflow_call"],
+    "checkoutPullRequest": false,
+    "extension": {
+      "entry": ".github/extensions/smoke-copilot-dynamic-workflow/extension.mjs",
+      "externalImport": "@github/copilot-sdk/extension",
+      "localImport": "./workflow.mjs",
+      "supportFile": "support/.fixture.json",
+      "marker": "GH_AW_DYNAMIC_WORKFLOW_SMOKE_OK",
+      "packageVersion": 1,
+      "requiredSubagents": 1,
+      "subagentName": "smoke-marker",
+      "durableSteps": ["package-v1", "result-v1"]
+    },
+    "protectedVerifier": null,
+    "packaging": "The compiled workflow restores trusted base agent folders. The extension reads its nested hidden fixture, validates marker/version, invokes ctx.agent exactly once, verifies the child marker and returns its exact five-field durable result.",
+    "sessionEvidence": "The host copy step copies redactable session files from the AWF-managed directory with a legacy fallback. This is collection, not an independently protected outcome verifier. The event projection preserves workflow start/settlement, run identity, status, subagent accounting and child correlation. It deliberately excludes opaque workflow result payloads.",
+    "sourceHistory": "The workflow and packaged extension each have exactly one source addition at ffc93b2f3118eae982d395381bdcd81cf8e1fc67, verified against actual parent ea26db6a5beb68ae37d97613f3e9c7923d92d515. All five retained workflow/package assets are identical at adoption and frozen revision. Caller discovery covered 729 unique editable source versions across all 216 changed-workflow commits in the complete 596-commit first-parent interval. There were no additional reviewed callers.",
+    "caller": "smoke-trigger.yml conditionally invokes the reusable workflow for its dynamic-workflow input or exact smoke-copilot-dynamic-workflow pull-request label. A zero direct-workflow run inventory does not exhaust those calls.",
+    "scope": "Only this repository and this assigned workflow were acquired. No source scripts, extension or remote workflows were executed, dispatched or modified."
+  },
+  "outcomeContract": {
+    "statement": "For eligible initial native executions, attain completed invocation of the immutable packaged dynamic workflow with exactly one correlated completed subagent, demonstrated by independently protected native runtime evidence, measured in invocation proofs per non-overlapping seven-day period.",
+    "primary": "verified-invocations",
+    "fullAcceptanceDiagnostic": "full-acceptance",
+    "observationKind": "interval",
+    "durationDays": 7,
+    "cadenceDays": 7,
+    "maturationDays": 0,
+    "matching": "Repository/run/initial-attempt identity plus exact source profile and package identity; native workflowRunId joins start, settlement, child invocation/completion and durable-result readback.",
+    "fullAcceptance": {
+      "status": "PASS",
+      "marker": "GH_AW_DYNAMIC_WORKFLOW_SMOKE_OK",
+      "packageVersion": 1,
+      "supportFile": "support/.fixture.json",
+      "subagents": 1
+    },
+    "classification": "attainment-only",
+    "antecedent": "The exact packaged fixture and eligible named workflow were introduced together at adoption. General dynamic-workflow reliability pre-existed, but it is not a substitute population for this source-defined smoke conjunction.",
+    "zeroVersusMissing": "Known skipped reusable caller branches are ineligible. Missing initial-attempt jobs do not prove a skipped branch. Missing invocation provenance or unknown fixture acceptance produces null, not zero or success.",
+    "partialImprovement": "Independent native completion can count as the partial primary outcome even when exact durable-result acceptance is unknown. A fixture/result echo without actual native invocation can never count.",
+    "actorIndependence": "Any actor executing the same accepted packaged native capability counts equally. No exclusive attribution is inferred."
+  },
+  "metricDispositions": [
+    {
+      "candidate": "Completed native packaged dynamic invocation and correlated child",
+      "role": "primary",
+      "reason": "Directly tests the source's availability/completion goal, conditional on independent execution provenance."
+    },
+    {
+      "candidate": "Exact five-field durable fixture result",
+      "role": "diagnostic acceptance gate",
+      "reason": "Required for full source-goal acceptance but not proof of invocation by itself."
+    },
+    {
+      "candidate": "Successful native workflow lifecycle without protected package identity",
+      "role": "corroboration only",
+      "reason": "Does not establish execution of this immutable packaged extension."
+    },
+    {
+      "candidate": "Registration, agent response, expected marker, issue body or LLM eval",
+      "role": "rejected proxy",
+      "reason": "An agent can repeat expected fixture values without actually invoking the packaged workflow."
+    },
+    {
+      "candidate": "Run/job success and safe-output issue publication",
+      "role": "rejected proxy",
+      "reason": "Execution status and publication do not independently establish the source-defined native behavior."
+    },
+    {
+      "candidate": "Repository-wide defect backlog, failure rate or cost",
+      "role": "not measured",
+      "reason": "Not the exact source-defined eligible smoke population; no independent complete exposure/cost contract exists."
+    }
+  ],
+  "acquisition": {
+    "directRuns": 0,
+    "callerCandidates": 50,
+    "confirmedSkippedCallerBranches": 43,
+    "unresolvedCallerSelection": 7,
+    "artifactInventories": 50,
+    "survivingArtifacts": 0,
+    "emptyInitialAttemptLogArchives": 43,
+    "initialAttemptLogsHttp404": 7,
+    "retainedSourceBlobs": 742,
+    "historicalCallerSourceVersions": 729,
+    "historicalChangedWorkflowCommits": 216,
+    "remainingSourceGaps": 0,
+    "quotaHandling": "New REST requests stopped when the shared core API quota was exhausted. The final 47 exact immutable source blobs were acquired in one bounded native Git transport request, without changing credentials; final acquisition replay was entirely offline.",
+    "eligibleAttemptDenominator": null,
+    "acceptedNativeOutcome": null,
+    "note": "See index.json and its digest-checked partitions for the exhaustive immutable caller-source review, stable run identities, provider response hashes, exact source closure and authoritative receipt projections. These are discovery/availability counts, never value."
+  },
+  "result": {
+    "verifiedInvocations": null,
+    "fullAcceptance": null,
+    "signal": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "decision": "not-rated",
+    "cost": "not-measured",
+    "trend": null,
+    "limitation": "The all-unknown native plot is an explicit evidence gap, not a measured workflow or a zero-value evaluation."
+  },
+  "versionPreservation": {
+    "predecessor": "versions/pre-package-binding-hardening.json",
+    "encoding": "Existing partitioned JSON archive codec wrapping the original tar as canonical base64; read with readCensusJson.",
+    "decodedTarSha256": "b18e5c95dedba5d50845215ad89d37dd21c6595fdb971b8852ec0280eb205316",
+    "decodedTarBytes": 6534421,
+    "reason": "Losslessly preserves every byte and original fingerprint of the earlier all-unknown definition, helper, source/evidence closure and reports before enforcing explicit equality to the frozen package digest. No accepted native measurement or current frozen function was changed."
+  },
+  "requiredReceipt": {
+    "authority": "A source-reviewed independent protected runtime or host assertion step, not agent-writable logs or an agent-authored issue.",
+    "identity": "Immutable repository/run/attempt/head and coherent package/runtime profile, with package bytes matching the reviewed source.",
+    "invocation": "Named native workflow start and completed settlement with the same run ID, one successful correlated smoke-marker subagent, and no replacement/synthetic workflow.",
+    "result": "Independent durable-result readback joined to that invocation, preserving the exact five allowlisted fields and whole-payload digest.",
+    "scope": "Protected producer selection distinguishes an eligible dynamic-workflow call from another smoke-trigger branch. Retained evidence must survive Actions expiry.",
+    "authorization": "Adding upstream instrumentation or dispatching a new run is outside this read-only assignment and was not performed."
+  },
+  "reusableSkillLessons": [
+    "Reusable workflow opportunities belong to caller executions; a zero direct workflow inventory is not evidence of zero opportunities.",
+    "An authoritative skipped caller job can establish ineligibility. Empty initial-attempt job inventories cannot establish that the branch was skipped.",
+    "A successful empty ZIP response is no log evidence; preserve that distinction from HTTP 404 and never infer successful execution from HTTP 200.",
+    "Review runtime projection loss before selecting an outcome oracle: native lifecycle may preserve invocation identity while intentionally omitting the durable result.",
+    "Separate partial native completion from full fixture acceptance without ever promoting an echoed fixture to execution proof.",
+    "An all-unknown evaluation plot and a verified function must not inflate measured coverage."
+  ]
+}

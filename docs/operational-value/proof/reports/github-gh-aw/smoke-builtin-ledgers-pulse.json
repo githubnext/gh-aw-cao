@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "smoke-builtin-ledgers",
+  "workflowName": "Smoke Built-in Ledgers",
+  "sourcePath": ".github/workflows/smoke-builtin-ledgers.md",
+  "valueFunctionSha256": "5309e8bf42729cdc5bad1d4a899197559829782dd60a587fdae49defdfefd3a5",
+  "window": {
+    "startAt": "2026-10-01T13:53:25Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "verified-rows",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": 4,
+    "previous": 2,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "verified-rows",
+    "basis": "repository-outcome",
+    "unit": "rows"
+  },
+  "metrics": [
+    {
+      "id": "verified-rows",
+      "role": "primary",
+      "name": "Replay-verified durable rows",
+      "unit": "rows",
+      "direction": "increase",
+      "formula": "Count distinct eligible persisted fixtures restored exactly by production replay into read-only SQLite.",
+      "presentation": {
+        "name": "Replay-verified durable rows",
+        "legendLabel": "Verified durable rows",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 4,
+        "previous": 2,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-08T13:53:25Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-08T13:53:25Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 2,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-15T13:53:25Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-15T13:53:25Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 4,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "unmatched-rows",
+      "role": "diagnostic",
+      "name": "Unmatched durable fixture rows",
+      "unit": "rows",
+      "direction": "decrease",
+      "formula": "Eligible persisted fixtures minus exactly restored native rows.",
+      "presentation": {
+        "name": "Unmatched durable fixture rows",
+        "legendLabel": "Unmatched rows",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-08T13:53:25Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-08T13:53:25Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 0,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-15T13:53:25Z",
+          "value": 0,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-15T13:53:25Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

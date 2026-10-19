@@ -23,4 +23,9 @@ export default [
       "cao/no-hardcoded-github-actions-url": "error",
     },
   },
+  {
+    // Preserve the frozen native fixture URL; this module does not construct runtime Actions destinations.
+    files: ["docs/operational-value/proof/functions/workflow-normalizer.mjs"],
+    rules: { "cao/no-hardcoded-github-actions-url": "off" },
+  },
 ];

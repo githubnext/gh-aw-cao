@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "preservedAcceptanceSha256": "59439d5a0302664da932f0ad7d3e152d22aa2210e7948cc0b8ab006e579c4672",
+  "clarification": "Before acceptance.json was written, the supplied census runInventory exposed the latest run's coarse failure conclusion and artifact inventory, in addition to source and discovery identities. No protected execution, command result, drive receipt or native outcome original had been opened.",
+  "effect": "Acceptance remains the unchanged source-derived exact-byte, cross-run receipt and actual git-log contract. The claim is a retrospective reconstruction with a native-outcome inspection boundary, not blinded authoring or an ex-ante historical contract.",
+  "preservation": "This additive note does not replace the frozen acceptance file, original census contract or any native originals."
+}

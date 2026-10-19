@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "sourceReview": "source-review.json",
+  "sourceReviewSha256": "65304d615e83852d735b7a95742aeca59436dbc7074ca0a90d4c199aba37ec34",
+  "contractKey": "safe-output-independent-native-conformance-v2",
+  "integrationPolicy": "Source-only review did not inspect outcomes. Preserve source contradictions, do not pick favorable semantics, change upstream workflow/specification, or tune metrics from observed results.",
+  "dispositions": [
+    { "id": "SRC-01", "disposition": "Authorization contradiction retained; no credential-based authority inference or authorization acceptance." },
+    { "id": "SRC-02", "disposition": "Zero-max configuration contradiction retained; no behavioral acceptance or retroactive reclassification." },
+    { "id": "SRC-03", "disposition": "Sanitization ordering/exemption ambiguity retained; lexical marker presence is not pipeline acceptance." },
+    { "id": "SRC-04", "disposition": "Footer/provenance contradiction retained; no invented mandatory footer or full provenance acceptance." },
+    { "id": "SRC-05", "disposition": "Grammar and typed authorization exceptions retained as unresolved normative obligations." },
+    { "id": "SRC-06", "disposition": "Error-code namespace ambiguity retained; code strings remain lexical diagnostics, not substantive repair acceptance." },
+    { "id": "SRC-07", "disposition": "Schema/prose/example drift retained; no inference of runtime defects or passing normalization." },
+    { "id": "SRC-08", "disposition": "Compiled/default/schema parity discrepancies retained; no actual-run assertion." },
+    { "id": "SRC-09", "disposition": "Cache migration, integrity and merge-policy conflicts retained; no cache behavioral conformance claim." },
+    { "id": "SRC-10", "disposition": "Workflow reporting/overflow contradictions retained; issue publication and exit zero remain rejected outcome proxies." },
+    { "id": "SRC-11", "disposition": "Independent native replay retained; checker process exit and shell summary counters never establish acceptance." },
+    {
+      "id": "SRC-12",
+      "disposition": "Implemented source-derived v2 correction in compare-v2.mjs; both boundary paths must exist with available verified immutable bytes. Required-component creation cannot count as surviving-file clearance.",
+      "preserved": "Original native-checker.mjs and native-evidence.json.gz unchanged. Original function bytes retained in frozen-contract-v1.json.gz and independently verified sealed v1 archive.",
+      "validation": "Required-file creation, surviving-file repair and unavailable-source guard tests; actual source replay for every retained snapshot and all corrected intervals."
+    },
+    { "id": "SRC-13", "disposition": "Attainment-only report mode explicitly provisional, not endorsed as exhausted reconstruction. Bounded offline pre-adoption availability probe retained; no accepted baseline or mode promotion." },
+    { "id": "SRC-14", "disposition": "Full 55-family ledger retained: 20 partial, 35 unimplemented, zero fully behaviorally measured families. Not a conformance percentage." },
+    { "id": "SRC-15", "disposition": "Ordering/atomicity/threat distinctions retained; no remote rollback promise or engine-error-as-security-finding inference." },
+    { "id": "SRC-16", "disposition": "Transport and mandatory-type editorial drift retained; no historical implementation coverage claim." }
+  ],
+  "unchangedMetricSemantics": "Actor-independent native structural clearance in seven-day disjoint intervals; outstanding findings and linked contributions separate. No quality score, weights, invented keep bar, target, normalization or causal inference.",
+  "sourceReviewLimits": "All current/adoption specification bytes and checker/workflow/import sources reviewed. Compiled workflow reviewed selectively. External referenced implementations/tests/models were not acquired or executed."
+}

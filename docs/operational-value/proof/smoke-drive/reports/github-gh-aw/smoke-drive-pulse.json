@@ -1,0 +1,433 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "smoke-drive",
+  "workflowName": "Smoke Drive",
+  "sourcePath": ".github/workflows/smoke-drive.md",
+  "valueFunctionSha256": "d125c8322ca0fa41e242fc5b6e1404ae18e90e3b1580a570389e23d2c50098ed",
+  "window": {
+    "startAt": "2026-08-22T13:21:39Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "same-run",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": 0,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "same-run",
+    "basis": "repository-outcome",
+    "unit": "accepted cases"
+  },
+  "metrics": [
+    {
+      "id": "same-run",
+      "name": "Exact same-run readbacks",
+      "role": "primary",
+      "field": "sameRunReadbacks",
+      "formula": "Count distinct attempt identities with independently accepted sameRunReadbacks; null when no dependent claim is assessed.",
+      "direction": "increase",
+      "unit": "accepted cases",
+      "presentation": {
+        "name": "Exact same-run readbacks",
+        "legendLabel": "Exact same-run readbacks",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 0,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-08-23T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-08-23T15:00:12Z"
+        },
+        {
+          "at": "2026-08-30T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-30T15:00:12Z"
+        },
+        {
+          "at": "2026-09-06T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-06T15:00:12Z"
+        },
+        {
+          "at": "2026-09-13T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-13T15:00:12Z"
+        },
+        {
+          "at": "2026-09-20T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-20T15:00:12Z"
+        },
+        {
+          "at": "2026-09-27T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-27T15:00:12Z"
+        },
+        {
+          "at": "2026-10-04T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-04T15:00:12Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "persistence",
+      "name": "Restored transitions",
+      "role": "diagnostic",
+      "field": "restoredTransitions",
+      "formula": "Count distinct attempt identities with independently accepted restoredTransitions; null when no dependent claim is assessed.",
+      "direction": "increase",
+      "unit": "accepted cases",
+      "presentation": {
+        "name": "Restored transitions",
+        "legendLabel": "Restored transitions",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-08-23T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-08-23T15:00:12Z"
+        },
+        {
+          "at": "2026-08-30T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-30T15:00:12Z"
+        },
+        {
+          "at": "2026-09-06T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-06T15:00:12Z"
+        },
+        {
+          "at": "2026-09-13T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-13T15:00:12Z"
+        },
+        {
+          "at": "2026-09-20T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-20T15:00:12Z"
+        },
+        {
+          "at": "2026-09-27T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-27T15:00:12Z"
+        },
+        {
+          "at": "2026-10-04T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-04T15:00:12Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "repository-access",
+      "name": "Native git-log accesses",
+      "role": "diagnostic",
+      "field": "repositoryAccesses",
+      "formula": "Count distinct attempt identities with independently accepted repositoryAccesses; null when no dependent claim is assessed.",
+      "direction": "increase",
+      "unit": "accepted cases",
+      "presentation": {
+        "name": "Native git-log accesses",
+        "legendLabel": "Native git-log accesses",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-08-23T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-08-23T15:00:12Z"
+        },
+        {
+          "at": "2026-08-30T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-30T15:00:12Z"
+        },
+        {
+          "at": "2026-09-06T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-06T15:00:12Z"
+        },
+        {
+          "at": "2026-09-13T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-13T15:00:12Z"
+        },
+        {
+          "at": "2026-09-20T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-20T15:00:12Z"
+        },
+        {
+          "at": "2026-09-27T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-27T15:00:12Z"
+        },
+        {
+          "at": "2026-10-04T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-04T15:00:12Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "full-goal",
+      "name": "Full-goal cases",
+      "role": "diagnostic",
+      "field": "fullGoalAttainments",
+      "formula": "Count distinct attempt identities with independently accepted fullGoalAttainments; null when no dependent claim is assessed.",
+      "direction": "increase",
+      "unit": "accepted cases",
+      "presentation": {
+        "name": "Full-goal cases",
+        "legendLabel": "Full-goal cases",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 0,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-08-23T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-08-23T15:00:12Z"
+        },
+        {
+          "at": "2026-08-30T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-30T15:00:12Z"
+        },
+        {
+          "at": "2026-09-06T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-06T15:00:12Z"
+        },
+        {
+          "at": "2026-09-13T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-13T15:00:12Z"
+        },
+        {
+          "at": "2026-09-20T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-20T15:00:12Z"
+        },
+        {
+          "at": "2026-09-27T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-27T15:00:12Z"
+        },
+        {
+          "at": "2026-10-04T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-04T15:00:12Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

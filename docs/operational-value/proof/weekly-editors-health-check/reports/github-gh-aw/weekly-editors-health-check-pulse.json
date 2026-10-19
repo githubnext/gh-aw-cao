@@ -1,0 +1,330 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "weekly-editors-health-check",
+  "workflowName": "Weekly Editors Health Check: constrained HTTP availability",
+  "sourcePath": ".github/workflows/weekly-editors-health-check.md",
+  "valueFunctionSha256": "1accbcef17c6392a0b0163807914515c25b4172ad41c30457db4fa3ad5c4ce21",
+  "window": {
+    "startAt": "2026-02-21T22:11:11Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-03-01T00:00:00.000Z",
+      "label": "Mar 2026"
+    },
+    {
+      "at": "2026-04-01T00:00:00.000Z",
+      "label": "Apr 2026"
+    },
+    {
+      "at": "2026-05-01T00:00:00.000Z",
+      "label": "May 2026"
+    },
+    {
+      "at": "2026-06-01T00:00:00.000Z",
+      "label": "Jun 2026"
+    },
+    {
+      "at": "2026-07-01T00:00:00.000Z",
+      "label": "Jul 2026"
+    },
+    {
+      "at": "2026-08-01T00:00:00.000Z",
+      "label": "Aug 2026"
+    },
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "available-editor-percent",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": 3,
+    "metricId": "available-editor-percent",
+    "basis": "repository-outcome",
+    "unit": "percent"
+  },
+  "metrics": [
+    {
+      "id": "available-editor-percent",
+      "name": "Available documented editors",
+      "role": "primary",
+      "formula": "100 * independently verified HTTP-200 editor responses / all eligible actual editor destinations at the same complete checkpoint",
+      "direction": "increase",
+      "unit": "percent",
+      "presentation": {
+        "name": "Available documented editors",
+        "legendLabel": "HTTP 200 editors (%)",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": 3
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-02-28T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-02-28T22:11:11Z"
+        },
+        {
+          "at": "2026-03-07T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-03-07T22:11:11Z"
+        },
+        {
+          "at": "2026-03-14T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-03-14T22:11:11Z"
+        },
+        {
+          "at": "2026-03-21T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-03-21T22:11:11Z"
+        },
+        {
+          "at": "2026-03-28T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-03-28T22:11:11Z"
+        },
+        {
+          "at": "2026-04-04T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-04T22:11:11Z"
+        },
+        {
+          "at": "2026-04-11T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-11T22:11:11Z"
+        },
+        {
+          "at": "2026-04-18T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-18T22:11:11Z"
+        },
+        {
+          "at": "2026-04-25T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-25T22:11:11Z"
+        },
+        {
+          "at": "2026-05-02T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-02T22:11:11Z"
+        },
+        {
+          "at": "2026-05-09T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-09T22:11:11Z"
+        },
+        {
+          "at": "2026-05-16T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-16T22:11:11Z"
+        },
+        {
+          "at": "2026-05-23T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-23T22:11:11Z"
+        },
+        {
+          "at": "2026-05-30T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-30T22:11:11Z"
+        },
+        {
+          "at": "2026-06-06T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-06T22:11:11Z"
+        },
+        {
+          "at": "2026-06-13T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-13T22:11:11Z"
+        },
+        {
+          "at": "2026-06-20T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-20T22:11:11Z"
+        },
+        {
+          "at": "2026-06-27T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-27T22:11:11Z"
+        },
+        {
+          "at": "2026-07-04T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-04T22:11:11Z"
+        },
+        {
+          "at": "2026-07-11T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-11T22:11:11Z"
+        },
+        {
+          "at": "2026-07-18T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-18T22:11:11Z"
+        },
+        {
+          "at": "2026-07-25T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-25T22:11:11Z"
+        },
+        {
+          "at": "2026-08-01T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-01T22:11:11Z"
+        },
+        {
+          "at": "2026-08-08T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-08T22:11:11Z"
+        },
+        {
+          "at": "2026-08-15T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-15T22:11:11Z"
+        },
+        {
+          "at": "2026-08-22T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-22T22:11:11Z"
+        },
+        {
+          "at": "2026-08-29T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-29T22:11:11Z"
+        },
+        {
+          "at": "2026-09-05T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-05T22:11:11Z"
+        },
+        {
+          "at": "2026-09-12T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-12T22:11:11Z"
+        },
+        {
+          "at": "2026-09-19T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-19T22:11:11Z"
+        },
+        {
+          "at": "2026-09-26T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-26T22:11:11Z"
+        },
+        {
+          "at": "2026-10-03T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-03T22:11:11Z"
+        },
+        {
+          "at": "2026-10-10T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-10T22:11:11Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-17T22:11:11Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-17T22:11:11Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

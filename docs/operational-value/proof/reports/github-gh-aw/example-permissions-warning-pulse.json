@@ -1,0 +1,795 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "example-permissions-warning",
+  "workflowName": "Example: Properly Provisioned Permissions",
+  "sourcePath": ".github/workflows/example-permissions-warning.md",
+  "valueFunctionSha256": "e471c8fc5873d18be66b8e970253d03b63bea9ca0c7540da8f118668ba6cf00d",
+  "window": {
+    "startAt": "2025-10-31T04:13:41Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2025-11-01T00:00:00.000Z",
+      "label": "Nov 2025"
+    },
+    {
+      "at": "2025-12-01T00:00:00.000Z",
+      "label": "Dec 2025"
+    },
+    {
+      "at": "2026-01-01T00:00:00.000Z",
+      "label": "Jan 2026"
+    },
+    {
+      "at": "2026-02-01T00:00:00.000Z",
+      "label": "Feb 2026"
+    },
+    {
+      "at": "2026-03-01T00:00:00.000Z",
+      "label": "Mar 2026"
+    },
+    {
+      "at": "2026-04-01T00:00:00.000Z",
+      "label": "Apr 2026"
+    },
+    {
+      "at": "2026-05-01T00:00:00.000Z",
+      "label": "May 2026"
+    },
+    {
+      "at": "2026-06-01T00:00:00.000Z",
+      "label": "Jun 2026"
+    },
+    {
+      "at": "2026-07-01T00:00:00.000Z",
+      "label": "Jul 2026"
+    },
+    {
+      "at": "2026-08-01T00:00:00.000Z",
+      "label": "Aug 2026"
+    },
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "read-scope-mismatches",
+  "signal": {
+    "status": "steady",
+    "attention": "not-indicated",
+    "current": 0,
+    "previous": 0,
+    "directionAwareGain": 0,
+    "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+    "opportunities": 3,
+    "metricId": "read-scope-mismatches",
+    "basis": "repository-outcome",
+    "unit": "permission grants"
+  },
+  "metrics": [
+    {
+      "id": "read-scope-mismatches",
+      "role": "primary",
+      "name": "Required read-scope mismatches",
+      "formula": "Count contents, issues and pull-requests grants whose effective compiled agent-job level is not exactly read.",
+      "unit": "permission grants",
+      "direction": "decrease",
+      "presentation": {
+        "name": "Required read-scope mismatches",
+        "legendLabel": "Read-scope mismatches",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 3
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2025-11-07T04:13:41Z",
+          "value": 1,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-11-07T04:13:41Z"
+        },
+        {
+          "at": "2025-11-14T04:13:41Z",
+          "value": 1,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-11-14T04:13:41Z"
+        },
+        {
+          "at": "2025-11-21T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-11-21T04:13:41Z"
+        },
+        {
+          "at": "2025-11-28T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-11-28T04:13:41Z"
+        },
+        {
+          "at": "2025-12-05T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-12-05T04:13:41Z"
+        },
+        {
+          "at": "2025-12-12T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-12-12T04:13:41Z"
+        },
+        {
+          "at": "2025-12-19T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-12-19T04:13:41Z"
+        },
+        {
+          "at": "2025-12-26T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-12-26T04:13:41Z"
+        },
+        {
+          "at": "2026-01-02T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-01-02T04:13:41Z"
+        },
+        {
+          "at": "2026-01-09T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-09T04:13:41Z"
+        },
+        {
+          "at": "2026-01-16T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-16T04:13:41Z"
+        },
+        {
+          "at": "2026-01-23T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-23T04:13:41Z"
+        },
+        {
+          "at": "2026-01-30T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-30T04:13:41Z"
+        },
+        {
+          "at": "2026-02-06T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-06T04:13:41Z"
+        },
+        {
+          "at": "2026-02-13T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-13T04:13:41Z"
+        },
+        {
+          "at": "2026-02-20T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-20T04:13:41Z"
+        },
+        {
+          "at": "2026-02-27T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-27T04:13:41Z"
+        },
+        {
+          "at": "2026-03-06T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-06T04:13:41Z"
+        },
+        {
+          "at": "2026-03-13T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-13T04:13:41Z"
+        },
+        {
+          "at": "2026-03-20T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-20T04:13:41Z"
+        },
+        {
+          "at": "2026-03-27T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-27T04:13:41Z"
+        },
+        {
+          "at": "2026-04-03T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-03T04:13:41Z"
+        },
+        {
+          "at": "2026-04-10T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-10T04:13:41Z"
+        },
+        {
+          "at": "2026-04-17T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-17T04:13:41Z"
+        },
+        {
+          "at": "2026-04-24T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-24T04:13:41Z"
+        },
+        {
+          "at": "2026-05-01T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-01T04:13:41Z"
+        },
+        {
+          "at": "2026-05-08T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-08T04:13:41Z"
+        },
+        {
+          "at": "2026-05-15T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-15T04:13:41Z"
+        },
+        {
+          "at": "2026-05-22T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-22T04:13:41Z"
+        },
+        {
+          "at": "2026-05-29T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-29T04:13:41Z"
+        },
+        {
+          "at": "2026-06-05T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-05T04:13:41Z"
+        },
+        {
+          "at": "2026-06-12T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-12T04:13:41Z"
+        },
+        {
+          "at": "2026-06-19T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-19T04:13:41Z"
+        },
+        {
+          "at": "2026-06-26T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-26T04:13:41Z"
+        },
+        {
+          "at": "2026-07-03T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-03T04:13:41Z"
+        },
+        {
+          "at": "2026-07-10T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-10T04:13:41Z"
+        },
+        {
+          "at": "2026-07-17T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-17T04:13:41Z"
+        },
+        {
+          "at": "2026-07-24T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-24T04:13:41Z"
+        },
+        {
+          "at": "2026-07-31T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-31T04:13:41Z"
+        },
+        {
+          "at": "2026-08-07T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-07T04:13:41Z"
+        },
+        {
+          "at": "2026-08-14T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-14T04:13:41Z"
+        },
+        {
+          "at": "2026-08-21T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-21T04:13:41Z"
+        },
+        {
+          "at": "2026-08-28T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-28T04:13:41Z"
+        },
+        {
+          "at": "2026-09-04T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-04T04:13:41Z"
+        },
+        {
+          "at": "2026-09-11T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-11T04:13:41Z"
+        },
+        {
+          "at": "2026-09-18T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-18T04:13:41Z"
+        },
+        {
+          "at": "2026-09-25T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-25T04:13:41Z"
+        },
+        {
+          "at": "2026-10-02T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-02T04:13:41Z"
+        },
+        {
+          "at": "2026-10-09T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-09T04:13:41Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-16T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-16T04:13:41Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "agent-write-grants",
+      "role": "diagnostic",
+      "name": "Compiled agent write grants",
+      "formula": "Count write-valued entries in the agent's effective explicit permission map, not other jobs.",
+      "unit": "permission grants",
+      "direction": "decrease",
+      "presentation": {
+        "name": "Compiled agent write grants",
+        "legendLabel": "Agent write grants",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 3
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2025-11-07T04:13:41Z",
+          "value": 0,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-11-07T04:13:41Z"
+        },
+        {
+          "at": "2025-11-14T04:13:41Z",
+          "value": 0,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-11-14T04:13:41Z"
+        },
+        {
+          "at": "2025-11-21T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-11-21T04:13:41Z"
+        },
+        {
+          "at": "2025-11-28T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-11-28T04:13:41Z"
+        },
+        {
+          "at": "2025-12-05T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-12-05T04:13:41Z"
+        },
+        {
+          "at": "2025-12-12T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-12-12T04:13:41Z"
+        },
+        {
+          "at": "2025-12-19T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-12-19T04:13:41Z"
+        },
+        {
+          "at": "2025-12-26T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2025-12-26T04:13:41Z"
+        },
+        {
+          "at": "2026-01-02T04:13:41Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-01-02T04:13:41Z"
+        },
+        {
+          "at": "2026-01-09T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-09T04:13:41Z"
+        },
+        {
+          "at": "2026-01-16T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-16T04:13:41Z"
+        },
+        {
+          "at": "2026-01-23T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-23T04:13:41Z"
+        },
+        {
+          "at": "2026-01-30T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-01-30T04:13:41Z"
+        },
+        {
+          "at": "2026-02-06T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-06T04:13:41Z"
+        },
+        {
+          "at": "2026-02-13T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-13T04:13:41Z"
+        },
+        {
+          "at": "2026-02-20T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-20T04:13:41Z"
+        },
+        {
+          "at": "2026-02-27T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-02-27T04:13:41Z"
+        },
+        {
+          "at": "2026-03-06T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-06T04:13:41Z"
+        },
+        {
+          "at": "2026-03-13T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-13T04:13:41Z"
+        },
+        {
+          "at": "2026-03-20T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-20T04:13:41Z"
+        },
+        {
+          "at": "2026-03-27T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-03-27T04:13:41Z"
+        },
+        {
+          "at": "2026-04-03T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-03T04:13:41Z"
+        },
+        {
+          "at": "2026-04-10T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-10T04:13:41Z"
+        },
+        {
+          "at": "2026-04-17T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-17T04:13:41Z"
+        },
+        {
+          "at": "2026-04-24T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-24T04:13:41Z"
+        },
+        {
+          "at": "2026-05-01T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-01T04:13:41Z"
+        },
+        {
+          "at": "2026-05-08T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-08T04:13:41Z"
+        },
+        {
+          "at": "2026-05-15T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-15T04:13:41Z"
+        },
+        {
+          "at": "2026-05-22T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-22T04:13:41Z"
+        },
+        {
+          "at": "2026-05-29T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-29T04:13:41Z"
+        },
+        {
+          "at": "2026-06-05T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-05T04:13:41Z"
+        },
+        {
+          "at": "2026-06-12T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-12T04:13:41Z"
+        },
+        {
+          "at": "2026-06-19T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-19T04:13:41Z"
+        },
+        {
+          "at": "2026-06-26T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-26T04:13:41Z"
+        },
+        {
+          "at": "2026-07-03T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-03T04:13:41Z"
+        },
+        {
+          "at": "2026-07-10T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-10T04:13:41Z"
+        },
+        {
+          "at": "2026-07-17T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-17T04:13:41Z"
+        },
+        {
+          "at": "2026-07-24T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-24T04:13:41Z"
+        },
+        {
+          "at": "2026-07-31T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-31T04:13:41Z"
+        },
+        {
+          "at": "2026-08-07T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-07T04:13:41Z"
+        },
+        {
+          "at": "2026-08-14T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-14T04:13:41Z"
+        },
+        {
+          "at": "2026-08-21T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-21T04:13:41Z"
+        },
+        {
+          "at": "2026-08-28T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-28T04:13:41Z"
+        },
+        {
+          "at": "2026-09-04T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-04T04:13:41Z"
+        },
+        {
+          "at": "2026-09-11T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-11T04:13:41Z"
+        },
+        {
+          "at": "2026-09-18T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-18T04:13:41Z"
+        },
+        {
+          "at": "2026-09-25T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-25T04:13:41Z"
+        },
+        {
+          "at": "2026-10-02T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-02T04:13:41Z"
+        },
+        {
+          "at": "2026-10-09T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-09T04:13:41Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-16T04:13:41Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-16T04:13:41Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

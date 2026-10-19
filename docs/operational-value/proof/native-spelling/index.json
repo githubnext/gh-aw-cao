@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "workflowId": "daily-astrostylelite-markdown-spellcheck",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "782f62e6cdf2190d54af6e727daa1a618d3d3e14f3960877946230ca7ab5e9df",
+  "factsSha256": "7945e04e86aa038e21cd6c1b8685bc7d245c77d3bc96206cba3baee683c25ef8",
+  "states": 29,
+  "probeSha256": "2adb6d86da47c8fa857368fa406e29396e3ca4df88603b1af2e4019e5898bc72",
+  "toolLockSha256": "3eaa4a7d5b7dbfc71261d42e376fe6447e994bcdd16a66407f114ea5c03bfdf8",
+  "comparisonContextExtension": {
+    "previousIndexSha256": "94e639f9d668a9ed38f9826fe67c04d39d14e7ee4655aee37fdbd0d3b768551c",
+    "previousFactsSha256": "fcac0addab817fabdaa150d5f7a9fff1d4c361db289b9377aca310eaa6a484a5",
+    "policy": "Additional prior comparison endpoint; frozen function and every established observation remain unchanged."
+  },
+  "sourceBlobs": 1521,
+  "sourceBytes": 52933528,
+  "acquiredAt": "2026-10-19T04:06:58.779Z",
+  "producer": {
+    "path": "scripts/collect-spelling-history.mjs",
+    "sha256": "a21efb55174e27d296779dbd5bf9f2d3ea96753bb2865f54929e14ead56e8284"
+  }
+}

@@ -1,0 +1,249 @@
+{
+  "generatedAt": "2026-10-18T10:27:52.934Z",
+  "repository": "github/gh-aw",
+  "workflowName": "Daily Rendering Scripts Verifier: observed provider-error preservation",
+  "adoptionAt": "2026-10-18T10:14:01Z",
+  "evaluationMode": "attainment-only",
+  "window": {
+    "startAt": "2026-09-12T10:16:09Z",
+    "endAt": "2026-10-18T10:27:52.934Z"
+  },
+  "evidenceCoverage": {
+    "scope": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation.",
+    "independentInput": true,
+    "creatorReceipt": true
+  },
+  "snapshots": [
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": false,
+            "normalized": false
+          }
+        ],
+        "linkedRepair": false,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "00457477720387bcc7d7baaf841dedb22ad06617",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-09-12T10:16:09Z",
+        "endAt": "2026-09-19T10:16:09Z"
+      }
+    },
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": true,
+            "normalized": true
+          }
+        ],
+        "linkedRepair": true,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "4740543b75dfeb74d973b194163c83f22c7936e9",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-09-19T10:16:09Z",
+        "endAt": "2026-09-26T10:16:09Z"
+      }
+    },
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": true,
+            "normalized": true
+          }
+        ],
+        "linkedRepair": false,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "306bc6bdf8df80f039c69df518a2dc4b73a0f544",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-09-26T10:16:09Z",
+        "endAt": "2026-10-03T10:16:09Z"
+      }
+    },
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": true,
+            "normalized": true
+          }
+        ],
+        "linkedRepair": false,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "595e115b17a9378895d4a37298f60f91f64719ad",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-10-03T10:16:09Z",
+        "endAt": "2026-10-10T10:16:09Z"
+      }
+    },
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": true,
+            "normalized": true
+          }
+        ],
+        "linkedRepair": false,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "d3915e4a21040c00a6e11e1acb0aac42605abc4c",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      }
+    }
+  ],
+  "runs": []
+}

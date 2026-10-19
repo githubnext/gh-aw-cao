@@ -1,0 +1,1687 @@
+{
+  "functionSha256": "14eff5cf9c9793610fc6e3e87fb658e86522603fda07a3fe2dd9d32e6fb2e230",
+  "evidence": {
+    "key": "current-source-live-alias-support",
+    "repositories": [
+      "github/gh-aw"
+    ],
+    "opportunity": "Each built-in alias key at the pinned current-source cutoff, including meta-aliases and per-engine aliases; each key counted once.",
+    "filters": [
+      "Built-in alias map only; no workflow overrides or task-family usefulness inference.",
+      "Case-insensitive literal provider matching; star cannot cross slash; strip parameters before presence checks.",
+      "Use complete independent account-scoped inventory; errors, skipped/empty/paginated-incomplete providers are unknown.",
+      "Current source predicates never applied to an unknown historical source era.",
+      "models.json pricing/history is not live inventory; retain historical entries without automatic removal."
+    ],
+    "collection": "Batch offline replay of retained whole immutable sources and protected provider capture pages. Canonical activity discovery lacks live provider facts. No network or fetched-code execution.",
+    "measurementKind": "snapshot",
+    "window": {
+      "durationDays": 1,
+      "cadenceDays": 1,
+      "maturationDays": 0
+    },
+    "windowStart": "2026-10-18T06:32:44Z",
+    "windowEnd": "2026-10-18T15:00:12Z",
+    "observedAt": "2026-10-18T15:00:12Z",
+    "sourceReady": true,
+    "sourceProfile": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "aliasMap": {
+      "sonnet": [
+        "copilot/*sonnet*",
+        "anthropic/*sonnet*"
+      ],
+      "sonnet-6x": [
+        "copilot/*sonnet-4.5*",
+        "copilot/*sonnet-4.6*",
+        "copilot/*sonnet-5*",
+        "copilot/*sonnet-4-5-*",
+        "anthropic/*sonnet-4-5-*",
+        "copilot/*sonnet-4-6*",
+        "anthropic/*sonnet-4-6*",
+        "anthropic/*sonnet-5*"
+      ],
+      "haiku": [
+        "copilot/*haiku*",
+        "anthropic/*haiku*"
+      ],
+      "opus": [
+        "copilot/*opus*",
+        "anthropic/*opus*"
+      ],
+      "opusplan": [
+        "opus?effort=high"
+      ],
+      "gpt-5": [
+        "copilot/gpt-5*",
+        "openai/gpt-5*"
+      ],
+      "gpt-5.5": [
+        "copilot/gpt-5.5*",
+        "openai/gpt-5.5*"
+      ],
+      "gpt-5.6": [
+        "copilot/gpt-5.6*",
+        "openai/gpt-5.6*"
+      ],
+      "gpt-6": [
+        "copilot/gpt-6*",
+        "openai/gpt-6*"
+      ],
+      "gpt-5.4": [
+        "copilot/gpt-5.4*",
+        "openai/gpt-5.4*"
+      ],
+      "gpt-5.3": [
+        "copilot/gpt-5.3*",
+        "openai/gpt-5.3*"
+      ],
+      "gpt-5.2": [
+        "copilot/gpt-5.2*",
+        "openai/gpt-5.2*"
+      ],
+      "gpt-5.1": [
+        "copilot/gpt-5.1*",
+        "openai/gpt-5.1*"
+      ],
+      "gpt-5-mini": [
+        "copilot/gpt-5*mini*",
+        "openai/gpt-5*mini*"
+      ],
+      "gpt-5-nano": [
+        "copilot/gpt-5*nano*",
+        "openai/gpt-5*nano*"
+      ],
+      "gpt-5-codex": [
+        "copilot/gpt-5*codex*",
+        "openai/gpt-5*codex*"
+      ],
+      "coding": [
+        "copilot/gpt-5*codex*",
+        "openai/gpt-5*codex*",
+        "gpt-5-codex",
+        "kimi"
+      ],
+      "mai-code": [
+        "copilot/MAI-Code*",
+        "copilot/mai-code*",
+        "openai/MAI-Code*"
+      ],
+      "mai-code-1-flash-picker": [
+        "copilot/MAI-Code-1-Flash-picker*",
+        "copilot/mai-code-1-flash-picker*",
+        "openai/MAI-Code-1-Flash-picker*"
+      ],
+      "kimi": [
+        "copilot/kimi*",
+        "openai/kimi*"
+      ],
+      "kiwi": [
+        "copilot/kiwi*",
+        "openai/kiwi*"
+      ],
+      "raptor-mini": [
+        "copilot/raptor*",
+        "openai/raptor*"
+      ],
+      "gpt-5-pro": [
+        "copilot/gpt-5*pro*",
+        "openai/gpt-5*pro*"
+      ],
+      "reasoning": [
+        "copilot/o1*",
+        "copilot/o3*",
+        "copilot/o4*",
+        "openai/o1*",
+        "openai/o3*",
+        "openai/o4*"
+      ],
+      "gemini-flash": [
+        "copilot/gemini-*flash*",
+        "google/gemini-*flash*",
+        "gemini/gemini-*flash*"
+      ],
+      "gemini-omni": [
+        "copilot/gemini-omni*",
+        "google/gemini-omni*",
+        "gemini/gemini-omni*"
+      ],
+      "gemini-flash-lite": [
+        "copilot/gemini-*flash*lite*",
+        "google/gemini-*flash*lite*",
+        "gemini/gemini-*flash*lite*"
+      ],
+      "gemini-pro": [
+        "copilot/gemini-*pro*",
+        "google/gemini-*pro*",
+        "gemini/gemini-*pro*"
+      ],
+      "vision": [
+        "copilot/gemini-*image*",
+        "google/gemini-*image*",
+        "gemini/gemini-*image*",
+        "copilot/gemini-*flash*",
+        "google/gemini-*flash*",
+        "gemini/gemini-*flash*"
+      ],
+      "image-generation": [
+        "copilot/gpt-image*",
+        "openai/gpt-image*",
+        "openai/chatgpt-image*",
+        "copilot/gemini-*image*",
+        "google/gemini-*image*",
+        "gemini/gemini-*image*",
+        "google/imagen*"
+      ],
+      "gemma": [
+        "copilot/gemma*",
+        "google/gemma*",
+        "gemini/gemma*"
+      ],
+      "deep-research": [
+        "copilot/deep-research*",
+        "copilot/o3-deep-research*",
+        "copilot/o4-mini-deep-research*",
+        "google/deep-research*",
+        "gemini/deep-research*",
+        "openai/o3-deep-research*",
+        "openai/o4-mini-deep-research*"
+      ],
+      "small": [
+        "mini"
+      ],
+      "detection": [
+        "small"
+      ],
+      "evals": [
+        "small"
+      ],
+      "mini": [
+        "haiku",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gemini-flash-lite"
+      ],
+      "fable": [
+        "copilot/*fable*",
+        "anthropic/*fable*"
+      ],
+      "large": [
+        "sonnet",
+        "gpt-6",
+        "gpt-5-pro",
+        "gpt-5",
+        "gemini-pro"
+      ],
+      "auto": [
+        "copilot/auto",
+        "large"
+      ],
+      "any": [
+        "copilot/*",
+        "anthropic/*",
+        "openai/*",
+        "google/*",
+        "gemini/*"
+      ],
+      "agent": [
+        "sonnet-6x",
+        "gpt-6",
+        "gpt-5.4",
+        "gpt-5.5",
+        "gpt-5.6",
+        "gpt-5.3",
+        "gemini-pro",
+        "any"
+      ],
+      "small-agent": [
+        "haiku",
+        "gpt-5-mini",
+        "gemini-flash"
+      ],
+      "copilot": [
+        "agent"
+      ],
+      "claude": [
+        "agent"
+      ],
+      "codex": [
+        "agent"
+      ],
+      "gemini": [
+        "agent"
+      ],
+      "gemini-3-pro": [
+        "copilot/gemini-3*pro*",
+        "google/gemini-3*pro*",
+        "google/nano-banana*",
+        "gemini/gemini-3*pro*"
+      ],
+      "gemini-3-flash": [
+        "copilot/gemini-3*flash*",
+        "google/gemini-3*flash*",
+        "gemini/gemini-3*flash*"
+      ],
+      "gemini-3.1-pro": [
+        "copilot/gemini-3.1*pro*",
+        "google/gemini-3.1*pro*",
+        "gemini/gemini-3.1*pro*"
+      ],
+      "gemini-3.1-flash": [
+        "copilot/gemini-3.1*flash*",
+        "google/gemini-3.1*flash*",
+        "gemini/gemini-3.1*flash*"
+      ],
+      "gemini-3.5-flash": [
+        "copilot/gemini-3.5*flash*",
+        "google/gemini-3.5*flash*",
+        "gemini/gemini-3.5*flash*"
+      ],
+      "gemini-3.6-flash": [
+        "copilot/gemini-3.6*flash*",
+        "google/gemini-3.6*flash*",
+        "gemini/gemini-3.6*flash*"
+      ],
+      "gemini-3.7-flash": [
+        "copilot/gemini-3.7*flash*",
+        "google/gemini-3.7*flash*",
+        "gemini/gemini-3.7*flash*"
+      ],
+      "gemini-3.8-flash": [
+        "copilot/gemini-3.8*flash*",
+        "google/gemini-3.8*flash*",
+        "gemini/gemini-3.8*flash*"
+      ],
+      "antigravity": [
+        "copilot/antigravity*",
+        "google/antigravity*",
+        "gemini/antigravity*"
+      ],
+      "nano-banana": [
+        "copilot/nano-banana*",
+        "google/nano-banana*",
+        "gemini/nano-banana*"
+      ],
+      "summarization": [
+        "haiku",
+        "gpt-5-mini",
+        "gemini-flash-lite",
+        "mini"
+      ],
+      "computer-use": [
+        "copilot/*computer-use*",
+        "google/*computer-use*",
+        "gemini/*computer-use*",
+        "openai/*computer-use*"
+      ],
+      "robotics": [
+        "copilot/*robotics*",
+        "google/*robotics*",
+        "gemini/*robotics*"
+      ],
+      "veo": [
+        "google/veo*",
+        "gemini/veo*"
+      ],
+      "lyria": [
+        "google/lyria*",
+        "gemini/lyria*",
+        "copilot/lyria*"
+      ],
+      "grok": [
+        "copilot/*grok*",
+        "openai/*grok*"
+      ]
+    },
+    "inventories": [],
+    "coverageStatus": "missing",
+    "missingReason": "Complete applicable independent provider inventories were not retained.",
+    "maturityStatus": "interim",
+    "dubious": true,
+    "fullAcceptance": null,
+    "workflowContribution": null,
+    "costs": null,
+    "baselineReadiness": "unavailable-not-exhausted",
+    "native": {
+      "rows": [
+        {
+          "alias": "agent",
+          "patterns": [
+            "copilot/*sonnet-4.5*",
+            "copilot/*sonnet-4.6*",
+            "copilot/*sonnet-5*",
+            "copilot/*sonnet-4-5-*",
+            "anthropic/*sonnet-4-5-*",
+            "copilot/*sonnet-4-6*",
+            "anthropic/*sonnet-4-6*",
+            "anthropic/*sonnet-5*",
+            "sonnet-6x",
+            "copilot/gpt-6*",
+            "openai/gpt-6*",
+            "gpt-6",
+            "copilot/gpt-5.4*",
+            "openai/gpt-5.4*",
+            "gpt-5.4",
+            "copilot/gpt-5.5*",
+            "openai/gpt-5.5*",
+            "gpt-5.5",
+            "copilot/gpt-5.6*",
+            "openai/gpt-5.6*",
+            "gpt-5.6",
+            "copilot/gpt-5.3*",
+            "openai/gpt-5.3*",
+            "gpt-5.3",
+            "copilot/gemini-*pro*",
+            "google/gemini-*pro*",
+            "gemini/gemini-*pro*",
+            "gemini-pro",
+            "copilot/*",
+            "anthropic/*",
+            "openai/*",
+            "google/*",
+            "gemini/*",
+            "any",
+            "agent"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "antigravity",
+          "patterns": [
+            "copilot/antigravity*",
+            "google/antigravity*",
+            "gemini/antigravity*",
+            "antigravity"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "any",
+          "patterns": [
+            "copilot/*",
+            "anthropic/*",
+            "openai/*",
+            "google/*",
+            "gemini/*",
+            "any"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "auto",
+          "patterns": [
+            "copilot/auto",
+            "copilot/*sonnet*",
+            "anthropic/*sonnet*",
+            "sonnet",
+            "copilot/gpt-6*",
+            "openai/gpt-6*",
+            "gpt-6",
+            "copilot/gpt-5*pro*",
+            "openai/gpt-5*pro*",
+            "gpt-5-pro",
+            "copilot/gpt-5*",
+            "openai/gpt-5*",
+            "gpt-5",
+            "copilot/gemini-*pro*",
+            "google/gemini-*pro*",
+            "gemini/gemini-*pro*",
+            "gemini-pro",
+            "large",
+            "auto"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "claude",
+          "patterns": [
+            "copilot/*sonnet-4.5*",
+            "copilot/*sonnet-4.6*",
+            "copilot/*sonnet-5*",
+            "copilot/*sonnet-4-5-*",
+            "anthropic/*sonnet-4-5-*",
+            "copilot/*sonnet-4-6*",
+            "anthropic/*sonnet-4-6*",
+            "anthropic/*sonnet-5*",
+            "sonnet-6x",
+            "copilot/gpt-6*",
+            "openai/gpt-6*",
+            "gpt-6",
+            "copilot/gpt-5.4*",
+            "openai/gpt-5.4*",
+            "gpt-5.4",
+            "copilot/gpt-5.5*",
+            "openai/gpt-5.5*",
+            "gpt-5.5",
+            "copilot/gpt-5.6*",
+            "openai/gpt-5.6*",
+            "gpt-5.6",
+            "copilot/gpt-5.3*",
+            "openai/gpt-5.3*",
+            "gpt-5.3",
+            "copilot/gemini-*pro*",
+            "google/gemini-*pro*",
+            "gemini/gemini-*pro*",
+            "gemini-pro",
+            "copilot/*",
+            "anthropic/*",
+            "openai/*",
+            "google/*",
+            "gemini/*",
+            "any",
+            "agent",
+            "claude"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "codex",
+          "patterns": [
+            "copilot/*sonnet-4.5*",
+            "copilot/*sonnet-4.6*",
+            "copilot/*sonnet-5*",
+            "copilot/*sonnet-4-5-*",
+            "anthropic/*sonnet-4-5-*",
+            "copilot/*sonnet-4-6*",
+            "anthropic/*sonnet-4-6*",
+            "anthropic/*sonnet-5*",
+            "sonnet-6x",
+            "copilot/gpt-6*",
+            "openai/gpt-6*",
+            "gpt-6",
+            "copilot/gpt-5.4*",
+            "openai/gpt-5.4*",
+            "gpt-5.4",
+            "copilot/gpt-5.5*",
+            "openai/gpt-5.5*",
+            "gpt-5.5",
+            "copilot/gpt-5.6*",
+            "openai/gpt-5.6*",
+            "gpt-5.6",
+            "copilot/gpt-5.3*",
+            "openai/gpt-5.3*",
+            "gpt-5.3",
+            "copilot/gemini-*pro*",
+            "google/gemini-*pro*",
+            "gemini/gemini-*pro*",
+            "gemini-pro",
+            "copilot/*",
+            "anthropic/*",
+            "openai/*",
+            "google/*",
+            "gemini/*",
+            "any",
+            "agent",
+            "codex"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "coding",
+          "patterns": [
+            "copilot/gpt-5*codex*",
+            "openai/gpt-5*codex*",
+            "gpt-5-codex",
+            "copilot/kimi*",
+            "openai/kimi*",
+            "kimi",
+            "coding"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "computer-use",
+          "patterns": [
+            "copilot/*computer-use*",
+            "google/*computer-use*",
+            "gemini/*computer-use*",
+            "openai/*computer-use*",
+            "computer-use"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "openai",
+            "anthropic"
+          ]
+        },
+        {
+          "alias": "copilot",
+          "patterns": [
+            "copilot/*sonnet-4.5*",
+            "copilot/*sonnet-4.6*",
+            "copilot/*sonnet-5*",
+            "copilot/*sonnet-4-5-*",
+            "anthropic/*sonnet-4-5-*",
+            "copilot/*sonnet-4-6*",
+            "anthropic/*sonnet-4-6*",
+            "anthropic/*sonnet-5*",
+            "sonnet-6x",
+            "copilot/gpt-6*",
+            "openai/gpt-6*",
+            "gpt-6",
+            "copilot/gpt-5.4*",
+            "openai/gpt-5.4*",
+            "gpt-5.4",
+            "copilot/gpt-5.5*",
+            "openai/gpt-5.5*",
+            "gpt-5.5",
+            "copilot/gpt-5.6*",
+            "openai/gpt-5.6*",
+            "gpt-5.6",
+            "copilot/gpt-5.3*",
+            "openai/gpt-5.3*",
+            "gpt-5.3",
+            "copilot/gemini-*pro*",
+            "google/gemini-*pro*",
+            "gemini/gemini-*pro*",
+            "gemini-pro",
+            "copilot/*",
+            "anthropic/*",
+            "openai/*",
+            "google/*",
+            "gemini/*",
+            "any",
+            "agent",
+            "copilot"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "deep-research",
+          "patterns": [
+            "copilot/deep-research*",
+            "copilot/o3-deep-research*",
+            "copilot/o4-mini-deep-research*",
+            "google/deep-research*",
+            "gemini/deep-research*",
+            "openai/o3-deep-research*",
+            "openai/o4-mini-deep-research*",
+            "deep-research"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "openai",
+            "anthropic"
+          ]
+        },
+        {
+          "alias": "detection",
+          "patterns": [
+            "copilot/*haiku*",
+            "anthropic/*haiku*",
+            "haiku",
+            "copilot/gpt-5*mini*",
+            "openai/gpt-5*mini*",
+            "gpt-5-mini",
+            "copilot/gpt-5*nano*",
+            "openai/gpt-5*nano*",
+            "gpt-5-nano",
+            "copilot/gemini-*flash*lite*",
+            "google/gemini-*flash*lite*",
+            "gemini/gemini-*flash*lite*",
+            "gemini-flash-lite",
+            "mini",
+            "small",
+            "detection"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "evals",
+          "patterns": [
+            "copilot/*haiku*",
+            "anthropic/*haiku*",
+            "haiku",
+            "copilot/gpt-5*mini*",
+            "openai/gpt-5*mini*",
+            "gpt-5-mini",
+            "copilot/gpt-5*nano*",
+            "openai/gpt-5*nano*",
+            "gpt-5-nano",
+            "copilot/gemini-*flash*lite*",
+            "google/gemini-*flash*lite*",
+            "gemini/gemini-*flash*lite*",
+            "gemini-flash-lite",
+            "mini",
+            "small",
+            "evals"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "fable",
+          "patterns": [
+            "copilot/*fable*",
+            "anthropic/*fable*",
+            "fable"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gemini",
+          "patterns": [
+            "copilot/*sonnet-4.5*",
+            "copilot/*sonnet-4.6*",
+            "copilot/*sonnet-5*",
+            "copilot/*sonnet-4-5-*",
+            "anthropic/*sonnet-4-5-*",
+            "copilot/*sonnet-4-6*",
+            "anthropic/*sonnet-4-6*",
+            "anthropic/*sonnet-5*",
+            "sonnet-6x",
+            "copilot/gpt-6*",
+            "openai/gpt-6*",
+            "gpt-6",
+            "copilot/gpt-5.4*",
+            "openai/gpt-5.4*",
+            "gpt-5.4",
+            "copilot/gpt-5.5*",
+            "openai/gpt-5.5*",
+            "gpt-5.5",
+            "copilot/gpt-5.6*",
+            "openai/gpt-5.6*",
+            "gpt-5.6",
+            "copilot/gpt-5.3*",
+            "openai/gpt-5.3*",
+            "gpt-5.3",
+            "copilot/gemini-*pro*",
+            "google/gemini-*pro*",
+            "gemini/gemini-*pro*",
+            "gemini-pro",
+            "copilot/*",
+            "anthropic/*",
+            "openai/*",
+            "google/*",
+            "gemini/*",
+            "any",
+            "agent",
+            "gemini"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gemini-3-flash",
+          "patterns": [
+            "copilot/gemini-3*flash*",
+            "google/gemini-3*flash*",
+            "gemini/gemini-3*flash*",
+            "gemini-3-flash"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-3-pro",
+          "patterns": [
+            "copilot/gemini-3*pro*",
+            "google/gemini-3*pro*",
+            "google/nano-banana*",
+            "gemini/gemini-3*pro*",
+            "gemini-3-pro"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-3.1-flash",
+          "patterns": [
+            "copilot/gemini-3.1*flash*",
+            "google/gemini-3.1*flash*",
+            "gemini/gemini-3.1*flash*",
+            "gemini-3.1-flash"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-3.1-pro",
+          "patterns": [
+            "copilot/gemini-3.1*pro*",
+            "google/gemini-3.1*pro*",
+            "gemini/gemini-3.1*pro*",
+            "gemini-3.1-pro"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-3.5-flash",
+          "patterns": [
+            "copilot/gemini-3.5*flash*",
+            "google/gemini-3.5*flash*",
+            "gemini/gemini-3.5*flash*",
+            "gemini-3.5-flash"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-3.6-flash",
+          "patterns": [
+            "copilot/gemini-3.6*flash*",
+            "google/gemini-3.6*flash*",
+            "gemini/gemini-3.6*flash*",
+            "gemini-3.6-flash"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-3.7-flash",
+          "patterns": [
+            "copilot/gemini-3.7*flash*",
+            "google/gemini-3.7*flash*",
+            "gemini/gemini-3.7*flash*",
+            "gemini-3.7-flash"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-3.8-flash",
+          "patterns": [
+            "copilot/gemini-3.8*flash*",
+            "google/gemini-3.8*flash*",
+            "gemini/gemini-3.8*flash*",
+            "gemini-3.8-flash"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-flash",
+          "patterns": [
+            "copilot/gemini-*flash*",
+            "google/gemini-*flash*",
+            "gemini/gemini-*flash*",
+            "gemini-flash"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-flash-lite",
+          "patterns": [
+            "copilot/gemini-*flash*lite*",
+            "google/gemini-*flash*lite*",
+            "gemini/gemini-*flash*lite*",
+            "gemini-flash-lite"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-omni",
+          "patterns": [
+            "copilot/gemini-omni*",
+            "google/gemini-omni*",
+            "gemini/gemini-omni*",
+            "gemini-omni"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemini-pro",
+          "patterns": [
+            "copilot/gemini-*pro*",
+            "google/gemini-*pro*",
+            "gemini/gemini-*pro*",
+            "gemini-pro"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gemma",
+          "patterns": [
+            "copilot/gemma*",
+            "google/gemma*",
+            "gemini/gemma*",
+            "gemma"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "gpt-5",
+          "patterns": [
+            "copilot/gpt-5*",
+            "openai/gpt-5*",
+            "gpt-5"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5-codex",
+          "patterns": [
+            "copilot/gpt-5*codex*",
+            "openai/gpt-5*codex*",
+            "gpt-5-codex"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5-mini",
+          "patterns": [
+            "copilot/gpt-5*mini*",
+            "openai/gpt-5*mini*",
+            "gpt-5-mini"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5-nano",
+          "patterns": [
+            "copilot/gpt-5*nano*",
+            "openai/gpt-5*nano*",
+            "gpt-5-nano"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5-pro",
+          "patterns": [
+            "copilot/gpt-5*pro*",
+            "openai/gpt-5*pro*",
+            "gpt-5-pro"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5.1",
+          "patterns": [
+            "copilot/gpt-5.1*",
+            "openai/gpt-5.1*",
+            "gpt-5.1"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5.2",
+          "patterns": [
+            "copilot/gpt-5.2*",
+            "openai/gpt-5.2*",
+            "gpt-5.2"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5.3",
+          "patterns": [
+            "copilot/gpt-5.3*",
+            "openai/gpt-5.3*",
+            "gpt-5.3"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5.4",
+          "patterns": [
+            "copilot/gpt-5.4*",
+            "openai/gpt-5.4*",
+            "gpt-5.4"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5.5",
+          "patterns": [
+            "copilot/gpt-5.5*",
+            "openai/gpt-5.5*",
+            "gpt-5.5"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-5.6",
+          "patterns": [
+            "copilot/gpt-5.6*",
+            "openai/gpt-5.6*",
+            "gpt-5.6"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "gpt-6",
+          "patterns": [
+            "copilot/gpt-6*",
+            "openai/gpt-6*",
+            "gpt-6"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "grok",
+          "patterns": [
+            "copilot/*grok*",
+            "openai/*grok*",
+            "grok"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "haiku",
+          "patterns": [
+            "copilot/*haiku*",
+            "anthropic/*haiku*",
+            "haiku"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "image-generation",
+          "patterns": [
+            "copilot/gpt-image*",
+            "openai/gpt-image*",
+            "openai/chatgpt-image*",
+            "copilot/gemini-*image*",
+            "google/gemini-*image*",
+            "gemini/gemini-*image*",
+            "google/imagen*",
+            "image-generation"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "gemini",
+            "anthropic"
+          ]
+        },
+        {
+          "alias": "kimi",
+          "patterns": [
+            "copilot/kimi*",
+            "openai/kimi*",
+            "kimi"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "kiwi",
+          "patterns": [
+            "copilot/kiwi*",
+            "openai/kiwi*",
+            "kiwi"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "large",
+          "patterns": [
+            "copilot/*sonnet*",
+            "anthropic/*sonnet*",
+            "sonnet",
+            "copilot/gpt-6*",
+            "openai/gpt-6*",
+            "gpt-6",
+            "copilot/gpt-5*pro*",
+            "openai/gpt-5*pro*",
+            "gpt-5-pro",
+            "copilot/gpt-5*",
+            "openai/gpt-5*",
+            "gpt-5",
+            "copilot/gemini-*pro*",
+            "google/gemini-*pro*",
+            "gemini/gemini-*pro*",
+            "gemini-pro",
+            "large"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "lyria",
+          "patterns": [
+            "google/lyria*",
+            "gemini/lyria*",
+            "copilot/lyria*",
+            "lyria"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "gemini",
+            "copilot",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "mai-code",
+          "patterns": [
+            "copilot/MAI-Code*",
+            "copilot/mai-code*",
+            "openai/MAI-Code*",
+            "mai-code"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "mai-code-1-flash-picker",
+          "patterns": [
+            "copilot/MAI-Code-1-Flash-picker*",
+            "copilot/mai-code-1-flash-picker*",
+            "openai/MAI-Code-1-Flash-picker*",
+            "mai-code-1-flash-picker"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "mini",
+          "patterns": [
+            "copilot/*haiku*",
+            "anthropic/*haiku*",
+            "haiku",
+            "copilot/gpt-5*mini*",
+            "openai/gpt-5*mini*",
+            "gpt-5-mini",
+            "copilot/gpt-5*nano*",
+            "openai/gpt-5*nano*",
+            "gpt-5-nano",
+            "copilot/gemini-*flash*lite*",
+            "google/gemini-*flash*lite*",
+            "gemini/gemini-*flash*lite*",
+            "gemini-flash-lite",
+            "mini"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "nano-banana",
+          "patterns": [
+            "copilot/nano-banana*",
+            "google/nano-banana*",
+            "gemini/nano-banana*",
+            "nano-banana"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "opus",
+          "patterns": [
+            "copilot/*opus*",
+            "anthropic/*opus*",
+            "opus"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "opusplan",
+          "patterns": [
+            "copilot/*opus*",
+            "anthropic/*opus*",
+            "opus",
+            "opusplan"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "raptor-mini",
+          "patterns": [
+            "copilot/raptor*",
+            "openai/raptor*",
+            "raptor-mini"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "reasoning",
+          "patterns": [
+            "copilot/o1*",
+            "copilot/o3*",
+            "copilot/o4*",
+            "openai/o1*",
+            "openai/o3*",
+            "openai/o4*",
+            "reasoning"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "openai",
+            "anthropic",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "robotics",
+          "patterns": [
+            "copilot/*robotics*",
+            "google/*robotics*",
+            "gemini/*robotics*",
+            "robotics"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "small",
+          "patterns": [
+            "copilot/*haiku*",
+            "anthropic/*haiku*",
+            "haiku",
+            "copilot/gpt-5*mini*",
+            "openai/gpt-5*mini*",
+            "gpt-5-mini",
+            "copilot/gpt-5*nano*",
+            "openai/gpt-5*nano*",
+            "gpt-5-nano",
+            "copilot/gemini-*flash*lite*",
+            "google/gemini-*flash*lite*",
+            "gemini/gemini-*flash*lite*",
+            "gemini-flash-lite",
+            "mini",
+            "small"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "small-agent",
+          "patterns": [
+            "copilot/*haiku*",
+            "anthropic/*haiku*",
+            "haiku",
+            "copilot/gpt-5*mini*",
+            "openai/gpt-5*mini*",
+            "gpt-5-mini",
+            "copilot/gemini-*flash*",
+            "google/gemini-*flash*",
+            "gemini/gemini-*flash*",
+            "gemini-flash",
+            "small-agent"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "sonnet",
+          "patterns": [
+            "copilot/*sonnet*",
+            "anthropic/*sonnet*",
+            "sonnet"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "sonnet-6x",
+          "patterns": [
+            "copilot/*sonnet-4.5*",
+            "copilot/*sonnet-4.6*",
+            "copilot/*sonnet-5*",
+            "copilot/*sonnet-4-5-*",
+            "anthropic/*sonnet-4-5-*",
+            "copilot/*sonnet-4-6*",
+            "anthropic/*sonnet-4-6*",
+            "anthropic/*sonnet-5*",
+            "sonnet-6x"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "summarization",
+          "patterns": [
+            "copilot/*haiku*",
+            "anthropic/*haiku*",
+            "haiku",
+            "copilot/gpt-5*mini*",
+            "openai/gpt-5*mini*",
+            "gpt-5-mini",
+            "copilot/gemini-*flash*lite*",
+            "google/gemini-*flash*lite*",
+            "gemini/gemini-*flash*lite*",
+            "gemini-flash-lite",
+            "copilot/gpt-5*nano*",
+            "openai/gpt-5*nano*",
+            "gpt-5-nano",
+            "mini",
+            "summarization"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "anthropic",
+            "openai",
+            "gemini"
+          ]
+        },
+        {
+          "alias": "veo",
+          "patterns": [
+            "google/veo*",
+            "gemini/veo*",
+            "veo"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "gemini",
+            "copilot",
+            "anthropic",
+            "openai"
+          ]
+        },
+        {
+          "alias": "vision",
+          "patterns": [
+            "copilot/gemini-*image*",
+            "google/gemini-*image*",
+            "gemini/gemini-*image*",
+            "copilot/gemini-*flash*",
+            "google/gemini-*flash*",
+            "gemini/gemini-*flash*",
+            "vision"
+          ],
+          "status": "unknown",
+          "match": null,
+          "missingProviders": [
+            "copilot",
+            "gemini",
+            "anthropic",
+            "openai"
+          ]
+        }
+      ],
+      "eligibleCount": 62,
+      "supportedCount": 0,
+      "staleCount": 0,
+      "unknownCount": 62,
+      "completeProviders": 0,
+      "populationDigest": "a04359b60d49b33034c69a90ac2890aa436e8789ca33e71884762d1de08cebcf",
+      "policyDigest": "d6a2d03affd5134a6dcb9adb2ecb6bdf12ca73cc67de50682b13bf277932f5da",
+      "coverageStatus": "missing"
+    },
+    "eligibleCount": 62,
+    "populationDigest": "a04359b60d49b33034c69a90ac2890aa436e8789ca33e71884762d1de08cebcf"
+  },
+  "provenance": [
+    {
+      "repository": "github/gh-aw",
+      "kind": "immutable-source-profile",
+      "ref": "c86377ec47b38f0b5af463277ee55d1d03d08da8:.github/workflows/daily-model-inventory.md"
+    },
+    {
+      "repository": "github/gh-aw",
+      "kind": "retained-input-sha256",
+      "ref": "598da2b86274b5cdf911be8a6d572208e3987d6286d213663fedfb4d6efc2852"
+    }
+  ],
+  "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "metrics": {
+    "stale-aliases": null,
+    "known-stale-aliases": null,
+    "supported-aliases": null
+  },
+  "interpretation": "Repository alias population is retained; live support and absence are unknown without independent provider inventories. This is not a successful native value measurement."
+}

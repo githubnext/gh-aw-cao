@@ -9,6 +9,77 @@ import { runOperationalValue } from '../../activity/operational-value.mjs';
 const root = path.resolve(import.meta.dirname, '..', '..');
 const cao = path.join(root, 'activity', 'cao.mjs');
 
+test('standalone collection persists and reuses campaign-free canonical observations beside campaigns', (t) => {
+  const temporary = mkdtempSync(path.join(root, '.aw-value-collection-test.'));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const calls = path.join(temporary, 'calls.jsonl');
+  const database = path.join(temporary, 'dashboard.sqlite');
+  const output = path.join(temporary, 'values.jsonl');
+  for (const directory of ['.github', 'example-campaign']) {
+    const moduleDirectory = path.join(temporary, directory, 'operational-value');
+    mkdirSync(moduleDirectory, { recursive: true });
+    writeFileSync(path.join(temporary, directory, 'operational-value.mjs'), readFileSync(path.join(root,
+      '.github/skills/add-operational-value/templates/campaign-operational-value.mjs')));
+    writeFileSync(path.join(moduleDirectory, 'example.mjs'), `
+import { appendFileSync } from "node:fs";
+export const definition = {
+  slug: "example", workflowName: "Example",
+  adoption: { adoptedAt: "2026-09-01T00:00:00Z" },
+  evaluation: { mode: "attainment-only" },
+  evidence: { measurementKind: "snapshot", repositories: ["octo/api"],
+    window: { durationDays: 1, maturationDays: 0, cadenceDays: 1 } },
+  metrics: [{ id: "remaining", role: "primary", name: "Remaining", unit: "alerts", direction: "decrease" }]
+};
+export function collectBatch(requests) {
+  appendFileSync(${JSON.stringify(calls)}, ${JSON.stringify(directory)} + "\\n");
+  return requests.map(() => ({ evidence: { value: ${directory === '.github' ? 3 : 8}, coverageStatus: "complete" },
+    provenance: [{ repository: "octo/api", kind: "fixture", ref: "immutable" }] }));
+}
+export function scoreMetric(id, evidence) { return evidence.value; }
+`);
+  }
+  const run = (args) => JSON.parse(execFileSync(process.execPath, [cao, ...args],
+    { cwd: root, encoding: 'utf8', stdio: 'pipe' }));
+  writeFileSync(output, JSON.stringify({
+    schema_version: 2, kind: 'operational_value',
+    operational_value: {
+      timestamp: '2026-09-23T10:00:00.000Z', repository: 'octo/api',
+      workflow_slug: 'example', value_id: 'example.remaining', value: 99
+    }
+  }) + '\n');
+  const collect = timestamp => run([
+    'operational-value', '--root', temporary, '--database', database, '--output', output,
+    '--repository', 'octo/api', '--retention-days', '30', '--timestamp', timestamp
+  ]);
+  const first = collect('2026-09-24T10:00:00Z');
+  assert.deepEqual(first.warnings, []);
+  assert.equal(first.values.length, 2);
+  const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+  const standalone = envelopes.find(row => row.operational_value.value === 3).operational_value;
+  assert.equal(Object.hasOwn(standalone, 'campaign'), false);
+  assert.equal(Object.hasOwn(standalone, 'campaign_id'), false);
+  assert.equal(standalone.definition_scope, 'standalone');
+  assert.equal(standalone.workflow_slug, 'example');
+  run(['ingest-jsonl', '--database', database, '--input', output]);
+  const rows = run(['query', '--database', database, '--collection', 'operationalValues']);
+  assert.equal(rows.length, 2);
+  assert.equal(new Set(rows.map(row => row.id)).size, 2);
+  assert.equal(rows.find(row => row.value === 3).campaign, undefined);
+  const repeat = collect('2026-09-24T11:00:00Z');
+  assert.deepEqual(repeat.warnings, []);
+  assert.equal(readFileSync(calls, 'utf8').trim().split('\n').length, 2);
+  assert.equal(repeat.values.find(row => row.value === 3).timestamp, '2026-09-24T10:00:00.000Z');
+  assert.equal(readFileSync(output, 'utf8').trim().split('\n').length, 2);
+  writeFileSync(path.join(temporary, '.github/operational-value/example.mjs'),
+    readFileSync(path.join(temporary, '.github/operational-value/example.mjs'), 'utf8')
+      .replaceAll('remaining', 'unresolved'));
+  assert.deepEqual(collect('2026-09-24T12:00:00Z').warnings, []);
+  const retired = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(retired.length, 2);
+  assert.equal(retired.find(row => row.operational_value.value === 3).operational_value.value_id, 'example.unresolved');
+  assert.equal(retired.find(row => row.operational_value.value === 8).operational_value.value_id, 'example.remaining');
+});
+
 test('standard adapter batches local history once and preserves accepted partial snapshots', async () => {
   mkdirSync(path.join(root, '.tmp'), { recursive: true });
   const temporary = mkdtempSync(path.join(root, '.tmp', 'value-history-batch-'));

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "workflowId": "smoke-repo-memory-ledger",
+  "contractSha256": "47daec7fbbc0683696056b7c1fe5902258d421d77de4af77beb72e3992b82d69",
+  "statesFile": "smoke-repo-memory-ledger-states.json.gz",
+  "statesSha256": "586908f9e659c8cf14611adfd0fdcbce7d13fce2ce1be02d8a6ca90633d968a1",
+  "states": 5,
+  "acquiredAt": "2026-10-18T19:53:48.865Z",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "producer": {
+    "path": "scripts/collect-ledger-projection-history.mjs",
+    "sha256": "7c8b1a5b2ee125ffc60c7565db92436114fd05e0800848d919bacb2eff4fad1a"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "command": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+  "args": [
+    ".github/skills/add-operational-value/scripts/evaluate.mjs",
+    "--root",
+    "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-sturdy-eureka",
+    "--function",
+    "docs/operational-value/proof/functions/smoke-service-ports.mjs",
+    "--no-runs",
+    "--end",
+    "2026-10-19T11:34:50Z",
+    "--output-dir",
+    "docs/operational-value/proof/smoke-service-ports/prospective",
+    "github/gh-aw",
+    "smoke-service-ports"
+  ],
+  "status": 0,
+  "signal": null,
+  "stdout": "Timeline: docs/operational-value/proof/smoke-service-ports/prospective/github-gh-aw/smoke-service-ports-timeline.json\nDefinitions: docs/operational-value/proof/smoke-service-ports/prospective/github-gh-aw/smoke-service-ports-definitions.md\nInteractive pulse: docs/operational-value/proof/smoke-service-ports/prospective/github-gh-aw/smoke-service-ports-pulse.html\nEvidence archive: docs/operational-value/proof/smoke-service-ports/prospective/github-gh-aw/smoke-service-ports-evidence-archive.json\n",
+  "stderr": ""
+}

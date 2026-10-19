@@ -1,0 +1,36 @@
+{
+  "complete": true,
+  "count": 53,
+  "parts": [
+    {
+      "file": "sources-001.json.gz",
+      "count": 10,
+      "sha256": "58ba5abc6836db8f873ae4d0ff18ff910f354c178b91b860b3410da0c81015f2"
+    },
+    {
+      "file": "sources-002.json.gz",
+      "count": 10,
+      "sha256": "91967d7ad818c514701b52eebecf0f30d3d8a2823a6f81925128338087d25707"
+    },
+    {
+      "file": "sources-003.json.gz",
+      "count": 10,
+      "sha256": "55d2f55153809695751a5af8dded57b6158fc1b56169bfbf59f0446e4429bdd2"
+    },
+    {
+      "file": "sources-004.json.gz",
+      "count": 10,
+      "sha256": "31ad751e685c561b8fe70dcda94f27656d4b0ab64ab664b29e2a12f3daaa5667"
+    },
+    {
+      "file": "sources-005.json.gz",
+      "count": 10,
+      "sha256": "52c42aa5fb41227bef1e43ac131d28c075acc1f8673ffe2a12234775057691fa"
+    },
+    {
+      "file": "sources-006.json.gz",
+      "count": 3,
+      "sha256": "58ee1b03b3a9c9ad253d6c8afce0eeb69c5d4da4dc596d519f4605a63c9d5413"
+    }
+  ]
+}

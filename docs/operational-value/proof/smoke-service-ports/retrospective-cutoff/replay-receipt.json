@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-19T11:45:11.601Z",
+  "interpretation": "Source-matched retrospective reconstruction, not ex-ante historical acceptance or an adoption comparison. The frozen standard evaluator rejected this cutoff before unchanged contract activation; this report does not claim standard evaluator success. The known source-defined observed subtotal is 3 Redis cases, 1 full host-bound session and 3 receipt-linked contributions. Population coverage remains partial; missing cohorts stay null, comparisons are unavailable, and there is no complete trend or agreed keep bar. Costs remain unmeasured. Evidence was acquired retrospectively; observedAt is the preserved cutoff assessment coordinate, not an acquisition or acceptance date.",
+  "commands": [
+    {
+      "command": "node",
+      "args": [
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/smoke-service-ports.mjs"
+      ],
+      "status": 0,
+      "stdout": "verified docs/operational-value/proof/functions/smoke-service-ports.mjs\n",
+      "stderr": ""
+    },
+    {
+      "command": "node",
+      "args": [
+        ".github/skills/add-operational-value/scripts/build-timeline.mjs",
+        "docs/operational-value/proof/functions/smoke-service-ports.mjs",
+        "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/observations.json",
+        "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/timeline.json"
+      ],
+      "status": 0,
+      "stdout": "wrote docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/timeline.json\n",
+      "stderr": ""
+    },
+    {
+      "command": "node",
+      "args": [
+        ".github/skills/add-operational-value/scripts/render-pulse.mjs",
+        "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/timeline.json",
+        "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/production-pulse.html"
+      ],
+      "status": 0,
+      "stdout": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/production-pulse.html: insufficient-evidence; attention=evidence-needed\n",
+      "stderr": ""
+    }
+  ],
+  "sourceSnapshotEvidenceIdentical": true,
+  "sourceSnapshotProvenanceIdentical": true,
+  "originalFrozenFilesUnchanged": true,
+  "replacements": [],
+  "metrics": {
+    "verified-redis-cases": 3,
+    "host-bound-sessions": 1,
+    "workflow-contribution": 3
+  },
+  "missingPriorCohort": null,
+  "recentComparisons": "unavailable",
+  "adoptionComparisons": "unavailable",
+  "preserved": {
+    "module": "ddb0db3bc0dc9b571394f5c5bc59646948e085160e82f04cbfb7e361c6c8d62a",
+    "contract": "4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1",
+    "cutoffSnapshot": "2c12244eead69cbf29223b61d2e8bbef449ce840301a5d47c62b8294c25fe5bb",
+    "rejection": "f3c9838782a6e7bf3543e6b6d6e7adc8c349bcbf47db83961647ed0260cc12e9",
+    "predecessor": "80e4ec5a8988b42b7131505288a641552982b04f10df36ddd81f2a4c47991e00",
+    "originalStatus": 1,
+    "adoption": {
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "adoptedAt": "2026-10-19T11:13:09Z",
+      "baselineCommit": null,
+      "baselineAt": null
+    }
+  },
+  "artifacts": [
+    {
+      "path": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/interpretation.json",
+      "bytes": 3175,
+      "sha256": "94eaff1ba574a25fb95790bd2b873a0daeffe2f4022763597c227286d99602f5"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/observations.json",
+      "bytes": 15766,
+      "sha256": "0507a2bd6a2b4dbeaec2bf5c81eb4a38b85843808426f12b377a06a0feed9adc"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/production-pulse.html",
+      "bytes": 19102,
+      "sha256": "21ce75cf333370641c2757c17cebdc063a28de28bfd3d0d15478779d7fd2734f"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/production-pulse.json",
+      "bytes": 6412,
+      "sha256": "4965c2902f7d0185d26a3af7ac7cdd48210f7f71a6b01e4081c7762a9638f8b6"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/replay.mjs",
+      "bytes": 16264,
+      "sha256": "331e2b5cc37eef98b2011056ebcab3178e557510b1ee943f08dca233548c3309"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/retrospective-pulse.html",
+      "bytes": 20105,
+      "sha256": "2315cd04677d188ac06a038d6bda2393b5c5b0ee23bc54faf25ea3aa387009bf"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/retrospective-pulse.json",
+      "bytes": 7405,
+      "sha256": "53a90e2445e19a49be85b587ba0d823dd1f50921539023a2f6bc0de0dcb8f38f"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/timeline.json",
+      "bytes": 25927,
+      "sha256": "6ba40c94e38077ab532be92e7d0130aaeb70d46399187db9b7f9f8f0ba44d719"
+    }
+  ]
+}

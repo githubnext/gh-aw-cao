@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { accessSync, constants, readFileSync } from "node:fs";
+import { accessSync, constants, existsSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
+import { readJsonArchive } from "./json-archive.mjs";
 
 export const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-export const repoRoot = path.resolve(scriptDir, "../../../..");
+export const repoRoot = process.cwd();
 
 export function fail(message) {
   console.error(`error: ${message}`);
@@ -24,7 +25,9 @@ export function requireCommand(command) {
 }
 
 export function run(command, args = [], options = {}) {
-  const result = spawnSync(command, args, {
+  const nodeScript = command.endsWith(".mjs") && existsSync(command)
+    && path.dirname(realpathSync(command)) === realpathSync(scriptDir);
+  const result = spawnSync(nodeScript ? process.execPath : command, nodeScript ? [command, ...args] : args, {
     encoding: Object.hasOwn(options, "encoding") ? options.encoding : "utf8",
     input: options.input,
     cwd: options.cwd,
@@ -49,7 +52,7 @@ export async function importValueModule(file) {
 }
 
 export function readJson(file) {
-  return JSON.parse(readFileSync(file, "utf8"));
+  return readJsonArchive(file, { maxDecodedBytes: 64 * 1024 * 1024, maxParts: 512 });
 }
 
 export function writeJson(value, spacing = 2) {
@@ -82,6 +85,49 @@ export function shiftDays(value, days) {
   return new Date(Date.parse(value) + days * 86_400_000)
     .toISOString()
     .replace(".000Z", "Z");
+}
+
+export function observationWindows(definition, startAt, endAt, retained = []) {
+  const { durationDays, cadenceDays, maturationDays } = definition.evidence.window;
+  const start = Date.parse(startAt), end = Date.parse(endAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end
+    || !["interval", "snapshot"].includes(definition.evidence.measurementKind)
+    || ![durationDays, cadenceDays].every(value => Number.isFinite(value) && value > 0)
+    || !Number.isFinite(maturationDays) || maturationDays < 0) {
+    throw new Error("Invalid bounded observation schedule");
+  }
+  const iso = value => new Date(value).toISOString().replace(".000Z", "Z");
+  if (definition.evidence.measurementKind === "interval") {
+    const windows = [], maturation = maturationDays * 86_400_000;
+    const duration = durationDays * 86_400_000;
+    const step = Math.max(durationDays, cadenceDays) * 86_400_000;
+    for (let at = end; at - maturation > start; at -= step) {
+      const windowEnd = at - maturation;
+      windows.push({ observedAt: iso(at), windowStart: iso(Math.max(start, windowEnd - duration)),
+        windowEnd: iso(windowEnd) });
+    }
+    return windows.length ? windows.reverse()
+      : [{ observedAt: endAt, windowStart: startAt, windowEnd: endAt }];
+  }
+  const attainment = definition.evaluation?.mode === "attainment-only";
+  const cadence = cadenceDays * 86_400_000;
+  const times = [];
+  for (let at = attainment ? start + cadence : start; at <= end; at += cadence) times.push(iso(at));
+  times.push(endAt);
+  for (let period = 1; period < Math.max(2, definition.review?.periods ?? 0); period += 1) {
+    const at = shiftDays(endAt, -cadenceDays * period);
+    if (Date.parse(at) > start) times.push(at);
+  }
+  if (!attainment && definition.adoption.baselineAt) times.push(definition.adoption.baselineAt);
+  times.push(...retained.map(snapshot => snapshot.observedAt).filter(at =>
+    Date.parse(at) <= end && (!attainment || Date.parse(at) > start)));
+  return [...new Set(times)].sort((left, right) => Date.parse(left) - Date.parse(right)).map(observedAt => {
+    const interim = attainment && Date.parse(observedAt) < Date.parse(shiftDays(
+      definition.adoption.adoptedAt, durationDays + maturationDays));
+    const windowEnd = interim ? observedAt : shiftDays(observedAt, -maturationDays);
+    return { observedAt, windowStart: interim ? definition.adoption.adoptedAt : shiftDays(windowEnd, -durationDays),
+      windowEnd };
+  });
 }
 
 export function nowUtc() {

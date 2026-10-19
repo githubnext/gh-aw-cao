@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "artifacts-summary",
+  "workflowName": "Artifacts Summary",
+  "sourcePath": ".github/workflows/artifacts-summary.md",
+  "valueFunctionSha256": "8b96f1203a9f8a3f388650541caa64f90121e2e46af28e7d26eaaf492a30ec1b",
+  "window": {
+    "startAt": "2026-10-19T11:09:13Z",
+    "endAt": "2026-10-19T11:17:25Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "accurate-inventory-reports",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "accurate-inventory-reports",
+    "basis": "repository-outcome",
+    "unit": "reports"
+  },
+  "metrics": [
+    {
+      "id": "accurate-inventory-reports",
+      "name": "Accurate delivered inventories",
+      "role": "primary",
+      "formula": "Distinct completed report identities with complete independently reconciled count/byte/average/time/status inventory",
+      "direction": "increase",
+      "unit": "reports",
+      "presentation": {
+        "name": "Accurate delivered inventories",
+        "legendLabel": "Accurate reports",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-19T11:09:13Z",
+        "endAt": "2026-10-19T11:17:25Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T11:17:25Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T11:17:25Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "verified-workflows",
+      "name": "Verified workflow rows",
+      "role": "diagnostic",
+      "formula": "Sum of independently reconciled artifact-bearing workflow rows on distinct delivered report identities",
+      "direction": "increase",
+      "unit": "workflows",
+      "presentation": {
+        "name": "Verified workflow rows",
+        "legendLabel": "Verified workflows",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-19T11:09:13Z",
+        "endAt": "2026-10-19T11:17:25Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T11:17:25Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T11:17:25Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "verified-storage-bytes",
+      "name": "Verified inventoried storage",
+      "role": "diagnostic",
+      "formula": "Exact native size_in_bytes sum on independently reconciled workflow rows, not bytes saved or fresh artifact production",
+      "direction": "increase",
+      "unit": "bytes",
+      "presentation": {
+        "name": "Verified inventoried storage",
+        "legendLabel": "Verified storage bytes",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-19T11:09:13Z",
+        "endAt": "2026-10-19T11:17:25Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T11:17:25Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T11:17:25Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

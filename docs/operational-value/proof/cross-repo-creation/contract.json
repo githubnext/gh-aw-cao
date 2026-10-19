@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-create-cross-repo-pr",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "4d112feef189a2c36c76927a25bf96fee2efdb41",
+  "until": "2026-10-18T15:00:12Z",
+  "adoption": {
+    "commit": "55e326bff80902ff224fbb187e6af044a2e2e73c",
+    "adoptedAt": "2026-03-02T01:25:35Z",
+    "baselineCommit": "dcaa791c750ebcced5caede5702bcb8f40890bbc",
+    "baselineAt": "2026-03-02T00:53:02Z"
+  },
+  "goal": "Correct cross-repository patch delivery to the source-era designated side repository, not mere pull-request existence.",
+  "freezeBasis": "Actual immutable workflow, all 24 workflow-source change commits and same-revision imports/compiled workflows, plus current native repository resolver, patch/branch handler and Claim-bound delivery readback.",
+  "formula": "Count distinct original-run fixture deliveries independently proven by source-era target identity, PR/base/head branch binding, full Git-object path proofs, absent baseline file, exact added regular-file bytes and run-bounded UTC timestamp.",
+  "nativeUnit": "fixture deliveries",
+  "cadenceDays": 7,
+  "durationDays": 7,
+  "maturationDays": 0,
+  "missingRule": "Missing target receipt, inaccessible target, unresolved source version, deleted run or incomplete population remains null. A complete independently checked opportunity population with no correct deliveries could establish zero; current evidence does not.",
+  "targets": {
+    "frozenConfiguredTarget": "github/gh-aw-side-repo",
+    "frozenProseTarget": "githubnext/gh-aw-side-repo",
+    "aliasEquivalence": "not-established",
+    "resolution": "Use each original immutable source's compiled/configured authority; never silently substitute the prose repository. Historical owner changes are distinct comparison eras."
+  },
+  "nativeAcceptance": [
+    "One unique original run ID; reruns do not multiply delivery credit.",
+    "Original workflow source is bound independently, not inferred from a pull-request head or agent report.",
+    "The Repository content line uses the original protected github.repository context for numeric source repository 1036865607; the verified githubnext/gh-aw source alias is not a side-repository alias.",
+    "Independent PR readback binds target numeric identity, base and head repository, non-base head branch and immutable base/head commits.",
+    "Full Git commit/tree/blob objects verify their native SHA-1 object identities and establish exact path membership; absence needs the complete baseline tree path.",
+    "New regular file smoke-tests/smoke-RUN_ID.txt has the exact prescribed six lines, allowing one final newline.",
+    "Timestamp is canonical UTC, no earlier than original run start and no later than independently observed PR creation.",
+    "Do not require a fixed branch spelling: the source requests a new branch, while the native handler salts/prefixes branch names.",
+    "Do not count patch artifacts without independent target readback; do not infer acceptance from successful jobs or self-reported PASS."
+  ],
+  "metricDispositions": [
+    {"measure": "Exact independently delivered fixture", "role": "primary", "reason": "Direct native cross-repository patch delivery outcome."},
+    {"measure": "Complete delivery count", "role": "diagnostic", "reason": "Requires complete opportunity and target evidence, unlike a partial positive lower bound."},
+    {"measure": "Draft flag, smoke-test label and expiry", "role": "gate", "reason": "Separate lifecycle safeguards; missing receipts cannot establish compliance."},
+    {"measure": "Created PR, report issue, comment, run success, agent PASS", "role": "rejected-proxy", "reason": "None proves target file content or branch delivery."},
+    {"measure": "Patch locally created or uploaded", "role": "rejected-proxy", "reason": "Does not prove persistence to the designated target tree."},
+    {"measure": "Work queue native creation readback", "role": "unavailable-gate", "reason": "Receipt capture requires currentClaimHandle; this workflow does not declare a Claim. Readback alone also lacks exact smoke-file acceptance."},
+    {"measure": "Workflow contribution and costs", "role": "unmeasured", "reason": "No independent accepted delivery receipt or matching cost evidence."}
+  ],
+  "antecedent": {
+    "result": "pre-existing-but-not-reconstructable",
+    "phenomenon": "A person or other system can create an exact cross-repository fixture without this agent. The run-specific smoke exercise is first declared at workflow adoption.",
+    "baselineProbe": "The adoption commit adds both Markdown and compiled workflow against its real parent. Source-declared target is private; the alternate configured target is unavailable publicly. No authorized historical target-tree receipt exists in supplied evidence.",
+    "evaluationMode": "attainment-only",
+    "adoptionComparison": "unavailable",
+    "reason": "No accepted symmetric pre-adoption native target evidence, not a claim that cross-repository delivery was invented by the workflow."
+  },
+  "limitations": [
+    "No private target contents, PRs, branches or histories were read.",
+    "Current configured target returned HTTP 404; that does not prove nonexistence, deletion, failed delivery or historical zero.",
+    "Prose target metadata identifies a private repository; current credentials are not authorization to acquire private outcome content.",
+    "Historical source/lock states at Markdown change boundaries are retained; intervening runtime/compiled revisions are inventoried but not asserted compatible.",
+    "Actions run discovery is exhaustive over currently retained results, not complete lifetime eligibility or independently verified checkout evidence.",
+    "83 workflow-linked source-repository entities are discovery only, never accepted target evidence.",
+    "A gap-only plot is not measured value, trend, all-clear or completed workflow coverage.",
+    "No keep bar or number of complete decision periods is supplied; decision is insufficient evidence/not rated."
+  ]
+}

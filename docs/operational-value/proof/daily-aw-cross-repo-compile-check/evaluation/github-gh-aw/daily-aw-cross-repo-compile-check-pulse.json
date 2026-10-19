@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-aw-cross-repo-compile-check",
+  "workflowName": "Daily AW Cross-Repo Compile Check",
+  "sourcePath": ".github/workflows/daily-aw-cross-repo-compile-check.md",
+  "valueFunctionSha256": "d9f656339478d5affaf0fae0822961a571716ccf2544b900d60ae9698991058a",
+  "window": {
+    "startAt": "2026-10-18T15:00:12Z",
+    "endAt": "2026-10-19T09:57:11Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "compatible-repositories",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "compatible-repositories",
+    "basis": "repository-outcome",
+    "unit": "percent"
+  },
+  "metrics": [
+    {
+      "id": "compatible-repositories",
+      "name": "Selected repository compilation compatibility",
+      "role": "primary",
+      "formula": "100 * compatibleRepositories / eligibleCount; only when all 20 selected repositories have complete independent native assessments.",
+      "direction": "increase",
+      "unit": "percent",
+      "presentation": {
+        "name": "Repository compatibility",
+        "legendLabel": "Compiling repositories",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T09:57:11Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T09:57:11Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T09:57:11Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "compatible-workflows",
+      "name": "Independently compiling workflows",
+      "role": "diagnostic",
+      "formula": "knownCompatibleWorkflows from verified original native per-workflow results; null when no workflows were independently assessed.",
+      "direction": "increase",
+      "unit": "workflows",
+      "presentation": {
+        "name": "Known compiling workflows",
+        "legendLabel": "Compiling workflows",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T09:57:11Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T09:57:11Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T09:57:11Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

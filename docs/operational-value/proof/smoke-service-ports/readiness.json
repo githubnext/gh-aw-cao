@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "workflow": "smoke-service-ports",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "implementation": "Ready: schema-3 definition/collectBatch/scoreMetric recompute source-defined native protocol cases from custody-bound originals; interface tests alone are not admission.",
+  "producer": "Ready for bounded offline replay: verified original provider run, attempt jobs, protected host logs, provider-digest-bound agent ZIP and current/actual-head source blobs. No endpoint acquisition, fetched-code execution or live generic producer.",
+  "nativeEvidence": {
+    "status": "admitted-observed-lower-bound",
+    "acceptedCases": 3,
+    "fullHostBoundSessions": 1,
+    "runId": 38987730359,
+    "attempt": 1,
+    "jobId": 117263197566,
+    "completedAt": "2026-10-17T00:47:10.0140355Z",
+    "directCandidates": 17,
+    "forwardReverseClosure": 56,
+    "reason": "Exact protected step31 frames at host log lines2500/2504 corroborate raw PONG, successful SET followed by exact GET, and source-requested INFO prefix; protected startup/port-allowance/route/sandbox records establish the boundary."
+  },
+  "fullFunction": "Native-admission-ready for retained source-bound observations, including the actual full integration session; not complete repository-period instrumentation or a complete opportunity census.",
+  "contribution": "Three observed native cases linked to the exact workflow run/head/attempt/job/client output; not a claim of sole causal authorship or campaign-wide benefit.",
+  "historical": "One legitimate retrospective Oct17 observation: actual-head source equals frozen Markdown acceptance. Unknown adoption, missing introduction/historical blobs and unassessed candidates still block complete historical/baseline readiness. New contract activation remains Oct19.",
+  "currentSource": "All four imports, full current compiled and actual-head compiled originals, and compiler service-port/checker sources preserved. Native admission uses executed request/response frames rather than health/telemetry/session success.",
+  "frozenStandard": {
+    "status": 1,
+    "reason": "error: evaluation end must follow 2026-10-19T11:13:09Z",
+    "actualAssessment": "frozen-cutoff-assessment.json"
+  },
+  "prospective": {
+    "end": "2026-10-19T11:34:50Z",
+    "status": 0,
+    "nativeScores": null,
+    "meaning": "No authenticated events after activation in the retained inputs; pre-activation event is reported separately, not moved into a new period.",
+    "reports": "prospective/github-gh-aw/"
+  },
+  "costs": "Not measured",
+  "keep": "Not rated: no source-grounded keep bar.",
+  "validation": {
+    "focusedTests": 0,
+    "collector": 0,
+    "lint": 127,
+    "compile": "deferred"
+  },
+  "unresolvedEndpointScope": {
+    "forAdmittedRun": [],
+    "historicalSourceBlobs": [
+      "9b44ac29669e84c63c10d8c3293fb196b9177b57",
+      "162db3de151b00bf1726d58ca1e3708f1311d9d6",
+      "03ec6791c25352baaad03ca09944029a03431b3d",
+      "527b4af949f4a22ad7cb8ee465ff6276925cb00a",
+      "1a34f6b77cca476a1319a5c0ceb9eb0c1f359250",
+      "4cdcda553c90f2cbdd110fc6896309ba96486913",
+      "b0e303b917071aef8a80acbf35ec75d5a70dc6e3"
+    ],
+    "remainingDiscoveryRunMetadata": [
+      "repos/github/gh-aw/actions/runs/23817988153",
+      "repos/github/gh-aw/actions/runs/24160264554",
+      "repos/github/gh-aw/actions/runs/33345877673",
+      "repos/github/gh-aw/actions/runs/34547898709",
+      "repos/github/gh-aw/actions/runs/34729101802",
+      "repos/github/gh-aw/actions/runs/34914733552",
+      "repos/github/gh-aw/actions/runs/35167987391",
+      "repos/github/gh-aw/actions/runs/35410461842",
+      "repos/github/gh-aw/actions/runs/35549019580",
+      "repos/github/gh-aw/actions/runs/35803454794",
+      "repos/github/gh-aw/actions/runs/36079117397",
+      "repos/github/gh-aw/actions/runs/36283952439",
+      "repos/github/gh-aw/actions/runs/36505125703",
+      "repos/github/gh-aw/actions/runs/36798934499",
+      "repos/github/gh-aw/actions/runs/37083565844",
+      "repos/github/gh-aw/actions/runs/37249403628",
+      "repos/github/gh-aw/actions/runs/38329593993"
+    ],
+    "limitation": "These historical metadata/source gaps are not authority to acquire anything. Attempt/job/artifact endpoints for those other candidates cannot be specified until their original identities are established. No additional endpoint is needed to prove the admitted Oct17 session."
+  }
+}

@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "workflow": "github/gh-aw:workflow-normalizer",
+  "status": "blocked-native-producer-not-acquired",
+  "readiness": {
+    "definition": "implemented-current-source",
+    "checker": "implemented-closed-partial-style-facets",
+    "nativeProducer": "unacquired",
+    "productionEvidence": "discovery-only",
+    "fullAcceptance": "unknown"
+  },
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "workflowBlob": "abfac1d367ff164b08c7184ef9b24174373fb91e",
+  "frozenCutoff": "2026-10-18T15:00:12Z",
+  "contractActivation": "2026-10-19T10:31:43Z",
+  "independentNativeFacts": {
+    "originalSourceFiles": 6,
+    "sourceBytes": "complete, Git-blob and SHA256 checked",
+    "sharedHistoryPartitions": 346,
+    "sharedHistoryEntities": 58048,
+    "selectedDiscoveryCandidates": 267,
+    "reportBodies": "unacquired",
+    "activeReportingCohort": "unacquired",
+    "acceptedNativeImprovements": null,
+    "contribution": null,
+    "fullAcceptance": null
+  },
+  "collector": {
+    "path": ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+    "sha256": "a66047b039cf071eee1dda6e1ccd8c1bd9e255f88f0a522dbfa5ff2e6dd5ba6c"
+  },
+  "sourceCollector": {
+    "path": "scripts/collect-workflow-normalizer-native.mjs",
+    "sha256": "55dbd3e24bf165601071e8c959978560ef2b72e41ae947cc8590e8c306604e23"
+  },
+  "module": {
+    "path": "docs/operational-value/proof/functions/workflow-normalizer.mjs",
+    "sha256": "b1307ce00d16ecc0cbe21179927489c5b2eb44d730920658d2741817d4f72574"
+  },
+  "checker": {
+    "path": "docs/operational-value/proof/workflow-normalizer/native.mjs",
+    "sha256": "1091d2b2084676084d5327345a2b9849c6629bcbcb5e388af41217223b9e1fa3"
+  },
+  "sourceArchive": {
+    "path": "docs/operational-value/proof/workflow-normalizer/native-scope.json.gz",
+    "sha256": "058930ff8019e97af8da32125c4cf01cdbd711052b8428fb4dddafa57d107de3"
+  },
+  "historyReader": {
+    "path": ".github/skills/add-operational-value/scripts/collect-output-history.mjs",
+    "sha256": "52ed43049cff5a15209397bee042bbb950aa5fe0628c3c2a6e03c41a5c9e5eea"
+  },
+  "evaluator": {
+    "path": ".github/skills/add-operational-value/scripts/evaluate.mjs",
+    "sha256": "6455ddf4164222e73cb0cee57f4cd87d728713b3cb66ec901feea5b81ce3eb4d"
+  },
+  "codec": {
+    "path": ".github/skills/add-operational-value/scripts/json-archive.mjs",
+    "sha256": "18045c03ca00fc5f8cccf2a02486255e03a0df22adddf0c426c9182fc6e2554b"
+  },
+  "validation": {
+    "focusedTests": {
+      "command": [
+        "node",
+        "--test",
+        "tests/unit/operational-value-workflow-normalizer.test.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": "✔ schema3 examples are explicit native syntax fixtures, never production receipts (1.035ms)\n✔ native partial style repairs survive unknown full readability (0.295042ms)\n✔ each native facet has its own defining byte evidence (0.079625ms)\n✔ h3 presence, fewer headings and suggestions alone do not prove repair (0.083583ms)\n✔ relative heading hierarchy cannot be flattened as a style repair (0.071416ms)\n✔ a regressed native facet prevents acceptance of the joint edit (0.049792ms)\n✔ run labels must bind exactly the same canonical repository and numeric run (0.084542ms)\n✔ fenced examples are preserved literally and never counted as report headers (0.053125ms)\n✔ unsupported, unbalanced or malformed markup is unknown rather than clean (0.08225ms)\n✔ report identity is native, while actors have no influence on the facet (0.234084ms)\n✔ booleans, native counts, copied example claims and agent receipts are not protected producer evidence (0.060417ms)\n✔ delivery counts distinct native subjects at inclusive/exclusive disjoint boundaries (0.2195ms)\n✔ collector retains production unknowns instead of discovery-derived zeros (0.156458ms)\n✔ batched disjoint periods remain unavailable in order, with no fabricated full-period coverage (0.057459ms)\n✔ current-source scope is never backdated or described as exhausted history (0.043959ms)\n✔ invalid repositories and windows fail explicitly (0.073084ms)\n✔ retained full original native source bytes match both Git and SHA256 identities (0.857167ms)\nℹ tests 17\nℹ suites 0\nℹ pass 17\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 50.866208\n",
+      "stderr": ""
+    },
+    "actualStandardCollector": {
+      "command": [
+        "node",
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/workflow-normalizer.mjs"
+      ],
+      "exitCode": 0,
+      "stdout": "verified docs/operational-value/proof/functions/workflow-normalizer.mjs\n",
+      "stderr": ""
+    },
+    "frozenEvaluation": {
+      "command": [
+        "node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--function",
+        "docs/operational-value/proof/functions/workflow-normalizer.mjs",
+        "--output-dir",
+        "docs/operational-value/proof/workflow-normalizer/frozen-evaluation",
+        "--no-runs",
+        "github/gh-aw",
+        "workflow-normalizer"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "error: evaluation end must follow 2026-10-19T10:31:43Z\n",
+      "status": "correctly-rejected-current-only-profile",
+      "report": null,
+      "reason": "Frozen endpoint precedes contract activation; no backdating."
+    },
+    "syntaxChecks": "node --check passed for module, native checker and source collector",
+    "sizeCheck": "node scripts/check-file-sizes.mjs passed",
+    "compile": "npm run compile: 71 succeeded, 2 warnings; no emitted locks",
+    "eslint": "blocked: node_modules/eslint/bin/eslint.js missing; no installation/network authorized",
+    "typecheck": "blocked: node_modules/typescript/bin/tsc missing; no installation/network authorized"
+  },
+  "prospectiveOnly": {
+    "endpoint": "2026-10-19T10:36:50Z",
+    "reports": [
+      {
+        "path": "docs/operational-value/proof/workflow-normalizer/prospective-evaluation/github-gh-aw/workflow-normalizer-definitions.md",
+        "sha256": "9c284e222343670cef0bb6889df79ad91247ce4cb3f13770eb7e1561b76dd630"
+      },
+      {
+        "path": "docs/operational-value/proof/workflow-normalizer/prospective-evaluation/github-gh-aw/workflow-normalizer-evidence-archive.json",
+        "sha256": "6f57ad51025fe3cc21c603df0c1f2dd5299e0a32366104cca320bb156a22196b"
+      },
+      {
+        "path": "docs/operational-value/proof/workflow-normalizer/prospective-evaluation/github-gh-aw/workflow-normalizer-pulse.html",
+        "sha256": "de749eeb7a55ea52c6ae07a36dcaa6f1e5a4f615c03897fb3dc554499ea4b01f"
+      },
+      {
+        "path": "docs/operational-value/proof/workflow-normalizer/prospective-evaluation/github-gh-aw/workflow-normalizer-pulse.json",
+        "sha256": "46eb4681d456444ec97aeab2f7919ba31d8ab7a3655657619a61647af2372b4d"
+      },
+      {
+        "path": "docs/operational-value/proof/workflow-normalizer/prospective-evaluation/github-gh-aw/workflow-normalizer-timeline.json",
+        "sha256": "696f07a587c44b7cf09059b7243fdf22da1a37196f1cbdf4a1391f3641ac7e65"
+      }
+    ],
+    "status": "unavailable-native-measurement-not-a-measured-zero",
+    "observation": {
+      "eligibleCount": null,
+      "nativeStyleRepairs": null,
+      "fullAcceptance": null,
+      "contribution": null
+    },
+    "decision": "not-rated",
+    "costs": "not-measured",
+    "warning": "Post-cutoff diagnostic pipeline replay, not frozen historical results or a completed native measurement."
+  },
+  "exactMissingScope": [
+    "Complete active reporting-workflow cohort for each 24h interval, including skipped/malformed logs and pagination/storage continuation.",
+    "Full original and changed report bytes tied to stable GitHub subjects and independent authoritative body-edit timestamps.",
+    "Original report/run/head/safe-output identity from a protected producer; editable attribution and successful jobs are not receipts.",
+    "Pinned native producer code, configuration and receipt/source closure that independently binds those bytes and cohort.",
+    "Separate explicit downstream graph for workflow-normalizer contribution; selected lineage alone is not a verified graph edge."
+  ],
+  "limitations": [
+    "Closed partial report-style syntax checker only. The production scorer has no protected native report input bindings; only explicitly sealed synthetic fixtures can score numerically.",
+    "No protected producer protocol or readability standard has been invented. A new independent producer/source scope and reviewed input bindings are needed before production numbers.",
+    "Prompt instruction compliance is not report readability. Reports in comments/Discussions and other Markdown forms need native decoders before a complete-scope claim.",
+    "History remains unacquired/unknown, not exhausted. No adoption date, keep bar, utility, agent score, causation or reader-study claim is inferred."
+  ],
+  "independentReplay": {
+    "status": "passed",
+    "seedMembersVerified": 32,
+    "focusedTestsExitCode": 0,
+    "standardCollectorExitCode": 0,
+    "standardEvaluatorEndpoint": "2026-10-19T10:36:50Z",
+    "identical": [
+      "frozen definition",
+      "module fingerprint",
+      "complete snapshots/evidence/provenance",
+      "native metrics",
+      "value review"
+    ],
+    "caveat": "Standard report generation timestamps can differ; prospective unavailable values are not native improvements."
+  }
+}

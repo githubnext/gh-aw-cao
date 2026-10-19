@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "kind": "operational-value-events",
+  "repository": "github/gh-aw",
+  "workflowSlug": "architecture-guardian",
+  "workflowName": "Architecture Guardian",
+  "sourcePath": ".github/workflows/architecture-guardian.md",
+  "observedAt": "2026-10-18T17:06:18Z",
+  "cadenceDays": 7,
+  "window": {
+    "startAt": "2026-04-08T17:05:30Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "basis": "workflow-contribution",
+  "opportunities": null,
+  "coverage": [
+    {
+      "startAt": "2026-04-08T17:05:30.000Z",
+      "endAt": "2026-10-18T15:00:12Z",
+      "status": "complete"
+    }
+  ],
+  "events": [],
+  "metric": {
+    "id": "observed-linked-net",
+    "name": "Go file-blocker reductions",
+    "unit": "files",
+    "direction": "increase",
+    "version": "288f23e2eac6f43483e217923503784d4e74ce06c42d3279b50fac445bfaa785"
+  },
+  "nativeContext": {
+    "repositoryNet": -10,
+    "observedRepositoryNet": -10,
+    "linkedNet": 0,
+    "observedLinkedNet": 0,
+    "assessedFiles": 13056,
+    "linkedAssessedFiles": 0,
+    "linkedMergeCandidates": 0,
+    "roots": 28,
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "oracleSha256": "753dd2574b4389eaee0a0bb63fb74f7c7357696cc6d8e7c7a6f52e833ba1cf2c",
+    "fullAcceptance": "not-measured",
+    "costs": "not-measured"
+  },
+  "limitations": [
+    "Partial facet: reduce the non-generated, non-test Go file population above the frozen default 1000-newline blocker boundary. New blockers and reversals offset reductions; syntax, behavior, JavaScript, functions, exports, import cycles and other configured thresholds remain separate.",
+    "Corroborated markers and explicit GitHub graph links are not safe-output creation receipts or exclusive causal attribution.",
+    "This cohort excludes unresolved workflow markers, comments, edited-away markers and deleted outputs.",
+    "Links discovered after the PR merged are not used to backdate contribution.",
+    "Merge and check rollups do not prove native improvement, race safety, behavior preservation or required-regression acceptance.",
+    "Zero in this narrow corroborated facet does not establish zero overall workflow value.",
+    "Native repository changes count regardless of actor; the plot shows only independently graph-linked shared contributions.",
+    "A zero interval is supported by a complete immutable source scan, not invented from absent evidence.",
+    "Go formatting is pinned to the retained Go toolchain; newer tooling can differ. No full-goal, safety, cost or keep-bar claim is inferred."
+  ]
+}

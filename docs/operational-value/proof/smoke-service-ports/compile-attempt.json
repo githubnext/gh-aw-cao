@@ -1,0 +1,5 @@
+{
+  "command": "gh aw compile --strict --no-emit --no-check-update --schedule-seed githubnext/gh-aw-cao",
+  "status": "deferred",
+  "reason": "Shared compilation is coordinator-owned; compiler has no offline flag and network is forbidden in this assignment. gh aw compile --help was inspected locally."
+}

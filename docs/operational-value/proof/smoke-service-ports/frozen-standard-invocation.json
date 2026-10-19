@@ -1,0 +1,21 @@
+{
+  "command": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+  "args": [
+    ".github/skills/add-operational-value/scripts/evaluate.mjs",
+    "--root",
+    "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-sturdy-eureka",
+    "--function",
+    "docs/operational-value/proof/functions/smoke-service-ports.mjs",
+    "--no-runs",
+    "--end",
+    "2026-10-18T15:00:12Z",
+    "--output-dir",
+    "docs/operational-value/proof/smoke-service-ports/frozen-standard",
+    "github/gh-aw",
+    "smoke-service-ports"
+  ],
+  "status": 1,
+  "signal": null,
+  "stdout": "",
+  "stderr": "error: evaluation end must follow 2026-10-19T11:13:09Z\n"
+}

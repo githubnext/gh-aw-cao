@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "contractSha256": "e1efbb89684712dd6b2e1ad8728e1985d403afa55ccc5b8c44e6f7e1902b2143",
+  "until": "2026-10-18T15:00:12Z",
+  "runs": 414,
+  "inventorySha256": "59984bda9b8d48109618143a70a678c53787435376ca905546fb40c02f29ba8b",
+  "artifacts": 536,
+  "survivingCacheArtifacts": 88
+}

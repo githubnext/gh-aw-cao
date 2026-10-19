@@ -8,6 +8,16 @@ const root = path.resolve(import.meta.dirname, "../..");
 const dist = path.join(root, "dist");
 const publicBase = new URL("https://githubnext.github.io/gh-aw-cao/");
 
+test("workflow evidence reports remain available without expanding compact agent context", async () => {
+  const small = await readFile(path.join(dist, "llms-small.txt"), "utf8");
+  const full = await readFile(path.join(dist, "llms-full.txt"), "utf8");
+  assert.ok(Buffer.byteLength(small) <= 64 * 1024);
+  for (const title of ["What Smoke Checkout PR Dispatch measures", "What Smoke Create Cross-Repo PR measures"]) {
+    assert.ok(!small.includes(title));
+    assert.ok(full.includes(title));
+  }
+});
+
 function hrefForRel(html, rel, type) {
   const tags = html.match(/<link\b[^>]*>/g) ?? [];
   const tag = tags.find((candidate) =>

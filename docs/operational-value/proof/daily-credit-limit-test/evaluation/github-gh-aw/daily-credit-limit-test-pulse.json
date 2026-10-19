@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-credit-limit-test",
+  "workflowName": "Daily credit activation guardrail",
+  "sourcePath": ".github/workflows/daily-credit-limit-test.md",
+  "valueFunctionSha256": "0fb6eb98b12ca81fe712098e7eadeb869a17352ef4b3fcbabd780ba985d32a43",
+  "window": {
+    "startAt": "2026-10-18T15:00:12Z",
+    "endAt": "2026-10-19T09:46:04Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "protected-share",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "protected-share",
+    "basis": "repository-outcome",
+    "unit": "percent"
+  },
+  "metrics": [
+    {
+      "id": "protected-share",
+      "name": "Eligible activations fully protected",
+      "role": "primary",
+      "formula": "100 * acceptedCount / eligibleCount; only complete eligibility and acceptance cohorts",
+      "direction": "increase",
+      "unit": "percent",
+      "presentation": {
+        "name": "Eligible activations fully protected",
+        "legendLabel": "Protected activations",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T09:46:04Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T09:46:04Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T09:46:04Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "verified-protected",
+      "name": "Independently verified protected activations",
+      "role": "diagnostic",
+      "formula": "acceptedCount; positive lower bound survives incomplete inventory or other unresolved opportunities",
+      "direction": "increase",
+      "unit": "activations",
+      "presentation": {
+        "name": "Independently verified protected activations",
+        "legendLabel": "Verified protection",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T09:46:04Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T09:46:04Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T09:46:04Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "daily-denials",
+      "name": "Verified daily guardrail denials",
+      "role": "diagnostic",
+      "formula": "denialCount for independently eligible activations; not full acceptance",
+      "direction": "increase",
+      "unit": "activations",
+      "presentation": {
+        "name": "Verified daily guardrail denials",
+        "legendLabel": "Daily denials",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T09:46:04Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T09:46:04Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T09:46:04Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "inference-free",
+      "name": "Verified inference-free eligible activations",
+      "role": "diagnostic",
+      "formula": "inferenceFreeCount for independently eligible activations with complete audit",
+      "direction": "increase",
+      "unit": "activations",
+      "presentation": {
+        "name": "Verified inference-free eligible activations",
+        "legendLabel": "No agent inference",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T09:46:04Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T09:46:04Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T09:46:04Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "limit-messages",
+      "name": "Verified required limit messages",
+      "role": "diagnostic",
+      "formula": "notificationCount for independently eligible activations; publication alone is not full acceptance",
+      "direction": "increase",
+      "unit": "activations",
+      "presentation": {
+        "name": "Verified required limit messages",
+        "legendLabel": "Limit messages",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T09:46:04Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T09:46:04Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T09:46:04Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "workflow-contribution",
+      "name": "Verified workflow-linked protected activations",
+      "role": "diagnostic",
+      "formula": "contributionCount; subset of acceptedCount with authenticated producer linkage, not exclusive causation",
+      "direction": "increase",
+      "unit": "activations",
+      "presentation": {
+        "name": "Verified workflow-linked protected activations",
+        "legendLabel": "Workflow contribution",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T09:46:04Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T09:46:04Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T09:46:04Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

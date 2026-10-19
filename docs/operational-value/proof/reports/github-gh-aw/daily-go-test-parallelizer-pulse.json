@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-go-test-parallelizer",
+  "workflowName": "Daily Go Test Parallelizer",
+  "sourcePath": ".github/workflows/daily-go-test-parallelizer.md",
+  "valueFunctionSha256": "3f09b62e5f3b0686bda3e6a0332f2a0a95f725687de50546f647b5e522db718e",
+  "window": {
+    "startAt": "2026-07-27T04:58:37Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-08-01T00:00:00.000Z",
+      "label": "Aug 2026"
+    },
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "corroborated-net",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": 0,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "corroborated-net",
+    "basis": "workflow-contribution",
+    "unit": "tests"
+  },
+  "metrics": [
+    {
+      "id": "native-net",
+      "name": "Repository net unchanged-body parallel activations",
+      "role": "primary",
+      "formula": "qualifying leading parallel activations minus qualifying withdrawals in the non-overlapping period",
+      "unit": "tests",
+      "direction": "increase",
+      "presentation": {
+        "name": "Repository parallel activations",
+        "legendLabel": "Repository tests",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": -2,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-08-03T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-03T04:58:37Z"
+        },
+        {
+          "at": "2026-08-10T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-10T04:58:37Z"
+        },
+        {
+          "at": "2026-08-17T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-17T04:58:37Z"
+        },
+        {
+          "at": "2026-08-24T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-24T04:58:37Z"
+        },
+        {
+          "at": "2026-08-31T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-31T04:58:37Z"
+        },
+        {
+          "at": "2026-09-07T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-07T04:58:37Z"
+        },
+        {
+          "at": "2026-09-14T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-14T04:58:37Z"
+        },
+        {
+          "at": "2026-09-21T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-21T04:58:37Z"
+        },
+        {
+          "at": "2026-09-28T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-28T04:58:37Z"
+        },
+        {
+          "at": "2026-10-05T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-05T04:58:37Z"
+        },
+        {
+          "at": "2026-10-12T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-12T04:58:37Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "corroborated-net",
+      "name": "Corroborated workflow-linked net parallel activations",
+      "role": "diagnostic",
+      "formula": "the same native signed effects restricted to immutable merge revisions linked to this workflow",
+      "unit": "tests",
+      "direction": "increase",
+      "presentation": {
+        "name": "Workflow-linked parallel activations",
+        "legendLabel": "Linked tests",
+        "transform": "identity"
+      },
+      "basis": "workflow-contribution",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 0,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-08-03T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-03T04:58:37Z"
+        },
+        {
+          "at": "2026-08-10T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-10T04:58:37Z"
+        },
+        {
+          "at": "2026-08-17T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-17T04:58:37Z"
+        },
+        {
+          "at": "2026-08-24T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-24T04:58:37Z"
+        },
+        {
+          "at": "2026-08-31T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-31T04:58:37Z"
+        },
+        {
+          "at": "2026-09-07T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-07T04:58:37Z"
+        },
+        {
+          "at": "2026-09-14T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-14T04:58:37Z"
+        },
+        {
+          "at": "2026-09-21T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-21T04:58:37Z"
+        },
+        {
+          "at": "2026-09-28T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-28T04:58:37Z"
+        },
+        {
+          "at": "2026-10-05T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-05T04:58:37Z"
+        },
+        {
+          "at": "2026-10-12T04:58:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-12T04:58:37Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Shared workflow-enabled contribution, not exclusive authorship."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

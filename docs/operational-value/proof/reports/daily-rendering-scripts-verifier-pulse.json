@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-rendering-scripts-verifier",
+  "workflowName": "Daily Rendering Scripts Verifier: observed provider-error preservation",
+  "sourcePath": ".github/workflows/daily-rendering-scripts-verifier.md",
+  "valueFunctionSha256": "d3a28acf8da60703858e34e7b483d50bc89918da47606c33629cefb081fa97ee",
+  "window": {
+    "startAt": "2026-09-12T10:16:09Z",
+    "endAt": "2026-10-18T10:27:52.934Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "conformance",
+  "signal": {
+    "status": "steady",
+    "attention": "not-indicated",
+    "current": 100,
+    "previous": 100,
+    "directionAwareGain": 0,
+    "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+    "opportunities": 1,
+    "metricId": "conformance",
+    "basis": "repository-outcome",
+    "unit": "percent"
+  },
+  "metrics": [
+    {
+      "id": "conformance",
+      "role": "primary",
+      "name": "Observed provider-error conformance",
+      "formula": "100 * cases satisfying both error-preservation checks / eligible observed input cases",
+      "unit": "percent",
+      "direction": "increase",
+      "presentation": {
+        "name": "Observed input conformance",
+        "legendLabel": "Input conformance",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 100,
+        "previous": 100,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 1
+      },
+      "currentWindow": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-03T10:16:09Z",
+        "endAt": "2026-10-10T10:16:09Z"
+      },
+      "series": [
+        {
+          "at": "2026-09-19T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        },
+        {
+          "at": "2026-09-26T10:16:09Z",
+          "value": 100,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        },
+        {
+          "at": "2026-10-03T10:16:09Z",
+          "value": 100,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        },
+        {
+          "at": "2026-10-10T10:16:09Z",
+          "value": 100,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        },
+        {
+          "at": "2026-10-17T10:16:09Z",
+          "value": 100,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "linked-repairs",
+      "role": "diagnostic",
+      "name": "Receipt-linked repairs delivered in the measurement window",
+      "formula": "1 only when the verified creator receipt matches the PR, its original patch repairs the observed input, the merged revision passes, and merge time is inside this window; otherwise 0",
+      "unit": "repairs",
+      "direction": "increase",
+      "presentation": {
+        "name": "New receipt-linked repairs",
+        "legendLabel": "New linked repairs",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 1
+      },
+      "currentWindow": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-03T10:16:09Z",
+        "endAt": "2026-10-10T10:16:09Z"
+      },
+      "series": [
+        {
+          "at": "2026-09-19T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        },
+        {
+          "at": "2026-09-26T10:16:09Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        },
+        {
+          "at": "2026-10-03T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        },
+        {
+          "at": "2026-10-10T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        },
+        {
+          "at": "2026-10-17T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T10:27:52.934Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

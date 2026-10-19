@@ -1,0 +1,48 @@
+{
+  "sourceGitBlob": "c1aa0d5d7d9ab9012dc9a8a48f9894768e5360b5",
+  "sourceSha256": "5a8230d9460d9dac666f83fca2cc458f1abe31a66f8bddd55a05cd416e115f63",
+  "kind": "synthetic-native-hash-only-probe-not-runtime-attainment",
+  "inputSerialization": "Explicit synthetic JSON.stringify serialization, not an inferred GitHub toJSON receipt",
+  "tool": {
+    "bash": "GNU bash, version 3.2.57(1)-release (arm64-apple-darwin26)",
+    "sha256sum": "sha256sum (Darwin) 1.0"
+  },
+  "probes": [
+    {
+      "caller": "task-a",
+      "attempt": 1,
+      "inputSha256": "b09ce4eb5546460331de54615c108c8945c2df0106a9306672c3cb88258852aa",
+      "prefix": "bbf312b6-"
+    },
+    {
+      "caller": "task-a",
+      "attempt": 2,
+      "inputSha256": "b09ce4eb5546460331de54615c108c8945c2df0106a9306672c3cb88258852aa",
+      "prefix": "041597a8-"
+    },
+    {
+      "caller": "task-b",
+      "attempt": 1,
+      "inputSha256": "50fade29a8e225125d5700a38e6672bd913ce376aa81fcec551886060a86e5eb",
+      "prefix": "791d366d-"
+    },
+    {
+      "caller": "task-b",
+      "attempt": 2,
+      "inputSha256": "50fade29a8e225125d5700a38e6672bd913ce376aa81fcec551886060a86e5eb",
+      "prefix": "a4638856-"
+    },
+    {
+      "caller": "task-c",
+      "attempt": 1,
+      "inputSha256": "acacc73e101e7bbc92a01e9fbeb45820a4e7189329cb1d0969078561d8cc7249",
+      "prefix": "45c60495-"
+    },
+    {
+      "caller": "task-c",
+      "attempt": 2,
+      "inputSha256": "acacc73e101e7bbc92a01e9fbeb45820a4e7189329cb1d0969078561d8cc7249",
+      "prefix": "496bdb35-"
+    }
+  ]
+}

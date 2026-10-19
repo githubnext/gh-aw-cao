@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "status": "incomplete",
+  "reason": "The original bounded archive reached its 128 MiB retained-source limit during the September/October source acquisition. No final evidence index or measured evaluation was emitted.",
+  "preservation": "The original frozen function, contract, interpreter, native probe and collector are preserved here. Partial source archives remain under the parent credo-snippets/sources directory, with partial endpoint inventories at the parent directory.",
+  "extension": "The successor changes only acquisition partitioning and its pinned producer identity. It preserves native scoring, eligibility, tool identity and source/cutoff. The canonical frozen source-reader and bounded-archive helper bytes are unchanged.",
+  "measured": false
+}

@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "smoke-temporary-id",
+  "sourceGitBlob": "24368e226f6cc0c5ddbf45d8c35a6a500ba3a94d",
+  "frozenRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "repositoryRole": "The local checkout supplies evaluation tooling only. The measured source, Actions executions and issue outcomes are in the explicitly assigned public github/gh-aw repository. No rollout policy, control-plane authority or repository write is changed.",
+  "sourceReview": {
+    "workflowProfiles": 40,
+    "adoptionVerified": "Actual Markdown addition against non-shallow first-parent tree, not the oldest output or first retained run.",
+    "historicalImports": [
+      "OTLP endpoint/header variants add observability, not a reference-resolution assertion.",
+      "token-telemetry-check has old optional artifact-download and newer fail-closed engine-specific variants. Its checks establish nonempty token telemetry, not correct temporary IDs.",
+      "reporting is an inline formatting skill; it does not independently verify results.",
+      "Historical noop-reminder imports change the no-action reporting convention, not the three-issue graph."
+    ],
+    "invariant": "All forty source versions retain the exact aw_test01, aw_test02, aw_test03 issue fixtures and the same final three-issue/reference/parent relationship success criterion.",
+    "intentChanges": [
+      "The initial allowed format was 4-8 alphanumeric suffix characters; the following revision changed it to 3-8. All actual fixture suffixes are six characters, so broad length-boundary coverage is not established.",
+      "Single-agent/sub-agent experiment variants added in May retain the identical six body edges and two hierarchy edges.",
+      "Later engine/model/sandbox/schedule/token/reporting/eval changes remain distinct source profiles. Equal native outcomes do not establish equivalent exposure, cost, experimental efficacy or causal improvement."
+    ]
+  },
+  "runtimeReview": {
+    "profiles": 26,
+    "uniqueSourceBlobs": 55,
+    "scope": "Exact protected safe_outputs host job, actions checkout, Process Safe Outputs GitHub Script step, upload step, create_issue handler, temporary-ID helpers, handler manager, manifest/map writers, and sub-issue GraphQL helper at each retained immutable checkout.",
+    "mapProvenance": "create_issue stores the actual GitHub API number under the normalized temporary ID; processMessages also registers its result. The protected manager writes the final map with writeFileSync, not an agent-authored claim. The manifest records the handler result after completion.",
+    "crossReferenceProvenance": "The first created parent and child can contain forward references. Synthetic updates run after shared-map resolution; issue bodies are updated through GitHub's issues.update. A protected map is only a join key: independent body state must still show each correct directed target.",
+    "graphProvenance": "create_issue's parent field and link_sub_issue use native addSubIssue. Native create success may survive link failure and fallback to a comment. Therefore successful create receipts and Related to text never prove graph links.",
+    "receiptCompatibility": [
+      "The map serialization and canonical temporary-ID replacement remain semantically compatible for the fixed six-character fixtures.",
+      "Manifest variants add provider IDs, metadata, recursive redaction and scoped queue identity. Empty/minimal redaction fallbacks do not establish missing identities.",
+      "Handler-manager changes add provider temporary-ID entries, comment tracking, warning formatting and queue authorization. None substitutes a successful job for independent body/graph evidence.",
+      "Synthetic-update changes add mention handling, execution provenance and queue authorization. The native predicate remains the independently read target of each reference, not textual update success.",
+      "All seven retained create_issue versions were compared. Changes introduce mention limits/per-target mention aliases, a body-size guard, optional body footers, id/node_id result fields, a factored issue-body formatter, custom-job API and provenance-bearing fallback comments. Map registration still records the actual created issue number; result node IDs are checked where that version supplies them. No fallback comment is treated as a native hierarchy edge.",
+      "Only scheduled/manual initial attempts with one source-bound checkout are currently admitted by the protected-receipt interpreter. Other attempts remain explicitly inventoried and unassessed."
+    ],
+    "sourceExecution": "No fetched source or executable repository configuration was run. Immutable source was parsed and inspected; only the local deterministic interpreter was executed."
+  },
+  "canonicalSourcePlan": {
+    "specificationReads": [
+      "cao_dashboard_read_data_specification lines 1-110: canonical boundary and seven-day detail retention",
+      "lines 1510-1540: explicit experiment/definition/run identity and missing-null behavior",
+      "lines 1544-1562: empty eval evidence is not an inferred score",
+      "lines 1560-1620: safe-output counts and successful execution do not establish accepted outcomes"
+    ],
+    "decision": "No dashboard data-model, query or presenter change is needed. This offline retained-evidence instrument requires protected temporary-ID maps plus historical issue bodies and parent-event receipts, not available merely from a run summary or output count. No Dashboard Language query semantics are reimplemented."
+  },
+  "coverageRules": {
+    "executionInventory": "Recursive disjoint cutoff-bounded Actions date ranges avoid the 1,000-result endpoint ceiling; every returned run and each reported attempt is inventoried, including skipped/cancelled attempts.",
+    "candidateInventory": "Reuse the seeded complete digest-checked repository issue/PR cursor history; do not reacquire the entire issue history. Editable producer markers are discovery only.",
+    "receiptInventory": "Every actually started protected safe_outputs job is checked for retained logs and artifact metadata; every unexpired bounded safe-outputs-items archive is acquired and provider/upload/archive digests are matched.",
+    "targetClosure": "A protected map may name issues omitted from editable-marker discovery. Follow every exact mapped target and independent comment target before declaring the evidence join exhausted.",
+    "historicalBodies": "Bodies require authoritative last-edit timestamps at or before the relevant host completion cutoff. Newer edited bodies remain unavailable rather than backdated.",
+    "historicalGraph": "Use complete child-side parent add/remove events and independently observed current parent identity to reconstruct the exact host-completion state. Current graph state alone is not historical proof.",
+    "missingness": "Empty map, missing receipts, unknown attempt eligibility, expired logs, later edits, missing graph history and unverified comment targets are distinct gaps, never invented zeros.",
+    "nativePartialValue": "Known directed references count even if graph or comment evidence is unavailable. A missing identity invalidates only affected edges; it does not erase independently established pairs."
+  },
+  "results": {
+    "runInventory": 2475,
+    "attemptInventory": 2787,
+    "confirmedExecutedInitialAttempts": 224,
+    "confirmedSkippedInitialAttempts": 1539,
+    "unknownInitialEligibility": 712,
+    "confirmedReferenceSlots": 1344,
+    "eligibleReferenceDenominator": null,
+    "eligibleProtectedHostScopes": 219,
+    "retainedProtectedHostLogsAndArchives": 26,
+    "retainedTemporaryIdMaps": 23,
+    "emptyTemporaryIdMaps": 17,
+    "fullyIndependentMappedTriplets": 6,
+    "independentIssueNodes": 144,
+    "distinctVerifiedBodyReferences": 36,
+    "distinctVerifiedParentChildLinks": 12,
+    "fullyAcceptedTriplets": 3,
+    "tripletsWithUnknownSummaryAcceptance": 3,
+    "latestSevenDayReferences": 6,
+    "latestSevenDayLinks": 2,
+    "latestSevenDayFullAcceptance": null,
+    "coverage": "Partial native measurement, exhaustive declared inventory; no complete historical attainment claim.",
+    "plot": "Native metric-specific axes with null gaps. Adoption-cadence snapshots and final adjacent cutoff-aligned comparisons can overlap; do not sum timeline points as unique delivered outcomes.",
+    "remaining": "712 jobless histories cannot establish execution eligibility; 193 of the 219 eligible protected host scopes lack retained host receipts. Three retained uploads lack a map and seventeen maps are empty. All eighteen exact canonical mapped issues and all three protected comment targets have now been independently read. The last three mapped executions have no independently bound protected summary-comment receipt.",
+    "coordinatedAcquisition": "Five original public HTTP200 responses, including public repository metadata, the ten-target graph query and three exact comment GETs, were SHA256-verified and retained. The parent's later unrelated rate-limit failure does not invalidate these responses. All subsequent work is offline."
+  },
+  "decision": "No native keep threshold was established by the source. Report not rated; historical gaps do not establish a trend, all-clear, sole attribution or costs."
+}

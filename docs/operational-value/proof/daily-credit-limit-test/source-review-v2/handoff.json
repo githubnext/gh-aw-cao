@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "scope": "Additive immutable-source review delta only; not a full/native-ready operational-value function",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "portfolioCutoff": "2026-10-18T15:00:12Z",
+  "predecessor": {
+    "manifestSha256": "192d729f471920d0b754518d9b5fc650650b4fcf7ae47b22a796156d7c51d6f7",
+    "archiveSha256": "dc3385d5cb0ad393860398121299447c48814a5b880ae8c2b347cb50544d494c",
+    "preservedMembers": 14,
+    "contentsUnchanged": true,
+    "admissionStatus": "Not admitted; new source review identifies an incompatible dispatch eligibility assumption and an unimplemented authenticated producer boundary.",
+    "reportDisposition": "Original prospective report ends after the frozen cutoff; retained unchanged and excluded from frozen portfolio."
+  },
+  "sourceBatch": {
+    "manifestSha256": "423419233e63d4fa026cfafada370e2475ed8503fc0b400a54fdbf9628bc7146",
+    "exactRequestedSourcesVerified": 13,
+    "retention": "All thirteen complete original response bytes, decoded blob bytes, actual allowlisted response headers and immutable identities retained with the existing partitioned JSON codec.",
+    "verification": "Manifest identity, original response SHA-256/length, Git blob ID, blob SHA-256/length and decoded response content agreement.",
+    "runtimeCodeExecuted": false
+  },
+  "meaningfulFindings": [
+    "Actual checker bypasses every workflow_dispatch. Only schedule is applicable among this workflow's configured triggers; application still does not establish above-cap eligibility.",
+    "Actual source-addition body uses daily cap 10 and copilot; current source uses cap 1 and pi. Current predicates must not be backdated.",
+    "Actual scan cache requires component coverage version 3; retained specification says version 2.",
+    "Actual repo-memory reader ignores missing shards but throws other read errors; retained specification says unreadable shards are ignored.",
+    "Compiled lock declares an actions checkout without explicit ref. Executed checkout identity needs an actual runtime receipt; this alone is not a claim that checkout necessarily used the default branch.",
+    "Native runtime totals include recorded and estimated AIC. Independent recorded-only eligibility is a stricter proposed measure, not an alias for the guardrail's self-reported total.",
+    "Source execution/accounting artifacts do not establish an exhaustive independent provider-request audit. No request is different from no billable response.",
+    "Digest-shaped authentication flags are insufficient. No authenticated native producer has been implemented or admitted."
+  ],
+  "implementation": {
+    "sourceProducer": "scripts/daily-credit-limit-test-source-review.mjs",
+    "exports": ["verifySupplement", "produceSourceReview", "classifyReviewedTrigger"],
+    "readiness": "Deterministic source-only verification and review implemented. Never emits operational attainment from source or caller trust flags.",
+    "portableInput": "sources-supplement.json.gz plus every referenced part",
+    "output": "review.json; byte-for-byte deterministic regeneration tested",
+    "oldFunctionChanged": false,
+    "newNativeScorerCreated": false
+  },
+  "validation": {
+    "focused": "node --test tests/unit/daily-credit-limit-test-value.test.mjs tests/unit/daily-credit-limit-test-source-review.test.mjs",
+    "result": "28 tests passed: 18 preserved predecessor tests, 10 new source-review tests",
+    "collector": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/daily-credit-limit-test.mjs",
+    "collectorResult": "passes, but this interface smoke test is not native evidence admission",
+    "syntax": "node --check for both new JavaScript files passed",
+    "lintAndTypes": "Installed ESLint/TypeScript binaries unavailable; no installation authorized."
+  },
+  "remainingBlocker": {
+    "nativeProducer": "blocked-not-implemented",
+    "reason": "Only immutable source originals are released. No runtime metadata, native accounting artifacts, authenticated request audit, execution-version receipt or actual publication evidence is present. Building a full producer from these sources alone would fabricate evidence authority.",
+    "historicalReadiness": "unknown-not-exhausted",
+    "nextAuthorityNeeded": "A separately reviewed bounded runtime-evidence producer/acquisition contract; no acquisition or automatic resumption is authorized by this delta.",
+    "nativeEligibleCount": null,
+    "outcome": null,
+    "contribution": null,
+    "costs": "not measured",
+    "keepRetire": "not rated"
+  },
+  "safety": {
+    "networkCalls": 0,
+    "runtimeMetadataAcquired": false,
+    "repoMemoryAcquired": false,
+    "additionalEndpointsAcquired": false,
+    "fetchedSourceExecuted": false,
+    "credentialsChanged": false,
+    "dependenciesInstalled": false,
+    "commitsPullRequestsOrDeployment": false,
+    "seedIncludedInDelta": false,
+    "predecessorMembersIncludedInDelta": false,
+    "cutoffAdvanced": false,
+    "activationBackdated": false,
+    "frozenReportRegenerated": false
+  }
+}

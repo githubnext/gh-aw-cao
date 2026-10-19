@@ -1,0 +1,56 @@
+{
+  "frozenBeforeCollection": true,
+  "goal": "Document release-relevant changes accurately according to the actual changeset specification.",
+  "acceptance": "Full acceptance requires a correctly eligible release-relevant real change, matching accepted revision and documentation, independently established completeness and accuracy of every material claim, correct bump classification under the contemporaneous changeset rules, and no unsupported or omitted release-relevant claims. Parser acceptance, prose, labels, merges and editable tracking markers alone do not establish this.",
+  "partialFacet": "A previously absent or release-unreadable direct .changeset/*.md entry becomes accepted by the unchanged native parseChangesetFile implementation. Count each observed false-to-true path transition once at its immutable first-parent integration commit. This is structural partial progress only, not proof of release relevance or accurate documentation.",
+  "population": "All direct .changeset/*.md changes in the immutable first-parent Git history within an explicit half-open interval, regardless of actor. Source-rule continuity and available native before/after bytes are required for each assessed transition.",
+  "period": {
+    "kind": "interval",
+    "durationDays": 7,
+    "cadenceDays": 7,
+    "maturationDays": 0,
+    "timestamp": "Native integration commit committer timestamp; inclusive start, exclusive end.",
+    "coverage": "Retained history starts 2026-10-04T15:00:12Z and ends 2026-10-18T15:00:12Z; no historical extrapolation.",
+    "repeatedState": "Retaining a readable file in a later snapshot contributes zero new work. A later genuine false-to-true repair is a new transition, not a duplicate observation."
+  },
+  "semanticGap": "No independent change-bound semantic completeness/accuracy oracle or protected review acceptance and no release-relevance classification was retained. The native parser does not validate truth, completeness, necessity, bump appropriateness or nonempty descriptions. Full goal attainment remains unknown.",
+  "nativeQuirks": [
+    "The native parser accepts githubnext/gh-aw as well as gh-aw.",
+    "The bump regex has no end anchor and therefore accepts a patch prefix in patchwork.",
+    "Empty descriptions are native-parser-readable.",
+    "Native frontmatter delimiters are exact LF-split lines; CRLF is not accepted.",
+    "Codemod is separated by the exact native multiline regex.",
+    "readChangesets skips invalid files; setup success is not proof that all files are valid."
+  ],
+  "workflowNativeMeasures": {
+    "changesetOrSmokeLabel": "Workflow invocation gate, not independently complete release-relevance classification.",
+    "defaultBranchBase": "Workflow eligibility gate; native repository structural facets do not depend on actor or invocation.",
+    "changedFileCount": "Approximately 200 changed files triggers commit-message evidence fallback. This is a collection optimization, not a quality threshold.",
+    "releaseRelevance": "Required semantic eligibility: user-facing fixes, features, breaking changes, performance and functionality-affecting dependencies; documentation/test/CI/tooling/metadata-only changes and internal refactors can be no-op. Not inferred solely from paths or prose.",
+    "bumpType": "Required semantic classification: CLI breaks are minor in 0.x; the source warns against using major indiscriminately. Native parser acceptance does not validate classification.",
+    "changesetCreatedEval": "Mechanism/evaluation question, not independent proof of accepted useful work.",
+    "contentAccurateEval": "Semantic acceptance obligation, not a deterministic native oracle or an accepted historical score.",
+    "trajectoryGraders": "REP, recurrence determinism and laminarity are process diagnostics, not release-documentation outcomes.",
+    "creditBudgetAndTimeout": "Execution ceilings, not independently measured period costs or a keep bar."
+  },
+  "metricDisposition": {
+    "releaseReadableTransitions": "Primary partial repository outcome in native files, independent of actor. Never named accurate release documentation.",
+    "nonemptyDescriptionTransitions": "Diagnostic nonempty content facet, not quality or semantic accuracy.",
+    "specifiedFormatTransitions": "Diagnostic explicit single-package and filename format facet; not a complete Markdown/YAML or semantic validator.",
+    "fullGoalQuality": "Unknown without independent actual-change acceptance.",
+    "repositoryCondition": "Separate real cutoff snapshot; never counted each week as delivery.",
+    "workflowContribution": "Unknown without independently observed structural transitions joined to validated downstream evidence; discovery markers alone cannot establish it.",
+    "safeguards": "Accuracy, completeness, necessity, bump correctness and regression safety remain separate unknown dimensions.",
+    "costs": "Not measured without independently version/period-bound observations.",
+    "keepDecision": "Not rated: the source supplies no native keep bar or required number of complete periods."
+  },
+  "history": {
+    "antecedent": "pre-existing-and-reconstructable for the bounded native structural facet; full semantic historical acceptance is not reconstructed",
+    "counterfactual": "A human-created release-readable changeset counts identically; remove all workflow-produced artifacts and the repository-native structural predicate still exists.",
+    "adoption": "Source and compiled lock addition must be checked against the real parent, not a shallow boundary. Original source content is unavailable; earlier semantic rule eras remain unknown.",
+    "baseline": "No comparable pre-adoption baseline established; do not infer absence of the phenomenon.",
+    "sourceProfile": "Only transitions whose before and after native parser and changeset-format whole-blob identities match the frozen reference are assessed. Other profiles remain unknown."
+  },
+  "instrument": "Source-bound read-only port of parseChangesetFile; no execution of fetched repository code, no network, no caller-provided scores or trust/accepted flags.",
+  "skillImprovement": "Before rejecting a workflow for missing full semantic acceptance, identify and independently decode its native partial facets. For changeset-like generators, preserve exact release-consumer parser quirks, assess source-bound before/after transitions, and report structural progress separately from truth, completeness, necessity and bump appropriateness. A parser-readable file is not automatically accurate documentation."
+}

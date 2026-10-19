@@ -1,0 +1,93 @@
+import { hostAssertionModule } from "../../../../scripts/native-host-assertion-value.mjs";
+
+const value = hostAssertionModule({
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-pi-routed",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "2fb5f8ef769ba195dbd68b4a1bd87cb083fce31e",
+  "interpreterSha256": "15df6030cce347982f0e5056f0e4bdd98539898a79395e3cdcae597b71fb1403",
+  "name": "Smoke Pi Routed",
+  "goal": "Route Pi main inference to GPT and actually execute both declared cross-family subagents.",
+  "acceptance": "Actual allowed gpt-5.6-luna main routing and successful single Haiku /v1/messages and GPT-mini /responses delegations satisfy the exact protected proxy/session conjunction.",
+  "metricLabel": "Verified Pi routing and delegation",
+  "unit": "routing proofs",
+  "gates": [
+    {
+      "job": "agent",
+      "name": "Assert model-routing and sub-agent evidence",
+      "meaning": "Actual allowed gpt-5.6-luna main routing and successful single Haiku /v1/messages and GPT-mini /responses delegations satisfy the exact protected proxy/session conjunction."
+    }
+  ],
+  "limitations": [
+    "Issue reports and trivial task answers are not native routing or delegation evidence."
+  ],
+  "jobs": {
+    "agent": {
+      "name": "agent",
+      "sha256": "ed3ec4034ebf39b2757dc8f3a4a1cb2d90cf9bbb1acd5556b11e62037370e0dd"
+    }
+  },
+  "adoption": {
+    "commit": "feb7220049159029fa73892e84db65971c7a642c",
+    "adoptedAt": "2026-10-10T23:48:43Z",
+    "baselineCommit": "9ded0021d4384be185b8009aaf1e27fcbda9265a",
+    "baselineAt": "2026-10-10T23:48:20Z"
+  },
+  "dependencies": [
+    {
+      "path": ".github/aw/engines.json",
+      "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+    },
+    {
+      "path": "actions/setup/js/smoke_model_routing_assertions.cjs",
+      "gitBlob": "5ad3b388c9d9a5ba7e3495759a447c7fee856f9f"
+    }
+  ],
+  "runtimeTrees": [
+    {
+      "path": "actions",
+      "gitTree": "ba2d5737336b9a68bb5d493cb5da012b3ff329c0"
+    },
+    {
+      "path": ".github/workflows/shared",
+      "gitTree": "99472ca203e6cdbfd7ab8b1a2fa18db9d5959835"
+    }
+  ],
+  "historicalSourceProfiles": [
+    {
+      "sourceRevision": "463762fe9304d5271356803513f158cf59dc0171",
+      "jobs": {
+        "agent": {
+          "name": "agent",
+          "sha256": "c56eb4c90826fcf5cd49c45185991cab8dc2f0b18361009c6aa1d31cc5958556"
+        }
+      },
+      "dependencies": [
+        {
+          "path": ".github/aw/engines.json",
+          "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+        },
+        {
+          "path": "actions/setup/js/smoke_model_routing_assertions.cjs",
+          "gitBlob": "5ad3b388c9d9a5ba7e3495759a447c7fee856f9f"
+        }
+      ],
+      "runtimeTrees": [
+        {
+          "path": "actions",
+          "gitTree": "8bde65a297d295f5db9d0576b0e486d08bb1585b"
+        },
+        {
+          "path": ".github/workflows/shared",
+          "gitTree": "c716ab0399d143fdca8d32b9e6b52553f89df373"
+        }
+      ],
+      "review": "Source intent and native predicate steps are identical. Reviewed differences: read-only artifact export paths, Copilot CLI minimum-version configuration, and Pi model-alias/error-reporting integration. The session merger's added model.resolution events do not satisfy routing assertions. Historical runtime trees remain pinned as complete profiles, never mixed with current jobs."
+    }
+  ]
+});
+export const { collectBatch, scoreMetric } = value;
+export const definition = { ...value.definition, evidence: { ...value.definition.evidence,
+  sourceProfilesSha256: "8a1d48653f3a9484b1bd4f17449c10ea829bb57967fdfca73a5f8fb24a9de02e" } };

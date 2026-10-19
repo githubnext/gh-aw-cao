@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflow": "smoke-copilot-small",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "baseline": "2ff48ca50d0ca1a2ec98126391b79c665b2f0b4d",
+  "seedArchiveSha256": "1135075ada0f45ea04aec54323a4b9a74c345cdc90a85393d848f3d458386b40",
+  "seedMembers": 32,
+  "predecessorPackage": {
+    "archiveSha256": "b73c4f4f16c007574e8dec1d0c0d06c453db485237d61873393653f66ca1335f",
+    "change": "Add missing strict write/readback byte-and-order join, preserving every established native quantity and frozen acceptance rule"
+  },
+  "acceptanceSha256": "f5eca50bd3882a1f67bdc395dd5d8c1db400d2afef5e965655f7230aa706cfdb",
+  "moduleSha256": "86af9761e6d9a0057ddd46b3627bd4db0e193c69500089ade1b7f34cee4497b9",
+  "evaluation": {
+    "standardCollector": "passed",
+    "standardOfflineRefresh": "passed",
+    "snapshots": 15,
+    "acceptedNativePeriods": 1,
+    "unavailablePeriods": 14,
+    "actualStandardRejection": null,
+    "classification": "attainment-only",
+    "retrospectiveScope": "Source-matched retained native facet at actual historical run head; no backdated new goal or invented adoption"
+  },
+  "quantities": {
+    "completeDiscoveryPartitions": 346,
+    "completeDiscoveryEntities": 58048,
+    "directCandidates": 84,
+    "distinctDirectRunIds": 80,
+    "relatedIdentities": 152,
+    "absentReferences": 0,
+    "retainedRunMetadata": 3,
+    "nativeAssessedAttempts": 1,
+    "verifiedArithmeticAttempts": 1,
+    "nativeThreeNewlineReads": 1,
+    "nativeThreeNewlineCreations": 1,
+    "strictContentReadback": null,
+    "writePlusContentReadback": null,
+    "originalTestingHaikuAcceptance": null,
+    "knownImportedFailures": [
+      {
+        "requirement": "Playwright JavaScript title equality",
+        "callId": "toolu_01VouZMcHHSQpHqjba5Hs8HB",
+        "completedAt": "2026-10-18T02:46:22.108Z",
+        "reason": "Native Chromium launch error: required GLIBC_2.43 unavailable; successful shell pipeline status does not prove browser success"
+      }
+    ]
+  },
+  "facts": [
+    {
+      "runId": 39091097441,
+      "attempt": 1,
+      "head": "2ba9099602d4b03301f48363aebf902abe2606c0",
+      "sourceBlob": "fd2c6bfd12686d9d41a06728fa1e810b9662c6fb",
+      "compiledBlob": "26cce08b22a4760fc38dd53cdd0e8efcd86bba97",
+      "sourceApplicable": true,
+      "arithmetic": true,
+      "readback": null,
+      "written": null,
+      "arithmeticAt": "2026-10-18T02:46:16.407Z",
+      "readbackAt": null,
+      "writtenAt": null,
+      "nativeNewlineReads": [
+        {
+          "callId": "toolu_01LRGWcwiZBW7dM1PB1ixYi1",
+          "newlineCount": 3,
+          "completedAt": "2026-10-18T02:46:16.407Z",
+          "limitation": "wc -l newline count is not complete content readback, originality or haiku quality"
+        }
+      ],
+      "nativeFileCreations": [
+        {
+          "callId": "toolu_018ULUP2KC2futFi7wjVd4dV",
+          "completedAt": "2026-10-18T02:46:16.363Z",
+          "contentSha256": "460224f17c7d301d057c4e864bb6e906f34b2d67261f8a8af82311a53db6118f",
+          "readbackSha256": "78d35471a1cd5fd32cf5da6b7e017107b872e946b6c4a261cbf915c9a2cc4d8e",
+          "newlineCount": 3,
+          "limitation": "Successful create proves file bytes written, not originality or full cat content readback"
+        }
+      ],
+      "knownImportedFailures": [
+        {
+          "requirement": "Playwright JavaScript title equality",
+          "callId": "toolu_01VouZMcHHSQpHqjba5Hs8HB",
+          "completedAt": "2026-10-18T02:46:22.108Z",
+          "reason": "Native Chromium launch error: required GLIBC_2.43 unavailable; successful shell pipeline status does not prove browser success"
+        }
+      ],
+      "fullAcceptance": null,
+      "observedProviderModels": [
+        "claude-haiku-5.5"
+      ],
+      "completedAt": "2026-10-18T02:46:16.407Z",
+      "executions": [
+        {
+          "id": "toolu_01LRGWcwiZBW7dM1PB1ixYi1",
+          "status": "completed",
+          "startedAt": "2026-10-18T02:46:16.352Z",
+          "completedAt": "2026-10-18T02:46:16.407Z",
+          "providerModel": "claude-haiku-5.5",
+          "startEventId": "9f9a030c-64a5-4576-9187-a727464f2e9c",
+          "endEventId": "d772de9c-de41-4043-9fa6-877bc6cec0f1",
+          "facets": {
+            "arithmetic": true,
+            "readback": null,
+            "written": null,
+            "newlineCount": 3,
+            "reason": null
+          },
+          "commandSha256": "e775ad3ba12546b94196028bf43c73937dfa9b690f02310a10530d178fc7aee5",
+          "stdoutSha256": "33a03bac5a6622cf0de04c7ea3c069b733811afc7b0c5366fd9d2083c0c282e8"
+        },
+        {
+          "id": "toolu_01T6XeHPJW94mJNpX1ZWzu9c",
+          "status": "completed",
+          "startedAt": "2026-10-18T02:46:16.354Z",
+          "completedAt": "2026-10-18T02:46:16.414Z",
+          "providerModel": "claude-haiku-5.5",
+          "startEventId": "c247c525-ae5a-4411-bc5f-52221758ef0c",
+          "endEventId": "fe3cdd0c-db77-4ca0-bc36-0599f6ef1a37",
+          "facets": {
+            "arithmetic": null,
+            "readback": null,
+            "written": null,
+            "newlineCount": null,
+            "reason": "command outside frozen native grammar"
+          },
+          "commandSha256": "0de91e141386b57a78f7a0e99f608d15a49a028c54ce69278d54cafbd7e39d4b",
+          "stdoutSha256": "7fb8d6d5610d688e4398a9ee2bd9931f929b62866fd63c4cfcfd9f3b7ebaffdd"
+        },
+        {
+          "id": "toolu_01QeRndvLnbWRdEKfVPbGiGM",
+          "status": "completed",
+          "startedAt": "2026-10-18T02:46:18.337Z",
+          "completedAt": "2026-10-18T02:46:19.476Z",
+          "providerModel": "claude-haiku-5.5",
+          "startEventId": "a5be43d3-817f-4109-ad73-a643412938be",
+          "endEventId": "f9482968-0ca1-4c8e-9752-1bebb9c10d80",
+          "facets": {
+            "arithmetic": null,
+            "readback": null,
+            "written": null,
+            "newlineCount": null,
+            "reason": "command outside frozen native grammar"
+          },
+          "commandSha256": "847d2f7d9ee7c271e54316ced58d81d3e4727617be8bf320cc7f05fca3b5acf9",
+          "stdoutSha256": "b9fd0e1e7b3bb3c8595d6448e118dd0c38454621826c982fa3de40f4c044a11c"
+        },
+        {
+          "id": "toolu_01VouZMcHHSQpHqjba5Hs8HB",
+          "status": "completed",
+          "startedAt": "2026-10-18T02:46:21.592Z",
+          "completedAt": "2026-10-18T02:46:22.108Z",
+          "providerModel": "claude-haiku-5.5",
+          "startEventId": "bc7f6762-d0e5-49cc-a031-d21544ab0ca4",
+          "endEventId": "cc6e7f35-e7a8-4d85-96ea-b53ebe634223",
+          "facets": {
+            "arithmetic": null,
+            "readback": null,
+            "written": null,
+            "newlineCount": null,
+            "reason": "command outside frozen native grammar"
+          },
+          "commandSha256": "fdc94f00c9765ce666291772871a62b7b76ecdb48b68732b4551d8f33e7a2c32",
+          "stdoutSha256": "93875b192a3834de9a9d54dde0f5de2f0d5e960274c0d88a4ec9165c7733eb30"
+        }
+      ],
+      "missingReason": "Originality, literary quality, alias resolution and full imported acceptance not established by narrow native facets"
+    },
+    {
+      "runId": 39046729028,
+      "attempt": 1,
+      "head": "463762fe9304d5271356803513f158cf59dc0171",
+      "arithmetic": null,
+      "readback": null,
+      "written": null,
+      "fullAcceptance": null,
+      "missingReason": "Missing protected jobs/log originals"
+    },
+    {
+      "runId": 38995408127,
+      "attempt": 1,
+      "head": "12ba3ffcbaf5760b6094f52d8f7d61938e4e951e",
+      "arithmetic": null,
+      "readback": null,
+      "written": null,
+      "fullAcceptance": null,
+      "missingReason": "Missing protected jobs/log originals"
+    }
+  ],
+  "readiness": {
+    "intentGrounded": true,
+    "deterministicNativeChecker": true,
+    "genuineOutcomeMeasured": true,
+    "primaryNativePartialReady": true,
+    "portableOfflineReplay": "passed",
+    "fullWorkflowAcceptanceReady": false,
+    "allHistoricalAttemptsCovered": false,
+    "comparableRecentTrendReady": false,
+    "adoptionComparisonReady": false,
+    "contribution": "Direct protected execution demonstrates this attempt's arithmetic contribution; not exclusive causation or repository-wide improvement",
+    "runtimeIdentity": "Native session records claude-haiku-5.5; complete source/provider small-alias wire identity is not promoted to a full-acceptance claim",
+    "costs": "not measured",
+    "keepDecision": "not rated",
+    "keepBar": null,
+    "deployment": "Sealed historical case study; no continuous collector deployed"
+  },
+  "limitations": [
+    "84 issue candidates are not successes, and 80 referenced runs are not an exhaustive workflow-run inventory.",
+    "Mutable discovery states were observed after cutoff, not backdated. Selected identities retain full bidirectional related references.",
+    "wc -l proves newline count, not nonempty full-content cat readback, software-testing relevance or originality.",
+    "Native Playwright launch failure is retained even though the shell pipeline exited zero. It does not erase the independent arithmetic effect.",
+    "Missing previous periods are null; no improvement, sustained trend, full workflow all-clear or keep recommendation is inferred.",
+    "Selected original receipt manifests and original bodies are preserved; replay does not require coordinator cache or history. The all-history scan was performed at acquisition and is not a fresh remote census."
+  ],
+  "reusableSkillImprovement": {
+    "title": "Accept native shell encodings without weakening semantic facets",
+    "recommendation": "For Copilot native receipts, support both shell_exit contents and typed shellExecution plus anchored shell-completion content, corroborated by protected job/session summaries. Split cat|wc newline evidence from full-content readback. A successful pipeline cannot override native browser errors.",
+    "createOnceObserveMany": "Compile intent/source acceptance once; new original observations pass deterministic acquisition, parse, score and report only. Reauthor solely for a reviewed contract/source-era change."
+  },
+  "validation": {
+    "focusedRealParserTests": "passed",
+    "nativeCollectorGate": "passed",
+    "standardRefreshEvaluator": "passed",
+    "lint": "ESLint is not installed; no dependencies installed under offline task constraint",
+    "syntax": "Node imported/executed all owned modules",
+    "freshDefaultBaselinePlusSeedPlusOwned": "passed",
+    "originalCustodyAndSourceGitHashes": "passed"
+  }
+}

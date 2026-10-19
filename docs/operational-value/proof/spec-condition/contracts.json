@@ -1,0 +1,17 @@
+[
+  {
+    "workflowId": "daily-spec-coverage-kiro",
+    "repository": "github/gh-aw",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "sourceGitBlob": "8a1c040a2bb7735d184a483279441acbe110b097",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "0b05937bd7a59597c86772f0cf064269219dd05eccafcf41bf5c4fc37c83ec97",
+    "scannerGitBlob": "51886ae986ce8ec2dcce0ae98b4ecf572bb6ceb6",
+    "adoption": {
+      "commit": "0841c9e3e6fc99312ed0e7f770fc5a0b6438ead8",
+      "adoptedAt": "2026-08-07T19:10:33Z",
+      "baselineCommit": "307107ba81a26cd792165b84e5f8634943fa9bca",
+      "baselineAt": "2026-08-07T19:08:28Z"
+    }
+  }
+]

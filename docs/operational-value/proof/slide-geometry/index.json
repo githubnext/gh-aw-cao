@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "workflowId": "slide-deck-maintainer",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "d50bddef24d996d40171fa7c973dac3016cc5e7d9890fb08fa3af4f13b7a2d02",
+  "factsSha256": "b9e2953c67a839bf33b8c57f7efeaee60c9107cd94505b72121fdb53d7ef43ce",
+  "sourcesSha256": "94fc43915c98d862ba2bd914e3b30f7ccb41757d91a5d615c9e35aae17c07de5",
+  "states": 45,
+  "sourceBlobs": 22,
+  "acquiredAt": "2026-10-19T02:59:10.233Z",
+  "producer": {
+    "path": "scripts/collect-slide-geometry-history.mjs",
+    "sha256": "a3251106232b83fcc908291b002125b59549cdc5338c7fa1456208080fb42ada"
+  }
+}

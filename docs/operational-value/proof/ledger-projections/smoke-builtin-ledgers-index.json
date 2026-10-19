@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "workflowId": "smoke-builtin-ledgers",
+  "contractSha256": "b56a8aaed921455accea60fcc5f0d92fe8b9ab56437de50f5cfed87680c7b151",
+  "statesFile": "smoke-builtin-ledgers-states.json.gz",
+  "statesSha256": "5c0019f8742232dd690cb971f8f6a10ca718d773f724906b90f23e9a8a5b82fe",
+  "states": 5,
+  "acquiredAt": "2026-10-18T19:53:46.765Z",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "producer": {
+    "path": "scripts/collect-ledger-projection-history.mjs",
+    "sha256": "7c8b1a5b2ee125ffc60c7565db92436114fd05e0800848d919bacb2eff4fad1a"
+  }
+}

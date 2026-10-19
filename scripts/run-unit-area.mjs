@@ -16,6 +16,10 @@ export const unitTestAreas = {
   ],
   tooling: [
     /^cao-/, /^ops-publish/, /^optimization-/, /^dependabot-/,
+    /^operational-value-/, /^native-/, /^lint-native-/,
+    /^blog-auditor-/, /^weekly-editors-health-check-/,
+    /^daily-(?:cli-performance|model-resolution|observability-report|credit-limit-test)[.-]/,
+    /^daily-aw-cross-repo-compile-check-/, /^avenger-operational-value\./,
     /^eslint-rules-/, /^actions-context\./, /^agent-plugin\./,
     /^install-script\./, /^quickstart\./, /^setup-terminal\./, /^repository-/, /^no-hardcoded-github-actions-url\./,
     /^token-optimization-data-contract\./, /^unit-area-selection\./,

@@ -1,0 +1,25 @@
+{
+  "path": ".github/workflows/smoke-drive.md",
+  "goal": "Verify drive-memory persistence and repository access.",
+  "population": "Prior-write/current-read persistence transitions and repository-access cases.",
+  "acceptance": "Independent persisted bytes match prior accepted writes across invocations, with real repository-access evidence.",
+  "measureKind": "unresolved",
+  "metricName": null,
+  "formula": null,
+  "unit": null,
+  "direction": "increase",
+  "evidencePlan": "Define cross-invocation write receipts and host-side read-back comparisons, treating first-run absence separately.",
+  "missingReason": "Source requests agent read-back/reporting, without an independent persistence verifier; no transition evidence collected.",
+  "grounding": [
+    {
+      "startLine": 61,
+      "endLine": 61,
+      "quote": "Read `/tmp/gh-aw/drive-memory/smoke-drive.txt` if it exists."
+    }
+  ],
+  "designStatus": "needs-clarification",
+  "limitation": "Same-run write/read or an issue saying previous state existed does not prove durable persistence.",
+  "sourceSha256": "c248dfa8a330663d99b11170fd2e8063d88843ee5f65dc837e65847d1dd40ec2",
+  "sourceGitBlob": "b807269a21552c0e6ac518da7c44056024047e95",
+  "sourceUrl": "https://github.com/github/gh-aw/blob/d3915e4a21040c00a6e11e1acb0aac42605abc4c/.github/workflows/smoke-drive.md"
+}

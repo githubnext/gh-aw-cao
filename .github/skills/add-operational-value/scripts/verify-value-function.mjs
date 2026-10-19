@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 import { existsSync } from "node:fs";
-import { operationalValuePeriod } from "../../../../dashboard/site/src/data/model/schema.js";
+import { operationalValuePeriod } from "./measurement-period.mjs";
 import {
   fail, importValueModule, isIsoUtc, isRepository, isSlug, run, shiftDays,
 } from "./common.mjs";
+import { validateReviewPolicy } from "./review-value.mjs";
+import { signalPolicy } from "./pulse-model.mjs";
 
 const args = process.argv.slice(2);
 const runCollector = args[0] === "--collector";
@@ -37,7 +39,12 @@ const metrics = definition.metrics;
 const examples = definition.validationExamples ?? {};
 const valid = definition.schemaVersion === 3
   && isSlug(definition.slug)
-  && /^\.github\/workflows\/.+\.md$/.test(definition.sourcePath ?? "")
+  && isString(definition.sourcePath)
+  && (definition.intent === undefined || (
+    isString(definition.intent?.goal)
+    && isString(definition.intent?.acceptance)
+    && ["workflow-adoption", "contract-activation"].includes(definition.intent?.temporalAnchor)
+  ))
   && isRepository(definition.repository)
   && isString(definition.workflowName)
   && isSha(adoption.commit)
@@ -86,6 +93,12 @@ const valid = definition.schemaVersion === 3
   && new Set(metrics.map(({ id }) => id)).size === metrics.length
   && ["targetAttained", "targetMissed", "missing", "malformed"].every((key) => Object.hasOwn(examples, key));
 if (!valid) fail("value-function definition is invalid");
+try {
+  validateReviewPolicy(definition);
+  signalPolicy(definition);
+} catch (error) {
+  fail(error.message);
+}
 
 const score = (metricId, evidence) => {
   const result = scoreMetric(metricId, evidence);
@@ -107,18 +120,23 @@ for (const metric of metrics) {
   if (results.targetAttained == null || results.targetMissed == null || !attainedIsBetter) {
     fail(`${metric.id} validation examples do not improve in the declared ${metric.direction} direction`);
   }
-  if (metric.role === "primary" && (results.missing !== null || results.malformed !== null)) {
-    fail(`primary metric ${metric.id} must return null for missing and malformed evidence`);
+  if ((metric.role === "primary" || metric.id === definition.review?.metricId)
+    && (results.missing !== null || results.malformed !== null)) {
+    fail(`${metric.role === "primary" ? "primary" : "review"} metric ${metric.id} must return null for missing and malformed evidence`);
   }
 }
 
 if (runCollector) {
   const mode = definition.evaluation?.mode ?? "baseline-comparable";
   const observedAt = mode === "attainment-only"
-    ? adoption.adoptedAt
+    ? shiftDays(adoption.adoptedAt, definition.evidence.window.cadenceDays)
     : (adoption.baselineAt ?? adoption.adoptedAt);
-  const windowEnd = shiftDays(observedAt, -definition.evidence.window.maturationDays);
-  const windowStart = shiftDays(windowEnd, -definition.evidence.window.durationDays);
+  const interim = mode === "attainment-only" && Date.parse(observedAt) < Date.parse(shiftDays(
+    adoption.adoptedAt,
+    definition.evidence.window.durationDays + definition.evidence.window.maturationDays,
+  ));
+  const windowEnd = interim ? observedAt : shiftDays(observedAt, -definition.evidence.window.maturationDays);
+  const windowStart = interim ? adoption.adoptedAt : shiftDays(windowEnd, -definition.evidence.window.durationDays);
   let collections;
   try {
     collections = await collectBatch([

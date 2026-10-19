@@ -1,0 +1,1237 @@
+{
+  "schemaVersion": 1,
+  "kind": "offline-source-comparison-and-instrument-reconciliation",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "daily-safe-outputs-conformance",
+  "scope": {
+    "currentRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "exclusiveCutoff": "2026-10-18T15:00:12Z",
+    "adoptionCommit": "eac9b15f9c3cc468652ef88dd18194d69e695046",
+    "adoptedAt": "2026-02-14T18:30:09Z",
+    "realAdoptionParent": "5b953fa1ef92edd37b5b8202e827e9fbe159462f",
+    "allowedOutput": "docs/operational-value/proof/daily-safe-outputs-conformance/source-review.json",
+    "purpose": "Compare preserved source contracts and statically reconcile the frozen instrument; do not evaluate repository or workflow outcomes.",
+    "offline": true,
+    "networkAcquisition": false,
+    "decodedCodeExecuted": false,
+    "instrumentExecuted": false,
+    "outcomeArtifactsInspected": false,
+    "sharedCacheWrites": false,
+    "frozenProofModified": false,
+    "commitsOrPublication": false
+  },
+  "reviewStatus": {
+    "currentSpecification": "complete-source-reading",
+    "adoptionSpecification": "complete-source-reading",
+    "currentAndAdoptionCheckers": "complete-source-reading",
+    "currentAndAdoptionWorkflowMarkdownAndPreservedImports": "complete-source-reading",
+    "currentCompiledWorkflow": "selected-relevant-configuration-context-only",
+    "ruleReconciliation": "complete-for-all-55-current-native-rule-families",
+    "measurementCoverage": "partial",
+    "behavioralConformance": "not-established-by-this-review",
+    "outcomes": "not-inspected-and-not-asserted",
+    "distinction": "Complete specification reading is not complete predicate replay, functional testing, security verification, or delivered remediation evidence."
+  },
+  "sourceReadingMethod": {
+    "archiveRoot": "docs/operational-value/proof/daily-safe-outputs-conformance/blobs/",
+    "archiveName": "<gitBlobId>.json.gz",
+    "reader": ".github/skills/add-operational-value/scripts/json-archive.mjs#readJsonArchive",
+    "payloadFields": ["id", "sha256", "bytes", "contentBase64"],
+    "verification": [
+      "Decode contentBase64 as bytes using the seeded archive codec; require payload.id to equal the requested blob ID.",
+      "Require decoded Buffer length to equal payload.bytes.",
+      "Require SHA-256(decoded bytes) to equal payload.sha256.",
+      "Require SHA-1(UTF-8('blob ' + decoded length + NUL) concatenated with decoded bytes) to equal the requested Git blob ID.",
+      "Only after these checks, materialize the exact bytes as data for contiguous range reads; never import, source, or execute decoded content."
+    ],
+    "materializationDirectory": ".source-review-96391770",
+    "cleanup": "Remove exactly the workspace-local materialization directory in the validation operation's finally block; retain only the owned JSON.",
+    "lineConvention": "One-based inclusive physical content lines. LF-terminated specifications have 6522 and 3426 physical lines respectively; splitting their text on LF also yields the terminal empty positions 6523 and 3427 quoted in the task. No source bytes are missing.",
+    "chunkConvention": "Specification chunks below are effective completely read contiguous coverage. Truncated tool responses were completed by overlapping reads, not treated as complete initial responses.",
+    "truncationRecoveryReads": {
+      "currentSpec": [[330, 341], [2670, 2687]],
+      "adoptionSpec": [[360, 370]]
+    },
+    "externalReferences": "References to other specifications, implementation files, regression tests, formal models, and changelog commits were read as text, not fetched. Their existence in prose does not verify their implementation or results."
+  },
+  "sources": [
+    {
+      "source": "currentSpec",
+      "id": "7aa0752ec76b2c3f1c062a0838976be7655e7cd6",
+      "sha256": "e7e025f571423a6d716af24734a739d22908047eed0b12e4e172b61fe8144ead",
+      "bytes": 315242,
+      "physicalLines": 6522,
+      "splitLinePositions": 6523,
+      "version": "1.29.12",
+      "publicationDate": "2026-10-14",
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,340],[341,550],[551,750],[751,1000],[1001,1250],[1251,1500],[1501,1750],[1751,2000],[2001,2250],[2251,2475],[2476,2686],[2687,2900],[2901,3100],[3101,3300],[3301,3500],[3501,3700],[3701,3900],[3901,4100],[4101,4300],[4301,4500],[4501,4700],[4701,4900],[4901,5100],[5101,5300],[5301,5500],[5501,5700],[5701,5900],[5901,6120],[6121,6320],[6321,6522]],
+      "complete": true
+    },
+    {
+      "source": "adoptionSpec",
+      "id": "96ca47d144a0a4210953a560772a08fc202b8d41",
+      "sha256": "5d081a746e57fc8e64b8bcb7ad48a37630a1a799be5901701f8b054165429bec",
+      "bytes": 110517,
+      "physicalLines": 3426,
+      "splitLinePositions": 3427,
+      "version": "1.9.0",
+      "publicationDate": "2026-02-14",
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,369],[370,650],[651,950],[951,1250],[1251,1550],[1551,1850],[1851,2150],[2151,2450],[2451,2750],[2751,3050],[3051,3426]],
+      "complete": true
+    },
+    {
+      "source": "currentChecker",
+      "id": "9235927dbe1ead8be185c732298c669dfef32ea0",
+      "sha256": "c14b2420c087b39a4bbf2f78649c144d8cd69b156786475cc1229c8deff55494",
+      "bytes": 112079,
+      "physicalLines": 2514,
+      "versionHeader": "1.29.8; reviewed through 2026-10-09 changes; script dated 2026-10-12",
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,250],[251,500],[501,750],[751,1000],[1001,1250],[1251,1500],[1501,1750],[1751,2000],[2001,2250],[2251,2514]],
+      "complete": true
+    },
+    {
+      "source": "adoptionChecker",
+      "id": "78ee265fa0079f8711890446a59faf607bed8d60",
+      "sha256": "945206bcdb736132ea59c9f575e98fd50199c1d1a342b5549146b54bb6dcd47b",
+      "bytes": 12888,
+      "physicalLines": 402,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,240],[241,402]],
+      "complete": true
+    },
+    {
+      "source": "currentWorkflow",
+      "id": "c6e53bc51866009d78d03b17b7ba371bf9b38ad3",
+      "sha256": "1bf66ef3f4c0e7584d0598a9dd31aa940a26733081b11b6ba01b0efabc7c65ca",
+      "bytes": 9005,
+      "physicalLines": 298,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,298]],
+      "complete": true
+    },
+    {
+      "source": "adoptionWorkflow",
+      "id": "88a760de9deff7a78e1bd36310dd028316026fda",
+      "sha256": "ccd067f16110501819ae16dcdb8200fc8700e280ccf77a4c869849b2cefb2244",
+      "bytes": 8191,
+      "physicalLines": 268,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,268]],
+      "complete": true
+    },
+    {
+      "source": "currentBase",
+      "id": "6394b4376c961309d974592b0db8c742ecfe5cbc",
+      "sha256": "524b5f9e23bbe0337ba55fc11daf594ccb091436fdfbeb069deb2c218e2c9fa0",
+      "bytes": 840,
+      "physicalLines": 29,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,29]],
+      "complete": true
+    },
+    {
+      "source": "currentDiscussion",
+      "id": "7abfc95ebda5a6bf2cefbdfee466c8079ec0b41d",
+      "sha256": "b2a95a475ad64e75499c1a54ac00f15c66cbd62e38908a6c421fe25db077d3ff",
+      "bytes": 920,
+      "physicalLines": 31,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,31]],
+      "complete": true
+    },
+    {
+      "source": "currentReporting",
+      "id": "263d2413472e62582c578897a8b06462da5ef171",
+      "sha256": "0929890c04f04878f9750464ef9a4bc799c87d236e4f936018a3bfc2dc3aae41",
+      "bytes": 1386,
+      "physicalLines": 29,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,29]],
+      "complete": true
+    },
+    {
+      "source": "currentOtlp",
+      "id": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+      "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6",
+      "bytes": 635,
+      "physicalLines": 26,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,26]],
+      "complete": true
+    },
+    {
+      "source": "adoptionMood",
+      "id": "945c9b46d684f08ec84cb316e1dc0061e361f794",
+      "sha256": "cdb4ee2aea69cc6a83331bbe96dc2caa9a299d21329efb0336fc02a82e1839a8",
+      "bytes": 1,
+      "physicalLines": 1,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,1]],
+      "complete": true,
+      "note": "The entire preserved import is one period byte, not an omitted mood policy."
+    },
+    {
+      "source": "adoptionReporting",
+      "id": "bc08afb42be932485dc788109afdf7122dd96945",
+      "sha256": "a3c7ec1a9524b3493e91b745947e25ea401bea72a0c2f0b6fb39288a4cf3db9f",
+      "bytes": 2259,
+      "physicalLines": 73,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,73]],
+      "complete": true
+    },
+    {
+      "source": "currentCompiled",
+      "id": "44e60ea49f5cc82dda2209e10fe33120c67b9371",
+      "sha256": "f3c6cda1785d1c5631c8ff2b7a2453ab5fa2fe6e95682e5c712a465a9b8951f6",
+      "bytes": 166560,
+      "physicalLines": 2480,
+      "verification": "length-sha256-and-git-blob-sha1-matched-before-reading",
+      "readLineRanges": [[1,120],[417,469],[595,780],[2349,2480]],
+      "complete": false,
+      "scope": "Compiled manifest, schedule, permissions, agent and privileged-job boundaries, enabled-output/validation configuration, safe-output artifact download, and processor invocation. Other generated jobs and scripts were not completely reviewed; no whole-compiled-workflow assurance is claimed."
+    },
+    {
+      "source": "instrument",
+      "path": "docs/operational-value/proof/daily-safe-outputs-conformance/native-checker.mjs",
+      "sha256": "c99bd121e341226c7a669fc575a837bbbfb85e358b6f1d0e45402f55fc52e56e",
+      "bytes": 10201,
+      "physicalLines": 176,
+      "readLineRanges": [[1,176]],
+      "complete": true,
+      "treatment": "Read-only instrument source; not run or modified."
+    },
+    {
+      "source": "frozenDefinition",
+      "path": "docs/operational-value/proof/functions/daily-safe-outputs-conformance.mjs",
+      "sha256": "dbf6fcfeee687a159ef848938969c3364581e8428e3a1c87cf0cb5935abc37bc",
+      "bytes": 11575,
+      "physicalLines": 171,
+      "definitionLineRangesUsed": [[1,104]],
+      "treatment": "Only proposed-definition semantics inform this review. The module was not imported or invoked, and referenced evidence files were not opened."
+    }
+  ],
+  "independentlyDerivedContract": {
+    "intentSentence": "For eligible Safe Outputs implementation and specification conditions in github/gh-aw, make independently substantiated conformance gaps visible and actionable and support their remediation, while separately counting stable native structural predicates cleared in disjoint seven-day periods and requiring independent functional, security, and regression evidence for actual specification conformance.",
+    "problem": "Untrusted AI reasoning must not acquire write credentials or cause unauthorized, malformed, unbounded, unsanitized, untraceable, or otherwise unsafe platform mutations. The daily workflow exposes implementation/specification gaps as actionable tasks; task publication is a mechanism, not evidence that the gap was repaired.",
+    "intentSources": [
+      {"source":"adoptionSpec","lines":[[19,27],[75,167],[171,249]]},
+      {"source":"currentSpec","lines":[[19,27],[86,179],[183,270]]},
+      {"source":"adoptionWorkflow","lines":[[1,26],[29,52],[87,174],[259,268]]},
+      {"source":"currentWorkflow","lines":[[1,47],[51,74],[117,204],[289,298]]}
+    ],
+    "eligiblePopulation": {
+      "fullGoal": "All applicable normative obligations of the revision-appropriate specification across compiler, gateway, trusted processors, output handlers, generated job permissions, schemas, configuration propagation, artifacts, content transformations, authorization, execution, and current cache/checkout subsystems; optional features are conditional on support/configuration and do not waive security.",
+      "partialStructuralMetric": "Distinct frozen (rule, repository-relative file, exact predicate) conditions, eligible under the same frozen rule loop and applicability conditions at both interval boundaries. Files and input bytes must be available; disappearance, helper relocation, changing eligibility, suppression, or rule-version drift is not clearance.",
+      "nativeDynamicScope": "Only direct actions/setup/js/*.cjs files for the frozen generic-handler loops. Substring exclusions test and _checks.cjs apply throughout; parse/buffer additionally excluded for SEC-002, parse/buffer/factory for SEC-003; apm_unpack, run_apm_unpack, observability, generate_observability additionally excluded for USE-001/003. SEC-002/003 require octokit.; SEC-005 requires explicit target-repo/targetRepo/target_repo identifiers; USE-001 requires safe-output/API context plus an error path; USE-003 requires the named staged-mode markers.",
+      "nativeFixedScope": "SEC-004 has the explicit 18-name content-handler list, with missing files skipped. USE-002 has four content-creating handler names, missing files skipped. IMP-001 checks six handler paths; IMP-002/003, CI-001/003/004, MCE-001/002/004, TYPE-001/002/007, and EXEC-001 use their explicit paths/patterns. Fixed-file unknown versus absent behavior must remain distinguishable from a pass.",
+      "nonOpportunities": ["Expired or automatically closed audit issues","Runs or successful process exits","Task/report publication counts","File deletion or rule-scope exit","New or broadened exemptions","Unavailable source treated as clean","Agent claims or merge alone"],
+      "classDistinction": "The metric's partial structural progress is not specification Class C2. C2 still requires ALL security-critical obligations, mandatory types, unsupported-type documentation, and warnings."
+    },
+    "primaryDefinitionPreserved": {
+      "unit": "distinct native checker conditions cleared per seven-day period",
+      "formula": "Count identical (rule,file,predicate) fails at interval start that pass at interval end without waiver, deletion, or lost eligibility.",
+      "periods": "Seven-day non-overlapping intervals; no re-credit for retaining a pass in later intervals.",
+      "actor": "Actor-independent repository structural progress.",
+      "diagnostics": ["Outstanding native predicates","Workflow-linked clearances only with separately established lineage"],
+      "excludedAcceptanceProxies": ["Quality scores or weights","Invented keep bars","Run or issue counts","Successful exits","Agent summaries","Merged changes without independent acceptance"],
+      "scopeLimit": "Structural lexical or existence conditions only; not proof of real behavioral safety, remediation quality, or causal workflow contribution."
+    },
+    "fullAcceptance": [
+      "Select and disclose the conformance class and version; satisfy every applicable MUST/MUST NOT, include documented reasoning for SHOULD deviations, and retain unsupported optional-type warnings.",
+      "Demonstrate credential isolation, minimal permissions, artifact-only cross-job operation transmission, trusted steering provenance, and no privilege escalation across normal, error, reusable-workflow, and adversarial paths.",
+      "Validate configuration syntax, inheritance, defaults, expression evaluation, schema grammar and runtime enforcement, type-specific constraints, and least-privilege service/handler credential selection.",
+      "Reject invalid schemas, forbidden/undeclared fields, over-limit batches, unauthorized repositories and targets before privileged effects; establish actual call-path ordering, not token presence.",
+      "Prove sanitization ordering/idempotence, domain/protocol matching, code/metadata exemptions, safe markdown, mention resolution confinement, and required content bounds on final published content.",
+      "Verify all supported output types' schemas and operational semantics, including runtime triggering/fixed/wildcard target authorization, type-specific exceptions, temporary-ID collisions, and Go/JavaScript/agent-example synchronization.",
+      "Verify current stdio JSON-RPC and NDJSON behavior, invocation-time and processor-time constraints, actionable correctly scoped errors, artifact transfer, and malformed/missing/cancelled artifact handling.",
+      "Establish type ordering, idempotence, batch best-effort behavior, preflight all-or-nothing limits, retry safety, and threat-verdict versus threat-engine-error review/convert/abort behavior.",
+      "For applicable features, verify cache integrity keys/hash/branches/migration, checkout policy/confinement/manifests/authentication/finalization, private-to-public containment, signed delivery, protected files, and byte-bound patch/bundle transport through retries and cleanup.",
+      "Use independent protected regression, functional, protocol, configuration, and adversarial evidence at accepted source revisions. Specification references to tests/models are obligations or guidance, not proof that those tests passed.",
+      "Resolve contradictory source requirements through explicit versioned interpretation/correction rather than declaring blanket conformance from checker success. No behavioral test or complete acceptance evaluation is performed here."
+    ],
+    "baselineDisposition": {
+      "frozenLabel": "attainment-only",
+      "status": "provisional-and-not-endorsed-as-final",
+      "reason": "The specification, implementation conditions, and actor-independent remediation phenomenon can predate workflow adoption. Failure to establish a comparable baseline is not evidence of impossibility, and reconstruction was not exhausted.",
+      "requiredVersionedFollowUp": "Explicitly test reconstructability and comparability at the real adoption parent using a declared common obligation/predicate profile; separate obligations introduced later and historical eligibility/toolchain changes. Preserve the sealed proof and publish any corrected mode/definition in a new version.",
+      "thisReview": "No baseline reconstruction, acquisition, outcome comparison, or classification promotion."
+    }
+  },
+  "completeSpecificationReview": [
+    {
+      "topic": "Preamble, purpose, conformance classes, verification and normative strength",
+      "current": [[1,270]],
+      "adoption": [[1,249]],
+      "findings": [
+        "Both documents are working drafts, not independent certifications. Privilege separation, declarative requests, configured constraints, and fail-secure rejection motivate the design; residual contextual misuse remains possible within constraints.",
+        "Full conformance demands all mandatory obligations, not a severity-weighted aggregate. C2 permits omitted optional types but not omitted security-critical safeguards.",
+        "Current C2 explicitly names missing_tool, missing_data and report_incomplete as mandatory in addition to create_issue/add_comment/create_pull_request/noop; adoption C2 names four, while its later type catalog already marks missing_tool/missing_data always mandatory.",
+        "Functional, security, protocol and configuration verification encompass valid inputs, edge cases, evasion, domains, cross-repository escalation, inheritance and defaults. Current M5 additionally requires runtime target authorization regressions and fail-safe assertions.",
+        "Current prose says stdio, but M3 retains HTTP request/response terminology. This is a source inconsistency, not permission to treat a transport grep as protocol compliance."
+      ]
+    },
+    {
+      "topic": "Architectural isolation, threats, repositories and complete validation sequence",
+      "current": [[272,858]],
+      "adoption": [[251,633]],
+      "findings": [
+        "AR1-AR4 isolate write credentials and require artifact transfer plus minimal privileged permissions; current AR1 and AR4 explicitly confine mention credentials and separate external-service secrets. AR5 requires trusted activation steering identity and positive-safe-integer/open-issue/not-PR revalidation before failure reuse.",
+        "The architecture diagram retains HTTP/127 wording even though current transport changed to a stdio container. Agent-local gateway mounts do not authorize shared-filesystem transmission to the downstream privileged processor.",
+        "T1-T5 discuss prompt injection, configuration tampering, leakage, resource exhaustion and cross-repository escalation with explicit residual risks; current adds T6 cache poisoning, T7 workspace checkout spoofing and T8 private-to-public exposure.",
+        "Repository slugs require owner/repo with no protocol or empty components. Type-specific allowlists override globals; exact case-sensitive explicit matching and no-list deny-by-default are stated. The examples deliberately permit repo-c for create-issue while global lists repo-a/b, demonstrating override, not intersection.",
+        "Current queue adapters additionally bind literal targets and independently resolved effects to authenticated effect_scope with assertClaimAuthorized and E004/work_queue_effect_scope_denied. This does not replace user-facing allowlists.",
+        "Stages 1-7 are schema, per-type batch limits, sanitization, conditional domains, conditional repository authorization, conditional dependency resolution, then API. Validation failures prevent effects; only a limit failure rejects an entire type batch under the stated validation semantics. Errors require context/index/field as applicable.",
+        "SP1-SP7 are behavioral invariants. Tokens like sanitize, allowedRepos or isDefault do not establish that those invariants hold on every path."
+      ]
+    },
+    {
+      "topic": "Compiler/gateway/processor topology, data-flow examples and propagation",
+      "current": [[860,1141]],
+      "adoption": [[635,875]],
+      "findings": [
+        "Compiler generation, schema registration, gateway validation/NDJSON append, upload/download and privileged execution are distinct stages. JavaScript/YAML/JSON examples were read, not executed.",
+        "Current gateway is containerized stdio; adoption starts a localhost HTTP server. Current phase-2 labels schema permits string or array, unlike adoption's array-only schema.",
+        "Current comment-memory phase 8 covers setup extraction, direct file edits, artifact inclusion, threat context, synthesized operations and managed-comment upsert. Setup caps are 16 KiB per file and 48 KiB aggregate; exceeding either skips all materialized files.",
+        "Current missing safe-outputs/only-system-type path injects create-issue max 1, workflow label and title prefix, suppressed by explicit non-system types. Adoption has no such injection contract.",
+        "The phase-7 example illustrates limits and sanitization but does not implement every earlier normative stage. It cannot replace full acceptance or authorize dropping repository/schema/dependency checks.",
+        "Both versions retain editorial 'Continuing ... due to length limits' prose; this is not an exemption from reviewing the rest of the document."
+      ]
+    },
+    {
+      "topic": "Global parameters, common parameters, expressions, protected-file exclusions and extension examples",
+      "current": [[1143,1886]],
+      "adoption": [[877,1370]],
+      "findings": [
+        "Global/type/default precedence applies to footer and staged. Footer true requires appended separated attribution with workflow/run link and correct context; false forbids attribution. Installation instructions are optional and conditional on public reusable source.",
+        "Staged false is default; staged true forbids writes and requires complete visible previews. Reads may be permitted generally, but some type-specific staged paths forbid even reads.",
+        "Current steer requires trusted issue creation/reuse and read/write permission separation; it cannot combine with failure-issue-repo or expression-valued staged, creates no steering issue in literal staged mode, and cannot affect checkout refs.",
+        "Domains support exact case-insensitive hosts, wildcard subdomains excluding the bare host, protocol-specific examples and ecosystem identifiers; compilation regex does not actually admit the documented protocol prefix. Unauthorized URL redaction must preserve context and log the redaction.",
+        "GP4 describes empty global repository allowlist as unrestricted, conflicting with SP7 default deny. Same-repository operations are permitted, but current type-specific wildcard repository features require explicit scoping rather than indiscriminate application of the general no-wildcard statement.",
+        "Current GitHub App repositories [\"*\"] means omit the token repositories parameter, including activation/reusable calls; explicit lists request exactly those repositories. Per-output App overrides mint minimal dedicated tokens, take precedence, and are excluded from global aggregation; empty permission paths must not mint.",
+        "Current data accepts false/true/schema/expression only, rejects filename-like scalar strings, normalizes shorthand objects, limits schema keywords/types, forbids additional properties, requires every declared object property, and validates expression-resolved schemas before execution with field-path errors.",
+        "max is per type and per run; positive limits and -1 unlimited are supported; excess rejects the whole type batch, never truncates. TS1 prohibits zero while the edge-case section defines zero as disabling, in both versions.",
+        "Current templatable integers require runtime integers; non-integers fail. Boolean literals/expressions are allowed, non-expression strings fail compilation, non-boolean runtime values become false. This last default needs security-sensitive review where false relaxes a safeguard.",
+        "Protected-file object/string forms preserve defaults. Leading slash means exact repository-relative path, not basename; normalize/decode Git quoted octal UTF-8 paths and apply both pre/post checks. allowed-files remains independent.",
+        "Extension examples specify review attribution pinning to the agent-seen head SHA, allowed review events, branch-name preservation/recreate-ref, discussion min body, and asset extension/size restrictions. These are contract details, not mere heading coverage."
+      ]
+    },
+    {
+      "topic": "Universal limits, preview, provenance and sanitization",
+      "current": [[1888,2191]],
+      "adoption": [[1372,1635]],
+      "findings": [
+        "MR1-MR5 require independent per-type counts, all-or-nothing over-limit rejection before calls, detailed remediation errors and supported unlimited mode with recommended warning. Exact/under/over/unlimited examples define different cases.",
+        "SM1-SM5 forbid writes, require all-field/count previews with the mask emoji, preserve type override semantics and permit read-only validation except stricter individual type contracts.",
+        "FA1-FA7 require end-position horizontal-rule attribution, workflow/run links, conditional trigger context and no attribution when false. SP5's unconditional provenance statement must be reconciled with this authorized footer exemption.",
+        "CS1-CS3 specify all user text, ordered NFC/zero-width/control cleanup preserving LF/CR/TAB, protocol/domain filtering, start-of-content command escaping outside code, mention filtering, markdown safety, truncation at character boundaries, and idempotence.",
+        "Current mention-aware ingestion preserves candidate mentions without privileged lookups. Trusted resolution uses mentions App then mentions token then github.token, not shared write credentials; read-only overrides, team membership, earlier-step dependency and missing-App fallback requirements all apply.",
+        "Default sanitization truncation is 524288 characters with notice, distinct from narrower final-comment or tool limits. Code, inline-code and generated-metadata exemptions in section 9.4 must also be honored."
+      ]
+    },
+    {
+      "topic": "Schema synchronization, wildcard metadata and downstream payload construction",
+      "current": [[2193,2280]],
+      "adoption": [],
+      "findings": [
+        "Current schema/semantic changes require same-change specification snippet, supported Go/JS runtime contracts, agent-facing examples and affected outcome-mapping updates.",
+        "Wildcard metadata primary identifies the canonical diagnostic field; anyOf requires at least one nonempty accepted identifier before record/execution. Non-wildcard targets must not acquire new runtime identifier requirements from wildcard metadata.",
+        "The handler cross-reference table contains defaultHandler and specialized functions; file existence alone is not registration correctness.",
+        "Only type plus schema/config/custom-job declared fields can flow downstream. Invalid x-strip-on-error advisory fields may be dropped but never used for privilege/target/transport decisions. Trusted patch and upload metadata cannot come from agent NDJSON.",
+        "Some names occur only in the cross-reference/history tables, without complete standalone type definitions (for example push_repo_memory, upload_artifact and dismiss_pull_request_review). Therefore a table is not a complete supported-type contract."
+      ]
+    },
+    {
+      "topic": "Core issue, comment and pull-request schemas and semantics",
+      "current": [[2281,2687]],
+      "adoption": [[1641,1865]],
+      "findings": [
+        "create_issue requires title/body, forbids additional fields, supports typed labels and current issue fields, number/string parent and aw_[A-Za-z0-9]{3,8} temporary IDs. Validate repository labels/fields before effects, sanitize title/body, use scheduled expiry. A run-scoped temporary ID must map to one object; different-object reuse is E005, same-object reuse deterministic.",
+        "add_comment requires body, permits item number/context and controlled comment_id only for wildcard targets with trusted exact positive-integer allowlist. Status reuse is a distinct trusted-state path: update when known, create otherwise, reject discussion reuse. replace-older-comments has authenticated identity/caller-marker matching, newest selection, staged no-lookup, explicit-reuse precedence and mutual exclusion with hide-older-comments.",
+        "Comment limits are final body including footer 65536, mentions 10, agent URL occurrences configured max-links default 50. Generated metadata links are excluded from link count, not final length/mention checks; validation is both invocation and publication time.",
+        "Current add_comment omitted/triggering/fixed targets ignore agent identifiers, even unresolved temporary IDs; only wildcard can select from agent input. Runtime authorization precedes ID resolution and cannot be replaced by schema/prompt shaping.",
+        "create_pull_request requires title/body with branch/base/labels/draft, default draft, validated changes, auto-commit/reviewers, branch sanitization and collision handling. preserve-branch-name plus recreate-ref is explicit force-delete/recreate authority, not a general default.",
+        "Current fork-backed mode separates upstream and configured automation-owned head, validates both allowlists, qualifies head refs and includes head_repo even under the same organization. Credential roles and App precedence are separate; arbitrary contributor forks are not authorized.",
+        "SCD-001-003 preserve attached HEAD/named branch after stale-base rebase, push the rebased tip only when fallback already allowed, and never broaden signing/fallback/credential routing.",
+        "PTI-001-007 require qualified authorized transport namespaces, fail-closed ambiguity and missing/unreadable/nonregular/symlink detection, descriptor identity plus digest capture, byte-preserving private read-only snapshots, trust-boundary/retry/post-awaited-publication checks, bounded digest cost, trusted in-memory transformations, sticky permanent failure, restricted registered cleanup/rollback, disposal and non-disclosing typed diagnostics.",
+        "Transport integrity explicitly does not roll back already completed remote effects; the general single-item atomicity statement cannot be interpreted as a cross-GitHub transaction guarantee. Dash-only branches must fail before paths/publication, including allow-empty."
+      ]
+    },
+    {
+      "topic": "System types, file-based memory, issue mutations and Linear service types",
+      "current": [[2690,3157],[4709,4839]],
+      "adoption": [[1867,1985],[2638,2686]],
+      "findings": [
+        "noop is always enabled, last, sanitized, no API/state mutation and singleton max 1 in current prose. missing_tool/missing_data are always enabled logging types with optional issue creation and unlimited prose defaults. report_incomplete is an active failure signal regardless of agent exit, suppresses noop bypass, sanitizes reason/details at 1024/65000, defaults max 5 and tracking-issue creation true.",
+        "comment_memory is processor-only while file sync active; agent edits files, not a tool. Validate memory ID/traversal, bounded scanning, setup size caps, sanitize and enforce final comment constraints, authorize repository, import only managed block content, rewrite temporary IDs, and prefer explicit operation over file entry for identical memory IDs.",
+        "update_issue modifies only provided fields, supports replace/append/prepend/replace-island, validates labels/assignees/issue number, and enforces triggering/fixed/wildcard authorization before temporary-ID processing. Its milestone schema's null-to-clear description does not include null in the declared type.",
+        "close_issue comments first unless allow-body false, discards prohibited body with warning, adjusts required schema/description, and validates targets/permissions. Intent endpoint failure is not bypassed except optional legacy fallback for 404/501. Duplicate marking parses canonical reference/node; parse/mutation failures warn/skip that relationship rather than prevent closing.",
+        "link_sub_issue validates both positive existing same-repository numbers and the effective post-target parent differs from child; no cross-repository linking, default max subissues 50. Its headline 'Yes (restricted)' cross-repository field contradicts the explicit prohibition.",
+        "Current Linear create/add/update use fixed GraphQL endpoint/documents, variables, service-specific isolated API key, declared-only fields, exact field lengths/minimums, enabled partial-update fields, trusted target and staged no mutation; all HTTP/JSON/GraphQL/unsuccessful/missing-payload errors fail.",
+        "Linear team key/name case-insensitive resolution is described, but the same create type says the configured team ID MUST be a canonical UUID. This requires a versioned interpretation of whether UUID validation applies after resolution."
+      ]
+    },
+    {
+      "topic": "Discussion, approval, merge, ready and branch-write types",
+      "current": [[3158,3710]],
+      "adoption": [[1987,2147]],
+      "findings": [
+        "Discussion creation resolves category, permits issue fallback when feature unavailable and permission exists, enforces configured pre-footer minimum body, sanitation and repositories. Its temporary_id operational claim is absent from the displayed additionalProperties:false schema.",
+        "Discussion update rejects empty title/body updates and needs wildcard identifier; close-discussion validates reason enum and supports allow-body false with schema removal, discard and warning. General type-local permissions and global staged semantics still apply.",
+        "Current approval validates positive safe run ID, previews without state reads or max consumption, requires pull_request/nonempty associated PRs/awaiting approval, normalizes yml/yaml filename patterns, authorizes EVERY associated PR, resolves every head repository, rejects pull_request_target/missing heads/protected files, uses explicit external token/App, and consumes limit only after approval. No-longer-awaiting is a successful skip; run-start comments warn on failure and do not fail approval.",
+        "merge_pull_request is current optional/experimental. Already-merged is immediate idempotent success; otherwise reject draft/conflict/protected or default base, require configured checks/reviews/threads/label/title/source-branch gates and an intra-repository open upstream PR-chain. No opt-out for the chain gate. Runtime triggering/fixed/wildcard authorization applies.",
+        "mark_ready enforces the same trusted target modes and repository bounds. push_to_pull_request_branch resolves explicit base then manifest then origin/HEAD then API default; absent credentials/manifest require explicit base. Shared git operations need GIT_TERMINAL_PROMPT=0 plus timeout.",
+        "Current push patch size is default 10 KB, range 1-100 KB, versus adoption's 1024 KB. Ignore agent diff_size/base metadata, derive it from generated transport, require configured head repository, provenance, shared signing and PTI obligations, and head_repo on Convertible fallback PRs."
+      ]
+    },
+    {
+      "topic": "Reviews, threads, labels, assignment and comment hiding",
+      "current": [[3711,4334]],
+      "adoption": [[2149,2415]],
+      "findings": [
+        "Inline review comments buffer for a submitted review; wildcard targeting needs PR identifiers. Submitted review event affects merge requirements and supports triggering/fixed/wildcard context plus footer modes always/none/if-body (boolean compatibility). Current attribution pinning appears in extension examples and must not be confused with check-run latest-head behavior.",
+        "Thread resolution verifies GraphQL node type, derives actual parent PR/repository, applies allowlist/target/label/title checks before mutation, paginates comment-to-thread lookup to exhaustion, no-ops already-resolved/stale/missing IDs, previews without mutation, and soft-skips integration-permission failures with token guidance while retaining unrelated failures.",
+        "Thread triggering authorization includes forwarded dispatch context and applies to legacy same-repository mode. Agent parent metadata never overrides GitHub-resolved relationships.",
+        "Review replies default to triggering PR, require explicit PR under wildcard, and honor label/title/repository filters and optional footer.",
+        "Labels default max 3; nonexistent added labels warn and missing removed labels are ignored. Both now require runtime trusted triggering/fixed targets and permit agent identifiers only for wildcard.",
+        "Reviewers default max 3, expand teams and warn invalid entries. Milestones require number or title, restrict allowed titles, optionally auto-create, otherwise report available milestones; target authorization still applies despite issue_number marked required in the agent-fields table.",
+        "Agent assignment validates target and immediately checks all required labels before assignment; both issue and PR identifiers are mutually exclusive only in wildcard mode. User assignment may remove existing assignees first; unassignment handles trusted PR or issue contexts. Issue-type/field mutation have their own allowed/required-label/title filters and trusted target modes.",
+        "hide_comment authorizes the actual parent including kind, not just numeric ID, because discussion and issue numbers can collide. Discussion writes are opt-in; fixed parent number and wildcard authorization remain repository-constrained."
+      ]
+    },
+    {
+      "topic": "Projects, releases, assets, dispatch, scanning, check runs and agent sessions",
+      "current": [[4336,4707]],
+      "adoption": [[2417,2636]],
+      "findings": [
+        "Project create/update require App-only organization-projects permission and current issues:read for resolving item references; project status updates do not need that issue scope. Current update_project admits agent target_repo only under configured allowed-repos, unlike adoption's same-repository-only wording.",
+        "update_release changes existing notes/metadata, not assets. upload_asset writes an orphan asset branch, defaults max 10 and 10 MB, hashes source paths to avoid basename collisions, confines staging and re-derives size/digest/path/name/URL from trusted file bytes.",
+        "Current dispatch max is 1 versus adoption 3; it adds cross-repository target/ref relay support and ref/workflow allowlists with scoped wildcard repositories. A message ref must match explicit patterns or implicit default branch. This is not a blanket authorization for arbitrary repository wildcards.",
+        "SARIF create-alert validates format with unlimited max. Current autofix calls the code-scanning fix API and does not itself create a branch/PR, unlike adoption's wording and broader App permissions.",
+        "create_check_run requires conclusion/title/summary and declared enums, rejects agent name, uses configured/workflow result name, latest API-fetched PR head when target set, otherwise event head then GITHUB_SHA/context.sha. Target adds PR read permission; staged makes neither Pulls nor Checks calls. Hard errors and soft skips are distinct.",
+        "Check-run prose constraints (title 256, summary/text 65535) are descriptions rather than maxLength keywords in the displayed schema, so actual runtime bounds need independent verification. Configured static title/summary fallbacks must also be reconciled with required tool fields.",
+        "create_agent_session requires enabled Copilot and issue creation/assignment permission; assignment or session creation is not evidence of a resulting code fix."
+      ]
+    },
+    {
+      "topic": "Protocol, early/dual constraints, NDJSON, content mechanisms and errors",
+      "current": [[4841,5237]],
+      "adoption": [[2688,2948]],
+      "findings": [
+        "Current stdio JSON-RPC 2.0 carries jsonrpc/id/tools-call parameters and success/error structures in an isolated container with explicit mounts; adoption uses localhost HTTP POST endpoints. Both require UTF-8 NDJSON objects/type, independent line parsing and empty-line ignoring.",
+        "Current MCE1-MCE5 require invocation-time constraints before recording, descriptive tool disclosure, actionable errors identifying constraint/limit/actual/remedy, processor defense-in-depth and consistent limits across all three layers.",
+        "The examples call shared enforcement before record and before publication; they are not proof of actual call order. Footer-inclusive length and generated-link exclusion are additional details not captured by raw literal-number searches.",
+        "Draft 7 schema validation reports all errors with paths. Conditional identifiers, line ranges and mutual exclusions need cross-field checks. Repository feature checks happen at execution rather than tool invocation.",
+        "Section 9.4 requires ordered null removal, link/image domain transformations, conditional HTML filtering with safe-tag preservation, and no code/template evaluation. Code blocks, inline code, generated footer and metadata MUST NOT be sanitized. Transformation is lossy; preservation is not permission to execute code.",
+        "The global E001-E010 catalog predates adoption and includes schema, limits, domains, repository, parent, labels, API, sanitization, hash and rate-limit errors with required code/name/message/time, optional details/run link and logs/summary/STDERR. EH1 covers early detection.",
+        "Current comment MCE codes reuse E006-E008 and title E009 for different meanings than the global catalog. The checker's contextual interpretation is plausible but not an explicit complete normative namespacing solution."
+      ]
+    },
+    {
+      "topic": "Checkout integrity, runtime lists and private-to-public containment",
+      "current": [[5239,5335]],
+      "adoption": [],
+      "findings": [
+        "RCR1-RCR7 require trusted manifest precedence, workspace confinement/no escaping symlinks, read-only discovery, per-invocation safe.directory rather than global trust, expected GitHub remote host, allowlist-before-use/push and non-disclosing errors. Manifest entries have a trust-origin exemption, not arbitrary agent-controlled checkout maps.",
+        "Only literal multi:true enables repository-list mode. Single selectors still need exactly one valid slug in both jobs, but must not inherit multi-only visibility/allowlist/prefix/App restrictions; modes cannot merge.",
+        "Multi mode requires trusted literal/vars policy rather than caller/computed policy, no universal allowance, no wildcard selectors, case-insensitive dedupe, positive literal max-repos default 10 and whole-batch preflight before any checkout. Empty never expands to the allowed set; canonical metadata names must be reauthorized.",
+        "Private/internal targets deny by default; literal allow-private-repos may enable only on private/internal hosts, with AND-merged opt-in. Public hosts can never use it to read private targets regardless of token or flow opt-out. Unknown metadata fails closed.",
+        "Each job makes its own post-finalization manifest at trusted non-root prefix/canonical owner/repo paths; no privileged trust of an agent manifest. Per-entry credential precedence/fallback must not leak scoped credentials across entries or acquire write-only App credentials in agent setup.",
+        "Multi entries reject LFS/submodules at compile/runtime, hardcode false, use no-recurse-submodules on follow-up fetch and preserve .gitmodules. Agent finalization independently cleans/verifies every checkout/nested Git config, fails on missing/symlinked config or residual credentials; privileged finalization retains intended write credentials.",
+        "Controlled failures must reach conclusion reporting even absent recorded agent jobs; staged cannot emit dependent checkout/App/manifest steps. The bounded model explicitly does not prove parser/wildcard/Git/filesystem/token/script correctness.",
+        "PPF1-PPF4 default sink visibility protection cannot be bypassed merely by reachable tokens. Strict mode rejects blanket/server-list opt-outs; non-strict warns; unknown server IDs always fail; accepted opt-out never removes target/permission/content/audit requirements."
+      ]
+    },
+    {
+      "topic": "Execution, threat policy, exceptions and edge cases",
+      "current": [[5337,5580]],
+      "adoption": [[2950,3085]],
+      "findings": [
+        "Single-item atomicity, batch best effort, NDJSON/type/system ordering and idempotence classifications are distinct contracts. System-last now includes all four system types. How grouping interacts with cross-type source order needs clarification.",
+        "Current warn-mode WTD matrix requires review-first CAUTION/label/marker for a real threat and WARNING/different label/marker for engine failures. Convertible branch pushes become PRs with reason-appropriate annotation; Abort types perform no original effect and return explicit machine-readable failure.",
+        "The table classifies every listed type individually; it does not automatically classify newer types absent from that matrix. Tests must establish full dispatch coverage, not just existence of THREAT_WARNING_ABORT_TYPES.",
+        "Empty operations succeed with no calls, zero max disables a tool/config, rate limits retry 60/120/240 then E010/reset time, cancellation forbids interrupted/partial artifacts, concurrent limits are per run, malformed lines warn/skip while valid entries continue, missing artifact fails, and ambiguous duplicate temporary IDs reject.",
+        "Current replay authorization is exact admin/maintain standard role, resolving custom inherited standard-role metadata and rejecting unresolved inheritance. A collapsed legacy permission bucket or custom role name is insufficient.",
+        "Benign no-op/skip and allowed best-effort warning cases do not imply all operations succeeded; conversely a missing behavioral proof is unknown, not measured failure."
+      ]
+    },
+    {
+      "topic": "Current cache-memory integrity and migration",
+      "current": [[5582,5841]],
+      "adoption": [],
+      "findings": [
+        "Trust order is merged > approved > unapproved > none; write-up forbidden, read-down permitted, policy changes invalidate reuse, and agent sees plain files.",
+        "Keys include integrity/policy hash, optional nondefault cache ID, sanitized workflow and run; no-policy sentinel is nopolicy. Restore cascade uses same prefix except explicitly documented legacy memory- fallback.",
+        "Hash canonicalizes blocked-users lowercase/sorted/deduped or expr: raw expression; min-integrity literal; repos lowercased/sorted/deduped or string. Reserved trusted-bots/users remain empty. Fixed field order/newlines, UTF-8 SHA-256 and first eight lowercase hex chars are required.",
+        "Validation excludes .git. Fresh/legacy setup initializes merged, commits baseline and creates all four branches, checks out effective integrity, merges higher branches descending with theirs, and aborts/restores/fails unexpected merge errors.",
+        "Post-agent commit must run regardless of success, stage all, allow empty run-ID commit and compact; absent repository is a clean diagnostic fallback.",
+        "Compaction is MUST in prose but Recommended in compliance table. Restore broad memory- fallback conflicts with the claims that matches cannot cross levels and legacy entries never match new restore keys. Importing unproven legacy data into merged also needs an explicit trust/migration interpretation."
+      ]
+    },
+    {
+      "topic": "Checklists, guidance, complete example appendix, history and sync notes",
+      "current": [[5842,6522]],
+      "adoption": [[3087,3426]],
+      "findings": [
+        "Checklists enumerate security/config/features/types/protocol/content/execution but are not exhaustive implementation evidence. Current checklist incorporates new mandatory system types and stdio.",
+        "Both guidance sections recommend conservative limits, preview development, explicit domains, expiry, provenance and narrow repositories. These recommendations do not invent an operational keep bar.",
+        "All example patterns were read: single/multi-type issues, global footer, cross-repository allowlist, staged, override lists, wildcard domains, expiry, buffered review, projects and grouped parent/child issues; current adds replies and least-privilege per-output Apps. Examples demonstrate optional combinations, not authority to skip validation.",
+        "History shows later addition of MCE, templating, cache integrity, merge/memory, issue injection, WTD reason separation, head/base routing, check runs, discussion opt-ins, custom replay roles, fork-backed writes, App scoping, declared-only payloads, trusted metadata and comment reuse, approval, Linear, target authorization, PPF, fail-closed intent close, signing and PTI/runtime checkout.",
+        "Version 1.28.6 history includes normative pre-created PR validation and deterministic workflow-owned checkout refs, not fully expanded elsewhere. Full review cannot silently exclude these just because they appear in history.",
+        "History's past defaults must not override current body defaults. Sync notes point to implementation/test files and require same-change parity plus make test-safe-outputs; referenced evidence was not acquired or executed here.",
+        "Future-work and formal-model references explicitly leave performance, expanded threat modeling and complete proof outside the assertions of this source review."
+      ]
+    }
+  ],
+  "currentAdoptionReconciliation": {
+    "nativeInventory": {
+      "adoptionFamilies": 14,
+      "currentFamilies": 55,
+      "sharedRuleIds": ["SEC-001","SEC-002","SEC-003","SEC-004","SEC-005","USE-001","USE-002","USE-003","REQ-001","REQ-002","REQ-003","IMP-001","IMP-002","IMP-003"],
+      "newRuleIds": ["IMP-004","IMP-005","MCE-001","MCE-002","CI-001","CI-002","MCE-003","CI-003","CI-004","CI-005","CI-006","MCE-004","MCE-005","MCE-006","SEC-006","SEC-007","AR2-001","TYPE-001","TYPE-002","TYPE-003","TYPE-004","INT-001","INT-002","EXEC-001","EXEC-002","WTD-001","WTD-002","WTD-003","TYPE-005","TYPE-006","TYPE-007","TYPE-008","TYPE-009","TYPE-010","TYPE-011","TYPE-012","TYPE-013","SEC-008","SEC-009","TYPE-014","TYPE-015"],
+      "newDoesNotMeanNewObligation": "AR2 artifact transfer, Draft 7, sanitization, standard E001-E010 errors, type registration, execution ordering and zero-max edge cases already occur in adoption prose even when later checker families did not exist.",
+      "sharedDoesNotMeanComparable": "Shared identifiers changed scope/patterns/path/waiver handling. Same rule ID alone is not a fixed historical acceptance definition."
+    },
+    "checkerChanges": [
+      "Adoption log functions use post-increment under set -e, so an initial zero-valued counter increment can terminate execution before summary. Current +=1 avoids that particular source-level exit hazard; no execution result was inspected.",
+      "Current generic loops exclude _checks.cjs, narrow SEC-003 to octokit files and recognize additional array-limit helper patterns. SEC-004 changes from broad body-bearing files to a named content-handler list, includes title/content fields and accepts annotations. SEC-005 narrows config identifiers and accepts annotations.",
+      "Current USE-001/003 exclude non-safe-output APM/observability files and tighten applicability; staged helper delegation is recognized. These eligibility changes cannot be counted as code repairs.",
+      "REQ specification path moves reference/ to specs/. Current REQ-003 accepts alternate formatting. IMP-002 expects exported ComputePermissionsForSafeOutputs rather than the adoption lowercase identifier; IMP-003 adds config-generation/static-schema/doc checks instead of searching one config file.",
+      "Both versions retain shell pipeline/subshell and bounded-text heuristics rather than semantic program validation. Medium/low findings can coexist with exit 0.",
+      "Current additions include Python source/schema coverage and authorization inventories, but no native family comprehensively implements PTI, SCD, RCR8-RCR15, PPF, all data schema constraints, or all service/output obligations."
+    ],
+    "workflowChanges": [
+      "Both workflows run daily/manually, read repository/issues in agent, use Claude/strict mode, expose bash plus read GitHub tools, request actionable check-ID/severity/file/remediation issues, bound create-issue to 10, expire after one day and close older issues. Issue lifecycle is observability, not remediation.",
+      "Current adds private/emoji metadata, CLI proxy/GitHub proxy, firewall sandbox, threat-detection feature and two eval questions. Those questions concern running/reporting, not independent structural or behavioral clearance.",
+      "Current daily-audit-base recursively adds one audits discussion with supplied title prefix and one-day expiry/close-older behavior; reporting and OTLP are imported recursively and directly. The compiled import manifest lists each shared path once. Do not infer multiple delivered reports from duplicate import declarations.",
+      "Current reporting becomes an explicitly bounded on-demand skill; adoption reporting is longer inline guidance with examples. Both forbid manual footer attribution, require h3-or-lower, progressive detail and linked run references. Adoption workflow h2 report templates conflict with that imported guidance.",
+      "Current results path moves under the agent runtime directory and specification reference moves to specs/. Task-grouping text still lists only the original 14 families, despite 55 checker families.",
+      "Both workflow special cases say no issues for exit 0/no critical-high, then permit prioritizing low/medium-only issues. This conflicts with an unqualified 'all checks passed' noop. More than ten distinct critical/high findings also require explicit bounded grouping/overflow handling.",
+      "Current compiled context confirms read-only agent job versus issues/discussions write in safe_outputs, artifact download and matching issue/discussion handler configs. It also shows noop max/defaultMax 2, missing type defaultMax 20, required noop message, and narrower title/body validation limits than portions of current prose. These are source-contract mismatches to reconcile, not runtime outcome observations."
+    ],
+    "comparabilityRule": "For any future baseline, freeze exact obligation versions, handler eligibility, predicate semantics, source/tool identity and exclusions. Do not apply a later optional type or changed literal check retroactively and call its absence a historical conformance failure."
+  },
+  "instrumentReconciliation": {
+    "method": "Read all 176 instrument lines and all 2514 current checker lines; enumerate unique Running rule IDs as source text; manually match each instrument branch/static predicate to its native family. No assess/compare/checker execution and no evidence rows inspected.",
+    "inventoryRuleCount": 55,
+    "partialFamilyCount": 20,
+    "unimplementedFamilyCount": 35,
+    "countMatchesRequestedSplit": true,
+    "meaningOfCounts": "Static families supported by at least one encoded replay predicate, not a claim about eligible row counts in any actual assessment. assess() derives its runtime coverage labels from emitted rows, so conditional families can disappear from a particular population.",
+    "fullyBehaviorallyMeasuredFamilyCount": 0,
+    "instrumentIdentity": "c99bd121e341226c7a669fc575a837bbbfb85e358b6f1d0e45402f55fc52e56e",
+    "checkerLineRangesSource": "currentChecker",
+    "specificationLineRangesSources": ["currentSpec","adoptionSpec"],
+    "allRuleAcceptanceLimit": "Native checks are source heuristics or artifact-existence tests, not independent functional/security acceptance. Missing sources and inapplicable paths must not become passes. All entries below require the complete applicable specification, including prose, examples, schemas, exceptions and documented contradictions, beyond any lexical replay.",
+    "rules": [
+      {
+        "rule":"SEC-001",
+        "checkerLineRanges":[[63,82]],
+        "specificationLineRanges":{"current":[[274,407],[694,711]],"adoption":[[253,328],[508,525]]},
+        "nativeIntent":"Inspect compiled agent job permissions for forbidden issues/pull-requests/contents write.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native find/50-line jobs/20-line agent permission scan is not replayed.","All write scopes, inherited credentials, runtime isolation, mention credentials and privilege-escalation channels require verification."],
+        "acceptanceLimit":"Native bounded text windows and pipeline-local counters cannot prove complete agent isolation."
+      },
+      {
+        "rule":"SEC-002",
+        "checkerLineRanges":[[85,109]],
+        "specificationLineRanges":{"current":[[713,799]],"adoption":[[525,604]]},
+        "nativeIntent":"For eligible octokit-bearing handlers, find a validation/sanitization/limit token before the native awk API marker condition.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 51-70: direct-handler eligibility, test/_checks/parse/buffer exclusions, octokit. trigger and exact native awk validation-before-api predicate."],
+        "omittedObligations":["Actual schema/limit/sanitize/domain/repository/dependency stage ordering on every control-flow path.","No-side-effect rejection, batch behavior and detailed validation errors."],
+        "acceptanceLimit":"The awk variable becomes true from one token occurrence; it is not control-flow, invocation, or data-flow proof."
+      },
+      {
+        "rule":"SEC-003",
+        "checkerLineRanges":[[112,136]],
+        "specificationLineRanges":{"current":[[801,818],[1593,1670],[1892,1942]],"adoption":[[605,619],[1176,1250],[1376,1421]]},
+        "nativeIntent":"Find one recognized max/array-limit marker in eligible API handlers.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 51-73: direct handlers excluding test/_checks/parse/buffer/factory, octokit. applicability and .length.*>.*.max|enforceMaxLimit|checkLimit|max.*exceeded|enforceArrayLimit|tryEnforceArrayLimit|limit_enforcement_helpers."],
+        "omittedObligations":["Per-run independent counts, exact/under/over/-1 cases, whole-type pre-API rejection, no truncation and detailed errors.","Configured and expression-resolved limits actually reaching every execution path."],
+        "acceptanceLimit":"A helper name/import or comment is only structural evidence, not enforcement."
+      },
+      {
+        "rule":"SEC-004",
+        "checkerLineRanges":[[139,169]],
+        "specificationLineRanges":{"current":[[820,837],[2065,2191],[5088,5162]],"adoption":[[620,633],[1534,1635],[2808,2875]]},
+        "nativeIntent":"For named content-bearing handlers without an exemption, find sanitization markers.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 88-103: explicit 18-handler inventory; body/title/content applicability; sanitize|stripHTML|escapeMarkdown|cleanContent; retain annotation as suppressed metadata rather than erase the raw predicate."],
+        "omittedObligations":["Every user-text field, actual invocation before writes, exact transformations/order/idempotence and malicious-input behavior.","Respect code/inline-code/generated footer/metadata exemptions and conditional HTML filtering."],
+        "acceptanceLimit":"Native exemption annotations are diagnostic suppression, not specification security waivers or accepted remediations."
+      },
+      {
+        "rule":"SEC-005",
+        "checkerLineRanges":[[172,199]],
+        "specificationLineRanges":{"current":[[596,688],[1404,1480]],"adoption":[[436,506],[1080,1174]]},
+        "nativeIntent":"Find allowlist validation markers when explicit cross-repository configuration identifiers occur.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 51-79: direct handlers excluding test/_checks; target-repo/targetRepo/target_repo word-boundary applicability; allowed.*[Rr]epos|validateTargetRepo|checkAllowedRepo; SEC-005 annotation recorded as suppression."],
+        "omittedObligations":["Actual slug validation, type-over-global precedence, default deny, E004 and pre-effect authorization.","Both upstream/head authorization, resolved node parents, and scoped type-specific wildcard exceptions."],
+        "acceptanceLimit":"Lexical marker presence cannot resolve the source's conflicting empty-allowlist semantics."
+      },
+      {
+        "rule":"USE-001",
+        "checkerLineRanges":[[202,230]],
+        "specificationLineRanges":{"current":[[792,799],[4941,4965],[5164,5237]],"adoption":[[597,604],[2877,2948]]},
+        "nativeIntent":"Look for standardized error-code markers in applicable safe-output error-producing modules.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 51-60 and 80-83: native handler exclusions, octokit./safe_output/safeOutput/NDJSON context, throw.*Error|core.setFailed trigger, then E[0-9]{3}|ERROR_|ERR_."],
+        "omittedObligations":["Correct code meaning, complete error envelopes, timestamps, paths/index/actual values/remediation and all required logging destinations.","Scoped MCE-versus-global catalog distinctions and sanitization of diagnostics."],
+        "acceptanceLimit":"Any ERR_ marker satisfies the lexical check; neither catalog completeness nor actionable behavior follows."
+      },
+      {
+        "rule":"USE-002",
+        "checkerLineRanges":[[233,252]],
+        "specificationLineRanges":{"current":[[839,858],[1169,1225],[1998,2063]],"adoption":[[625,633],[899,951],[1473,1532]]},
+        "nativeIntent":"Find attribution/footer support in four resource-creating handlers.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 104-107: existing create_issue/create_pull_request/create_discussion/add_comment handlers contain footer|addFooter|attribution|AI generated."],
+        "omittedObligations":["Correct end position/separator/workflow/run/context URLs, configuration inheritance and footer:false exclusion.","All applicable created resource types and optional public installation guidance."],
+        "acceptanceLimit":"Footer support is not required publication on every resource when the specification explicitly permits footer:false."
+      },
+      {
+        "rule":"USE-003",
+        "checkerLineRanges":[[255,278]],
+        "specificationLineRanges":{"current":[[1227,1295],[1706,1732],[1944,1996]],"adoption":[[953,1016],[1286,1307],[1423,1471]]},
+        "nativeIntent":"Find preview presentation markers in applicable staged handlers.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 51-60 and 84-86: staged environment/shared-preview-helper applicability, then mask emoji|Staged Mode.*Preview|logStagedPreviewInfo|generateStagedPreview."],
+        "omittedObligations":["No GitHub writes, complete all-field/count previews and inheritance.","Type-specific no-read/no-limit-consumption staged exceptions and actual delegated helper behavior."],
+        "acceptanceLimit":"A recognized helper satisfies both applicability and success; token presence alone is especially weak here."
+      },
+      {
+        "rule":"REQ-001",
+        "checkerLineRanges":[[281,299]],
+        "specificationLineRanges":{"current":[[210,222],[272,858],[1143,1886],[5337,5580]],"adoption":[[197,209],[251,633],[877,1370],[2950,3085]]},
+        "nativeIntent":"Check RFC 2119 keywords in 200-line windows for selected specification headings.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["All three native heading/window keyword tests.","Review of obligation strength, applicability, SHOULD deviations and contradictions throughout full prose/examples/schemas."],
+        "acceptanceLimit":"Full source reading performed here does not mean this predicate has been added to the frozen replay instrument."
+      },
+      {
+        "rule":"REQ-002",
+        "checkerLineRanges":[[302,329]],
+        "specificationLineRanges":{"current":[[2193,4839]],"adoption":[[1637,2686]]},
+        "nativeIntent":"Find five documentation sections for the first ten type headings using 200-line windows.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native heading/section checks.","Complete and internally consistent contracts for every supported type, including types absent from standalone definitions."],
+        "acceptanceLimit":"Head-ten sampling, overlapping windows and pipeline-local failure counters do not prove all-type completeness."
+      },
+      {
+        "rule":"REQ-003",
+        "checkerLineRanges":[[332,351]],
+        "specificationLineRanges":{"current":[[224,270],[320,387],[694,818]],"adoption":[[211,249],[311,328],[508,619]]},
+        "nativeIntent":"Find verification/formal-definition text near AR1/AR2/AR3/SP1/SP2/SP3.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native six-requirement 30-line formatting checks.","Executable, independent acceptance for all applicable obligations and target-authorization regressions."],
+        "acceptanceLimit":"Documentation of a verification method does not establish that verification was performed or passed."
+      },
+      {
+        "rule":"IMP-001",
+        "checkerLineRanges":[[354,371]],
+        "specificationLineRanges":{"current":[[183,208],[2221,2271],[2281,4839]],"adoption":[[171,195],[1641,2686]]},
+        "nativeIntent":"Require six standard handler files to exist.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 108-111: existence of create_issue, add_comment, close_issue, update_issue, add_labels, remove_labels .cjs files."],
+        "omittedObligations":["Actual tool/handler registration, enabled mandatory types and working contracts; existence alone is not registration.","Stable-surviving-file acceptance must distinguish file creation from repair of an existing file."],
+        "acceptanceLimit":"The existence row can change fail-to-pass when a formerly absent file is created; that differs from the frozen definition's same surviving file wording."
+      },
+      {
+        "rule":"IMP-002",
+        "checkerLineRanges":[[374,388]],
+        "specificationLineRanges":{"current":[[361,387],[1482,1543],[2283,4839]],"adoption":[[319,328],[1643,2686]]},
+        "nativeIntent":"Require permission-computation file and exported ComputePermissionsForSafeOutputs marker.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 112: ComputePermissionsForSafeOutputs in pkg/workflow/safe_outputs_permissions.go."],
+        "omittedObligations":["Correct per-type minimal permissions, conditional discussion/check/Linear/service profiles and dedicated-App aggregation.","Native missing-file HIGH is represented as unknown by the fixed-file text check, not equivalent failure."],
+        "acceptanceLimit":"Adoption expected lowercase computePermissionsForSafeOutputs; a later identifier must not manufacture a historical obligation failure."
+      },
+      {
+        "rule":"IMP-003",
+        "checkerLineRanges":[[391,430]],
+        "specificationLineRanges":{"current":[[864,1141],[1545,1587],[2197,2220],[2273,2279],[5043,5076]],"adoption":[[641,875],[2767,2797]]},
+        "nativeIntent":"Check schema-generation symbol, static inputSchema and conditional architecture documentation.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 113-117: generateCustomJobToolDefinition, static JSON inputSchema and, if config source exists, Schema Generation Architecture marker."],
+        "omittedObligations":["Actual Draft 7 validation and same-change runtime/agent/schema consistency.","Exact supported grammar, field rejection/defaults and expression runtime checks; native missing-file severity differs from unknown replay."],
+        "acceptanceLimit":"Adoption searched different symbols in one config file; static markers cannot establish schema parity."
+      },
+      {
+        "rule":"IMP-004",
+        "checkerLineRanges":[[437,540]],
+        "specificationLineRanges":{"current":[[1143,1886],[2197,2206]],"adoption":[[877,1370]]},
+        "nativeIntent":"Compare registered Go config YAML fields to resolved parser schema properties.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native struct/handler-field extraction and schema $ref/allOf/anyOf/oneOf property resolution/conflict detection.","Exempt compiler-populated call/dispatch workflow fields, inline/yaml:- fields and tool-configured comment-memory correctly.","Validate actual types/defaults/semantics, not just property-name coverage."],
+        "acceptanceLimit":"Name coverage with declared exceptions is not exact schema/config/runtime equivalence."
+      },
+      {
+        "rule":"IMP-005",
+        "checkerLineRanges":[[548,661]],
+        "specificationLineRanges":{"current":[[262,270],[2495,2520],[2882,2894],[3046,3062],[3128,3138],[3415,3425],[3576,3588],[3629,3641],[3788,3800],[3888,3894],[3924,3930],[3952,3964],[4012,4024],[4055,4073],[4104,4116],[4151,4163],[4195,4207],[4238,4250],[4279,4291]],"adoption":[]},
+        "nativeIntent":"Reconcile 18 target-authorized type sections, numbered requirements, handler markers, specification regression test files and shared invariant tests.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Entire native target-authorized-type inventory and helper/regression presence checks.","Trusted omitted/triggering/fixed target enforcement, wildcard-only agent selection, authorization before temporary-ID resolution, actual node-parent/kind validation and fail-safe runtime assertions."],
+        "acceptanceLimit":"Named tests/markers are not execution evidence; this major current security obligation is absent from frozen replay."
+      },
+      {
+        "rule":"MCE-001",
+        "checkerLineRanges":[[664,700]],
+        "specificationLineRanges":{"current":[[2377,2470],[4919,4939],[4994,5018]],"adoption":[]},
+        "nativeIntent":"Check tool JSON discloses 65536 characters, 10 mentions, 50 links and add_comment constraint wording.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 127-129: case-insensitive whole-tools-JSON searches for 65536, 10 mention and 50 link."],
+        "omittedObligations":["Native add_comment-local CONSTRAINTS/IMPORTANT disclosure window.","Per-tool/field correct descriptions and configured max-links, generated metadata exclusions, final-body/footer accounting."],
+        "acceptanceLimit":"Whole-file literals can belong to another tool; hardcoded 50 link wording can reject a compliant configurable-default description."
+      },
+      {
+        "rule":"MCE-002",
+        "checkerLineRanges":[[703,740]],
+        "specificationLineRanges":{"current":[[4908,4917],[4967,5018]],"adoption":[]},
+        "nativeIntent":"Require comment-limit helper and gateway/processor enforcement markers.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 130-131: comment_limit_helpers|enforceCommentLimits in safe_outputs_handlers.cjs and add_comment.cjs."],
+        "omittedObligations":["Native helper-file existence check.","Actual invocation-before-recording and final-before-API execution on all relevant content/config paths."],
+        "acceptanceLimit":"Two imports are not dual enforcement; direct artifact manipulation and footer-added cases need behavior tests."
+      },
+      {
+        "rule":"CI-001",
+        "checkerLineRanges":[[743,762]],
+        "specificationLineRanges":{"current":[[5713,5764]],"adoption":[]},
+        "nativeIntent":"Require cache setup and commit reference script files.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 118-120: existence of setup_cache_memory_git.sh and commit_cache_memory_git.sh."],
+        "omittedObligations":["Setup before agent and unconditional commit before save, plus CI6-CI12 behavior.","Specification says these filenames are informative reference implementations; equivalent mechanisms may conform."],
+        "acceptanceLimit":"File existence is neither required mechanism-independent conformance nor proof of execution; creation is not same-surviving-file repair."
+      },
+      {
+        "rule":"CI-002",
+        "checkerLineRanges":[[765,816]],
+        "specificationLineRanges":{"current":[[5598,5609],[5713,5764]],"adoption":[]},
+        "nativeIntent":"Find all four quoted integrity levels, merge/abort markers and commit gc/missing-repository handling.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["All native script pattern checks and missing-file skip conditions.","Real trust order, correct branch checkout/descending merge strategy, conflict restoration, unconditional commits and clean fallback."],
+        "acceptanceLimit":"Branch names and merge words do not establish no-write-up isolation."
+      },
+      {
+        "rule":"MCE-003",
+        "checkerLineRanges":[[819,872]],
+        "specificationLineRanges":{"current":[[2441,2454],[4994,5018]],"adoption":[]},
+        "nativeIntent":"Find consistent hardcoded 65536/10/50 markers in helper and tool JSON.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native paired literal/constant searches.","Effective configured max-links parity, URL-occurrence semantics, generated-link exclusions and invocation/processor/footer parity."],
+        "acceptanceLimit":"Equal literals cannot establish equal effective constraints, especially after configurable max-links."
+      },
+      {
+        "rule":"CI-003",
+        "checkerLineRanges":[[875,909]],
+        "specificationLineRanges":{"current":[[5655,5685]],"adoption":[]},
+        "nativeIntent":"Find SHA-256, nopolicy sentinel and eight-character prefix support.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 123-125: sha256|crypto/sha256, nopolicy|noPolicySentinel, and [:8]/first-8/eight-char prefix patterns in cache_integrity.go."],
+        "omittedObligations":["Exact field order/newlines/UTF-8/lowercase/sort/dedupe/expr rules, reserved fields and sentinel applicability.","Native missing-file HIGH versus replay unknown distinction."],
+        "acceptanceLimit":"Hash-related tokens do not verify deterministic canonical policy binding or invalidation."
+      },
+      {
+        "rule":"CI-004",
+        "checkerLineRanges":[[912,935]],
+        "specificationLineRanges":{"current":[[5687,5711]],"adoption":[]},
+        "nativeIntent":"Find a .git exclusion indication in cache setup validation.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 126: .git|not -path .* .git|prune.*.git|exclude.*git|skip.*.git marker alternatives in the setup script."],
+        "omittedObligations":["Every extension/size/validation walk actually excludes Git metadata while still validating agent files.","Native missing-script skip differs from replay unknown."],
+        "acceptanceLimit":"The broad .git alternative also matches normal Git use; it does not prove exclusion."
+      },
+      {
+        "rule":"CI-005",
+        "checkerLineRanges":[[938,973]],
+        "specificationLineRanges":{"current":[[5611,5640]],"adoption":[]},
+        "nativeIntent":"Check memory cache keys in cache-enabled compiled workflows have integrity and hash/sentinel prefixes.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native workflow discovery/key regex scans, including no-cache case.","Correct selected integrity, computed policy hash, optional default-ID omission and full key uniqueness/binding."],
+        "acceptanceLimit":"Prefix formatting alone cannot establish cache provenance or safe restore."
+      },
+      {
+        "rule":"CI-006",
+        "checkerLineRanges":[[976,1019]],
+        "specificationLineRanges":{"current":[[5642,5653],[5812,5841]],"adoption":[]},
+        "nativeIntent":"Check restore prefix cascade and absence of run_id, permitting legacy memory- exception.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native restore-block parsing, prefix checks and run-ID exclusion.","Actual restored-entry provenance and explicit resolution of broad legacy fallback versus isolation/migration claims."],
+        "acceptanceLimit":"The allowed broad memory- fallback contradicts the strongest no-cross-integrity/migration claims."
+      },
+      {
+        "rule":"MCE-004",
+        "checkerLineRanges":[[1022,1064]],
+        "specificationLineRanges":{"current":[[4908,4917],[4967,4992]],"adoption":[]},
+        "nativeIntent":"Find early-validation support/documentation and compare first enforcement/append line positions.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 132-133: enforceCommentLimits|enforceConstraints|validateEarly and MCE1|Early Validation|tool invocation in safe_outputs_handlers.cjs."],
+        "omittedObligations":["Native first enforceCommentLimits versus appendSafeOutput line-order check.","Actual per-invocation rejection before NDJSON append, complete constraints and feedback."],
+        "acceptanceLimit":"Replayed support/documentation markers deliberately omit even the native lexical ordering check."
+      },
+      {
+        "rule":"MCE-005",
+        "checkerLineRanges":[[1067,1129]],
+        "specificationLineRanges":{"current":[[4941,4965],[5164,5237]],"adoption":[[2877,2948]]},
+        "nativeIntent":"Find actionable constraint/actual/remedy/code markers and JSON-RPC -32602 response support.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["All native helper/gateway error-response patterns.","Correct scoped code/constraint, actual limit/value, actionable guidance, structured envelope and safe messages on real failures."],
+        "acceptanceLimit":"The checker comments interpret overloaded error codes by context; specification ambiguity remains."
+      },
+      {
+        "rule":"MCE-006",
+        "checkerLineRanges":[[1132,1188]],
+        "specificationLineRanges":{"current":[[4862,4904]],"adoption":[[2701,2744]]},
+        "nativeIntent":"Find negative-code guard and safe plain-object error-message serialization in MCP core.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native negative-code and String(message)/safe-helper alternatives.","Integer/JSON-RPC validity, correlation, default codes, plain-object edge cases and non-disclosing real serialization."],
+        "acceptanceLimit":"A code<0 token alone does not validate integer semantics or all response paths."
+      },
+      {
+        "rule":"SEC-006",
+        "checkerLineRanges":[[1194,1225]],
+        "specificationLineRanges":{"current":[[5164,5237]],"adoption":[[2877,2948]]},
+        "nativeIntent":"Find E009/E010 catalog and implementation references.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native specification/recursive processor marker checks.","All E001-E010 meanings, required envelope fields, context and real hash/rate-limit failures."],
+        "acceptanceLimit":"Checker comments date E009/E010 introduction to v1.26.0, but both already exist in the preserved adoption v1.9.0 catalog."
+      },
+      {
+        "rule":"SEC-007",
+        "checkerLineRanges":[[1230,1255]],
+        "specificationLineRanges":{"current":[[713,799],[5219,5237]],"adoption":[[525,604],[2927,2948]]},
+        "nativeIntent":"Require validation markers in NDJSON-processing API-bearing modules.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native recursive non-test handler applicability and validation/error-marker search.","E001-E006 failures actually detected before effects, with all required pipeline stages and context."],
+        "acceptanceLimit":"Presence does not prove precedence; this separate native family is not silently covered by SEC-002 replay."
+      },
+      {
+        "rule":"AR2-001",
+        "checkerLineRanges":[[1260,1283]],
+        "specificationLineRanges":{"current":[[338,359],[1017,1071]],"adoption":[[315,318],[781,824]]},
+        "nativeIntent":"Find some artifact upload and some download references in workflows.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native aggregate upload/download presence tests.","Per-workflow correct artifact linkage, tamper/cancellation/missing-artifact handling and absence of alternate privileged operation channels."],
+        "acceptanceLimit":"Upload in one workflow and download in another can satisfy the heuristic without an authorized transfer chain."
+      },
+      {
+        "rule":"TYPE-001",
+        "checkerLineRanges":[[1286,1319]],
+        "specificationLineRanges":{"current":[[3521,3612]],"adoption":[]},
+        "nativeIntent":"Require merge handler and default-base/policy/mergeability gates.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 134-136: isDefault; requiredChecks|review_decision|required_labels|allowed_labels; mergeable in merge_pull_request.cjs."],
+        "omittedObligations":["Native missing-handler HIGH is unknown in fixed-file replay.","Actual protected/default-base refusal, open intra-repository PR-chain, all checks/reviews/threads/labels/title/source-branch gates, target authorization and already-merged no-op exception."],
+        "acceptanceLimit":"Three lexical tests cannot establish safe merge eligibility or target authorization."
+      },
+      {
+        "rule":"TYPE-002",
+        "checkerLineRanges":[[1322,1356]],
+        "specificationLineRanges":{"current":[[1057,1071],[2758,2821]],"adoption":[]},
+        "nativeIntent":"Validate memory ID, bounded comment scan and sanitized body.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 137-138: scan-bound marker and sanitize|validateBody|enforceComment in comment_memory.cjs."],
+        "omittedObligations":["Native [A-Za-z0-9_-] memory-ID pattern search across handler/helper.","Traversal rejection, real bounded pagination, 16/48 KiB all-or-empty setup, managed-only extraction, final limits, repository authorization and temporary-ID/precedence semantics."],
+        "acceptanceLimit":"The most direct native memory-ID/path-safety predicate is not replayed."
+      },
+      {
+        "rule":"TYPE-003",
+        "checkerLineRanges":[[1359,1385]],
+        "specificationLineRanges":{"current":[[2758,2810]],"adoption":[]},
+        "nativeIntent":"Reject agent-tool exposure of comment_memory when file sync is active.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native negative tool JSON/gateway marker tests.","Conditional file-sync mode, actual tool-list exposure and processor synthesis rather than editable MCP calls."],
+        "acceptanceLimit":"A negative string test can mistake processor type references for agent registration and lacks mode semantics."
+      },
+      {
+        "rule":"TYPE-004",
+        "checkerLineRanges":[[1388,1413]],
+        "specificationLineRanges":{"current":[[1073,1141],[2690,2692]],"adoption":[]},
+        "nativeIntent":"Find create-issue default injection and suppression markers in compiler sources.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native recursive injection/suppression pattern tests.","Correct absent/only-system/non-system cases, max1/workflow labels/title defaults and no unintended added authority."],
+        "acceptanceLimit":"Tests or comments containing injection words do not prove generated configuration behavior."
+      },
+      {
+        "rule":"INT-001",
+        "checkerLineRanges":[[1416,1457]],
+        "specificationLineRanges":{"current":[[5043,5076]],"adoption":[[2767,2797]]},
+        "nativeIntent":"Parse static tools and require inputSchema per tool.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native JSON/tool-schema inspection, including its swallowed parse exceptions.","Actual Draft7 enforcement, cross-field semantics, unknown-field rejection and complete path-aware errors."],
+        "acceptanceLimit":"inputSchema presence and native parse-error silence cannot establish validation or even valid tool inventory."
+      },
+      {
+        "rule":"INT-002",
+        "checkerLineRanges":[[1460,1498]],
+        "specificationLineRanges":{"current":[[2065,2191],[5088,5162]],"adoption":[[1534,1635],[2808,2875]]},
+        "nativeIntent":"Find null-byte removal and HTML/event filtering support in preferred/fallback sanitizer.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native sanitizer path preference and S1/S4 token checks.","All stages, ordering/idempotence, appropriate optional HTML filtering, preserved safe tags/code/inline-code/generated metadata and actual pre-API execution."],
+        "acceptanceLimit":"Native title 'completeness' covers only two broad patterns, not the full sanitization contract."
+      },
+      {
+        "rule":"EXEC-001",
+        "checkerLineRanges":[[1501,1530]],
+        "specificationLineRanges":{"current":[[2694,2752],[4765,4839],[5345,5351]],"adoption":[[1869,1913],[2958,2963]]},
+        "nativeIntent":"Find system-type separation and report_incomplete recognition for last processing.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 142-143: missing_tool.*missing_data.*noop|collect.*missing|system.*type and report_incomplete in safe_output_handler_manager.cjs."],
+        "omittedObligations":["Actual NDJSON/group/dependency order with all system types last.","report_incomplete failure signal regardless of exit and co-emission handling, not merely recognizing its name."],
+        "acceptanceLimit":"A grouping marker does not prove final execution order or correct failure status."
+      },
+      {
+        "rule":"EXEC-002",
+        "checkerLineRanges":[[1533,1568]],
+        "specificationLineRanges":{"current":[[1593,1670],[5471,5487]],"adoption":[[1176,1250],[2997,3011]]},
+        "nativeIntent":"Find evidence that max:0 disables registration/configuration.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native compiler/test/gateway alternative heuristic paths.","Actual tool omission, configuration omission and method-not-found behavior, plus versioned resolution of TS1 zero prohibition."],
+        "acceptanceLimit":"Native generic registration fallback is not direct zero-limit evidence; the normative contradiction persists."
+      },
+      {
+        "rule":"WTD-001",
+        "checkerLineRanges":[[1571,1634]],
+        "specificationLineRanges":{"current":[[5373,5397],[5403,5453]],"adoption":[]},
+        "nativeIntent":"Find real-threat caution block, visible label and XML marker including delegated templates/helpers.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native footer/template/helper alternatives.","Every Reviewable output emits reason-appropriate CAUTION/marker for threat verdict versus WARNING/different marker for engine failure, before effects."],
+        "acceptanceLimit":"Native checks focus WTD1 real threat, not full WTD1a reason separation or all emitted artifacts."
+      },
+      {
+        "rule":"WTD-002",
+        "checkerLineRanges":[[1637,1695]],
+        "specificationLineRanges":{"current":[[3699,3709],[5399,5453]],"adoption":[]},
+        "nativeIntent":"Find warn-mode branch-push conversion to review PR and annotation support.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native detection/fallback/label/manager-convertible markers.","Original push not applied, correct reason annotation, authorized configured head/upstream and head_repo, signed/PTI safeguards on fallback."],
+        "acceptanceLimit":"Creation-related tokens do not prove conversion prevents the original unsafe effect."
+      },
+      {
+        "rule":"WTD-003",
+        "checkerLineRanges":[[1698,1740]],
+        "specificationLineRanges":{"current":[[5401,5453]],"adoption":[]},
+        "nativeIntent":"Find Abort classification, abort branch, machine-readable outcome and traceability.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native abort-set/policy/error/requirement-ID patterns.","Every Abort-class type prevented before side effects, explicit failure summary and stable error, including newer handlers."],
+        "acceptanceLimit":"Set/policy presence does not establish complete dispatch classification or effect suppression."
+      },
+      {
+        "rule":"TYPE-005",
+        "checkerLineRanges":[[1743,1788]],
+        "specificationLineRanges":{"current":[[2418,2439]],"adoption":[]},
+        "nativeIntent":"Find trusted status-comment update/new-comment fallback and discussion rejection.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["All native status/update/create/rejection patterns.","Trusted status identity, separate wildcard comment_id allowlist path, discussion prohibition, explicit reuse precedence and replace/hide interactions."],
+        "acceptanceLimit":"Status reuse is not blanket authorization to honor an agent-supplied comment ID."
+      },
+      {
+        "rule":"TYPE-006",
+        "checkerLineRanges":[[1791,1828]],
+        "specificationLineRanges":{"current":[[3654,3709]],"adoption":[[2121,2147]]},
+        "nativeIntent":"Find branch-push base-branch support in JS handler and Go config.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native handler/config markers.","Correct explicit/manifest/origin-HEAD/API fallback order and required explicit base in credential-less/manifest-absent case."],
+        "acceptanceLimit":"A BaseBranch field is not correct fallback routing or protected branch behavior."
+      },
+      {
+        "rule":"TYPE-007",
+        "checkerLineRanges":[[1831,1871]],
+        "specificationLineRanges":{"current":[[3677,3709]],"adoption":[]},
+        "nativeIntent":"Require shared Git no-prompt environment, timeout and branch-push helper routing.",
+        "replayStatus":"partial",
+        "replayedPredicates":["Instrument 139-141: GIT_TERMINAL_PROMPT.*0 patterns plus timeout|TIMEOUT in git_helpers.cjs and git_helpers import marker in push_to_pull_request_branch.cjs."],
+        "omittedObligations":["Actual enforced bounded timeout/no-prompt on every relevant Git invocation and credential-less fail-fast behavior.","Missing helper/handler conditions differ between native HIGH/conditional checks and replay unknown."],
+        "acceptanceLimit":"The native comment's default-60s wording is not a normative timeout value in the cited prose; do not invent one as acceptance."
+      },
+      {
+        "rule":"TYPE-008",
+        "checkerLineRanges":[[1874,1938]],
+        "specificationLineRanges":{"current":[[4569,4681]],"adoption":[]},
+        "nativeIntent":"Require check-run handler/config, target-dependent permission profile, SHA fallback and staged support.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["All native file/Target/permission-builder/SHA/staged checks.","Latest head fetch only when target configured, event/GITHUB_SHA/context fallback otherwise, required fields/enums/bounds, trusted name, staged no API and hard-error/soft-skip distinction."],
+        "acceptanceLimit":"Correct review attribution uses agent-seen SHA, whereas this type explicitly uses latest head when target set; do not collapse the two contracts."
+      },
+      {
+        "rule":"TYPE-009",
+        "checkerLineRanges":[[1941,1986]],
+        "specificationLineRanges":{"current":[[2470,2493]],"adoption":[[1756,1783]]},
+        "nativeIntent":"Find add-comment discussion permission opt-in default documentation/disclosure/tests.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native Go comments/tool-description/optional permission-test patterns.","Real nil/false excludes and true includes discussion permission in token/job/runtime paths."],
+        "acceptanceLimit":"Adoption requires discussion write unconditionally; current opt-in must be versioned rather than applied retroactively."
+      },
+      {
+        "rule":"TYPE-010",
+        "checkerLineRanges":[[1989,2033]],
+        "specificationLineRanges":{"current":[[2208,2220]],"adoption":[]},
+        "nativeIntent":"Find wildcard-target metadata validation and early returned error before recording.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native validation-function/nearby-return/schema-metadata patterns.","Nonempty anyOf semantics, canonical diagnostic primary, wildcard applicability only and privileged runtime target authorization."],
+        "acceptanceLimit":"MCP schema shaping/early validation never substitutes for trusted processor authorization."
+      },
+      {
+        "rule":"TYPE-011",
+        "checkerLineRanges":[[2036,2080]],
+        "specificationLineRanges":{"current":[[2981,3072],[3298,3370]],"adoption":[]},
+        "nativeIntent":"Find allow-body false discard/warning and compile-time required-field removal.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native helper/Go generation markers.","No comment despite agent body, warning only for nonempty discard, amended tool description and required-array change in both issue/discussion cases."],
+        "acceptanceLimit":"The native implementation does not directly check its own fourth stated obligation, description amendment."
+      },
+      {
+        "rule":"TYPE-012",
+        "checkerLineRanges":[[2083,2164]],
+        "specificationLineRanges":{"current":[[2523,2687],[3654,3709]],"adoption":[[1785,1865],[2121,2147]]},
+        "nativeIntent":"Find fork-backed repository authorization, qualified heads/head_repo, follow-up restriction and head-App support.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native PR/push/compiler markers and full repository identity comparison.","Explicit automation-owned fork, both allowlists, no arbitrary stale-fork reuse, actual credential precedence/least privilege, provenance and same-organization head_repo on every creation/fallback."],
+        "acceptanceLimit":"Current supports restricted fork-backed operations; adoption explicitly excludes cross-repository PR creation/push."
+      },
+      {
+        "rule":"TYPE-013",
+        "checkerLineRanges":[[2167,2258]],
+        "specificationLineRanges":{"current":[[3445,3519],[5403,5453]],"adoption":[]},
+        "nativeIntent":"Find workflow-run approval validation, staged/eligibility/workflow/PR/fork/protected-file/credential and Abort safeguards.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["All native handler and Abort-set patterns.","Positive safe IDs, every associated PR/head/file, current awaiting statuses including benign race skip, exact filename patterns, external credentials, staged no reads/max consumption and post-success warning-only comments."],
+        "acceptanceLimit":"Native comments' waiting-only shorthand is narrower than current prose's action_required/waiting/status-or-conclusion eligibility."
+      },
+      {
+        "rule":"SEC-008",
+        "checkerLineRanges":[[2265,2331]],
+        "specificationLineRanges":{"current":[[320,336],[389,407],[2134,2159]],"adoption":[]},
+        "nativeIntent":"Verify mention resolution is deferred to trusted processing with isolated read-only token selection.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native ingestion-negative/resolver/compiler token-precedence and read-only permission-builder markers.","No privileged lookup during ingestion, preservation/filtering before publication, app/token/default fallback, read-only grants, job-local earlier-step dependency and no credential serialization/log exposure."],
+        "acceptanceLimit":"This current credential boundary is not covered by replayed generic sanitization or permission symbol checks."
+      },
+      {
+        "rule":"SEC-009",
+        "checkerLineRanges":[[2337,2369]],
+        "specificationLineRanges":{"current":[[631,633]],"adoption":[]},
+        "nativeIntent":"Find fixed Claim-adapter target scope, assertClaimAuthorized and E004 queue denial code.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["All native adapter/finish authorization markers.","Every selected/fallback/independently resolved mutation repository bound to authenticated effect_scope before effects; retain ordinary user-facing allowlists."],
+        "acceptanceLimit":"One assertClaimAuthorized occurrence does not cover every adapter or independently resolved target."
+      },
+      {
+        "rule":"TYPE-014",
+        "checkerLineRanges":[[2375,2429]],
+        "specificationLineRanges":{"current":[[1734,1758]],"adoption":[]},
+        "nativeIntent":"Find leading-slash exact exclusions, patch/pre/post handling, independent allowed-files and quoted-path decoder.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["Native compiler function/body markers and lexical order checks.","Exact root path versus nested basename semantics, Git C/octal UTF-8 normalization and both patch/post-apply behavior, never using exclusion to waive allowed-files."],
+        "acceptanceLimit":"Decoder/function names cannot establish correct handling of adversarial quoted paths."
+      },
+      {
+        "rule":"TYPE-015",
+        "checkerLineRanges":[[2435,2488]],
+        "specificationLineRanges":{"current":[[3767,3823]],"adoption":[[2197,2218]]},
+        "nativeIntent":"Find node-type verification, cursor pagination, pre-mutation repo/filter/staged checks and integration-error guidance.",
+        "replayStatus":"unimplemented",
+        "replayedPredicates":[],
+        "omittedObligations":["All native type/cursor/first-line-order/permission-message checks.","GitHub-derived parent repository/PR authorization, exhaustive nested pagination, unresolved-only mutation, stale/missing/already-resolved no-ops and only the specific integration denial soft-skip."],
+        "acceptanceLimit":"First textual line positions are not control-flow proof, and parent metadata from the agent is never authoritative."
+      }
+    ]
+  },
+  "exemptionsAndInterpretation": {
+    "nativeDiagnosticExclusions": [
+      "Filename substring exclusions and per-rule applicability are part of the frozen checker population, not normative exemptions from safe operation.",
+      "SEC-004/SEC-005 @safe-outputs-exempt annotations suppress native diagnostics; instrument records raw predicate plus suppression and compare excludes waived transitions. A new annotation cannot count as a repair.",
+      "Several native optional-file branches skip missing files or accept delegated helper/test markers; fixed-file replay sometimes emits unknown instead. These distinct dispositions must not be conflated.",
+      "IMP-004 excludes inline/yaml:- fields, compiler-populated call/dispatch metadata and comment-memory tool configuration. These are schema-surface exceptions, not permission to accept undeclared agent inputs.",
+      "Native no-cache-workflow cases are inapplicable, not measured cache conformance."
+    ],
+    "specificationAuthorizedExceptions": [
+      "C2 may omit optional output types only while retaining all security-critical requirements, mandatory types, unsupported-type documentation and warnings.",
+      "footer:false forbids attribution; installation guidance is optional. submit-review footer has its own always/none/if-body modes.",
+      "staged may perform read validation generally, but approval/check-run/comment-replacement staged paths impose stricter no-read rules.",
+      "max:-1 is explicitly unlimited, not automatic nonconformance; zero-disable versus TS1 rejection remains unresolved.",
+      "Domain filtering is conditional on a nonempty configured list; plain/wildcard/protocol/ecosystem cases differ. Repository no-list behavior has contradictory statements requiring explicit correction.",
+      "Code blocks, inline code, generated footers and metadata are exempt from sanitization; HTML filtering is field-dependent. Exemption from transformation does not permit executing code or trusting agent-controlled privileged metadata.",
+      "Trusted generated comment links are excluded from max-links, but final length and mention limits still apply.",
+      "Invalid advisory x-strip-on-error fields may be omitted, never used for privileged decisions.",
+      "allow-body:false discards body and suppresses closing comment with warning, rather than treating absent body as invalid required input.",
+      "Already merged, already resolved, stale/missing thread, no-longer-awaiting approval, missing labels/removable assignments and specified permission/fallback cases have distinct no-op/warn/skip behavior; failures elsewhere remain failures.",
+      "Issue-intent legacy close fallback is allowed only for 404/501; transport integrity failure never enters ordinary retry/fallback and only registered pinned cleanup can bypass the sticky state.",
+      "Single-repository checkout mode is exempt from multi-only restrictions, not from cardinality or write authorization. Manifest remote-host exemption relies on trusted origin; it does not trust agent manifests.",
+      "Explicit per-type wildcard repository allowances do not abolish general authorization. Optional private-flow opt-out cannot weaken safe-output target checks.",
+      "Cache reference script names are informative mechanisms; CI12 absent-repository commit is clean fallback and legacy restore/migration exceptions need a versioned trust decision."
+    ],
+    "interpretationPolicy": "Retain conflicting source statements as conflicts. Do not silently choose the interpretation most favorable to measured clearance, broaden an exception, or alter the sealed instrument to improve apparent coverage."
+  },
+  "versionedCorrectionsNeeded": [
+    {
+      "id":"SRC-01",
+      "classification":"specification-contradiction",
+      "sources":[{"source":"currentSpec","lines":[[596,688],[1404,1442],[2368,2375]]},{"source":"adoptionSpec","lines":[[436,506],[1080,1122],[1713,1719]]}],
+      "finding":"SP7/default-deny rejects cross-repository operations without allowlists, whereas GP4 says empty means no restrictions and allows proceeding. The create-issue notes also say App permissions enable operations beyond allowed-repos, conflicting with the stated mandatory allowlist boundary.",
+      "correction":"Version a single effective empty/absent/type/global precedence contract; fail closed pending authorization clarity. Credential reach must not replace configured target authorization. Never count adding an allowlist exemption as remediation."
+    },
+    {
+      "id":"SRC-02",
+      "classification":"specification-contradiction",
+      "sources":[{"source":"currentSpec","lines":[[1593,1670],[5471,5487]]},{"source":"adoptionSpec","lines":[[1176,1250],[2997,3011]]}],
+      "finding":"TS1 MUST NOT accept max:0 conflicts with the edge-case MUST-disable-tool/config contract.",
+      "correction":"Explicitly distinguish disabling at configuration parsing from executable positive/-1 limits, and test disabled invocation/config omission. Preserve old proof rather than retroactively reclassify zero."
+    },
+    {
+      "id":"SRC-03",
+      "classification":"specification-overlap-and-exemptions",
+      "sources":[{"source":"currentSpec","lines":[[2065,2191],[5088,5162]]},{"source":"adoptionSpec","lines":[[1534,1635],[2808,2875]]}],
+      "finding":"Two mandatory ordered sanitization pipelines coexist, with all-text language and explicit code/metadata exclusions plus different link-redaction output examples.",
+      "correction":"Version one composed field-aware pipeline and stable redaction forms, preserving explicit code/inline/generated-content exclusions and idempotence; do not equate sanitizer-token presence with this behavior."
+    },
+    {
+      "id":"SRC-04",
+      "classification":"specification-contradiction",
+      "sources":[{"source":"currentSpec","lines":[[839,858],[1169,1225],[1998,2063]]},{"source":"adoptionSpec","lines":[[625,633],[899,951],[1473,1532]]}],
+      "finding":"Unconditional all-created-resource provenance invariant coexists with MUST NOT append any attribution under footer:false.",
+      "correction":"Define whether non-footer metadata still provides mandatory provenance or explicitly condition the invariant. Honor footer:false rather than inventing mandatory footer insertion."
+    },
+    {
+      "id":"SRC-05",
+      "classification":"specification-grammar-and-typed-exceptions",
+      "sources":[{"source":"currentSpec","lines":[[596,631],[1314,1402],[1404,1420],[3445,3519],[4475,4512]]},{"source":"adoptionSpec","lines":[[436,474],[1018,1080]]}],
+      "finding":"Documented protocol-specific domain strings fail the shown domain regex; repository owner regexes differ over dots; global exact/no-wildcard language coexists with explicit approval/dispatch wildcards.",
+      "correction":"Version grammar and explicit per-type precedence/exception tables. Keep domain wildcard, repository wildcard and App repositories [\"*\"] sentinel semantics distinct."
+    },
+    {
+      "id":"SRC-06",
+      "classification":"specification-error-code-ambiguity",
+      "sources":[{"source":"currentSpec","lines":[[2441,2454],[4941,5018],[5164,5237]]},{"source":"currentChecker","lines":[[1073,1087],[1190,1225]]},{"source":"adoptionSpec","lines":[[2877,2948]]}],
+      "finding":"MCE constraints reuse E006/E007/E008 and E009 with different meanings than the global catalog. Native comments interpret contexts and incorrectly attribute global E009/E010 introduction to v1.26.0.",
+      "correction":"Version explicit error namespaces/context mappings and correct history. Avoid counting string-code insertion or a misdated absence as substantive error-handling repair."
+    },
+    {
+      "id":"SRC-07",
+      "classification":"schema-prose-and-example-drift",
+      "sources":[{"source":"currentSpec","lines":[[2377,2520],[2694,2752],[2823,2910],[2911,2937],[3074,3157],[3158,3232],[3979,4038],[4569,4681]]}],
+      "finding":"Examples include undeclared add-comment aliases and discussion temporary_id under additionalProperties:false; update-issue describes null milestone but schema excludes null; link-sub-issue headline conflicts with no-cross-repo body; Linear accepts team key/name yet requires configured UUID; milestone field requirement conflicts with trusted non-wildcard context.",
+      "correction":"Synchronize snippets, normalized aliases, config-dependent required fields and type-specific semantics in a new source/contract version. Validate whether trusted normalization resolves each apparent mismatch rather than assuming a runtime defect."
+    },
+    {
+      "id":"SRC-08",
+      "classification":"source-contract-parity-gap",
+      "sources":[{"source":"currentSpec","lines":[[2694,2752],[4709,4839],[4994,5018]]},{"source":"currentCompiled","lines":[[595,775],[2450,2459]]}],
+      "finding":"Compiled noop max/defaultMax 2 and required message differ from prose singleton max1/default message; compiled missing-tool/data defaultMax20 differs from unlimited prose. Tool descriptions and validation snippets also use differing field length bounds.",
+      "correction":"Version effective-default/schema/description parity and test trusted normalization/config overrides. A source mismatch is not evidence of actual run behavior or accepted remediation."
+    },
+    {
+      "id":"SRC-09",
+      "classification":"specification-cache-trust-conflict",
+      "sources":[{"source":"currentSpec","lines":[[5584,5596],[5642,5653],[5717,5744],[5758,5760],[5795,5841]]}],
+      "finding":"Broad memory- restore can match legacy and other scoped entries despite never-cross claims and stated guaranteed legacy miss. Legacy data imported as merged has no established integrity. Compaction is MUST in prose but Recommended in table; merge conflict precedence also needs evidence under descending theirs merges.",
+      "correction":"Version migration/provenance checks and restore policy, resolve compaction strength, and test merge-down precedence rather than blessing the reference script markers."
+    },
+    {
+      "id":"SRC-10",
+      "classification":"workflow-acceptance-ambiguity",
+      "sources":[{"source":"adoptionWorkflow","lines":[[57,96],[158,217],[259,268]]},{"source":"currentWorkflow","lines":[[79,116],[188,247],[289,298]]},{"source":"adoptionReporting","lines":[[5,16]]}],
+      "finding":"No-critical/high exit0 noop says all checks passed even with medium/low findings, while another section permits tasks for those findings. Issue max10 and all-critical/high publication need overflow/grouping interpretation. Grouping text omits 41 later checker families; adoption h2 templates conflict with imported h3 rules.",
+      "correction":"Version truthful clean/partial/warn/error dispositions, comprehensive family grouping and bounded actionable overflow handling. Reporting/expiry is diagnostic visibility, never primary remediation acceptance."
+    },
+    {
+      "id":"SRC-11",
+      "classification":"native-checker-limitations",
+      "sources":[{"source":"adoptionChecker","lines":[[6,39],[58,75],[268,295],[377,402]]},{"source":"currentChecker","lines":[[63,109],[302,329],[1416,1457],[2490,2514]]}],
+      "finding":"Adoption post-increment/set-e can abort at first logged failure; shell pipeline counters can be lost; bounded grep windows omit content or bleed sections; Draft7 checker swallows JSON exceptions; medium/low may still exit0.",
+      "correction":"Version checker reliability and independent predicate definitions separately. Never use exit0, summary counts, or a printed PASS as acceptance for full conformance or historical clearance."
+    },
+    {
+      "id":"SRC-12",
+      "classification":"instrument-versus-proposed-definition",
+      "sources":[{"source":"instrument","lines":[[40,50],[108,120],[147,176]]},{"source":"frozenDefinition","lines":[[19,23],[39,50],[66,73]]}],
+      "finding":"Existence predicates can emit fail for an absent path and later pass when created, although the proposed primary says same surviving file. Fixed-file missing-source checks can be unknown where native checker would fail; compare does not itself authenticate immutable boundary provenance or content equality across source-profile changes.",
+      "correction":"In a new version, either explicitly define creation-of-required-component as a separate accepted structural condition with evidence, or enforce existing-surviving-file eligibility before primary counting. Bind predicate/tool/source-profile identity and report missing/unknown separately. Do not modify the frozen instrument or assert this happened in any period."
+    },
+    {
+      "id":"SRC-13",
+      "classification":"measurement-label-and-baseline",
+      "sources":[{"source":"frozenDefinition","lines":[[24,37],[76,104]]},{"source":"adoptionSpec","lines":[[73,249],[251,633],[2765,3085]]}],
+      "finding":"The phenomenon and many obligations are meaningful independently of workflow adoption, while no comparable baseline was established and reconstruction remains open.",
+      "correction":"Keep attainment-only explicitly provisional; require a versioned reconstructability/comparability decision using the real adoption parent and fixed shared predicates. No historical outcome or impossibility assertion is authorized by this review."
+    },
+    {
+      "id":"SRC-14",
+      "classification":"specification-version-and-coverage",
+      "sources":[{"source":"currentChecker","lines":[[5,8],[63,2514]]},{"source":"currentSpec","lines":[[10,12],[2597,2641],[5239,5335],[6187,6522]]},{"source":"instrument","lines":[[51,158]]}],
+      "finding":"Current checker labels v1.29.8 while specification is v1.29.12. Its 55 families and instrument's 20 partial families do not encompass complete PTI/signing/checkout/PPF/data/Linear and all schema/example/history obligations. WTD/type cross-reference tables also lag some types.",
+      "correction":"Version the obligation-to-check-to-evidence matrix and treat missing coverage as unknown, not pass. Preserve 55/20/35 as native-family reconciliation, not percent behavioral conformance or complete specification coverage."
+    },
+    {
+      "id":"SRC-15",
+      "classification":"ordering-atomicity-and-threat-reason-interpretation",
+      "sources":[{"source":"currentSpec","lines":[[2609,2641],[5339,5453]]},{"source":"adoptionSpec","lines":[[2952,2981]]}],
+      "finding":"Global NDJSON order and type grouping are not a total cross-type order; general single-item no-partial-state wording coexists with explicit PTI no-rollback of completed remote writes. WTD real-threat and tooling-error annotations are distinct and newer types lack complete matrix rows.",
+      "correction":"Version a dependency/type-order contract, explicit operation-boundary atomicity limits and fail-closed complete threat-policy classification. Do not promise transactional GitHub rollback or label engine errors security findings."
+    },
+    {
+      "id":"SRC-16",
+      "classification":"current-transport-and-mandatory-type-editorial-drift",
+      "sources":[{"source":"currentSpec","lines":[[183,270],[274,318],[4841,4904]]},{"source":"adoptionSpec","lines":[[171,195],[2638,2686]]}],
+      "finding":"Current stdio transport coexists with HTTP diagram/verification wording. Adoption C2's four-name mandatory list omits two types later marked always mandatory in the same preserved specification.",
+      "correction":"Version consistent transport diagrams/tests and a single mandatory-type matrix per conformance class/revision. Do not infer that reading the later list proves historical implementation coverage."
+    }
+  ],
+  "finalDisposition": {
+    "reviewCompleteForRequestedSpecificationAndNativeFamilyComparison": true,
+    "currentSpecificationFullyReadAsData": true,
+    "adoptionSpecificationFullyReadAsData": true,
+    "nativeFamiliesReconciled": 55,
+    "partialReplayFamilies": 20,
+    "unimplementedReplayFamilies": 35,
+    "completeMeasurementClaim": false,
+    "behavioralGuaranteeClaim": false,
+    "outcomeAssertion": false,
+    "frozenContractChange": false,
+    "baselineLabelEndorsed": false,
+    "nextAction": "Stop after writing and validating this JSON. Corrections above are proposals for separately authorized versioned work, not edits to the sealed proof or permission to acquire/evaluate/publish."
+  }
+}

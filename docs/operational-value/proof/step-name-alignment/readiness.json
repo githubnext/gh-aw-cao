@@ -1,0 +1,1665 @@
+{
+  "schemaVersion": 1,
+  "workflow": "step-name-alignment",
+  "sourceIdentity": {
+    "repositoryId": 1036865607,
+    "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "cutoff": "2026-10-18T15:00:12Z",
+    "gitBlob": "17e5d2e7270b0e3e185e670ce552bf8075c764b8",
+    "sha256": "6ae2dca511d567486345490656463431a210f4a3656184e2fb1a947c507ef234",
+    "profileStart": "2026-09-29T18:10:06Z",
+    "interpreterSha256": "e62aedf273c6a0d1e7e3e3d9236a3c6a963a499f9b971c4f61bf4d2cad707293",
+    "parser": "Ruby 2.6.10 / Psych 3.1.0 / libyaml 0.2.1",
+    "codecSha256": "18045c03ca00fc5f8cccf2a02486255e03a0df22adddf0c426c9182fc6e2554b",
+    "sourcePolicy": "Only the exact frozen workflow/import profile with contemporaneously readable glossary terms is interpreted. Earlier eras remain unknown, not backdated current policy.",
+    "imports": [
+      {
+        "path": ".github/workflows/shared/reporting.md",
+        "blob": "263d2413472e62582c578897a8b06462da5ef171"
+      },
+      {
+        "path": ".github/workflows/shared/otlp.md",
+        "blob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd"
+      },
+      {
+        "path": ".github/workflows/shared/ai-coding-dictionary.md",
+        "blob": "50d7cc06d563bdb36ae31efa9f227d2c254bca58"
+      }
+    ],
+    "rules": [
+      {
+        "id": "frontmatter",
+        "independentHeading": "Frontmatter",
+        "variants": [
+          "front matter",
+          "front-matter"
+        ],
+        "replacement": "frontmatter"
+      },
+      {
+        "id": "agentic-workflow",
+        "independentHeading": "Agentic Workflow",
+        "variants": [
+          "agent workflow",
+          "agential workflow"
+        ],
+        "replacement": "agentic workflow",
+        "plurals": true
+      }
+    ]
+  },
+  "frozenHistoryEnd": "2026-10-18T15:00:12Z",
+  "producedAt": "2026-10-19T10:45:40.963Z",
+  "readiness": {
+    "implementedFunction": true,
+    "producerDecoding": true,
+    "nativeEvidence": true,
+    "completeNativeEvidence": false,
+    "fullSemanticFunction": false,
+    "acceptedWorkflowContribution": false,
+    "offlineEvaluation": true,
+    "nativePlot": "partial-native-subtotals-only"
+  },
+  "result": "Partial terminology spelling instrument ready; full native workflow value remains blocked, not zero.",
+  "currentInventory": {
+    "totalLockFiles": 344,
+    "readableLockFiles": 51,
+    "missingLockFiles": [
+      {
+        "mode": "100644",
+        "blob": "93918ff2900edb560e4c8c8f1cbdbe4be8c86db1",
+        "path": ".github/workflows/cli-version-checker.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f996b2a6eda191c188e9321006e08517c870b37b",
+        "path": ".github/workflows/cloclo.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "17d00c926a7b0d8efd99b4eb3af6100bf5b995c3",
+        "path": ".github/workflows/code-scanning-fixer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "60e937cb7afa1d9e4c77291823aeedc65d95fdfa",
+        "path": ".github/workflows/code-simplifier.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "2244603c3f6898b631e5f154cc86c72b93f804f3",
+        "path": ".github/workflows/codex-github-remote-mcp-test.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5da9b24807ca31fa358536f3c42aedb6ce19b796",
+        "path": ".github/workflows/commit-changes-analyzer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "1a809b9fc4e4b2798196e5fe9717303cf8d6ed3c",
+        "path": ".github/workflows/constraint-solving-potd.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "681d3bc2037282c7f0093aba099c721c100c839c",
+        "path": ".github/workflows/contribution-check.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "1a653dfa4393bec140ebbfa56f44cd639eb5d919",
+        "path": ".github/workflows/copilot-agent-analysis.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b0e049b7edddb7320b2c9e45fcea035c211388d3",
+        "path": ".github/workflows/copilot-centralization-drilldown.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "2e9f73343404e71fb20b15a0967b2a5b3f3908db",
+        "path": ".github/workflows/copilot-centralization-optimizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "27c4f61cdbc4140617e7e0f5f4eccb4a997106d7",
+        "path": ".github/workflows/copilot-cli-deep-research.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b4d1af5716f480b93f9dabff71180689a2aeca42",
+        "path": ".github/workflows/copilot-opt.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7bc32d8836e5018fe0dc1c969771615f63d4a9fc",
+        "path": ".github/workflows/copilot-pr-merged-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "2fc2bd83c3420e331a81efecb371fe6ec7e1919c",
+        "path": ".github/workflows/copilot-pr-nlp-analysis.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "de21c9904f7cb76ec28559d682b6b8f40b1ff038",
+        "path": ".github/workflows/copilot-pr-prompt-analysis.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c7f20418b1dc2f9298d6c0663db62e479ea77314",
+        "path": ".github/workflows/copilot-session-insights.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "79f7c8eb2a59572da9217e4cd190306d7cdf3204",
+        "path": ".github/workflows/craft.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f34462344b9f583bc0bdd006edbd2c88160e3310",
+        "path": ".github/workflows/daily-action-setup-security-audit.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "beaa128580a34c06f4273c3608550fec3f85931b",
+        "path": ".github/workflows/daily-agent-of-the-day-blog-writer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "df71796d79a9f3bf96d3246f0c24d87d9f4c4f16",
+        "path": ".github/workflows/daily-agentrx-trace-optimizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "712d4a4d908b1d1c2e43bf9aee154c565ca7180e",
+        "path": ".github/workflows/daily-ambient-context-optimizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "1463a7b51831358d069be4a8af6c3463e86edc8f",
+        "path": ".github/workflows/daily-architecture-diagram.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c9304dcc3dbf2ff01f30b1f55377889a5a7991e3",
+        "path": ".github/workflows/daily-arxiv-researcher.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7473eaf0d70a183ecf4b23430ba337dfe1d73ee5",
+        "path": ".github/workflows/daily-assign-issue-to-user.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "ab18228c6e43b38821264a001a5dd5de73e5349c",
+        "path": ".github/workflows/daily-astrostylelite-markdown-spellcheck.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d467506953667aaa20c50b9e539cb1bbfdabb927",
+        "path": ".github/workflows/daily-aw-cross-repo-compile-check.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d1f33df0bdfcb442b3e10cd86516dee714e4edd1",
+        "path": ".github/workflows/daily-awf-spec-compiler-surfacing.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c5b2072ca71e572c463ffb51742997390a2be35d",
+        "path": ".github/workflows/daily-byok-ollama-test.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "799a997896c41dddb30cfdb73472345f6cd5658f",
+        "path": ".github/workflows/daily-cache-strategy-analyzer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6fcfeeee85616dd3a7dfb34e60d2134a0e3ef6ac",
+        "path": ".github/workflows/daily-caveman-optimizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "42c894ca784afa07e3710279b69ef5e57770f864",
+        "path": ".github/workflows/daily-cli-performance.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "afd03154cfd70b9b5c3c98d53c33722cf0ddcd69",
+        "path": ".github/workflows/daily-cli-tools-tester.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7f7ff88d23ecc827935219285be7c9ad55dd36bb",
+        "path": ".github/workflows/daily-code-debt-aider.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "da4d814e6af53cbd0b9806eeda4dc92adc3cde0e",
+        "path": ".github/workflows/daily-code-metrics.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "eac7b128ceec568345fbfbdea43b046d481a42a6",
+        "path": ".github/workflows/daily-community-attribution.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "39afdd2296ca5af88857279e9cd64fa33de0582d",
+        "path": ".github/workflows/daily-compiler-quality.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d634d900ed3a9e2ef08057f2ff7e4880554a53ae",
+        "path": ".github/workflows/daily-compiler-threat-spec-optimizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "11aa7a405433b0dff64461a4b4f5b26f637c351d",
+        "path": ".github/workflows/daily-credit-limit-test.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "38d151de7a0f6e909e3db03302d769840628e38d",
+        "path": ".github/workflows/daily-doc-healer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "360648a6fa0052c6152fd9add0707aaac71e0396",
+        "path": ".github/workflows/daily-doc-updater.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "adce592d88ae57147fbdb8aeb32510d1dd5d7034",
+        "path": ".github/workflows/daily-documentation-diagram.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5668fba41c31e76cacb3156efadb73b103ebe4e6",
+        "path": ".github/workflows/daily-ecosystem-explorer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7e9bc744f230f792a035faff495483b3cc1ae6f8",
+        "path": ".github/workflows/daily-elixir-credo-snippet-audit.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c4d0aed82400859a9cfc1995da061ff4eca0e591",
+        "path": ".github/workflows/daily-evals-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "1895e16cae3f7e8bc3db3ade72a1d5938b45a73d",
+        "path": ".github/workflows/daily-experiment-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "dfb0d21c0631a55ec4b3b84fa4b398a4b6c7bfbf",
+        "path": ".github/workflows/daily-fact.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c986ed6c6081b946a31f80cf3c04e32fbccd993b",
+        "path": ".github/workflows/daily-file-diet.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "15237ba4e6268aeeb37291eca8000bab7ee79a81",
+        "path": ".github/workflows/daily-firewall-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6833153ea0fd471964200ce1cb5c806d9951688d",
+        "path": ".github/workflows/daily-formal-spec-verifier.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b44d77fcb5d0e3aa708587a9b786dbc6640be012",
+        "path": ".github/workflows/daily-function-namer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "dac0c4579483c82b57e4327ed07f25860dcdfd06",
+        "path": ".github/workflows/daily-geo-optimizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "49c557782841aff8dda57509595b7e7f825dda95",
+        "path": ".github/workflows/daily-github-docs-seo-optimizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "eb80c5fcd9f538baa17aff7158cffa195dee7810",
+        "path": ".github/workflows/daily-go-test-parallelizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7dc47dd66e0a28cb356945520b9dd1cefb08a53f",
+        "path": ".github/workflows/daily-go-test-stubs-aider.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "32112fc5eeaab9b832d490b7e4b4fc1bd6a07af5",
+        "path": ".github/workflows/daily-grader-audit.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "2b472e6a031ed14c06a69e2e5707f6e788854419",
+        "path": ".github/workflows/daily-graft-intelligence.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "71bbfbf711a801bfa14586b95a08e15db9a2ba28",
+        "path": ".github/workflows/daily-harness-experiment-proposer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9cb32f06247da59b5cd2dce97b33e4e0978d7f12",
+        "path": ".github/workflows/daily-hippo-learn.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "a37cdeece12c5a3b150c131f8cc5c8b5ecf16dac",
+        "path": ".github/workflows/daily-issues-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3a2eaa3eae5060e4dec24e7605fa65b918c52460",
+        "path": ".github/workflows/daily-malicious-code-scan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6e74722c80709a3405099c1af374e439cd8305a4",
+        "path": ".github/workflows/daily-mcp-concurrency-analysis.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "e59422ca7af808a73c507f4bb312ace31a7ca18b",
+        "path": ".github/workflows/daily-model-inventory.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "fe49cac313067559ff1fd25e10e24d3af8a9587e",
+        "path": ".github/workflows/daily-model-resolution.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6ecbbc00fe53bc1f0c9b0468ff544392b11c9423",
+        "path": ".github/workflows/daily-multi-device-docs-tester.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9277afa501aec52f1b3dab35b743d288d50b0f99",
+        "path": ".github/workflows/daily-news.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "528fea7c90c422fd2a5c112c520b7083bbc1364b",
+        "path": ".github/workflows/daily-observability-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "e6221453c0ed8f0a5e8e379492e7061971c791a8",
+        "path": ".github/workflows/daily-performance-summary.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "ce599442078de10dd2c0803a8e7e9328e25f3c08",
+        "path": ".github/workflows/daily-pr-review-cursor.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7f7a2f6983f9a2ff4357c745445a05ff9a2f1c06",
+        "path": ".github/workflows/daily-regression-audit-kiro.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c433a68ebb4c20cb55fa1f03c97fc2b834614588",
+        "path": ".github/workflows/daily-regulatory.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "1d8bb7fa5efef6f28fc4a5297b0127b62615bd21",
+        "path": ".github/workflows/daily-reliability-review.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "456dfef38e02f69c628d722ebb1af34ef506daa2",
+        "path": ".github/workflows/daily-rendering-scripts-verifier.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c632e066bfd371c0cb7c7604ac54a3a5a24a9843",
+        "path": ".github/workflows/daily-repo-chronicle.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "14ee39039887e9629481fd516dbfc0841dbfc3f2",
+        "path": ".github/workflows/daily-report-dispatcher.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "e51db14f6bbc85583e47ace9e899c0c6db617fd6",
+        "path": ".github/workflows/daily-safe-output-integrator.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "748d7f8d1cc9a43f953367b6d172b5fffd7c2ffd",
+        "path": ".github/workflows/daily-safe-output-optimizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8b9db85210e2786265c7ab7ab666c84e664ff8f9",
+        "path": ".github/workflows/daily-safeoutputs-git-simulator.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b4a24dee52da4e6f2123b9b9963203024b07f3ac",
+        "path": ".github/workflows/daily-schema-audit-cursor.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6984949768d7c21bb6f8f79ce1b7c10df1b33755",
+        "path": ".github/workflows/daily-secrets-analysis.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9670f882a53dccedcd3f6299e0a6f08eea5439d4",
+        "path": ".github/workflows/daily-security-observability.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "858f9581f8565a789049a92e3d99ea615071daf0",
+        "path": ".github/workflows/daily-security-red-team.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "4eb8d5c1f4421a302adca270828fdbc934313853",
+        "path": ".github/workflows/daily-semgrep-scan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d208c87b79ae1a1b81e1197977d2f353ac7a202a",
+        "path": ".github/workflows/daily-spdd-spec-planner.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "259ba6e7d68cd56ed9a4021ba83470a368e1d0ba",
+        "path": ".github/workflows/daily-spec-coverage-kiro.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "fbce22e728fa34defc65c5e64bc3b94e6b323bb3",
+        "path": ".github/workflows/daily-spending-forecast.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0760ccb298a07b845cccc7ad98a741b7881067d8",
+        "path": ".github/workflows/daily-squid-image-scan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b8c7ede922a381f8c2db8aea19118110f8aaa319",
+        "path": ".github/workflows/daily-storify.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "25b3b68bf7bf28076c476e3d9baa9433ee67b371",
+        "path": ".github/workflows/daily-syntax-error-quality.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "14958eb672a82f9c72c7e22de73e787b1c74e5f2",
+        "path": ".github/workflows/daily-team-evolution-insights.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9e22d19c18fb5e288a1419e98d491db6e9116a0e",
+        "path": ".github/workflows/daily-team-status.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5131d8154d32026d6355624483c2620861aff203",
+        "path": ".github/workflows/daily-testify-uber-super-expert.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "03bde35b1678b20a7495a94876897a0463484d56",
+        "path": ".github/workflows/daily-token-consumption-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0eb480bb31856c18af48b1a4c39fcf1811603f41",
+        "path": ".github/workflows/daily-trajectory-grader-implementer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "55614c1c14e2094c37c54c8a702d0979119dac2b",
+        "path": ".github/workflows/daily-vulnhunter-scan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "fb38b95d765c3e452bce6645264d04e39a84f4a8",
+        "path": ".github/workflows/daily-windows-defender-scan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "daba60c1910a901f7269bff453edd0a1fb990afe",
+        "path": ".github/workflows/daily-windows-terminal-integration-builder.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "93fd5ec625d25bd8ff9bef407132d67ce34bb6fc",
+        "path": ".github/workflows/daily-work-queues-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "26bb3dde38d12d0eaea5b73df1efa7e1f38b5d43",
+        "path": ".github/workflows/daily-workflow-security-model.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d4ebaea799713c4b9328cf619578ae2bf9c15b30",
+        "path": ".github/workflows/daily-workflow-updater.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0a57338fb7f02f85373d8dd25ca6902cab81b646",
+        "path": ".github/workflows/daily-yamllint-fixer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "cb883491eb4d254bb7d3e65e7c83299f488ba190",
+        "path": ".github/workflows/dataflow-pr-discussion-dataset.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "1d3a05037394e4447c060659f75533957d9d590d",
+        "path": ".github/workflows/dead-code-remover.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "19d73421320238300857b753f0911c66cb1791b4",
+        "path": ".github/workflows/deep-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3292f5031e397989ff5e7727d5fb43b0335d2f66",
+        "path": ".github/workflows/deepsec-security-scan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "bcb79405ed047b98631829b57961ac0f1770cace",
+        "path": ".github/workflows/delight.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0dd2fae1c116e849fc5027939f7948e9321165d4",
+        "path": ".github/workflows/dependabot-burner.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "248004ee09a1dad69f75a5b8d0f356ac348ed290",
+        "path": ".github/workflows/dependabot-go-checker.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5529feec955df0f1a2d25a34c40e14825358b1f1",
+        "path": ".github/workflows/deployment-incident-monitor.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "e7d809c8c66d3acfb6bfb8b0c99403520e590c10",
+        "path": ".github/workflows/design-decision-gate.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "896457b9d5e9f3e87645262d3c9cf0f094e40648",
+        "path": ".github/workflows/designer-drift-audit.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7d03d23b9dbac5982e2af51fcfa5d6c76a74a801",
+        "path": ".github/workflows/detection-analysis-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "36de8e15d902c7238fc9992fee9adb5c73915d59",
+        "path": ".github/workflows/dev-hawk.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "dd23cc25e3cd80cbd083c5dc350898848fa63b7a",
+        "path": ".github/workflows/dev.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "fecc15ff52344d2bc0c5680db1678e691938755b",
+        "path": ".github/workflows/developer-docs-consolidator.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "e319d71061ff9afb66df65ed6b6a339ef440bc4e",
+        "path": ".github/workflows/dictation-prompt.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6d55baa72f80d8787a5d561ca96d40bda5582b45",
+        "path": ".github/workflows/docs-noob-tester.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "1fc75df2e3729a785ef60e909869ba64aec13922",
+        "path": ".github/workflows/draft-pr-cleanup.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "927ac5940ece85210211db17fb034d65156c78fc",
+        "path": ".github/workflows/duplicate-code-detector.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "cd677890e6ff8a00e6bfd9596e43542be5477c2f",
+        "path": ".github/workflows/engine-conformance-aider.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "33dcc75a6394cf2092b5bbf45af72a85123d37f3",
+        "path": ".github/workflows/engine-conformance-claude.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "384bdfc992567f7c84543f6f1a065ef407ee6933",
+        "path": ".github/workflows/engine-conformance-crush.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3746cbbcec7c83a2de416c08996b92d084c85fc0",
+        "path": ".github/workflows/engine-conformance-cursor.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "51ddd3d46c9248f37afd93771e0afc97a65ee9c1",
+        "path": ".github/workflows/engine-conformance-deepseek-harness.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "eed953126ad00bf97f15f184112e3fd5592a93a0",
+        "path": ".github/workflows/engine-conformance-dispatcher.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "219e4ee6ed79983dd329ba0d172606df9e5fb2b4",
+        "path": ".github/workflows/engine-conformance-goose.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "aeaefb0a8919ce0c0e3c9b5a7f0f31c43dca306f",
+        "path": ".github/workflows/engine-conformance-kiro.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "043ceb284cb176e4a4011cac00bbc14c9b54d47d",
+        "path": ".github/workflows/engine-conformance-opencode.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c2262e7e9a2692182b78e94f7f0d22d709e2dae6",
+        "path": ".github/workflows/engine-conformance-pydantic-ai.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "214d49dff65edfb814cc532a0cb48fb4fc0d152c",
+        "path": ".github/workflows/eslint-factory-dispatcher.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "a39486e3947d770d5b5f3b36ac8b731498bd62c3",
+        "path": ".github/workflows/eslint-miner.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f5c57a67904d5d38be5976d46693e0c9cc59efa1",
+        "path": ".github/workflows/eslint-monster.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d3435ae35397a656155c4d86e79bb98550518855",
+        "path": ".github/workflows/eslint-refiner.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "56848f1ebceb7e444a1d7cc8fedd2dda97b30eb5",
+        "path": ".github/workflows/evoskill-evolver.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "74a37e59e85231650ddb2fd6b9710491c7231279",
+        "path": ".github/workflows/example-failure-category-filter.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "dfe6ed5fd2a9fb5b89c524b76d6ebf233ccdfadc",
+        "path": ".github/workflows/example-workflow-analyzer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0c1ce0e4b7f23531b330902bd71eceed90f72647",
+        "path": ".github/workflows/feature-grower.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "692869aaf42bab784daead20d2048d28246b9f24",
+        "path": ".github/workflows/firewall-escape.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b5c6a3553f285e2bd34eff889e04e3301f05716e",
+        "path": ".github/workflows/firewall.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "e3546a9ae5b5a042f7a3a0c299465a42e3f197dc",
+        "path": ".github/workflows/front-page-copy-guard.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d35016f76f83cc73a9cbc6453112bec48a155569",
+        "path": ".github/workflows/functional-pragmatist.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "03f385042da2f8706fec300ed2fa6bf8b6529d77",
+        "path": ".github/workflows/github-mcp-structural-analysis.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "ae55566e727674be0090383ebcf4110d1f109352",
+        "path": ".github/workflows/github-mcp-tools-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9826fbc43638f754da85eb08f90b28c83e410411",
+        "path": ".github/workflows/github-remote-mcp-auth-test.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "039a432f312b45ef4c0abc968d78c18478b85e47",
+        "path": ".github/workflows/glossary-maintainer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "535ee730a67c962f26dc105f411159972611b34e",
+        "path": ".github/workflows/go-fan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "fdceea6907d9328ff8c44f3b951a766f1a6f3f77",
+        "path": ".github/workflows/go-logger.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "72eb71e5709fc2ed57a1686595cdd83f8a46c5b4",
+        "path": ".github/workflows/go-pattern-detector.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f8a7d4fdeb12ec464b0e73710f65432893e0104c",
+        "path": ".github/workflows/gpclean.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6fad0e6f8ec2c4f1b38019965e3b44b4148ed65a",
+        "path": ".github/workflows/grumpy-reviewer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "030d6918e6201bfe12c22d5fd7b3ee60fb92ece9",
+        "path": ".github/workflows/hippo-embed.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "a050ec0075598cb27dd3791843c744fb56a6c288",
+        "path": ".github/workflows/hourly-ci-cleaner.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "dbb01d79b357b7f9f60cee98a039835bbfca4eaa",
+        "path": ".github/workflows/impeccable-skills-reviewer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f3aa6ec4c23d4d49eb8d3b56774fb856eb0aeca3",
+        "path": ".github/workflows/instructions-janitor.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "51f98be9f7163d647052b06832048f2f8d363c12",
+        "path": ".github/workflows/issue-arborist.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3c90e507b6adaa6a69bc889d02c41670a9f848f3",
+        "path": ".github/workflows/issue-monster.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9f941e31bf0705ae98ca5a99cf2137ee37b9a246",
+        "path": ".github/workflows/issue-triage-agent.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c5e7fe957667e3ca7eb6b145e66b1091c0f5d06d",
+        "path": ".github/workflows/jsweep.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5173be0fdf7b14786011ce61e414248359d29c87",
+        "path": ".github/workflows/layout-spec-maintainer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "ba1144166ee7b6713ef615258860e437f3ad82c4",
+        "path": ".github/workflows/lint-monster.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "af0a740f2c3a1510357140c7a84f8de218604a00",
+        "path": ".github/workflows/linter-miner.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "82fdc5560bfb3f112407e8b474e07512f9cee35e",
+        "path": ".github/workflows/lockfile-stats.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "bb5f5e75ca324c7dc495727d635cdb29d671d042",
+        "path": ".github/workflows/mattpocock-skills-reviewer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b2a83e35ceb47e886f2fb380d912b083d3d02bb7",
+        "path": ".github/workflows/mcp-inspector.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "34e535d05eaa81af643b523de17dc06bf04979da",
+        "path": ".github/workflows/mergefest.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3bac74672c6f830df2780b520194947433f0023c",
+        "path": ".github/workflows/metrics-collector.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "35e9e940e8fb4ff9a2a0f7e13d455908fd181f25",
+        "path": ".github/workflows/necromancer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b5931407b688c9a66c3751e696ef3b2486b5de71",
+        "path": ".github/workflows/notion-issue-summary.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "99abd4e77c7948c0a580605b61b64a90dedb7242",
+        "path": ".github/workflows/objective-impact-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "fca0611e537c19b473f4e6d363774df4c15fc547",
+        "path": ".github/workflows/org-health-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "42c18b616e00ad249731f2c906d47d298a244e16",
+        "path": ".github/workflows/outcome-collector.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0ea7fb57eb44370efa9832d7dc5bc36fe62c6448",
+        "path": ".github/workflows/pdf-summary.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "89753caf268c44ebd4b3d6fc6354bdd5af793b3b",
+        "path": ".github/workflows/plan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "4558c85ca6e780126edeb61a2b5237d23853604e",
+        "path": ".github/workflows/poem-bot.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "4fe18c83f06a2b95ce9d2b6e173278fd6f9c11a3",
+        "path": ".github/workflows/ponytail-reviewer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "520d0c2ab724ddcb57b0325b7f6d6dd55bf2679b",
+        "path": ".github/workflows/portfolio-analyst.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5d796ba7670e5892f1b2910e02897a8e93f9c20b",
+        "path": ".github/workflows/pr-code-quality-reviewer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "dcf1d2d86dc081c3429fae847bf98f8d7be61db0",
+        "path": ".github/workflows/pr-description-caveman.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "38054884bc285e8be4401f72816e9446718d24e8",
+        "path": ".github/workflows/pr-nitpick-reviewer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d50fb1ff85001f7f5ab45846b35d82d6fb2f207a",
+        "path": ".github/workflows/pr-sous-chef.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3c4970a2a93d1f0875820587f19e098ad091c316",
+        "path": ".github/workflows/pr-triage-agent.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "4b42fef8644ad11de8c170112b3dc57b7c75fa64",
+        "path": ".github/workflows/prompt-clustering-analysis.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "222c0b8ac6a9b90baadb4f9c307e16833697bc56",
+        "path": ".github/workflows/purelock.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c7704df96dabcbe7b9ef5a0e8264fe2302e40099",
+        "path": ".github/workflows/python-data-charts.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "4ed96f283d7eeb0f08e2903747b4723f212a2cdd",
+        "path": ".github/workflows/q.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6f4a2949f1669915a6ba5706b5372401603e172e",
+        "path": ".github/workflows/refactoring-cadence.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "99737773ebb35b41f7371e96a72e646e04a886d4",
+        "path": ".github/workflows/refiner.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "58a86f9dcf8ce51f91c318f1c8c07dea18ece80b",
+        "path": ".github/workflows/release.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8885c13be699eebe8b8a20e4f924fa6659ece595",
+        "path": ".github/workflows/repo-audit-analyzer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6c6c482b8822e829aa7bae36039046e02414863d",
+        "path": ".github/workflows/repo-tree-map.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "82fd74eba1801729b7bd5a56aeb0a08a98423f46",
+        "path": ".github/workflows/repository-quality-improver.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9d9ef8afafefdd0914cd83ba414aa7dbac2ad623",
+        "path": ".github/workflows/research.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "753800cca856b85d01138a7269759f07de460b1b",
+        "path": ".github/workflows/safe-output-health.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d859afb0dd529934e3166a69417f9a05d2aeb4de",
+        "path": ".github/workflows/schema-consistency-checker.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7ccddcd126f19250a4bffac37e5fdc35e1d6ff0d",
+        "path": ".github/workflows/schema-feature-coverage.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "22f74f5f2ace9aeb2881ffbf9089bd9afc4f8dc9",
+        "path": ".github/workflows/scout.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "da6f8e3244dafbd656b4f420be75893ff89b0ffc",
+        "path": ".github/workflows/security-compliance.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6b5b8da4411b71c06c5dad53936ec2cf306db843",
+        "path": ".github/workflows/security-review.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b7b73e016cb9defc81d38182ec7a2d47dfd1321c",
+        "path": ".github/workflows/semantic-function-refactor.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3ec591780d1c7855c8ab87e8bd066cd71e598081",
+        "path": ".github/workflows/sergo.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "dd09d5179d29ecd1bd60166fcda152077bf9b2a9",
+        "path": ".github/workflows/sighthound-security-scan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5ecc2d8465a8e722189b243f6ea04625134415bb",
+        "path": ".github/workflows/skillet.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "2e73619b08363446228c592734df1980c1002e0f",
+        "path": ".github/workflows/slide-deck-maintainer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5fc911d9c6723cfb5882891a655e1285fdf2d665",
+        "path": ".github/workflows/smoke-agent-all-merged.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9c36b024afb452d6fcaf62b8904510c590a4ea57",
+        "path": ".github/workflows/smoke-agent-all-none.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "788fd183c0ebb45b5a8c330452b65363814d35be",
+        "path": ".github/workflows/smoke-agent-public-approved.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "e0a68feb11a018252c7c2fda8eab96421c83e4cb",
+        "path": ".github/workflows/smoke-agent-public-none.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8ad74c1e4515f543303bd57ab5997bb4f0ed8e28",
+        "path": ".github/workflows/smoke-agent-scoped-approved.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "370b48e24cc0ffb60df0824993e7fd4f239f8db5",
+        "path": ".github/workflows/smoke-agy.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "ceefe2fde5df98119379790a688d0e2f6491d8e1",
+        "path": ".github/workflows/smoke-aider.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "2d36ceaa6cedb5cfe3868afefebea660e27bf180",
+        "path": ".github/workflows/smoke-azure-codex.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7241e41ae9df56b444d40a2611b3c17108922a2f",
+        "path": ".github/workflows/smoke-azure-pi.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "564238581979727da591c58e85a578d7058377e3",
+        "path": ".github/workflows/smoke-builtin-ledgers.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "631f36c009524dfbf35a1244ad07f012e2343de0",
+        "path": ".github/workflows/smoke-call-workflow.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "abc82afa144d9a7888f21a697928fb491d8d3d1c",
+        "path": ".github/workflows/smoke-checkout-pr-dispatch.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6a947c51b5a786279cf8ebda6645db373301bebe",
+        "path": ".github/workflows/smoke-ci.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "57b2f0b74c0d472a3b49b68e59cb10a5d4b6427c",
+        "path": ".github/workflows/smoke-claude-auto.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "44c6750e2a4d2b3bfa4b86ca0901e9e6ffe722ed",
+        "path": ".github/workflows/smoke-claude-copilot-auto.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d8c8752bd4e84a37fa9aaf26bff0e8930a25cead",
+        "path": ".github/workflows/smoke-claude-copilot.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "a20d764942098412e9056358b16929721c043025",
+        "path": ".github/workflows/smoke-claude-on-copilot.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0d8e8913ad5cc9ebddf7b2d8eabc6ca530173c8b",
+        "path": ".github/workflows/smoke-claude.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5e06a0145220ab1a5455bca750faa6975f7f1a04",
+        "path": ".github/workflows/smoke-codex-auto.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d41ee32bf05f94d1e48a2a7da538e7713df052e2",
+        "path": ".github/workflows/smoke-codex-bare-auto.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8782ebeaf37ad5752c48e6119472c705c57be840",
+        "path": ".github/workflows/smoke-codex.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "688cfcd6cb27594ca65878cbbeec64d710a3e577",
+        "path": ".github/workflows/smoke-copilot-aoai-apikey.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "fd5fd82d47af873c6579fbb8c4684b9dc2e376fd",
+        "path": ".github/workflows/smoke-copilot-aoai-entra.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "76d1314db05d460ce1038b4907dbff55c14dec08",
+        "path": ".github/workflows/smoke-copilot-arm.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "64e5a212e077696c5715e615d56fddfc12465f9c",
+        "path": ".github/workflows/smoke-copilot-auto.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "ccefb37a3fd2ca2c0e7c352a879c9db1c08f19d7",
+        "path": ".github/workflows/smoke-copilot-dynamic-workflow.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "5b454ad9b559213b37dbbb49704dc04542c2259b",
+        "path": ".github/workflows/smoke-copilot-mai.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d7144cb8e1a7a8fe52b8548bd7b290f95bc5b677",
+        "path": ".github/workflows/smoke-copilot-sdk.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "26cce08b22a4760fc38dd53cdd0e8efcd86bba97",
+        "path": ".github/workflows/smoke-copilot-small.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8396893c27df2e17f28fd301f4d93f5a1aaf33f4",
+        "path": ".github/workflows/smoke-copilot.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8513c30ece2aa7c806e63d0efa16948e3954e314",
+        "path": ".github/workflows/smoke-create-cross-repo-pr.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6f49d2ea96bc2cceae76fc0519bf6308df71f5bb",
+        "path": ".github/workflows/smoke-crush.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8cff5ae22eb05de45b41f0663c26b68b06af5935",
+        "path": ".github/workflows/smoke-cursor.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "28fb66e8a6308121e432a2c2fe0dea960f5c03e6",
+        "path": ".github/workflows/smoke-deepseek-harness.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "838e588c30efa734e6edce8347dc0db72646b713",
+        "path": ".github/workflows/smoke-drive.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "e7a810c35bfea3a9f4c910dcb6b7904eaabbf6d9",
+        "path": ".github/workflows/smoke-gemini.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "852c713564683a023a8bf5f754dca40bf1c00d16",
+        "path": ".github/workflows/smoke-github-claude.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "bc162790bebee42d76662a81768e2aecb7b5b074",
+        "path": ".github/workflows/smoke-github-codex.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3a024ee9168651177508b8c39479297aeb8a1385",
+        "path": ".github/workflows/smoke-issues.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "97a9872c09172cabb457e345c33c9612f51e8961",
+        "path": ".github/workflows/smoke-kiro.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "caf625323b8f37b83af89b462f3d3ee8fa3caf59",
+        "path": ".github/workflows/smoke-multi-pr.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "480a6d681f9630e770a587c7d8ad438fd047e8ca",
+        "path": ".github/workflows/smoke-opencode.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "73323b1742b8427203ed9d0ee1193c59ed278e05",
+        "path": ".github/workflows/smoke-otel-backends.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f72bb3e3da4382b94af1afebd3d15a583b963f36",
+        "path": ".github/workflows/smoke-pi-auto.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "4576d4524e54bef95c03a7da70cb4a18ad002039",
+        "path": ".github/workflows/smoke-pi-sub-agents.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7e83a88aeb3eb6b367ff78f93f6edef858b16347",
+        "path": ".github/workflows/smoke-pi.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7c32e6059799b3bff67de002c8c164adf326ffee",
+        "path": ".github/workflows/smoke-project.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "970bf8971b00ee0aafe924cb19a52e713607fda8",
+        "path": ".github/workflows/smoke-pydantic.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "4f0217d28e8e17e7d015e08921d1db5ca4696cf8",
+        "path": ".github/workflows/smoke-service-ports.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "c09e4a0806a35b465c552778f88ad44741dfad91",
+        "path": ".github/workflows/smoke-temporary-id.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "35b271f5a7a159cd6d6610acb808fcb8d3b954c1",
+        "path": ".github/workflows/smoke-test-tools.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8c7ff9ab1f9adaee4cc482e6b37d9d70673549f5",
+        "path": ".github/workflows/smoke-update-cross-repo-pr.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "101cf3c5802c3fad2730f2e489223ac390884623",
+        "path": ".github/workflows/smoke-work-queue.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "08b0bac81d6eac7c9248736c52eb73cbed771fb2",
+        "path": ".github/workflows/smoke-workflow-call-with-inputs.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8a4ebdd786a55296e7d7f5beeb09cade276b4db9",
+        "path": ".github/workflows/smoke-workflow-call.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0b04104ee1f8a02c50c10efb2fe4b4c891f40848",
+        "path": ".github/workflows/spec-enforcer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "569d1e1c28dbd61faa98a203a3b8a43f2d4df787",
+        "path": ".github/workflows/spec-extractor.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8759dd97a83b713276d1107ad14d7ee57b05bd00",
+        "path": ".github/workflows/spec-librarian.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "3463ffdcbdcd6fc14de11a7ede6d3fb6e2587fd9",
+        "path": ".github/workflows/squad-game-planner.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "da71aec8a80d053815c2465ea105e8190f67df2f",
+        "path": ".github/workflows/squad-implement-worker.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6935040e52ca724e30e3d2cf5f8fa80167938fc0",
+        "path": ".github/workflows/squad-plan.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "d468d5f7538d41a0b13ce0c6db40fdb1f9db0630",
+        "path": ".github/workflows/squad.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "b4cee0f1df98dc0a29fa549e5bcc1389302bf919",
+        "path": ".github/workflows/stale-pr-cleanup.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0b9e30979985edb00be887bc6eb90ed26aa1c613",
+        "path": ".github/workflows/stale-repo-identifier.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f6b40bbd6324002ebbcf2abbb412c9498781dc3c",
+        "path": ".github/workflows/static-analysis-report.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "fee01d89bd697327edae5bcc056ecd01a1332e9c",
+        "path": ".github/workflows/step-name-alignment.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "acdd03d0031d503707f5a8fa333a910f658c4480",
+        "path": ".github/workflows/sub-issue-closer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "84256bc2c2cfd1349149fb08f5bcc6b9a7e6ced1",
+        "path": ".github/workflows/super-linter.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "76677df586300294d20e21e258be618a29a06096",
+        "path": ".github/workflows/technical-doc-writer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "ca11e5d220c03facd24a5043bb7cf2d1b0eef087",
+        "path": ".github/workflows/terminal-stylist.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "39f28b61d2cdd2e2c7e44ed114058883630c6d51",
+        "path": ".github/workflows/test-quality-sentinel.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "eba70e195601795d0f39c890c159caec0322611c",
+        "path": ".github/workflows/tidy.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "0cb05d8a209f5093ad72998e0573a8c4a385930e",
+        "path": ".github/workflows/typist.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "2e7ba1c038e746f1894e372f762487a3c295f2db",
+        "path": ".github/workflows/ubuntu-image-analyzer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7d500689013cf5e74c353e5066802296d1d75af2",
+        "path": ".github/workflows/uk-ai-operational-resilience.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f4220a4f1b27e0ea8fb93038ad4ce298f21ebf24",
+        "path": ".github/workflows/unbloat-docs.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "60d673b35c3aa4e55b19f61cd799bf7315b7dfc9",
+        "path": ".github/workflows/update-astro.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "94786154f1abaf1ef2a37c47825bd925e29e0c0d",
+        "path": ".github/workflows/video-analyzer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "de5bdc59fafabec1e4a0b64b260406897d3b3669",
+        "path": ".github/workflows/visual-regression-checker.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "8d917f6b0774dc7cdd8ae7eda0c9a83a12237b07",
+        "path": ".github/workflows/weekly-blog-post-writer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "7a3e18c517015a03176cd7911d21baba4ae05991",
+        "path": ".github/workflows/weekly-editors-health-check.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9b5055c60d74768ac38824758e2226aff4db11a5",
+        "path": ".github/workflows/weekly-issue-summary.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "bcf9fe8b3f7411201fc63a31a0af6c1b52916e91",
+        "path": ".github/workflows/weekly-network-domains-audit.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6d0f24e646dd17a3acd39ada76972901f4835e83",
+        "path": ".github/workflows/weekly-safe-outputs-spec-review.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "9a7c27bfe8e3f816440709ed076666ae2ca31761",
+        "path": ".github/workflows/windows-grower.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "f4fe6701d005eba1967bc5e558bb57d616fcfea6",
+        "path": ".github/workflows/windows.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "21e5ea37805593ea2b61524a8938a2be4bca1597",
+        "path": ".github/workflows/workflow-generator.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "6a66be98d60a28fee5ffe00e083f0b0fdff88310",
+        "path": ".github/workflows/workflow-health-manager.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "701ea940e043f7b255a8ff2f89cf46aea5f9d7c8",
+        "path": ".github/workflows/workflow-normalizer.lock.yml"
+      },
+      {
+        "mode": "100644",
+        "blob": "1c6e58b48e5f0e5c32acb89023cbe42d794f008c",
+        "path": ".github/workflows/workflow-skill-extractor.lock.yml"
+      }
+    ]
+  },
+  "inputs": {
+    "firstParentCommits": 295,
+    "fileTransitions": 24304,
+    "objects": 24623,
+    "readableObjects": 850,
+    "sourceOriginals": "native-inputs.json.gz#/blobs; complete originals verified against SHA-256 and Git blob IDs",
+    "missingObjects": "native-inputs.json.gz#/blobs; each status=missing record identifies the exact required immutable blob",
+    "originalMarkerCandidates": 134,
+    "retainedLineageEntities": 2733,
+    "sharedHistory": {
+      "partitions": 346,
+      "entities": 58048,
+      "completedAt": "2026-10-18T15:32:13.477Z",
+      "interpretation": "Later discovery, not historical acceptance."
+    }
+  },
+  "periods": {
+    "count": 40,
+    "disjoint": true,
+    "partial": [
+      {
+        "window": {
+          "startAt": "2026-09-27T15:00:12Z",
+          "endAt": "2026-10-04T15:00:12Z"
+        },
+        "observedAt": "2026-10-04T15:00:12Z",
+        "metrics": {
+          "glossary-repairs": 0,
+          "frontmatter-repairs": 0,
+          "agentic-workflow-repairs": 0
+        },
+        "coverageStatus": "partial",
+        "examinedFileTransitions": 11,
+        "discoveredFileTransitions": 5206,
+        "completePeriodRepairTotal": null
+      },
+      {
+        "window": {
+          "startAt": "2026-10-04T15:00:12Z",
+          "endAt": "2026-10-11T15:00:12Z"
+        },
+        "observedAt": "2026-10-11T15:00:12Z",
+        "metrics": {
+          "glossary-repairs": 0,
+          "frontmatter-repairs": 0,
+          "agentic-workflow-repairs": 0
+        },
+        "coverageStatus": "partial",
+        "examinedFileTransitions": 74,
+        "discoveredFileTransitions": 10007,
+        "completePeriodRepairTotal": null
+      },
+      {
+        "window": {
+          "startAt": "2026-10-11T15:00:12Z",
+          "endAt": "2026-10-18T15:00:12Z"
+        },
+        "observedAt": "2026-10-18T15:00:12Z",
+        "metrics": {
+          "glossary-repairs": 0,
+          "frontmatter-repairs": 0,
+          "agentic-workflow-repairs": 0
+        },
+        "coverageStatus": "partial",
+        "examinedFileTransitions": 72,
+        "discoveredFileTransitions": 9091,
+        "completePeriodRepairTotal": null
+      }
+    ],
+    "noPreAdoptionComparison": true,
+    "noProspectiveResultsAdmitted": true
+  },
+  "unknown": {
+    "completePeriodDelivery": null,
+    "fullSemanticQuality": null,
+    "workflowContribution": null,
+    "costs": null,
+    "keepBar": null,
+    "decision": "not-rated"
+  },
+  "blockers": [
+    {
+      "producer": "Immutable Git source acquisition",
+      "request": "Provide exact missing adoption source/lock blobs and full historical source/import/glossary profiles before adoption-relative interpretation.",
+      "adoption": [
+        {
+          "mode": "100644",
+          "blob": "8ec22729bd80d9ebfeb66ee3a6b97fdeac5d9347",
+          "path": ".github/workflows/step-name-alignment.lock.yml",
+          "status": "missing"
+        },
+        {
+          "mode": "100644",
+          "blob": "e1ec9d4447661233310772b50ee207150831e020",
+          "path": ".github/workflows/step-name-alignment.md",
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "producer": "Immutable Git native evidence acquisition",
+      "request": "Provide the exact missing native blobs in native-inputs.json.gz#/blobs; absence was checked with GIT_NO_LAZY_FETCH=1, not inferred from metadata."
+    },
+    {
+      "producer": "Independent semantic naming evidence",
+      "request": "Supply immutable actual step intent and independent defect/correction adjudication, consistency/clarity criteria and regression evidence; no workflow-written suggestions or guessed acceptance booleans."
+    },
+    {
+      "producer": "Independent contribution lineage",
+      "request": "Supply protected original producer receipts and verified downstream graph edges bound to native accepted corrections; editable markers and current issue state remain discovery."
+    },
+    {
+      "producer": "Secondary terminology authority",
+      "request": "Supply retained immutable AI Coding Dictionary content to implement generic-AI term checks; its URL does not prove content."
+    }
+  ],
+  "validation": {
+    "nativeFixtures": "node --test tests/unit/operational-value-step-name-alignment.test.mjs",
+    "collector": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/step-name-alignment.mjs",
+    "evaluator": "node .github/skills/add-operational-value/scripts/evaluate.mjs --end 2026-10-18T15:00:12Z --function docs/operational-value/proof/functions/step-name-alignment.mjs --output-dir docs/operational-value/proof/step-name-alignment/report github/gh-aw step-name-alignment",
+    "compile": "npm run compile passed (71 workflows).",
+    "lint": "Owned code passed npm exec --offline --no -- eslint --no-ignore; root npm run lint is blocked by missing yaml.",
+    "typecheck": "Root npm run typecheck:cao is blocked by unavailable TypeScript; no installation authorized."
+  },
+  "dependencySeed": {
+    "sha256": "b30a55ef9a389bbce4500270bfdac715c87bbd9cef68e3463e9661de873ef835",
+    "manifestSha256": "e15c42d73b26ceb2cc560378f25a28155bc5454ef929e861ffd9bacc57bf09fd",
+    "members": 32,
+    "ownership": "Dependency only; unmodified and excluded from owned archive."
+  }
+}

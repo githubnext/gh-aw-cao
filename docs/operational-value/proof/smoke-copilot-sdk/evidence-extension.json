@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "acceptanceChanged": false,
+  "acceptance": "acceptance.json remains byte-identical to the source-derived contract frozen before native result inspection.",
+  "previousInstrument": "predecessor-v1.json.gz",
+  "extension": "Added original protected host stream and exact contemporaneous compiled/source applicability. The already-frozen cat and arithmetic operations can now be independently established from their actual successful compound native execution; this does not manufacture separate process argv or relax expected command/result bytes.",
+  "preservedUnknowns": [
+    "The successful printf command is retained, but no absent-before/regular-file-after observation was fabricated.",
+    "No timestamp formatting or freshness tolerance was invented; current clock correctness remains unaccepted.",
+    "No complete task conjunction, issue-reporting gate, full workflow success, complete-population coverage, baseline gain or cost claim was admitted."
+  ],
+  "historicalExtension": "Read introduction Markdown/compiled originals and verify their Git/SHA256/API identities plus real-parent absence. Actual workflow adoption is February14; introduction intent differed. Only the October17 exact source/runtime profile receives the later operation predicates. All other eras remain null; authoring-time activation is not backdated.",
+  "deliveryIdentity": "runId:attempt:native challenge facet; earliest proven delivery only, in inclusive-start/exclusive-end periods.",
+  "productionFixtures": false
+}

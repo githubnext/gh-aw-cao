@@ -1,0 +1,42 @@
+{
+  "workflow": "daily-model-inventory",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "evaluate": "node docs/operational-value/proof/daily-model-inventory/run-offline.mjs",
+  "tests": "node --test tests/unit/operational-value-daily-model-inventory.test.mjs",
+  "collectorVerification": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/daily-model-inventory.mjs",
+  "functionSha256": "14eff5cf9c9793610fc6e3e87fb658e86522603fda07a3fe2dd9d32e6fb2e230",
+  "status": {
+    "instrument": "implemented-and-verified",
+    "currentSource": "retained",
+    "currentEligibleAliases": 62,
+    "providerInventories": "missing",
+    "nativeValue": "unavailable",
+    "baseline": "unavailable-not-exhausted",
+    "fullAcceptance": "not-measured",
+    "workflowContribution": "not-measured",
+    "costs": "not-measured",
+    "decision": "not-rated"
+  },
+  "inputContract": {
+    "collector": "collectBatch(requests, {inventories}) consumes protected, digest-bound complete raw provider captures; default offline evaluation has no such captures and remains missing.",
+    "receiptAuthority": "Digest checks prove integrity and scope binding, not independent producer identity by themselves. Acquisition must supply independently protected capture receipts; editable agent claims are not those receipts.",
+    "rawPages": "Each page binds cursor, HTTP status, whole decoded JSON body and SHA256(JSON.stringify(body)). Receipt capture binds repository ID, provider, access scope, endpoint, UTC cutoff, completion and SHA256(JSON.stringify(pages)).",
+    "pagination": "Anthropic has_more/last_id and Gemini nextPageToken chains must be contiguous and terminal. The frozen OpenAI endpoint has no pagination; unexpected pagination fails closed. Reflect requires configured Copilot models and models_fetch_complete=true.",
+    "empty": "Empty model lists and provider errors are unknown by the workflow's explicit skip rule.",
+    "temporal": "Capture time must equal requested state cutoff. Only the retained frozen source cutoff is currently accepted; newer/older source eras remain missing. Snapshot starts are comparison cutoffs, not delivery intervals.",
+    "scope": "Built-in aliases only. Per-engine provider catalogs canonicalize synonyms; full recursive pattern lists and exact bare-ID fallback are assessed. A stale proof is intentionally conservative when a bare fallback could use any provider.",
+    "unknowns": "Primary null unless every alias is assessed. Diagnostic native support and established-stale subtotal can survive partial coverage, with unknown denominator and full acceptance visible.",
+    "fixtureBoundary": "Synthetic fixtures exist only in validationExamples and native tests. They are never retained as historical observations."
+  },
+  "limitations": [
+    "No independently retained live-provider inventory was available. Missing evidence is not zero stale aliases or demonstrated good work.",
+    "Current activation is the frozen source revision, not actual workflow installation. Source addition was verified separately against the real parent.",
+    "Adoption workflow and native Go alias checker are retained. One transitive adoption telemetry import remains unavailable; no historical scoring is attempted.",
+    "Pricing mirrors and historical entries are preserved as whole sources. Source mirror equality is not complete pricing correctness or live support.",
+    "166 selected workflow-linked issue/PR discovery records are retained; none is accepted as an alias repair or contribution.",
+    "Snapshot stale burden is not interval delivery. No overlapping credit, summed snapshots, arbitrary keep bars, weights, savings or causal claims.",
+    "No network performed here; source-only coordinator receipts are retained. Any further acquisition needs a new bounded coordinator slot.",
+    "ESLint and TypeScript executables/dependencies are unavailable locally; no installation was performed under the no-network/no-installs constraint.",
+    "Generated report Markdown is not a workflow source change; compilation was not attempted under offline-only execution."
+  ]
+}

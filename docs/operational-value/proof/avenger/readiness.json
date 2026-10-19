@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "workflow": "avenger",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "frozenRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceBlob": "c2dc70ea2ff6d1e684b4cfd17c3a1e61bb85f56d",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "status": "bounded-offline-handoff; native measurement blocked",
+  "contractReadiness": "Current-source repair quantity, evidence requirements, actor independence, condition equivalence, native units and temporal delivery are frozen. Five native receipt decoders are implemented. This is a partial native instrument, not a claim that every CI/lint checker or protected producer has been implemented.",
+  "collectorReadiness": "Actual collectBatch reads and verifies only bounded repository-local retained inputs; no shared absolute path, target command execution or network is used. It returns explicit unavailable evidence with immutable provenance.",
+  "scorerReadiness": "Native repair progress, full buildability acceptance, introduced defects, incomplete checks and protected workflow contribution are separate channels. Unknown full acceptance/contribution does not erase a proven repair subtotal or imply a zero diagnostic. Unbound coverage cannot manufacture zero repairs.",
+  "retainedEvaluation": "Standard evaluator, --no-runs, attainment-only, current-source activation 2026-10-18T06:32:44Z through cutoff. One leading partial interval. All actual metric values are null; no native observation, comparison, keep recommendation, savings or causal contribution is claimed.",
+  "baseline": {
+    "status": "unavailable-not-exhausted",
+    "actualAddition": "928cdd6ba4a388dfed2d4ddd1d7b229551f7f6bc",
+    "actualParent": "f2738c94a86819bc4d95f17ec0081713da78e463",
+    "addedAt": "2026-05-24T00:06:12Z",
+    "verified": "Actual parent lacks both source and compiled workflow paths. Source addition bytes and raw addition/parent commit identities are retained.",
+    "limitation": "Historical compiled blob identity is known, but its content cannot be read with cat-file blob offline. A successful metadata/existence probe is not evidence of readable content. No historical imports/checker closure, complete intent-era reconstruction or native baseline is asserted."
+  },
+  "sourceReview": {
+    "reviewed": "Complete frozen Avenger source, its transitive frontmatter imports, compiled workflow, 2057-line ci.yml, 1574-line Makefile, retained formatter/linter configuration, checker scripts and wasm golden Go test source.",
+    "losslessCurrentSources": 23,
+    "adoptionSource": "Original addition source retained and read, with its different engine, 25-turn budget, sequential validation and unconditional golden update distinguished from the frozen current intent.",
+    "gaps": "go.mod, scripts/test-wasm-golden.mjs and eslint-factory/package.json have known frozen blob identities but unavailable content. Alternate .prettierrc and eslint-factory/eslint.config.mjs paths are absent from the frozen tree, not silently reviewed or requested as missing blobs. Historical compiled content is separately unavailable."
+  },
+  "discovery": {
+    "reader": "production readOutputHistory",
+    "verifiedSharedPartitions": 346,
+    "verifiedSharedEntities": 58048,
+    "selectedEntities": 344,
+    "selectedIssues": 325,
+    "selectedPullRequests": 19,
+    "uniqueReferencedProducerRuns": 334,
+    "relatedRecordsOutsideSelection": 0,
+    "interpretation": "Retained full shared index and all selected normalized records/identities. Editable references and states observed at acquisition are lineage discovery only, never accepted native repair or backdated contribution observations."
+  },
+  "nativeEvidence": {
+    "conditions": 0,
+    "acceptedObservations": 0,
+    "status": "missing, not zero",
+    "trustBoundary": "Future protected-producer projections must bind raw platform job, requirement, native logs/artifacts and source/input inclusion facts. SHA256 validates retained integrity, not remote authenticity, original causal equivalence or an untrusted author's claim. No such protected producer is implemented or executed here.",
+    "unsupportedCheckers": [
+      "stale lock and schema-binary checks",
+      "skill path checks",
+      "Node syntax and ESLint rules",
+      "model alias chains",
+      "shellcheck",
+      "no-python shell checks",
+      "other unknown native formats"
+    ]
+  },
+  "acquisition": {
+    "manifest": "missing-endpoints.json.gz",
+    "exactEndpoints": 1027,
+    "producerFirstPageEndpoints": 1002,
+    "pullRequestEndpoints": 19,
+    "missingSourceEndpoints": 4,
+    "currentRequirementEndpoints": 2,
+    "nativeCheckEndpoints": "Unresolved original failure and landed check IDs remain explicit gaps; do not substitute Avenger producer run IDs.",
+    "released": false,
+    "automaticResume": false,
+    "note": "This is a bounded coordinator-review inventory, not a request to execute 1027 calls. Stage selection and authorization are still required. Current requirement endpoints cannot reconstruct historical enforcement."
+  },
+  "validation": {
+    "focusedTests": "node --test tests/unit/avenger-operational-value.test.mjs",
+    "actualCollector": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/avenger.mjs",
+    "evaluation": "node .github/skills/add-operational-value/scripts/evaluate.mjs --root \"$PWD\" --end 2026-10-18T15:00:12Z --output-dir docs/operational-value/proof/avenger/evaluation --function docs/operational-value/proof/functions/avenger.mjs --no-runs github/gh-aw avenger",
+    "syntax": "node --check on the owned module, collection script and focused test",
+    "lint": "Blocked: local node_modules/.bin/eslint is absent, no global eslint available; no installation or npx download was authorized or attempted.",
+    "typecheck": "Blocked: TypeScript compiler is absent locally and globally; no installation was authorized. Owned executable changes are native .mjs, exercised with Node syntax checks and focused tests.",
+    "workflowCompile": "Not run: no editable workflow source changed, no fetched workflow/code execution or network authorized. The Markdown report is generated by the standard evaluator, not a workflow edit.",
+    "seedRuntime": "The seed's newly added render-pulse.mjs has mode 0644 while evaluate.mjs launches it directly. Temporarily granting local user execute permission makes the unmodified standard evaluator run; original permission is restored afterward. No shared helper content or seed change is included in ownership."
+  },
+  "ownership": {
+    "paths": [
+      "docs/operational-value/proof/functions/avenger.mjs",
+      "docs/operational-value/proof/avenger/**",
+      "scripts/collect-avenger-offline.mjs",
+      "tests/unit/avenger-operational-value.test.mjs"
+    ],
+    "seed": "Verified offline seed is a dependency only, excluded from owned handoff. The standalone module and focused tests do not require seed imports; the source acquisition script and standard evaluator use the seeded production helpers.",
+    "commits": false,
+    "pullRequests": false,
+    "deployment": false,
+    "network": false,
+    "fetchedCodeExecuted": false
+  }
+}

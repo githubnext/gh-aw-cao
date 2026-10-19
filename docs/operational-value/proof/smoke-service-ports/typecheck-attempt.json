@@ -1,0 +1,4 @@
+{
+  "status": "unavailable",
+  "reason": "No local node_modules/.bin/tsc; installation and network are forbidden under this assignment."
+}

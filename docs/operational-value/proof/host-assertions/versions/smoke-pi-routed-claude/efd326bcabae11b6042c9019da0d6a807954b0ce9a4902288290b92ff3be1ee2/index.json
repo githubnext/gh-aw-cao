@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-pi-routed-claude",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "e6da43a4e477c042c797d114eddb9d0277f247d7912e043556a1af1835ba64cd",
+  "inventoryRuns": 53,
+  "observations": 53,
+  "proven": 1,
+  "partitions": [
+    {
+      "file": "smoke-pi-routed-claude-observations-001.json.gz",
+      "count": 40,
+      "sha256": "e4ff71c7aefdcd9d67718f2655d3ca6176700ae40562a38379c6aa6a9a371d12"
+    },
+    {
+      "file": "smoke-pi-routed-claude-observations-002.json.gz",
+      "count": 13,
+      "sha256": "7f704e1841ca535b9063fd2e3a2fc195e4617a30587f0a12e9dd95020b7f7f1e"
+    }
+  ],
+  "acquiredAt": "2026-10-18T19:34:50.397Z",
+  "rerunPolicy": "Only initial attempts; later artifact reuse cannot create duplicate native proof.",
+  "producer": {
+    "path": "scripts/collect-host-assertion-evidence.mjs",
+    "sha256": "a609e3ce234600e131387c260c39679941b0a810e5345c39df88803348fd305a"
+  }
+}

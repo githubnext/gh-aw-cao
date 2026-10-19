@@ -1,0 +1,24 @@
+import { nativeSchemaReferenceModule } from "../../../../scripts/native-schema-reference-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativeSchemaReferenceModule({
+  "workflowId": "daily-schema-audit-cursor",
+  "workflowName": "Daily Schema Consistency Audit",
+  "primaryMetric": "unused-root-definitions",
+  "repository": "github/gh-aw",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourcePath": ".github/workflows/daily-schema-audit-cursor.md",
+  "schemaPath": "pkg/parser/schemas/main_workflow_schema.json",
+  "until": "2026-10-18T15:00:12Z",
+  "directory": "docs/operational-value/proof/schema-references",
+  "sourceGitBlob": "35b80baffd5305e1f5f70cd489c73808d9fba96c",
+  "interpreterSha256": "5369473d5cbf0f31324214dba7763b2ef96846d6376b96570b134a2ef4d476e3",
+  "oracleSha256": "241ad10d77e3033f00004b8753f75467e8cd4dffb639f6ff56a60c18689fb1fd",
+  "toolSha256": "e314ae21a7f6106b9837f0c9025b6e19e668f7138a8fe0ee3daafe38f7cee1cb",
+  "sourceReaderSha256": "3a9662186e0d9abfd8c7b1a7e0beece3973c0c484e5cf28e5a24d39d4eeadfd9",
+  "adoption": {
+    "commit": "0841c9e3e6fc99312ed0e7f770fc5a0b6438ead8",
+    "adoptedAt": "2026-08-07T19:10:33Z",
+    "baselineCommit": "307107ba81a26cd792165b84e5f8634943fa9bca",
+    "baselineAt": "2026-08-07T19:08:28Z"
+  }
+});

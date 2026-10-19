@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "endpoint": "2026-10-18T15:00:12Z",
+  "functionSha256": "cfd556cc3367577d09b9318ec2c0f56fa98e3e0523c7cd9bb98f049f04ccd306",
+  "sourceSha256": "a07f8145b20b75cccb8c383d408b8cbfafbf0827ecc8328868d9fdcc649c18db",
+  "compiledSourceSha256": "ee00e7482c097be8f2234b47f12dba18f229e9962fb633accb2b3221cb9bf941",
+  "timelineSha256": "ecbe1c04175432a8f7173574d6194af5962c7b010d259b656091dff2bc2c9006",
+  "snapshotCount": 59,
+  "numericNativeObservations": 0,
+  "nativeEvidenceReady": false,
+  "nativePlotReady": false,
+  "lineage": {
+    "schemaVersion": 1,
+    "repository": "github/gh-aw",
+    "until": "2026-10-18T15:00:12Z",
+    "historyIndexSha256": "c928eab463ed316f202b08d3343b10358deee00f95ffb243fd9d41350da16f93",
+    "verifiedPartitions": 346,
+    "verifiedEntities": 58048,
+    "selectedEntities": 92,
+    "selection": "Exact workflowReference.workflowId or unverifiedWorkflowId equal to daily-model-resolution",
+    "acceptedNativeOutcomes": null,
+    "explanation": "All original selected normalized identities retained losslessly. Editable lineage is discovery, never proxy request evidence or accepted model resolution.",
+    "functionSha256AtDiscovery": "cfd556cc3367577d09b9318ec2c0f56fa98e3e0523c7cd9bb98f049f04ccd306"
+  },
+  "reportHashes": {
+    "reports/github-gh-aw/daily-model-resolution-definitions.md": "5b0bffe425cc98cffdcc3a0d6011010c6c9bb3831c537dbe295cf3903ed47442",
+    "reports/github-gh-aw/daily-model-resolution-evidence-archive.json": "b672d14d153e4272fa08ae27d17d1cd7aa4aff5725e2a9398899da528bc117d0",
+    "reports/github-gh-aw/daily-model-resolution-pulse.html": "69d1647e67828078b284c83d36349361ffc0ae6a67cf41afaba983291f122c21",
+    "reports/github-gh-aw/daily-model-resolution-pulse.json": "4b7162f5b950c5927957b00f481562baa2c74a98ed1652d673578785111d7da1",
+    "reports/github-gh-aw/daily-model-resolution-timeline.json": "ecbe1c04175432a8f7173574d6194af5962c7b010d259b656091dff2bc2c9006"
+  },
+  "commands": [
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "--test",
+        "tests/unit/daily-model-resolution-source.test.mjs",
+        "tests/unit/daily-model-resolution.test.mjs"
+      ],
+      "output": "✔ retained original sources independently reproduce Git and SHA256 identities (8.747958ms)\n✔ original bounded acquisition request matches exactly the three centrally supplied blobs (0.620083ms)\n✔ adoption addition is distinguished from incomplete source review and unavailable values (0.088083ms)\n✔ source classification includes explicit aliases and case-insensitive small model names (0.560917ms)\n✔ bound correct and wrong native child requests have exact native values (0.410625ms)\n✔ one wrong request establishes mismatch while a correct prefix cannot establish correctness (0.0975ms)\n✔ unresolved inherited dispatch does not erase independently verified partial native work (0.097167ms)\n✔ parent substitution, source disagreement and duplicate identities fail closed (0.287333ms)\n✔ missing and empty populations remain distinct, with no invented shares (0.058916ms)\n✔ actual collector preserves missing native history and unverified historical eras (4.75225ms)\n✔ production observation windows partition delivery rather than overlapping the two-day cohort (1.501875ms)\nℹ tests 11\nℹ suites 0\nℹ pass 11\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 58.837417\n",
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/daily-model-resolution.mjs"
+      ],
+      "output": "verified docs/operational-value/proof/functions/daily-model-resolution.mjs\n",
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "--check",
+        "docs/operational-value/proof/functions/daily-model-resolution.mjs"
+      ],
+      "output": "",
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "--check",
+        "scripts/daily-model-resolution-lineage.mjs"
+      ],
+      "output": "",
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "--check",
+        "scripts/daily-model-resolution-source.mjs"
+      ],
+      "output": "",
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "--check",
+        "scripts/daily-model-resolution-verify.mjs"
+      ],
+      "output": "",
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "--check",
+        "tests/unit/daily-model-resolution-source.test.mjs"
+      ],
+      "output": "",
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "--check",
+        "tests/unit/daily-model-resolution.test.mjs"
+      ],
+      "output": "",
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/daily-model-resolution/reports",
+        "--function",
+        "docs/operational-value/proof/functions/daily-model-resolution.mjs",
+        "--no-runs",
+        "github/gh-aw",
+        "daily-model-resolution"
+      ],
+      "output": "Timeline: docs/operational-value/proof/daily-model-resolution/reports/github-gh-aw/daily-model-resolution-timeline.json\nDefinitions: docs/operational-value/proof/daily-model-resolution/reports/github-gh-aw/daily-model-resolution-definitions.md\nInteractive pulse: docs/operational-value/proof/daily-model-resolution/reports/github-gh-aw/daily-model-resolution-pulse.html\nEvidence archive: docs/operational-value/proof/daily-model-resolution/reports/github-gh-aw/daily-model-resolution-evidence-archive.json\n",
+      "status": "passed"
+    }
+  ],
+  "lint": {
+    "status": "blocked",
+    "reason": "ESLint is not installed in this worktree; dependency installation is prohibited."
+  },
+  "typecheck": {
+    "status": "blocked",
+    "reason": "TypeScript is not installed. Owned plain ECMAScript files passed node --check, which is not a type-check."
+  },
+  "compile": {
+    "status": "not-run",
+    "reason": "Only evaluator-generated Markdown changed. No editable workflow source changed; offline scope forbids remote import acquisition or workflow execution."
+  },
+  "acquisition": "Only explicitly delivered central source packet read locally; no network requests made by this session."
+}

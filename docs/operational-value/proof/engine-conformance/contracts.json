@@ -1,0 +1,269 @@
+[
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-agy",
+    "engine": "agy",
+    "sourceGitBlob": "5a4de4070a9dda04c4007b68272e610659d7884d",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "agyModelSha256": "9dcda1fbc46c940e2c2cd5f3ae8a9298dc50bb2bb03ec94b8ad0e65c36a98dd7",
+    "adoption": {
+      "commit": "3e72578a67b636684a42cdb8438ed468f0c8a572",
+      "adoptedAt": "2026-10-08T16:21:36Z",
+      "baselineCommit": "697ea9ab42c78227a0bd17c854f50f2a215e43ba",
+      "baselineAt": "2026-10-08T15:50:54Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-aider",
+    "engine": "aider",
+    "sourceGitBlob": "94750d4a65309829fb31d5b0fd2a3921601898e6",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-claude",
+    "engine": "claude",
+    "sourceGitBlob": "9577880082c8e217f17bde865f1e25d99db93760",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-codex",
+    "engine": "codex",
+    "sourceGitBlob": "f2e5b61825073e70f387b9d9ac1f7003e0f54800",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-copilot",
+    "engine": "copilot",
+    "sourceGitBlob": "bc50789694feca00385ebd255ddf571341e5e1df",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-crush",
+    "engine": "crush",
+    "sourceGitBlob": "153e2bb36e50294536c0779aa373ee8f66876f39",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-cursor",
+    "engine": "cursor",
+    "sourceGitBlob": "83b55696d5f538d35de6edc23ed1365c6d62e55c",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-deepseek-harness",
+    "engine": "deepseek-harness",
+    "sourceGitBlob": "b0dcfbc252c52214d4282041719526ff8fb38a01",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-gemini",
+    "engine": "gemini",
+    "sourceGitBlob": "23c54044e1923f698c3e3b506868ef4fb3f9bd71",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-goose",
+    "engine": "goose",
+    "sourceGitBlob": "d97552fc83fa4104b7aac205b58c12245b0cc629",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-kiro",
+    "engine": "kiro",
+    "sourceGitBlob": "ecbfe51fd61c2e0ba4fa75d2f686c388b68c7e40",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-opencode",
+    "engine": "opencode",
+    "sourceGitBlob": "60d60aabbea1cc1929e27522281f09dac6bf5605",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-pi",
+    "engine": "pi",
+    "sourceGitBlob": "e41762a55e28b30d131cdcefdbd4defa1a3c5110",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "workflowId": "engine-conformance-pydantic-ai",
+    "engine": "pydantic-ai",
+    "sourceGitBlob": "43d0862fcccab79acc1aacbade2a2c7f09e507f8",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da",
+    "adoption": {
+      "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+      "adoptedAt": "2026-10-03T18:10:37Z",
+      "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+      "baselineAt": "2026-10-03T18:09:18Z"
+    },
+    "acceptedCheckerScripts": [
+      "e2b3c9bcd15201a0c28a4ed11aacf096cb0285d8a2136b8294a563ac9b8fcddd",
+      "95a5152fdd9fdf22e892d65cd9de8c34f565c608ee009045a03a2b258159a52a"
+    ]
+  }
+]

@@ -1,0 +1,21 @@
+import { nativeIssueConditionModule } from "../../../../scripts/native-issue-condition-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativeIssueConditionModule({
+  "workflowId": "issue-triage-agent",
+  "workflowName": "Issue Triage Agent",
+  "requireUnassigned": true,
+  "goal": "Categorize open unlabeled unassigned issues with appropriate allowed labels and an explanatory comment.",
+  "repository": "github/gh-aw",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "0e3ea2c8c9cebf9da6203db7fab212e901ab791d",
+  "until": "2026-10-18T15:00:12Z",
+  "acceptance": "Partial facet: count native first-label coverage gains minus last-label withdrawals on open unassigned issues. Replay historical eligibility, not current labels backdated. Classification correctness, component completeness, explanatory comments, workflow attribution and the whole-repository percentage target remain unmeasured.",
+  "adoption": {
+    "commit": "b5d1b90b2e1ab16c567d0838ee8824a7aa5ba6dc",
+    "adoptedAt": "2025-11-25T05:59:16Z",
+    "baselineCommit": "eec12e68e38a0496c9b6c296287a15d69fb80812",
+    "baselineAt": "2025-11-25T05:48:50Z"
+  },
+  "adoptionSourceSha256": "432af2f32dbd2ae8fe04c5c50ac2c9cbe29682b7cd317ca1a3f3e63fba032597",
+  "nativeModelSha256": "a2785a6d5cb432b84ae7a7a0b9c9c1f43ab45dd132a17df80e3064363f8e7735"
+});

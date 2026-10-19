@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "networkAcquisitionAuthorized": false,
+  "completedAcquisitionAuthorization": {
+    "scope": "Exactly two public immutable source blob GETs, serial with at least 1.5 seconds pacing",
+    "objects": ["df3ea140fda9a2e77f44426d64b58e7fd22b383e", "61296b06dd6643ed2f0ecedcb50b0e2ae7bfee83"],
+    "bothHttp200": true,
+    "slotReturned": true,
+    "additionalRequestsAuthorized": false
+  },
+  "requests": [
+    {
+      "id": "historical-import-and-compiled-closure",
+      "status": "complete-for-original-and-frozen-current-profiles",
+      "priority": 1,
+      "historicalRevision": "31dbf0d7997d44bd86983726e83b7ba3813eafac",
+      "objects": [
+        {
+          "path": ".github/workflows/shared/reporting.md",
+          "gitBlob": "df3ea140fda9a2e77f44426d64b58e7fd22b383e"
+        },
+        {
+          "path": ".github/workflows/blog-auditor.lock.yml",
+          "gitBlob": "61296b06dd6643ed2f0ecedcb50b0e2ae7bfee83"
+        }
+      ],
+      "required": [
+        "Original reporting import and compiled source before claiming original-source full closure",
+        "Intermediate historical source profiles if historical independent captures become available",
+        "Compiler/schema/toolchain identities bound to any actual historical native compiler results"
+      ],
+      "reason": "Full frozen current workflow, all eight recursive imports and compiled source are retained. Original source, reporting import and lock source were independently Git/SHA256 verified from coordinated approved acquisition; actual safe provider headers and complete original JSON responses are retained. Intermediate profiles remain conditional on historical native capture discovery."
+    },
+    {
+      "id": "independent-historical-page-and-snippet-observations",
+      "status": "blocked-pending-coordinated-acquisition",
+      "priority": 2,
+      "runIds": [
+        "31592844313",
+        "32248266707",
+        "32964188587",
+        "33624866771",
+        "34345827916",
+        "35090640542",
+        "37614815854",
+        "38557306226"
+      ],
+      "required": [
+        "Complete bounded run inventory through cutoff, not only runs linked by surviving outputs",
+        "Protected independent HTTP/browser response captures with redirect chain, timestamp and immutable payload digest",
+        "Complete page-derived snippet population and independently retained compiler results at pinned compiler revision",
+        "Authoritative producer/execution receipts where workflow-contribution attribution is claimed",
+        "Explicit unavailable/expired artifact and pagination records"
+      ],
+      "metadataEndpoints": [
+        "repos/github/gh-aw/actions/workflows/blog-auditor.lock.yml/runs?per_page=100&created=%3C2026-10-18T15%3A00%3A12Z",
+        "repos/github/gh-aw/actions/runs/{discovered-run-id}",
+        "repos/github/gh-aw/actions/runs/{discovered-run-id}/jobs?per_page=100",
+        "repos/github/gh-aw/actions/runs/{discovered-run-id}/artifacts?per_page=100"
+      ],
+      "acquisitionPlan": {
+        "approvalRequired": true,
+        "concurrency": 1,
+        "minSpacingMs": 1500,
+        "runCreatedAtStartInclusive": "2025-10-22T20:45:14Z",
+        "runCreatedAtEndExclusive": "2026-10-18T15:00:12Z",
+        "branchFilter": null,
+        "conclusionFilter": null,
+        "pagination": "Follow retained provider Link cursors to exhaustion for every authorized stage. Preserve pending cursors if any budget or quota boundary interrupts.",
+        "reuse": "Reuse digest-verified shared run/job/artifact responses; latest-run metadata already exists in seed census and must not be acquired twice.",
+        "downloadGate": "Only after source/job metadata establishes a protected independent browser/compiler producer. No raw agent prompt/log download by default. Do not execute historical workflow/application code.",
+        "acceptance": "Independently bound HTTP/accessibility/DOM payload and native compiler results at actual capture time, never a report assertion, overall job success or present-day page fetch.",
+        "quotaStop": "Stop immediately on 403, 429, Retry-After or zero actual resource remaining; retain actual safe response headers and cursor; no automatic reset retry."
+      },
+      "reason": "Run success, agent reports, issue closure and keywords alone cannot prove historical technical correctness. Present-day fetches cannot reconstruct past page state."
+    },
+    {
+      "id": "downstream-graph-native-follow-up",
+      "status": "blocked-pending-coordinated-acquisition",
+      "priority": 3,
+      "issueNumbers": [52282, 53979, 56015, 57921, 59707, 61335, 66536, 68676],
+      "relatedCandidateNumbers": [57951, 66560],
+      "metadataEndpoints": [
+        "repos/github/gh-aw/issues/{candidate-issue-number}/timeline?per_page=100",
+        "repos/github/gh-aw/pulls/57951",
+        "repos/github/gh-aw/pulls/66560"
+      ],
+      "required": [
+        "Authoritative graph edges and historical event ordering",
+        "Immutable before/after affected native content plus independent acceptance checks",
+        "Separate original workflow, router and downstream implementer provenance"
+      ],
+      "reason": "Complete surviving issue/PR inventory provides discovery candidates only; two body references do not prove native improvements."
+    },
+    {
+      "id": "discussion-output-discovery",
+      "status": "blocked-pending-coordinated-acquisition",
+      "priority": 2,
+      "transport": "GraphQL",
+      "endpoint": "graphql",
+      "queryShape": "repository(owner:\"github\",name:\"gh-aw\") { databaseId discussions(first:100,after:CURSOR,orderBy:{field:CREATED_AT,direction:ASC}) { nodes { id number url createdAt updatedAt category { name } } pageInfo { hasNextPage endCursor } } }",
+      "required": [
+        "Verify repository databaseId remains 1036865607",
+        "Retain stable Discussion IDs and creation timestamps before cutoff, exhaust cursor connection without Search truncation",
+        "Only separately authorized body/reference acquisition may discover workflow links; metadata is not acceptance",
+        "Document deleted/expired Discussions as non-reconstructable populations, not zero useful work"
+      ],
+      "reason": "Current workflow publishes one-day-expiring Discussions and closes older ones. The shared 58048-entity issue/PR archive cannot establish complete output or monitoring coverage."
+    }
+  ],
+  "readiness": {
+    "sourceAnalysis": true,
+    "frozenFunction": true,
+    "nativeMeasurement": false,
+    "evaluation": true,
+    "plotProjectionGenerated": true,
+    "nativePlot": false,
+    "discoveryInventory": true
+  }
+}

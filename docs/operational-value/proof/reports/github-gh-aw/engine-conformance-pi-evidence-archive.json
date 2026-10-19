@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "engine-conformance-pi",
+  "functions": {
+    "18d9758591336fed395ac6105b38bdd1bd340bf1c9079acfc60fe3522ca9a945": {
+      "valueFunctionSha256": "18d9758591336fed395ac6105b38bdd1bd340bf1c9079acfc60fe3522ca9a945",
+      "snapshots": [
+        {
+          "observedAt": "2026-10-18T15:00:12Z",
+          "window": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "evidence": {
+            "valid": true,
+            "coverageStatus": "complete",
+            "missingReason": null,
+            "assessments": [
+              {
+                "id": "39115727173:1",
+                "passed": [
+                  true,
+                  true,
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ],
+            "observedValid": true,
+            "observedAssessments": [
+              {
+                "id": "39115727173:1",
+                "passed": [
+                  true,
+                  true,
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ],
+            "observedReports": 1,
+            "observedRuns": 1,
+            "costs": "not-measured",
+            "limitation": "Stable core behavioral facet, not full staged-output/native-extension acceptance or exclusive workflow impact."
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "immutable-workflow-source",
+              "ref": "e41762a55e28b30d131cdcefdbd4defa1a3c5110"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "normalized-host-evidence-sha256",
+              "ref": "5479d0750edde4454e3511187bbd452c9dd5b9bd72963199c37439df25838ee6"
+            }
+          ],
+          "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+          "metrics": {
+            "core-conformance": 100,
+            "verified-probes": 5,
+            "observed-core-passes": 5
+          }
+        }
+      ]
+    }
+  }
+}

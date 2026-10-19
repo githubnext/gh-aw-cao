@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "smoke-workflow-call-with-inputs",
+  "status": "open-blocked",
+  "measured": false,
+  "functionSha256": "6fe4e138b5ac4aead27543d4c21d5e5c4898aef47814a7f04174bb431abf0eff",
+  "interpreterSha256": "ca547b87ad7cbc026dfca8eaec8da5e400dfc6600bf5d69cf09601f346cab4ee",
+  "receiptPrimitivesSha256": "1de84eb01373d7f499b6fcdb6685e89c273ff4de8ff12e390ff53c5f48522cc7",
+  "contractSha256": "c17ead1990ceeccbc75717c2a2709da406154bfe794a8520faee5d00be77a02f",
+  "sourceGitBlob": "08d153af00652b150838280e72700fcd9a3a36af",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourceReview": {
+    "adoption": {
+      "commit": "9e1a4f71fca4274be4caec23cfb09b40995fd7b5",
+      "adoptedAt": "2026-03-12T18:42:05Z",
+      "baselineCommit": "c2c5da01cf4ee4d61fd1e2dcc387800e8f626ff1",
+      "baselineAt": "2026-03-12T17:50:05Z"
+    },
+    "findings": [
+      "Actual source names a concurrent task-a/task-b plus dependent sequential task-c scenario, with three distinct task-description inputs.",
+      "At adoption, only task-description was declared; the current source adds the numeric task-count default of zero. Historical prefixes cannot be computed from current defaults.",
+      "The native namespace hashes the exact input serialization plus run attempt. Its fully inspected Bash parameter-default expression appends a literal closing brace for nonempty INPUTS_JSON; tests execute the original helper rather than guessing this preimage.",
+      "Initial and current compiled workflows differ in artifact families and consumers. No unreviewed historical source profile is accepted as current.",
+      "Noop host handling validates/logs a message but does not independently establish invocation input correctness or artifact isolation.",
+      "Current shared aic-usage-scan-v2 telemetry overwrites one unprefixed artifact; it is not evidence of invocation payload isolation.",
+      "Source history is retained as exact first-parent identities for the caller, callee and namespace helper; no historical runtime source compatibility was established without retained invocation receipts.",
+      "Original Actions referenced_workflows receipts independently identify 2,005 reusable merge-source executions, including 1,137 unresolved candidates, across 1,056 revisions. A PR head SHA is not substituted for that provider-pinned source. Identifying its immutable revision does not itself establish compatible source contents or correct artifacts."
+    ]
+  },
+  "acquisition": {
+    "discoveryComplete": true,
+    "logAcquisitionComplete": true,
+    "callerRuns": 2392,
+    "directRuns": 67,
+    "originalSkipped": 868,
+    "unresolvedCandidates": 1524,
+    "knownEligibleScenarios": 0,
+    "unresolvedEligibility": 1524,
+    "retainedArtifacts": 0,
+    "originalAttemptsWithReusableSourceReceipt": 2005,
+    "retainedJobRecords": 8,
+    "independentLogProbes": {
+      "excluded-skipped": 868,
+      "unavailable": 1524
+    },
+    "remainingRequests": 0
+  },
+  "evaluation": {
+    "snapshots": 33,
+    "primaryNonNull": 0,
+    "currentNativeValue": null,
+    "actualSignal": "No accepted artifact-isolation observation. Neither successful attainment, failure, zero native value nor a trend is established.",
+    "decision": {
+      "status": "not-rated",
+      "reason": "No agreed native keep bar and review duration.",
+      "policy": null
+    },
+    "causation": "not-measured",
+    "costs": "not-measured"
+  },
+  "blockers": [
+    "Original-attempt log acquisition is now complete. Provider HTTP 404 responses are retained as missing evidence, not as zero attainment or proof that no invocation existed.",
+    "All 1,524 non-skipped original-attempt candidates have empty provider artifact inventories; contents, provider payload digests and per-invocation names cannot currently be verified.",
+    "Only eight unrelated result-check job records are retained, across six runs. Empty/mismatched jobs are missing source-bound execution evidence, not proof that a scenario was ineligible.",
+    "Provider-referenced merge-source revisions are preserved, but their full source compatibility plus input/prefix, payload and protected consumer binding remain unverified. The producer has not interpreted a real artifact payload and must not be advertised as a production-ready positive-outcome decoder."
+  ],
+  "validation": {
+    "focusedTests": 9,
+    "nativeHashOnlyProbes": 6,
+    "collectorVerification": "passed",
+    "eslint": "passed",
+    "caoTypecheck": "passed",
+    "strictWorkflowCompile": "72 succeeded, 2 pre-existing action-version warnings"
+  },
+  "registration": {
+    "workflowId": "smoke-workflow-call-with-inputs",
+    "function": "docs/operational-value/proof/functions/smoke-workflow-call-with-inputs.mjs",
+    "contract": "docs/operational-value/proof/reusable-artifact/contract.json",
+    "index": "docs/operational-value/proof/reusable-artifact/index.json",
+    "timeline": "docs/operational-value/proof/reusable-artifact/final-reports/github-gh-aw/smoke-workflow-call-with-inputs-timeline.json",
+    "plot": "docs/operational-value/proof/reusable-artifact/final-reports/github-gh-aw/smoke-workflow-call-with-inputs-pulse.html",
+    "primaryMetric": "verified-scenarios",
+    "provenanceKind": "reusable-artifact-isolation-index",
+    "evidenceReadinessGuard": "index.discoveryComplete && index.acquisitionComplete && index.outcomeEvidenceReady && timeline.snapshots.some(s => s.metrics['verified-scenarios'] !== null)",
+    "currentGuard": false,
+    "portfolioDisposition": "open-blocked; exclude from measured coverage"
+  },
+  "skillLessons": [
+    "Partition Actions discovery by bounded date ranges below the 1,000-result ceiling, then exhaust every page and reconcile totals.",
+    "Retrieve attempt 1 for rerun identities before classifying skipped or executed opportunities.",
+    "Empty historical job/artifact inventories are not evidence that no opportunity ever existed; preserve unresolved eligibility separately.",
+    "Model native shell serialization exactly with inspected hash-only probes. Input defaults and serialization are source-profile facts, not JSON convenience assumptions.",
+    "Coordinate a shared provider quota centrally; persist exact endpoint-to-cache manifests and remaining requests before pausing acquisition.",
+    "A gap-only plot and fixture-tested scorer do not establish measurement; require actual receipt readiness and distinguish an unimplemented positive decoder.",
+    "Check original-attempt referenced_workflows metadata before declaring reusable PR source identity unavailable. Its immutable merge SHA may differ from head_sha; still verify the actual source profile before accepting outcomes."
+  ]
+}

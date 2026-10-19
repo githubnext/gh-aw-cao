@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflow": "daily-yamllint-fixer",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "667408c131c48c4d3b51720ba32787b93d7e30ba",
+  "adoptionGitBlob": "a24e2aa3be10f717b212ab9ba5949bfa706939f8",
+  "baseline": "c38906bb3fd04ab5bb9d8e0c41ea3f18470d8157",
+  "adoptionVerified": true,
+  "adoptionParent": "c38906bb3fd04ab5bb9d8e0c41ea3f18470d8157",
+  "sourceParentAbsent": true,
+  "commits": 331,
+  "blobs": 329,
+  "bytes": 49453904,
+  "paths": [
+    ".github/workflows/daily-yamllint-fixer.lock.yml"
+  ],
+  "parserVersion": "10.4.0",
+  "oracleSha256": "75ff591735266914f799b6bb49e484ea8b3a291d37089b5a603c936666e913b1",
+  "collectorSha256": "f059a5d0f39b292066bc6d95f2d0645af8d5fd0f0c5ba4e0b001e9789c2c208a",
+  "partitions": [
+    {
+      "file": "native-001.json.gz",
+      "sha256": "0b0ed2da4494235c202196b5ecd1e56cbd18e072835e7f966b757db8eb827fef",
+      "rows": 200
+    },
+    {
+      "file": "native-002.json.gz",
+      "sha256": "95f2aa25ac30332150447c43ad5507af4df3498eabc77bb79cdf0b5b31c612d7",
+      "rows": 131
+    }
+  ]
+}

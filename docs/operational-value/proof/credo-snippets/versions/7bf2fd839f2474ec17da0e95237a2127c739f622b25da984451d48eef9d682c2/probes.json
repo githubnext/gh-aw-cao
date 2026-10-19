@@ -1,0 +1,131 @@
+{
+  "synthetic": true,
+  "neverRepositoryOutcomes": true,
+  "probes": [
+    {
+      "name": "clean-expression",
+      "language": "elixir",
+      "content": "IO.puts(:ok)\n",
+      "expected": 0,
+      "result": {
+        "status": "checked",
+        "strict": true,
+        "otp": "27",
+        "elixir": "1.17.3",
+        "credo": "1.7.12",
+        "contentSha256": "06dddae7de68499d789afb2b29874f205f000cb4c3cf1eddd5c475811de7867f",
+        "diagnostics": 0,
+        "nativeExitStatus": 0,
+        "checks": [],
+        "checkedFiles": 1,
+        "stdoutSha256": "0ed510b46fdffd01d03e3673a44fca2507927ef5617d81903fae6ed3f6a59d95"
+      }
+    },
+    {
+      "name": "native-warning",
+      "language": "elixir",
+      "content": "IO.inspect(:ok)\n",
+      "expected": 1,
+      "result": {
+        "status": "checked",
+        "strict": true,
+        "otp": "27",
+        "elixir": "1.17.3",
+        "credo": "1.7.12",
+        "contentSha256": "923156c283fcd2eec501f05b84144ea1d98fd55ef17f8ca03f9726e70a35d4fd",
+        "diagnostics": 1,
+        "nativeExitStatus": 16,
+        "checks": [
+          "Elixir.Credo.Check.Warning.IoInspect"
+        ],
+        "checkedFiles": 1,
+        "stdoutSha256": "ab3bbfff6d69c8c7409947a7b9618aab2c3e7a1008e6d34e38b0eb2007365757"
+      }
+    },
+    {
+      "name": "native-name",
+      "language": "elixir",
+      "content": "defmodule Demo do\n  def badName, do: :ok\nend\n",
+      "expected": 1,
+      "result": {
+        "status": "checked",
+        "strict": true,
+        "otp": "27",
+        "elixir": "1.17.3",
+        "credo": "1.7.12",
+        "contentSha256": "145ae5cc2002b17b1810a23482f50c86bd8c5f3f03530de6b37993b10c7026c3",
+        "diagnostics": 1,
+        "nativeExitStatus": 4,
+        "checks": [
+          "Elixir.Credo.Check.Readability.FunctionNames"
+        ],
+        "checkedFiles": 1,
+        "stdoutSha256": "d943cbc91955539d027720c5a2e6c3aaafece71ba47b31f1b387ec93a2e7bd9e"
+      }
+    },
+    {
+      "name": "invalid",
+      "language": "elixir",
+      "content": "defmodule Demo do\n",
+      "expected": null,
+      "result": {
+        "status": "invalid-syntax",
+        "contentSha256": "87976450026d451068f983b2900a5c5a4fb3e0ef807a0737e72323ab44115ab1",
+        "diagnostics": null,
+        "stdoutSha256": "3e4db16babdbc4a23a47293d55fee4909b74497076719fc54a341753bb28291f"
+      }
+    },
+    {
+      "name": "interactive",
+      "language": "iex",
+      "content": "iex> IO.puts(:ok)\n",
+      "expected": null,
+      "result": {
+        "status": "uncheckable-context",
+        "contentSha256": "a899b5dab9d3c39b4852507d302901bd8355d53dd8f4b8c357b1e02599304b6f",
+        "diagnostics": null
+      }
+    },
+    {
+      "name": "waiver",
+      "language": "elixir",
+      "content": "# credo:disable-for-this-file\nIO.inspect(:ok)\n",
+      "expected": null,
+      "result": {
+        "status": "suppressed-context",
+        "contentSha256": "19e9a1874285a64c7f7030eb3f6bb5380670e57f69103543b50648ff6c9d9a97",
+        "diagnostics": null
+      }
+    },
+    {
+      "name": "empty",
+      "language": "elixir",
+      "content": "",
+      "expected": null,
+      "result": {
+        "status": "uncheckable-context",
+        "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "diagnostics": null
+      }
+    },
+    {
+      "name": "not-executed",
+      "language": "elixir",
+      "content": "raise \"must never execute source\"\n",
+      "expected": 0,
+      "result": {
+        "status": "checked",
+        "strict": true,
+        "otp": "27",
+        "elixir": "1.17.3",
+        "credo": "1.7.12",
+        "contentSha256": "46353f4148efebbdaaa682ad4e17a2b49d0b132cda097508f312e471397a924a",
+        "diagnostics": 0,
+        "nativeExitStatus": 0,
+        "checks": [],
+        "checkedFiles": 1,
+        "stdoutSha256": "202936ca967e2b9c88b63e3b859d27b7c50d1ec8e836c74aa6165b9dd8607190"
+      }
+    }
+  ]
+}

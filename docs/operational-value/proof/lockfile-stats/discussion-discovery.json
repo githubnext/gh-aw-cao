@@ -1,0 +1,66 @@
+{
+  "repository": "github/gh-aw",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "searchComplete": true,
+  "searchResults": 8,
+  "excludedAfterCutoff": 1,
+  "retained": [
+    {
+      "number": 69779,
+      "title": "[lockfile-stats] Lockfile Statistics Audit — 2026-10-17",
+      "createdAt": "2026-10-17T20:28:07Z",
+      "updatedAt": "2026-10-18T20:27:08Z",
+      "url": "https://github.com/github/gh-aw/discussions/69779"
+    },
+    {
+      "number": 69480,
+      "title": "[lockfile-stats] Lockfile Statistics Report — 2026-10-16",
+      "createdAt": "2026-10-16T20:29:31Z",
+      "updatedAt": "2026-10-17T20:28:09Z",
+      "url": "https://github.com/github/gh-aw/discussions/69480"
+    },
+    {
+      "number": 69101,
+      "title": "[lockfile-stats] Lockfile Statistics Report — 2026-10-15",
+      "createdAt": "2026-10-15T20:27:33Z",
+      "updatedAt": "2026-10-16T20:29:33Z",
+      "url": "https://github.com/github/gh-aw/discussions/69101"
+    },
+    {
+      "number": 68822,
+      "title": "[lockfile-stats] Lockfile Statistics Audit — 2026-10-14",
+      "createdAt": "2026-10-14T20:27:36Z",
+      "updatedAt": "2026-10-15T20:27:35Z",
+      "url": "https://github.com/github/gh-aw/discussions/68822"
+    },
+    {
+      "number": 68530,
+      "title": "[lockfile-stats] Lockfile Statistics Audit — 2026-10-13",
+      "createdAt": "2026-10-13T20:30:57Z",
+      "updatedAt": "2026-10-14T20:27:38Z",
+      "url": "https://github.com/github/gh-aw/discussions/68530"
+    },
+    {
+      "number": 67778,
+      "title": "[lockfile-stats] Lockfile Statistics Report — 2026-10-11",
+      "createdAt": "2026-10-11T20:33:03Z",
+      "updatedAt": "2026-10-12T20:49:11Z",
+      "url": "https://github.com/github/gh-aw/discussions/67778"
+    },
+    {
+      "number": 68116,
+      "title": "[lockfile-stats] Lockfile Statistics Report — 2026-10-12 (338 workflows)",
+      "createdAt": "2026-10-12T20:31:53Z",
+      "updatedAt": "2026-10-13T20:31:02Z",
+      "url": "https://github.com/github/gh-aw/discussions/68116"
+    }
+  ],
+  "baselineProbe": {
+    "discussionCount": 0,
+    "pageInfo": {
+      "hasNextPage": false
+    },
+    "nodes": []
+  },
+  "role": "Discovery only. Mutable bodies/footers and post-cutoff edits do not prove historical numeric accuracy or original creation."
+}

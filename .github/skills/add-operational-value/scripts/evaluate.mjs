@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 
 import {
-  copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync,
+  copyFileSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import { writeJsonArchive } from "./json-archive.mjs";
 import {
-  deepEqual, fail, importValueModule, isIsoUtc, nowUtc, readJson, repoRoot, run, runJson,
+  deepEqual, fail, importValueModule, isIsoUtc, nowUtc, observationWindows, readJson, repoRoot, run, runJson,
   scriptDir, sha256File, shiftDays, writeJson,
 } from "./common.mjs";
 
 function usage() {
-  return "usage: evaluate.mjs [--end ISO-8601] [--output-dir DIR] [--function PATH] [--campaign SLUG] [--no-runs] [--refresh] OWNER/REPO WORKFLOW-NAME-OR-PATH";
+  return "usage: evaluate.mjs [--root DIR] [--end ISO-8601] [--output-dir DIR] [--function PATH] [--campaign SLUG] [--runs|--no-runs] [--refresh] OWNER/REPO NAME-OR-PATH";
 }
 
 const args = process.argv.slice(2);
@@ -18,8 +19,9 @@ let endAt = nowUtc();
 let outputRoot = "docs/operational-value/reports";
 let valueFunction;
 let campaign;
-let collectRuns = true;
+let collectRuns = false;
 let refresh = false;
+let root = repoRoot;
 while (args[0]?.startsWith("-")) {
   const option = args.shift();
   if (option === "--end") endAt = args.shift() ?? fail("--end requires an ISO-8601 timestamp");
@@ -27,7 +29,9 @@ while (args[0]?.startsWith("-")) {
   else if (option === "--function") valueFunction = args.shift() ?? fail("--function requires a path");
   else if (option === "--campaign") campaign = args.shift() ?? fail("--campaign requires a slug");
   else if (option === "--no-runs") collectRuns = false;
+  else if (option === "--runs") collectRuns = true;
   else if (option === "--refresh") refresh = true;
+  else if (option === "--root") root = path.resolve(args.shift() ?? fail("--root requires a directory"));
   else if (["-h", "--help"].includes(option)) {
     console.log(usage());
     process.exit(0);
@@ -37,12 +41,17 @@ if (args.length !== 2) fail(usage());
 const [repository, workflowInput] = args;
 const workflowSlug = path.basename(workflowInput, ".md");
 if (campaign && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaign)) fail("--campaign requires a valid campaign slug");
-process.chdir(repoRoot);
+process.chdir(root);
 const canonicalFunction = run(
   path.join(scriptDir, "value-function-path.mjs"),
   [repository, workflowSlug, ...(campaign ? [campaign] : [])],
 ).trim();
 valueFunction ??= canonicalFunction;
+// Preserve the old noncampaign layout without moving existing definitions.
+if (!existsSync(valueFunction) && !campaign && valueFunction === canonicalFunction) {
+  const legacyFunction = `${workflowSlug}/operational-value/${workflowSlug}.mjs`;
+  if (existsSync(legacyFunction)) valueFunction = legacyFunction;
+}
 if (!existsSync(valueFunction)) fail(`value function not found: ${valueFunction}`);
 if (!isIsoUtc(endAt)) fail("--end must use UTC ISO-8601 format: YYYY-MM-DDTHH:MM:SSZ");
 
@@ -50,15 +59,22 @@ const repositoryKey = repository.toLowerCase().replace("/", "-");
 const reportDir = path.join(outputRoot, repositoryKey);
 const finalTimeline = path.join(reportDir, `${workflowSlug}-timeline.json`);
 const finalDefinitions = path.join(reportDir, `${workflowSlug}-definitions.md`);
-const evidenceArchive = path.join(reportDir, `${workflowSlug}-evidence-archive.json`);
+const finalPulse = path.join(reportDir, `${workflowSlug}-pulse.html`);
+const archiveBase = path.join(reportDir, `${workflowSlug}-evidence-archive.json`);
+let evidenceArchive = existsSync(`${archiveBase}.gz`) ? `${archiveBase}.gz` : archiveBase;
 run(path.join(scriptDir, "verify-value-function.mjs"), [valueFunction]);
 const valueModule = await importValueModule(valueFunction);
 const definition = valueModule.definition;
 if (definition.repository.toLowerCase() !== repository.toLowerCase() || definition.slug !== workflowSlug) {
   fail(`value function does not match ${repository} ${workflowSlug}`);
 }
+if (collectRuns && (!/^\.github\/workflows\/[^/]+\.(?:md|ya?ml)$/.test(definition.sourcePath)
+  || definition.intent?.temporalAnchor === "contract-activation")) {
+  fail("--runs requires a workflow source and workflow-adoption context");
+}
 
 const mode = definition.evaluation?.mode ?? "baseline-comparable";
+const activation = definition.intent?.temporalAnchor === "contract-activation";
 const preAdoptionPeriods = mode === "attainment-only" ? 0 : 3;
 const startAt = mode === "attainment-only"
   ? definition.adoption.adoptedAt
@@ -70,9 +86,11 @@ if (existsSync(evidenceArchive)) {
   try {
     const candidate = readJson(evidenceArchive);
     if (candidate.schemaVersion === 1 && candidate.repository.toLowerCase() === repository.toLowerCase()
-        && candidate.workflowSlug === workflowSlug) archive = candidate;
-  } catch {
-    // An invalid cache is ignored and replaced only after successful collection.
+        && candidate.workflowSlug === workflowSlug && candidate.functions
+        && typeof candidate.functions === "object" && !Array.isArray(candidate.functions)) archive = candidate;
+    else fail("preserved evidence archive has an invalid schema or scope");
+  } catch (error) {
+    fail(`cannot read preserved evidence archive: ${error.message}`);
   }
 }
 const archived = archive.functions?.[initialSha]?.snapshots ?? [];
@@ -90,49 +108,11 @@ if (!refresh && existsSync(finalTimeline)) {
     // An invalid report is not a cache hit.
   }
 }
-const cadenceMs = definition.evidence.window.cadenceDays * 86_400_000;
-const scheduled = [];
-const firstScheduledAt = mode === "attainment-only"
-  ? Date.parse(startAt) + cadenceMs
-  : Date.parse(startAt);
-for (let at = firstScheduledAt; at <= Date.parse(endAt); at += cadenceMs) {
-  scheduled.push(new Date(at).toISOString().replace(".000Z", "Z"));
-}
-if (scheduled.at(-1) !== endAt) scheduled.push(endAt);
-const observationTimes = [...new Set([
-  ...scheduled,
-  ...(mode === "baseline-comparable" && definition.adoption.baselineAt
-    ? [definition.adoption.baselineAt]
-    : []),
-  ...archived.map(({ observedAt }) => observedAt)
-    .filter((value) => Date.parse(value) <= Date.parse(endAt)
-      && (mode !== "attainment-only" || Date.parse(value) > Date.parse(startAt))),
-  ...priorSnapshots.map(({ observedAt }) => observedAt)
-    .filter((value) => Date.parse(value) <= Date.parse(endAt)
-      && (mode !== "attainment-only" || Date.parse(value) > Date.parse(startAt))),
-])].toSorted((left, right) => Date.parse(left) - Date.parse(right));
-const windows = observationTimes.map((observedAt) => {
-  const firstMatureAt = shiftDays(
-    definition.adoption.adoptedAt,
-    definition.evidence.window.durationDays + definition.evidence.window.maturationDays,
-  );
-  const interim = mode === "attainment-only"
-    && Date.parse(observedAt) < Date.parse(firstMatureAt);
-  const windowEnd = interim
-    ? observedAt
-    : shiftDays(observedAt, -definition.evidence.window.maturationDays);
-  return {
-    observedAt,
-    windowStart: interim
-      ? definition.adoption.adoptedAt
-      : shiftDays(windowEnd, -definition.evidence.window.durationDays),
-    windowEnd,
-  };
-});
+const windows = observationWindows(definition, startAt, endAt, [...archived, ...priorSnapshots]);
 const keyFor = ({ observedAt, windowStart, windowEnd, window }) => [
   observedAt, windowStart ?? window.startAt, windowEnd ?? window.endAt,
 ].join("|");
-const cache = new Map([...archived, ...priorSnapshots].map((snapshot) => [keyFor(snapshot), {
+const cache = new Map((refresh ? [] : [...archived, ...priorSnapshots]).map((snapshot) => [keyFor(snapshot), {
   evidence: snapshot.evidence,
   provenance: snapshot.provenance,
   ...(snapshot.commit ? { commit: snapshot.commit } : {}),
@@ -187,8 +167,21 @@ if (collectRuns) {
   }
 }
 
-const work = mkdtempSync(path.join(repoRoot, ".aw-value-evaluate."));
+const work = mkdtempSync(path.join(root, ".aw-value-evaluate."));
 try {
+  const postAdoption = snapshots.filter(snapshot => Date.parse(snapshot.window.startAt) >= Date.parse(definition.adoption.adoptedAt));
+  const primaryId = definition.metrics.find(metric => metric.role === "primary").id;
+  const continuous = definition.evidence.measurementKind !== "interval"
+    || postAdoption.length > 0
+      && Date.parse(postAdoption[0].window.startAt) === Date.parse(definition.adoption.adoptedAt)
+      && Date.parse(postAdoption.at(-1).window.endAt)
+        === Date.parse(shiftDays(endAt, -definition.evidence.window.maturationDays))
+      && postAdoption.every((snapshot, index) => !index
+        || Date.parse(postAdoption[index - 1].window.endAt) === Date.parse(snapshot.window.startAt));
+  const completeFromAdoption = continuous && postAdoption.length > 0 && postAdoption.every(snapshot =>
+    valueModule.scoreMetric(primaryId, snapshot.evidence) !== null
+      && Date.parse(snapshot.observedAt) >= Date.parse(shiftDays(snapshot.window.endAt, definition.evidence.window.maturationDays))
+      && !["missing", "partial", "unknown"].includes(snapshot.evidence.coverageStatus));
   const observations = path.join(work, "observations.json");
   writeFileSync(observations, writeJson({
     generatedAt: nowUtc(),
@@ -198,30 +191,39 @@ try {
     evaluationMode: mode,
     window: { startAt, endAt },
     evidenceCoverage: {
-      completeFromAdoption: true,
+      completeFromAdoption,
       hasPreAdoptionBaseline: preAdoptionPeriods > 0,
       baselineDescription: mode === "attainment-only"
-        ? "No comparable pre-adoption baseline is available; observations begin at adoption."
+        ? activation
+          ? "No historical reference has been established; observations begin at contract activation."
+          : "No pre-adoption comparison is included; observations begin at adoption."
         : `${preAdoptionPeriods} cadence-aligned observations precede adoption. The adoption commit first parent is ${definition.adoption.baselineCommit ?? "unavailable"}.`,
-      reason: mode === "attainment-only" ? "Comparable historical outcome evidence cannot be reconstructed." : null,
+      reason: mode === "attainment-only"
+        ? activation ? "Prospective goal contract without an established historical reference."
+          : "No comparable pre-adoption outcome evaluation is established for this contract."
+        : null,
     },
     snapshots,
     runs,
-    caveat: mode === "attainment-only"
+    caveat: activation
+      ? "The evidence measures repository outcomes against a frozen goal, not the causal impact of an agent or contract activation."
+      : mode === "attainment-only"
       ? "The evidence measures post-adoption attainment only; without a comparable pre-adoption baseline it cannot establish improvement or causation."
       : "The evidence is observational and does not establish that workflow adoption caused an outcome change.",
   }));
   const timeline = path.join(work, `${workflowSlug}-timeline.json`);
   const definitions = path.join(work, `${workflowSlug}-definitions.md`);
+  const pulse = path.join(work, `${workflowSlug}-pulse.html`);
   run(path.join(scriptDir, "build-timeline.mjs"), [valueFunction, observations, timeline]);
   run(path.join(scriptDir, "render-definitions.mjs"), [timeline, definitions]);
   run(path.join(scriptDir, "validate-report-artifacts.mjs"), [timeline, definitions]);
+  run(path.join(scriptDir, "render-pulse.mjs"), [timeline, pulse]);
   if (sha256File(valueFunction) !== initialSha) fail("value function changed during deterministic evaluation");
 
   const builtTimeline = readJson(timeline);
-  const primary = definition.metrics.find(({ role }) => role === "primary").id;
   const previous = archive.functions?.[initialSha]?.snapshots ?? [];
-  const combined = [...previous, ...builtTimeline.snapshots.filter((snapshot) => snapshot.metrics[primary] !== null)];
+  const combined = [...previous, ...builtTimeline.snapshots.filter((snapshot) =>
+    definition.metrics.some(metric => snapshot.metrics[metric.id] !== null))];
   const unique = new Map(combined.map((snapshot) => [keyFor(snapshot), snapshot]));
   const currentSnapshots = [...unique.values()];
   const currentByKey = new Map(currentSnapshots.map((snapshot) => [keyFor(snapshot), snapshot]));
@@ -244,19 +246,32 @@ try {
       [initialSha]: { valueFunctionSha256: initialSha, snapshots: currentSnapshots },
     },
   };
-  const archiveOutput = path.join(work, `${workflowSlug}-evidence-archive.json`);
-  writeFileSync(archiveOutput, writeJson(archive));
+  const archiveJson = writeJson(archive, 0);
+  const compressArchive = Buffer.byteLength(archiveJson) > 256 * 1024;
+  const archiveOutput = path.join(work, `${workflowSlug}-evidence-archive.json${compressArchive ? ".gz" : ""}`);
+  const archiveFiles = writeJsonArchive(archiveOutput, archive, {
+    spacing: 0, gzipLevel: 9, maxDecodedBytes: 64 * 1024 * 1024, maxParts: 512,
+  });
+  const timelineFiles = writeJsonArchive(timeline, builtTimeline, {
+    spacing: 0, maxDecodedBytes: 64 * 1024 * 1024, maxParts: 512,
+  });
+  const previousArchive = evidenceArchive;
+  evidenceArchive = `${archiveBase}${compressArchive ? ".gz" : ""}`;
   mkdirSync(reportDir, { recursive: true });
   for (const [source, destination] of [
-    [timeline, finalTimeline],
+    ...timelineFiles.map(file => [file, path.join(reportDir, path.basename(file))]),
     [definitions, finalDefinitions],
-    [archiveOutput, evidenceArchive],
+    [pulse, finalPulse],
+    [pulse.replace(/\.html$/, ".json"), finalPulse.replace(/\.html$/, ".json")],
+    ...archiveFiles.map(file => [file, path.join(reportDir, path.basename(file))]),
   ]) {
     copyFileSync(source, destination);
   }
+  if (previousArchive !== evidenceArchive && existsSync(previousArchive)) rmSync(previousArchive);
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
 console.log(`Timeline: ${finalTimeline}`);
 console.log(`Definitions: ${finalDefinitions}`);
+console.log(`Interactive pulse: ${finalPulse}`);
 console.log(`Evidence archive: ${evidenceArchive}`);

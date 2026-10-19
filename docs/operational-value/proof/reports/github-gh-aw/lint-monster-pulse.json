@@ -1,0 +1,616 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "lint-monster",
+  "workflowName": "LintMonster",
+  "sourcePath": ".github/workflows/lint-monster.md",
+  "valueFunctionSha256": "6cd9f9fe67189cbd0d6bcfcc28116e9ba4a0e5ae5ae6e65990d1abaf5573fca7",
+  "window": {
+    "startAt": "2026-05-16T19:21:56Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-06-01T00:00:00.000Z",
+      "label": "Jun 2026"
+    },
+    {
+      "at": "2026-07-01T00:00:00.000Z",
+      "label": "Jul 2026"
+    },
+    {
+      "at": "2026-08-01T00:00:00.000Z",
+      "label": "Aug 2026"
+    },
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "overlong-bodies",
+  "signal": {
+    "status": "improving",
+    "attention": "not-indicated",
+    "current": 539,
+    "previous": 550,
+    "directionAwareGain": 11,
+    "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+    "opportunities": 12608,
+    "metricId": "overlong-bodies",
+    "basis": "repository-outcome",
+    "unit": "functions"
+  },
+  "metrics": [
+    {
+      "id": "overlong-bodies",
+      "role": "primary",
+      "name": "Overlength Go function bodies",
+      "formula": "Count non-generated Go declaration/literal bodies with closing-brace line minus opening-brace line minus one greater than 60, regardless of suppression.",
+      "unit": "functions",
+      "direction": "decrease",
+      "presentation": {
+        "name": "Overlength Go function bodies",
+        "legendLabel": "Overlength bodies",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "improving",
+        "attention": "not-indicated",
+        "current": 539,
+        "previous": 550,
+        "directionAwareGain": 11,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 12608
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-05-23T19:21:56Z",
+          "value": 672,
+          "status": "complete",
+          "observedAt": "2026-05-23T19:21:56Z"
+        },
+        {
+          "at": "2026-05-30T19:21:56Z",
+          "value": 652,
+          "status": "complete",
+          "observedAt": "2026-05-30T19:21:56Z"
+        },
+        {
+          "at": "2026-06-06T19:21:56Z",
+          "value": 638,
+          "status": "complete",
+          "observedAt": "2026-06-06T19:21:56Z"
+        },
+        {
+          "at": "2026-06-13T19:21:56Z",
+          "value": 652,
+          "status": "complete",
+          "observedAt": "2026-06-13T19:21:56Z"
+        },
+        {
+          "at": "2026-06-20T19:21:56Z",
+          "value": 666,
+          "status": "complete",
+          "observedAt": "2026-06-20T19:21:56Z"
+        },
+        {
+          "at": "2026-06-27T19:21:56Z",
+          "value": 659,
+          "status": "complete",
+          "observedAt": "2026-06-27T19:21:56Z"
+        },
+        {
+          "at": "2026-07-04T19:21:56Z",
+          "value": 664,
+          "status": "complete",
+          "observedAt": "2026-07-04T19:21:56Z"
+        },
+        {
+          "at": "2026-07-11T19:21:56Z",
+          "value": 680,
+          "status": "complete",
+          "observedAt": "2026-07-11T19:21:56Z"
+        },
+        {
+          "at": "2026-07-18T19:21:56Z",
+          "value": 711,
+          "status": "complete",
+          "observedAt": "2026-07-18T19:21:56Z"
+        },
+        {
+          "at": "2026-07-25T19:21:56Z",
+          "value": 670,
+          "status": "complete",
+          "observedAt": "2026-07-25T19:21:56Z"
+        },
+        {
+          "at": "2026-08-01T19:21:56Z",
+          "value": 686,
+          "status": "complete",
+          "observedAt": "2026-08-01T19:21:56Z"
+        },
+        {
+          "at": "2026-08-08T19:21:56Z",
+          "value": 681,
+          "status": "complete",
+          "observedAt": "2026-08-08T19:21:56Z"
+        },
+        {
+          "at": "2026-08-15T19:21:56Z",
+          "value": 681,
+          "status": "complete",
+          "observedAt": "2026-08-15T19:21:56Z"
+        },
+        {
+          "at": "2026-08-22T19:21:56Z",
+          "value": 675,
+          "status": "complete",
+          "observedAt": "2026-08-22T19:21:56Z"
+        },
+        {
+          "at": "2026-08-29T19:21:56Z",
+          "value": 646,
+          "status": "complete",
+          "observedAt": "2026-08-29T19:21:56Z"
+        },
+        {
+          "at": "2026-09-05T19:21:56Z",
+          "value": 632,
+          "status": "complete",
+          "observedAt": "2026-09-05T19:21:56Z"
+        },
+        {
+          "at": "2026-09-12T19:21:56Z",
+          "value": 620,
+          "status": "complete",
+          "observedAt": "2026-09-12T19:21:56Z"
+        },
+        {
+          "at": "2026-09-19T19:21:56Z",
+          "value": 602,
+          "status": "complete",
+          "observedAt": "2026-09-19T19:21:56Z"
+        },
+        {
+          "at": "2026-09-26T19:21:56Z",
+          "value": 596,
+          "status": "complete",
+          "observedAt": "2026-09-26T19:21:56Z"
+        },
+        {
+          "at": "2026-10-03T19:21:56Z",
+          "value": 586,
+          "status": "complete",
+          "observedAt": "2026-10-03T19:21:56Z"
+        },
+        {
+          "at": "2026-10-10T19:21:56Z",
+          "value": 563,
+          "status": "complete",
+          "observedAt": "2026-10-10T19:21:56Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 550,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-17T19:21:56Z",
+          "value": 539,
+          "status": "complete",
+          "observedAt": "2026-10-17T19:21:56Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 539,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "unsuppressed-bodies",
+      "role": "diagnostic",
+      "name": "Unsuppressed overlength bodies",
+      "formula": "The same native bodies without a same-line or previous-line largefunc/all suppression.",
+      "unit": "functions",
+      "direction": "decrease",
+      "presentation": {
+        "name": "Unsuppressed overlength bodies",
+        "legendLabel": "Unsuppressed bodies",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "improving",
+        "attention": "not-indicated",
+        "current": 404,
+        "previous": 421,
+        "directionAwareGain": 17,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 12608
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-05-23T19:21:56Z",
+          "value": 672,
+          "status": "complete",
+          "observedAt": "2026-05-23T19:21:56Z"
+        },
+        {
+          "at": "2026-05-30T19:21:56Z",
+          "value": 652,
+          "status": "complete",
+          "observedAt": "2026-05-30T19:21:56Z"
+        },
+        {
+          "at": "2026-06-06T19:21:56Z",
+          "value": 638,
+          "status": "complete",
+          "observedAt": "2026-06-06T19:21:56Z"
+        },
+        {
+          "at": "2026-06-13T19:21:56Z",
+          "value": 652,
+          "status": "complete",
+          "observedAt": "2026-06-13T19:21:56Z"
+        },
+        {
+          "at": "2026-06-20T19:21:56Z",
+          "value": 666,
+          "status": "complete",
+          "observedAt": "2026-06-20T19:21:56Z"
+        },
+        {
+          "at": "2026-06-27T19:21:56Z",
+          "value": 659,
+          "status": "complete",
+          "observedAt": "2026-06-27T19:21:56Z"
+        },
+        {
+          "at": "2026-07-04T19:21:56Z",
+          "value": 664,
+          "status": "complete",
+          "observedAt": "2026-07-04T19:21:56Z"
+        },
+        {
+          "at": "2026-07-11T19:21:56Z",
+          "value": 680,
+          "status": "complete",
+          "observedAt": "2026-07-11T19:21:56Z"
+        },
+        {
+          "at": "2026-07-18T19:21:56Z",
+          "value": 711,
+          "status": "complete",
+          "observedAt": "2026-07-18T19:21:56Z"
+        },
+        {
+          "at": "2026-07-25T19:21:56Z",
+          "value": 670,
+          "status": "complete",
+          "observedAt": "2026-07-25T19:21:56Z"
+        },
+        {
+          "at": "2026-08-01T19:21:56Z",
+          "value": 686,
+          "status": "complete",
+          "observedAt": "2026-08-01T19:21:56Z"
+        },
+        {
+          "at": "2026-08-08T19:21:56Z",
+          "value": 681,
+          "status": "complete",
+          "observedAt": "2026-08-08T19:21:56Z"
+        },
+        {
+          "at": "2026-08-15T19:21:56Z",
+          "value": 681,
+          "status": "complete",
+          "observedAt": "2026-08-15T19:21:56Z"
+        },
+        {
+          "at": "2026-08-22T19:21:56Z",
+          "value": 675,
+          "status": "complete",
+          "observedAt": "2026-08-22T19:21:56Z"
+        },
+        {
+          "at": "2026-08-29T19:21:56Z",
+          "value": 633,
+          "status": "complete",
+          "observedAt": "2026-08-29T19:21:56Z"
+        },
+        {
+          "at": "2026-09-05T19:21:56Z",
+          "value": 546,
+          "status": "complete",
+          "observedAt": "2026-09-05T19:21:56Z"
+        },
+        {
+          "at": "2026-09-12T19:21:56Z",
+          "value": 514,
+          "status": "complete",
+          "observedAt": "2026-09-12T19:21:56Z"
+        },
+        {
+          "at": "2026-09-19T19:21:56Z",
+          "value": 493,
+          "status": "complete",
+          "observedAt": "2026-09-19T19:21:56Z"
+        },
+        {
+          "at": "2026-09-26T19:21:56Z",
+          "value": 475,
+          "status": "complete",
+          "observedAt": "2026-09-26T19:21:56Z"
+        },
+        {
+          "at": "2026-10-03T19:21:56Z",
+          "value": 460,
+          "status": "complete",
+          "observedAt": "2026-10-03T19:21:56Z"
+        },
+        {
+          "at": "2026-10-10T19:21:56Z",
+          "value": 434,
+          "status": "complete",
+          "observedAt": "2026-10-10T19:21:56Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 421,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-17T19:21:56Z",
+          "value": 404,
+          "status": "complete",
+          "observedAt": "2026-10-17T19:21:56Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 404,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "suppressed-bodies",
+      "role": "diagnostic",
+      "name": "Suppressed overlength bodies",
+      "formula": "Raw overlength bodies minus unsuppressed overlength bodies; suppression is not a repair.",
+      "unit": "functions",
+      "direction": "decrease",
+      "presentation": {
+        "name": "Suppressed overlength bodies",
+        "legendLabel": "Suppressed bodies",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "worsening",
+        "attention": "review",
+        "current": 135,
+        "previous": 129,
+        "directionAwareGain": -6,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 12608
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-05-23T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-23T19:21:56Z"
+        },
+        {
+          "at": "2026-05-30T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-30T19:21:56Z"
+        },
+        {
+          "at": "2026-06-06T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-06T19:21:56Z"
+        },
+        {
+          "at": "2026-06-13T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-13T19:21:56Z"
+        },
+        {
+          "at": "2026-06-20T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-20T19:21:56Z"
+        },
+        {
+          "at": "2026-06-27T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-27T19:21:56Z"
+        },
+        {
+          "at": "2026-07-04T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-04T19:21:56Z"
+        },
+        {
+          "at": "2026-07-11T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-11T19:21:56Z"
+        },
+        {
+          "at": "2026-07-18T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-18T19:21:56Z"
+        },
+        {
+          "at": "2026-07-25T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-25T19:21:56Z"
+        },
+        {
+          "at": "2026-08-01T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-01T19:21:56Z"
+        },
+        {
+          "at": "2026-08-08T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-08T19:21:56Z"
+        },
+        {
+          "at": "2026-08-15T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-15T19:21:56Z"
+        },
+        {
+          "at": "2026-08-22T19:21:56Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-22T19:21:56Z"
+        },
+        {
+          "at": "2026-08-29T19:21:56Z",
+          "value": 13,
+          "status": "complete",
+          "observedAt": "2026-08-29T19:21:56Z"
+        },
+        {
+          "at": "2026-09-05T19:21:56Z",
+          "value": 86,
+          "status": "complete",
+          "observedAt": "2026-09-05T19:21:56Z"
+        },
+        {
+          "at": "2026-09-12T19:21:56Z",
+          "value": 106,
+          "status": "complete",
+          "observedAt": "2026-09-12T19:21:56Z"
+        },
+        {
+          "at": "2026-09-19T19:21:56Z",
+          "value": 109,
+          "status": "complete",
+          "observedAt": "2026-09-19T19:21:56Z"
+        },
+        {
+          "at": "2026-09-26T19:21:56Z",
+          "value": 121,
+          "status": "complete",
+          "observedAt": "2026-09-26T19:21:56Z"
+        },
+        {
+          "at": "2026-10-03T19:21:56Z",
+          "value": 126,
+          "status": "complete",
+          "observedAt": "2026-10-03T19:21:56Z"
+        },
+        {
+          "at": "2026-10-10T19:21:56Z",
+          "value": 129,
+          "status": "complete",
+          "observedAt": "2026-10-10T19:21:56Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 129,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-17T19:21:56Z",
+          "value": 135,
+          "status": "complete",
+          "observedAt": "2026-10-17T19:21:56Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 135,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

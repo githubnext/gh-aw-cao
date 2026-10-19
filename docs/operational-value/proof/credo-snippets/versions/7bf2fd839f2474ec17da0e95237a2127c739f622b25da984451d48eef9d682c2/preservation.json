@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "status": "preserved-complete-predecessor",
+  "change": "mix format changes argument layout only; Elixir AST normalization and every independent native probe result agree.",
+  "originalInputRoot": "docs/operational-value/proof/credo-snippets",
+  "sourceClosure": "index.json and history-index.json source file references resolve from originalInputRoot; all referenced immutable inputs are retained unchanged.",
+  "historySha256": "7e82ea6a21fcd9a9cf361d8c987b79e1333b3133e2c730f3975cb61d463a8dfa",
+  "factsSha256": "152b919c746db0f14893959275920261a72454c66c21892dfe4e4303ba09972c",
+  "toolsSha256": "a984dd47ecd89ada6c691488649611e38a2bf72b1624b6e16206713e5f9ac8b6",
+  "nextContractSha256": "b166f9e3ee833a6f2fc48da0816345864fcd926ef640676fdff7ad3aaa68b915"
+}

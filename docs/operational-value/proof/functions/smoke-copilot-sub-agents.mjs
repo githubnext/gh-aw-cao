@@ -1,0 +1,190 @@
+import { hostAssertionModule } from "../../../../scripts/native-host-assertion-value.mjs";
+
+const value = hostAssertionModule({
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-copilot-sub-agents",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "a70c52a675302893abe72b3fc8633498b7aea0d2",
+  "interpreterSha256": "15df6030cce347982f0e5056f0e4bdd98539898a79395e3cdcae597b71fb1403",
+  "name": "Smoke Copilot Sub Agents",
+  "goal": "Actually execute the three declared SDK subagents on their required native models and endpoints.",
+  "acceptance": "The independent activation-step log identifies inline_strict or delegated_sequential; the exact protected host conjunction then requires all three named invocations, successful completions, matching models and real successful proxy requests. The synthetic no-agent control is not positive capability.",
+  "metricLabel": "Verified three-agent SDK assessments",
+  "unit": "delegation proofs",
+  "gates": [
+    {
+      "job": "agent",
+      "name": "Assert sub-agent model and wire API evidence",
+      "meaning": "All three native model/endpoint delegations are established in an independently identified positive experiment variant.",
+      "experiment": {
+        "job": "activation",
+        "step": "Pick experiment variants",
+        "name": "sub_agent_strategy",
+        "variants": [
+          "inline_strict",
+          "delegated_sequential",
+          "single_agent_control"
+        ],
+        "positiveVariants": [
+          "inline_strict",
+          "delegated_sequential"
+        ]
+      }
+    }
+  ],
+  "sourceJobs": [
+    "activation"
+  ],
+  "conditionOracleSha256": "c76f8435afc62ae05cf0e5063e9e8eb2941259ac85e29c2b43e0569c6d425382",
+  "conditionJobOracleSha256": "edd4e90a66c050315aa4d36e3260e46f6650403c22871130ee04f78724891358",
+  "limitations": [
+    "A successful negative-control verifier establishes no positive delegation. Missing protected selection logs remain unknown; agent-authored issue text or whole-agent stdout cannot identify the accepted variant.",
+    "One observed conjunction is not three separately delivered code changes or a statistically powered experiment result."
+  ],
+  "jobs": {
+    "agent": {
+      "name": "agent",
+      "sha256": "7503ac60a054f1fdbdcae9f8fc8cedcbec7a65a81e11dc6c339a0ca5f9cc0e19"
+    },
+    "activation": {
+      "name": "activation",
+      "sha256": "9288f27346ec782f16f61b11781f38cb253af9c9a5b6625ec3d81c662323008c"
+    }
+  },
+  "adoption": {
+    "commit": "a8e1db6d0cf91f1c8f2a499af124305f7224b16b",
+    "adoptedAt": "2026-07-01T06:29:45Z",
+    "baselineCommit": "34b4d342aeb1d3ac814adb687a0096e235a75a70",
+    "baselineAt": "2026-07-01T06:11:04Z"
+  },
+  "dependencies": [
+    {
+      "path": ".github/aw/engines.json",
+      "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+    },
+    {
+      "path": "actions/setup/js/pick_experiment.cjs",
+      "gitBlob": "185e726332e2420f0fb2e443f68ec3c2bbe0dcca"
+    }
+  ],
+  "runtimeTrees": [
+    {
+      "path": "actions",
+      "gitTree": "ba2d5737336b9a68bb5d493cb5da012b3ff329c0"
+    },
+    {
+      "path": ".github/workflows/shared",
+      "gitTree": "99472ca203e6cdbfd7ab8b1a2fa18db9d5959835"
+    }
+  ],
+  "historicalSourceProfiles": [
+    {
+      "sourceRevision": "463762fe9304d5271356803513f158cf59dc0171",
+      "jobs": {
+        "agent": {
+          "name": "agent",
+          "sha256": "b9e8ce036fdc9cd3af294d4f7e8a9675a37bbd66c27fba25b8ccdad4965a79cd"
+        },
+        "activation": {
+          "name": "activation",
+          "sha256": "9288f27346ec782f16f61b11781f38cb253af9c9a5b6625ec3d81c662323008c"
+        }
+      },
+      "dependencies": [
+        {
+          "path": ".github/aw/engines.json",
+          "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+        },
+        {
+          "path": "actions/setup/js/pick_experiment.cjs",
+          "gitBlob": "185e726332e2420f0fb2e443f68ec3c2bbe0dcca"
+        }
+      ],
+      "runtimeTrees": [
+        {
+          "path": "actions",
+          "gitTree": "8bde65a297d295f5db9d0576b0e486d08bb1585b"
+        },
+        {
+          "path": ".github/workflows/shared",
+          "gitTree": "c716ab0399d143fdca8d32b9e6b52553f89df373"
+        }
+      ],
+      "review": "Source intent and native predicate steps are identical. Reviewed differences: read-only artifact export paths, Copilot CLI minimum-version configuration, and Pi model-alias/error-reporting integration. The session merger's added model.resolution events do not satisfy routing assertions. Historical runtime trees remain pinned as complete profiles, never mixed with current jobs."
+    },
+    {
+      "sourceRevision": "8c05fd87e12f5fd7fe5c67cdfedc3ef8441719e1",
+      "jobs": {
+        "agent": {
+          "name": "agent",
+          "sha256": "840c358f448fc08a79633d41dd73b422b6f66137afe2826202d961013adb734f"
+        },
+        "activation": {
+          "name": "activation",
+          "sha256": "bf1800d08fbe1a10f8c07fc8094f5b407318bb0ee2702851865e78cd2b13522c"
+        }
+      },
+      "dependencies": [
+        {
+          "path": ".github/aw/engines.json",
+          "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+        },
+        {
+          "path": "actions/setup/js/pick_experiment.cjs",
+          "gitBlob": "185e726332e2420f0fb2e443f68ec3c2bbe0dcca"
+        }
+      ],
+      "runtimeTrees": [
+        {
+          "path": "actions",
+          "gitTree": "bd5c9cb94efdce8b523ba6032c7de34c4b5f9b70"
+        },
+        {
+          "path": ".github/workflows/shared",
+          "gitTree": "c716ab0399d143fdca8d32b9e6b52553f89df373"
+        }
+      ],
+      "review": "Source intent and native predicate steps are identical. The experiment source, positive/negative-control assertion and protected variant selector are identical. Added model-resolution metadata cannot substitute for actual named invocations, completions and proxy requests; full historical runtime profiles remain pinned. Historical runtime trees remain pinned as complete profiles, never mixed with current jobs."
+    },
+    {
+      "sourceRevision": "be0e33171bcc34182727c2001c624a2850808f2d",
+      "jobs": {
+        "agent": {
+          "name": "agent",
+          "sha256": "c2247d94eafa99503f846ab630a45a6afe981b8681126290b3e24493857f2ec9"
+        },
+        "activation": {
+          "name": "activation",
+          "sha256": "2606f29b2775db687aa372e5f23c7377b2103fd66390777d7981aed99eebdf61"
+        }
+      },
+      "dependencies": [
+        {
+          "path": ".github/aw/engines.json",
+          "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+        },
+        {
+          "path": "actions/setup/js/pick_experiment.cjs",
+          "gitBlob": "2404f5ce2fd9a8a60e18d3e3322c8a07e96a4ebd"
+        }
+      ],
+      "runtimeTrees": [
+        {
+          "path": "actions",
+          "gitTree": "e64958c98ae13242114fe22e92b8097ad1269b89"
+        },
+        {
+          "path": ".github/workflows/shared",
+          "gitTree": "fbde87eb66c068ea8d1a9cc182f15b494575ce04"
+        }
+      ],
+      "review": "Source intent and native predicate steps are identical. Workflow intent, variant-selector host step and complete native subagent assertion are identical. The historical picker reads state JSONL directly rather than through the later iterator; its logged assignment schema is unchanged. Historical session merging lacks later model-resolution/job-timing metadata and uses direct JSONL reads. SDK completion and named invocation evidence plus actual successful model/endpoint requests remain required. Copilot 1.0.96, AWF 0.28.57, MCPG 0.4.31 and their complete runtime trees are historical profiles, not certification of current versions or all parser guarantees. Historical runtime trees remain pinned as complete profiles, never mixed with current jobs."
+    }
+  ]
+});
+export const { collectBatch, scoreMetric } = value;
+export const definition = { ...value.definition, evidence: { ...value.definition.evidence,
+  sourceProfilesSha256: "e2e2d28ca3363d182162e0bfd24ea8c4183693e11b225f2875ec0a1f870e4bd8",
+  conditionPolicySha256: "48397fa19ab96c5e79827e606e5c90b731e5556a10b274dd73698530e2fc4ab5" } };

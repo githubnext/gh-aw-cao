@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "workflow": "changeset",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "readiness": {
+    "schema3Function": true,
+    "nativeStructuralPartialInstrument": true,
+    "nativeStructuralPartialEvidence": true,
+    "standardCollectorVerification": true,
+    "productionOfflineEvaluation": true,
+    "completeCurrentNativePeriod": false,
+    "fullSemanticGoalReadiness": false,
+    "workflowContributionReadiness": false,
+    "costReadiness": false,
+    "keepDecision": "not rated",
+    "lintAndTypecheck": "blocked: local eslint and tsc are missing; no installations authorized",
+    "workflowCompile": "71 succeeded; 2 warnings"
+  },
+  "results": {
+    "2026-10-04T15:00:12Z/2026-10-11T15:00:12Z": {
+      "measurementKind": "interval",
+      "coverageStatus": "partial",
+      "assessedTransitions": 22,
+      "unassessedTransitions": 22,
+      "newlyReleaseReadableFiles": 21,
+      "newlyNonemptyDescriptions": 21,
+      "newlyExplicitFormatFiles": 12
+    },
+    "2026-10-11T15:00:12Z/2026-10-18T15:00:12Z": {
+      "measurementKind": "interval",
+      "coverageStatus": "partial",
+      "assessedTransitions": 0,
+      "unassessedTransitions": 62,
+      "newlyReleaseReadableFiles": null
+    },
+    "cutoffRepositoryCondition": {
+      "measurementKind": "snapshot",
+      "totalFiles": 823,
+      "availableBlobs": 743,
+      "missingBlobs": 80,
+      "releaseReadableFiles": 731,
+      "nonemptyDescriptions": 731,
+      "explicitFormatFiles": 593,
+      "freshWeeklyDelivery": false
+    },
+    "discovery": {
+      "productionHistoryPartitions": 346,
+      "productionHistoryEntities": 58048,
+      "directCandidates": 38,
+      "fullForwardReverseCandidateClosureIncludingAbsentReferences": 3182,
+      "acceptedContributionLinks": null
+    }
+  },
+  "interpretation": "21 native structural transitions are demonstrated partial repository progress regardless of actor. Coverage gaps prevent a complete period total or improving/worsening trend. Accuracy, completeness, release relevance, bump appropriateness and contribution remain unknown. The cutoff snapshot is not new work every week.",
+  "missingAcquisitionPlan": "See source-requests.json.gz for exact immutable source and native response scopes; no network acquisition was performed by the collector.",
+  "skillImprovement": "Preserve native consumer parser quirks and independently observed before/after partial facets without promoting them to semantic acceptance. Count transitions, not retained snapshots; unknown full quality does not erase demonstrated structural progress."
+}

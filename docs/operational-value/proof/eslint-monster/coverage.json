@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "workflow": "eslint-monster",
+  "repository": "github/gh-aw",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "142319d6a938db921d5db885fd01d159a929c7bc",
+  "adoptionGitBlob": "2a03df41cc7f75321d3bd4796bc184264c665288",
+  "adoption": {
+    "commit": "35777da04c8f5230a9627bc0ad01f8a6b98dd72c",
+    "adoptedAt": "2026-06-27T22:21:12Z",
+    "baselineCommit": "5b7ef28a594bd0a936367cd130726c4980bc2637",
+    "baselineAt": "2026-06-27T22:09:02Z"
+  },
+  "adoptionValidation": {
+    "actualAdditionAgainstRealParent": true,
+    "parent": "5b7ef28a594bd0a936367cd130726c4980bc2637",
+    "sourceAbsentInParent": true
+  },
+  "coverage": {
+    "function": "complete",
+    "nativePartialFacetEvidence": "complete",
+    "evaluation": "complete",
+    "nativePlot": "complete",
+    "fullGoalSafeguards": "not-measured",
+    "exclusiveCausality": "not-claimed",
+    "repositoryPopulation": "non-test scoped CommonJS modifications"
+  },
+  "functionPath": "docs/operational-value/proof/functions/eslint-monster.mjs",
+  "reportPaths": {
+    "timeline": "docs/operational-value/proof/eslint-monster/reports/github-gh-aw/eslint-monster-timeline.json",
+    "nativePlot": "docs/operational-value/proof/eslint-monster/reports/github-gh-aw/eslint-monster-pulse.html",
+    "plotData": "docs/operational-value/proof/eslint-monster/reports/github-gh-aw/eslint-monster-pulse.json",
+    "definition": "docs/operational-value/proof/eslint-monster/reports/github-gh-aw/eslint-monster-definitions.md",
+    "evidenceArchive": "docs/operational-value/proof/eslint-monster/reports/github-gh-aw/eslint-monster-evidence-archive.json"
+  },
+  "nativeIndex": "docs/operational-value/proof/eslint-monster/radix/native-index.json",
+  "nativeIndexSha256": "d254bb8ead915e8486582b9d74e1d6783740847acbc578f9e8b78a8b96c712d1",
+  "graph": "docs/operational-value/proof/eslint-monster/graph/links.json.gz",
+  "archivedBlobCount": 3293,
+  "nativeAssessments": 3020,
+  "knownAssessments": 2679,
+  "unknownAssessments": 341,
+  "linkedKnownAssessments": 400,
+  "linkedUnknownAssessments": 1,
+  "nativeMeasuredTotals": {
+    "native-net": null,
+    "linked-net": null,
+    "observed-native-net": 5,
+    "observed-linked-net": 5
+  },
+  "acceptedNativeEvents": [
+    {
+      "commit": "539ebedb6b28264dcc66046fb48488dbc75c02d3",
+      "at": "2026-07-06T02:43:30Z",
+      "path": "actions/setup/js/parse_codex_log.cjs",
+      "beforeBlob": "bf76aad59051fdaa9e9f4d603d4de2dea632944c",
+      "afterBlob": "7b9929210d3aac86408fddbe4377e9b3fd31f893",
+      "before": 5,
+      "after": 0,
+      "nativeValue": 5,
+      "linked": [
+        {
+          "number": 43637,
+          "url": "https://github.com/github/gh-aw/pull/43637",
+          "attribution": "corroborated"
+        }
+      ]
+    }
+  ],
+  "unknownGaps": [
+    "File additions/deletions and unsupported modes are not native repair assertions.",
+    "Parse failures remain unknown; other factory lint categories and invalid-radix diagnostics are unmeasured.",
+    "One linked added file remains unknown; five observed linked reductions are a subtotal, not a complete contribution total.",
+    "Retained marker lineage is corroborated shared contribution, not authoritative creation proof; edited-away and deleted outputs are gaps.",
+    "Required checks, behavior preservation, full goal acceptance, and costs are not measured."
+  ],
+  "validations": [
+    "node --test tests/unit/lint-native-operational-value.test.mjs (5 passing)",
+    "verify-value-function.mjs --collector (both modules passing)",
+    "Focused ESLint (zero errors; tests ignored by repository policy)",
+    "npm run typecheck:cao (passing)",
+    "npm run compile (72 workflows passing; two pre-existing outdated-action warnings)",
+    "All owned files <=256KiB"
+  ],
+  "portfolioIntegration": "Register the explicit functionPath and reportPaths above as native partial-facet coverage. Do not infer full-goal or causal completion. Use observed-linked-net as the contribution signal. Evidence must resolve from docs/operational-value/proof/eslint-monster; source-specific index and partition digests are frozen.",
+  "skillLessons": "Freeze a narrow source-intrinsic native facet before replay. Validate adoption against a real parent, not a shallow log boundary. Pin tool and helper identities, isolate trusted builtins from upstream configs, and separate signed diagnostic movement from merged outputs. Keep unknown additions, parsing, full safeguards and attribution separate. A bounded fixed sentinel is partial output evidence, never a fleet-wide generator fix."
+}

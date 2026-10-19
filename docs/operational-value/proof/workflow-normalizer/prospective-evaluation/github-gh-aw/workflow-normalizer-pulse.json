@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "workflow-normalizer",
+  "workflowName": "Workflow Normalizer",
+  "sourcePath": ".github/workflows/workflow-normalizer.md",
+  "valueFunctionSha256": "b1307ce00d16ecc0cbe21179927489c5b2eb44d730920658d2741817d4f72574",
+  "window": {
+    "startAt": "2026-10-19T10:31:43Z",
+    "endAt": "2026-10-19T10:36:50Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "native-style-repaired-reports",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "native-style-repaired-reports",
+    "basis": "repository-outcome",
+    "unit": "reports"
+  },
+  "metrics": [
+    {
+      "id": "native-style-repaired-reports",
+      "name": "Independently verified native style-repaired reports",
+      "role": "primary",
+      "formula": "Distinct eligible native report subjects with a protected, dated, content-preserving before/after repair of at least one supported source-defined style facet and no facet regression in the disjoint period. Unknown producer/cohort/history => null.",
+      "direction": "increase",
+      "unit": "reports",
+      "presentation": {
+        "name": "Native style repairs",
+        "legendLabel": "Style-repaired reports",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-19T10:31:43Z",
+        "endAt": "2026-10-19T10:36:50Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T10:36:50Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T10:36:50Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

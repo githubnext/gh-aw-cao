@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "smoke-update-cross-repo-pr",
+  "status": "blocked-not-measured",
+  "predecessorArchiveSha256": "efca9e5d33db360e3eab435937bc4060af3a4d08135bba59b652e2175830bea1",
+  "predecessorFunctionSha256": "ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6",
+  "functionSha256": "1feb895ef2704eba5706369c391d9dc9579df2e41488c7504c67b905be2bdd2d",
+  "contractSha256": "1139f8efe5402f0dfe106f74a5854a7b75dac1dab7db0848c13875600cb6d31f",
+  "replacements": [
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/contract.json",
+      "expectedPredecessorSha256": "952136d716c6ded04758d40b0b76e3e22b66933f929ef8e0677f2b308374f993",
+      "sha256": "f59ff181994572db9c8e38a079904b2a9c287e48cfd8c4cd2351d81829fb2f21"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/index.json",
+      "expectedPredecessorSha256": "bed1c3adcee0e6487fd9140d6e8dc5cd44f6db9230b672f33bbf13aeeea2a36a",
+      "sha256": "f220167b8bafffffc352cafac2602517940f2f31f93432887f4d422e281179aa"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-definitions.md",
+      "expectedPredecessorSha256": "2c9707bb4f3d0087a23e23acbe98982f1cec1a991e3185514a17d42d7afd6989",
+      "sha256": "31014eaeef8da842491271bb03d4cf69a82683b503c62ae46b1852928f775951"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-evidence-archive.json",
+      "expectedPredecessorSha256": "7e18cf8c82f3f36b7cf1ecd1aabaa5e3ac38beef5b3c243f21cac92c77798071",
+      "sha256": "d61f6b724764e5b7dc21a30c16227c1f501fd28f3e33ac58c63e03f6bcc80e32"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-pulse.html",
+      "expectedPredecessorSha256": "dac540cdac73fd42feb32d8676d277211221e388ba6e221019fb2e1c4bae29f7",
+      "sha256": "3e123a455b62c98c7048868d3d5351eb4b5c77d95190dbd0327b1a1e084b9bb2"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-pulse.json",
+      "expectedPredecessorSha256": "fc193e3e0254558339589a0ddbe688002fb1525ac0543717f71b4b387e887089",
+      "sha256": "4863e5f1404d302bb8344cc8895314cc5e93915d2bc3c3fd9bd727ad77f48b65"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-timeline.json",
+      "expectedPredecessorSha256": "4c16c9f3e29fc7d421547c9a05ff1eade15300ce706ffe47896a304464b4ee77",
+      "sha256": "e30ff0fee7ac71906329ff853f2b2b3d8ebbe1d693e841a15fc479401ea296e4"
+    },
+    {
+      "path": "docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs",
+      "expectedPredecessorSha256": "ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6",
+      "sha256": "1feb895ef2704eba5706369c391d9dc9579df2e41488c7504c67b905be2bdd2d"
+    },
+    {
+      "path": "scripts/author-cross-repo-update-value.mjs",
+      "expectedPredecessorSha256": "4dfe464ed0d8069ba8269253d486a76f761c3e1bfe347a77d23ec5fc327ec6b9",
+      "sha256": "21a76716a0e172a751b565c45c4251a25699a59d1260f2404cf3cfb2b3e29eb1"
+    },
+    {
+      "path": "scripts/native-cross-repo-update-value.mjs",
+      "expectedPredecessorSha256": "adae877c6207949a81174ca0d95b56cc19ebce0eea37778bd5e94256135bc1c2",
+      "sha256": "05949648176e54d77a8fcdc428956c567b2897a9fdf52a0d15df3d89bac68d85"
+    },
+    {
+      "path": "scripts/summarize-cross-repo-update-value.mjs",
+      "expectedPredecessorSha256": "2e632d6114f4bff22f28d7a2adfbb1625ffb28269b82b53b203abf344839be8d",
+      "sha256": "f25fb0de08a514fb74c5d973870fb0de38a2d0843324407515f4d9548dd33db8"
+    },
+    {
+      "path": "tests/unit/cao-operational-value-cross-repo-update.test.mjs",
+      "expectedPredecessorSha256": "ceb573985e21c1c50bd18327f1042d22812b9dfcfde41521f3367bfbd8b6f5d2",
+      "sha256": "1cab1c8b1d2724fff1a53b1e4842cd6d37c248302e0d00322d7eba333a08cfb0"
+    }
+  ],
+  "additions": [
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-001.json.gz",
+      "sha256": "6eaa6933b7a340fa5f7608aaecedd6575d606c0ddeb663ad6a9ebb19f854302d"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-002.json.gz",
+      "sha256": "9c303368f603f1776a949ef5d91a73541c91f778e823979a41a9c0058ff378cb"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-003.json.gz",
+      "sha256": "69eeda2dd18f54a6f107c3af757f697c78557bad511448fd89f16ad1056d7730"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-004.json.gz",
+      "sha256": "8e1a42827aa4b2efe62e675570dad125020005a498c31942d871aa6b2d2d56be"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-005.json.gz",
+      "sha256": "8da4e0a4a66f241044f3606af6f31f84653f7b054e50af02de36270d13824660"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-006.json.gz",
+      "sha256": "ebd2f8e7066ea32f07f9cbcf4e22fad0b627f022d140e802c7481df9053d294b"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-007.json.gz",
+      "sha256": "4f8f04840b61576991a3a2b32aa9edda28b62b06e0448588607c72734598114f"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-008.json.gz",
+      "sha256": "5192fabd3fc77c14f7e59d48bd3b358f82294cced3fd8d9b19c76ea7d1faa600"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-009.json.gz",
+      "sha256": "976d79eae53e5b2b3c6d26374452a1e688c5b24d05a94f50973c0ede4b9f8856"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-010.json.gz",
+      "sha256": "ad27dffa5797339f754384c17f1910d529e311744892025b7d31f0813c69ab4c"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-011.json.gz",
+      "sha256": "1739515eb369c146959e718705e37af19a8c6dc1b6e9db6880e9531608fd008d"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-012.json.gz",
+      "sha256": "d6a9807d6ccc3f543f1cbcfb4f0c750a4605b4793ac9858a03db9d3b9c3d702f"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-013.json.gz",
+      "sha256": "066cfe9d1e1c2e6bda1b19a4331f2d690c7a0d3b0855af65118dccfde5f5bb2e"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-014.json.gz",
+      "sha256": "20a677ce676d8ef5f1419fa8869fae25b09898d3005f4648d9d9d9e0470bf3a6"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor-part-015.json.gz",
+      "sha256": "ec41c8a2fcbd68127cf712c0c6159c51b5e7f4e3b0763158cd76b92595ae1938"
+    },
+    {
+      "path": "docs/operational-value/proof/cross-repo-update/versions/ffd3f2f28b6e11505690c5dbbf8f63f4d958df37fd9db64dd66f4055aeaa2bf6/sealed-predecessor.json",
+      "sha256": "b0fae19136194f3f61332a7676aec97f9bf784c4d38009e59146e3ba2909593e"
+    }
+  ],
+  "registration": {
+    "contract": "docs/operational-value/proof/cross-repo-update/contract.json",
+    "index": "docs/operational-value/proof/cross-repo-update/index.json",
+    "function": "docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs",
+    "timeline": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-timeline.json",
+    "pulse": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-pulse.json",
+    "plot": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-pulse.html",
+    "primaryMetric": "sequential-appends",
+    "provenanceKind": "public-source-and-run-inventory",
+    "provenancePath": "docs/operational-value/proof/cross-repo-update/acquisition.json",
+    "provenanceRef": "abf194014769eb6169d37280ec6e3006d73a678e6629ede97ae20fcf9f99fbce",
+    "evidenceReadinessGuard": "index.nativeEvidenceReady === true && index.independentlyMeasuredPeriods > 0 && timeline.snapshots.some(s => Number.isFinite(s.metrics['sequential-appends']))",
+    "registerAsMeasured": false
+  },
+  "validations": [
+    {
+      "command": "node --test tests/unit/cao-operational-value-cross-repo-update.test.mjs",
+      "result": "10 passed"
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/evaluate.mjs --end 2026-10-18T15:00:12Z --output-dir docs/operational-value/proof/cross-repo-update/reports --function docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs github/gh-aw smoke-update-cross-repo-pr",
+      "result": "34 unavailable assessments, standard native-unit timeline/HTML plot; not measured"
+    },
+    {
+      "command": "npx eslint scripts/collect-cross-repo-update-value.mjs scripts/author-cross-repo-update-value.mjs scripts/native-cross-repo-update-value.mjs scripts/summarize-cross-repo-update-value.mjs docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "npm run typecheck:cao",
+      "result": "passed"
+    },
+    {
+      "command": "npm run compile",
+      "result": "72 succeeded, 2 pre-existing action-version warnings; gh aw v0.92.5"
+    }
+  ],
+  "noAdditionalAcquisition": true,
+  "actualNativeValues": "all null",
+  "unchangedSourceAndAcquisition": true
+}

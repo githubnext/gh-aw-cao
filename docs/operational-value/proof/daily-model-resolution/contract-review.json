@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "status": "current-source-facet-frozen-native-producer-blocked",
+  "goal": "For independently evidenced child invocations in the analyzed log cohort, attain the declared explicit model size, demonstrated by uniquely bound protected child/proxy records.",
+  "nativeQuantity": "Correct resolution share in percent, with separately retained verified-correct child-invocation subtotal.",
+  "eligiblePopulation": "Independently evidenced actual child invocations in the source's bounded analyzed sample. An stdio regex match alone is not an invocation. Missing source/model/binding evidence remains unassessed.",
+  "evidenceAcceptance": "Run, attempt, final retry session, child identity and tool-call identity agree; declaration is bound to immutable source; independent proxy records identify that child's concrete served models. All served requests must match for correctness; a wrong request establishes a mismatch without erasing other verified children.",
+  "sourceProfiles": {
+    "adoption": "Codex parent gpt-5-mini, inline run-analyzer model small; original source includes noop-reminder runtime import.",
+    "current": "Copilot SDK parent gpt-5.4-mini, inline run-analyzer model gpt-5.4-mini; reporting is imported.",
+    "sharedPredicate": "Both workflow prose profiles contain the same case-insensitive mini/haiku/flash/nano size predicate.",
+    "notHistoricalApproval": "Two endpoint profiles do not establish unchanged intermediate policy, native producer identity or retained request coverage. Current predicate remains restricted to its frozen current profile."
+  },
+  "temporal": {
+    "kind": "interval",
+    "durationDays": 2,
+    "cadenceDays": 2,
+    "maturationDays": 0,
+    "sourceBasis": "Workflow audits recent two-day log cohorts. Production observationWindows partitions delivery rather than adding overlapping daily two-day audits.",
+    "event": "One underlying child invocation keyed by run/attempt/session/agent/tool-call identity, never one issue or audit rerun.",
+    "partial": "Unknown broader acceptance does not erase established correct-child subtotals. No retained native events currently exist."
+  },
+  "metrics": [
+    {"name": "correct-resolution-share", "role": "primary", "formula": "100 * correctCount / eligibleCount", "missing": "null unless complete, nonempty and without unresolved eligible children"},
+    {"name": "verified-correct", "role": "diagnostic", "formula": "correctCount", "missing": "null without accepted native records; an independently supported partial subtotal can survive broader missingness"}
+  ],
+  "nativeMeasureDispositions": [
+    {"measure": "Downloaded runs, qualifying runs, initial count 30, one continuation, at most 20 analyzed runs", "role": "sampling/coverage diagnostics and source bounds, not primary outcomes"},
+    {"measure": "At most 10 parallel analyzer dispatches", "role": "execution budget safeguard, not outcome or keep threshold"},
+    {"measure": "correct_count and mismatch_count", "role": "native classification quantities; require independent child binding, never trust an analyzer JSON report"},
+    {"measure": "inherited model matching parent aw_info", "role": "unresolved broader acceptance; top-level rule conflicts with embedded analyzer's unknown disposition"},
+    {"measure": "Proxy model, provider, request and token counts", "role": "accepted native model evidence and possible future costs only when independently bound; run histograms cannot identify children"},
+    {"measure": "Workflow run success, issue creation, issue auto-closure after three days, safe-output volume", "role": "rejected proxies; none proves correct model resolution"},
+    {"measure": "Capability, task correctness and model optimality", "role": "separate outcomes not established by naming-based size classification"}
+  ],
+  "antecedent": {
+    "phenomenon": "Model-size routing can succeed or fail without this audit and existed before adoption.",
+    "baseline": "Unknown. No native pre-adoption reconstruction established; acquisition is not exhausted.",
+    "mode": "attainment-only without an adoption-relative or causal improvement claim"
+  },
+  "corrections": {
+    "predecessor": "24b6e9a21c36cebfa48d41b96fb9f8c5ff992e893227b905a5007bcc673d5b41",
+    "changes": "Reject aliases as actual concrete served models per native session specification; add centrally supplied adoption/compiled and native specification identities. No measured scores were changed: the original definition and all-null timeline are preserved under predecessors/.",
+    "scope": "No widening of historical source eras; no changes derived from observed native outcomes."
+  },
+  "workflowContribution": null,
+  "fullGoalAcceptance": null,
+  "costs": null,
+  "decision": "not rated; no source-defined keep bar or complete native periods"
+}

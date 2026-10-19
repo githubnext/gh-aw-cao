@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "status": "resolved-after-coordinator-clearance",
+  "endpoint": "repos/github/gh-aw/actions/runs/38900146742/artifacts?per_page=100",
+  "acquiredAt": "2026-10-19T06:36:45.609Z",
+  "httpStatus": 403,
+  "headers": {
+    "date": "Mon, 19 Oct 2026 06:36:45 GMT",
+    "x-github-request-id": "FC55:36B846:2582D:391B4:6AD5BA7D",
+    "x-ratelimit-limit": "15000",
+    "x-ratelimit-remaining": "0",
+    "x-ratelimit-reset": "1792392948",
+    "x-ratelimit-resource": "core",
+    "x-ratelimit-used": "15000"
+  },
+  "responseSha256": "ac29f1dd3de5bd55afbaaa1294fbc0c19de48d3428b3eab4025bbecdebf43a12",
+  "resetAt": "2026-10-19T06:55:48.000Z",
+  "resumeAuthority": "coordinator-release-required",
+  "automaticResumption": false,
+  "remaining": [],
+  "measuredValueForPendingObservation": 576,
+  "resolution": {
+    "acquisitionReceipt": "ci-acquisition-38900146742.json",
+    "nativeReplay": "ci-replay-38900146742.json.gz",
+    "coverageProfiles": 27,
+    "exactNativeCoverageMatch": true,
+    "eligiblePureFunctions": 2424,
+    "explicitlyInstrumentedPureFunctions": 2141,
+    "unknownPureFunctionCoverage": 283,
+    "interpretation": "The complete source-declared CI matrix was retained and replayed. The observed fully-covered count is a lower bound; missing coverage is null, not assumed zero."
+  }
+}

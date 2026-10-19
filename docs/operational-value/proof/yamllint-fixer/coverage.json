@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-yamllint-fixer",
+  "repository": "github/gh-aw",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "667408c131c48c4d3b51720ba32787b93d7e30ba",
+  "adoptionGitBlob": "a24e2aa3be10f717b212ab9ba5949bfa706939f8",
+  "adoption": {
+    "commit": "cfb0b8854e28a9bd3d95da7f6527708ab0bffdc2",
+    "adoptedAt": "2026-06-26T02:53:35Z",
+    "baselineCommit": "c38906bb3fd04ab5bb9d8e0c41ea3f18470d8157",
+    "baselineAt": "2026-06-26T01:33:58Z"
+  },
+  "adoptionValidation": {
+    "actualAdditionAgainstRealParent": true,
+    "parent": "c38906bb3fd04ab5bb9d8e0c41ea3f18470d8157",
+    "sourceAbsentInParent": true
+  },
+  "coverage": {
+    "function": "complete",
+    "nativePartialFacetEvidence": "complete",
+    "evaluation": "complete",
+    "nativePlot": "complete",
+    "fullGoalSafeguards": "not-measured",
+    "exclusiveCausality": "not-claimed",
+    "repositoryPopulation": "one fixed generated self-output sentinel; never extrapolated to the fleet"
+  },
+  "functionPath": "docs/operational-value/proof/functions/daily-yamllint-fixer.mjs",
+  "reportPaths": {
+    "timeline": "docs/operational-value/proof/yamllint-fixer/reports/github-gh-aw/daily-yamllint-fixer-timeline.json",
+    "nativePlot": "docs/operational-value/proof/yamllint-fixer/reports/github-gh-aw/daily-yamllint-fixer-pulse.html",
+    "plotData": "docs/operational-value/proof/yamllint-fixer/reports/github-gh-aw/daily-yamllint-fixer-pulse.json",
+    "definition": "docs/operational-value/proof/yamllint-fixer/reports/github-gh-aw/daily-yamllint-fixer-definitions.md",
+    "evidenceArchive": "docs/operational-value/proof/yamllint-fixer/reports/github-gh-aw/daily-yamllint-fixer-evidence-archive.json"
+  },
+  "nativeIndex": "docs/operational-value/proof/yamllint-fixer/./native-index.json",
+  "nativeIndexSha256": "8d3ff7e0173c89559fb905333ddb295f4f05896ea1342265027957cacb38c131",
+  "graph": "docs/operational-value/proof/yamllint-fixer/graph/links.json.gz",
+  "archivedBlobCount": 329,
+  "nativeAssessments": 331,
+  "knownAssessments": 328,
+  "unknownAssessments": 3,
+  "linkedKnownAssessments": 5,
+  "linkedUnknownAssessments": 0,
+  "nativeMeasuredTotals": {
+    "native-net": null,
+    "linked-net": 0,
+    "observed-native-net": 11,
+    "observed-linked-net": 0
+  },
+  "acceptedNativeEvents": [
+    {
+      "commit": "1b42fdf9427bd0e1f4081dbd36ab01301ac657d2",
+      "at": "2026-07-05T15:02:49Z",
+      "path": ".github/workflows/daily-yamllint-fixer.lock.yml",
+      "beforeBlob": "19d46345f7d0e067e6b1d1b626c0376a6fb61191",
+      "afterBlob": "d2888fc96ac149ccad233641dcbce2c074a09971",
+      "before": 11,
+      "after": 0,
+      "nativeValue": 11,
+      "linked": []
+    }
+  ],
+  "unknownGaps": [
+    "File additions/deletions and unsupported modes are not native repair assertions.",
+    "Fleet-wide lint, generator root causes, full YAML validity and other yamllint categories are not measured.",
+    "Eleven repository sentinel reductions have no corroborated workflow link; do not credit them to this workflow.",
+    "Retained marker lineage is corroborated shared contribution, not authoritative creation proof; edited-away and deleted outputs are gaps.",
+    "Required checks, behavior preservation, full goal acceptance, and costs are not measured."
+  ],
+  "validations": [
+    "node --test tests/unit/lint-native-operational-value.test.mjs (5 passing)",
+    "verify-value-function.mjs --collector (both modules passing)",
+    "Focused ESLint (zero errors; tests ignored by repository policy)",
+    "npm run typecheck:cao (passing)",
+    "npm run compile (72 workflows passing; two pre-existing outdated-action warnings)",
+    "All owned files <=256KiB"
+  ],
+  "portfolioIntegration": "Register the explicit functionPath and reportPaths above as native partial-facet coverage. Do not infer full-goal or causal completion. Use observed-linked-net as the contribution signal. Evidence must resolve from docs/operational-value/proof/yamllint-fixer; source-specific index and partition digests are frozen.",
+  "skillLessons": "Freeze a narrow source-intrinsic native facet before replay. Validate adoption against a real parent, not a shallow log boundary. Pin tool and helper identities, isolate trusted builtins from upstream configs, and separate signed diagnostic movement from merged outputs. Keep unknown additions, parsing, full safeguards and attribution separate. A bounded fixed sentinel is partial output evidence, never a fleet-wide generator fix."
+}

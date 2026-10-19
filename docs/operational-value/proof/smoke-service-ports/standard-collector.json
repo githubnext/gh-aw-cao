@@ -1,0 +1,12 @@
+{
+  "command": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+  "args": [
+    ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+    "--collector",
+    "docs/operational-value/proof/functions/smoke-service-ports.mjs"
+  ],
+  "status": 0,
+  "signal": null,
+  "stdout": "verified docs/operational-value/proof/functions/smoke-service-ports.mjs\n",
+  "stderr": ""
+}

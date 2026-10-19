@@ -1,0 +1,46 @@
+import { nativeCredoSnippetModule } from "../../../../scripts/native-credo-snippet-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativeCredoSnippetModule({
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "daily-elixir-credo-snippet-audit",
+  "sourcePath": ".github/workflows/daily-elixir-credo-snippet-audit.md",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "32d6520ef2d5667ec2e76950879438e7c532d117",
+  "directory": "docs/operational-value/proof/credo-snippets",
+  "adoption": {
+    "commit": "3fa71b5a2b43abf8a59b4a6ed58a2e2b245d9934",
+    "adoptedAt": "2026-07-09T02:16:03Z",
+    "baselineCommit": "afedbd93cfaf6453bb0f4c79754ae9d19720776f",
+    "baselineAt": "2026-07-09T02:15:36Z"
+  },
+  "policySha256": "bcafe2b56242abbf7b931a1ef17de2d15598397720ef531b3ef080e792388b1a",
+  "toolSha256": "49ce8e65db02ed74a9af1a05f2c7c042f297e301c7c1129a77dcb433c3815933",
+  "interpreterSha256": "bd7429a0ea1ccd0e2948cfddcf74c2c6c3a77d6a99c71fc554ce86644ef7e62c",
+  "probeSha256": "483815d37416f93d9afcd4116fc08841b4c293d6896b913c47d423e563977d54",
+  "collectorSha256": "36153036efde81fae812ab26fa797e9917d0629477bbf3ba1b63f92ff7f52648",
+  "sourceReaderSha256": "3a9662186e0d9abfd8c7b1a7e0beece3973c0c484e5cf28e5a24d39d4eeadfd9",
+  "archiveReaderSha256": "f144b7f059bb1187b623b0b592360fd76d64338644a42bcb5c79a2c758a9a068",
+  "scope": {
+    "roots": [
+      "docs/",
+      ".github/workflows/"
+    ],
+    "extensions": [
+      "md",
+      "mdx",
+      "markdown"
+    ],
+    "languages": [
+      "elixir",
+      "ex",
+      "exs",
+      "iex"
+    ],
+    "parser": "CommonMark remark-parse 11.0.0"
+  },
+  "acceptance": "Count actual pinned native strict Credo diagnostics only for a nonempty completely checkable cohort. No snippets, parse failures, context fragments, waivers and missing runtime produce null, not clean zero.",
+  "safety": "Only parse and statically lint snippet text; never evaluate or compile snippets or load repository executable configuration. Fixtures do not establish repository outcomes or workflow contribution."
+});

@@ -1,0 +1,38 @@
+[
+  {
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "workflowId": "daily-work-queue-formal-verification",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "sourceGitBlob": "d223ae26fef0bc0de2f668cb62151a1eccd546bd",
+    "producerGitBlob": "03d28917f1d8754ecafd4f50324ad93d7116c245",
+    "jobSha256": "ed7224809d9d782caec15297ba66db926fbafb49a7ecc21641bea3e40e64096c",
+    "models": [
+      {
+        "id": "FairDAGGitHub",
+        "module": "FairWorkQueue",
+        "sourceSha256": {
+          "FairWorkQueue.tla": "f74f0cbe6408b9d43333957dee6c9cd9a6c6aef9a727c0d9609d83d86723dcaa",
+          "FairDAGGitHub.cfg": "3b21f925b61a5bbd4c935311b9523cbcc330c773f02f178b58e1fdc968c1d4e2"
+        }
+      },
+      {
+        "id": "QueueOrdering",
+        "module": "WorkQueue",
+        "sourceSha256": {
+          "WorkQueue.tla": "bb06bb21b34e1e157df14c9fbdbea5640a1431fe8bcef469902e1163ee1b15ce",
+          "QueueOrdering.cfg": "84b58855aa37b1487e8163e1d539e891f66fba534e93bf5d2bf0a6278aea2ba3"
+        }
+      }
+    ],
+    "tlcSha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+    "interpreterSha256": "c9be914675803eaf2d202f9d5ea728bf8c636fbbcaae52b4a35ef35751865c36",
+    "adoption": {
+      "commit": "546e3d37c84ce5b0a29aa2ce280108df6daaf72b",
+      "adoptedAt": "2026-10-08T14:35:14Z",
+      "baselineCommit": "0697ad2384d68eea4a16232883fbbff62f6f9e65",
+      "baselineAt": "2026-10-08T12:28:45Z"
+    }
+  }
+]

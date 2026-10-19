@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "lockfile-stats",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "342d6d8771dca0836d291f69810de61353566149",
+  "until": "2026-10-18T15:00:12Z",
+  "adoption": {
+    "commit": "46ca02a43628ba71f69d340527c3c19830b84473",
+    "adoptedAt": "2025-10-11T18:54:39Z",
+    "baselineCommit": "b2606df93230e9c44517a3191cbcc1ab2363a4ec",
+    "baselineAt": "2025-10-11T18:29:21Z"
+  },
+  "frozenBeforeResults": true,
+  "goal": "For each repository-wide lockfile census, deliver statistically accurate facts about all .github/workflows/*.lock.yml files, independently reconciled to the immutable input population.",
+  "acceptance": "A retained numeric statistical assertion matches an independent native YAML/JSON census of the full, source-bound checkout. The entire report, recommendations, resource limits and publication require separate evidence.",
+  "primary": {
+    "id": "verified-statistical-facts",
+    "unit": "reconciled statistical facts",
+    "formula": "Count distinct numeric report assertions independently reconciled to native facts over the complete eligible lockfile population; deduplicate by original run, assertion meaning and input population.",
+    "zero": "Only a bound report with an exhaustive assessed assertion inventory and no matching numeric assertion can establish zero.",
+    "missing": "Absent original report, ambiguous input revision, unreviewed source profile or incomplete input census yields null, not zero."
+  },
+  "scope": {
+    "files": "All immediate regular .github/workflows/*.lock.yml files in the proven checkout commit, without sampling.",
+    "opportunity": "Initial scheduled or manually dispatched lockfile-stats executions and independently source-bound equivalent censuses; reruns do not create new deliveries.",
+    "cadenceDays": 7,
+    "durationDays": 7,
+    "maturationDays": 0,
+    "earliestReviewedV4": "83a079d1a2b8eafe7210ffac64d359a07e2b6e17",
+    "sourceCompatibility": "V4 semantics beginning at the category self-check repair, with runtime/frontmatter-only differences reviewed separately. Older executions remain inventoried but cannot be silently relabeled as V4."
+  },
+  "nativeFamilies": [
+    "lockfile count and byte size min/mean/max/total",
+    "trigger counts and combinations",
+    "schedule cron frequencies",
+    "workflow_dispatch coverage",
+    "deduplicated JSON safe-output type counts",
+    "discussion categories, default category and unresolved/fallback counts",
+    "job, step and run-script totals and maxima",
+    "agent-job permission maps and per-scope distribution",
+    "all-job permission union and write-workflow count",
+    "job timeout distribution",
+    "metadata engine id, model, versions and declared fallback counts",
+    "manifest MCP server/tool frequencies and legacy fallback count",
+    "malformed/skipped file count",
+    "JSON byte-size and parser-availability acceptance gates",
+    "retained daily history and deltas when exact historical identities exist"
+  ],
+  "schemaAdaptation": "The source prescribes semantics but not JSON member spelling. An adapter may map unambiguously named fields to frozen native facts, never infer a numeric claim from prose, fuzzy-match values, change units silently or select fields for favorable results. Preserve every mapped assertion, mismatch and unsupported field.",
+  "nativeRules": [
+    "Parse with pinned PyYAML safe_load; preserve raw input byte lengths; account for its YAML 1.1 on-key boolean normalization.",
+    "Resolve engine from first-line gh-aw-metadata agent_id, then sole engine_versions key, then an unambiguous GH_AW_ENGINE_ID environment value; unresolved is explicit.",
+    "Read permissions from jobs.agent and separately union all job grants; scalar read-all/write-all remain explicit, not invented finite scope maps.",
+    "Read GH_AW_SAFE_OUTPUTS_CONFIG as JSON from agent steps; deduplicate the handler copy and fail on conflicting configurations; never scrape discussion_category.",
+    "Prefer gh-aw-manifest mcp_servers, use allowed-tool comments only for absent legacy manifests, retain fallback counts.",
+    "A run-script is a step with a string run value; structural counts are YAML nodes, not shell command estimates.",
+    "Compare integer counts exactly and fractional native statistics only within the explicitly displayed rounding precision; retain exact unrounded expected quantities.",
+    "Cache history is evidence discovery; an older cached date alone is not original run/source/input binding.",
+    "Protected upload proves which bytes were retained, not whether those bytes or the report's recommendations were correct."
+  ],
+  "classification": {
+    "mode": "attainment-only",
+    "antecedent": "pre-existing-but-not-reconstructable",
+    "reason": "The same accurate repository census could have been produced by a person or other tool before adoption. Git reconstructs inputs but does not prove that a historical accurate assertion was delivered. Probe baseline Git and retained output interfaces; never manufacture a baseline from today's oracle."
+  },
+  "separateUnknowns": [
+    "Interestingness, recommendation usefulness and downstream decisions are not established by numeric reconciliation.",
+    "Five-bash-turn and one-million-token limits need complete original tool/usage receipts.",
+    "Publication in audits requires a protected persisted-effect receipt or immutable independently bound original Discussion.",
+    "Retention of daily history does not establish the originality or input identity of older cached entries.",
+    "No keep threshold, cost, sole attribution or causal improvement is assumed."
+  ]
+}

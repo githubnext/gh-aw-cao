@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-file-diet",
+  "workflowName": "Daily File Diet",
+  "sourcePath": ".github/workflows/daily-file-diet.md",
+  "valueFunctionSha256": "f5a70e8fdf40a1c893c1c360f14ccd4a957e7a3845e109b29cd7a3d937d81103",
+  "window": {
+    "startAt": "2026-09-12T10:16:09Z",
+    "endAt": "2026-10-18T11:17:39.034Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "oversized",
+  "signal": {
+    "status": "worsening",
+    "attention": "review",
+    "current": 53,
+    "previous": 49,
+    "directionAwareGain": -4,
+    "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+    "opportunities": 1575,
+    "metricId": "oversized",
+    "basis": "repository-outcome",
+    "unit": "files"
+  },
+  "metrics": [
+    {
+      "id": "oversized",
+      "name": "Production Go files with at least 800 lines",
+      "role": "primary",
+      "formula": "count distinct regular pkg/**/*.go paths excluding *_test.go with wc -l >= 800",
+      "unit": "files",
+      "direction": "decrease",
+      "presentation": {
+        "name": "Oversized production files",
+        "legendLabel": "Oversized files",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "worsening",
+        "attention": "review",
+        "current": 53,
+        "previous": 49,
+        "directionAwareGain": -4,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 1575
+      },
+      "currentWindow": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-03T10:16:09Z",
+        "endAt": "2026-10-10T10:16:09Z"
+      },
+      "series": [
+        {
+          "at": "2026-09-19T10:16:09Z",
+          "value": 40,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-09-26T10:16:09Z",
+          "value": 42,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-03T10:16:09Z",
+          "value": 45,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-10T10:16:09Z",
+          "value": 49,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-17T10:16:09Z",
+          "value": 53,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "accepted-refactors",
+      "name": "New accepted receipt-linked refactors in this window",
+      "role": "diagnostic",
+      "formula": "count explicitly completed merged refactors satisfying all frozen safeguards; unknown identity, graph coverage or required checks yields null",
+      "unit": "refactors",
+      "direction": "increase",
+      "presentation": {
+        "name": "Accepted linked refactors",
+        "legendLabel": "Accepted refactors",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 1575
+      },
+      "currentWindow": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-03T10:16:09Z",
+        "endAt": "2026-10-10T10:16:09Z"
+      },
+      "series": [
+        {
+          "at": "2026-09-19T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-09-26T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-03T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-10T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-17T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "correct-issues",
+      "name": "New receipt-linked issues correctly targeting a largest oversized file",
+      "role": "diagnostic",
+      "formula": "count new verified create_issue receipts whose target exists, is at least 800 lines and has the maximum source-revision line count; a precursor, not accepted refactoring",
+      "unit": "issues",
+      "direction": "increase",
+      "presentation": {
+        "name": "Correctly targeted issues",
+        "legendLabel": "Correct target issues",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "worsening",
+        "attention": "review",
+        "current": 1,
+        "previous": 2,
+        "directionAwareGain": -1,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 1575
+      },
+      "currentWindow": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-03T10:16:09Z",
+        "endAt": "2026-10-10T10:16:09Z"
+      },
+      "series": [
+        {
+          "at": "2026-09-19T10:16:09Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-09-26T10:16:09Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-03T10:16:09Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-10T10:16:09Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        },
+        {
+          "at": "2026-10-17T10:16:09Z",
+          "value": 1,
+          "status": "complete",
+          "observedAt": "2026-10-18T11:17:39.034Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

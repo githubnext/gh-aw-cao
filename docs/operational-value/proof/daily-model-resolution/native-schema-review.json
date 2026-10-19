@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "status": "unsupported-independent-binding",
+  "reviewedProxySchema": "token-usage/v0.28.50",
+  "sessionRecords": 35,
+  "nativeChildStarts": 5,
+  "proxyRequests": 29,
+  "routingClassifierRequests": 1,
+  "sessionPerRequestIds": 0,
+  "sharedRequestIds": 0,
+  "aggregateSnapshotEvents": 2,
+  "exactBindingsSupported": false,
+  "nativeResolutionValue": null,
+  "sourceDeclaredModelsAvailable": false,
+  "reason": "Proxy rows expose request_id but no child/session/tool-call identity; this reviewed format has no independently validated bridge to child lifecycle IDs. Agent metrics are aggregate snapshots, not proxy request receipts. Runtime configured models are not immutable workflow declarations.",
+  "rejectedJoins": [
+    "same model",
+    "overlapping timestamps",
+    "aggregate token or request totals",
+    "x_initiator=agent",
+    "agent-reported configuredModelMatchesActual"
+  ],
+  "fixtureOnly": true,
+  "nativeHistory": false,
+  "acceptedOperationalObservations": null,
+  "manifestSha256": "86d6be3c18e7676ff33dadaea969132a344b1a8416fb6772ab4d303383f65392",
+  "sourceFixtureHashes": [
+    {
+      "gitBlob": "235e45b977f4e12a88b53efc70adc9f1a5f5fab1",
+      "sha256": "9ab72d36c422b2639f1adfe22754e35241c13365f4bb879e22804804d88ec7c6",
+      "bytes": 28635
+    },
+    {
+      "gitBlob": "9ceaea6a74b40d3d9c051af1d56a7e884ddb0e95",
+      "sha256": "2afe25db58a9e55c4cded4f0524f9b41f2a6f8f1e5a18c39db876e3004a53c59",
+      "bytes": 21138
+    }
+  ],
+  "nativeCodeGrounding": [
+    {
+      "gitBlob": "35735346f37c634efd07b19b67131074bb734706",
+      "path": "pkg/cli/token_usage_subagent_session.go",
+      "lines": "17-66,575-639,695-799",
+      "finding": "Structured child lifecycle keys exist; final retry/source scope matters. Request usage objects do not independently establish a proxy-to-child identity bridge."
+    },
+    {
+      "gitBlob": "063eac1e413ce93a6377bf39dcbe1d9be5b48586",
+      "path": "pkg/cli/token_usage_subagent.go",
+      "lines": "337-369,402-442",
+      "finding": "The inspected per-request proxy credit matcher is Pi-only and uses first matching model/token quartet in observed order. It is not unique native child-dispatch identity proof and is not ported as such."
+    }
+  ],
+  "decision": "Do not implement an accepting proxy-to-child decoder from these formats. Keep the operational collector fail-closed and all retained outcomes unknown.",
+  "readiness": {
+    "fixtureSchemaDecoderImplemented": true,
+    "nativeProducerDecoderReady": false,
+    "functionReady": false,
+    "nativeEvidenceReady": false,
+    "nativePlotReady": false
+  },
+  "scope": "The two fixture requests are resolved. No three-run metadata, history acquisition or further network access was authorized or performed.",
+  "predecessor": {
+    "members": 53,
+    "archiveSha256": "160baa49257f5b645f269cb95fb0be2af22ea7b2a1c0e4d5d71d54449bacccd0",
+    "manifestSha256": "0bbc41cd3b09624a4ffaf31a9f166e20fec4f47ca41e2ae5bc54eb69af9d158a",
+    "functionSha256": "cfd556cc3367577d09b9318ec2c0f56fa98e3e0523c7cd9bb98f049f04ccd306",
+    "timelineSha256": "ecbe1c04175432a8f7173574d6194af5962c7b010d259b656091dff2bc2c9006",
+    "retention": "All original 53 members remain byte-identical. The original verified owned-only tar, manifest and extraction receipt are retained unchanged; this extension is an additive delta."
+  }
+}

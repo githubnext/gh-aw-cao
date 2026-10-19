@@ -1,0 +1,117 @@
+{
+  "upstreamManifestSha256": "33e97a67b4c74252e39dbe2ab26961d7cb9bfd8c47da38cd91800357d84b8783",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "requests": [
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/actions/runs/38986380447/attempts/1/jobs?per_page=100",
+      "method": "GET",
+      "startedAt": "2026-10-19T11:45:35.913Z",
+      "receivedAt": "2026-10-19T11:45:37.018Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 11:45:36 GMT",
+        "etag": "W/\"f91f55ae2e42e81a291fe1edda9122d8c363bb64662941ad770a6a2e6cf22140\"",
+        "x-github-request-id": "EE79:2A2ABE:11CFFE:1A4719:6AD602E0",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "10111",
+        "x-ratelimit-reset": "1792411043",
+        "x-ratelimit-resource": "core"
+      },
+      "file": "322a5bbba8d297f1517daea2e2d1957305880d8700bfa628e7596997c420bfbd.json",
+      "bytes": 34054,
+      "sha256": "1faa8a3871590def99453103682e37da587723bac09ea0b89889f5918946f496"
+    },
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/actions/runs/38986380447/attempts/1/logs",
+      "method": "GET",
+      "startedAt": "2026-10-19T11:45:38.623Z",
+      "receivedAt": "2026-10-19T11:45:39.904Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/zip",
+        "date": "Mon, 19 Oct 2026 11:45:39 GMT",
+        "x-github-request-id": "F97F:20C482:A4392:B1924:6AD602E3"
+      },
+      "file": "a50b1487029b1f0ea19e7d2b03128cff64dc967c8b2f6901b0dcd2297c0df68e.zip",
+      "bytes": 133072,
+      "sha256": "7a41634bd3c95f2b57ba2e9792eb587b0bd5e42df1eac3674155438ff0c4f259"
+    },
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/actions/artifacts/12083297259/zip",
+      "digest": "sha256:3347ef775c84b068d89704cd891fad5f319d309b9b87387cd5ec3a5b3ce89a08",
+      "method": "GET",
+      "startedAt": "2026-10-19T11:45:41.506Z",
+      "receivedAt": "2026-10-19T11:45:42.469Z",
+      "status": 200,
+      "headers": {
+        "content-length": "19789",
+        "content-type": "application/zip",
+        "date": "Mon, 19 Oct 2026 11:45:42 GMT",
+        "etag": "\"0x8DF2BE5803BB541\""
+      },
+      "file": "91ef176b90db750dfba81d1deafd022ac06b32c697ebf8ea8ffcfc51f811c9b3.zip",
+      "bytes": 19789,
+      "sha256": "3347ef775c84b068d89704cd891fad5f319d309b9b87387cd5ec3a5b3ce89a08"
+    },
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/actions/runs/38327858802/attempts/1/jobs?per_page=100",
+      "method": "GET",
+      "startedAt": "2026-10-19T11:45:44.071Z",
+      "receivedAt": "2026-10-19T11:45:45.443Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 11:45:45 GMT",
+        "etag": "W/\"25a38775d58d0175bba48095694186dcba545ae5740d31465e1aedad6501d046\"",
+        "x-github-request-id": "F552:1D1C60:13FB74:1CF452:6AD602E8",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "10107",
+        "x-ratelimit-reset": "1792411043",
+        "x-ratelimit-resource": "core"
+      },
+      "file": "6ea405b3647811b1dc4656a920017cc09b38640dfed43378946e46c801c9ff2a.json",
+      "bytes": 33698,
+      "sha256": "424b0326ca07ba69ebceb89d542f611384f015094b97d91cda16d9ddcc42dec2"
+    },
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/actions/runs/38327858802/attempts/1/logs",
+      "method": "GET",
+      "startedAt": "2026-10-19T11:45:47.045Z",
+      "receivedAt": "2026-10-19T11:45:48.539Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/zip",
+        "date": "Mon, 19 Oct 2026 11:45:47 GMT",
+        "x-github-request-id": "F8B2:2F4EE1:69A7F:779E0:6AD602EB"
+      },
+      "file": "16cc107d8fb9410c691c355b77154b1f92f48eac8e1b47cda4bdbe9f01c95828.zip",
+      "bytes": 130757,
+      "sha256": "f6ac8d76a2e8a732ba416eac84d64dfaa6bc67627f91875605ab2a689bb626d4"
+    },
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/actions/artifacts/11782220693/zip",
+      "digest": "sha256:35ac7fe885dbddec5bc74f66afe88c9fca44c519fa0ab261c4da14e373ad2667",
+      "method": "GET",
+      "startedAt": "2026-10-19T11:45:50.142Z",
+      "receivedAt": "2026-10-19T11:45:51.096Z",
+      "status": 200,
+      "headers": {
+        "content-length": "19652",
+        "content-type": "application/zip",
+        "date": "Mon, 19 Oct 2026 11:45:50 GMT",
+        "etag": "\"0x8DF28C1D368B607\""
+      },
+      "file": "2d5f31b9bdd327934ee17c317d473d50a5a9998b6ca7cf2a9e568804b89a1445.zip",
+      "bytes": 19652,
+      "sha256": "35ac7fe885dbddec5bc74f66afe88c9fca44c519fa0ab261c4da14e373ad2667"
+    }
+  ]
+}

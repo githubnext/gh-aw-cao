@@ -1,0 +1,1596 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-checkout-pr-dispatch",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "d03a4f83ff8fa6cb0a582b8cf4151e0268924ec4",
+  "until": "2026-10-18T15:00:12Z",
+  "adoption": {
+    "commit": "81f056d0446bd08fdd6ac0c3403c951930c86eeb",
+    "adoptedAt": "2026-08-01T19:43:53Z",
+    "baselineCommit": "be1047fe3ecd6bc1fe07b8b03dd1816514874f85",
+    "baselineAt": "2026-08-01T19:36:04Z"
+  },
+  "goal": "For every admitted PR-context invocation, check out the intended PR head in a clean initialized Git workspace with origin and visible history.",
+  "acceptance": "Join the original GitHub event and source policy to a contemporaneous expected PR head/ref and protected pre-agent Git readback; require matching head/ref, clean status, origin, visible commit and a non-main branch.",
+  "formula": "Count distinct initial invocation opportunities with independently established complete checkout conjunction; unknown outcomes are not zero.",
+  "antecedent": {
+    "result": "pre-existing-but-not-reconstructable",
+    "reason": "PR checkout and this same Git-state conjunction predate workflow adoption; immutable source cannot reconstruct a historical runner workspace or dispatch payload.",
+    "baselineProbe": {
+      "commit": "be1047fe3ecd6bc1fe07b8b03dd1816514874f85",
+      "eventAndWorkspaceReceipts": "not present in immutable Git",
+      "requiredSources": [
+        "original event payload",
+        "PR head at protected fetch",
+        "protected Git state before agent execution"
+      ]
+    }
+  },
+  "triggerClasses": [
+    "dispatch-pr",
+    "centralized-slash-pr-dispatch",
+    "direct-pr",
+    "direct-pr-comment",
+    "schedule-control",
+    "dispatch-no-pr-control",
+    "issue-slash-control"
+  ],
+  "evidencePlan": {
+    "source": "Immutable workflow, imports, compiled trigger/job policy and native checkout implementation, reviewed before Actions outcomes.",
+    "execution": "Exhaust initial-attempt Actions inventory from adoption to cutoff, every event/branch; retain full source profile identities.",
+    "originalEvent": "Original webhook/GITHUB_EVENT_PATH payload or independently preserved canonical event record bound to run and attempt; never today's editable PR or comment.",
+    "expectedHead": "Original direct-PR head SHA/ref or independently dated fetch-time PR-ref resolution; payload/fetch races require an explicit bound resolution receipt.",
+    "actualState": "Protected pre-agent checkout-step readback of HEAD^{commit}, symbolic branch, porcelain status, origin and visible commit count.",
+    "retention": "Actions jobs/logs/artifacts can expire; missing dispatch inputs or historical PR state stay unknown.",
+    "canonical": "Specification lines 64-71, 151-161: retained run summaries and seven-day run-linked details do not supply an authoritative checkout conjunction. No canonical snapshot supplied."
+  },
+  "rejectedProxies": [
+    "overall run/job/agent success",
+    "checkout_pr_success (also true for skipped and closed-PR paths)",
+    "non-main branch alone",
+    "checkout configuration",
+    "agent-authored PASS comment",
+    "current PR head backdated"
+  ],
+  "measures": [
+    {
+      "id": "verified-checkouts",
+      "role": "primary",
+      "quantity": "Complete independently observed checkout conjunctions."
+    },
+    {
+      "id": "verified-heads",
+      "role": "diagnostic",
+      "quantity": "Independent intended head/ref matches, even if cleanliness or other safeguards are unknown."
+    }
+  ],
+  "sourceReview": {
+    "profiles": 227,
+    "checkerVersions": 11,
+    "eras": [
+      "Adoption: dispatch PR extraction; Number coercion; nonfork guard; implicit bot/app trust; direct PR branch or refs/pull/N/head checkout.",
+      "Aug 4: preserve full Git history; Aug 17: explicit error codes.",
+      "Aug 27: protected actual HEAD baseline exported; adds head-repository identity. Does not assert clean workspace.",
+      "Sep 25: strict positive-decimal PR parser, dispatch-only fail-closed fork guard and centralized router actor validation.",
+      "Oct 1/8: same-repository bot PR trust and explicit repository null guards.",
+      "Oct 9/12/16: allow-listed same-repository comment/review bot trust and ready/reopened PR actions."
+    ],
+    "compatibility": "Retain each actual source profile. Trust/parser/fork-policy changes are distinct eras, not comparable pooled trends. No unreviewed runtime is promoted from a successful job.",
+    "closedPR": "Source tolerates closed/deleted PR checkout failures. Require contemporaneous closed-state evidence; do not infer either attainment or ineligibility from job success.",
+    "schedules": "Schedule without PR context is a negative/no-op control, not a PR checkout opportunity.",
+    "sourceLimits": "The source asks the agent to perform status/branch/remote/log checks; it contains no protected complete-conjunction verifier."
+  },
+  "sourceProfiles": [
+    {
+      "lockGitBlob": "abc82afa144d9a7888f21a697928fb491d8d3d1c",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "249ecf2001b703f33fd5b3b8a6f125315892f742bf69e251b62d4940ae453d7e"
+    },
+    {
+      "lockGitBlob": "cab8b4e519f043ea0bab3d754dab32892e1bb867",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "249ecf2001b703f33fd5b3b8a6f125315892f742bf69e251b62d4940ae453d7e"
+    },
+    {
+      "lockGitBlob": "16819e9715128cc4d3d7963630d10cb516c361e4",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "249ecf2001b703f33fd5b3b8a6f125315892f742bf69e251b62d4940ae453d7e"
+    },
+    {
+      "lockGitBlob": "ddb3c0bdd60f4bd4fdb123b0a7fb98f634624f79",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "249ecf2001b703f33fd5b3b8a6f125315892f742bf69e251b62d4940ae453d7e"
+    },
+    {
+      "lockGitBlob": "05a485977ec5f87d6f92eee9fcb72969ae54a967",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "249ecf2001b703f33fd5b3b8a6f125315892f742bf69e251b62d4940ae453d7e"
+    },
+    {
+      "lockGitBlob": "e3bc1d89f7716b3ded4c3cff9da68790526d799b",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "dea3bc4fefe6b43fd2c0caca23c96ac038d2b0a6ddbc7bddafdce5f71879cc67"
+    },
+    {
+      "lockGitBlob": "3d79786d666d399682f6aed3cd01d8d50d371293",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "dea3bc4fefe6b43fd2c0caca23c96ac038d2b0a6ddbc7bddafdce5f71879cc67"
+    },
+    {
+      "lockGitBlob": "67408ec91b08e1c817fc6e667968da59fb22819e",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "dea3bc4fefe6b43fd2c0caca23c96ac038d2b0a6ddbc7bddafdce5f71879cc67"
+    },
+    {
+      "lockGitBlob": "d82df9f45c6af9b42df5005b69303e03c8257924",
+      "checkerGitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "dea3bc4fefe6b43fd2c0caca23c96ac038d2b0a6ddbc7bddafdce5f71879cc67"
+    },
+    {
+      "lockGitBlob": "d82df9f45c6af9b42df5005b69303e03c8257924",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "dea3bc4fefe6b43fd2c0caca23c96ac038d2b0a6ddbc7bddafdce5f71879cc67"
+    },
+    {
+      "lockGitBlob": "0bdcae42d22a63b25bf73d344a80164a59a3bcc5",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "dea3bc4fefe6b43fd2c0caca23c96ac038d2b0a6ddbc7bddafdce5f71879cc67"
+    },
+    {
+      "lockGitBlob": "3d58d7822849b2ef5a9d9a293f6770bc68fd662a",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "c9035ec2c2011d606abea8aaff4046418f8b253c7d7f413269595a89a60a2fff"
+    },
+    {
+      "lockGitBlob": "276e58bfa24a1b2a34a01cea481aa32371bcb25a",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "c9035ec2c2011d606abea8aaff4046418f8b253c7d7f413269595a89a60a2fff"
+    },
+    {
+      "lockGitBlob": "ffcd8eecf57db9106a8643dd6505692f37c3f79a",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7535e3c053b8b6eb0bd558c0a460b055bdc1430e25c033402912637085f2dbd9"
+    },
+    {
+      "lockGitBlob": "90b350dee6e82a563efa4a986403019094f980c4",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7535e3c053b8b6eb0bd558c0a460b055bdc1430e25c033402912637085f2dbd9"
+    },
+    {
+      "lockGitBlob": "b11b884986cca331b4fb768e7ad996ad6957edba",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7535e3c053b8b6eb0bd558c0a460b055bdc1430e25c033402912637085f2dbd9"
+    },
+    {
+      "lockGitBlob": "0839b4ec968443f4b8d1244f54ebe5c204609b0d",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7535e3c053b8b6eb0bd558c0a460b055bdc1430e25c033402912637085f2dbd9"
+    },
+    {
+      "lockGitBlob": "de0fc4d23e42dd655673f91b08dc35dbebf62cc9",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7535e3c053b8b6eb0bd558c0a460b055bdc1430e25c033402912637085f2dbd9"
+    },
+    {
+      "lockGitBlob": "8de9a51c724035469fb04ad4fcfc2de2e13e9dc1",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7535e3c053b8b6eb0bd558c0a460b055bdc1430e25c033402912637085f2dbd9"
+    },
+    {
+      "lockGitBlob": "267419c6ced13ed990e9b340e1cc45667ef8c4b1",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7535e3c053b8b6eb0bd558c0a460b055bdc1430e25c033402912637085f2dbd9"
+    },
+    {
+      "lockGitBlob": "701e20ed228bb2070f622ab013f9fe6d87cbd55e",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "f094a80269ba4a0e9e311c8578184803bb14810eb53c0cbf2a2148d562407cde"
+    },
+    {
+      "lockGitBlob": "1e31129e94a68da2775a3ece26f676d9a02c9c8f",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "0697812c266aad9f08d610abfab74d3130081e918f8bcd517b4fa42af1717190"
+    },
+    {
+      "lockGitBlob": "8cb9dbc639cbfad3ed2f232f65c8a097a13f9ba5",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9e8368ff08300c40c700d5663b44312a8949d3b194e0dc60b0fc905ea0f385e3"
+    },
+    {
+      "lockGitBlob": "479cf566932e96d5515a74f49fa0054fc07a35f5",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9e8368ff08300c40c700d5663b44312a8949d3b194e0dc60b0fc905ea0f385e3"
+    },
+    {
+      "lockGitBlob": "245a952cabe956242baeb2a8e982272b11b440bf",
+      "checkerGitBlob": "92422d5bad585460ea1195e73691fdb627e97b88",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9e8368ff08300c40c700d5663b44312a8949d3b194e0dc60b0fc905ea0f385e3"
+    },
+    {
+      "lockGitBlob": "245a952cabe956242baeb2a8e982272b11b440bf",
+      "checkerGitBlob": "5a5a96ede968e9cc4bf063da36cff0faa65031d1",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9e8368ff08300c40c700d5663b44312a8949d3b194e0dc60b0fc905ea0f385e3"
+    },
+    {
+      "lockGitBlob": "7bf10f7ea08b19501e4475424284c7afde335c6e",
+      "checkerGitBlob": "5a5a96ede968e9cc4bf063da36cff0faa65031d1",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9e8368ff08300c40c700d5663b44312a8949d3b194e0dc60b0fc905ea0f385e3"
+    },
+    {
+      "lockGitBlob": "12e9f95fd5820cb7b174c485a0fa1d169d67f600",
+      "checkerGitBlob": "5a5a96ede968e9cc4bf063da36cff0faa65031d1",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9e8368ff08300c40c700d5663b44312a8949d3b194e0dc60b0fc905ea0f385e3"
+    },
+    {
+      "lockGitBlob": "ed57f000ac7f121fc7d05d5599252718bb14709b",
+      "checkerGitBlob": "5a5a96ede968e9cc4bf063da36cff0faa65031d1",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9e8368ff08300c40c700d5663b44312a8949d3b194e0dc60b0fc905ea0f385e3"
+    },
+    {
+      "lockGitBlob": "1db2730213f4b28ea85c7187feff931a173cb4bf",
+      "checkerGitBlob": "5a5a96ede968e9cc4bf063da36cff0faa65031d1",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "4cd9fe830a4980e692941a37886acdc100bd49be784de74a8bf633b6a174bb81"
+    },
+    {
+      "lockGitBlob": "ebf9babefb064964e57049c07e032ba2379a2962",
+      "checkerGitBlob": "5a5a96ede968e9cc4bf063da36cff0faa65031d1",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9d57415dade80d722a8af6e7c6970f1536464a81de7b32b37fbccb16aeba808a"
+    },
+    {
+      "lockGitBlob": "b7b2454ce83e4b58166648e7da918639ff59384e",
+      "checkerGitBlob": "5a5a96ede968e9cc4bf063da36cff0faa65031d1",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9d57415dade80d722a8af6e7c6970f1536464a81de7b32b37fbccb16aeba808a"
+    },
+    {
+      "lockGitBlob": "ea18f6ba372b8669c5e500214ffc515b00b1aa2e",
+      "checkerGitBlob": "5a5a96ede968e9cc4bf063da36cff0faa65031d1",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9d57415dade80d722a8af6e7c6970f1536464a81de7b32b37fbccb16aeba808a"
+    },
+    {
+      "lockGitBlob": "ea18f6ba372b8669c5e500214ffc515b00b1aa2e",
+      "checkerGitBlob": "8a26cb645059eb80a4e108374a333604e8a0d2b0",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9d57415dade80d722a8af6e7c6970f1536464a81de7b32b37fbccb16aeba808a"
+    },
+    {
+      "lockGitBlob": "24242105f9233eec2903f5775fc96e0c8364aae9",
+      "checkerGitBlob": "8a26cb645059eb80a4e108374a333604e8a0d2b0",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "ae41b724f7fded3f30012387319f1c8b0806f574d1218bef216df65db82223fc"
+    },
+    {
+      "lockGitBlob": "abcf9273fb9526067ff2d5367c6f036cac9e0582",
+      "checkerGitBlob": "8a26cb645059eb80a4e108374a333604e8a0d2b0",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "ae41b724f7fded3f30012387319f1c8b0806f574d1218bef216df65db82223fc"
+    },
+    {
+      "lockGitBlob": "7519bafae5f0a7ee7a6ce3d479256b0c6dee6a15",
+      "checkerGitBlob": "8a26cb645059eb80a4e108374a333604e8a0d2b0",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "aced18e5e115807a0092fe77d722e676a0bed85f9fdd36b79023710e16c5a707"
+    },
+    {
+      "lockGitBlob": "5231464470bdf15a5c2b2cfad202ea2d06ec44ca",
+      "checkerGitBlob": "8a26cb645059eb80a4e108374a333604e8a0d2b0",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "aced18e5e115807a0092fe77d722e676a0bed85f9fdd36b79023710e16c5a707"
+    },
+    {
+      "lockGitBlob": "5231464470bdf15a5c2b2cfad202ea2d06ec44ca",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "aced18e5e115807a0092fe77d722e676a0bed85f9fdd36b79023710e16c5a707"
+    },
+    {
+      "lockGitBlob": "66b3dd0e2318343df848407e58c182b6e26be76b",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "aced18e5e115807a0092fe77d722e676a0bed85f9fdd36b79023710e16c5a707"
+    },
+    {
+      "lockGitBlob": "9b91ee409f3b636f0a26f5a1379166cb33bd441a",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7270a52ae071d3052367b1a368b9f8d6a9823ccf110d91fa09a7052d804ec743"
+    },
+    {
+      "lockGitBlob": "e6b190a9fda0f4795997cc2ad59479bf567cc3d0",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "7270a52ae071d3052367b1a368b9f8d6a9823ccf110d91fa09a7052d804ec743"
+    },
+    {
+      "lockGitBlob": "43f701286c75897915cd37a9e686753ca1e2b887",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "882bb0e8d090577f59ed345c00c8ff3e49e27458e563fbf3305e726cadf14ad4"
+    },
+    {
+      "lockGitBlob": "8259412943ec85469ca3424172b83dc8cd84f1c3",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "882bb0e8d090577f59ed345c00c8ff3e49e27458e563fbf3305e726cadf14ad4"
+    },
+    {
+      "lockGitBlob": "5deaad016fa807e3f204b5ae1d7ad01f03c7fd6a",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9bdef8544f902b1e61ffc5ee934b1e820af7f7862fe8fc5fd0907f4174439804"
+    },
+    {
+      "lockGitBlob": "fb884da3edd2a937a0580da156a2a40a9e27c3f7",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9bdef8544f902b1e61ffc5ee934b1e820af7f7862fe8fc5fd0907f4174439804"
+    },
+    {
+      "lockGitBlob": "d4ad0b69bbe10137667ca7a60119434031128dd2",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9bdef8544f902b1e61ffc5ee934b1e820af7f7862fe8fc5fd0907f4174439804"
+    },
+    {
+      "lockGitBlob": "f732497bcf8761a6a76df05e05a57f78f8785b6e",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "9bdef8544f902b1e61ffc5ee934b1e820af7f7862fe8fc5fd0907f4174439804"
+    },
+    {
+      "lockGitBlob": "5758178d4dfd803924ece6bf67b9c6eb64873f9e",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "42b0778bec2b40e6c9955452f73d7a0b9a70d513a40af869792b1baec3d3d350"
+    },
+    {
+      "lockGitBlob": "d443e30e9955961a6ea57cc0a2a5c35752c20d28",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "42b0778bec2b40e6c9955452f73d7a0b9a70d513a40af869792b1baec3d3d350"
+    },
+    {
+      "lockGitBlob": "4da6156af12dca9667c3a1aba7dc6e82c8f4db18",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "42b0778bec2b40e6c9955452f73d7a0b9a70d513a40af869792b1baec3d3d350"
+    },
+    {
+      "lockGitBlob": "eb65309d5001bfe19fa267ca13a1bd309b3c787b",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "42b0778bec2b40e6c9955452f73d7a0b9a70d513a40af869792b1baec3d3d350"
+    },
+    {
+      "lockGitBlob": "0edc5ae6ac2734529aa3a5071c2b8019fdaba77a",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "42b0778bec2b40e6c9955452f73d7a0b9a70d513a40af869792b1baec3d3d350"
+    },
+    {
+      "lockGitBlob": "0b933cc6e4f12e957cc8b9019a1a86811387d46a",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "6af660a4e2e6f917645465323cda000295751a61",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "7a0921b86ae2531ff91a4728235a52f7364b444e",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "fdb11c18a9fc5ea4842fa295e5f1026866e641d2",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "fc009aefb6fdc83a6ae68c1b956984cdda479769",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "53ac3fda3a5ae6d8f658c92c05eded8710c14de2",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "0254a14f5ad9c85255ae387c2720988e0fb40cb1",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "21f1952d750a2f86373375e751b1f7ac2bb528b8",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "bab12b5d223b1625bf65289cb906e4e43bd42325",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "c023846bc000c1ae73c0deaf6b7d6cba3a1d719c",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "444fafb04debacf60d22a01bb9befb115383d6f6",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "d95c676938a844c2f9b5cbe5a5df6d9b26cd76a1",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "3473937fcbf1330029d894c79453b7f32f497b23",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "5c7e6286c9fddeedba96f23cef54599393de0de3",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "444031a4abc158c45036f9af81d836944b8309b503e136eddb95e12d32fccb0f"
+    },
+    {
+      "lockGitBlob": "994daef5c8884ee7c6d30f4268d8c5bd0fd8cf7d",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "5b62479bbc0e5c89e0fda9a68ab3512cef7f3eab1fe4cca76c457b54ee075e76"
+    },
+    {
+      "lockGitBlob": "1cc509ffbd4706f90868645d3755f3c9cecd7991",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8abc84d9462fa49fc007b061b06cb05ac0522d01bbb3608aa597d3334daabd03"
+    },
+    {
+      "lockGitBlob": "6c6c097c3dd5e15a684e4893b0df7a87f7955add",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8abc84d9462fa49fc007b061b06cb05ac0522d01bbb3608aa597d3334daabd03"
+    },
+    {
+      "lockGitBlob": "f047d5370b86a889032d10999a16ebcf2d2d11f8",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8abc84d9462fa49fc007b061b06cb05ac0522d01bbb3608aa597d3334daabd03"
+    },
+    {
+      "lockGitBlob": "1aab012e0938c5d2369f3aa79fd4c856f5c05046",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "910dc786c8623557768433fdec71abeccd1c1f9f62c275ab3c3a3305c0d320b2"
+    },
+    {
+      "lockGitBlob": "d063d3a78e56ee7c0c812cb295aed4503520c62b",
+      "checkerGitBlob": "c8036bc9cab51e9db2c9131aed8e5fae2d83f20b",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "92026a35f9768d287afe7ab59aa9b3b9c49d174435bc9e93d8e5ba8c9eff6528"
+    },
+    {
+      "lockGitBlob": "d063d3a78e56ee7c0c812cb295aed4503520c62b",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "92026a35f9768d287afe7ab59aa9b3b9c49d174435bc9e93d8e5ba8c9eff6528"
+    },
+    {
+      "lockGitBlob": "3e1bd05ec74a90ac8e26f3ee5182883c92069631",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "92026a35f9768d287afe7ab59aa9b3b9c49d174435bc9e93d8e5ba8c9eff6528"
+    },
+    {
+      "lockGitBlob": "9eb973bba4c06b0d07aa627eea3e7a1b4d34076a",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8f97b3b56d1e5318a1cb34dd9f120e142f571841c77ac2dcf69ef280e5ff3376"
+    },
+    {
+      "lockGitBlob": "ff451ec3419ccd179d4495846dffb963142d68a3",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8f97b3b56d1e5318a1cb34dd9f120e142f571841c77ac2dcf69ef280e5ff3376"
+    },
+    {
+      "lockGitBlob": "8c2df81a194f2f302219bc1e19238b49d2fe4f8e",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "fbf7d9cb616ba0363014c8a7b2bfb1e4256542ce511ec932ccff78a1d2197bf7"
+    },
+    {
+      "lockGitBlob": "0f0a82cfd2349d3c73339fdc570f74a942fcdb78",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "fbf7d9cb616ba0363014c8a7b2bfb1e4256542ce511ec932ccff78a1d2197bf7"
+    },
+    {
+      "lockGitBlob": "7fe1b813cfb13b6ad1ef3772ae57d7410f4200e8",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "bb5492c43326c7cc6b856245fe2c7c867379cf79d2e418d4a6f9e02b911cb1f1"
+    },
+    {
+      "lockGitBlob": "924d4870bd1cfb0e9e9cfbff8088f4ec5a278228",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8c77a3a89978e903aeb451cc12fdebf10a90524b74c285059c568880aaa51f8c"
+    },
+    {
+      "lockGitBlob": "033626e7b2399099cc3f3f6f0abe2b8c770c82e1",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8c77a3a89978e903aeb451cc12fdebf10a90524b74c285059c568880aaa51f8c"
+    },
+    {
+      "lockGitBlob": "2174602b0d3250f25e8a5de27361a348f0fff094",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8c77a3a89978e903aeb451cc12fdebf10a90524b74c285059c568880aaa51f8c"
+    },
+    {
+      "lockGitBlob": "1ecebd9e7f4c5944a60fe3eca13af3136bfb906c",
+      "checkerGitBlob": "f58e97bc45dff5ba5579efb0a045859460b18397",
+      "strictPrNumber": true,
+      "checkoutStepSha256": "8c77a3a89978e903aeb451cc12fdebf10a90524b74c285059c568880aaa51f8c"
+    },
+    {
+      "lockGitBlob": "1ecebd9e7f4c5944a60fe3eca13af3136bfb906c",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "8c77a3a89978e903aeb451cc12fdebf10a90524b74c285059c568880aaa51f8c"
+    },
+    {
+      "lockGitBlob": "54027c60ea381b2e40d30db271f94b57db6954e4",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "372795f7d0cd9e4deb01d04045e466ddb6d29ecb788ff5ebd7494df5a140ef37"
+    },
+    {
+      "lockGitBlob": "653980cde757c94dfcbc26102beef164b94461d7",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "9138153c26708c298b181ca8d5f7b48026e3cc3ca111730ad99d71a6487b35b7"
+    },
+    {
+      "lockGitBlob": "d6418f9bdc89d30aae5ea8e2c70069966ea0724c",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "89b50df10b89ade1aa372c554b0d2fa3a0e31e7902c582dcb420d7ddffd37334"
+    },
+    {
+      "lockGitBlob": "832eb7a1be19e4dd4bad548ece53f1c82bf6d688",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "89b50df10b89ade1aa372c554b0d2fa3a0e31e7902c582dcb420d7ddffd37334"
+    },
+    {
+      "lockGitBlob": "bfd8b300171ce1a3318cdfdaef24ce8ce8cd8afb",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "89b50df10b89ade1aa372c554b0d2fa3a0e31e7902c582dcb420d7ddffd37334"
+    },
+    {
+      "lockGitBlob": "bc149f7ef8ac19bf7d011538fdab41b6721ed495",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "89b50df10b89ade1aa372c554b0d2fa3a0e31e7902c582dcb420d7ddffd37334"
+    },
+    {
+      "lockGitBlob": "c71d16698189cc04cc3564228328c58087a68618",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ab3bc86999cd258742fa2fb35c9caaf1e013a9b697b6c4a1423b6c08b6d5fc25"
+    },
+    {
+      "lockGitBlob": "8b8601370f4ffc319f4283f8c44edda18fbe2c92",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "6b852006f47235b035a68d139b4d963664f069f15bfeebc2fea8fb57ae11a929"
+    },
+    {
+      "lockGitBlob": "5fd253f78d7bb980b98e5b50a30880fcd5581838",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "f86d334105b657e7a36c73a314e7afb3c52bd6668d10e5bace05e6033528ac65"
+    },
+    {
+      "lockGitBlob": "fa8a14eb821a5e508552ba31c40c9ec837489470",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "f86d334105b657e7a36c73a314e7afb3c52bd6668d10e5bace05e6033528ac65"
+    },
+    {
+      "lockGitBlob": "b3d438b8c618154b0e6ac998800e83f10c28279c",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "f86d334105b657e7a36c73a314e7afb3c52bd6668d10e5bace05e6033528ac65"
+    },
+    {
+      "lockGitBlob": "2ab15ee33601438d0144e95d3dc6f6dede4623c0",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "5a5f5c5825cbecbfae1ead923f36a525f55a4033af5107309b9cd6b21e635c46"
+    },
+    {
+      "lockGitBlob": "04fa09c1bcf105d9e7bfd4c15719e027b6d2a8ce",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "87de82200510f747a528ae2ef8043f929ee1072b74be72391deae7de2f6edacd"
+    },
+    {
+      "lockGitBlob": "6dd185d63260107edb91853c3d1236c655eed0ff",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "87de82200510f747a528ae2ef8043f929ee1072b74be72391deae7de2f6edacd"
+    },
+    {
+      "lockGitBlob": "c2d7253290f4318a5747e75a5437ecee4ce4f3c6",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "87de82200510f747a528ae2ef8043f929ee1072b74be72391deae7de2f6edacd"
+    },
+    {
+      "lockGitBlob": "8eefdf276f4eed58c0a07370e157eaa368ebcf34",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "607a0a1c2c82466568a0b20ef9b9a13b7535a931c30cfdb214e4a88b78c0defc"
+    },
+    {
+      "lockGitBlob": "06961e5361c90e4c7b401287a8ac6445d53ac5c5",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "607a0a1c2c82466568a0b20ef9b9a13b7535a931c30cfdb214e4a88b78c0defc"
+    },
+    {
+      "lockGitBlob": "5ed4b9d4679ec8ea86cbef080199b02353547666",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "607a0a1c2c82466568a0b20ef9b9a13b7535a931c30cfdb214e4a88b78c0defc"
+    },
+    {
+      "lockGitBlob": "e99a0834ed860b720e5343e0e44f8950d32110e3",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "696609048cc8624f9739194d5b6e63e15e2e26996ae452e1b6cfef229ed0232e"
+    },
+    {
+      "lockGitBlob": "181a9edbe31cb33254ce989c069f6e46c95670a9",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "696609048cc8624f9739194d5b6e63e15e2e26996ae452e1b6cfef229ed0232e"
+    },
+    {
+      "lockGitBlob": "1c7bb92abcd408dd7b03d9dcb135b8e7fc644738",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "696609048cc8624f9739194d5b6e63e15e2e26996ae452e1b6cfef229ed0232e"
+    },
+    {
+      "lockGitBlob": "8434551355c118d559ac0615fe31ceb3d398b2f5",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "696609048cc8624f9739194d5b6e63e15e2e26996ae452e1b6cfef229ed0232e"
+    },
+    {
+      "lockGitBlob": "0d796fd59eda65f4d0dfbebaf33f5f48e1e53a39",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "496dddda2a4a97046ed1ab45e9803e2dfbcffd569e8052c3f934b741de890efa"
+    },
+    {
+      "lockGitBlob": "90297fb7127b79d1fc13900e4012294c02159425",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "496dddda2a4a97046ed1ab45e9803e2dfbcffd569e8052c3f934b741de890efa"
+    },
+    {
+      "lockGitBlob": "a5d9aa0538f94f3b85a1cea4575afbc85a46fc3d",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "496dddda2a4a97046ed1ab45e9803e2dfbcffd569e8052c3f934b741de890efa"
+    },
+    {
+      "lockGitBlob": "ae9f5ef557e6b9dcb4fadb4612fe30266c136750",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "496dddda2a4a97046ed1ab45e9803e2dfbcffd569e8052c3f934b741de890efa"
+    },
+    {
+      "lockGitBlob": "f368f3678fce81d7492df286feb29a49cf7c0b48",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "496dddda2a4a97046ed1ab45e9803e2dfbcffd569e8052c3f934b741de890efa"
+    },
+    {
+      "lockGitBlob": "4e246014a9947a2b864a5ac3a5722f373064820a",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "496dddda2a4a97046ed1ab45e9803e2dfbcffd569e8052c3f934b741de890efa"
+    },
+    {
+      "lockGitBlob": "df9c365c6fd2c06e2a34777e8bf9e73f2bb911cc",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "efa6d16cf2aca367e8d9923f5307ded198e599c0ed25242fc50d201e233b5112"
+    },
+    {
+      "lockGitBlob": "cef0dd6d52a22bda463bf46f126d86765f46de70",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "efa6d16cf2aca367e8d9923f5307ded198e599c0ed25242fc50d201e233b5112"
+    },
+    {
+      "lockGitBlob": "2d1c6496e1bfa2c5b6c7ad8fd194f7db20290185",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "8fdce51002fa55cab4a13997291fe8ae52ee5d694b7bff88da96723ca8b1bda9"
+    },
+    {
+      "lockGitBlob": "4a4d24db4d351d74ea52b0ce78c9913cffa90a5e",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "8fdce51002fa55cab4a13997291fe8ae52ee5d694b7bff88da96723ca8b1bda9"
+    },
+    {
+      "lockGitBlob": "3c0ab0e07d8feeb15476caebbd27f8e0a63b4d5c",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "8fdce51002fa55cab4a13997291fe8ae52ee5d694b7bff88da96723ca8b1bda9"
+    },
+    {
+      "lockGitBlob": "d4b51afd6e2d84d3e1336cbd35ea98761d1d25a7",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "04cdf17f0fe6b96e6d3afb1f5210e9191789ed00aee15c5080bd75001048ad9f"
+    },
+    {
+      "lockGitBlob": "0f497714a80e3eaea3c3d0ba12ee92b06a15fbcc",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "04cdf17f0fe6b96e6d3afb1f5210e9191789ed00aee15c5080bd75001048ad9f"
+    },
+    {
+      "lockGitBlob": "7e67c0f6ef8a362f4cfc7e86b526da1cdc05d1d1",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "04cdf17f0fe6b96e6d3afb1f5210e9191789ed00aee15c5080bd75001048ad9f"
+    },
+    {
+      "lockGitBlob": "9843df95269f3d9bf34a1b7c4b34a57863decfea",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "04cdf17f0fe6b96e6d3afb1f5210e9191789ed00aee15c5080bd75001048ad9f"
+    },
+    {
+      "lockGitBlob": "1ad6d93f014e06b88ea58ddc784648dcd6a49c96",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "262d5b0a885ab6c58d2a7c4b076b617586dda0941e148364553c8505ff34d56a"
+    },
+    {
+      "lockGitBlob": "4cee753593f50301321449c09bf0a3c5f8115dd3",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "262d5b0a885ab6c58d2a7c4b076b617586dda0941e148364553c8505ff34d56a"
+    },
+    {
+      "lockGitBlob": "7f3528cf9da21f2a991a3c5451197ee1365b0d80",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "b99a490a7b90d030b0c8edb0a0e356efec2f0d39c653ab293e2b00e8f6edd266"
+    },
+    {
+      "lockGitBlob": "8e49ac8f2157a26203776e1300626df5ffdee944",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "b99a490a7b90d030b0c8edb0a0e356efec2f0d39c653ab293e2b00e8f6edd266"
+    },
+    {
+      "lockGitBlob": "3229b2d4e11e293fec017b5b79321e1e670f7c07",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ddf27420160b3e2115078588c85dcefb33f5a015f1c7e82779e34cec4965b8fb"
+    },
+    {
+      "lockGitBlob": "9c5251bc9a6e75a18aec21e91a5c8ad684172296",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ddf27420160b3e2115078588c85dcefb33f5a015f1c7e82779e34cec4965b8fb"
+    },
+    {
+      "lockGitBlob": "78ef5eefe93a523312fdc30c96c22e953ec525b0",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ddf27420160b3e2115078588c85dcefb33f5a015f1c7e82779e34cec4965b8fb"
+    },
+    {
+      "lockGitBlob": "d6c44b6cd359bed9fa70bd68dc0d728aefa52af0",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "67811b5636ac55d5c17b57d882e92aefd70a672bdf44417cff8aa9f70eebd910"
+    },
+    {
+      "lockGitBlob": "3cf36b3046705d3332b40efd42b25b5530104f0d",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "8d499311e7cd42568844563dff1fade539f8973c",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "f74a8c41eb0692411dbacb090210ac3e7d00a675",
+      "checkerGitBlob": "d85bb76dad94126edfc9b0106a074e369ddb8225",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "6a2eda1fe43fd28b46b2d9e91554e6a5b52bc40d",
+      "checkerGitBlob": "c334afa9e548c035056d9d7b0d6c574f4d965466",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "27e0b9eb740ff34155ef944490a60578daaeafe4",
+      "checkerGitBlob": "c334afa9e548c035056d9d7b0d6c574f4d965466",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "ddf0693a211c8eb288d332851691c194cea2ed3b",
+      "checkerGitBlob": "c334afa9e548c035056d9d7b0d6c574f4d965466",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "ddf0693a211c8eb288d332851691c194cea2ed3b",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "3866f55d571d7fb00779918e604cc1089ad02cb1",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "5a972e779de4b85f18b4393dc5aaddc28c696f76",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "3d561cab949ccc684815be8a37cc035e465ce3ba",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "bed3e53776a4e60ac3e6d60cf99d5c97e5e5e8bf",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "6182c876d5796b3c0f0a833e595e92a3a040cfc3",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "3b12d8eeb98154664c6199e7534f77f9706a9a8f",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "bea69665cc3d9b8bb9d1ed71f091a648325a61d5",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ece4882b42f732baa8236ebe571417eb32708f85e419c3bf979d56ed899e14b1"
+    },
+    {
+      "lockGitBlob": "15b3b4fdc05f366cd721908f572bb93e48cd59b6",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "a0afc2c99c4afc9efea5a1bd98c4cdcb59bcb84385fdc786cb9ab3a79299b7fd"
+    },
+    {
+      "lockGitBlob": "f766fafc51e2628452e1c403a4f33ae72b320075",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "2859a146276db048080e236824c98a701f07fe73e4f432076f9966ca26b77320"
+    },
+    {
+      "lockGitBlob": "d05b706ece5874a29853961434a7d45b73fa1bdd",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ef1446f75c3799cab9b37ffd690c9f7297d0ca4eae8814eb085715cda9b178db"
+    },
+    {
+      "lockGitBlob": "11ab02cd293d88e81f4b195ff726194270b125d1",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ef1446f75c3799cab9b37ffd690c9f7297d0ca4eae8814eb085715cda9b178db"
+    },
+    {
+      "lockGitBlob": "f58802459235a96f5392f08dbafb32d2768a3cf4",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "6331d5234cc5f6b7d01eeaa3c6da0a5d971f9301739a7a599b0809a32b2d55f7"
+    },
+    {
+      "lockGitBlob": "b83abfe8890625dc440325c5f803d92c777dc01a",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ef1446f75c3799cab9b37ffd690c9f7297d0ca4eae8814eb085715cda9b178db"
+    },
+    {
+      "lockGitBlob": "a4bc76ef48ae41660d9dd44c65ae19d7ba51b168",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ef1446f75c3799cab9b37ffd690c9f7297d0ca4eae8814eb085715cda9b178db"
+    },
+    {
+      "lockGitBlob": "334abbdff2aa66619e1d7c14cbe88ea709f59e49",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ef1446f75c3799cab9b37ffd690c9f7297d0ca4eae8814eb085715cda9b178db"
+    },
+    {
+      "lockGitBlob": "3c8b1f88dcbdb14890249a2530a1dc28c5a18043",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ef1446f75c3799cab9b37ffd690c9f7297d0ca4eae8814eb085715cda9b178db"
+    },
+    {
+      "lockGitBlob": "4624318d7eecf42281f23c9dfb3db1feb975613e",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ef1446f75c3799cab9b37ffd690c9f7297d0ca4eae8814eb085715cda9b178db"
+    },
+    {
+      "lockGitBlob": "c698113ac5fe4e80a0b3cd351996ac506bb1249c",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "ef1446f75c3799cab9b37ffd690c9f7297d0ca4eae8814eb085715cda9b178db"
+    },
+    {
+      "lockGitBlob": "2551a4c272988336736d0d7a3c498255c0c1150b",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "873822fae1ef0d24d60268d38ea4ef1120d7db78be864039d24aa5545154b5b5"
+    },
+    {
+      "lockGitBlob": "50a4ca40054b1e5586929531c7a236a6c107774e",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "873822fae1ef0d24d60268d38ea4ef1120d7db78be864039d24aa5545154b5b5"
+    },
+    {
+      "lockGitBlob": "0df599af51045c48e5eb32a27d5e0cf904923f86",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "873822fae1ef0d24d60268d38ea4ef1120d7db78be864039d24aa5545154b5b5"
+    },
+    {
+      "lockGitBlob": "9ca13a29adb3116d4247a03aad44891cde64eac6",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "873822fae1ef0d24d60268d38ea4ef1120d7db78be864039d24aa5545154b5b5"
+    },
+    {
+      "lockGitBlob": "682541d639d6fd560191718fcd9e7f8f9fd29709",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "873822fae1ef0d24d60268d38ea4ef1120d7db78be864039d24aa5545154b5b5"
+    },
+    {
+      "lockGitBlob": "8a68ed9c44a383ffb80fe0eded9e4f0551594260",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "873822fae1ef0d24d60268d38ea4ef1120d7db78be864039d24aa5545154b5b5"
+    },
+    {
+      "lockGitBlob": "9d531a884ed9deba8f9a0bcfd95b774f62e04e88",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "873822fae1ef0d24d60268d38ea4ef1120d7db78be864039d24aa5545154b5b5"
+    },
+    {
+      "lockGitBlob": "e2997b8d4e7ae7d02c60473dbe210e13474ce596",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "59a07c6c6b9e01ed43d7d721a1f7b587c3aa3238f692c49ecdc3f1e3563c8ddc"
+    },
+    {
+      "lockGitBlob": "f4bd3d6cde618e931f9555961d83e4dbea651798",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "e3db11c8126665051f98cc562bca0ca13c8ed73b635a3288c1cce102901ae7d1"
+    },
+    {
+      "lockGitBlob": "dcff5e770734e4f8857fa556d18974fa7fafca0a",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "e3db11c8126665051f98cc562bca0ca13c8ed73b635a3288c1cce102901ae7d1"
+    },
+    {
+      "lockGitBlob": "3ff08a0fc3923bb2b586a689ab7aaf6e9aa995a2",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "996502d36ec48d16e8125eaebe9cb94e1fc7c468",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "4ce0e64975b20d12c7b951ccc937e7bf7986b11f",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "244648df88df5fb85d030559c1887e94d52b1b6b",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "17d3ac7dbf4b2f277e9d6d4058acafcd90e837ef",
+      "checkerGitBlob": "ef6bb0d8498dff936a5784d31c538416cfbecd83",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "17d3ac7dbf4b2f277e9d6d4058acafcd90e837ef",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "a5e52a8ca6c1cdb88d838ea4897f23fa77ef9f02",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "36111ab536b4c98adb0394f9ee5f2284cf987524",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "347bf763d8c5d06dfc8753e0e511378ce235b42f",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "2bd702d4486b5643892e3fa40284ab2ed1fcc635",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "599c97f10b7e105263af3bb698d07b1496bf7573",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "93eb546a66da5074c5e654d0e86ee30a6c767e5e",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "2345e937b17d556fb2c11047fc44bb4c4a6247d0",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "499ceb4391237277028a6f060c477f69590d2857",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "4b784b0af26ca655c5ed0768830c75ab4a5fa115",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "39688b4f7d5eca826c2f678912c935d023205c5066132f4bc75940a499f936dd"
+    },
+    {
+      "lockGitBlob": "0b0f65dc223f83ed0acdd4790c9a3bd65d050c2b",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "b5d4a5b50f18d9a6b7c7aeb471521f04761f386d57bcbda42a6aac6c4ff338e4"
+    },
+    {
+      "lockGitBlob": "8cbc2ffb3fcf9e0c4ec41fb3476c6ffd8e231557",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "b5d4a5b50f18d9a6b7c7aeb471521f04761f386d57bcbda42a6aac6c4ff338e4"
+    },
+    {
+      "lockGitBlob": "2dc1a5f14480826b1e77ade1fd56ee96983ecdeb",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "b5d4a5b50f18d9a6b7c7aeb471521f04761f386d57bcbda42a6aac6c4ff338e4"
+    },
+    {
+      "lockGitBlob": "858ff1c244b019328e7d783409d96116ec448c4f",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "f1e34e259f89b5c2125a8ff15d928cd399642c4f5cfeb88ad432706c5ec558a9"
+    },
+    {
+      "lockGitBlob": "f46f1f2dd1721eaa98409cf3ed32d680dfcd952a",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "8a9d082c74aa504f1675b86ee0ac9cb69270e5e5",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "6825e5eaf80a7d5afcef8a509445074fa909c67b",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "0931c2cd3ffc2515c1d07449b43a54acdd20d8e6",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "e577406fbdc364abc3527b483a4fa9d8f8bc06d6",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "ae709d52909780442d09b0ed8c80895df73b2630",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "b61dfb4d61ccbf99ed2d165853bdc56bcbaae844",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "9865be38c6446c2709eb334036d66012bc4b6c30",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "d049481e75ff5eb2fcfba9463af58a1f29baa8a9",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "e8733b57be3e93defab43e56acbe17e7e505c1f6",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "f59f92664dedb8b4530673790ff41aa1e9b72ac3",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "e6f46237cfe8ca0cf7adcf191ca5a9d241ff1d3e",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "39a20dd735423619f64a1aa7324f24df5110386b",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "030db05a8f3865a01f25265de8f4ac743f6457ee",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "162d02754669976722fdad1b4178e68e9733389e",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "989857d1721ad52162ca78afff7dd58f7c048a3b",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "e410273b2a311f0586d65baea9257fa49a064336",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "98ae5fca8d45ba27a778061635f43e73c85a265a",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "eac2e0312c7eae7a74a70b694c13d12b841252d7",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "a18bb0ec24681eb915ab8cb7d4453c8d312ac2e5",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "1c699b752c550a6d386fa0aeeeaff361ed651502",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "e9ec73d6c4e2c6f3f46bfbfcdfbbcd754ee17dce",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "40b38d7b1cb552046b5b13150b3b7f1d6787473f8f4598aebb72a0dcbf81d819"
+    },
+    {
+      "lockGitBlob": "70f5fc67f1482771a2a454272d0c49c506ce45c3",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "7ac32f65ac422b618b7f32cadded219d8a83e92591307c589238f8f208bee741"
+    },
+    {
+      "lockGitBlob": "fc8036e2797a82fae7c1d9aaa2df0aa4185db384",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "3b44072af9827734b8bcfe74d6666ed4a2079715",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "8e48843c821cbfef3961e2f41b9c931d7f1b2565",
+      "checkerGitBlob": "87b195c6741d915048ee33542cd4fc3cb0799fa6",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "8e48843c821cbfef3961e2f41b9c931d7f1b2565",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "eb5ff228a662c6b0357f45872f7f6286b2ffdee8",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "fa9c94f188df0c0309918597d3c279fc91ba59a1",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "db20e65ee9eeb55fb332a09d3fd9c076d2dc5259",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "530dccb40f48f5d417c663342ffe69000232b6aa",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "3bbdeafb1b3553d0607dc1fb49b282957667f50e",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "d475ce1ece580bdaab071172a13df2642b99b283",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "1b27d0c3f25c787a4d22b46e661014e2fecd1ec2",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "cfca1d8f3643923e389a02f64dec667671416c4a",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "458b4c6826ea24bdd39bde930ac709d30e46be3187edd29d72991497a77d6ce8"
+    },
+    {
+      "lockGitBlob": "de5519cea4922551610b1fefb68dfe48cf2211a4",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "0b3fd32ed80e9600814022d051802156f6cf6c4c",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "c7c90264adcd8741a69985486b5ad05e89440569",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "794e252976c478d4f90fdb3a158545016b5838ed",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "d7bfc8a9941a1209d9cde9bded2910332819fd89",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "794e252976c478d4f90fdb3a158545016b5838ed",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "bb61f3eb769820faa772b952216089911671531a",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    },
+    {
+      "lockGitBlob": "da8cf360d0be19710fad0175d18e7b22c031ce67",
+      "checkerGitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+      "strictPrNumber": false,
+      "checkoutStepSha256": "48cbb7e250c1274e9c2c7d13cf44b495abf115d8dfe12573d98395f56f505db8"
+    }
+  ],
+  "dependencies": {
+    "81f056d0446bd08fdd6ac0c3403c951930c86eeb": {
+      "imports": [
+        {
+          "path": ".github/workflows/shared/otlp.md",
+          "gitBlob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+          "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6"
+        }
+      ],
+      "checkerClosure": [
+        {
+          "path": "actions/setup/js/checkout_pr_branch.cjs",
+          "gitBlob": "f93028302229ec4d21f69b3fed676f734e4735f0",
+          "sha256": "af973c11a4e3b0633f3f2f9d0e47d21a2d499e454ec1c0a3bece2480d94a6c2a"
+        },
+        {
+          "path": "actions/setup/js/error_helpers.cjs",
+          "gitBlob": "692bea862ef147f1d89e7fe79c5deb112bfc8bd8",
+          "sha256": "47e5b780ddd700b4405b0435533410f25eb8dd2d34b71d649151436def2fb4a2"
+        },
+        {
+          "path": "actions/setup/js/messages_core.cjs",
+          "gitBlob": "1203f513713f0a54f47b5611f9cf854a48ec524f",
+          "sha256": "cc678bc92f308295ce5e2d3fbbfe3484193bbfef577c67860bb957b3f5f9ef32"
+        },
+        {
+          "path": "actions/setup/js/pr_helpers.cjs",
+          "gitBlob": "24c60781ab24ede0ffcd74e93e6eaf5966805fd7",
+          "sha256": "af7ee0a2bbcbf5d59b09bb94204960c674d0ae0c07ac2eeeb4372fb919bb3181"
+        },
+        {
+          "path": "actions/setup/js/error_codes.cjs",
+          "gitBlob": "3fd758187eb2e93b67667fb9a441d45102aafefb",
+          "sha256": "ec28475fae3aca6628512ff43bcaaaebe1a4283562d74327c87fcc8226a602ee"
+        }
+      ],
+      "setup": [
+        {
+          "path": "actions/setup/action.yml",
+          "gitBlob": "d4aaa59ec1442c317b0168ca3377c2920e55bc17",
+          "sha256": "487a6458fd7e34c2c1e30c397ec023ea3445064e6a8bb8eae30da86086436647"
+        },
+        {
+          "path": "actions/setup/index.js",
+          "gitBlob": "678ae89b9ac085474cbb8cee0a6b3c96d91ed8ca",
+          "sha256": "80d5c0a95d7f966aa193c07a9813734fde0217cb65158513becc53e7f72e9164"
+        },
+        {
+          "path": "actions/setup/setup.sh",
+          "gitBlob": "57731fca9c3d3cf4a5eb457ba9f0d6f9878e1bab",
+          "sha256": "b620118e4557d525ec6f17fa7115d350def7c166e4e688a161398149fbd2dda6"
+        },
+        {
+          "path": "actions/setup/js/setup_globals.cjs",
+          "gitBlob": "8a0c01c5d495140242c7947d3490fb4edb63ebd1",
+          "sha256": "f7d065163fdc04e91ad080f5abca51dac6da3fad24214bfb3b88315bb52776fd"
+        },
+        {
+          "path": "actions/setup/js/generate_aw_info.cjs",
+          "gitBlob": "89b97a6ff5a1aad5bfc2adbfcbbc969457e315ae",
+          "sha256": "b7073aef3c01759334d248b19d98c2ee4a3b6ae318a1bffefd2323593796551e"
+        }
+      ]
+    },
+    "c86377ec47b38f0b5af463277ee55d1d03d08da8": {
+      "imports": [
+        {
+          "path": ".github/workflows/shared/otlp.md",
+          "gitBlob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+          "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6"
+        },
+        {
+          "path": ".github/workflows/shared/reporting.md",
+          "gitBlob": "263d2413472e62582c578897a8b06462da5ef171",
+          "sha256": "0929890c04f04878f9750464ef9a4bc799c87d236e4f936018a3bfc2dc3aae41"
+        }
+      ],
+      "checkerClosure": [
+        {
+          "path": "actions/setup/js/checkout_pr_branch.cjs",
+          "gitBlob": "76c8ad0cfc14c3cb6f4f25d9c3e1026bb180a826",
+          "sha256": "b329af9d66bb22e1fd8cfb5fe930d6c5274955fbbe3ad0cca5720a6af01b9b65"
+        },
+        {
+          "path": "actions/setup/js/error_helpers.cjs",
+          "gitBlob": "318ff008c8d6bead9a6935b0c09dd4f9fae387b6",
+          "sha256": "f57bf8346ebabe515ed0fa41071537a3cd8d70cb40c5b4fb4c1798b5fd7a977d"
+        },
+        {
+          "path": "actions/setup/js/messages_core.cjs",
+          "gitBlob": "dd47d0c0cb4a2565e3901e418d410c63e7fdcb23",
+          "sha256": "6620ab1c4b861e166a8f8f1a1aeda6891eab32dfe6acab99f7f236784cc31770"
+        },
+        {
+          "path": "actions/setup/js/pr_helpers.cjs",
+          "gitBlob": "24c60781ab24ede0ffcd74e93e6eaf5966805fd7",
+          "sha256": "af7ee0a2bbcbf5d59b09bb94204960c674d0ae0c07ac2eeeb4372fb919bb3181"
+        },
+        {
+          "path": "actions/setup/js/check_permissions_utils.cjs",
+          "gitBlob": "6ade37b19684c829e416bbbda962dd6198511970",
+          "sha256": "089ead78269bbcb273640ca2ab38cbfbaa6292170e424493f30dc3db8dc30913"
+        },
+        {
+          "path": "actions/setup/js/error_codes.cjs",
+          "gitBlob": "f18252eb125bbfdf78d5a8e4d138ca385016d471",
+          "sha256": "7b946e86b6bcdade368e913cec8aec3c4c92f7c7826e4ab10ebd134ec9d1fc2a"
+        }
+      ],
+      "setup": [
+        {
+          "path": "actions/setup/action.yml",
+          "gitBlob": "d4aaa59ec1442c317b0168ca3377c2920e55bc17",
+          "sha256": "487a6458fd7e34c2c1e30c397ec023ea3445064e6a8bb8eae30da86086436647"
+        },
+        {
+          "path": "actions/setup/index.js",
+          "gitBlob": "491d1d991f20fafecef62aadc9711f4ddfa9fbc4",
+          "sha256": "fdbc0b037195f12b85d7b7799e2c79e0ecaaaaaf49e6eec7a93fa49636e22c2a"
+        },
+        {
+          "path": "actions/setup/setup.sh",
+          "gitBlob": "fa60ab90895ce5f942c4d4379329e18e1b1de0be",
+          "sha256": "97714faf1af15f8f01bd8c24278dcec8fd3022d8db71bce9234b5c0b39ae4d87"
+        },
+        {
+          "path": "actions/setup/js/setup_globals.cjs",
+          "gitBlob": "818d61fe74126e5c04f4b5647bd6838e87ddcef1",
+          "sha256": "c2d788ab874595c0cf7d593d885f5d089c32de155136cace9618ae40ae6e2f09"
+        },
+        {
+          "path": "actions/setup/js/generate_aw_info.cjs",
+          "gitBlob": "b439469316d0238acf9e1a3183bd557ecb278cb1",
+          "sha256": "13d4dc37ccc229359c3dbdfc15c11ee85ad8525e64064bf6c68a6950753d3342"
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "The function is valid prospectively; measurement remains blocked without independent event/head/workspace receipts.",
+    "No successful step or exported baseline alone proves a clean initialized workspace.",
+    "Protected post-agent logs and agent reports cannot establish the required pre-agent state.",
+    "No costs, sole causation, adoption-relative improvement or keep/retire bar is measured."
+  ],
+  "interpreterSha256": "c0e8ea33d0417853c2494c953b61341cc57e47fed6beea6e70bdbcda00070777",
+  "sourcesSha256": "18c28cb37f8f14f2b98c99a834a92361163ce278bc78ecc08578b6ce13b86be7"
+}

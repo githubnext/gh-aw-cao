@@ -1,0 +1,34 @@
+{
+  "reason": "Actual introduction/parent unknown; standard evaluator must reject absent immutable adoption rather than fabricate it.",
+  "results": [
+    {
+      "command": [
+        "node",
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/smoke-drive.mjs"
+      ],
+      "status": 1,
+      "stdout": "",
+      "stderr": "error: value-function definition is invalid\n"
+    },
+    {
+      "command": [
+        "node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/smoke-drive/reports",
+        "--function",
+        "docs/operational-value/proof/functions/smoke-drive.mjs",
+        "--refresh",
+        "github/gh-aw",
+        "smoke-drive"
+      ],
+      "status": 1,
+      "stdout": "",
+      "stderr": "file:///Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-train/.github/skills/add-operational-value/scripts/common.mjs:41\n    throw new Error(detail || `${command} exited with status ${result.status}`);\n          ^\n\nError: error: value-function definition is invalid\n    at run (file:///Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-train/.github/skills/add-operational-value/scripts/common.mjs:41:11)\n    at file:///Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-train/.github/skills/add-operational-value/scripts/evaluate.mjs:65:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:377:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:691:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v25.0.0\n"
+    }
+  ]
+}

@@ -1,0 +1,305 @@
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { boundedPublicGitArchive } from "./bounded-public-git-archive.mjs";
+import { censusDigest, readCensusJson, writeCensusJson } from "./operational-value-census-io.mjs";
+import { joinPurelockCoverage, scorePurelock } from "./native-purelock-value.mjs";
+import { acquirePurelockCiCoverage, PendingPurelockEvidence } from "./purelock-ci-coverage.mjs";
+
+const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+const repository = "github/gh-aw", repositoryId = 1036865607;
+const sourceRevision = "c86377ec47b38f0b5af463277ee55d1d03d08da8", until = "2026-10-18T15:00:12Z";
+const directory = "docs/operational-value/proof/purelock";
+const sourcePath = ".github/workflows/purelock.md", analyzerPath = ".github/scripts/purelock/purity_scan.go";
+const predecessor = "056f1a4f332217c59b8acc36c213b37a2ec2a9c6b0fca82dee47df62cf325a89";
+const preparedPredecessor = "20748a8ecad46a80e9670ba6b07c66ed01791568361d5d9c0a335c52dd33e853";
+const execute = (command, args, options = {}) => execFileSync(command, args, {
+  timeout: 120000, maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"], ...options,
+});
+
+export function purelockJob(text) {
+  const lines = text.split("\n"), start = lines.findIndex(line => line === "  purelock_precompute:");
+  if (start < 0) return null;
+  const end = lines.findIndex((line, i) => i > start && /^  [a-zA-Z_][\w-]*:$/.test(line));
+  return lines.slice(start, end < 0 ? undefined : end).join("\n").trimEnd();
+}
+
+export function purelockLogReceipt(text) {
+  const lines = text.replace(/\x1b\[[0-9;]*m/g, "").split(/\r?\n/).map(line =>
+    line.replace(/^\d{4}-\d\d-\d\dT[\d:.]+Z /, ""));
+  const versions = lines.filter(line => /^go version go[\d.]+ linux\/amd64$/.test(line));
+  const scans = lines.filter(line => /^analyzed \d+ functions, \d+ pure, \d+ candidates written to \/tmp\/purelock\/candidates\.json$/.test(line));
+  const scan = scans.length === 1 ? scans[0].match(/^analyzed (\d+) functions, (\d+) pure, (\d+) candidates/) : null;
+  const checkouts = lines.flatMap((line, i) => line === "[command]/usr/bin/git log -1 --format=%H"
+    && /^[a-f0-9]{40}$/.test(lines[i + 1] ?? "") ? [lines[i + 1]] : []);
+  return { localCoverage: lines.filter(line => line === "No CI coverage artifacts available; computing coverage locally.").length === 1,
+    checkout: checkouts.length === 1 ? checkouts[0] : null,
+    version: versions.length === 1 ? versions[0] : null,
+    functionsAnalyzed: scan ? Number(scan[1]) : null, pureFunctions: scan ? Number(scan[2]) : null,
+    candidateCount: scan ? Number(scan[3]) : null };
+}
+
+export async function collectPurelockHistory(cache, scratch, prepareOnly = false, offline = false) {
+  if (!path.isAbsolute(scratch) || !path.isAbsolute(cache)) throw new Error("Private absolute cache paths are required");
+  mkdirSync(scratch, { recursive: true });
+  const reader = boundedPublicGitArchive(cache, repository, `${directory}/sources`), metadata = reader.metadata;
+  const api = endpoint => {
+    const filename = path.join(scratch, `api-${hash(endpoint)}.json`);
+    if (!existsSync(filename) && offline) throw new PendingPurelockEvidence(endpoint);
+    if (!existsSync(filename)) writeFileSync(filename, execute("gh", ["api", endpoint]));
+    return JSON.parse(readFileSync(filename, "utf8"));
+  };
+  const info = api(`repos/${repository}`);
+  if (info.id !== repositoryId || info.full_name !== repository || info.private !== false) throw new Error("Public repository identity mismatch");
+  const source = reader.read(sourceRevision, sourcePath), analyzer = reader.read(sourceRevision, analyzerPath);
+  const compiled = reader.read(sourceRevision, ".github/workflows/purelock.lock.yml"), job = purelockJob(compiled.bytes.toString());
+  if (!job?.includes("-limit 40") || !job.includes("-max-coverage 95") || !job.includes("go test ./pkg/...")
+    || !job.includes('go tool cover -func="$BUNDLE/merged.out"')
+    || !analyzer.bytes.toString().includes("packages.NeedTypesInfo")) throw new Error("Unsupported frozen PureLock instrument");
+  const imports = ["shared/mcp/serena-go.md", "shared/otlp.md", "shared/reporting.md"].map(file => {
+    const value = reader.read(sourceRevision, `.github/workflows/${file}`);
+    if (!value) throw new Error("Missing frozen workflow import");
+    return { path: `.github/workflows/${file}`, gitBlob: value.id, sha256: value.sha256 };
+  });
+  const additions = metadata(["log", "--first-parent", "--diff-filter=A", "--format=%H", sourceRevision, "--", sourcePath]).split("\n");
+  if (additions.length !== 1 || !/^[a-f0-9]{40}$/.test(additions[0])) throw new Error("Ambiguous PureLock adoption");
+  const adopted = additions[0], baseline = metadata(["rev-parse", `${adopted}^`]);
+  if (metadata(["ls-tree", "-r", baseline, "--", sourcePath])) throw new Error("Not a true PureLock source addition");
+  const date = commit => {
+    const seconds = metadata(["cat-file", "commit", commit]).match(/^committer .+> (\d+) [+-]\d{4}$/m)?.[1];
+    if (!seconds) throw new Error("Missing immutable commit timestamp");
+    return new Date(Number(seconds) * 1000).toISOString().replace(".000Z", "Z");
+  };
+  const ciSource = reader.read("3b6b90c09fb62933828e4890cbe4d71fac51d689", ".github/workflows/ci.yml");
+  const contract = { schemaVersion: 1, repository, repositoryId, workflowId: "purelock", sourcePath, sourceRevision, until, directory,
+    sourceGitBlob: source.id, analyzerGitBlob: analyzer.id, analyzerSha256: analyzer.sha256,
+    compiledJobSha256: hash(job), imports, toolchain: "go1.26.9", nativeToolsVersion: "v0.52.0",
+    ciSourceRevision: "3b6b90c09fb62933828e4890cbe4d71fac51d689", ciSourceSha256: ciSource.sha256,
+    ciInterpreterSha256: hash(readFileSync("scripts/purelock-ci-coverage.mjs")),
+    buildSelection: { goos: "linux", goarch: "amd64", cgoEnabled: "0", patterns: ["./pkg/..."] },
+    interpreterSha256: hash(readFileSync("scripts/native-purelock-value.mjs")),
+    producerSha256: hash(readFileSync(import.meta.filename)),
+    sourceReaderSha256: hash(readFileSync("scripts/immutable-public-git-source.mjs")),
+    archiveReaderSha256: hash(readFileSync("scripts/bounded-public-git-archive.mjs")), predecessorSha256: predecessor,
+    preparedPredecessorSha256: preparedPredecessor,
+    adoption: { commit: adopted, adoptedAt: date(adopted), baselineCommit: baseline, baselineAt: date(baseline) } };
+  mkdirSync(`${directory}/sources`, { recursive: true });
+  const functionFile = "docs/operational-value/proof/functions/purelock.mjs";
+  const wrapper = `import { nativePurelockModule } from "../../../../scripts/native-purelock-value.mjs";\n\nexport const { definition, collectBatch, scoreMetric } = nativePurelockModule(${JSON.stringify(contract, null, 2)});\n`;
+  if (existsSync(functionFile) && readFileSync(functionFile, "utf8") !== wrapper
+    && ![predecessor, preparedPredecessor].includes(hash(readFileSync(functionFile)))) throw new Error("Refusing to alter frozen PureLock function");
+  if (hash(readFileSync(`${directory}/versions/${predecessor}/function.txt`)) !== predecessor) throw new Error("Missing frozen predecessor");
+  writeFileSync(functionFile, wrapper);
+  writeCensusJson(`${directory}/contracts.json`, [contract]);
+  reader.sources();
+  if (prepareOnly) return { prepared: "purelock", contractSha256: censusDigest(contract) };
+  if (existsSync(`${directory}/index.json`)) {
+    const index = readCensusJson(`${directory}/index.json`);
+    if (!index.complete
+      || index.factsSha256 !== censusDigest(readCensusJson(`${directory}/facts.json.gz`))) throw new Error("Frozen PureLock archive changed");
+    if (index.contractSha256 === censusDigest(contract) && index.acquisitionComplete !== false) {
+      return { reused: true, observations: index.observations, acquisitionComplete: index.acquisitionComplete };
+    }
+    if (index.contractSha256 === censusDigest(contract) && index.acquisitionComplete === false) {
+      console.log(JSON.stringify({ resumingPendingAcquisition: index.pendingAcquisition }));
+    } else if (censusDigest(index) !== censusDigest(readCensusJson(`${directory}/versions/${predecessor}/index.json`))) {
+      throw new Error("Unrecognized PureLock predecessor");
+    }
+  }
+  const env = { ...process.env, GOTOOLCHAIN: contract.toolchain, GOMODCACHE: path.join(scratch, "go-mod"),
+    GOCACHE: path.join(scratch, "go-build"), GOPATH: path.join(scratch, "go-path"),
+    GOWORK: "off", GOFLAGS: "-mod=readonly", CGO_ENABLED: "0" };
+  if (offline) Object.assign(env, { GOPROXY: "off", GOSUMDB: "off" });
+  const nativeEnv = { ...env, GOOS: "linux", GOARCH: "amd64" };
+  const runGo = (args, cwd, native = false) => execute("go", args, {
+    cwd, env: native ? nativeEnv : env, timeout: 480000,
+  }).toString();
+  const version = runGo(["version"], scratch).trim();
+  if (!/^go version go1\.26\.9 darwin\/arm64$/.test(version)) throw new Error("Unpinned native Go toolchain");
+  const runs = [];
+  for (let page = 1; page <= 10; page++) {
+    const response = api(`repos/${repository}/actions/workflows/purelock.lock.yml/runs?per_page=100&page=${page}&created=%3C%3D${encodeURIComponent(until)}`);
+    if (!Array.isArray(response.workflow_runs) || response.total_count > 1000) throw new Error("PureLock run inventory budget exceeded");
+    for (const run of response.workflow_runs) {
+      if (run.repository.id !== repositoryId || run.head_repository.id !== repositoryId || run.created_at > until
+        || run.path !== ".github/workflows/purelock.lock.yml" || run.run_attempt !== 1) throw new Error("Unsupported PureLock run scope or rerun");
+      runs.push({ id: run.id, headSha: run.head_sha, createdAt: run.created_at, event: run.event,
+        headBranch: run.head_branch, attempt: run.run_attempt, status: run.status });
+    }
+    if (runs.length === response.total_count) break;
+    if (page === 10 || response.workflow_runs.length !== 100) throw new Error("Incomplete PureLock run inventory");
+  }
+  if (!runs.length || new Set(runs.map(row => row.id)).size !== runs.length) throw new Error("Empty/duplicate PureLock inventory");
+  const observations = [], receipts = [], toolFiles = [], materializations = new Map();
+  const materialize = commit => {
+    if (materializations.has(commit)) return materializations.get(commit);
+    const target = path.join(scratch, `source-${commit}`);
+    mkdirSync(target, { recursive: true });
+    const files = metadata(["ls-tree", "-r", "--name-only", commit, "--", "pkg", "internal", "go.mod", "go.sum"])
+      .split("\n").filter(file => file && !file.endsWith("_test.go"));
+    if (files.length > 5000) throw new Error("Native static source population exceeds budget");
+    const dependency = reader.read(commit, "actions/setup/session_parsers.go");
+    if (!dependency) throw new Error("Missing transitive source package");
+    const embeds = [...dependency.bytes.toString().matchAll(/^\/\/go:embed (.+)$/gm)].flatMap(match => match[1].split(" "));
+    if (!embeds.length || embeds.some(file => !/^js\/[a-z0-9_-]+\.(?:cjs|json)$/.test(file))) throw new Error("Unsupported transitive embed scope");
+    const entries = [];
+    for (const file of [...files, analyzerPath, "actions/setup/session_parsers.go", ...embeds.map(file => `actions/setup/${file}`)]) {
+      const value = reader.read(commit, file);
+      if (!value) throw new Error("Missing immutable native source");
+      const filename = path.join(target, file);
+      mkdirSync(path.dirname(filename), { recursive: true });
+      writeFileSync(filename, value.bytes);
+      entries.push({ path: file, gitBlob: value.id, sha256: value.sha256 });
+    }
+    const mod = readFileSync(path.join(target, "go.mod"), "utf8");
+    if (!mod.includes("golang.org/x/tools v0.52.0") || /replace\s+.*=>\s+(?:\.|\/)/m.test(mod)) throw new Error("Unsupported native analyzer dependencies");
+    materializations.set(commit, { target, entries });
+    return { target, entries };
+  };
+  let binary;
+  const getBinary = target => {
+    if (binary) return binary;
+    binary = path.join(scratch, "purity-scan");
+    runGo(["build", "-o", binary, analyzerPath], target);
+    const identity = runGo(["version", "-m", binary], target);
+    if (!identity.includes("golang.org/x/tools\tv0.52.0")) throw new Error("Native analyzer binary dependency identity mismatch");
+    toolFiles.push({ kind: "purity-analyzer", sha256: hash(readFileSync(binary)), version, buildInfo: identity });
+    const probe = path.join(scratch, "native-probe");
+    mkdirSync(path.join(probe, "pkg/probe"), { recursive: true });
+    const fixture = 'package probe\nimport "fmt"\nfunc Full(x int) int { return x+1 }\n'
+      + 'func Partial(x int) int { if x>0 { return 1 }; return 0 }\n'
+      + 'func Zero(x int) int { return x-1 }\nfunc Impure(x int) int { fmt.Println(x); return x }\n';
+    const tests = 'package probe\nimport "testing"\nfunc TestNative(t *testing.T) {'
+      + 'if Full(1)!=2 || Partial(1)!=1 { t.Fatal("native coverage fixture") } }\n';
+    writeFileSync(path.join(probe, "go.mod"), "module github.com/github/gh-aw\n\ngo 1.26.9\n");
+    writeFileSync(path.join(probe, "pkg/probe/probe.go"), fixture);
+    writeFileSync(path.join(probe, "pkg/probe/probe_test.go"), tests);
+    const testOutput = runGo(["test", "./pkg/...", "-count=1", "-covermode=atomic", "-coverprofile=probe.out"], probe);
+    const coverage = runGo(["tool", "cover", "-func=probe.out"], probe);
+    writeFileSync(path.join(probe, "func.txt"), coverage);
+    execute(binary, ["-cover", "func.txt", "-out", "result.json", "-limit", "0", "-max-coverage", "101", "./pkg/..."],
+      { cwd: probe, env: nativeEnv });
+    const report = JSON.parse(readFileSync(path.join(probe, "result.json"), "utf8"));
+    const evidence = joinPurelockCoverage(report, coverage);
+    if (report.functions_analyzed !== 4 || report.pure_functions !== 3
+      || scorePurelock("observed-fully-covered", evidence) !== 1 || scorePurelock("observed-executed", evidence) !== 2
+      || report.candidates.some(row => row.name === "Impure")) throw new Error("Native positive/negative execution probes failed");
+    writeCensusJson(`${directory}/probes.json`, { fixture, tests, testOutput, coverage, report, evidence,
+      fixtureSha256: hash(fixture), testsSha256: hash(tests), binarySha256: hash(readFileSync(binary)) });
+    return binary;
+  };
+  for (const run of [...runs].reverse()) {
+    const observation = { runId: run.id, commit: run.headSha, at: run.createdAt, known: false, reason: null };
+    observations.push(observation);
+    const listing = api(`repos/${repository}/actions/runs/${run.id}/artifacts?per_page=100`);
+    if (listing.total_count !== listing.artifacts.length) throw new Error("Incomplete native artifact inventory");
+    const artifacts = listing.artifacts.filter(item => item.name === `purelock-bundle-${run.id}`);
+    if (artifacts.length > 1) throw new Error("Ambiguous protected PureLock artifact");
+    const artifact = artifacts[0];
+    if (!artifact || artifact.expired) { observation.reason = "Native precompute bundle absent or expired."; continue; }
+    if (artifact.size_in_bytes > 4 * 1024 * 1024 || artifact.workflow_run.id !== run.id
+      || artifact.workflow_run.head_sha !== run.headSha || artifact.workflow_run.repository_id !== repositoryId
+      || !/^sha256:[a-f0-9]{64}$/.test(artifact.digest)) throw new Error("Invalid native artifact receipt");
+    const archive = path.join(scratch, `${artifact.id}.zip`);
+    if (!existsSync(archive) && offline) throw new PendingPurelockEvidence(`repos/${repository}/actions/artifacts/${artifact.id}/zip`);
+    if (!existsSync(archive)) writeFileSync(archive, execute("gh", ["api", `repos/${repository}/actions/artifacts/${artifact.id}/zip`]));
+    if (`sha256:${hash(readFileSync(archive))}` !== artifact.digest) throw new Error("Native artifact provider digest mismatch");
+    const names = execute("unzip", ["-Z1", archive]).toString().trim().split("\n").sort();
+    if (JSON.stringify(names) !== JSON.stringify(["candidates.json", "candidates.md", "func-coverage.txt"])) throw new Error("Unexpected native artifact members");
+    const reportBytes = execute("unzip", ["-p", archive, "candidates.json"]);
+    const coverageBytes = execute("unzip", ["-p", archive, "func-coverage.txt"]);
+    if (reportBytes.length > 1024 * 1024 || coverageBytes.length > 8 * 1024 * 1024) throw new Error("Native artifact decompression budget exceeded");
+    const report = JSON.parse(reportBytes), coverage = coverageBytes.toString();
+    const jobs = api(`repos/${repository}/actions/runs/${run.id}/jobs?per_page=100`);
+    if (jobs.total_count !== jobs.jobs.length) throw new Error("Incomplete protected job inventory");
+    const matches = jobs.jobs.filter(job => job.name === "purelock_precompute"), jobReceipt = matches[0];
+    if (matches.length !== 1 || jobReceipt.conclusion !== "success"
+      || !["Checkout repository", "Setup Go", "Collect per-function coverage", "Run pure-function static analysis", "Upload PureLock bundle"]
+        .every(name => jobReceipt.steps.filter(step => step.name === name && step.conclusion === "success").length === 1)) {
+      observation.reason = "Missing exact successful protected native precompute steps."; continue;
+    }
+    if (jobReceipt.completed_at > until || artifact.created_at > until || artifact.created_at < jobReceipt.started_at
+      || artifact.created_at > jobReceipt.completed_at || run.headBranch !== "main" || run.event !== "schedule") {
+      observation.reason = "Native receipt is not a completed pre-cutoff scheduled mainline observation."; continue;
+    }
+    const nativeSource = reader.read(run.headSha, analyzerPath), nativeJob = reader.read(run.headSha, ".github/workflows/purelock.lock.yml");
+    if (!nativeSource || nativeSource.sha256 !== contract.analyzerSha256
+      || !nativeJob || hash(purelockJob(nativeJob.bytes.toString()) ?? "") !== contract.compiledJobSha256
+      || metadata(["merge-base", run.headSha, sourceRevision]) !== run.headSha) {
+      observation.reason = "Historical native source/profile is unsupported or outside frozen ancestry."; continue;
+    }
+    const logFile = path.join(scratch, `job-${jobReceipt.id}.log`);
+    if (!existsSync(logFile) && offline) throw new PendingPurelockEvidence(`repos/${repository}/actions/jobs/${jobReceipt.id}/logs`);
+    if (!existsSync(logFile)) writeFileSync(logFile, execute("gh", ["api", "--allow-escape-sequences", `repos/${repository}/actions/jobs/${jobReceipt.id}/logs`]));
+    const rawLog = readFileSync(logFile), protectedReceipt = purelockLogReceipt(rawLog.toString());
+    const receipt = { run, artifact: { id: artifact.id, name: artifact.name, digest: artifact.digest, createdAt: artifact.created_at },
+      job: { id: jobReceipt.id, startedAt: jobReceipt.started_at, completedAt: jobReceipt.completed_at,
+        steps: jobReceipt.steps.map(({ name, conclusion, started_at, completed_at }) => ({ name, conclusion, startedAt: started_at, completedAt: completed_at })) },
+      protectedReceipt, rawLogSha256: hash(rawLog), reportSha256: hash(reportBytes), coverageSha256: hash(coverageBytes) };
+    receipts.push(receipt);
+    writeCensusJson(`${directory}/bundle-${run.id}.json.gz`, { receipt, report, coverage });
+    if (protectedReceipt.checkout !== run.headSha || protectedReceipt.version !== "go version go1.26.9 linux/amd64"
+      || report.functions_analyzed !== protectedReceipt.functionsAnalyzed || report.pure_functions !== protectedReceipt.pureFunctions
+      || report.candidates?.length !== protectedReceipt.candidateCount || report.coverage_loaded !== true) {
+      observation.reason = "Unbound checkout, unsupported toolchain or incomplete native report."; continue;
+    }
+    const { target, entries } = materialize(run.headSha), tool = getBinary(target);
+    let coverageKind = "local-unit";
+    if (!protectedReceipt.localCoverage) {
+      let ciProof;
+      try {
+        ciProof = acquirePurelockCiCoverage({ api, reader, run, receipt, scratch, contract, target, runGo, coverage, offline });
+      } catch (error) {
+        if (!(error instanceof PendingPurelockEvidence)) throw error;
+        observation.reason = "Temporarily pending coordinated CI-source acquisition; not missing historical evidence.";
+        observation.pendingEndpoint = error.endpoint;
+        console.log(JSON.stringify({ runId: run.id, pendingAcquisition: error.endpoint }));
+        continue;
+      }
+      if (!ciProof) { observation.reason = "No complete same-checkout protected CI profile set reproduces the native coverage."; continue; }
+      receipt.ciProof = ciProof;
+      coverageKind = "ci-integration";
+    }
+    const packages = runGo(["list", "-e", "-json", "./pkg/..."], target, true);
+    if (/"(?:Error|DepsErrors)"\s*:/.test(packages)) throw new Error("Native package/type loading is incomplete");
+    runGo(["build", "./pkg/..."], target, true);
+    const input = path.join(scratch, `coverage-${run.id}.txt`), output = path.join(scratch, `purity-${run.id}.json`);
+    writeFileSync(input, coverage);
+    const stdout = execute(tool, ["-cover", input, "-out", output, "-limit", "0", "-max-coverage", "101", "./pkg/..."],
+      { cwd: target, env: nativeEnv, timeout: 480000 }).toString();
+    const replay = JSON.parse(readFileSync(output, "utf8"));
+    if (replay.functions_analyzed !== report.functions_analyzed || replay.pure_functions !== report.pure_functions) {
+      observation.reason = "Static replay build population differs from protected production precompute."; continue;
+    }
+    const joined = joinPurelockCoverage(replay, coverage);
+    writeCensusJson(`${directory}/replay-${run.id}.json.gz`, { sources: entries, report: replay, stdout, packageListSha256: hash(packages) });
+    Object.assign(observation, { known: true, reason: null, at: jobReceipt.completed_at, functions: joined.functions,
+      profileSha256: censusDigest({ analyzer: contract.analyzerSha256, job: contract.compiledJobSha256, toolchain: contract.toolchain,
+        selection: contract.buildSelection, coverageKind }), coverageKind, sourceTreeSha256: censusDigest(entries) });
+    console.log(JSON.stringify({ runId: run.id, known: true, pureFunctions: joined.functions.length,
+      knownCoverage: joined.functions.filter(row => row.coverage !== null).length }));
+  }
+  observations.sort((a, b) => a.at.localeCompare(b.at));
+  const prior = readCensusJson(`${directory}/versions/${predecessor}/facts.json.gz`);
+  for (const state of prior.observations.filter(row => row.known)) {
+    const current = observations.find(row => row.runId === state.runId);
+    if (!current?.known || current.commit !== state.commit || current.at !== state.at
+      || censusDigest(current.functions) !== censusDigest(state.functions)) throw new Error("Established PureLock native observations changed");
+  }
+  const facts = { runs, observations, receipts, tools: toolFiles };
+  const pendingAcquisition = observations.filter(row => row.pendingEndpoint).map(row => ({ runId: row.runId, endpoint: row.pendingEndpoint }));
+  writeCensusJson(`${directory}/facts.json.gz`, facts);
+  writeCensusJson(`${directory}/index.json`, { schemaVersion: 1, complete: true, repository, repositoryId, sourceRevision, until,
+    contractSha256: censusDigest(contract), factsSha256: censusDigest(facts), sources: reader.sources(),
+    observations: observations.length, measuredObservations: observations.filter(row => row.known).length,
+    acquisitionComplete: pendingAcquisition.length === 0, pendingAcquisition,
+    acquiredAt: new Date().toISOString() });
+  return { runs: runs.length, measured: observations.filter(row => row.known).length, pendingAcquisition };
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  const [cache, scratch, mode] = process.argv.slice(2);
+  console.log(JSON.stringify(await collectPurelockHistory(cache, scratch, mode === "--prepare-only", mode === "--offline")));
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "engine-conformance-goose",
+  "functions": {
+    "4204d5e8ecc246488528929bef80a83038c58c41bbe0757ebdf1df0e4b555071": {
+      "valueFunctionSha256": "4204d5e8ecc246488528929bef80a83038c58c41bbe0757ebdf1df0e4b555071",
+      "snapshots": []
+    }
+  }
+}

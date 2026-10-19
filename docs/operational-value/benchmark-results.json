@@ -1,0 +1,5595 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "operational-value-local-reference-v1",
+  "runtime": {
+    "node": "v25.0.0"
+  },
+  "evidence": "synthetic; not repository outcome observations",
+  "generativeTranslationEvaluated": false,
+  "corpusFingerprint": "c8a7ea7ab5b17a17a0eadf6e2be031db61c82b97e7d0e02ec40f9afbcc12404e",
+  "sourceFingerprints": {
+    ".github/skills/add-operational-value/references/module-contract.md": "849f1436a4a2b61beb712e28a55983cb54cbf3f990c28cd519f79645e6b7f928",
+    ".github/skills/add-operational-value/scripts/build-timeline.mjs": "79caf49ff72d5fbd2266a8a6d461415f9844dcc54ad2f2f3d72fac5a770f6edf",
+    ".github/skills/add-operational-value/scripts/collect-output-history.mjs": "52ed43049cff5a15209397bee042bbb950aa5fe0628c3c2a6e03c41a5c9e5eea",
+    ".github/skills/add-operational-value/scripts/common.mjs": "f4db17ca339836f09130328a25843b971d82775427527b0bb1a991cd1e98daf3",
+    ".github/skills/add-operational-value/scripts/discover-intent.mjs": "fba0c4c672676ffb7cccad358665d65a681b29e89181ea2efa8eea0a8be67ce9",
+    ".github/skills/add-operational-value/scripts/evaluate.mjs": "6455ddf4164222e73cb0cee57f4cd87d728713b3cb66ec901feea5b81ce3eb4d",
+    ".github/skills/add-operational-value/scripts/extract-workflow-intent.mjs": "c1de26e3a9ba7aef7acec6ab4f369fe1721ea681e3055560f3d144331a56b488",
+    ".github/skills/add-operational-value/scripts/fingerprint-value-function.mjs": "099529287000e7203d8b2acbfe96616fcd306b4687b2e28486057695233452e2",
+    ".github/skills/add-operational-value/scripts/git-evidence.mjs": "9755c2a63568ec0be7f99e671d3b1b17a2e721c9540e4ced07b1f99426340067",
+    ".github/skills/add-operational-value/scripts/github-lineage.mjs": "f35d6546c78197c49a91b08bf2ac88cba0af37125df726fa6b7c2926c83eccf5",
+    ".github/skills/add-operational-value/scripts/inspect-workflow-at-adoption.mjs": "7a2b458724e13e520d0b5edf1637de0f638ce37b48aea5558694f4ddc75e50c0",
+    ".github/skills/add-operational-value/scripts/json-archive.mjs": "18045c03ca00fc5f8cccf2a02486255e03a0df22adddf0c426c9182fc6e2554b",
+    ".github/skills/add-operational-value/scripts/list-repository-workflows.mjs": "b51e2ef34b441420b6996d4ef4267086fe428b0dedec1373a679fc85ae3be972",
+    ".github/skills/add-operational-value/scripts/list-workflows.mjs": "d8d4f80971bbdf98fb15928716c59f2d90106b982ecd46c09980a6d9e84d4b99",
+    ".github/skills/add-operational-value/scripts/portfolio-model.mjs": "9d1913e07f00b31133e5a3eebb62e68af8545be40e87ad125fca21dd81b79d57",
+    ".github/skills/add-operational-value/scripts/pulse-model.mjs": "568dc9e982a50892e9425fc2681bd226a6b276221a48791122de7b5098ae24b5",
+    ".github/skills/add-operational-value/scripts/pulse-view.mjs": "3db4b03ecd74544271e8b57aaa7bd6f4b64b4e53f160ef1c1a72027a068e576c",
+    ".github/skills/add-operational-value/scripts/pulse.css": "cc5124f987158402bce6a6d4d5e18c7521bf7301834aa50c7b2e9352773fc62a",
+    ".github/skills/add-operational-value/scripts/render-definitions.mjs": "c44ef79144eb79fbef3fd7dbb32aed904384d43a167c27d0e046f12af22ae599",
+    ".github/skills/add-operational-value/scripts/render-pulse.mjs": "a5902a339d6202bdd61b9eed4d64bf4603542347ff8ca93eca688a5afe4c9a2a",
+    ".github/skills/add-operational-value/scripts/review-value.mjs": "fb6999b940ed89abea4a7848dfb5f98a35e3477d8483e13973a981864cbb136d",
+    ".github/skills/add-operational-value/scripts/validate-report-artifacts.mjs": "ef28de67614241290f0d653fed72552ee3479f6c8175f0470f54a361137f2bf2",
+    ".github/skills/add-operational-value/scripts/value-function-path.mjs": "a4b30a23b7e5027e8125533aba59924b61ed225151185fe67a4ed46d231bb920",
+    ".github/skills/add-operational-value/scripts/verify-value-function.mjs": "a66047b039cf071eee1dda6e1ccd8c1bd9e255f88f0a522dbfa5ff2e6dd5ba6c",
+    ".github/skills/add-operational-value/scripts/wire-campaign.mjs": "2834f0a9f085475b06685b8673fc8290510a0e3978683dab85f5c04d63bafefb",
+    ".github/skills/add-operational-value/scripts/wire-workflow.mjs": "ca46c7f06b7c6de8d9c00b4a586fe0d788cd6e533b82c901e346dd20429cf884",
+    ".github/skills/add-operational-value/SKILL.md": "f347c9721383da23c8757d560fa2e8e40370c96c886a0b4f8a69d1165431f17d",
+    ".github/workflows/bug-bash-investigation.md": "842f26b326739da6c851aa3d73567cd9bae1e0cf3c856d885877cd0764a626ac",
+    ".github/workflows/dependabot-update-planner.md": "fb9c0db9af5af980a8d7df4b484a63a272834266a62c3de30023baf7108992d4",
+    ".github/workflows/docs-explanatory-diagrams.md": "b48487f2d9c9d87890b4658dd72848e5dbb8a641378ee7d1603e5b7416217573",
+    ".github/workflows/multi-device-docs-tester.md": "e51230fd486b90fa23e4133311265f1694225bc91ccc30af9641cdffa127a309",
+    ".github/workflows/optimization-token-optimizer.md": "170c7dcfda0ad511d440d2249756dfed4a32d16b3e68a11573e6ffae483809fe",
+    ".github/workflows/self-care-accessibility-checker.md": "c5785018ca8b4afc41045e6fc971a7a345b0b0258a40c73ec7266e6e8edb17c1",
+    "dashboard/site/src/data/model/schema.js": "79de06a306953a9e40a8c9ff885970df013e357c012648caccad9620fbea3c09",
+    "dependabot/operational-value/dependabot-update-planner.mjs": "18bc7d9ece0b22d4c8a1b079086c18d648955c581f3b1725792b131d284c001d",
+    "optimization/operational-value/optimization-token-optimizer.mjs": "bf92bc8daf93c43244de867924d8b8ffce8602079910c3adeacb82a68a57c898",
+    "package.json": "b2d65013e905ae54d8e96897699d1b431de56e29cc0aeb18e4fddb3bf021f8c8",
+    "scripts/benchmark-operational-value.mjs": "506c7c53eeb5b9f694a4a070d2dd094c0abd89161c6643bc8f6be54e9075dc75",
+    "tests/fixtures/operational-value-benchmark/corpus.mjs": "780ed79e5fa41c05ecfe0ac89254db66cd925a3c3d976fd3fbd041db244dd784",
+    "tests/fixtures/operational-value-benchmark/reference.mjs": "bd1d7d518a885a265ac889fd88c29c0310664846847ba71737064f4a09d6560e",
+    "tests/fixtures/operational-value-benchmark/service-monitor.yaml": "9496be04a01facb35c2bfe8efe9ef1a31f375b3a8fd9ce88a0feabaaf8c65474",
+    "tests/unit/cao-operational-value-benchmark.test.mjs": "fa3637521e8b886b8416221279a752afb1d55587fd046a14cb86feb93faf621a",
+    "tests/unit/cao-operational-value-pulse.test.mjs": "5265a50f57c5734875e0523355445001b6b07bd6b85ad32328fc2c709026320b",
+    "tests/unit/cao-operational-value-review.test.mjs": "635544b7d9e53952c4e1999f0e428141f35fb4d1bbb2805c208f403a8e650c81"
+  },
+  "totals": {
+    "intents": 10,
+    "executableContracts": 7,
+    "designOnlyCases": 3,
+    "checks": 300,
+    "passed": 300,
+    "failed": 0
+  },
+  "categories": {
+    "collection": {
+      "passed": 21,
+      "total": 21
+    },
+    "intent-source": {
+      "passed": 10,
+      "total": 10
+    },
+    "interface": {
+      "passed": 7,
+      "total": 7
+    },
+    "invariance": {
+      "passed": 25,
+      "total": 25
+    },
+    "mutation-probe": {
+      "passed": 5,
+      "total": 5
+    },
+    "native-score": {
+      "passed": 67,
+      "total": 67
+    },
+    "report": {
+      "passed": 7,
+      "total": 7
+    },
+    "temporal-comparison": {
+      "passed": 79,
+      "total": 79
+    },
+    "value-review": {
+      "passed": 79,
+      "total": 79
+    }
+  },
+  "cases": [
+    {
+      "id": "security-alert-backlog",
+      "source": ".github/workflows/dependabot-update-planner.md",
+      "disposition": "measurable",
+      "dispositionOrigin": "author-curated, not model-predicted"
+    },
+    {
+      "id": "native-ai-credit-efficiency",
+      "source": ".github/workflows/optimization-token-optimizer.md",
+      "disposition": "measurable",
+      "dispositionOrigin": "author-curated, not model-predicted"
+    },
+    {
+      "id": "rendered-accessibility-barriers",
+      "source": ".github/workflows/self-care-accessibility-checker.md",
+      "disposition": "measurable",
+      "dispositionOrigin": "author-curated, not model-predicted"
+    },
+    {
+      "id": "documentation-compatibility",
+      "source": ".github/workflows/multi-device-docs-tester.md",
+      "disposition": "measurable",
+      "dispositionOrigin": "author-curated, not model-predicted"
+    },
+    {
+      "id": "independently-verified-investigations",
+      "source": ".github/workflows/bug-bash-investigation.md",
+      "disposition": "measurable",
+      "dispositionOrigin": "author-curated, not model-predicted"
+    },
+    {
+      "id": "prose-confirmed-bug-resolution",
+      "source": "natural-language",
+      "disposition": "measurable",
+      "dispositionOrigin": "author-curated, not model-predicted"
+    },
+    {
+      "id": "non-ghaw-api-error-target",
+      "source": "tests/fixtures/operational-value-benchmark/service-monitor.yaml",
+      "disposition": "measurable",
+      "dispositionOrigin": "author-curated, not model-predicted"
+    },
+    {
+      "id": "diagram-comprehension-boundary",
+      "source": ".github/workflows/docs-explanatory-diagrams.md",
+      "disposition": "needs-evidence-contract",
+      "dispositionOrigin": "author-curated, not model-predicted",
+      "reason": "SVG/theme checks establish artifact validity, not reader understanding; no comprehension instrument is supplied."
+    },
+    {
+      "id": "vague-culture-goal",
+      "source": "natural-language",
+      "disposition": "needs-clarification",
+      "dispositionOrigin": "author-curated, not model-predicted",
+      "reason": "No eligible population, observable accepted outcome, or agreed instrument is supplied."
+    },
+    {
+      "id": "output-volume-proxy",
+      "source": "natural-language",
+      "disposition": "activity-only",
+      "dispositionOrigin": "author-curated, not model-predicted",
+      "reason": "PR creation is measurable activity, but no repository-outcome acceptance rule is supplied."
+    }
+  ],
+  "checks": [
+    {
+      "caseId": "security-alert-backlog",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "interface",
+      "name": "production-definition-and-collector-verifier",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "targetAttained",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "targetMissed",
+      "passed": true,
+      "expected": 8,
+      "actual": 8
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "malformed",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "first-cutoff",
+      "passed": true,
+      "expected": 8,
+      "actual": 8
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "second-cutoff",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "complete-zero",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "invalid-count",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "native-score",
+      "name": "unknown-metric-is-rejected",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "invariance",
+      "name": "actor-and-output-volume",
+      "passed": true,
+      "expected": 8,
+      "actual": 8
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "invariance",
+      "name": "repeated-scoring",
+      "passed": true,
+      "expected": [
+        8,
+        8,
+        8
+      ],
+      "actual": [
+        8,
+        8,
+        8
+      ]
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "collection",
+      "name": "batch-order-and-evidence",
+      "passed": true,
+      "expected": [
+        {
+          "valid": true,
+          "openSecurityAlertCount": 8,
+          "openHighCriticalAlertCount": 0,
+          "openDependabotPullRequestCount": 0
+        },
+        {
+          "valid": true,
+          "openSecurityAlertCount": 0,
+          "openHighCriticalAlertCount": 0,
+          "openDependabotPullRequestCount": 0
+        }
+      ],
+      "actual": [
+        {
+          "valid": true,
+          "openSecurityAlertCount": 8,
+          "openHighCriticalAlertCount": 0,
+          "openDependabotPullRequestCount": 0
+        },
+        {
+          "valid": true,
+          "openSecurityAlertCount": 0,
+          "openHighCriticalAlertCount": 0,
+          "openDependabotPullRequestCount": 0
+        }
+      ]
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "collection",
+      "name": "repeatable-batch",
+      "passed": true,
+      "expected": [
+        {
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 8,
+            "openHighCriticalAlertCount": 0,
+            "openDependabotPullRequestCount": 0
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:3fab9367d3e34bd9397b4026e5474102d8bcc8bb08692b52b9934a0fdd850970"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 0,
+            "openHighCriticalAlertCount": 0,
+            "openDependabotPullRequestCount": 0
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:3fab9367d3e34bd9397b4026e5474102d8bcc8bb08692b52b9934a0fdd850970"
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 8,
+            "openHighCriticalAlertCount": 0,
+            "openDependabotPullRequestCount": 0
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:3fab9367d3e34bd9397b4026e5474102d8bcc8bb08692b52b9934a0fdd850970"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "openSecurityAlertCount": 0,
+            "openHighCriticalAlertCount": 0,
+            "openDependabotPullRequestCount": 0
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:3fab9367d3e34bd9397b4026e5474102d8bcc8bb08692b52b9934a0fdd850970"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "collection",
+      "name": "unknown-cutoff-is-missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "available",
+        "delta": -8,
+        "gain": 8,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "available",
+        "delta": -8,
+        "gain": 8,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "report",
+      "name": "intent-and-activation-label",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 8,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 8,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 8,
+        "status": "available",
+        "delta": 8,
+        "gain": -8,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 8,
+        "status": "available",
+        "delta": 8,
+        "gain": -8,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "value-review",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "temporal-comparison",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "available",
+        "delta": -8,
+        "gain": 8,
+        "historicalStatus": "available"
+      },
+      "actual": {
+        "current": 0,
+        "status": "available",
+        "delta": -8,
+        "gain": 8,
+        "historicalStatus": "available"
+      }
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "invariance",
+      "name": "module-unchanged-after-evaluation",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "interface",
+      "name": "production-definition-and-collector-verifier",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "targetAttained",
+      "passed": true,
+      "expected": 4,
+      "actual": 4
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "targetMissed",
+      "passed": true,
+      "expected": 10,
+      "actual": 10
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "malformed",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "first-cutoff",
+      "passed": true,
+      "expected": 10,
+      "actual": 10
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "second-cutoff",
+      "passed": true,
+      "expected": 4,
+      "actual": 4
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "complete-zero",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "empty-population",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "native-score",
+      "name": "unknown-metric-is-rejected",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "invariance",
+      "name": "actor-and-output-volume",
+      "passed": true,
+      "expected": 10,
+      "actual": 10
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "invariance",
+      "name": "repeated-scoring",
+      "passed": true,
+      "expected": [
+        10,
+        10,
+        10
+      ],
+      "actual": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "collection",
+      "name": "batch-order-and-evidence",
+      "passed": true,
+      "expected": [
+        {
+          "eligibleWorkflowCount": 1,
+          "successfulRunCount": 10,
+          "successfulRunAicTotal": 100,
+          "concludedRunCount": 12,
+          "failedRunCount": 0,
+          "cancelledRunCount": 0,
+          "failedRunPercentagePointTotal": 0,
+          "cancelledRunPercentagePointTotal": 0
+        },
+        {
+          "eligibleWorkflowCount": 1,
+          "successfulRunCount": 10,
+          "successfulRunAicTotal": 40,
+          "concludedRunCount": 12,
+          "failedRunCount": 0,
+          "cancelledRunCount": 0,
+          "failedRunPercentagePointTotal": 0,
+          "cancelledRunPercentagePointTotal": 0
+        }
+      ],
+      "actual": [
+        {
+          "eligibleWorkflowCount": 1,
+          "successfulRunCount": 10,
+          "successfulRunAicTotal": 100,
+          "concludedRunCount": 12,
+          "failedRunCount": 0,
+          "cancelledRunCount": 0,
+          "failedRunPercentagePointTotal": 0,
+          "cancelledRunPercentagePointTotal": 0
+        },
+        {
+          "eligibleWorkflowCount": 1,
+          "successfulRunCount": 10,
+          "successfulRunAicTotal": 40,
+          "concludedRunCount": 12,
+          "failedRunCount": 0,
+          "cancelledRunCount": 0,
+          "failedRunPercentagePointTotal": 0,
+          "cancelledRunPercentagePointTotal": 0
+        }
+      ]
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "collection",
+      "name": "repeatable-batch",
+      "passed": true,
+      "expected": [
+        {
+          "evidence": {
+            "eligibleWorkflowCount": 1,
+            "successfulRunCount": 10,
+            "successfulRunAicTotal": 100,
+            "concludedRunCount": 12,
+            "failedRunCount": 0,
+            "cancelledRunCount": 0,
+            "failedRunPercentagePointTotal": 0,
+            "cancelledRunPercentagePointTotal": 0
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:ccf0702a2217958de65d0d546931ae6a1e13f69d513c5267142a5ea4343d8a4b"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "eligibleWorkflowCount": 1,
+            "successfulRunCount": 10,
+            "successfulRunAicTotal": 40,
+            "concludedRunCount": 12,
+            "failedRunCount": 0,
+            "cancelledRunCount": 0,
+            "failedRunPercentagePointTotal": 0,
+            "cancelledRunPercentagePointTotal": 0
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:ccf0702a2217958de65d0d546931ae6a1e13f69d513c5267142a5ea4343d8a4b"
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "evidence": {
+            "eligibleWorkflowCount": 1,
+            "successfulRunCount": 10,
+            "successfulRunAicTotal": 100,
+            "concludedRunCount": 12,
+            "failedRunCount": 0,
+            "cancelledRunCount": 0,
+            "failedRunPercentagePointTotal": 0,
+            "cancelledRunPercentagePointTotal": 0
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:ccf0702a2217958de65d0d546931ae6a1e13f69d513c5267142a5ea4343d8a4b"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "eligibleWorkflowCount": 1,
+            "successfulRunCount": 10,
+            "successfulRunAicTotal": 40,
+            "concludedRunCount": 12,
+            "failedRunCount": 0,
+            "cancelledRunCount": 0,
+            "failedRunPercentagePointTotal": 0,
+            "cancelledRunPercentagePointTotal": 0
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:ccf0702a2217958de65d0d546931ae6a1e13f69d513c5267142a5ea4343d8a4b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "collection",
+      "name": "unknown-cutoff-is-missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "status": "available",
+        "delta": -6,
+        "gain": 6,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 4,
+        "status": "available",
+        "delta": -6,
+        "gain": 6,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "report",
+      "name": "intent-and-activation-label",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 10,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 10,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 10,
+        "status": "available",
+        "delta": 6,
+        "gain": -6,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 10,
+        "status": "available",
+        "delta": 6,
+        "gain": -6,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 4,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "value-review",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 4,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "temporal-comparison",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 4,
+        "status": "available",
+        "delta": -6,
+        "gain": 6,
+        "historicalStatus": "available"
+      },
+      "actual": {
+        "current": 4,
+        "status": "available",
+        "delta": -6,
+        "gain": 6,
+        "historicalStatus": "available"
+      }
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "invariance",
+      "name": "module-unchanged-after-evaluation",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "interface",
+      "name": "production-definition-and-collector-verifier",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "targetAttained",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "targetMissed",
+      "passed": true,
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "malformed",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "first-cutoff",
+      "passed": true,
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "second-cutoff",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "unknown-metric-is-rejected",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "empty-population",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "invariance",
+      "name": "opportunity-order",
+      "passed": true,
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "duplicate-opportunity-identity",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "native-score",
+      "name": "invalid-acceptance-gate",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "invariance",
+      "name": "actor-and-output-volume",
+      "passed": true,
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "invariance",
+      "name": "repeated-scoring",
+      "passed": true,
+      "expected": [
+        2,
+        2,
+        2
+      ],
+      "actual": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "collection",
+      "name": "batch-order-and-evidence",
+      "passed": true,
+      "expected": [
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "barrier": true
+            },
+            {
+              "id": "opportunity-1",
+              "barrier": true
+            },
+            {
+              "id": "opportunity-2",
+              "barrier": false
+            },
+            {
+              "id": "opportunity-3",
+              "barrier": false
+            }
+          ]
+        },
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "barrier": false
+            },
+            {
+              "id": "opportunity-1",
+              "barrier": false
+            },
+            {
+              "id": "opportunity-2",
+              "barrier": false
+            },
+            {
+              "id": "opportunity-3",
+              "barrier": false
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "barrier": true
+            },
+            {
+              "id": "opportunity-1",
+              "barrier": true
+            },
+            {
+              "id": "opportunity-2",
+              "barrier": false
+            },
+            {
+              "id": "opportunity-3",
+              "barrier": false
+            }
+          ]
+        },
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "barrier": false
+            },
+            {
+              "id": "opportunity-1",
+              "barrier": false
+            },
+            {
+              "id": "opportunity-2",
+              "barrier": false
+            },
+            {
+              "id": "opportunity-3",
+              "barrier": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "collection",
+      "name": "repeatable-batch",
+      "passed": true,
+      "expected": [
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "barrier": true
+              },
+              {
+                "id": "opportunity-1",
+                "barrier": true
+              },
+              {
+                "id": "opportunity-2",
+                "barrier": false
+              },
+              {
+                "id": "opportunity-3",
+                "barrier": false
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:79cebd94c8f00aca426e8d72dac6eb744482409e7bfeb25d14ee5da5363a6b86"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "barrier": false
+              },
+              {
+                "id": "opportunity-1",
+                "barrier": false
+              },
+              {
+                "id": "opportunity-2",
+                "barrier": false
+              },
+              {
+                "id": "opportunity-3",
+                "barrier": false
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:79cebd94c8f00aca426e8d72dac6eb744482409e7bfeb25d14ee5da5363a6b86"
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "barrier": true
+              },
+              {
+                "id": "opportunity-1",
+                "barrier": true
+              },
+              {
+                "id": "opportunity-2",
+                "barrier": false
+              },
+              {
+                "id": "opportunity-3",
+                "barrier": false
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:79cebd94c8f00aca426e8d72dac6eb744482409e7bfeb25d14ee5da5363a6b86"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "barrier": false
+              },
+              {
+                "id": "opportunity-1",
+                "barrier": false
+              },
+              {
+                "id": "opportunity-2",
+                "barrier": false
+              },
+              {
+                "id": "opportunity-3",
+                "barrier": false
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:79cebd94c8f00aca426e8d72dac6eb744482409e7bfeb25d14ee5da5363a6b86"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "collection",
+      "name": "unknown-cutoff-is-missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "available",
+        "delta": -2,
+        "gain": 2,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "available",
+        "delta": -2,
+        "gain": 2,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "report",
+      "name": "intent-and-activation-label",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "available",
+        "delta": 2,
+        "gain": -2,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "available",
+        "delta": 2,
+        "gain": -2,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "value-review",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "temporal-comparison",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "available",
+        "delta": -2,
+        "gain": 2,
+        "historicalStatus": "available"
+      },
+      "actual": {
+        "current": 0,
+        "status": "available",
+        "delta": -2,
+        "gain": 2,
+        "historicalStatus": "available"
+      }
+    },
+    {
+      "caseId": "rendered-accessibility-barriers",
+      "category": "invariance",
+      "name": "module-unchanged-after-evaluation",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "interface",
+      "name": "production-definition-and-collector-verifier",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "targetAttained",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "targetMissed",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "malformed",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "first-cutoff",
+      "passed": true,
+      "expected": 50,
+      "actual": 50
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "second-cutoff",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "unknown-metric-is-rejected",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "empty-population",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "invariance",
+      "name": "opportunity-order",
+      "passed": true,
+      "expected": 50,
+      "actual": 50
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "duplicate-opportunity-identity",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "native-score",
+      "name": "invalid-acceptance-gate",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "invariance",
+      "name": "actor-and-output-volume",
+      "passed": true,
+      "expected": 50,
+      "actual": 50
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "invariance",
+      "name": "repeated-scoring",
+      "passed": true,
+      "expected": [
+        50,
+        50,
+        50
+      ],
+      "actual": [
+        50,
+        50,
+        50
+      ]
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "collection",
+      "name": "batch-order-and-evidence",
+      "passed": true,
+      "expected": [
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-1",
+              "layoutPassed": true,
+              "navigationPassed": false
+            },
+            {
+              "id": "opportunity-2",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-3",
+              "layoutPassed": false,
+              "navigationPassed": true
+            }
+          ]
+        },
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-1",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-2",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-3",
+              "layoutPassed": true,
+              "navigationPassed": true
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-1",
+              "layoutPassed": true,
+              "navigationPassed": false
+            },
+            {
+              "id": "opportunity-2",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-3",
+              "layoutPassed": false,
+              "navigationPassed": true
+            }
+          ]
+        },
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-1",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-2",
+              "layoutPassed": true,
+              "navigationPassed": true
+            },
+            {
+              "id": "opportunity-3",
+              "layoutPassed": true,
+              "navigationPassed": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "collection",
+      "name": "repeatable-batch",
+      "passed": true,
+      "expected": [
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-1",
+                "layoutPassed": true,
+                "navigationPassed": false
+              },
+              {
+                "id": "opportunity-2",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-3",
+                "layoutPassed": false,
+                "navigationPassed": true
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:94cc69fd2619e4492b2e91ef311d8a8686b16a3c5d25e463dc1acc0458188e68"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-1",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-2",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-3",
+                "layoutPassed": true,
+                "navigationPassed": true
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:94cc69fd2619e4492b2e91ef311d8a8686b16a3c5d25e463dc1acc0458188e68"
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-1",
+                "layoutPassed": true,
+                "navigationPassed": false
+              },
+              {
+                "id": "opportunity-2",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-3",
+                "layoutPassed": false,
+                "navigationPassed": true
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:94cc69fd2619e4492b2e91ef311d8a8686b16a3c5d25e463dc1acc0458188e68"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-1",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-2",
+                "layoutPassed": true,
+                "navigationPassed": true
+              },
+              {
+                "id": "opportunity-3",
+                "layoutPassed": true,
+                "navigationPassed": true
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:94cc69fd2619e4492b2e91ef311d8a8686b16a3c5d25e463dc1acc0458188e68"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "collection",
+      "name": "unknown-cutoff-is-missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "available",
+        "delta": 50,
+        "gain": 50,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "available",
+        "delta": 50,
+        "gain": 50,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "report",
+      "name": "intent-and-activation-label",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 50,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 50,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 50,
+        "status": "available",
+        "delta": -50,
+        "gain": -50,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 50,
+        "status": "available",
+        "delta": -50,
+        "gain": -50,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "value-review",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "temporal-comparison",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "available",
+        "delta": 50,
+        "gain": 50,
+        "historicalStatus": "available"
+      },
+      "actual": {
+        "current": 100,
+        "status": "available",
+        "delta": 50,
+        "gain": 50,
+        "historicalStatus": "available"
+      }
+    },
+    {
+      "caseId": "documentation-compatibility",
+      "category": "invariance",
+      "name": "module-unchanged-after-evaluation",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "interface",
+      "name": "production-definition-and-collector-verifier",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "targetAttained",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "targetMissed",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "malformed",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "first-cutoff",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "second-cutoff",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "unknown-metric-is-rejected",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "empty-population",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "invariance",
+      "name": "opportunity-order",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "duplicate-opportunity-identity",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "native-score",
+      "name": "invalid-acceptance-gate",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "invariance",
+      "name": "actor-and-output-volume",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "invariance",
+      "name": "repeated-scoring",
+      "passed": true,
+      "expected": [
+        0,
+        0,
+        0
+      ],
+      "actual": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "collection",
+      "name": "batch-order-and-evidence",
+      "passed": true,
+      "expected": [
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "reproduced": true,
+              "regressionFailedBefore": true,
+              "regressionPassedAfter": false
+            },
+            {
+              "id": "opportunity-1",
+              "reproduced": false,
+              "regressionFailedBefore": false,
+              "regressionPassedAfter": true
+            }
+          ]
+        },
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "reproduced": true,
+              "regressionFailedBefore": true,
+              "regressionPassedAfter": true
+            },
+            {
+              "id": "opportunity-1",
+              "reproduced": true,
+              "regressionFailedBefore": true,
+              "regressionPassedAfter": true
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "reproduced": true,
+              "regressionFailedBefore": true,
+              "regressionPassedAfter": false
+            },
+            {
+              "id": "opportunity-1",
+              "reproduced": false,
+              "regressionFailedBefore": false,
+              "regressionPassedAfter": true
+            }
+          ]
+        },
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "reproduced": true,
+              "regressionFailedBefore": true,
+              "regressionPassedAfter": true
+            },
+            {
+              "id": "opportunity-1",
+              "reproduced": true,
+              "regressionFailedBefore": true,
+              "regressionPassedAfter": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "collection",
+      "name": "repeatable-batch",
+      "passed": true,
+      "expected": [
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "reproduced": true,
+                "regressionFailedBefore": true,
+                "regressionPassedAfter": false
+              },
+              {
+                "id": "opportunity-1",
+                "reproduced": false,
+                "regressionFailedBefore": false,
+                "regressionPassedAfter": true
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:2c98b1e96a922f14680cca5404228ce8f9f36e8a29cfca902cda56446ab49d9a"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "reproduced": true,
+                "regressionFailedBefore": true,
+                "regressionPassedAfter": true
+              },
+              {
+                "id": "opportunity-1",
+                "reproduced": true,
+                "regressionFailedBefore": true,
+                "regressionPassedAfter": true
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:2c98b1e96a922f14680cca5404228ce8f9f36e8a29cfca902cda56446ab49d9a"
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "reproduced": true,
+                "regressionFailedBefore": true,
+                "regressionPassedAfter": false
+              },
+              {
+                "id": "opportunity-1",
+                "reproduced": false,
+                "regressionFailedBefore": false,
+                "regressionPassedAfter": true
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:2c98b1e96a922f14680cca5404228ce8f9f36e8a29cfca902cda56446ab49d9a"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "reproduced": true,
+                "regressionFailedBefore": true,
+                "regressionPassedAfter": true
+              },
+              {
+                "id": "opportunity-1",
+                "reproduced": true,
+                "regressionFailedBefore": true,
+                "regressionPassedAfter": true
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:2c98b1e96a922f14680cca5404228ce8f9f36e8a29cfca902cda56446ab49d9a"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "collection",
+      "name": "unknown-cutoff-is-missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "available",
+        "delta": 100,
+        "gain": 100,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "available",
+        "delta": 100,
+        "gain": 100,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "report",
+      "name": "intent-and-activation-label",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "available",
+        "delta": -100,
+        "gain": -100,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "available",
+        "delta": -100,
+        "gain": -100,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 100,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "value-review",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 100,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "temporal-comparison",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 100,
+        "status": "available",
+        "delta": 100,
+        "gain": 100,
+        "historicalStatus": "available"
+      },
+      "actual": {
+        "current": 100,
+        "status": "available",
+        "delta": 100,
+        "gain": 100,
+        "historicalStatus": "available"
+      }
+    },
+    {
+      "caseId": "independently-verified-investigations",
+      "category": "invariance",
+      "name": "module-unchanged-after-evaluation",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "interface",
+      "name": "production-definition-and-collector-verifier",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "targetAttained",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "targetMissed",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "malformed",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "first-cutoff",
+      "passed": true,
+      "expected": 40,
+      "actual": 40
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "second-cutoff",
+      "passed": true,
+      "expected": 80,
+      "actual": 80
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "reopened-defect",
+      "passed": true,
+      "expected": 60,
+      "actual": 60
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "closed-without-regression-proof",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "unknown-metric-is-rejected",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "empty-population",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "invariance",
+      "name": "opportunity-order",
+      "passed": true,
+      "expected": 40,
+      "actual": 40
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "duplicate-opportunity-identity",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "native-score",
+      "name": "invalid-acceptance-gate",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "invariance",
+      "name": "actor-and-output-volume",
+      "passed": true,
+      "expected": 40,
+      "actual": 40
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "invariance",
+      "name": "repeated-scoring",
+      "passed": true,
+      "expected": [
+        40,
+        40,
+        40
+      ],
+      "actual": [
+        40,
+        40,
+        40
+      ]
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "collection",
+      "name": "batch-order-and-evidence",
+      "passed": true,
+      "expected": [
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-1",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-2",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": false
+            },
+            {
+              "id": "opportunity-3",
+              "closed": false,
+              "merged": false,
+              "regressionPassed": false
+            },
+            {
+              "id": "opportunity-4",
+              "closed": false,
+              "merged": false,
+              "regressionPassed": false
+            }
+          ]
+        },
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-1",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-2",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-3",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-4",
+              "closed": false,
+              "merged": false,
+              "regressionPassed": false
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-1",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-2",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": false
+            },
+            {
+              "id": "opportunity-3",
+              "closed": false,
+              "merged": false,
+              "regressionPassed": false
+            },
+            {
+              "id": "opportunity-4",
+              "closed": false,
+              "merged": false,
+              "regressionPassed": false
+            }
+          ]
+        },
+        {
+          "valid": true,
+          "records": [
+            {
+              "id": "opportunity-0",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-1",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-2",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-3",
+              "closed": true,
+              "merged": true,
+              "regressionPassed": true
+            },
+            {
+              "id": "opportunity-4",
+              "closed": false,
+              "merged": false,
+              "regressionPassed": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "collection",
+      "name": "repeatable-batch",
+      "passed": true,
+      "expected": [
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-1",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-2",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": false
+              },
+              {
+                "id": "opportunity-3",
+                "closed": false,
+                "merged": false,
+                "regressionPassed": false
+              },
+              {
+                "id": "opportunity-4",
+                "closed": false,
+                "merged": false,
+                "regressionPassed": false
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:578ad957c22beef44da813b7972cf336ca985b7738302b749e680b25d065d1f4"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-1",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-2",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-3",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-4",
+                "closed": false,
+                "merged": false,
+                "regressionPassed": false
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:578ad957c22beef44da813b7972cf336ca985b7738302b749e680b25d065d1f4"
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-1",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-2",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": false
+              },
+              {
+                "id": "opportunity-3",
+                "closed": false,
+                "merged": false,
+                "regressionPassed": false
+              },
+              {
+                "id": "opportunity-4",
+                "closed": false,
+                "merged": false,
+                "regressionPassed": false
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:578ad957c22beef44da813b7972cf336ca985b7738302b749e680b25d065d1f4"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "records": [
+              {
+                "id": "opportunity-0",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-1",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-2",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-3",
+                "closed": true,
+                "merged": true,
+                "regressionPassed": true
+              },
+              {
+                "id": "opportunity-4",
+                "closed": false,
+                "merged": false,
+                "regressionPassed": false
+              }
+            ]
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:578ad957c22beef44da813b7972cf336ca985b7738302b749e680b25d065d1f4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "collection",
+      "name": "unknown-cutoff-is-missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "status": "available",
+        "delta": 40,
+        "gain": 40,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 80,
+        "status": "available",
+        "delta": 40,
+        "gain": 40,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "report",
+      "name": "intent-and-activation-label",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 40,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 40,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 40,
+        "status": "available",
+        "delta": -40,
+        "gain": -40,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 40,
+        "status": "available",
+        "delta": -40,
+        "gain": -40,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 80,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "value-review",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 80,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "temporal-comparison",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 80,
+        "status": "available",
+        "delta": 40,
+        "gain": 40,
+        "historicalStatus": "available"
+      },
+      "actual": {
+        "current": 80,
+        "status": "available",
+        "delta": 40,
+        "gain": 40,
+        "historicalStatus": "available"
+      }
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "invariance",
+      "name": "module-unchanged-after-evaluation",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "interface",
+      "name": "production-definition-and-collector-verifier",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "native-score",
+      "name": "targetAttained",
+      "passed": true,
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "native-score",
+      "name": "targetMissed",
+      "passed": true,
+      "expected": 10,
+      "actual": 10
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "native-score",
+      "name": "missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "native-score",
+      "name": "malformed",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "native-score",
+      "name": "first-cutoff",
+      "passed": true,
+      "expected": 10,
+      "actual": 10
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "native-score",
+      "name": "second-cutoff",
+      "passed": true,
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "native-score",
+      "name": "unknown-metric-is-rejected",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "invariance",
+      "name": "actor-and-output-volume",
+      "passed": true,
+      "expected": 10,
+      "actual": 10
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "invariance",
+      "name": "repeated-scoring",
+      "passed": true,
+      "expected": [
+        10,
+        10,
+        10
+      ],
+      "actual": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "collection",
+      "name": "batch-order-and-evidence",
+      "passed": true,
+      "expected": [
+        {
+          "valid": true,
+          "errors": 10,
+          "requests": 100
+        },
+        {
+          "valid": true,
+          "errors": 2,
+          "requests": 100
+        }
+      ],
+      "actual": [
+        {
+          "valid": true,
+          "errors": 10,
+          "requests": 100
+        },
+        {
+          "valid": true,
+          "errors": 2,
+          "requests": 100
+        }
+      ]
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "collection",
+      "name": "repeatable-batch",
+      "passed": true,
+      "expected": [
+        {
+          "evidence": {
+            "valid": true,
+            "errors": 10,
+            "requests": 100
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:a5ea1284a8e75ed74621399942e465151ac486e60c2ff6625bfdbe4276d7e7ae"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "errors": 2,
+            "requests": 100
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:a5ea1284a8e75ed74621399942e465151ac486e60c2ff6625bfdbe4276d7e7ae"
+            }
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "evidence": {
+            "valid": true,
+            "errors": 10,
+            "requests": 100
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:a5ea1284a8e75ed74621399942e465151ac486e60c2ff6625bfdbe4276d7e7ae"
+            }
+          ]
+        },
+        {
+          "evidence": {
+            "valid": true,
+            "errors": 2,
+            "requests": 100
+          },
+          "provenance": [
+            {
+              "repository": "githubnext/gh-aw-cao",
+              "kind": "synthetic-fixture",
+              "ref": "sha256:a5ea1284a8e75ed74621399942e465151ac486e60c2ff6625bfdbe4276d7e7ae"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "collection",
+      "name": "unknown-cutoff-is-missing",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "improvement",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "available",
+        "delta": -8,
+        "gain": 8,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "available",
+        "delta": -8,
+        "gain": 8,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "report",
+      "name": "intent-and-activation-label",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 10,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 10,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "deterioration",
+      "passed": true,
+      "expected": {
+        "current": 10,
+        "status": "available",
+        "delta": 8,
+        "gain": -8,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 10,
+        "status": "available",
+        "delta": 8,
+        "gain": -8,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "missing-current",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "unknown-coverage",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "interim-current",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "gap",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "overlap",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "stale-current",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "future-assessment",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": null,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "newer-unavailable-same-period",
+      "passed": true,
+      "expected": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": null,
+        "status": "unavailable",
+        "delta": null,
+        "gain": null,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "explicit-historical-reference",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "available",
+        "delta": -8,
+        "gain": 8,
+        "historicalStatus": "available"
+      },
+      "actual": {
+        "current": 2,
+        "status": "available",
+        "delta": -8,
+        "gain": 8,
+        "historicalStatus": "available"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "target-approach-from-below",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 2,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "target-approach-from-below",
+      "passed": true,
+      "expected": {
+        "current": 2,
+        "status": "available",
+        "delta": 2,
+        "gain": 2,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 2,
+        "status": "available",
+        "delta": 2,
+        "gain": 2,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "value-review",
+      "name": "target-depart-below",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      },
+      "actual": {
+        "current": 0,
+        "decision": "not-rated",
+        "costStatus": "not-measured",
+        "costPerOutcome": null
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "temporal-comparison",
+      "name": "target-depart-below",
+      "passed": true,
+      "expected": {
+        "current": 0,
+        "status": "available",
+        "delta": -2,
+        "gain": -2,
+        "historicalStatus": "unavailable"
+      },
+      "actual": {
+        "current": 0,
+        "status": "available",
+        "delta": -2,
+        "gain": -2,
+        "historicalStatus": "unavailable"
+      }
+    },
+    {
+      "caseId": "non-ghaw-api-error-target",
+      "category": "invariance",
+      "name": "module-unchanged-after-evaluation",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "diagram-comprehension-boundary",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "vague-culture-goal",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "output-volume-proxy",
+      "category": "intent-source",
+      "name": "bounded-source-or-goal-read",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "mutation-probe",
+      "name": "missing-as-zero",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "mutation-probe",
+      "name": "output-count-proxy",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "security-alert-backlog",
+      "category": "mutation-probe",
+      "name": "normalize-native-value",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "native-ai-credit-efficiency",
+      "category": "mutation-probe",
+      "name": "clamp-native-value",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "caseId": "prose-confirmed-bug-resolution",
+      "category": "mutation-probe",
+      "name": "ignore-regression-acceptance",
+      "passed": true,
+      "expected": true,
+      "actual": true
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "definitionVersion": 2,
+  "predecessorFunctionSha256": "32a5e3254068cfc538a1b25b64c42fc62d93cf9e8601012a3a142e70c9d6323f",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-work-queue",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourcePath": ".github/workflows/smoke-work-queue.md",
+  "compiledPath": ".github/workflows/smoke-work-queue.lock.yml",
+  "sourceGitBlob": "342c95aaaa713668340a9ea9f3c97764f234f6fe",
+  "compiledGitBlob": "101cf3c5802c3fad2730f2e489223ac390884623",
+  "hostJobSha256": "c2a87378db9604d0b8e064ae54982aadd28c3f38bfb19029e7119700ac468512",
+  "adoption": {
+    "commit": "fe02b644122eaa29a354c402834274a26cd2a71c",
+    "adoptedAt": "2026-10-03T03:22:10Z",
+    "baselineCommit": "de6e5b9ea25afe5768ad9b36198d5151a34506cf",
+    "baselineAt": "2026-10-03T02:22:38Z"
+  },
+  "predicates": [
+    {
+      "id": "absent-read",
+      "acceptance": "The real initial-attempt MCP read of __gh_aw_smoke__-RUN_ID returns that exact absent Work and snapshot_sha agreeing with the independently retained activation snapshot; a nonexistent queue branch requires null. The snapshot, producer upload, consumed payload, native operation and host readback share repository/run/attempt/head identity and chronological order."
+    },
+    {
+      "id": "snapshot-explain",
+      "acceptance": "The real initial-attempt MCP explain for the same absent Work returns activation_snapshot, matching snapshot_sha and captured_at, and an absent nonauthoritative explanation. Independently retained native operation and protected host readback must agree with the exact activation payload."
+    },
+    {
+      "id": "observer-mutation-safety",
+      "acceptance": "The source-bound native observer tools omit claim_finish, or a real unassigned completed finish is rejected without a staged finish. Independent host receipts establish complete staged-intent absence and no observer-attributable durable queue operation, not merely absence from an upload manifest. Concurrent unrelated queue writes are not observer failures."
+    }
+  ],
+  "nativeHostCheckers": [],
+  "incompatibleIntentProfiles": [
+    {
+      "sourceGitBlob": "874ba993622f5403edcedd37c31a1dc7e25dabcc",
+      "sourceSha256": "1389ffb589683cc0e44697cdd14c697e79a8047506fdfe9f2feb45edcbf5d5a1",
+      "reason": "The historical goal requires unassigned completed finish-intent staging, the opposite of observer rejection. There is no explain predicate. Its successes or failures are not comparable observer outcomes."
+    },
+    {
+      "sourceGitBlob": "1d051c96f0a12b446e3a9170ba871cce2d2239b4",
+      "sourceSha256": "4e1189a8679f9a5bed9c3b3232e8f9ce614f99ce2d9b7e925383afb80cf578c5",
+      "reason": "The historical source and protected host check require a nonempty completed finish artifact; the later observer source instead rejects that artifact. Exclude this incompatible goal era rather than relabel its outputs as observer failures or successes."
+    }
+  ],
+  "smokeReadback": {
+    "job": "verify_smoke_result",
+    "downloadStep": "Download smoke evidence",
+    "assertionStep": "Verify smoke result",
+    "meaning": "The downloaded agent artifact contains a noop, no create_issue, and no nonempty finish file at the consumer path. This does not independently prove read/explain correctness, mutator unavailability/rejection, local intent absence or durable nonmutation."
+  },
+  "sources": [
+    { "path": ".github/workflows/smoke-work-queue.md", "sha256": "f48b9296f727b7df55ce686e4a428817078a5288c98fb1e86c81b5ce250d0b70" },
+    { "path": ".github/workflows/smoke-work-queue.lock.yml", "sha256": "7778eec9b2c6f82e1cd44c6114aa4fb87ed9f4927a902e1c3bdc878670f3230d" },
+    { "path": "actions/setup/js/work_queue_mcp_server.cjs", "sha256": "3eed652f6fa3959c03f660cb83a1c71a2694eb72bbf0b4e86a01678dd21aae52" },
+    { "path": "actions/setup/js/work_queue_mcp_server.test.cjs", "sha256": "8e765feb418400930b07d56bed48d44ae20b81d205da0a768ea95dcd9650f33e" },
+    { "path": "actions/setup/js/write_work_queue_snapshot.cjs", "sha256": "e1e84c57d3a71b4a6cee39c792dc21ce8a7138a1fb764b79ce4893621505f84e" },
+    { "path": "actions/setup/js/collect_work_queue_intents.cjs", "sha256": "806a4d52e486432833d7540bbf5de2757c62d0db5de4daee6ee8ee5a3ae8e47e" }
+  ],
+  "limitations": [
+    "Frozen before outcome acquisition. Only this exact reviewed task, host job and runtime source profile is supported; other historical profiles remain unassessed.",
+    "Version 2 preserves the complete v1 predecessor, then classifies two independently reviewed incompatible finish-staging intent sources as ineligible for the later observer goal. Observer-era runtime variants remain unassessed rather than excluded.",
+    "The frozen source has no independent native checker for any of the three observer predicates. MCP logs and agent summaries cannot substitute for protected assertions.",
+    "The compiled copy-finish step is followed by an agent artifact upload manifest that omits work-queue.finish.jsonl. A successful downstream missing-file check therefore cannot establish local finish absence.",
+    "The ordinary noop/failure issue is agent-authored, not an outcome oracle. A successful job establishes only its exact protected smoke assertion.",
+    "Historical native execution receipts may be expired or were never emitted. Their absence is unknown, not zero failures, zero opportunities, or a native delivery.",
+    "No keep threshold, full runtime conformance, workflow causation or costs are inferred. Native all-unknown coverage is not measured coverage."
+  ]
+}

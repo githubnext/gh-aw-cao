@@ -1,0 +1,9 @@
+{
+  "proposedInsertion": "Freeze a per-claim acceptance matrix before reading outcomes. For service tests, corroborate raw typed client request/result frames against an independently acquired, attempt-bound protected job log, source head, execution step/time, provider-digested original artifact and upload receipt; never accept assistant prose or digest-shaped flags. Admit independently evidenced protocol cases even when compiled boundary/other safeguards are missing, leaving those claims null. Preserve the source's actual output projection (e.g. INFO | head -5), not invented complete responses or restart durability. Deduplicate each service-lifetime/case before assigning disjoint event cohorts. Retrospective same-source operations can be useful without backdating new contract activation or guessing adoption.",
+  "implementationEvidence": [
+    "scripts/native-smoke-service-ports.mjs",
+    "docs/operational-value/proof/functions/smoke-service-ports.mjs",
+    "tests/unit/operational-value-smoke-service-ports.test.mjs"
+  ],
+  "scope": "Reusable skill improvement for coordinator integration; shared seed and portfolio unchanged."
+}

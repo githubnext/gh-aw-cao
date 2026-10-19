@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "actualAdoption": null,
+  "baseline": null,
+  "retainedHistoryBoundary": {
+    "commit": "839520ec622e6aba9a128bd1f7696f0ed3edaba5",
+    "parent": "bc6911ddf76440c3c6b1270c7e29bf776ddceedb",
+    "meaning": "Retained source modification, not an established addition.",
+    "missingAncestor": "53207eeb06a8051204147bcb5c7d08a7f90dd4dc"
+  },
+  "missingReason": "Actual workflow introduction and its real parent are not yet reconstructed. Neither source identity, oldest output nor authoring time substitutes for adoption.",
+  "standardEvaluation": "Expected fail-closed rejection until actual immutable adoption fields are available; native bounded facts remain independently retained."
+}

@@ -1,0 +1,4 @@
+Timeline: docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-timeline.json
+Definitions: docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-definitions.md
+Interactive pulse: docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-pulse.html
+Evidence archive: docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-evidence-archive.json

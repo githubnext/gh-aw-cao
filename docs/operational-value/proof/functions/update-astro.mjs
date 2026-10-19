@@ -1,0 +1,169 @@
+import { packageCurrencyModule } from "../../../../scripts/native-package-currency-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = packageCurrencyModule({
+  "repository": "github/gh-aw",
+  "workflowId": "update-astro",
+  "workflowName": "Update Astro",
+  "sourcePath": ".github/workflows/update-astro.md",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "directory": "docs/operational-value/proof/package-currency",
+  "sourceGitBlob": "318e0562ce6f8a4799c8d100766bbc32c264ca9c",
+  "manifestPath": "docs/package.json",
+  "lockPath": "docs/package-lock.json",
+  "tools": [
+    {
+      "id": "@astrojs/markdown-remark",
+      "constant": "@astrojs/markdown-remark",
+      "registry": "npm",
+      "name": "@astrojs/markdown-remark",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "@astrojs/rss",
+      "constant": "@astrojs/rss",
+      "registry": "npm",
+      "name": "@astrojs/rss",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "@astrojs/sitemap",
+      "constant": "@astrojs/sitemap",
+      "registry": "npm",
+      "name": "@astrojs/sitemap",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "@astrojs/starlight",
+      "constant": "@astrojs/starlight",
+      "registry": "npm",
+      "name": "@astrojs/starlight",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "@primer/octicons",
+      "constant": "@primer/octicons",
+      "registry": "npm",
+      "name": "@primer/octicons",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "astro",
+      "constant": "astro",
+      "registry": "npm",
+      "name": "astro",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "astro-mermaid",
+      "constant": "astro-mermaid",
+      "registry": "npm",
+      "name": "astro-mermaid",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "mermaid",
+      "constant": "mermaid",
+      "registry": "npm",
+      "name": "mermaid",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "sharp",
+      "constant": "sharp",
+      "registry": "npm",
+      "name": "sharp",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "starlight-blog",
+      "constant": "starlight-blog",
+      "registry": "npm",
+      "name": "starlight-blog",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "starlight-changelogs",
+      "constant": "starlight-changelogs",
+      "registry": "npm",
+      "name": "starlight-changelogs",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "starlight-links-validator",
+      "constant": "starlight-links-validator",
+      "registry": "npm",
+      "name": "starlight-links-validator",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "yaml",
+      "constant": "yaml",
+      "registry": "npm",
+      "name": "yaml",
+      "scope": "dependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "@playwright/test",
+      "constant": "@playwright/test",
+      "registry": "npm",
+      "name": "@playwright/test",
+      "scope": "devDependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "@types/primer__octicons",
+      "constant": "@types/primer__octicons",
+      "registry": "npm",
+      "name": "@types/primer__octicons",
+      "scope": "devDependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "http-server",
+      "constant": "http-server",
+      "registry": "npm",
+      "name": "http-server",
+      "scope": "devDependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "satori",
+      "constant": "satori",
+      "registry": "npm",
+      "name": "satori",
+      "scope": "devDependencies",
+      "cooldownDays": 0
+    },
+    {
+      "id": "starlight-github-alerts",
+      "constant": "starlight-github-alerts",
+      "registry": "npm",
+      "name": "starlight-github-alerts",
+      "scope": "devDependencies",
+      "cooldownDays": 0
+    }
+  ],
+  "interpreterSha256": "fb1ae4d32a535dc60da9834a767f096ff6819fba501ada916e7060bd93c8cbe4",
+  "versionOracleSha256": "e7c63e2c28b91af627fb026ee091b0828c3dfab2bebfb12f6ffd8041fbffadd6",
+  "reviewCoveragePolicy": "Complete aligned frozen package cohort; partial history is not comparable primary evidence.",
+  "adoption": {
+    "commit": "c942baa88222271ac35ad1f8c34cde55d596bdee",
+    "adoptedAt": "2026-03-17T13:10:10Z",
+    "baselineCommit": "f64dd9122dc8bd6210f041c95820ae6b9ce01ee8",
+    "baselineAt": "2026-03-17T12:57:52Z"
+  }
+});

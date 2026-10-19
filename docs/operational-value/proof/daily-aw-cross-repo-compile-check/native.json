@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflow": "daily-aw-cross-repo-compile-check",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "cohort": null,
+  "authorities": [],
+  "reports": [],
+  "assessments": [],
+  "missingReason": "The source requires original independent strict compile/fix/recompile results, fixed compiler identity, full target inventories and a frozen public discovery cohort. None are present in the authorized offline inputs. Complete current workflow, imports, compiled source and native command/specification are reviewed; the compiled workflow has no independent protected native compile checker. Agent cache summaries, output markers, LLM evals and successful job conclusions cannot substitute. No outcome acquisition or execution is authorized; historical evidence availability is not exhausted."
+}

@@ -1,0 +1,46 @@
+✔ retained actual collector stays unavailable, not zero or exhausted, and preserves request order (7.832875ms)
+✔ one independently protected native repair counts irrespective of human or workflow actor (1.498166ms)
+✔ full-goal gaps and unknown contribution preserve partial native progress (0.514209ms)
+✔ dedup conditions rather than PRs, attempts, reports or receipt count (1.3095ms)
+✔ delivery windows are inclusive/exclusive, late evidence is not backdated or redelivered (0.969458ms)
+✔ reject merge without a failing before without erasing the unresolved condition (0.328333ms)
+✔ reject overall green with no exercised testcase without erasing the unresolved condition (0.315625ms)
+✔ reject skipped target without erasing the unresolved condition (0.269958ms)
+✔ reject masked check without erasing the unresolved condition (0.286375ms)
+✔ reject setup failure without erasing the unresolved condition (0.338583ms)
+✔ reject deleted target without erasing the unresolved condition (0.294375ms)
+✔ reject changed predicate without erasing the unresolved condition (0.578041ms)
+✔ reject new suppression without erasing the unresolved condition (0.346166ms)
+✔ reject changed expected inputs or golden assertions without erasing the unresolved condition (0.298166ms)
+✔ reject changed toolchain without erasing the unresolved condition (0.281208ms)
+✔ reject different matrix without erasing the unresolved condition (0.253542ms)
+✔ reject golden regeneration without erasing the unresolved condition (0.235541ms)
+✔ reject echo fabricated test output without erasing the unresolved condition (0.235958ms)
+✔ reject invalid compiler/test output without erasing the unresolved condition (0.218917ms)
+✔ reject not landed on main without erasing the unresolved condition (0.25775ms)
+✔ reject wrong head without erasing the unresolved condition (0.474708ms)
+✔ reject altered Git object without erasing the unresolved condition (0.3905ms)
+✔ reject post-pass landing without erasing the unresolved condition (0.3235ms)
+✔ reject missing independent receipts without erasing the unresolved condition (0.144ms)
+✔ validly re-digested changed suppression cannot manufacture acceptance (0.335667ms)
+✔ a new formatter receipt does not count mutating --write as a fixed-point check (0.659042ms)
+✔ body-only Avenger markers never become contribution or full-goal proofs (0.4345ms)
+✔ independent protected contribution and full acceptance are separate diagnostic channels (1.021958ms)
+✔ golangci-json native decoder accepts actual condition transitions, not setup errors or skips (0.67125ms)
+✔ prettier-check native decoder accepts actual condition transitions, not setup errors or skips (0.540417ms)
+✔ go-build native decoder accepts actual condition transitions, not setup errors or skips (0.52425ms)
+✔ go-test-jsonl native decoder accepts actual condition transitions, not setup errors or skips (0.72975ms)
+✔ introduced defects require an independently passing predecessor, not a new failing report alone (0.497125ms)
+✔ unbound coverage cannot invent a zero population (0.102958ms)
+✔ archive corruption, mismatched repository, conflicts and invalid windows fail explicitly (0.541958ms)
+✔ actual collector accepts portable retained input paths without turning test fixtures into history (15.321625ms)
+✔ current predicates are never backdated to workflow adoption or projected after cutoff (0.288208ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 86.225792
+verified docs/operational-value/proof/functions/avenger.mjs

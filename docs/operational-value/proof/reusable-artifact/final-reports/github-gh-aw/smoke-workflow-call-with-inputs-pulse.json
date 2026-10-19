@@ -1,0 +1,547 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "smoke-workflow-call-with-inputs",
+  "workflowName": "Smoke Workflow Call with Inputs",
+  "sourcePath": ".github/workflows/smoke-workflow-call-with-inputs.md",
+  "valueFunctionSha256": "6fe4e138b5ac4aead27543d4c21d5e5c4898aef47814a7f04174bb431abf0eff",
+  "window": {
+    "startAt": "2026-03-12T18:42:05Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-04-01T00:00:00.000Z",
+      "label": "Apr 2026"
+    },
+    {
+      "at": "2026-05-01T00:00:00.000Z",
+      "label": "May 2026"
+    },
+    {
+      "at": "2026-06-01T00:00:00.000Z",
+      "label": "Jun 2026"
+    },
+    {
+      "at": "2026-07-01T00:00:00.000Z",
+      "label": "Jul 2026"
+    },
+    {
+      "at": "2026-08-01T00:00:00.000Z",
+      "label": "Aug 2026"
+    },
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "verified-scenarios",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "verified-scenarios",
+    "basis": "repository-outcome",
+    "unit": "verified scenarios"
+  },
+  "metrics": [
+    {
+      "id": "verified-scenarios",
+      "name": "Verified isolated caller scenarios",
+      "role": "primary",
+      "formula": "Count source-bound three-caller scenarios with distinct input-correlated artifact identities, correct payloads and protected consumer readback.",
+      "direction": "increase",
+      "unit": "verified scenarios",
+      "presentation": {
+        "name": "Verified isolated caller scenarios",
+        "legendLabel": "Verified scenarios",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-03-19T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-03-19T18:42:05Z"
+        },
+        {
+          "at": "2026-03-26T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-03-26T18:42:05Z"
+        },
+        {
+          "at": "2026-04-02T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-02T18:42:05Z"
+        },
+        {
+          "at": "2026-04-09T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-09T18:42:05Z"
+        },
+        {
+          "at": "2026-04-16T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-16T18:42:05Z"
+        },
+        {
+          "at": "2026-04-23T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-23T18:42:05Z"
+        },
+        {
+          "at": "2026-04-30T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-30T18:42:05Z"
+        },
+        {
+          "at": "2026-05-07T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-07T18:42:05Z"
+        },
+        {
+          "at": "2026-05-14T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-14T18:42:05Z"
+        },
+        {
+          "at": "2026-05-21T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-21T18:42:05Z"
+        },
+        {
+          "at": "2026-05-28T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-28T18:42:05Z"
+        },
+        {
+          "at": "2026-06-04T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-04T18:42:05Z"
+        },
+        {
+          "at": "2026-06-11T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-11T18:42:05Z"
+        },
+        {
+          "at": "2026-06-18T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-18T18:42:05Z"
+        },
+        {
+          "at": "2026-06-25T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-25T18:42:05Z"
+        },
+        {
+          "at": "2026-07-02T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-02T18:42:05Z"
+        },
+        {
+          "at": "2026-07-09T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-09T18:42:05Z"
+        },
+        {
+          "at": "2026-07-16T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-16T18:42:05Z"
+        },
+        {
+          "at": "2026-07-23T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-23T18:42:05Z"
+        },
+        {
+          "at": "2026-07-30T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-30T18:42:05Z"
+        },
+        {
+          "at": "2026-08-06T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-06T18:42:05Z"
+        },
+        {
+          "at": "2026-08-13T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-13T18:42:05Z"
+        },
+        {
+          "at": "2026-08-20T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-20T18:42:05Z"
+        },
+        {
+          "at": "2026-08-27T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-27T18:42:05Z"
+        },
+        {
+          "at": "2026-09-03T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-03T18:42:05Z"
+        },
+        {
+          "at": "2026-09-10T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-10T18:42:05Z"
+        },
+        {
+          "at": "2026-09-17T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-17T18:42:05Z"
+        },
+        {
+          "at": "2026-09-24T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-24T18:42:05Z"
+        },
+        {
+          "at": "2026-10-01T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-01T18:42:05Z"
+        },
+        {
+          "at": "2026-10-08T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-08T18:42:05Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-15T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-15T18:42:05Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "complete-scenarios",
+      "name": "Complete isolated caller scenarios",
+      "role": "diagnostic",
+      "formula": "The same native count only if every eligible scenario in the period has accepted positive or negative evidence.",
+      "direction": "increase",
+      "unit": "verified scenarios",
+      "presentation": {
+        "name": "Complete isolated caller scenarios",
+        "legendLabel": "Complete scenarios",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-03-19T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-03-19T18:42:05Z"
+        },
+        {
+          "at": "2026-03-26T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-03-26T18:42:05Z"
+        },
+        {
+          "at": "2026-04-02T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-02T18:42:05Z"
+        },
+        {
+          "at": "2026-04-09T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-09T18:42:05Z"
+        },
+        {
+          "at": "2026-04-16T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-16T18:42:05Z"
+        },
+        {
+          "at": "2026-04-23T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-23T18:42:05Z"
+        },
+        {
+          "at": "2026-04-30T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-04-30T18:42:05Z"
+        },
+        {
+          "at": "2026-05-07T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-07T18:42:05Z"
+        },
+        {
+          "at": "2026-05-14T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-14T18:42:05Z"
+        },
+        {
+          "at": "2026-05-21T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-21T18:42:05Z"
+        },
+        {
+          "at": "2026-05-28T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-05-28T18:42:05Z"
+        },
+        {
+          "at": "2026-06-04T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-04T18:42:05Z"
+        },
+        {
+          "at": "2026-06-11T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-11T18:42:05Z"
+        },
+        {
+          "at": "2026-06-18T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-18T18:42:05Z"
+        },
+        {
+          "at": "2026-06-25T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-06-25T18:42:05Z"
+        },
+        {
+          "at": "2026-07-02T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-02T18:42:05Z"
+        },
+        {
+          "at": "2026-07-09T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-09T18:42:05Z"
+        },
+        {
+          "at": "2026-07-16T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-16T18:42:05Z"
+        },
+        {
+          "at": "2026-07-23T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-23T18:42:05Z"
+        },
+        {
+          "at": "2026-07-30T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-30T18:42:05Z"
+        },
+        {
+          "at": "2026-08-06T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-06T18:42:05Z"
+        },
+        {
+          "at": "2026-08-13T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-13T18:42:05Z"
+        },
+        {
+          "at": "2026-08-20T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-20T18:42:05Z"
+        },
+        {
+          "at": "2026-08-27T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-27T18:42:05Z"
+        },
+        {
+          "at": "2026-09-03T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-03T18:42:05Z"
+        },
+        {
+          "at": "2026-09-10T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-10T18:42:05Z"
+        },
+        {
+          "at": "2026-09-17T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-17T18:42:05Z"
+        },
+        {
+          "at": "2026-09-24T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-24T18:42:05Z"
+        },
+        {
+          "at": "2026-10-01T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-01T18:42:05Z"
+        },
+        {
+          "at": "2026-10-08T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-08T18:42:05Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-15T18:42:05Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-15T18:42:05Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

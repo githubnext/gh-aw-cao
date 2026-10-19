@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "smoke-work-queue",
+  "workflowName": "Smoke Work Queue",
+  "sourcePath": ".github/workflows/smoke-work-queue.md",
+  "valueFunctionSha256": "c9a23f047f5296d2bed9bd83df3a949739ccd9a62350f43b75d6ea68c865588d",
+  "window": {
+    "startAt": "2026-10-03T03:22:10Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "observed-predicates",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": 9,
+    "metricId": "observed-predicates",
+    "basis": "repository-outcome",
+    "unit": "predicates"
+  },
+  "metrics": [
+    {
+      "id": "observed-predicates",
+      "role": "primary",
+      "name": "Independently verified observer predicates",
+      "unit": "predicates",
+      "direction": "increase",
+      "formula": "Count independently established true native predicates; retain established partial proof through gaps, but return null when all are unknown.",
+      "presentation": {
+        "name": "Independently verified observer predicates",
+        "legendLabel": "Observer predicates",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": 9
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-10T03:22:10Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-10T03:22:10Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-17T03:22:10Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-17T03:22:10Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "smoke-readbacks",
+      "role": "diagnostic",
+      "name": "Protected smoke readbacks (not native proof)",
+      "unit": "readbacks",
+      "direction": "increase",
+      "formula": "Count exact reviewed initial-run download and noop/no-finish-artifact assertion steps that succeeded before cutoff. Never credit this as a native predicate.",
+      "presentation": {
+        "name": "Protected smoke readbacks (not native proof)",
+        "legendLabel": "Smoke readbacks",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": 9
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-10T03:22:10Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-10T03:22:10Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-17T03:22:10Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-17T03:22:10Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

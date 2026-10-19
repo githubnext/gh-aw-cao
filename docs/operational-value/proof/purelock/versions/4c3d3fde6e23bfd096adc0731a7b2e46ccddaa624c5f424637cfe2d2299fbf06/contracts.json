@@ -1,0 +1,57 @@
+[
+  {
+    "schemaVersion": 1,
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "workflowId": "purelock",
+    "sourcePath": ".github/workflows/purelock.md",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "directory": "docs/operational-value/proof/purelock",
+    "sourceGitBlob": "cd4498980967d37ec386d300b11bba18793ebfde",
+    "analyzerGitBlob": "1d2f5fdebb485c7d7d0234d85a296f208af2b138",
+    "analyzerSha256": "ffe63fad6b03654adff151868771f30ca8e0d88d209e8c8629d9141abb84d271",
+    "compiledJobSha256": "207ad587109d18c18e209a6b0bca0eb8b711f91f79216e56cc56c48826833a71",
+    "imports": [
+      {
+        "path": ".github/workflows/shared/mcp/serena-go.md",
+        "gitBlob": "0201186f4c55b571cc280e4204f70c079829ab27",
+        "sha256": "019ed28b80e9ac4d3c3865875f11723687e921ccb41d4b56c0795f046ecaab33"
+      },
+      {
+        "path": ".github/workflows/shared/otlp.md",
+        "gitBlob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+        "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6"
+      },
+      {
+        "path": ".github/workflows/shared/reporting.md",
+        "gitBlob": "263d2413472e62582c578897a8b06462da5ef171",
+        "sha256": "0929890c04f04878f9750464ef9a4bc799c87d236e4f936018a3bfc2dc3aae41"
+      }
+    ],
+    "toolchain": "go1.26.9",
+    "nativeToolsVersion": "v0.52.0",
+    "ciSourceRevision": "3b6b90c09fb62933828e4890cbe4d71fac51d689",
+    "ciSourceSha256": "e76244648bb894468819c35070700604765ae90030484f84c7c2c6b01ae9a841",
+    "ciInterpreterSha256": "3fa464b32a62c0c339f171f6d33d4b34eded6b7d14f83cf67b6aa2245dae64b2",
+    "buildSelection": {
+      "goos": "linux",
+      "goarch": "amd64",
+      "cgoEnabled": "0",
+      "patterns": [
+        "./pkg/..."
+      ]
+    },
+    "interpreterSha256": "bb97aab41fea4fb6fd9245bb0215d26bbf4912901c43a7f4f84f380d0de8c87b",
+    "producerSha256": "e1c89cef58f9b2724f52f4003b596cd6710cc08432ec474977b56a8767a47958",
+    "sourceReaderSha256": "3a9662186e0d9abfd8c7b1a7e0beece3973c0c484e5cf28e5a24d39d4eeadfd9",
+    "archiveReaderSha256": "f144b7f059bb1187b623b0b592360fd76d64338644a42bcb5c79a2c758a9a068",
+    "predecessorSha256": "6746f85105b1a6dfebe0e8eb84d9829ad66fca5691be66e29ba4d80dd2b4787d",
+    "adoption": {
+      "commit": "e3caca541fa7311d84947e25d3a7bfe4be3b431f",
+      "adoptedAt": "2026-08-07T15:01:29Z",
+      "baselineCommit": "13c4e76a5b1a01fe6c616f01107648db8f7176a8",
+      "baselineAt": "2026-08-07T14:43:26Z"
+    }
+  }
+]

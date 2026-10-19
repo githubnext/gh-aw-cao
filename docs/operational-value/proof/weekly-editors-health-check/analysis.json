@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "weekly-editors-health-check",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "goal": "Monitor all documented workflow editors and keep preview screenshots up to date.",
+  "operationalValueFacet": "For actual documented editor destinations at a checkpoint, attain HTTP GET reachability demonstrated by independently attributable original responses, measured as the percentage returning exactly HTTP 200.",
+  "scope": {
+    "population": "The three actual standalone editor destinations under their respective editor headings.",
+    "destinations": [
+      "https://github.github.com/gh-aw/editor/",
+      "https://ashleywolf.github.io/agentic-prompt-generator/",
+      "https://mossaka.github.io/gh-aw-editor-visualizer/"
+    ],
+    "ancillary": {
+      "url": "https://github.github.com/gh-aw/reference/wasm-compilation/",
+      "role": "Explanatory WebAssembly documentation link within Compiler Playground prose.",
+      "disposition": "Outside the constrained editor-destination facet, not silently discarded from any original response archive."
+    },
+    "discrepancy": "The frozen workflow's literal Markdown-link extraction could also check ancillary prose references. The constrained three-editor facet is not literal full Step-0 coverage or full-goal acceptance.",
+    "resolution": "Expand the documented BASE_URL expression, then resolve relative references against https://github.github.com/gh-aw/ with standard URL resolution; reject credentials, non-HTTPS and unresolved expressions."
+  },
+  "sourceClosure": {
+    "frozenSource": {
+      "blob": "e7d3355795fb9c5b79e6201300fc35d3e09c4e4b",
+      "sha256": "35d957301e53b3acc71f8647d102d880bc287ee92316ff8ee67ca7156a23e86d",
+      "readCompletely": true
+    },
+    "imports": [
+      {
+        "path": ".github/workflows/shared/otlp.md",
+        "readCompletely": true,
+        "effect": "Adds observability endpoints and network domains; contains no editor outcome measurement."
+      },
+      {
+        "path": ".github/workflows/shared/noop-reminder.md",
+        "readCompletely": true,
+        "effect": "Requires a no-op safe output when no action is needed; not outcome acceptance evidence."
+      }
+    ],
+    "adoption": {
+      "commit": "b3d55d8233a71fe28cfb26ec0fcc1427b246ab16",
+      "parent": "89c787bd741db726454c4881c8946b934eddb870",
+      "at": "2026-02-21T22:11:11Z",
+      "sourceBlob": "8031eea07e2c2e113d9c13703262b6b8db057725",
+      "sourceSha256": "a37e0abf18b5c26ae74946dc604faa8b49758bbd408869986250720a9fabb916",
+      "readCompletely": true,
+      "additionVerified": "Both source and compiled-workflow paths are present at the introduction commit and absent at its real parent.",
+      "discoveryChange": "Adoption source recognizes LinkButton href only; frozen source additionally recognizes Markdown and standalone URL bullets.",
+      "stableAcceptance": "Both sources explicitly define HTTP 200 as available and other statuses or connection errors as unavailable.",
+      "imports": "None in adoption source."
+    },
+    "compiledBodies": "Both frozen and adoption bodies are retained losslessly with verified Git hashes, decoded SHA256, original provider JSON and actual safe acquisition headers. Current agent and adoption agent-artifacts/agent_outputs uploads expose original evidence discovery paths, not HTTP acceptance themselves."
+  },
+  "metricInventory": [
+    {
+      "measure": "HTTP 200 editor availability",
+      "role": "Primary constrained facet",
+      "nativeUnit": "percent",
+      "formula": "100 * available actual editor destinations / all actual editor destinations in the same complete original checkpoint",
+      "antecedent": "The editors and HTTP reachability pre-existed the workflow; retained immutable inventory history begins before adoption.",
+      "historicalEvidence": "No original HTTP responses exist in the permitted normalized output inventory. Reconstruction is open, not proven impossible."
+    },
+    {
+      "measure": "All-editor check coverage",
+      "role": "Acceptance gate",
+      "rule": "Every actual editor must have an original matching response or reliably evidenced connection failure; missing instrumentation cannot become a failed editor or a successful check."
+    },
+    {
+      "measure": "Non-200 HTTP status or reliable connection failure",
+      "role": "Direct negative availability evidence",
+      "rule": "Retain exact original status and original tool bytes. Require separately verified probe reliability for a connection failure; setup/tool failure alone is missing."
+    },
+    {
+      "measure": "Screenshots taken, uploaded or merged into documentation",
+      "role": "Not reachability evidence",
+      "rule": "Screenshots do not establish the explicit source-defined HTTP response and are not a freshness, functionality or causal-contribution oracle."
+    },
+    {
+      "measure": "Successful run, report, no-op, PR creation or merge",
+      "role": "Rejected mechanism proxy",
+      "rule": "Retain identities for evidence discovery only; a success claim does not prove editor availability."
+    },
+    {
+      "measure": "Full functionality, screenshot freshness, costs and workflow contribution",
+      "role": "Not measured",
+      "rule": "No independent full-acceptance contract or matching cost/contribution evidence was established; do not infer it from reachability."
+    }
+  ],
+  "historyInvestigation": {
+    "retainedEntityInventory": 58048,
+    "verifiedPartitions": 346,
+    "workflowCandidates": 18,
+    "editorInventoryRevisions": 12,
+    "retainedEditorInventoryContents": 12,
+    "missingEarliestInventoryContents": 0,
+    "populationEras": "The earliest inventory has two actual editors, the next has three, and the adoption-time inventory changes to standalone bullets. Compiler Playground points to https://github.github.com/editor/ at adoption until a February 24 correction to the /gh-aw/editor/ path. No HTTP status is inferred from either URL.",
+    "originalHttpReceipts": 0,
+    "nativeOutcomeObservations": 0,
+    "attainedEditorCount": null,
+    "knownFailedEditorCount": null,
+    "fullActionsHistory": "One explicitly authorized current provider run-listing GET returned79/79 matching runs with no Link cursor. Includes61 runs beyond18 retained output candidates. Deleted runs remain outside this listing; original response acquisition is still open and no follow-up endpoint is authorized.",
+    "preAdoptionReference": "Unavailable, never zero.",
+    "classification": "Attainment-only in this offline evaluation, with historical capability unresolved and explicit review required if original pre-adoption responses become available.",
+    "sourceClosure": "Complete for frozen/adoption workflow source, frozen imports, both compiled workflows and all twelve historical editor inventories. Latest-run producer jobs and original log ZIP subsequently acquired; original editor HTTP evidence remains absent, not failed.",
+    "latestRunOriginalInspection": "Run39014584632/attempt1/head d3915e4a21040c00a6e11e1acb0aac42605abc4c, agent job117344046063: four original tool starts, no actual editor HTTP GET. Compound cat/command-v invocation denied, file view succeeds, nonexistent noop tool fails, safeoutputs bridge succeeds. Bridge HTTP200 does not refer to an editor. Agent narrative claiming curl/Playwright were blocked cannot substitute for actual probe results."
+  },
+  "evaluationInterpretation": {
+    "measurementKind": "snapshot",
+    "cadenceDays": 7,
+    "observationRule": "The original checkpoint completion must equal the requested snapshot endpoint. No carry-forward from an older accepted checkpoint.",
+    "display": "Full adoption-to-cutoff horizon with missing availability values. This is a native-unit missingness plot, not a demonstrated availability trend.",
+    "nativeProgress": null,
+    "workflowContribution": null,
+    "costs": "not measured",
+    "decision": "not rated: no agreed native keep bar or review duration",
+    "causation": "Not established.",
+    "checkpointSampling": "Original checkpoints must be evaluated at their actual timestamps or retained as accepted snapshots; weekly rendering must not fabricate HTTP observations at arbitrary cadence cutoffs."
+  },
+  "predecessor": {
+    "archive": "predecessor-owned-v018.tar.gz",
+    "sha256": "51664253ab6cc2962861eadf88b73a541b2c34d2a878195a1b67a67e93b2363e",
+    "manifest": "predecessor-owned-v018.manifest.json",
+    "manifestSha256": "3f2e3ae651bab636336a9cde58db340ab56d84da99a016535db1f62e7ec8bbae",
+    "members": 16,
+    "preservation": "Complete predecessor closure independently verified before extension; earlier function, definitions, all evidence, reports and missing assessments remain byte-exact.",
+    "implementationCorrection": "Added safe parsing of source-established brace/backtick LinkButton href expressions and ignored repeated label text inside that component. HTTP acceptance, native unit, formula, missingness and all previously reported values are unchanged."
+  }
+}

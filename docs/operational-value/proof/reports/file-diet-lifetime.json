@@ -1,0 +1,3784 @@
+{
+  "adoption": {
+    "commit": "1186030a620f4113f655c156bedf70cf2c164f79",
+    "at": "2025-11-15T13:36:21Z",
+    "baselineCommit": "fc43d399fbe304278d3920906b90413db31184b8"
+  },
+  "until": "2026-10-18T11:54:09Z",
+  "periods": [
+    {
+      "start": "2025-11-15T13:36:21Z",
+      "end": "2025-11-15T13:36:21Z",
+      "commit": "1186030a620f4113f655c156bedf70cf2c164f79",
+      "eligibleFiles": 216,
+      "oversized800": 16,
+      "oversized1000": 6,
+      "issues": 0,
+      "distinctReportedTargets": 0,
+      "mergedLinkedPulls": [],
+      "linkedNetOversized800Reduction": 0,
+      "retainedRuns": 0,
+      "retainedRunConclusions": {},
+      "resolved800": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2025-11-15T13:36:21Z",
+      "end": "2025-12-01T00:00:00Z",
+      "commit": "57dce70f578013a9a658a23f9146019d52d12961",
+      "eligibleFiles": 249,
+      "oversized800": 19,
+      "oversized1000": 11,
+      "issues": 5,
+      "distinctReportedTargets": 2,
+      "mergedLinkedPulls": [
+        4059
+      ],
+      "linkedNetOversized800Reduction": 0,
+      "retainedRuns": 16,
+      "retainedRunConclusions": {
+        "success": 13,
+        "failure": 3
+      },
+      "resolved800": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2025-12-01T00:00:00Z",
+      "end": "2026-01-01T00:00:00Z",
+      "commit": "0cb0e9d759078d7a316a8527ba1db0fbf9c243bc",
+      "eligibleFiles": 367,
+      "oversized800": 18,
+      "oversized1000": 3,
+      "issues": 14,
+      "distinctReportedTargets": 13,
+      "mergedLinkedPulls": [
+        5640,
+        6094,
+        6145,
+        6277,
+        6809,
+        6824,
+        6897,
+        7051,
+        7262,
+        8246
+      ],
+      "linkedNetOversized800Reduction": 8,
+      "retainedRuns": 35,
+      "retainedRunConclusions": {
+        "success": 25,
+        "failure": 10
+      },
+      "resolved800": [
+        {
+          "pull": 5640,
+          "path": "pkg/workflow/compiler.go"
+        },
+        {
+          "pull": 6145,
+          "path": "pkg/workflow/safe_outputs.go"
+        },
+        {
+          "pull": 6277,
+          "path": "pkg/cli/compile_command.go"
+        },
+        {
+          "pull": 6809,
+          "path": "pkg/workflow/compiler_yaml.go"
+        },
+        {
+          "pull": 6824,
+          "path": "pkg/cli/logs.go"
+        },
+        {
+          "pull": 6897,
+          "path": "pkg/cli/update_command.go"
+        },
+        {
+          "pull": 7051,
+          "path": "pkg/parser/frontmatter.go"
+        },
+        {
+          "pull": 7262,
+          "path": "pkg/workflow/compiler_safe_outputs_consolidated.go"
+        },
+        {
+          "pull": 8246,
+          "path": "pkg/cli/compile_orchestrator.go"
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-01-01T00:00:00Z",
+      "end": "2026-02-01T00:00:00Z",
+      "commit": "61075cda2a795ca4059eab175535ce02203e6a9b",
+      "eligibleFiles": 488,
+      "oversized800": 13,
+      "oversized1000": 3,
+      "issues": 16,
+      "distinctReportedTargets": 13,
+      "mergedLinkedPulls": [
+        8500,
+        8665,
+        8996,
+        9139,
+        9242,
+        10721,
+        10898,
+        10988,
+        11588,
+        12286,
+        12545
+      ],
+      "linkedNetOversized800Reduction": 11,
+      "retainedRuns": 26,
+      "retainedRunConclusions": {
+        "success": 22,
+        "failure": 4
+      },
+      "resolved800": [
+        {
+          "pull": 8500,
+          "path": "pkg/workflow/copilot_engine.go"
+        },
+        {
+          "pull": 8665,
+          "path": "pkg/parser/schema.go"
+        },
+        {
+          "pull": 8996,
+          "path": "pkg/workflow/compiler_safe_outputs_core.go"
+        },
+        {
+          "pull": 9139,
+          "path": "pkg/cli/run_command.go"
+        },
+        {
+          "pull": 9242,
+          "path": "pkg/workflow/runtime_setup.go"
+        },
+        {
+          "pull": 10721,
+          "path": "pkg/workflow/mcp-config.go"
+        },
+        {
+          "pull": 10898,
+          "path": "pkg/cli/fix_codemods.go"
+        },
+        {
+          "pull": 10988,
+          "path": "pkg/workflow/mcp_servers.go"
+        },
+        {
+          "pull": 11588,
+          "path": "pkg/parser/schedule_parser.go"
+        },
+        {
+          "pull": 12286,
+          "path": "pkg/cli/add_command.go"
+        },
+        {
+          "pull": 12545,
+          "path": "pkg/cli/add_interactive.go"
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-02-01T00:00:00Z",
+      "end": "2026-03-01T00:00:00Z",
+      "commit": "980b0211c1d97e1c5009341d713581900eca1741",
+      "eligibleFiles": 543,
+      "oversized800": 14,
+      "oversized1000": 4,
+      "issues": 10,
+      "distinctReportedTargets": 3,
+      "mergedLinkedPulls": [
+        16838,
+        17176
+      ],
+      "linkedNetOversized800Reduction": 2,
+      "retainedRuns": 23,
+      "retainedRunConclusions": {
+        "success": 18,
+        "failure": 5
+      },
+      "resolved800": [
+        {
+          "pull": 16838,
+          "path": "pkg/workflow/safe_outputs_config_generation.go"
+        },
+        {
+          "pull": 17176,
+          "path": "pkg/cli/mcp_server.go"
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-03-01T00:00:00Z",
+      "end": "2026-04-01T00:00:00Z",
+      "commit": "aa79607a815e2fe9cd906129ac01a23fa78396e1",
+      "eligibleFiles": 621,
+      "oversized800": 22,
+      "oversized1000": 6,
+      "issues": 7,
+      "distinctReportedTargets": 6,
+      "mergedLinkedPulls": [
+        18974,
+        19229,
+        20296,
+        20377,
+        20639,
+        20804
+      ],
+      "linkedNetOversized800Reduction": 6,
+      "retainedRuns": 34,
+      "retainedRunConclusions": {
+        "success": 18,
+        "failure": 16
+      },
+      "resolved800": [
+        {
+          "pull": 18974,
+          "path": "pkg/parser/import_processor.go"
+        },
+        {
+          "pull": 19229,
+          "path": "pkg/workflow/compiler_activation_jobs.go"
+        },
+        {
+          "pull": 20296,
+          "path": "pkg/workflow/safe_outputs_generation.go"
+        },
+        {
+          "pull": 20377,
+          "path": "pkg/cli/remote_workflow.go"
+        },
+        {
+          "pull": 20639,
+          "path": "pkg/workflow/safe_outputs_config.go"
+        },
+        {
+          "pull": 20804,
+          "path": "pkg/workflow/mcp_renderer.go"
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-04-01T00:00:00Z",
+      "end": "2026-05-01T00:00:00Z",
+      "commit": "a1b4aef06665f506b37d304bed92cd99f9e1eb1b",
+      "eligibleFiles": 737,
+      "oversized800": 24,
+      "oversized1000": 4,
+      "issues": 0,
+      "distinctReportedTargets": 0,
+      "mergedLinkedPulls": [],
+      "linkedNetOversized800Reduction": 0,
+      "retainedRuns": 22,
+      "retainedRunConclusions": {
+        "success": 22
+      },
+      "resolved800": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-05-01T00:00:00Z",
+      "end": "2026-06-01T00:00:00Z",
+      "commit": "7b11cb67f034a4e24f9c4ecb8f72d63cdefb31a8",
+      "eligibleFiles": 871,
+      "oversized800": 32,
+      "oversized1000": 13,
+      "issues": 0,
+      "distinctReportedTargets": 0,
+      "mergedLinkedPulls": [],
+      "linkedNetOversized800Reduction": 0,
+      "retainedRuns": 22,
+      "retainedRunConclusions": {
+        "success": 21,
+        "failure": 1
+      },
+      "resolved800": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-06-01T00:00:00Z",
+      "end": "2026-07-01T00:00:00Z",
+      "commit": "b5fdd698c629c91b387d059628db059bcda73980",
+      "eligibleFiles": 986,
+      "oversized800": 37,
+      "oversized1000": 14,
+      "issues": 2,
+      "distinctReportedTargets": 2,
+      "mergedLinkedPulls": [
+        42274
+      ],
+      "linkedNetOversized800Reduction": 1,
+      "retainedRuns": 21,
+      "retainedRunConclusions": {
+        "failure": 1,
+        "success": 20
+      },
+      "resolved800": [
+        {
+          "pull": 42274,
+          "path": "pkg/cli/forecast.go"
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-07-01T00:00:00Z",
+      "end": "2026-08-01T00:00:00Z",
+      "commit": "a4a8ff866757cbae7225c978a1ae9e1183e852b6",
+      "eligibleFiles": 1171,
+      "oversized800": 33,
+      "oversized1000": 13,
+      "issues": 15,
+      "distinctReportedTargets": 11,
+      "mergedLinkedPulls": [
+        43834,
+        44051,
+        44313,
+        44651,
+        44792,
+        45494,
+        45744,
+        46855,
+        47839,
+        48455
+      ],
+      "linkedNetOversized800Reduction": 10,
+      "retainedRuns": 25,
+      "retainedRunConclusions": {
+        "success": 22,
+        "failure": 3
+      },
+      "resolved800": [
+        {
+          "pull": 43834,
+          "path": "pkg/parser/remote_fetch.go"
+        },
+        {
+          "pull": 44051,
+          "path": "pkg/cli/logs_orchestrator.go"
+        },
+        {
+          "pull": 44313,
+          "path": "pkg/workflow/safe_outputs_config.go"
+        },
+        {
+          "pull": 44651,
+          "path": "pkg/workflow/compiler_yaml_main_job.go"
+        },
+        {
+          "pull": 44792,
+          "path": "pkg/workflow/compiler_activation_job_builder.go"
+        },
+        {
+          "pull": 45494,
+          "path": "pkg/workflow/compiler_yaml.go"
+        },
+        {
+          "pull": 45744,
+          "path": "pkg/workflow/frontmatter_extraction_yaml.go"
+        },
+        {
+          "pull": 46855,
+          "path": "pkg/cli/bootstrap_profile_runner.go"
+        },
+        {
+          "pull": 47839,
+          "path": "pkg/workflow/mcp_setup_generator.go"
+        },
+        {
+          "pull": 48455,
+          "path": "pkg/cli/token_usage.go"
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-08-01T00:00:00Z",
+      "end": "2026-09-01T00:00:00Z",
+      "commit": "85a1486b1f2ab058e05ac5756faf1f38851e3dbb",
+      "eligibleFiles": 1333,
+      "oversized800": 29,
+      "oversized1000": 8,
+      "issues": 14,
+      "distinctReportedTargets": 11,
+      "mergedLinkedPulls": [
+        50052,
+        51154,
+        52901,
+        53394,
+        53706,
+        54030,
+        54284,
+        54576,
+        55482,
+        55785
+      ],
+      "linkedNetOversized800Reduction": 10,
+      "retainedRuns": 21,
+      "retainedRunConclusions": {
+        "success": 21
+      },
+      "resolved800": [
+        {
+          "pull": 50052,
+          "path": "pkg/cli/logs_download.go"
+        },
+        {
+          "pull": 51154,
+          "path": "pkg/workflow/awf_helpers.go"
+        },
+        {
+          "pull": 52901,
+          "path": "pkg/cli/update_actions.go"
+        },
+        {
+          "pull": 53394,
+          "path": "pkg/workflow/compiler_custom_jobs.go"
+        },
+        {
+          "pull": 53706,
+          "path": "pkg/cli/experiments_command.go"
+        },
+        {
+          "pull": 54030,
+          "path": "pkg/cli/add_package_manifest.go"
+        },
+        {
+          "pull": 54284,
+          "path": "pkg/cli/audit.go"
+        },
+        {
+          "pull": 54576,
+          "path": "pkg/workflow/workflow_builder.go"
+        },
+        {
+          "pull": 55482,
+          "path": "pkg/workflow/safe_outputs_handler_registry.go"
+        },
+        {
+          "pull": 55785,
+          "path": "pkg/cli/add_command.go"
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-09-01T00:00:00Z",
+      "end": "2026-10-01T00:00:00Z",
+      "commit": "856e7fa3ca4f1597f9adbd519eec415ce92320e2",
+      "eligibleFiles": 1393,
+      "oversized800": 43,
+      "oversized1000": 11,
+      "issues": 8,
+      "distinctReportedTargets": 2,
+      "mergedLinkedPulls": [],
+      "linkedNetOversized800Reduction": 0,
+      "retainedRuns": 23,
+      "retainedRunConclusions": {
+        "success": 22,
+        "failure": 1
+      },
+      "resolved800": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "start": "2026-10-01T00:00:00Z",
+      "end": "2026-10-18T11:54:09Z",
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "eligibleFiles": 1592,
+      "oversized800": 53,
+      "oversized1000": 15,
+      "issues": 4,
+      "distinctReportedTargets": 2,
+      "mergedLinkedPulls": [],
+      "linkedNetOversized800Reduction": 0,
+      "retainedRuns": 12,
+      "retainedRunConclusions": {
+        "failure": 1,
+        "success": 11
+      },
+      "resolved800": [],
+      "acceptedBehaviorPreserving": null
+    }
+  ],
+  "deliveries": [
+    {
+      "number": 4059,
+      "mergedAt": "2025-11-15T17:16:12Z",
+      "creatorRole": "copilot",
+      "issues": [
+        4058
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 0,
+      "oversized1000Reduction": 0,
+      "targets": [
+        {
+          "path": "pkg/parser/frontmatter.go",
+          "before": 1907,
+          "after": 1165,
+          "creatorVerified": false,
+          "resolved800": false,
+          "resolved1000": false,
+          "newFiles": [
+            {
+              "path": "pkg/parser/ansi_strip.go",
+              "lines": 108
+            },
+            {
+              "path": "pkg/parser/frontmatter_content.go",
+              "lines": 284
+            },
+            {
+              "path": "pkg/parser/remote_fetch.go",
+              "lines": 258
+            },
+            {
+              "path": "pkg/parser/workflow_update.go",
+              "lines": 129
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 5640,
+      "mergedAt": "2025-12-06T07:26:47Z",
+      "creatorRole": "copilot",
+      "issues": [
+        5610
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler.go",
+          "before": 1758,
+          "after": 423,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_parse.go",
+              "lines": 709
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs.go",
+              "lines": 374
+            },
+            {
+              "path": "pkg/workflow/compiler_types.go",
+              "lines": 286
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 6094,
+      "mergedAt": "2025-12-11T05:23:35Z",
+      "creatorRole": "copilot",
+      "issues": [
+        5853
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 0,
+      "oversized1000Reduction": 0,
+      "targets": [
+        {
+          "path": "pkg/cli/logs.go",
+          "before": 1620,
+          "after": 1339,
+          "creatorVerified": false,
+          "resolved800": false,
+          "resolved1000": false,
+          "newFiles": [
+            {
+              "path": "pkg/cli/logs_cache.go",
+              "lines": 77
+            },
+            {
+              "path": "pkg/cli/logs_models.go",
+              "lines": 212
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 6145,
+      "mergedAt": "2025-12-11T16:09:45Z",
+      "creatorRole": "copilot",
+      "issues": [
+        6132
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 0,
+      "oversized1000Reduction": 0,
+      "targets": [
+        {
+          "path": "pkg/workflow/safe_outputs.go",
+          "before": 1530,
+          "after": 8,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/safe_outputs_config.go",
+              "lines": 1024
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_env.go",
+              "lines": 176
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_jobs.go",
+              "lines": 137
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_steps.go",
+              "lines": 232
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 6277,
+      "mergedAt": "2025-12-12T16:54:02Z",
+      "creatorRole": "copilot",
+      "issues": [
+        6265
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/compile_command.go",
+          "before": 1561,
+          "after": 9,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/compile_campaign.go",
+              "lines": 84
+            },
+            {
+              "path": "pkg/cli/compile_config.go",
+              "lines": 49
+            },
+            {
+              "path": "pkg/cli/compile_helpers.go",
+              "lines": 300
+            },
+            {
+              "path": "pkg/cli/compile_orchestrator.go",
+              "lines": 685
+            },
+            {
+              "path": "pkg/cli/compile_validation.go",
+              "lines": 180
+            },
+            {
+              "path": "pkg/cli/compile_watch.go",
+              "lines": 229
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 6596,
+      "mergedAt": "2025-12-16T07:40:03Z",
+      "creatorRole": "copilot",
+      "issues": [],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 0,
+      "oversized1000Reduction": 0,
+      "targets": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 6809,
+      "mergedAt": "2025-12-18T04:41:39Z",
+      "creatorRole": "copilot",
+      "issues": [
+        6803
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler_yaml.go",
+          "before": 1340,
+          "after": 688,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_yaml_ai_execution.go",
+              "lines": 135
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_artifacts.go",
+              "lines": 91
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_helpers.go",
+              "lines": 84
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_main_job.go",
+              "lines": 385
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 6821,
+      "mergedAt": "2025-12-18T10:51:22Z",
+      "creatorRole": "copilot",
+      "issues": [],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 0,
+      "oversized1000Reduction": 0,
+      "targets": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 6824,
+      "mergedAt": "2025-12-18T10:59:18Z",
+      "creatorRole": "copilot",
+      "issues": [
+        6820
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/logs.go",
+          "before": 1354,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/logs_command.go",
+              "lines": 229
+            },
+            {
+              "path": "pkg/cli/logs_display.go",
+              "lines": 180
+            },
+            {
+              "path": "pkg/cli/logs_github_api.go",
+              "lines": 269
+            },
+            {
+              "path": "pkg/cli/logs_orchestrator.go",
+              "lines": 683
+            },
+            {
+              "path": "pkg/cli/logs_utils.go",
+              "lines": 91
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 6897,
+      "mergedAt": "2025-12-19T00:34:33Z",
+      "creatorRole": "copilot",
+      "issues": [
+        6892
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/update_command.go",
+          "before": 1331,
+          "after": 122,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/update_actions.go",
+              "lines": 374
+            },
+            {
+              "path": "pkg/cli/update_display.go",
+              "lines": 33
+            },
+            {
+              "path": "pkg/cli/update_extension_check.go",
+              "lines": 51
+            },
+            {
+              "path": "pkg/cli/update_git.go",
+              "lines": 95
+            },
+            {
+              "path": "pkg/cli/update_merge.go",
+              "lines": 226
+            },
+            {
+              "path": "pkg/cli/update_types.go",
+              "lines": 26
+            },
+            {
+              "path": "pkg/cli/update_workflows.go",
+              "lines": 453
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 7051,
+      "mergedAt": "2025-12-20T14:49:38Z",
+      "creatorRole": "copilot",
+      "issues": [
+        6962
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/parser/frontmatter.go",
+          "before": 1294,
+          "after": 7,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/parser/content_extractor.go",
+              "lines": 155
+            },
+            {
+              "path": "pkg/parser/import_directive.go",
+              "lines": 57
+            },
+            {
+              "path": "pkg/parser/import_processor.go",
+              "lines": 447
+            },
+            {
+              "path": "pkg/parser/include_expander.go",
+              "lines": 178
+            },
+            {
+              "path": "pkg/parser/include_processor.go",
+              "lines": 238
+            },
+            {
+              "path": "pkg/parser/tools_merger.go",
+              "lines": 253
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 7262,
+      "mergedAt": "2025-12-22T15:30:40Z",
+      "creatorRole": "copilot",
+      "issues": [
+        7250
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler_safe_outputs_consolidated.go",
+          "before": 1368,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_core.go",
+              "lines": 674
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_discussions.go",
+              "lines": 79
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_issues.go",
+              "lines": 94
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_prs.go",
+              "lines": 304
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_shared.go",
+              "lines": 115
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_specialized.go",
+              "lines": 145
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 8246,
+      "mergedAt": "2025-12-31T03:28:42Z",
+      "creatorRole": "copilot",
+      "issues": [
+        8243
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/compile_orchestrator.go",
+          "before": 1200,
+          "after": 262,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/compile_batch_operations.go",
+              "lines": 274
+            },
+            {
+              "path": "pkg/cli/compile_compiler_setup.go",
+              "lines": 140
+            },
+            {
+              "path": "pkg/cli/compile_orchestration.go",
+              "lines": 489
+            },
+            {
+              "path": "pkg/cli/compile_output_formatter.go",
+              "lines": 65
+            },
+            {
+              "path": "pkg/cli/compile_post_processing.go",
+              "lines": 178
+            },
+            {
+              "path": "pkg/cli/compile_workflow_processor.go",
+              "lines": 221
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 8500,
+      "mergedAt": "2026-01-01T21:27:11Z",
+      "creatorRole": "copilot",
+      "issues": [
+        8441
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 0,
+      "targets": [
+        {
+          "path": "pkg/workflow/copilot_engine.go",
+          "before": 932,
+          "after": 120,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": false,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/copilot_engine_execution.go",
+              "lines": 456
+            },
+            {
+              "path": "pkg/workflow/copilot_engine_installation.go",
+              "lines": 164
+            },
+            {
+              "path": "pkg/workflow/copilot_engine_tools.go",
+              "lines": 287
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 8665,
+      "mergedAt": "2026-01-02T20:36:27Z",
+      "creatorRole": "copilot",
+      "issues": [
+        8631
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/parser/schema.go",
+          "before": 1161,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/parser/schema_compiler.go",
+              "lines": 352
+            },
+            {
+              "path": "pkg/parser/schema_deprecation.go",
+              "lines": 106
+            },
+            {
+              "path": "pkg/parser/schema_errors.go",
+              "lines": 110
+            },
+            {
+              "path": "pkg/parser/schema_suggestions.go",
+              "lines": 386
+            },
+            {
+              "path": "pkg/parser/schema_triggers.go",
+              "lines": 100
+            },
+            {
+              "path": "pkg/parser/schema_utilities.go",
+              "lines": 61
+            },
+            {
+              "path": "pkg/parser/schema_validation.go",
+              "lines": 88
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 8996,
+      "mergedAt": "2026-01-05T15:58:41Z",
+      "creatorRole": "copilot",
+      "issues": [
+        8994
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler_safe_outputs_core.go",
+          "before": 1142,
+          "after": 32,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_config.go",
+              "lines": 468
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_env.go",
+              "lines": 85
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_job.go",
+              "lines": 419
+            },
+            {
+              "path": "pkg/workflow/compiler_safe_outputs_steps.go",
+              "lines": 177
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 9139,
+      "mergedAt": "2026-01-06T17:03:56Z",
+      "creatorRole": "copilot",
+      "issues": [
+        9096
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/run_command.go",
+          "before": 1043,
+          "after": 12,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/run_workflow_execution.go",
+              "lines": 597
+            },
+            {
+              "path": "pkg/cli/run_workflow_tracking.go",
+              "lines": 191
+            },
+            {
+              "path": "pkg/cli/run_workflow_validation.go",
+              "lines": 282
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 9242,
+      "mergedAt": "2026-01-07T14:52:03Z",
+      "creatorRole": "copilot",
+      "issues": [
+        9229
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/runtime_setup.go",
+          "before": 1016,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/runtime_deduplication.go",
+              "lines": 241
+            },
+            {
+              "path": "pkg/workflow/runtime_definitions.go",
+              "lines": 169
+            },
+            {
+              "path": "pkg/workflow/runtime_detection.go",
+              "lines": 274
+            },
+            {
+              "path": "pkg/workflow/runtime_overrides.go",
+              "lines": 116
+            },
+            {
+              "path": "pkg/workflow/runtime_step_generator.go",
+              "lines": 234
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 10721,
+      "mergedAt": "2026-01-19T17:42:16Z",
+      "creatorRole": "copilot",
+      "issues": [
+        10682
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/mcp-config.go",
+          "before": 1301,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/mcp-config-builtin.go",
+              "lines": 160
+            },
+            {
+              "path": "pkg/workflow/mcp-config-custom.go",
+              "lines": 706
+            },
+            {
+              "path": "pkg/workflow/mcp-config-playwright.go",
+              "lines": 161
+            },
+            {
+              "path": "pkg/workflow/mcp-config-serena.go",
+              "lines": 178
+            },
+            {
+              "path": "pkg/workflow/mcp-config-types.go",
+              "lines": 102
+            },
+            {
+              "path": "pkg/workflow/mcp-config-utils.go",
+              "lines": 36
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 10898,
+      "mergedAt": "2026-01-20T21:23:28Z",
+      "creatorRole": "copilot",
+      "issues": [
+        10845
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/fix_codemods.go",
+          "before": 1183,
+          "after": 33,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/codemod_agent_session.go",
+              "lines": 92
+            },
+            {
+              "path": "pkg/cli/codemod_grep_tool.go",
+              "lines": 50
+            },
+            {
+              "path": "pkg/cli/codemod_network_firewall.go",
+              "lines": 99
+            },
+            {
+              "path": "pkg/cli/codemod_permissions.go",
+              "lines": 127
+            },
+            {
+              "path": "pkg/cli/codemod_safe_inputs.go",
+              "lines": 52
+            },
+            {
+              "path": "pkg/cli/codemod_sandbox_agent.go",
+              "lines": 144
+            },
+            {
+              "path": "pkg/cli/codemod_schedule.go",
+              "lines": 140
+            },
+            {
+              "path": "pkg/cli/codemod_schema_file.go",
+              "lines": 16
+            },
+            {
+              "path": "pkg/cli/codemod_slash_command.go",
+              "lines": 132
+            },
+            {
+              "path": "pkg/cli/codemod_timeout_minutes.go",
+              "lines": 53
+            },
+            {
+              "path": "pkg/cli/codemod_upload_assets.go",
+              "lines": 92
+            },
+            {
+              "path": "pkg/cli/codemod_yaml_utils.go",
+              "lines": 166
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 10988,
+      "mergedAt": "2026-01-21T15:22:19Z",
+      "creatorRole": "copilot",
+      "issues": [
+        10986
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/mcp_servers.go",
+          "before": 1217,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/mcp_detection.go",
+              "lines": 44
+            },
+            {
+              "path": "pkg/workflow/mcp_environment.go",
+              "lines": 144
+            },
+            {
+              "path": "pkg/workflow/mcp_gateway_config.go",
+              "lines": 88
+            },
+            {
+              "path": "pkg/workflow/mcp_github_config.go",
+              "lines": 239
+            },
+            {
+              "path": "pkg/workflow/mcp_playwright_config.go",
+              "lines": 114
+            },
+            {
+              "path": "pkg/workflow/mcp_serena_config.go",
+              "lines": 36
+            },
+            {
+              "path": "pkg/workflow/mcp_setup_generator.go",
+              "lines": 558
+            },
+            {
+              "path": "pkg/workflow/mcp_utilities.go",
+              "lines": 44
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 11588,
+      "mergedAt": "2026-01-24T05:35:23Z",
+      "creatorRole": "copilot",
+      "issues": [
+        11285
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/parser/schedule_parser.go",
+          "before": 1163,
+          "after": 504,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/parser/schedule_cron_detection.go",
+              "lines": 140
+            },
+            {
+              "path": "pkg/parser/schedule_fuzzy_scatter.go",
+              "lines": 319
+            },
+            {
+              "path": "pkg/parser/schedule_time_utils.go",
+              "lines": 245
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 12286,
+      "mergedAt": "2026-01-28T15:43:35Z",
+      "creatorRole": "copilot",
+      "issues": [
+        12263
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/add_command.go",
+          "before": 1218,
+          "after": 609,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/add_workflow_compilation.go",
+              "lines": 127
+            },
+            {
+              "path": "pkg/cli/add_workflow_pr.go",
+              "lines": 118
+            },
+            {
+              "path": "pkg/cli/add_workflow_repository.go",
+              "lines": 163
+            },
+            {
+              "path": "pkg/cli/add_workflow_resolution.go",
+              "lines": 256
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 12545,
+      "mergedAt": "2026-01-29T15:17:42Z",
+      "creatorRole": "copilot",
+      "issues": [
+        12535
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/add_interactive.go",
+          "before": 1025,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/add_interactive_auth.go",
+              "lines": 180
+            },
+            {
+              "path": "pkg/cli/add_interactive_engine.go",
+              "lines": 253
+            },
+            {
+              "path": "pkg/cli/add_interactive_git.go",
+              "lines": 127
+            },
+            {
+              "path": "pkg/cli/add_interactive_orchestrator.go",
+              "lines": 243
+            },
+            {
+              "path": "pkg/cli/add_interactive_secrets.go",
+              "lines": 82
+            },
+            {
+              "path": "pkg/cli/add_interactive_workflow.go",
+              "lines": 193
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 16838,
+      "mergedAt": "2026-02-19T14:46:27Z",
+      "creatorRole": "copilot",
+      "issues": [
+        16826
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/safe_outputs_config_generation.go",
+          "before": 1092,
+          "after": 486,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/safe_outputs_tools_generation.go",
+              "lines": 613
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 17176,
+      "mergedAt": "2026-02-20T14:26:31Z",
+      "creatorRole": "copilot",
+      "issues": [
+        17163
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/mcp_server.go",
+          "before": 1372,
+          "after": 81,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/mcp_server_command.go",
+              "lines": 166
+            },
+            {
+              "path": "pkg/cli/mcp_server_helpers.go",
+              "lines": 243
+            },
+            {
+              "path": "pkg/cli/mcp_server_http.go",
+              "lines": 95
+            },
+            {
+              "path": "pkg/cli/mcp_tools_management.go",
+              "lines": 246
+            },
+            {
+              "path": "pkg/cli/mcp_tools_privileged.go",
+              "lines": 333
+            },
+            {
+              "path": "pkg/cli/mcp_tools_readonly.go",
+              "lines": 324
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 18974,
+      "mergedAt": "2026-03-01T04:31:36Z",
+      "creatorRole": "copilot",
+      "issues": [
+        18691
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/parser/import_processor.go",
+          "before": 1106,
+          "after": 98,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/parser/import_bfs.go",
+              "lines": 415
+            },
+            {
+              "path": "pkg/parser/import_cycle.go",
+              "lines": 71
+            },
+            {
+              "path": "pkg/parser/import_field_extractor.go",
+              "lines": 314
+            },
+            {
+              "path": "pkg/parser/import_remote.go",
+              "lines": 86
+            },
+            {
+              "path": "pkg/parser/import_topological.go",
+              "lines": 205
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 19229,
+      "mergedAt": "2026-03-02T14:38:55Z",
+      "creatorRole": "copilot",
+      "issues": [
+        19221
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler_activation_jobs.go",
+          "before": 1052,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_activation_job.go",
+              "lines": 392
+            },
+            {
+              "path": "pkg/workflow/compiler_main_job.go",
+              "lines": 243
+            },
+            {
+              "path": "pkg/workflow/compiler_pre_activation_job.go",
+              "lines": 442
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 20296,
+      "mergedAt": "2026-03-10T02:16:04Z",
+      "creatorRole": "copilot",
+      "issues": [
+        20217
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/safe_outputs_generation.go",
+          "before": 1549,
+          "after": 7,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/safe_outputs_config_helpers.go",
+              "lines": 290
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_dispatch.go",
+              "lines": 164
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_runtime.go",
+              "lines": 40
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_state.go",
+              "lines": 250
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_tools_filtering.go",
+              "lines": 468
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 20377,
+      "mergedAt": "2026-03-10T18:15:34Z",
+      "creatorRole": "copilot",
+      "issues": [
+        20366
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/remote_workflow.go",
+          "before": 1255,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/dispatch.go",
+              "lines": 429
+            },
+            {
+              "path": "pkg/cli/fetch.go",
+              "lines": 146
+            },
+            {
+              "path": "pkg/cli/helpers.go",
+              "lines": 55
+            },
+            {
+              "path": "pkg/cli/includes.go",
+              "lines": 439
+            },
+            {
+              "path": "pkg/cli/resources.go",
+              "lines": 228
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 20639,
+      "mergedAt": "2026-03-12T14:00:35Z",
+      "creatorRole": "copilot",
+      "issues": [
+        20521
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/safe_outputs_config.go",
+          "before": 1085,
+          "after": 605,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/safe_outputs_app_config.go",
+              "lines": 341
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_messages_config.go",
+              "lines": 153
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 20804,
+      "mergedAt": "2026-03-13T18:30:56Z",
+      "creatorRole": "copilot",
+      "issues": [
+        20799
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/mcp_renderer.go",
+          "before": 1053,
+          "after": 215,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/mcp_renderer_builtin.go",
+              "lines": 281
+            },
+            {
+              "path": "pkg/workflow/mcp_renderer_github.go",
+              "lines": 394
+            },
+            {
+              "path": "pkg/workflow/mcp_renderer_guard.go",
+              "lines": 59
+            },
+            {
+              "path": "pkg/workflow/mcp_renderer_types.go",
+              "lines": 105
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 41231,
+      "mergedAt": "2026-06-24T17:53:38Z",
+      "creatorRole": "copilot",
+      "issues": [],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 42274,
+      "mergedAt": "2026-06-29T17:34:34Z",
+      "creatorRole": "copilot",
+      "issues": [
+        42255
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/forecast.go",
+          "before": 1440,
+          "after": 196,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/forecast_compute.go",
+              "lines": 445
+            },
+            {
+              "path": "pkg/cli/forecast_metadata.go",
+              "lines": 229
+            },
+            {
+              "path": "pkg/cli/forecast_render.go",
+              "lines": 272
+            },
+            {
+              "path": "pkg/cli/forecast_resolution.go",
+              "lines": 186
+            },
+            {
+              "path": "pkg/cli/forecast_types.go",
+              "lines": 155
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 43834,
+      "mergedAt": "2026-07-07T06:14:23Z",
+      "creatorRole": "copilot",
+      "issues": [
+        43792
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/parser/remote_fetch.go",
+          "before": 1553,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/parser/remote_client.go",
+              "lines": 88
+            },
+            {
+              "path": "pkg/parser/remote_download_file.go",
+              "lines": 417
+            },
+            {
+              "path": "pkg/parser/remote_list_files.go",
+              "lines": 571
+            },
+            {
+              "path": "pkg/parser/remote_resolve_path.go",
+              "lines": 193
+            },
+            {
+              "path": "pkg/parser/remote_resolve_sha.go",
+              "lines": 178
+            },
+            {
+              "path": "pkg/parser/remote_workflow_spec.go",
+              "lines": 182
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 43898,
+      "mergedAt": "2026-07-07T06:18:17Z",
+      "creatorRole": "copilot",
+      "issues": [],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 0,
+      "oversized1000Reduction": 2,
+      "targets": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 44051,
+      "mergedAt": "2026-07-08T01:53:01Z",
+      "creatorRole": "copilot",
+      "issues": [
+        44036
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/logs_orchestrator.go",
+          "before": 1284,
+          "after": 603,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/logs_orchestrator_filters.go",
+              "lines": 186
+            },
+            {
+              "path": "pkg/cli/logs_orchestrator_render.go",
+              "lines": 155
+            },
+            {
+              "path": "pkg/cli/logs_orchestrator_stdin.go",
+              "lines": 229
+            },
+            {
+              "path": "pkg/cli/logs_orchestrator_types.go",
+              "lines": 87
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 44313,
+      "mergedAt": "2026-07-09T02:00:21Z",
+      "creatorRole": "copilot",
+      "issues": [
+        44295
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/safe_outputs_config.go",
+          "before": 1254,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/safe_outputs_config_base.go",
+              "lines": 107
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_config_extraction.go",
+              "lines": 412
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_config_global.go",
+              "lines": 354
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_config_runtime.go",
+              "lines": 192
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_config_types.go",
+              "lines": 173
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 44651,
+      "mergedAt": "2026-07-10T06:49:27Z",
+      "creatorRole": "copilot",
+      "issues": [
+        44549
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler_yaml_main_job.go",
+          "before": 1265,
+          "after": 42,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_yaml_checkout.go",
+              "lines": 303
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_post_agent.go",
+              "lines": 267
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_runtime_setup.go",
+              "lines": 431
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 44792,
+      "mergedAt": "2026-07-11T08:00:43Z",
+      "creatorRole": "copilot",
+      "issues": [
+        44730
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler_activation_job_builder.go",
+          "before": 1136,
+          "after": null,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_activation_context.go",
+              "lines": 207
+            },
+            {
+              "path": "pkg/workflow/compiler_activation_daily_aic.go",
+              "lines": 172
+            },
+            {
+              "path": "pkg/workflow/compiler_activation_outputs.go",
+              "lines": 178
+            },
+            {
+              "path": "pkg/workflow/compiler_activation_permissions.go",
+              "lines": 247
+            },
+            {
+              "path": "pkg/workflow/compiler_activation_steps.go",
+              "lines": 371
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 44886,
+      "mergedAt": "2026-07-11T07:49:23Z",
+      "creatorRole": "copilot",
+      "issues": [],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 0,
+      "oversized1000Reduction": 0,
+      "targets": [],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 45494,
+      "mergedAt": "2026-07-15T05:32:44Z",
+      "creatorRole": "copilot",
+      "issues": [
+        45478
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler_yaml.go",
+          "before": 1262,
+          "after": 221,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_yaml_header.go",
+              "lines": 193
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_normalize.go",
+              "lines": 167
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_policy.go",
+              "lines": 31
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_prompt.go",
+              "lines": 377
+            },
+            {
+              "path": "pkg/workflow/compiler_yaml_step_lifecycle.go",
+              "lines": 313
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 45744,
+      "mergedAt": "2026-07-15T16:21:09Z",
+      "creatorRole": "copilot",
+      "issues": [
+        45734
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/frontmatter_extraction_yaml.go",
+          "before": 1221,
+          "after": 332,
+          "creatorVerified": false,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/frontmatter_on_section_cleanup.go",
+              "lines": 777
+            },
+            {
+              "path": "pkg/workflow/frontmatter_trigger_helpers.go",
+              "lines": 155
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 46855,
+      "mergedAt": "2026-07-20T18:29:06Z",
+      "creatorRole": "copilot",
+      "issues": [
+        46836
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        46836
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/bootstrap_profile_runner.go",
+          "before": 1259,
+          "after": 241,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/bootstrap_profile_actions_repo.go",
+              "lines": 113
+            },
+            {
+              "path": "pkg/cli/bootstrap_profile_git.go",
+              "lines": 62
+            },
+            {
+              "path": "pkg/cli/bootstrap_profile_github_app.go",
+              "lines": 515
+            },
+            {
+              "path": "pkg/cli/bootstrap_profile_helpers.go",
+              "lines": 415
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 47839,
+      "mergedAt": "2026-07-25T04:08:55Z",
+      "creatorRole": "copilot",
+      "issues": [
+        47787
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        47787
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 0,
+      "targets": [
+        {
+          "path": "pkg/workflow/mcp_setup_generator.go",
+          "before": 935,
+          "after": 174,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": false,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/mcp_setup_awf_install.go",
+              "lines": 85
+            },
+            {
+              "path": "pkg/workflow/mcp_setup_gateway.go",
+              "lines": 420
+            },
+            {
+              "path": "pkg/workflow/mcp_setup_safe_outputs.go",
+              "lines": 125
+            },
+            {
+              "path": "pkg/workflow/mcp_setup_scripts.go",
+              "lines": 154
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 48455,
+      "mergedAt": "2026-07-28T02:17:52Z",
+      "creatorRole": "copilot",
+      "issues": [
+        48378
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        48378
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/token_usage.go",
+          "before": 1141,
+          "after": null,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/token_usage_analyze.go",
+              "lines": 181
+            },
+            {
+              "path": "pkg/cli/token_usage_find.go",
+              "lines": 196
+            },
+            {
+              "path": "pkg/cli/token_usage_parse.go",
+              "lines": 390
+            },
+            {
+              "path": "pkg/cli/token_usage_steering.go",
+              "lines": 86
+            },
+            {
+              "path": "pkg/cli/token_usage_subagent.go",
+              "lines": 163
+            },
+            {
+              "path": "pkg/cli/token_usage_types.go",
+              "lines": 153
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 50052,
+      "mergedAt": "2026-08-03T22:08:19Z",
+      "creatorRole": "copilot",
+      "issues": [
+        49999
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        49999
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/logs_download.go",
+          "before": 1151,
+          "after": 522,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/logs_download_artifacts.go",
+              "lines": 262
+            },
+            {
+              "path": "pkg/cli/logs_download_flatten.go",
+              "lines": 321
+            },
+            {
+              "path": "pkg/cli/logs_download_zip.go",
+              "lines": 118
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 51154,
+      "mergedAt": "2026-08-07T19:50:09Z",
+      "creatorRole": "copilot",
+      "issues": [
+        51072
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        51072
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/awf_helpers.go",
+          "before": 1148,
+          "after": 138,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/awf_arc_dind.go",
+              "lines": 109
+            },
+            {
+              "path": "pkg/workflow/awf_command_builder.go",
+              "lines": 644
+            },
+            {
+              "path": "pkg/workflow/awf_env.go",
+              "lines": 191
+            },
+            {
+              "path": "pkg/workflow/awf_feature_flags.go",
+              "lines": 85
+            }
+          ],
+          "newFilesUnder500": false
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 52901,
+      "mergedAt": "2026-08-15T15:49:50Z",
+      "creatorRole": "copilot",
+      "issues": [
+        52721
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        52721
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/update_actions.go",
+          "before": 1144,
+          "after": null,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/update_actions_content_refs.go",
+              "lines": 254
+            },
+            {
+              "path": "pkg/cli/update_actions_deps.go",
+              "lines": 136
+            },
+            {
+              "path": "pkg/cli/update_actions_lockfile.go",
+              "lines": 274
+            },
+            {
+              "path": "pkg/cli/update_actions_release.go",
+              "lines": 420
+            },
+            {
+              "path": "pkg/cli/update_actions_workflow_files.go",
+              "lines": 127
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 53394,
+      "mergedAt": "2026-08-17T18:09:40Z",
+      "creatorRole": "copilot",
+      "issues": [
+        53387
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        53387
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/compiler_custom_jobs.go",
+          "before": 1142,
+          "after": 169,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/compiler_builtin_job_augmentation.go",
+              "lines": 340
+            },
+            {
+              "path": "pkg/workflow/compiler_custom_job_execution.go",
+              "lines": 174
+            },
+            {
+              "path": "pkg/workflow/compiler_custom_job_properties.go",
+              "lines": 264
+            },
+            {
+              "path": "pkg/workflow/compiler_job_step_helpers.go",
+              "lines": 227
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 53706,
+      "mergedAt": "2026-08-18T17:47:00Z",
+      "creatorRole": "copilot",
+      "issues": [
+        53696
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        53696
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/experiments_command.go",
+          "before": 1120,
+          "after": 257,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/experiments_fetch.go",
+              "lines": 433
+            },
+            {
+              "path": "pkg/cli/experiments_git_safety.go",
+              "lines": 110
+            },
+            {
+              "path": "pkg/cli/experiments_json_utils.go",
+              "lines": 24
+            },
+            {
+              "path": "pkg/cli/experiments_render.go",
+              "lines": 86
+            },
+            {
+              "path": "pkg/cli/experiments_state.go",
+              "lines": 237
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 54030,
+      "mergedAt": "2026-08-20T01:52:43Z",
+      "creatorRole": "copilot",
+      "issues": [
+        54006
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        54006
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/add_package_manifest.go",
+          "before": 1330,
+          "after": 124,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/add_package_manifest_includes.go",
+              "lines": 464
+            },
+            {
+              "path": "pkg/cli/add_package_manifest_parse.go",
+              "lines": 227
+            },
+            {
+              "path": "pkg/cli/add_package_manifest_remote.go",
+              "lines": 177
+            },
+            {
+              "path": "pkg/cli/add_package_manifest_resolve.go",
+              "lines": 188
+            },
+            {
+              "path": "pkg/cli/add_package_manifest_skills.go",
+              "lines": 225
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 54284,
+      "mergedAt": "2026-08-20T19:24:37Z",
+      "creatorRole": "copilot",
+      "issues": [
+        54236
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        54236
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/audit.go",
+          "before": 1098,
+          "after": 79,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/audit_analysis_fanout.go",
+              "lines": 219
+            },
+            {
+              "path": "pkg/cli/audit_command.go",
+              "lines": 270
+            },
+            {
+              "path": "pkg/cli/audit_errors.go",
+              "lines": 32
+            },
+            {
+              "path": "pkg/cli/audit_render_output.go",
+              "lines": 130
+            },
+            {
+              "path": "pkg/cli/audit_run_pipeline.go",
+              "lines": 359
+            },
+            {
+              "path": "pkg/cli/audit_summary_build.go",
+              "lines": 85
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 54576,
+      "mergedAt": "2026-08-21T20:57:32Z",
+      "creatorRole": "copilot",
+      "issues": [
+        54540
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        54540
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/workflow_builder.go",
+          "before": 1084,
+          "after": 212,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/workflow_builder_frontmatter_extract.go",
+              "lines": 272
+            },
+            {
+              "path": "pkg/workflow/workflow_builder_model_overlays.go",
+              "lines": 312
+            },
+            {
+              "path": "pkg/workflow/workflow_builder_steps.go",
+              "lines": 312
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 55482,
+      "mergedAt": "2026-08-24T22:16:46Z",
+      "creatorRole": "copilot",
+      "issues": [
+        55406
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        55406
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/workflow/safe_outputs_handler_registry.go",
+          "before": 1091,
+          "after": 81,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_assignments.go",
+              "lines": 79
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_comments.go",
+              "lines": 42
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_diagnostics.go",
+              "lines": 74
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_discussions.go",
+              "lines": 74
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_issues.go",
+              "lines": 235
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_projects.go",
+              "lines": 56
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_pull_requests.go",
+              "lines": 328
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_releases.go",
+              "lines": 17
+            },
+            {
+              "path": "pkg/workflow/safe_outputs_handler_registry_workflow.go",
+              "lines": 192
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 55785,
+      "mergedAt": "2026-08-25T16:35:32Z",
+      "creatorRole": "copilot",
+      "issues": [
+        55776
+      ],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [
+        55776
+      ],
+      "oversized800Reduction": 1,
+      "oversized1000Reduction": 1,
+      "targets": [
+        {
+          "path": "pkg/cli/add_command.go",
+          "before": 1129,
+          "after": 248,
+          "creatorVerified": true,
+          "resolved800": true,
+          "resolved1000": true,
+          "newFiles": [
+            {
+              "path": "pkg/cli/add_command_orchestrator.go",
+              "lines": 250
+            },
+            {
+              "path": "pkg/cli/add_command_resources.go",
+              "lines": 280
+            },
+            {
+              "path": "pkg/cli/add_copilot_permissions.go",
+              "lines": 86
+            },
+            {
+              "path": "pkg/cli/add_workflow_content.go",
+              "lines": 328
+            }
+          ],
+          "newFilesUnder500": true
+        }
+      ],
+      "acceptedBehaviorPreserving": null
+    },
+    {
+      "number": 58252,
+      "mergedAt": "2026-09-03T18:21:24Z",
+      "creatorRole": "other-bot",
+      "issues": [],
+      "historyComplete": true,
+      "receiptVerifiedIssues": [],
+      "oversized800Reduction": 0,
+      "oversized1000Reduction": 0,
+      "targets": [],
+      "acceptedBehaviorPreserving": null
+    }
+  ],
+  "issueEvaluations": [
+    {
+      "number": 4058,
+      "targetPath": "pkg/parser/frontmatter.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1907,
+      "largestLines": 1907,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 4107,
+      "targetPath": "pkg/cli/trial_command.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1801,
+      "largestLines": 1801,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 4198,
+      "targetPath": "pkg/cli/trial_command.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1801,
+      "largestLines": 1801,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 4283,
+      "targetPath": "pkg/cli/trial_command.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1801,
+      "largestLines": 1801,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 4330,
+      "targetPath": "pkg/cli/trial_command.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1801,
+      "largestLines": 1801,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 5536,
+      "targetPath": "pkg/cli/trial_command.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1805,
+      "largestLines": 1805,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 5610,
+      "targetPath": "pkg/workflow/compiler.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1746,
+      "largestLines": 1746,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 5853,
+      "targetPath": "pkg/cli/logs.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1620,
+      "largestLines": 1620,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 6132,
+      "targetPath": "pkg/workflow/safe_outputs.go",
+      "creatorVerified": false,
+      "threshold": 1000,
+      "targetLines": 1530,
+      "largestLines": 1530,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 6265,
+      "targetPath": "pkg/cli/compile_command.go",
+      "creatorVerified": false,
+      "threshold": null,
+      "targetLines": null,
+      "largestLines": null,
+      "correctAtSourceThreshold": null
+    },
+    {
+      "number": 6532,
+      "targetPath": "pkg/workflow/compiler_jobs.go",
+      "creatorVerified": false,
+      "threshold": null,
+      "targetLines": 1456,
+      "largestLines": 1456,
+      "correctAtSourceThreshold": null
+    },
+    {
+      "number": 6803,
+      "targetPath": "pkg/workflow/compiler_yaml.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1368,
+      "largestLines": 1368,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 6820,
+      "targetPath": "pkg/cli/logs.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1354,
+      "largestLines": 1354,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 6892,
+      "targetPath": "pkg/cli/update_command.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1331,
+      "largestLines": 1331,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 6962,
+      "targetPath": "pkg/parser/frontmatter.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1294,
+      "largestLines": 1294,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 7250,
+      "targetPath": "pkg/workflow/compiler_safe_outputs_consolidated.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1368,
+      "largestLines": 1368,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 7395,
+      "targetPath": "pkg/workflow/safe_outputs_config.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1169,
+      "largestLines": 1169,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 8243,
+      "targetPath": "pkg/cli/compile_orchestrator.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1200,
+      "largestLines": 1200,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 8293,
+      "targetPath": "pkg/workflow/copilot_engine.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1172,
+      "largestLines": 1172,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 8441,
+      "targetPath": "pkg/workflow/copilot_engine.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1235,
+      "largestLines": 1235,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 8631,
+      "targetPath": "pkg/parser/schema.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1161,
+      "largestLines": 1161,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 8994,
+      "targetPath": "pkg/workflow/compiler_safe_outputs_core.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1142,
+      "largestLines": 1142,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 9096,
+      "targetPath": "pkg/cli/run_command.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1043,
+      "largestLines": 1043,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 9229,
+      "targetPath": "pkg/workflow/runtime_setup.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1016,
+      "largestLines": 1016,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 9352,
+      "targetPath": "pkg/workflow/mcp-config.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1072,
+      "largestLines": 1072,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 9822,
+      "targetPath": "pkg/workflow/mcp-config.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1214,
+      "largestLines": 1214,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 10282,
+      "targetPath": "pkg/workflow/mcp-config.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1204,
+      "largestLines": 1204,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 10682,
+      "targetPath": "pkg/workflow/mcp-config.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1301,
+      "largestLines": 1301,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 10845,
+      "targetPath": "pkg/cli/fix_codemods.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1183,
+      "largestLines": 1183,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 10986,
+      "targetPath": "pkg/workflow/mcp_servers.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1217,
+      "largestLines": 1217,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 11285,
+      "targetPath": "pkg/parser/schedule_parser.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1084,
+      "largestLines": 1084,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 11874,
+      "targetPath": "pkg/cli/mcp_inspect.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1011,
+      "largestLines": 1011,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 12263,
+      "targetPath": "pkg/cli/add_command.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1218,
+      "largestLines": 1218,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 12535,
+      "targetPath": "pkg/cli/add_interactive.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1025,
+      "largestLines": 1025,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 12747,
+      "targetPath": "pkg/cli/trial_command.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1000,
+      "largestLines": 1000,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 13499,
+      "targetPath": "pkg/workflow/safe_outputs_config_generation.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1023,
+      "largestLines": 1023,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 13734,
+      "targetPath": "pkg/cli/mcp_server.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1036,
+      "largestLines": 1036,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 14663,
+      "targetPath": "pkg/cli/mcp_server.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1088,
+      "largestLines": 1088,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 14781,
+      "targetPath": "pkg/cli/mcp_server.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1088,
+      "largestLines": 1088,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 15405,
+      "targetPath": "pkg/cli/mcp_server.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1345,
+      "largestLines": 1345,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 16109,
+      "targetPath": "pkg/cli/mcp_server.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1345,
+      "largestLines": 1345,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 16826,
+      "targetPath": "pkg/workflow/safe_outputs_config_generation.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1092,
+      "largestLines": 1333,
+      "correctAtSourceThreshold": false
+    },
+    {
+      "number": 17163,
+      "targetPath": "pkg/cli/mcp_server.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1372,
+      "largestLines": 1372,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 17920,
+      "targetPath": "pkg/parser/import_processor.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1104,
+      "largestLines": 1104,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 18691,
+      "targetPath": "pkg/parser/import_processor.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1106,
+      "largestLines": 1106,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 19221,
+      "targetPath": "pkg/workflow/compiler_activation_jobs.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1052,
+      "largestLines": 1052,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 19600,
+      "targetPath": "pkg/workflow/mcp_renderer.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1006,
+      "largestLines": 1006,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 20217,
+      "targetPath": "pkg/workflow/safe_outputs_generation.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1549,
+      "largestLines": 1549,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 20366,
+      "targetPath": "pkg/cli/remote_workflow.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1255,
+      "largestLines": 1255,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 20521,
+      "targetPath": "pkg/workflow/safe_outputs_config.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1077,
+      "largestLines": 1077,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 20799,
+      "targetPath": "pkg/workflow/mcp_renderer.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1053,
+      "largestLines": 1053,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 21238,
+      "targetPath": "pkg/constants/constants.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1031,
+      "largestLines": 1031,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 41224,
+      "targetPath": "pkg/workflow/threat_detection.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1542,
+      "largestLines": 1542,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 42255,
+      "targetPath": "pkg/cli/forecast.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1440,
+      "largestLines": 1542,
+      "correctAtSourceThreshold": false
+    },
+    {
+      "number": 42768,
+      "targetPath": "pkg/parser/remote_fetch.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1547,
+      "largestLines": 1547,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 43792,
+      "targetPath": "pkg/parser/remote_fetch.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1553,
+      "largestLines": 1553,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 44036,
+      "targetPath": "pkg/cli/logs_orchestrator.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1284,
+      "largestLines": 1284,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 44295,
+      "targetPath": "pkg/workflow/safe_outputs_config.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1254,
+      "largestLines": 1265,
+      "correctAtSourceThreshold": false
+    },
+    {
+      "number": 44549,
+      "targetPath": "pkg/workflow/compiler_yaml_main_job.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1265,
+      "largestLines": 1265,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 44730,
+      "targetPath": "pkg/workflow/compiler_activation_job_builder.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1135,
+      "largestLines": 1183,
+      "correctAtSourceThreshold": false
+    },
+    {
+      "number": 45478,
+      "targetPath": "pkg/workflow/compiler_yaml.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1262,
+      "largestLines": 1262,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 45734,
+      "targetPath": "pkg/workflow/frontmatter_extraction_yaml.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1221,
+      "largestLines": 1221,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 45995,
+      "targetPath": "pkg/cli/bootstrap_profile_runner.go",
+      "creatorVerified": false,
+      "threshold": 800,
+      "targetLines": 1145,
+      "largestLines": 1145,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 46836,
+      "targetPath": "pkg/cli/bootstrap_profile_runner.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1259,
+      "largestLines": 1259,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 47078,
+      "targetPath": "pkg/cli/token_usage.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1141,
+      "largestLines": 1141,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 47787,
+      "targetPath": "pkg/workflow/mcp_setup_generator.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 935,
+      "largestLines": 1141,
+      "correctAtSourceThreshold": false
+    },
+    {
+      "number": 48378,
+      "targetPath": "pkg/cli/token_usage.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1141,
+      "largestLines": 1141,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 48621,
+      "targetPath": "pkg/workflow/awf_helpers.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1131,
+      "largestLines": 1131,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 49341,
+      "targetPath": null,
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": null,
+      "largestLines": 1151,
+      "correctAtSourceThreshold": false
+    },
+    {
+      "number": 49999,
+      "targetPath": "pkg/cli/logs_download.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1151,
+      "largestLines": 1151,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 50263,
+      "targetPath": "pkg/workflow/awf_helpers.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1148,
+      "largestLines": 1148,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 51072,
+      "targetPath": "pkg/workflow/awf_helpers.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1148,
+      "largestLines": 1148,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 52054,
+      "targetPath": "pkg/cli/update_actions.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1144,
+      "largestLines": 1144,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 52721,
+      "targetPath": "pkg/cli/update_actions.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1144,
+      "largestLines": 1144,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 53387,
+      "targetPath": "pkg/workflow/compiler_custom_jobs.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1142,
+      "largestLines": 1142,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 53696,
+      "targetPath": "pkg/cli/experiments_command.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1120,
+      "largestLines": 1120,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 54006,
+      "targetPath": "pkg/cli/add_package_manifest.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1330,
+      "largestLines": 1330,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 54236,
+      "targetPath": "pkg/cli/audit.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1098,
+      "largestLines": 1098,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 54540,
+      "targetPath": "pkg/workflow/workflow_builder.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1084,
+      "largestLines": 1084,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 55406,
+      "targetPath": "pkg/workflow/safe_outputs_handler_registry.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1091,
+      "largestLines": 1091,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 55776,
+      "targetPath": "pkg/cli/add_command.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1129,
+      "largestLines": 1129,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 56040,
+      "targetPath": "pkg/parser/import_field_extractor.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1065,
+      "largestLines": 1065,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 57447,
+      "targetPath": "pkg/parser/import_field_extractor.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1085,
+      "largestLines": 1085,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 58240,
+      "targetPath": "pkg/parser/import_field_extractor.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1161,
+      "largestLines": 1161,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 59225,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1212,
+      "largestLines": 1212,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 59975,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1213,
+      "largestLines": 1213,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 60830,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1213,
+      "largestLines": 1213,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 61354,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1214,
+      "largestLines": 1214,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 62653,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1214,
+      "largestLines": 1214,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 63443,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1214,
+      "largestLines": 1214,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 64012,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1214,
+      "largestLines": 1214,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 64770,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1214,
+      "largestLines": 1214,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 65858,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1214,
+      "largestLines": 1214,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 66888,
+      "targetPath": "pkg/cli/add_workflow_resolution.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1214,
+      "largestLines": 1214,
+      "correctAtSourceThreshold": true
+    },
+    {
+      "number": 68437,
+      "targetPath": "pkg/cli/token_usage_subagent_session.go",
+      "creatorVerified": true,
+      "threshold": 800,
+      "targetLines": 1427,
+      "largestLines": 1427,
+      "correctAtSourceThreshold": true
+    }
+  ],
+  "totals": {
+    "issues": 95,
+    "distinctReportedTargets": 54,
+    "relatedPulls": 73,
+    "mergedRelatedPulls": 57,
+    "mergedExplicitlyLinkedPulls": 51,
+    "resolved800": 49,
+    "receiptLinkedMergedPulls": 13,
+    "receiptLinkedResolved800": 13,
+    "linkedNetOversized800Reduction": 48,
+    "verifiedCreationReceipts": 32,
+    "verifiedCorrectReports": 30,
+    "verifiedProducerRuns": 94,
+    "automaticExpiryExplanations": 27,
+    "completeIssueTimelines": 95,
+    "retainedRuns": 280,
+    "lifetimeRunCount": null,
+    "acceptedBehaviorPreserving": null
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "daily-safe-outputs-conformance",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceBlob": "c6e53bc51866009d78d03b17b7ba371bf9b38ad3",
+  "intent": {
+    "problem": "Safe-output implementations may violate documented privilege, validation, authorization, content, protocol, configuration, execution, and cache guarantees. Such failures must be independently observable and actionable.",
+    "sourceGoal": "Run the native checker, analyze critical/high/medium/low findings, and make genuine conformance issues visible and actionable for follow-up.",
+    "outcome": "For eligible native checker conditions, advance actual conformance by clearing independently reproduced diagnostic conditions, measured as distinct conditions cleared per non-overlapping seven-day period.",
+    "observablePartialFacet": "Immutable repository bytes independently satisfy an unchanged native checker predicate that failed at the preceding cutoff. This is partial structural progress, not behavioral conformance.",
+    "fullAcceptance": "All normative specification requirements, runtime behavior, adversarial cases, target authorization, and relevant regression tests must independently pass before asserting complete conformance.",
+    "visibilityVsOutcome": "An issue or report is a discovery artifact; even an actionable report does not prove its claim or subsequent remediation."
+  },
+  "sourceReview": {
+    "currentWorkflow": "Complete frozen source and all transitive imports preserved in the closure.",
+    "imports": [
+      "shared/daily-audit-base.md",
+      "shared/daily-audit-discussion.md",
+      "shared/reporting.md",
+      "shared/otlp.md"
+    ],
+    "checker": "All 2515 lines, every function and all 55 named rule families reviewed. Its text predicates are structural heuristics, not general semantic program analysis.",
+    "specification": "The complete source is preserved losslessly. Normative requirement inventory spans conformance classes, security architecture, components, configuration, universal features, every type, protocol, content integrity, execution, cache integrity and appendices.",
+    "specificationReview": "Complete current/adoption specification prose, examples, schemas and exemptions subsequently reviewed by one isolated source-only agent, without outcome access. source-review.json records verified source identities, complete contiguous line coverage and all 55 rule reconciliations: twenty partial, thirty-five unimplemented.",
+    "reviewChronology": "The initial v1 candidate was sealed before the full specification review was finished and is not represented as fully reviewed ex ante. Source-only review preceded v2 correction. The v2 surviving-file correction addresses SRC-12 without changing the sealed original instrument or tuning from observed results.",
+    "remainingSourceReviewLimits": "References to external implementation/tests/formal models were not independently fetched or verified. Compiled workflow context was reviewed selectively, not every generated job/script. Sixteen source-cited ambiguities/corrections are recorded, not silently resolved as conformance.",
+    "versions": {
+      "currentChecker": "1.29.8",
+      "currentSpecification": "1.29.12",
+      "adoptionSpecification": "1.9.0"
+    },
+    "nativePitfalls": [
+      "SEC-001 and REQ-002 increment counters inside piped while subshells; summary counters can disagree with emitted failures.",
+      "Adoption log counters use post-increment under set -e; the first zero-valued counter increment can terminate execution before completion.",
+      "head/grep pipelines with pipefail may terminate checks early. Partial output or exit zero cannot establish complete conformance.",
+      "SEC-002 native awk checks lexical line ordering, not control-flow dominance. A pattern in comments can satisfy text predicates.",
+      "REQ-002 checks only the first ten documented types and a 200-line context; it is not exhaustive specification validation.",
+      "Current SEC-004 and SEC-005 support exemption annotations. Suppressed raw burden must survive separately; a new exemption is not remediation.",
+      "Current and adoption scopes differ substantially. This instrument pins the reviewed current predicates and labels historical replay retrospective; it never attributes differences to workflow adoption."
+    ]
+  },
+  "scope": {
+    "repositoryAuthority": "One public repository, exact numeric identity. No policy, dispatch, permission or credential changes.",
+    "discovery": "Every surviving matching issue/PR in the shared digest-checked cursor archive, including unverified workflow IDs, retained without truncation.",
+    "history": "Six source cutoffs over 35 days. Earlier history and all unmatched requested windows remain missing.",
+    "native": "Whole native handler-loop inventory is traversed at each selected cutoff; available bytes are replayed and unavailable blobs are separately inventoried. All 55 check families remain in the ledger.",
+    "coverage": "Partial: twenty rule families have one or more replayed predicates, thirty-five remain unimplemented. Even those twenty are not full-rule behavioral verification.",
+    "unknown": [
+      "512 immutable source blobs absent in the authorized offline cache",
+      "Remaining native predicates and full specification obligations",
+      "Resolve source-cited specification/schema contradictions and implement remaining independent acceptance predicates",
+      "Independent test/check acceptance at candidate accepted revisions",
+      "Protected checker reports and production execution identity",
+      "Complete workflow-to-remediation lineage, original producer and later implementer",
+      "Deleted/transferred outputs, edited-away markers, comments and discussions",
+      "Comparable pre-adoption native reference",
+      "Workflow/version/period-matched cost"
+    ]
+  },
+  "frozenAcceptance": {
+    "grain": "Distinct native (rule, file, predicate) identity",
+    "period": "Seven days, inclusive start and exclusive end; last immutable first-parent source state at each declared boundary",
+    "matching": "Same surviving identity fails before and passes after under the exact frozen instrument",
+    "exclusions": "New waiver, suppression, path deletion, lost eligibility, unreadable source, changed identity, merge alone and activity counts cannot establish clearance",
+    "actorIndependence": "Maintainer, other automation and workflow-supported fixes satisfy the same native predicate",
+    "attribution": "Separate metric; an independent graph/receipt join is required. Editable footer markers and related-number references are only candidates.",
+    "maturationDays": 0,
+    "missingRule": "Positive demonstrated subtotals are retained as partial lower bounds. Empty partial scope is null, not zero. Missing evidence does not establish an all-clear or a trend.",
+    "decision": "Not rated; no invented quality score, weights, target or keep threshold"
+  },
+  "antecedentTest": {
+    "phenomenon": "Pre-existing repository implementation conformance can exist without the workflow.",
+    "formula": "The same stable native condition can be tested before adoption without a workflow output.",
+    "reconstruction": "Bounded offline pre-adoption availability probe preserves two immutable cutoffs and complete tree metadata: 96/410 and 106/449 selected blobs available, 452 unique objects absent. No accepted comparable baseline is asserted. Source acquisition, fixed shared obligation-profile validation and historical producer evidence remain open.",
+    "classification": "Attainment-only reporting without a baseline or causal claim; this is not a claim of historical impossibility."
+  },
+  "versionedCorrection": {
+    "contractKey": "safe-output-independent-native-conformance-v2",
+    "sourceFinding": "SRC-12 in source-review.json",
+    "change": "A fail-to-pass structural condition counts only when the same repository-relative file has available verified immutable bytes at both boundaries. Required-component creation is excluded, not silently treated as surviving-file remediation.",
+    "unchanged": "Native predicates, original instrument bytes, metric units/roles/formulas, observation windows and accepted-evidence safeguards remain unchanged.",
+    "classification": "Provisional attainment-only report mode is explicitly not an endorsed final historical classification; reconstructability remains open.",
+    "sealedV1ArchiveSha256": "6011397d18252ade907e7009356a3d77a1166bf4e3a2fb30e6926675cb207391",
+    "sealedV1ManifestSha256": "0a33399c1436edbb3811f933a677fcd2449ba254ef22b7849fe8ad834141623d"
+  },
+  "observedPartialOutcomes": {
+    "latestUnsuppressedNativeFindings": 3,
+    "latestRawSuppressedFindings": 13,
+    "demonstratedClearance": null,
+    "clearanceExplanation": "No independently cleared stable condition was established in the replayed subset; incomplete evidence does not establish zero total remediation.",
+    "workflowContribution": null,
+    "fullGoalCompletion": null,
+    "cost": "not measured"
+  }
+}

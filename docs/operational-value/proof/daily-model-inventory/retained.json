@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceAddition": {
+    "commit": "a38bf5047d5f3823d4008d161a56d0bb735d98cc",
+    "parent": "7c1cc96022a05da6c253224b9d0f0bddae68d19b",
+    "committedAt": "2026-05-03T20:03:36Z",
+    "actualParentTreeChecked": true,
+    "parentWorkflowAbsent": true,
+    "adoptionSourceAvailable": true,
+    "interpretation": "Verified source addition, not proof of organization installation or retained provider inventories.",
+    "adoptionImports": [
+      "shared/otel.md",
+      "shared/observability-otlp.md"
+    ]
+  },
+  "sourceRecords": [
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/daily-model-inventory.md",
+      "gitBlob": "809b23ebbfc03d891701382286cf0c3417c6b153",
+      "sha256": "112f41c84a28a798fb1d85577de2dccf6f807401ac09707289455ccf91003e0c",
+      "bytes": 30879
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/shared/otlp.md",
+      "gitBlob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+      "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6",
+      "bytes": 635
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/aw/llms.md",
+      "gitBlob": "16f5bc5192a7c01161e8ee9426e7f172c42990e5",
+      "sha256": "11f0909e4580a2bdba658d866f0f0a7690228d998da3178bdc6a49c7de4b12cb",
+      "bytes": 3218
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/drivers/copilot_sdk_driver_sample_node.cjs",
+      "gitBlob": "0b65e83ede62ce0ed7fe87a66d070a307176edeb",
+      "sha256": "8067218d6f5f535b4077c09dff59df98d05eb58622604c071ca4c8dc8176d572",
+      "bytes": 3085
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/workflow/data/model_aliases.json",
+      "gitBlob": "6f9804b612e45d4721635b9b3bff4ab56b661ed4",
+      "sha256": "00fd73ea84fd9e65e2217324696102eb70b2f7dc28af8d8026cc3d1ae08f6422",
+      "bytes": 5098
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "actions/setup/js/model_aliases.json",
+      "gitBlob": "6f9804b612e45d4721635b9b3bff4ab56b661ed4",
+      "sha256": "00fd73ea84fd9e65e2217324696102eb70b2f7dc28af8d8026cc3d1ae08f6422",
+      "bytes": 5098
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "actions/setup/js/resolve_model_alias.cjs",
+      "gitBlob": "f9f5bee8616aa5bfa9ad7c2e947a7c54e6c3b70f",
+      "sha256": "39528919527af89e76154e9e80c08b6ef38361290ae097d58ad26a3154d1d015",
+      "bytes": 30588
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "actions/setup/js/resolve_model_alias.test.cjs",
+      "gitBlob": "ed4eeb5bbc86f2cbc0f9ce10a5c4cc0a4b6b9d2a",
+      "sha256": "544645e230c9cb14249a461463f93722d7a36bf293253e8ee7787b7c8a106c42",
+      "bytes": 14871
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/workflow/model_aliases.go",
+      "gitBlob": "a9a387fff439e2ce347edb81c42e05f110aee636",
+      "sha256": "62ae8bc6e886db231332a4f2d82c1d13d190d1906e0f31b3e0b3d61245b1c859",
+      "bytes": 13667
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/workflow/model_alias_validation.go",
+      "gitBlob": "cb3065accdbfd05c6158337a10f75489c89ccfab",
+      "sha256": "5e5fb366bbfd9e7cf4d294a61dc2e0f8022f89a0bf5ba6ff8653116c7b70b123",
+      "bytes": 14894
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "docs/src/content/docs/specs/model-alias-specification.md",
+      "gitBlob": "d99a252a307d8a2b4314afa31f6546896cc7975e",
+      "sha256": "00ff471a4cdfc054be22e013f20cf85594ba28d08c25f9700c7ef3cd5048dfdd",
+      "bytes": 56270
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/data/models.json",
+      "gitBlob": "1e64185a5ec81cfa07f0dfff238e7b8d4fbb2de2",
+      "sha256": "75bbfd58d221ac705d2512a21a5cb35660e076fddfb2e38f5b684beb2376a11f",
+      "bytes": 33002
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "actions/setup/js/models.json",
+      "gitBlob": "1e64185a5ec81cfa07f0dfff238e7b8d4fbb2de2",
+      "sha256": "75bbfd58d221ac705d2512a21a5cb35660e076fddfb2e38f5b684beb2376a11f",
+      "bytes": 33002
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "a38bf5047d5f3823d4008d161a56d0bb735d98cc",
+      "path": ".github/workflows/daily-model-inventory.md",
+      "gitBlob": "6d74a0a78cff60c618da7b3b7eb37c1683ba4432",
+      "sha256": "40e1edb1a61c9345a0e1260c2ee404676103f43ddc7671683abacdeb69f61b24",
+      "bytes": 12259
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/daily-model-inventory.lock.yml",
+      "gitBlob": "e59422ca7af808a73c507f4bb312ace31a7ca18b",
+      "sha256": "ca06b03f67a8209acf423f8df1bbff6cf59a937ff9f13338cda9e84a098c77dd",
+      "bytes": 185337
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "a38bf5047d5f3823d4008d161a56d0bb735d98cc",
+      "path": ".github/workflows/shared/otel.md",
+      "gitBlob": "6e154d0fc4b512f28ae2af7e5c4cb0325ce5fca6",
+      "sha256": "e6e134a234647101e8270b491e06a22555463f178e47c8855385a2bc3f58034b",
+      "bytes": 452
+    },
+    {
+      "repository": "github/gh-aw",
+      "repositoryId": 1036865607,
+      "revision": "a38bf5047d5f3823d4008d161a56d0bb735d98cc",
+      "path": "pkg/workflow/model_aliases.go",
+      "gitBlob": "7fc8d65502b85e2b882b96b2a4dda3d6c2eaaad8",
+      "sha256": "5ed25a13bf06ab4e499afe7bd313c5434d6d3fe4117911c965be811b7fddd928",
+      "bytes": 5730
+    }
+  ],
+  "unavailable": [
+    {
+      "revision": "a38bf5047d5f3823d4008d161a56d0bb735d98cc",
+      "path": ".github/workflows/shared/observability-otlp.md",
+      "gitBlob": "bb9913da15c04bce33be1c2cda580b3a1e409b4d",
+      "reason": "Exact adoption dependency blob unavailable offline; does not block current-source contract."
+    }
+  ],
+  "discovery": {
+    "partitionsVerified": 346,
+    "entitiesVerified": 58048,
+    "selectedCount": 166,
+    "complete": true,
+    "indexSha256": "9df26d055118ce577189c011705636e8fc634ba8eb42fd3fd3c3bc4e79af3929",
+    "selectedSha256": "17cfe768070c35f19873c6b03f50a00bf4b7fb1b571298b8716df051a70344bd"
+  },
+  "observations": [],
+  "readiness": {
+    "source": "retained-current-source",
+    "nativeInstrument": "implemented-separately",
+    "providerInventory": "missing",
+    "baseline": "unavailable-not-exhausted",
+    "fullAcceptance": "not-measured",
+    "contribution": "not-measured",
+    "costs": "not-measured"
+  },
+  "openScopes": [
+    {
+      "kind": "immutable-baseline",
+      "endpoint": "repos/github/gh-aw/git/trees/7c1cc96022a05da6c253224b9d0f0bddae68d19b",
+      "needed": "Baseline source tree is available; contemporaneous complete provider inventory remains absent. Current predicates are not backdated."
+    },
+    {
+      "kind": "provider-inventory",
+      "endpoint": "https://api.openai.com/v1/models",
+      "needed": "Independently retained complete account-scoped responses with protected receipt and capture cutoff."
+    },
+    {
+      "kind": "provider-inventory",
+      "endpoint": "https://api.anthropic.com/v1/models",
+      "needed": "All pages and terminal has_more=false, protected capture receipt, applicable access scope."
+    },
+    {
+      "kind": "provider-inventory",
+      "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+      "needed": "All pages through absent nextPageToken, protected capture receipt, applicable access scope."
+    },
+    {
+      "kind": "provider-inventory",
+      "endpoint": "http://api-proxy:10000/reflect",
+      "needed": "Protected configured Copilot endpoint models, models_fetch_complete=true, same workflow access scope; never call from this evaluator."
+    },
+    {
+      "kind": "secondary-catalog",
+      "endpoint": "https://models.dev/api.json",
+      "needed": "Dated secondary catalog; not independently sufficient evidence of live provider availability."
+    },
+    {
+      "kind": "full-acceptance",
+      "endpoint": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing",
+      "needed": "Protected SDK, reflect and pricing captures plus mirror preservation, capability and routing checks."
+    },
+    {
+      "kind": "contribution",
+      "endpoint": "repos/github/gh-aw/actions/runs/{selectedRunId}/artifacts",
+      "needed": "Bounded selected-run receipts and independently verified graph/native before-after facts; issue bodies are discovery only."
+    }
+  ],
+  "acquisition": "Offline only. Request a bounded coordinator slot before any acquisition; do not automatically resume.",
+  "packetManifestSha256": "b7052083e5d6661db3b7f18d4d618ff3a1c43f675f81905395aab8ac38a33fd1"
+}

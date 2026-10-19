@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "adoptionCommit": "aa36291c042c40d6f46e86f0b8604ec1d671a77c",
+  "path": ".github/workflows/shared/reporting.md",
+  "gitBlob": "77e16fa313dea04900d1b798b80498c1d971be1d",
+  "sourceManifestSha256": "58c7f79cd497f1f3d226407a5f304479bb047dfa34288eb89668815923a18293",
+  "receipt": {
+    "workflow": "daily-cli-performance",
+    "endpoint": "repos/github/gh-aw/git/blobs/77e16fa313dea04900d1b798b80498c1d971be1d",
+    "sha": "77e16fa313dea04900d1b798b80498c1d971be1d",
+    "status": 200,
+    "receivedAt": "2026-10-19T08:08:51.451Z",
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "date": "Mon, 19 Oct 2026 08:08:51 GMT",
+      "etag": "W/\"d24063a1628f11ff3bdaef120172de9bc80d3b7a0aabec216bc0902ede0e8dc9\"",
+      "x-github-request-id": "FC83:98848:1EDE57E5:2EB600E3:6AD5D013",
+      "x-ratelimit-limit": "15000",
+      "x-ratelimit-remaining": "14349",
+      "x-ratelimit-reset": "1792400070",
+      "x-ratelimit-resource": "core"
+    },
+    "bytes": 458,
+    "sha256": "6a4e09cefde06d6bcb8b9501e0b24ec9b071dced89add449492b42722c47fc1d"
+  },
+  "originalResponseSha256": "a771516e0e5915e9ca47cb1958bb12b421fb38dc37810386fd6c1709899e8343",
+  "blobSha256": "6a4e09cefde06d6bcb8b9501e0b24ec9b071dced89add449492b42722c47fc1d",
+  "encoding": "base64",
+  "originalResponse": "eyJzaGEiOiI3N2UxNmZhMzEzZGVhMDQ5MDBkMWI3OThiODA0OThjMWQ5NzFiZTFkIiwibm9kZV9pZCI6IkJfa3dET1BjMVFSOW9BS0RjM1pURTJabUV6TVROa1pXRXdORGt3TUdReFlqYzVPR0k0TURRNU9HTXhaRGszTVdKbE1XUSIsInNpemUiOjQ1OCwidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9naXRodWIvZ2gtYXcvZ2l0L2Jsb2JzLzc3ZTE2ZmEzMTNkZWEwNDkwMGQxYjc5OGI4MDQ5OGMxZDk3MWJlMWQiLCJjb250ZW50IjoiTFMwdENpTWdVbVZ3YjNKMElHWnZjbTFoZEhScGJtY2daM1ZwWkdWc2FXNWxjd290TFMwS0NpTWpJRkpsXG5jRzl5ZENCVGRISjFZM1IxY21VS0NqRXVJQ29xVDNabGNuWnBaWGNxS2pvZ01TMHlJSEJoY21GbmNtRndcbmFITWdjM1Z0YldGeWFYcHBibWNnYTJWNUlHWnBibVJwYm1kekNqSXVJQ29xUkdWMFlXbHNjeW9xT2lCVlxuYzJVZ1lEeGtaWFJoYVd4elBqeHpkVzF0WVhKNVBqeGlQa1oxYkd3Z1VtVndiM0owUEM5aVBqd3ZjM1Z0XG5iV0Z5ZVQ1Z0lHWnZjaUJsZUhCaGJtUmxaQ0JqYjI1MFpXNTBDZ29qSXlCWGIzSnJabXh2ZHlCU2RXNGdcblVtVm1aWEpsYm1ObGN3b0tMU0JHYjNKdFlYUWdjblZ1SUVsRWN5QmhjeUJzYVc1cmN6b2dZRnZDcHpFeVxuTXpRMVhTaG9kSFJ3Y3pvdkwyZHBkR2gxWWk1amIyMHZiM2R1WlhJdmNtVndieTloWTNScGIyNXpMM0oxXG5ibk12TVRJek5EVXBZQW90SUVsdVkyeDFaR1VnZFhBZ2RHOGdNeUJ0YjNOMElISmxiR1YyWVc1MElISjFcbmJpQlZVa3h6SUdGMElHVnVaQ0IxYm1SbGNpQmdLaXBTWldabGNtVnVZMlZ6T2lvcVlBb3RJRVJ2SUU1UFxuVkNCaFpHUWdabTl2ZEdWeUlHRjBkSEpwWW5WMGFXOXVJQ2h6ZVhOMFpXMGdZV1JrY3lCaGRYUnZiV0YwXG5hV05oYkd4NUtRbz1cbiIsImVuY29kaW5nIjoiYmFzZTY0In0=",
+  "originalBlob": "LS0tCiMgUmVwb3J0IGZvcm1hdHRpbmcgZ3VpZGVsaW5lcwotLS0KCiMjIFJlcG9ydCBTdHJ1Y3R1cmUKCjEuICoqT3ZlcnZpZXcqKjogMS0yIHBhcmFncmFwaHMgc3VtbWFyaXppbmcga2V5IGZpbmRpbmdzCjIuICoqRGV0YWlscyoqOiBVc2UgYDxkZXRhaWxzPjxzdW1tYXJ5PjxiPkZ1bGwgUmVwb3J0PC9iPjwvc3VtbWFyeT5gIGZvciBleHBhbmRlZCBjb250ZW50CgojIyBXb3JrZmxvdyBSdW4gUmVmZXJlbmNlcwoKLSBGb3JtYXQgcnVuIElEcyBhcyBsaW5rczogYFvCpzEyMzQ1XShodHRwczovL2dpdGh1Yi5jb20vb3duZXIvcmVwby9hY3Rpb25zL3J1bnMvMTIzNDUpYAotIEluY2x1ZGUgdXAgdG8gMyBtb3N0IHJlbGV2YW50IHJ1biBVUkxzIGF0IGVuZCB1bmRlciBgKipSZWZlcmVuY2VzOioqYAotIERvIE5PVCBhZGQgZm9vdGVyIGF0dHJpYnV0aW9uIChzeXN0ZW0gYWRkcyBhdXRvbWF0aWNhbGx5KQo=",
+  "review": {
+    "scope": "Reporting format only: overview/details layout, run links and footer guidance. No tools, permissions, telemetry predicates or transitive imports.",
+    "originalReceiptWorkflowTag": "daily-cli-performance",
+    "applicability": "Shared source is joined by immutable Git blob identity at the verified adoption tree, not by receipt workflow tag.",
+    "sourceReadiness": "Adoption source, compiled workflow and its sole import are retained; optional runtime import was absent.",
+    "changesAcceptance": false,
+    "historicalCompatibility": false,
+    "nativeEvidence": "Unknown; resolving source bytes supplies no cohort/configuration/raw-telemetry receipts."
+  }
+}

@@ -2,7 +2,6 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { parse } from "yaml";
 import { fail, isSlug, requireArgs } from "./common.mjs";
 
 const args = process.argv.slice(2);
@@ -22,6 +21,7 @@ else fail("run from a repository root or its .github/workflows directory");
 
 let names;
 if (campaign) {
+  const { parse } = await import("yaml");
   const manifest = path.resolve(campaign, "aw.yml");
   if (!existsSync(manifest)) fail(`campaign manifest not found: ${campaign}/aw.yml`);
   let parsed;

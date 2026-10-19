@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "status": "immutable-owned-native-handoff-v2",
+  "packetVersion": 2,
+  "analysisComplete": true,
+  "workflowComplete": false,
+  "supersedesArchiveSha256": "baf58bf2000fb6b3c5e6f85a18907f7a8ba9fc8c587be44b61ed34c0142d8219",
+  "repository": "github/gh-aw",
+  "workflow": "lockfile-stats",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "342d6d8771dca0836d291f69810de61353566149",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "registration": {
+    "functionPath": "docs/operational-value/proof/functions/lockfile-stats.mjs",
+    "functionSha256": "d2620a211063d934f45097cf5cb14d601dc851ea20efe0f3b40902fb6340d28c",
+    "contractPath": "docs/operational-value/proof/lockfile-stats/contract.json",
+    "contractSha256": "e1efbb89684712dd6b2e1ad8728e1985d403afa55ccc5b8c44e6f7e1902b2143",
+    "indexPath": "docs/operational-value/proof/lockfile-stats/index.json",
+    "timelinePath": "docs/operational-value/proof/reports/github-gh-aw/lockfile-stats-timeline.json",
+    "plotPath": "docs/operational-value/proof/reports/github-gh-aw/lockfile-stats-pulse.html",
+    "primaryMetricId": "verified-statistical-facts",
+    "nativeUnit": "statistical facts",
+    "provenanceKind": "native-lockfile-reconciliation-index",
+    "readinessGuard": "At least one source-bound, independently replayed, full-population census and a non-null primary metric establishes partial native evidence only; it does not establish acquisition completion or full workflow acceptance."
+  },
+  "nativeFacts": {
+    "inventoriedRuns": 414,
+    "eligibleScheduleOrManualRuns": 372,
+    "ineligiblePushRuns": 42,
+    "sourceBoundAssessedCensuses": 45,
+    "distinctVerifiedAssertionsAcrossAssessedCensuses": 10662,
+    "distinctIncorrectAssertionsAcrossAssessedCensuses": 286,
+    "latestAssessedRunId": 39066285784,
+    "latestEligibleLockfiles": 344,
+    "latestDistinctVerifiedAssertions": 121,
+    "latestDistinctIncorrectAssertions": 26,
+    "latestUnsupportedNumericFields": 68,
+    "latestPlotPrimaryValue": 726,
+    "previousPlotPrimaryValue": 857,
+    "latestPlotDiagnosticValue": 156,
+    "previousPlotDiagnosticValue": 129,
+    "signal": "insufficient-evidence",
+    "trend": "not-established",
+    "decision": "not-rated",
+    "cost": "not-measured"
+  },
+  "unresolvedScope": {
+    "acquisitionComplete": true,
+    "pendingRetainedAcquisitions": 0,
+    "exactQueuePath": "docs/operational-value/proof/lockfile-stats/resume.json",
+    "withoutSurvivingSourceBoundSummariesIncluding42IneligiblePushes": 326,
+    "incompatibleHistoricalPromptProfiles": 34,
+    "compatibleCachesWithoutSameDaySummary": 9,
+    "preAdoptionDeliveredCensus": "not-reconstructable; immutable parent checkout has 25 lockfiles but no original delivered assertion",
+    "fullAcceptance": "not-established",
+    "budgetAndRecommendationQuality": "not-measured",
+    "discussionPublication": "not-measured",
+    "exactSafeOutputCategoryAggregates": "unknown where Actions-interpolated JSON is unresolved",
+    "historicalScriptCounts": "different grain: run steps plus actions/github-script; not evidence of incorrect native run-step counts"
+  },
+  "acquisitionRelease": {
+    "status": "exact-queue-acquired-and-slot-returned",
+    "receiptPath": "docs/operational-value/proof/lockfile-stats/acquisition-2026-10-19.json",
+    "originalQueuedRuns": 17,
+    "requests": 49,
+    "acceptedResponses": 49,
+    "http403Or429": 0,
+    "concurrency": 1,
+    "minimumPacingMilliseconds": 1500,
+    "additionalEndpointDiscovery": false,
+    "quotaProbe": false,
+    "actualResponseHeadersRetained": true,
+    "soleAcquisitionSlotReturned": true,
+    "lastObservedCoreRemainingHeader": 13874,
+    "lastObservedCoreRemainingIsCurrentQuota": false,
+    "automaticResetWave": false,
+    "authority": "Explicit coordinated release after Multi-PR returned its acquisition slot; scope limited to the existing exact 17-item queue.",
+    "priorPause": {
+      "observedAt": "2026-10-19T06:36:45Z",
+      "coreLimit": 15000,
+      "coreUsed": 15000,
+      "coreRemaining": 0,
+      "reportedResetAt": "2026-10-19T06:55:48Z"
+    }
+  },
+  "storage": {
+    "losslessSourceInputs": true,
+    "immutableGitBlobDeduplication": true,
+    "completeDateToBlobManifests": true,
+    "retainedSafeNativeProjections": true,
+    "perRepositoryFileByteLimit": 262144,
+    "unchangedFrozenSourceReaderBudgets": true,
+    "unchangedIndividualArchiveBudgets": true,
+    "predecessors": [
+      {
+        "archive": "lockfile-stats-pre-storage.tar.gz",
+        "sha256": "47fb171fafbe7156478b2a411e5ccfebdfdb51825b18023b01c99692008713d0"
+      },
+      {
+        "archive": "lockfile-stats-pre-availability-fix.tar.gz",
+        "sha256": "43bee55413c4c3b2d4238580163fa9739ea691c2e479098714285c2798d959dc"
+      }
+    ],
+    "predecessorDirectory": "/Users/mnkiefer/.copilot/session-state/ccdc512f-57dc-4d06-be3b-d1b4f37e72a0/files"
+  },
+  "validation": {
+    "nodeFocusedTests": "9 passed",
+    "pythonNativeFixtures": "3 passed",
+    "valueFunctionVerifierWithCollector": "passed",
+    "focusedEslint": "passed",
+    "typecheckCao": "passed",
+    "typecheckCopilot": "passed",
+    "workflowCompile": "passed; 72 workflows, two pre-existing outdated-action warnings",
+    "docsBuild": "passed",
+    "evaluation": "regenerated offline with --refresh --no-runs; helper changes must not reuse old cached snapshots"
+  },
+  "reusableLessons": [
+    "Parse entire manifests; first-4000-byte sampling caused demonstrable MCP undercounts and false fallback claims.",
+    "An explicit job permission map gives omitted scopes effective none; retain original explicit-declaration projections separately.",
+    "Unevaluated Actions interpolation prevents exact JSON aggregate proofs; preserve unknown rather than count an available subtotal.",
+    "Schema aliases must preserve both units and grain; historical github-script-inclusive counters cannot represent native run-step counts.",
+    "Protected Actions log selection must follow the immutable compiled job display name, not assume lowercase agent; both Agent and agent occurred.",
+    "Deduplicate synonymous assertions by semantic identity within the same run and input population.",
+    "Refresh evaluator snapshots when imported reconciliation helpers change; top-level module hashes do not capture that dependency change.",
+    "Losslessly retain immutable source bytes once per Git blob, with complete date manifests and independently bounded partitions."
+  ],
+  "remoteWrites": false,
+  "commits": false
+}

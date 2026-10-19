@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflow": "lockfile-stats",
+  "sourceGitBlob": "342d6d8771dca0836d291f69810de61353566149",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "actualProblem": "Maintainers need an accurate, comprehensive census of compiled agentic-workflow structure, capabilities and permission patterns. The stale package-dependency frontmatter is not the executed goal.",
+  "scope": "Every immediate .github/workflows/*.lock.yml file at each independently proven protected checkout; no sampling.",
+  "sourceReview": [
+    {
+      "source": ".github/workflows/lockfile-stats.md",
+      "finding": "Daily/manual full-population statistics; source mandates v4 cached Python, safe_load, engine metadata, agent-job and all-job permissions, deduplicated JSON safe outputs, discussion-category completeness and manifest-first MCP extraction."
+    },
+    {
+      "source": ".github/workflows/shared/daily-audit-base.md",
+      "finding": "Imports discussion safe outputs, reporting guidance and OTLP. It does not define an independent accuracy checker."
+    },
+    {
+      "source": ".github/workflows/shared/daily-audit-discussion.md",
+      "finding": "One audits Discussion, title prefix, one-day expiry and close-older behavior explain why published output history is not a durable historical evidence interface."
+    },
+    {
+      "source": ".github/workflows/shared/reporting.md",
+      "finding": "Reporting structure and run links support discovery, not numeric verification or immutable creation proof."
+    },
+    {
+      "source": ".github/workflows/shared/otlp.md",
+      "finding": "Telemetry endpoints are configuration. Their declaration establishes neither retained token receipts nor compliance with the turn/token contract."
+    },
+    {
+      "source": ".github/workflows/lockfile-stats.lock.yml",
+      "finding": "The protected agent job checks out the repository, uploads cache-memory including history, and separately uploads selected agent files. The agent artifact does not promise the statistics-summary file; the protected cache artifact can preserve the original same-day summary. Exact checkout SHA readback and upload receipts are required."
+    },
+    {
+      "source": "original cached scripts/lockfile_stats_v4.py",
+      "finding": "Read as untrusted implementation evidence only; never executed. The independent oracle is a separately authored, pinned PyYAML native census."
+    }
+  ],
+  "sourceEras": [
+    {
+      "commit": "46ca02a43628ba71f69d340527c3c19830b84473",
+      "meaning": "Actual addition against its real parent. Original body already required all lockfiles, accurate statistics, audits publication and retained history. The phenomenon could exist through manual analysis before installation."
+    },
+    {
+      "commit": "4f49ca9bd9a989f8987981f1037a55f811cb5c68",
+      "meaning": "Single-script cached analysis and explicit resource budgets. Do not backdate these mechanics into the original source."
+    },
+    {
+      "commit": "0d53d9690fb3db1e5859f5b8f0fe918e97ec861a",
+      "meaning": "Missing-PyYAML guard fixed silent empty safe-output statistics."
+    },
+    {
+      "commit": "c149c095db1cb9f9613e7a82af06399bb38f0cad",
+      "meaning": "Manifest-first engine-independent MCP usage."
+    },
+    {
+      "commit": "2a44012cfee67b5d061c54bac59acd8cc19cf492",
+      "meaning": "Metadata engine extraction and effective agent-job permissions replace invalid frontmatter assumptions."
+    },
+    {
+      "commit": "83a079d1a2b8eafe7210ffac64d359a07e2b6e17",
+      "meaning": "V4 discussion-category extraction and loud completeness checks. This is the earliest compatible body for this frozen reconciliation."
+    },
+    {
+      "commit": "5fdf98e4d2117e37d3260de02f7783ecce16ea49",
+      "meaning": "Runtime frontmatter changes only; the V4 measurement body is unchanged. Exact actual compiled checkout/upload behavior is still checked for each accepted execution."
+    }
+  ],
+  "measureDisposition": [
+    {
+      "candidate": "Independently reconciled persisted native statistical assertions",
+      "role": "primary",
+      "reason": "Accurate full-population repository statistics are a direct source-defined outcome facet. Count facts only after independent input replay, never because a report says its own statistics are correct."
+    },
+    {
+      "candidate": "Mapped statistical assertions that disagree with independent native facts",
+      "role": "diagnostic",
+      "reason": "Keep inaccuracies separate so greater output breadth cannot hide contradictory or wrong statistics."
+    },
+    {
+      "candidate": "Complete source-family coverage, unresolved categories, parser availability and compact-summary limit",
+      "role": "acceptance-gates",
+      "reason": "These describe report completeness/reliability; native partial factual improvement does not imply complete goal acceptance."
+    },
+    {
+      "candidate": "Five bash turns, one-million input/output tokens and cached script reuse",
+      "role": "safeguards",
+      "reason": "Need original complete execution/usage receipts. They cannot be inferred from statistics or successful jobs."
+    },
+    {
+      "candidate": "Historical deltas and recommendation usefulness",
+      "role": "separate-quality-dimensions",
+      "reason": "An older cache date is not exact historical input identity; numeric agreement does not prove insight quality, useful recommendations or downstream decisions."
+    },
+    {
+      "candidate": "Published Discussion count, successful runs, or agent self-assessment",
+      "role": "rejected-proxies",
+      "reason": "Publication and execution are not statistically accurate coverage. Edited surviving Discussions are discovery, not immutable historical numeric evidence."
+    },
+    {
+      "candidate": "Dependency vulnerability backlog and package freshness",
+      "role": "rejected-wrong-population",
+      "reason": "The frontmatter is stale. The workflow analyzes compiled Actions YAML, not package-manager lockfiles or dependency-remediation outcomes."
+    },
+    {
+      "candidate": "Full native repository counts computed today at baseline",
+      "role": "antecedent-probe-only",
+      "reason": "Git reconstructs all census inputs, demonstrating that the native population pre-existed; a new replay cannot prove that an accurate census was historically delivered before adoption."
+    }
+  ],
+  "canonicalDataDisposition": "Canonical activity can identify runs but does not contain complete immutable compiled lockfile bytes, the original cached numeric summary or protected checkout/upload logs. This outcome therefore uses bounded retained Actions evidence plus immutable Git inputs, not a reconstructed dashboard-side query.",
+  "limitations": [
+    "Attainment-only is an evidence limitation, not a claim that accurate statistics were invented at workflow adoption.",
+    "Missing source/report binding, unacquired retained receipts and incompatible historical source eras remain null.",
+    "Native fact delivery is a partial source-goal facet; the final Discussion, insights, budgets, costs and sole attribution remain separately unmeasured.",
+    "Retain changing file populations and assertion inventories. A count change alone cannot establish quality improvement, a sustained trend or causal benefit."
+  ]
+}

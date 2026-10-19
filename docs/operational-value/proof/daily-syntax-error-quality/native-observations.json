@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "cases": [],
+  "missingReason": "No original full mutated workflow inputs, original compiler stdout/stderr/exit receipts, pinned compiler identity or independently accepted correction-task originals were supplied. The 69 editable-lineage discovery candidates do not supply these facts. Unacquired historical evidence is not exhausted.",
+  "nativeEndpoints": [
+    "Original /tmp/gh-aw/agent/syntax-error-tests/test-1.md and test-2.md plus original candidate copies.",
+    "Original /tmp/gh-aw/agent/syntax-error-tests/test-1-output.txt and test-2-output.txt, process exit status, gh aw --version and original executable identity, including native go version -m output with vcs.revision and vcs.modified.",
+    "Native gh aw compile --json ValidationResult arrays for known-valid original and numeric-engine mutation, with exact source/compiler identities and completion time; these are not produced by the frozen workflow.",
+    "Original source-bound run/safe-output receipt and GitHub accepted issue-to-PR/merge graph plus paired before/after compiler diagnostics for workflow-linked delivery.",
+    "Independent developer syntax-correction task instrument and original accepted repaired inputs for full usability."
+  ]
+}

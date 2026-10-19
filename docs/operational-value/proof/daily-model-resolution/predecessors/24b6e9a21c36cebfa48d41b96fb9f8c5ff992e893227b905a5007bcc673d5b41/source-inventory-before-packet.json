@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "adoption": "548c141635dc069a4d17f49f4342859dcc91baf3",
+  "readiness": "incomplete",
+  "records": [
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": ".github/workflows/shared/meta-analysis-base.md",
+      "blob": "549f13d069b14df93a538b71989a6256199eab48",
+      "sha256": "e44fca91ac5dbca084b0bb56f4edb24715d75fedd21c45b392c49384cb856d37",
+      "bytes": 725,
+      "file": "sources/549f13d069b14df93a538b71989a6256199eab48.json.gz"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": ".github/workflows/shared/otlp.md",
+      "blob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+      "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6",
+      "bytes": 635,
+      "file": "sources/f68eee05a7f9d4379511148f65aa2ed8bf7667dd.json.gz"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": ".github/workflows/shared/reporting.md",
+      "blob": "cfee3559cf90da905fbfd08a114f00a2b649d643",
+      "sha256": "fb9ec1cc7986043bb6ab8f1e6062bd59729d3996c50afb8c2262f0cfa874f903",
+      "bytes": 543,
+      "file": "sources/cfee3559cf90da905fbfd08a114f00a2b649d643.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/daily-model-resolution.md",
+      "blob": "3471ba651640eddacc0d18bab008bba570a347d6",
+      "sha256": "a07f8145b20b75cccb8c383d408b8cbfafbf0827ecc8328868d9fdcc649c18db",
+      "bytes": 10403,
+      "file": "sources/3471ba651640eddacc0d18bab008bba570a347d6.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/shared/meta-analysis-base.md",
+      "blob": "549f13d069b14df93a538b71989a6256199eab48",
+      "sha256": "e44fca91ac5dbca084b0bb56f4edb24715d75fedd21c45b392c49384cb856d37",
+      "bytes": 725,
+      "file": "sources/549f13d069b14df93a538b71989a6256199eab48.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/shared/otlp.md",
+      "blob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+      "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6",
+      "bytes": 635,
+      "file": "sources/f68eee05a7f9d4379511148f65aa2ed8bf7667dd.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/shared/reporting.md",
+      "blob": "263d2413472e62582c578897a8b06462da5ef171",
+      "sha256": "0929890c04f04878f9750464ef9a4bc799c87d236e4f936018a3bfc2dc3aae41",
+      "bytes": 1386,
+      "file": "sources/263d2413472e62582c578897a8b06462da5ef171.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/audit_subagent_model.go",
+      "blob": "e6a8eb3cc6e233de75bf442dfaabef0ad4fde126",
+      "sha256": "15ef3123f630330c40b293f4d8962f1ca34fb05c725869353174c00b61e4992d",
+      "bytes": 1085,
+      "file": "sources/e6a8eb3cc6e233de75bf442dfaabef0ad4fde126.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/audit_subagent_model_test.go",
+      "blob": "2788f2afd2af240a0be9280eeb1f2e951cae9edc",
+      "sha256": "4c819da406bff1114d5c334f9ce172a51268b79d8cab65c4c23c6351f2e3861f",
+      "bytes": 4367,
+      "file": "sources/2788f2afd2af240a0be9280eeb1f2e951cae9edc.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/token_usage_subagent_identity.go",
+      "blob": "686b851c954f7f75d85cf04b1ef44d685f2c6e8d",
+      "sha256": "9007a6ae04d5296f11ab388892c1753714c3d0ac6d784a1ab3ac681ab9ffc8a3",
+      "bytes": 10295,
+      "file": "sources/686b851c954f7f75d85cf04b1ef44d685f2c6e8d.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/token_usage_subagent_identity_test.go",
+      "blob": "b2776d91bc241be3535fb2a26cdeb405a395ad1c",
+      "sha256": "976f60dede3c7d71a06594d90e529a3b3b49c5394b7ea238fc9bec7d10aa3834",
+      "bytes": 27970,
+      "file": "sources/b2776d91bc241be3535fb2a26cdeb405a395ad1c.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/token_usage_subagent_session.go",
+      "blob": "35735346f37c634efd07b19b67131074bb734706",
+      "sha256": "118e143a0cb6237c058df67988fa6b4ee1eec7810726e6341aca530ea3d716f0",
+      "bytes": 56139,
+      "file": "sources/35735346f37c634efd07b19b67131074bb734706.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/token_usage_subagent.go",
+      "blob": "063eac1e413ce93a6377bf39dcbe1d9be5b48586",
+      "sha256": "e676ce3cd706f4c38262d4da24b144c55b5744a07884f4d20d61b3428c09acc9",
+      "bytes": 20340,
+      "file": "sources/063eac1e413ce93a6377bf39dcbe1d9be5b48586.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/token_usage_declared_subagents.go",
+      "blob": "154e639f07bacc3e7b36799b947784a118a3a23f",
+      "sha256": "98c85004126d2e90a6f8a43748321b63a8fb49f4bb36539416c670b1c72a36ef",
+      "bytes": 5970,
+      "file": "sources/154e639f07bacc3e7b36799b947784a118a3a23f.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/cli/model_routing_subagent_identity_test.go",
+      "blob": "ecd2de5c4094099589a8c18f1e72b3afc1be7021",
+      "sha256": "69cb0e36a4fc36fcd804d6e64d1709f9d583ba39ba588b2523ce4e10fe2e22be",
+      "bytes": 20930,
+      "file": "sources/ecd2de5c4094099589a8c18f1e72b3afc1be7021.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "pkg/workflow/engine_model_resolution_test.go",
+      "blob": "fad10691067d0551bc5041798f1f00f2688f30a8",
+      "sha256": "cf11b5e5decfa44ad619e7a83ca4efe94eb5f503f7c9a7d714499bbbdf56e6bf",
+      "bytes": 2495,
+      "file": "sources/fad10691067d0551bc5041798f1f00f2688f30a8.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "docs/adr/66746-prefer-unified-sessions-for-subagent-attribution.md",
+      "blob": "2253312b6ec95a61787b2a8cb94ae4aab59ce12b",
+      "sha256": "a9198ade7213585d0ce037b6447346e9f71e3fd6f095b2ce161767ab327b5362",
+      "bytes": 6528,
+      "file": "sources/2253312b6ec95a61787b2a8cb94ae4aab59ce12b.json.gz"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": "docs/src/content/docs/specs/unified-agent-session-specification.md",
+      "blob": "542c39ef1014387d0d186dc1065f07629c2940c9",
+      "sha256": "9ad62151eb1241157e9dbb33352b1e020b946c0cc272712e9e4a7d307b2479be",
+      "bytes": 191150,
+      "file": "sources/542c39ef1014387d0d186dc1065f07629c2940c9.json.gz"
+    }
+  ],
+  "missing": [
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": ".github/workflows/daily-model-resolution.md",
+      "blob": "02317ee742842849af4716368c5ac55afdd9cfc6",
+      "reason": "exact-blob-not-retained"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": ".github/workflows/daily-model-resolution.lock.yml",
+      "blob": "01f4d457a15cfa538c22fd505167ede1126809f0",
+      "reason": "exact-blob-not-retained"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/cli/audit_subagent_model.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/cli/audit_subagent_model_test.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/cli/token_usage_subagent_identity.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/cli/token_usage_subagent_identity_test.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/cli/token_usage_subagent_session.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/cli/token_usage_subagent.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/cli/token_usage_declared_subagents.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/cli/model_routing_subagent_identity_test.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "pkg/workflow/engine_model_resolution_test.go",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": "docs/adr/66746-prefer-unified-sessions-for-subagent-attribution.md",
+      "reason": "not-in-tree"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/daily-model-resolution.lock.yml",
+      "blob": "fe49cac313067559ff1fd25e10e24d3af8a9587e",
+      "reason": "exact-blob-not-retained"
+    }
+  ],
+  "metadata": [
+    {
+      "ref": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "metadata": "548c141635dc069a4d17f49f4342859dcc91baf3\n1b8bc51787713467a966e0c842672fb996763806\n2026-06-23T18:15:59-07:00\nfeat: daily sub-agent model resolution audit workflow (#41130)\n"
+    },
+    {
+      "ref": "548c141635dc069a4d17f49f4342859dcc91baf3^",
+      "metadata": "1b8bc51787713467a966e0c842672fb996763806\n698d8d41c2c2579aa99a2b9282687bcc4b21bf0a\n2026-06-23T18:07:56-07:00\nRefactor GitHub MCP serialization into shared section helpers (#41038)\n"
+    },
+    {
+      "ref": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "metadata": "c86377ec47b38f0b5af463277ee55d1d03d08da8\n64b168bfd0bc790a98d7bef51c49bf74ffc6fe21\n2026-10-17T23:32:44-07:00\nfix: include Work and Claim references in safe-output footers (#69865)\n\n* fix: attribute safe-output footers to work queue claims\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n\n* fix: deploy report dependencies for claim footers\n\nInclude the report renderer and its transitive runtime dependencies in the isolated safe-output bundle. Add a regression that deploys the real bundle and renders a Claim-scoped footer.\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n"
+    }
+  ],
+  "adoptionEvidence": {
+    "parent": "1b8bc51787713467a966e0c842672fb996763806",
+    "parentTree": "",
+    "status": "addition-verified-content-incomplete"
+  },
+  "optionalAbsent": [
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": ".github/shared-instructions.md",
+      "status": "absent-optional-import"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/shared-instructions.md",
+      "status": "absent-optional-import"
+    }
+  ]
+}

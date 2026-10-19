@@ -1,0 +1,82 @@
+{
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "originalManifestSha256": "1c8dacdcc367f556d74cb9572f9cbc4ed82cee65d9b71fc60cdef5708570bd0a",
+  "receipts": [
+    {
+      "workflow": "daily-model-resolution",
+      "endpoint": "repos/github/gh-aw/git/blobs/02317ee742842849af4716368c5ac55afdd9cfc6",
+      "sha": "02317ee742842849af4716368c5ac55afdd9cfc6",
+      "method": "GET",
+      "startedAt": "2026-10-19T09:48:34.840Z",
+      "receivedAt": "2026-10-19T09:48:35.215Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 09:48:35 GMT",
+        "etag": "W/\"a9088319188c48c0f236a45e11e71578a64aa63edca92d990ae2791036a2b3ee\"",
+        "x-github-request-id": "EFE9:29259E:B64C0A:10718F0:6AD5E772",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14146",
+        "x-ratelimit-reset": "1792403672",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 14743,
+      "bodySha256": "b3ed1df57b6eafe4fe9fbf35639c780a523effa0dbbdf82e06c4605657beeeab",
+      "response": "02317ee742842849af4716368c5ac55afdd9cfc6.response.json",
+      "blobBytes": 10495,
+      "blobSha256": "57dbeba422fbc93766b4017afab7e770472ca5f6fc1e301583ba4281ec8f870a",
+      "blob": "02317ee742842849af4716368c5ac55afdd9cfc6.blob"
+    },
+    {
+      "workflow": "daily-model-resolution",
+      "endpoint": "repos/github/gh-aw/git/blobs/01f4d457a15cfa538c22fd505167ede1126809f0",
+      "sha": "01f4d457a15cfa538c22fd505167ede1126809f0",
+      "method": "GET",
+      "startedAt": "2026-10-19T09:48:36.837Z",
+      "receivedAt": "2026-10-19T09:48:37.250Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 09:48:37 GMT",
+        "etag": "W/\"7de15d68441c0a1689e06f74ed79dfe6c99a8fb602a36c70903881ba261035f4\"",
+        "x-github-request-id": "EA2D:2F8BF2:ABD7E2:F89883:6AD5E774",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14145",
+        "x-ratelimit-reset": "1792403672",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 152094,
+      "bodySha256": "c165993158d1c7664a287db73104d422cac2d2aac44e89c01bf68e4884c38dda",
+      "response": "01f4d457a15cfa538c22fd505167ede1126809f0.response.json",
+      "blobBytes": 110187,
+      "blobSha256": "150fcff8eb20b1ce2dcf19c2c6c9f03a8596a120567bb0ee1f4ddeecb609d59d",
+      "blob": "01f4d457a15cfa538c22fd505167ede1126809f0.blob"
+    },
+    {
+      "workflow": "daily-model-resolution",
+      "endpoint": "repos/github/gh-aw/git/blobs/fe49cac313067559ff1fd25e10e24d3af8a9587e",
+      "sha": "fe49cac313067559ff1fd25e10e24d3af8a9587e",
+      "method": "GET",
+      "startedAt": "2026-10-19T09:48:38.881Z",
+      "receivedAt": "2026-10-19T09:48:39.352Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 09:48:39 GMT",
+        "etag": "W/\"222adc9e12ea90b33fa671e4eb4fbb20329314f658f172395103ef74fe003395\"",
+        "x-github-request-id": "FA77:1C11BF:ACAA00:F956C6:6AD5E776",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14141",
+        "x-ratelimit-reset": "1792403672",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 195986,
+      "bodySha256": "27bbc71a86e530c311ded41c2ff620e534691ddfdfb6e9b16845f8186ab78b1d",
+      "response": "fe49cac313067559ff1fd25e10e24d3af8a9587e.response.json",
+      "blobBytes": 142044,
+      "blobSha256": "ee00e7482c097be8f2234b47f12dba18f229e9962fb633accb2b3221cb9bf941",
+      "blob": "fe49cac313067559ff1fd25e10e24d3af8a9587e.blob"
+    }
+  ]
+}

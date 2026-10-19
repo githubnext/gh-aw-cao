@@ -1,0 +1,130 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { censusDigest, readCensusJson } from "./operational-value-census-io.mjs";
+
+export const purelockMetrics = ["observed-fully-covered", "complete-fully-covered", "observed-executed"];
+const digest = bytes => createHash("sha256").update(bytes).digest("hex");
+
+export function parsePurelockCoverage(text) {
+  if (typeof text !== "string" || text.length > 8 * 1024 * 1024) throw new Error("Invalid native coverage output");
+  const rows = new Map();
+  let total = false;
+  for (const line of text.trim().split(/\r?\n/)) {
+    if (/^total:\s+\(statements\)\s+\d+(?:\.\d+)?%$/.test(line)) {
+      if (total) throw new Error("Duplicate native coverage total");
+      total = true;
+      continue;
+    }
+    const match = line.match(/^(?:github\.com\/github\/gh-aw\/)?(pkg\/[A-Za-z0-9_./-]+\.go):([1-9]\d*):\s+([A-Za-z_]\w*)\s+(\d+(?:\.\d+)?)%$/);
+    if (!match || Number(match[4]) > 100 || !Number.isSafeInteger(Number(match[2]))
+      || match[1].split("/").some(part => ["", ".", ".."].includes(part))) throw new Error("Malformed native per-function coverage");
+    const key = `${match[1]}:${match[2]}:${match[3]}`;
+    if (rows.has(key)) throw new Error("Duplicate native coverage identity");
+    rows.set(key, Number(match[4]));
+  }
+  if (!total || !rows.size) throw new Error("Missing executed per-function coverage");
+  return rows;
+}
+
+export function joinPurelockCoverage(report, text) {
+  if (!Number.isSafeInteger(report?.functions_analyzed) || !Number.isSafeInteger(report.pure_functions)
+    || report.pure_functions < 1 || report.functions_analyzed < report.pure_functions
+    || !Array.isArray(report.candidates) || report.candidates.length !== report.pure_functions
+    || report.coverage_loaded !== true) throw new Error("Incomplete native purity population");
+  const coverage = parsePurelockCoverage(text), keys = new Set();
+  const functions = report.candidates.map(row => {
+    if (!/^pkg\/[A-Za-z0-9_./-]+\.go$/.test(row?.file) || !Number.isSafeInteger(row.line) || row.line < 1
+      || !/^[A-Za-z_]\w*$/.test(row.name) || !/^github\.com\/github\/gh-aw\/pkg\//.test(row.package)) {
+      throw new Error("Invalid native pure-function identity");
+    }
+    const key = `${row.file}:${row.line}:${row.name}`;
+    if (keys.has(key)) throw new Error("Duplicate native pure-function identity");
+    keys.add(key);
+    const measured = coverage.get(key) ?? null;
+    if (measured !== null && measured !== row.coverage_pct) throw new Error("Native analyzer and coverage disagree");
+    return { key, coverage: measured };
+  }).sort((a, b) => a.key.localeCompare(b.key));
+  return { valid: true, functions };
+}
+
+export function scorePurelock(id, evidence) {
+  if (!purelockMetrics.includes(id)) throw new Error("Unknown PureLock metric");
+  const rows = evidence?.functions;
+  if (evidence?.valid !== true || !Array.isArray(rows) || !rows.length || rows.length > 100000
+    || new Set(rows.map(row => row?.key)).size !== rows.length
+    || rows.some(row => typeof row?.key !== "string" || !/^pkg\/[A-Za-z0-9_./-]+\.go:[1-9]\d*:[A-Za-z_]\w*$/.test(row.key)
+      || (row.coverage !== null && (typeof row.coverage !== "number" || !Number.isFinite(row.coverage)
+        || row.coverage < 0 || row.coverage > 100)))) return null;
+  if (!rows.some(row => row.coverage !== null)) return null;
+  if (id === "complete-fully-covered" && rows.some(row => row.coverage === null)) return null;
+  return rows.filter(row => row.coverage !== null
+    && (id === "observed-executed" ? row.coverage > 0 : row.coverage === 100)).length;
+}
+
+export function nativePurelockModule(contract) {
+  if (contract.interpreterSha256 !== digest(readFileSync(import.meta.filename))) throw new Error("Frozen PureLock interpreter changed");
+  const example = coverage => ({ valid: true, functions: [{ key: "pkg/example/pure.go:3:Pure", coverage }] });
+  const definition = {
+    schemaVersion: 3, slug: "purelock", repository: "github/gh-aw", workflowName: "PureLock",
+    sourcePath: ".github/workflows/purelock.md",
+    intent: { goal: "Increase executed test coverage of pure Go functions, with independently verified native coverage rather than source enumeration.",
+      acceptance: "Replay the reviewed fixed-point native analyzer over all ./pkg/... packages at the protected precompute checkout, join every classified-pure function to actual go tool cover -func output, and count observed 100% statement-covered functions. This is the executed-coverage facet, not proof of semantic purity, assertion quality, race safety or attributed test delivery.",
+      temporalAnchor: "workflow-adoption" },
+    adoption: contract.adoption, evaluation: { mode: "attainment-only" },
+    evidence: { key: "native-purelock-executed-coverage-v1", repositories: ["github/gh-aw"],
+      contractSha256: censusDigest(contract), opportunity: "Every function classified pure by the frozen native analyzer in the complete Linux/amd64, non-CGO ./pkg/... production build population at an independently bound retained precompute checkout.",
+      filters: ["Require the source-bound protected checkout, successful exact precompute steps, provider-digest-verified artifacts and actual local coverage fallback receipt.",
+        "Replay the reviewed analyzer with -limit 0 and -max-coverage 101 so neither ranking nor the 40-candidate worklist truncates the population.",
+        "Join file, line and function name to executed native coverage; upstream assumed-zero values without coverage records are null, never zero.",
+        "Reject package/type-loading errors and replay populations that differ from protected precompute function and pure-function counts.",
+        "Retain observed fully-covered lower bounds through unknown functions; a complete total requires every pure function's coverage.",
+        "Take the latest eligible protected observation no more than one day before each daily endpoint; do not backdate newer evidence.",
+        "Require unchanged complete pure-function identity population, no missing function coverage and unchanged tool/source profile for comparison.",
+        "100.0% is the native tool's rounded statement coverage, not proof of branch coverage or behavioral correctness.",
+        "Snapshots are repository conditions, not fresh deliveries. Workflow contribution, test correctness, race/vet safeguards and costs are not measured."],
+      collection: "Exhaustive bounded pre-cutoff Actions run inventory; preserved protected job projections and artifact hashes; native static replay only, never fetched repository test execution.",
+      measurementKind: "snapshot", window: { durationDays: 1, cadenceDays: 1, maturationDays: 0 } },
+    model: { architecture: "Pinned Go/native purity analyzer static replay plus independently executed protected native coverage, without agent-result assertions.",
+      recommendation: "Inspect observed native coverage and missingness separately; do not infer a keep decision or workflow causality.",
+      presentation: { label: "Executed pure-function coverage", betterLabel: "More observed fully-covered pure functions" } },
+    summary: { nativeLabel: "Observed fully statement-covered pure Go functions" },
+    metrics: purelockMetrics.map((id, i) => ({ id, role: i === 0 ? "primary" : "diagnostic", direction: "increase", unit: "functions",
+      name: ["Observed fully-covered pure functions", "Complete fully-covered pure functions", "Observed executed pure functions"][i],
+      formula: i === 2 ? "Count classified-pure functions with an explicit executed native coverage record above 0%."
+        : `${i === 0 ? "Observed lower-bound" : "Complete"} count of classified-pure functions with explicit native 100.0% statement coverage.`,
+      presentation: { name: "Executed pure-function coverage", legendLabel: ["Observed fully covered", "Complete fully covered", "Observed executed"][i], transform: "identity" } })),
+    validationExamples: { targetAttained: example(100), targetMissed: example(0),
+      missing: example(null), malformed: example(-1) },
+  };
+  return { definition, scoreMetric: scorePurelock, collectBatch(requests) {
+    const index = readCensusJson(`${contract.directory}/index.json`);
+    const facts = readCensusJson(`${contract.directory}/facts.json.gz`);
+    if (index.contractSha256 !== censusDigest(contract) || index.factsSha256 !== censusDigest(facts)
+      || index.complete !== true || index.sourceRevision !== contract.sourceRevision || index.until !== contract.until) {
+      throw new Error("Frozen PureLock evidence mismatch");
+    }
+    return requests.map(request => {
+      if (request.repository && request.repository !== definition.repository) throw new Error("PureLock repository mismatch");
+      if (![request.windowStart, request.windowEnd, request.observedAt].every(at => typeof at === "string"
+        && Number.isFinite(Date.parse(at))) || request.windowStart >= request.windowEnd
+        || request.observedAt < request.windowEnd) throw new Error("Invalid PureLock observation window");
+      const state = facts.observations.filter(row => row.known && row.at <= request.windowEnd).at(-1);
+      const fresh = state && Date.parse(request.windowEnd) - Date.parse(state.at) <= 86400000 && request.windowEnd <= contract.until;
+      const functions = fresh ? state.functions : null;
+      const prior = facts.observations.filter(row => row.known && row.at <= request.windowStart).at(-1);
+      const comparable = fresh && prior && Date.parse(request.windowStart) - Date.parse(prior.at) <= 86400000
+        && functions.every(row => row.coverage !== null) && prior.functions.every(row => row.coverage !== null)
+        && censusDigest(functions.map(row => row.key)) === censusDigest(prior.functions.map(row => row.key))
+        && state.profileSha256 === prior.profileSha256;
+      return { evidence: { valid: Boolean(fresh), functions, coverageStatus: comparable ? "complete" : fresh ? "partial" : "unknown",
+        eligibleCount: functions?.length ?? null, knownCoverageFunctions: functions?.filter(row => row.coverage !== null).length ?? null,
+        observedRunId: fresh ? state.runId : null, observedAt: fresh ? state.at : null,
+        missingReason: comparable ? null : fresh ? "Observed native coverage is retained; incomplete coverage or changing pure-function population prevents comparable progress."
+          : "No independently source-bound retained executed-coverage observation within one day of this endpoint.",
+        workflowContribution: "not-measured", fullGoalAcceptance: "not-measured", costs: "not-measured" },
+      provenance: [{ repository: definition.repository, kind: "purelock-native-index", ref: censusDigest(index) },
+        { repository: definition.repository, kind: "immutable-intent", ref: contract.sourceGitBlob }],
+      commit: fresh ? state.commit : contract.sourceRevision };
+    });
+  } };
+}

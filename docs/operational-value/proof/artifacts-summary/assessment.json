@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "workflow": "artifacts-summary",
+  "repository": "github/gh-aw",
+  "frozenCutoff": "2026-10-18T15:00:12Z",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "contractActivation": "2026-10-19T11:09:13Z",
+  "prospectiveEndpoint": "2026-10-19T11:17:25Z",
+  "historical": {
+    "status": "inapplicable",
+    "reason": "error: evaluation end must follow 2026-10-19T11:09:13Z",
+    "snapshot": {
+      "evidence": {
+        "contractSha256": "cef35932cf3239d029d089c941221f7fefb64aceac2820f4415ba920f2c1b96b",
+        "windowStart": "2026-09-18T15:00:12Z",
+        "windowEnd": "2026-10-18T15:00:12Z",
+        "observedAt": "2026-10-18T15:00:12Z",
+        "packets": [],
+        "coverageStatus": "unknown",
+        "maturityStatus": "unavailable",
+        "missingReason": "Frozen prospective contract is not applicable to this historical window; no contemporaneous historical profile is established.",
+        "discoveryCandidates": 11,
+        "partialFacts": {
+          "sourceSha256": "4c5808e1a56933f14cb038b45bebd42e80b95e8d7bd817c1184ee2ebdb16f5d5",
+          "rows": [
+            {
+              "path": ".github/workflows/artifacts-summary.md",
+              "status": "available",
+              "endpoint": "repos/github/gh-aw/actions/workflows/artifacts-summary.lock.yml/runs?per_page=1&branch=main&status=completed&created=%3C%3D2026-10-17T10%3A16%3A09Z",
+              "run": {
+                "id": 37185724177,
+                "headSha": "1e3f9870bab07c0896d770e8a191c1b8b1a3fe51",
+                "createdAt": "2026-10-04T07:25:15Z",
+                "updatedAt": "2026-10-04T07:45:59Z",
+                "conclusionObservedAtCollection": "failure",
+                "url": "https://github.com/github/gh-aw/actions/runs/37185724177"
+              },
+              "artifacts": {
+                "status": "available",
+                "endpoint": "repos/github/gh-aw/actions/runs/37185724177/artifacts?per_page=100",
+                "total": 6,
+                "complete": true,
+                "items": [
+                  {
+                    "id": 11297750029,
+                    "name": "safe-outputs-items",
+                    "expired": false,
+                    "sizeBytes": 162,
+                    "digest": "sha256:73dd57f858a2265c39a41e77d075e3680352909b06aedf620cc3e0e2f96ad4de"
+                  },
+                  {
+                    "id": 11296904384,
+                    "name": "agent-output-fallback",
+                    "expired": false,
+                    "sizeBytes": 13296,
+                    "digest": "sha256:e2013a6f9b83812b0ee4ff40367dd4db4454a94d7e8f262771612b58e8a162c5"
+                  },
+                  {
+                    "id": 11296859683,
+                    "name": "usage",
+                    "expired": false,
+                    "sizeBytes": 13001185,
+                    "digest": "sha256:5ed9ad53ba3a47ff5135e3fe86ed585c45b8543a3058346a56cf49ba499b8ce7"
+                  },
+                  {
+                    "id": 11296673230,
+                    "name": "info",
+                    "expired": false,
+                    "sizeBytes": 628,
+                    "digest": "sha256:2fc56852ce5c2b0e94799e4e5b8b46018af3a8da35f0b2f523536a39942729d5"
+                  },
+                  {
+                    "id": 11296474258,
+                    "name": "detection",
+                    "expired": false,
+                    "sizeBytes": 570,
+                    "digest": "sha256:287704d0439e4272e4444b53d52f8887ba24ee5198ebe0ca59fba66a4f799f13"
+                  },
+                  {
+                    "id": 11296354907,
+                    "name": "agent",
+                    "expired": false,
+                    "sizeBytes": 98582963,
+                    "digest": "sha256:ce7a0c9673cd6f43f02de26523d5f99bd883c9caa0f7785e44ef9443a3d4b037"
+                  }
+                ]
+              }
+            }
+          ],
+          "interpretation": "Retained acquisition metadata only; six listed artifacts on one run do not prove repository-wide inventory accuracy, report delivery, cost or historical completeness."
+        },
+        "costs": "unmeasured",
+        "fullGoalAttainment": "unknown",
+        "workflowAttribution": "unknown"
+      },
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "immutable-workflow-source",
+          "ref": "https://github.com/github/gh-aw/blob/c86377ec47b38f0b5af463277ee55d1d03d08da8/.github/workflows/artifacts-summary.md"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "sealed-offline-acquisition",
+          "ref": "sha256:3c5db1701aa4af21ee15b5a4267effae1575b2a4112bc6657cccf19d8c469eb2"
+        }
+      ]
+    },
+    "scores": {
+      "accurate-inventory-reports": null,
+      "verified-workflows": null,
+      "verified-storage-bytes": null
+    },
+    "adoptionCandidate": {
+      "commit": "ef37eeea0258edb874145caa6113073d32d98fdc",
+      "parent": "a49aad11e544880f9d4fb5f7559d0475b23e3224",
+      "parentWorkflowAndCompiledAbsent": true,
+      "sourceContentAvailable": false,
+      "missingEndpoints": [
+        "repos/github/gh-aw/git/blobs/1eb9d5e706a5d7753b44b90c5e2716c1e69bba01",
+        "repos/github/gh-aw/git/blobs/c88ce17237c43fbac262baec9dc133de61d98b8d"
+      ]
+    }
+  },
+  "discovery": {
+    "partitions": 346,
+    "entities": 58048,
+    "complete": true,
+    "originalIndexSha256": "c928eab463ed316f202b08d3343b10358deee00f95ffb243fd9d41350da16f93",
+    "directCandidates": [
+      15886,
+      17663,
+      18997,
+      27155,
+      29892,
+      32774,
+      55009,
+      58935,
+      60579,
+      62134,
+      63787
+    ],
+    "closureEntities": 11,
+    "absentReferences": [],
+    "interpretation": "Editable markers and forward/reverse body-reference closure are discovery only; no accepted delivery or creation attribution."
+  },
+  "nativePartialFacts": {
+    "kind": "retained-acquisition-metadata-not-inventory-accuracy",
+    "runId": 37185724177,
+    "listedArtifacts": 6,
+    "listedBytes": 111598804,
+    "limitation": "One run, not the repository population. Original raw API response bytes and payloads were not preserved in the supplied seed."
+  },
+  "readiness": {
+    "implementation": "schema3 function, native original-byte decoder and independent inventory reconciliation implemented",
+    "nativeEvidence": "not-ready; no original report bodies or independent full inventory pages",
+    "standardCollector": "passed",
+    "frozenStandardEvaluation": "actual inapplicability rejection preserved",
+    "prospectiveEvaluation": "generated; all native metrics unavailable, not an accepted measurement",
+    "plot": "portable missingness plot generated; not a measured-value plot",
+    "historicalFunctionApplicability": "unknown; contemporaneous source blobs missing",
+    "fullGoal": "unknown; inventory proof absent and narrative/retention/optimization safeguards unmeasured",
+    "attribution": "not-ready; markers alone do not prove creation; no protected original delivery/Claim receipts",
+    "costs": "unmeasured",
+    "keepDecision": "not-rated; no agreed keep bar",
+    "lint": "unavailable; not installed by assignment",
+    "typecheck": "unavailable; not installed by assignment"
+  },
+  "compilation": {
+    "command": "npm run compile",
+    "stdoutAndStderr": "\n> central-agentic-ops@0.0.0 compile\n> gh aw compile --strict --no-emit --no-check-update --schedule-seed githubnext/gh-aw-cao\n\n⚠ Action actions/upload-artifact@v7.0.1 is outdated; latest available version is v7.0.2.\n  Consider upgrading (update the version tag in your workflow file).\ni guard policy dry-run report for dependabot-update-planner.md:\n  allowed-repos: all (default)\n  min-integrity: unapproved\ni guard policy dry-run report for design-decision-gate.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for mattpocock-skills-reviewer.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for pr-reviewer.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for pr-sous-chef.md:\n  allowed-repos: all (default)\n  min-integrity: approved\n⚠ Action actions/download-artifact@v8.0.1 is outdated; latest available version is v8.0.2.\n  Consider upgrading (update the version tag in your workflow file).\n⚠ Action actions/setup-go@v5.0.2 is outdated; latest available version is v7.0.0.\n  Consider upgrading (update the version tag in your workflow file).\ni guard policy dry-run report for self-care-accessibility-checker.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-code-improvement.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-dashboard-debug-logging.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-dashboard-language-refactor.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-dashboard-performance.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-docs-build-time-investigator.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-docs-maintainer.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-documentation-discoverability.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-glossary.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-open-source-failures.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-pages-health.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-primer-brand-checker.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-reactive-ui-expert.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-release-blogger.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-server-go-logging.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-specs-maintainer.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care.md:\n  allowed-repos: all (default)\n  min-integrity: approved\n⚠ Experimental features in use:\n  • gh-aw-detection: 2 workflows\n⚠ Compiled 71 workflows: 71 succeeded, 2 warnings\n",
+    "sha256": "7621daadff5d51b85a902bc7e78ca8322ec536a28032b85f0adacbc1ad49a5ae"
+  },
+  "blockers": [
+    "Contemporaneous original report content and assigned report_date for all11 candidates; current metadata is not backdated.",
+    "Repository-wide independently preserved Actions workflow inventory, bounded thirty-day run pages, and artifact pages for every non-cancelled run; complete pagination and original JSON bytes.",
+    "Discussions inventory/readbacks, which supplied production issue/PR history explicitly excludes.",
+    "Exact historical source blobs and imports/compiled era to establish applicability before prospective activation.",
+    "Independent publication/run/head/Claim identity and original-content binding for workflow-linked delivery, not required for narrower native inventory facts."
+  ],
+  "reusableSkillImprovement": {
+    "rule": "For inventory/report goals, distinguish the discovery instrument's entity types from the workflow's output types before interpreting an empty result. A complete issues/PR traversal excludes Discussions and says nothing about Discussion delivery. Reconcile original per-item bytes and coverage independently; preserve known workflow-row subtotals without making full repository coverage or strong attribution prerequisites for those subtotals.",
+    "evidence": "artifacts-summary declares create-discussion; the supplied346-partition history explicitly excludes Discussions and contains11 issue-marker candidates with no native inventory receipts.",
+    "proposedOnly": "No global skill or portfolio files edited by this assignment."
+  },
+  "responses": {
+    "verification": {
+      "executable": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+      "args": [
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/artifacts-summary.mjs"
+      ],
+      "status": 0,
+      "stdout": "verified docs/operational-value/proof/functions/artifacts-summary.mjs\n",
+      "stderr": ""
+    },
+    "focusedTests": {
+      "executable": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+      "args": [
+        "--test",
+        "tests/unit/operational-value-artifacts-summary.test.mjs"
+      ],
+      "status": 0,
+      "stdout": "✔ schema3 native examples improve all metrics without caller acceptance flags (3.149875ms)\n✔ native counts and bytes are not normalized quality scores (0.244625ms)\n✔ fixed report_date determines exact UTC thirty-day analysis window (0.423917ms)\n✔ wrong count, bytes, average, latest date and status fail independently (0.479875ms)\n✔ both failed and successful runs count; cancelled and exact end runs do not (0.194334ms)\n✔ missing pagination cannot establish an all-clear (0.132625ms)\n✔ known reconciled workflow rows survive missing broader inventory (0.245542ms)\n✔ published artifact-free workflows are omitted, with no invented inactive threshold (0.135459ms)\n✔ malformed byte sizes, foreign repository and duplicate native IDs fail closed (0.44ms)\n✔ explicit native pagination rejects missing, repeated or foreign pages (0.112584ms)\n✔ original byte decoder rejects fabricated flags, wrong status and noncanonical encoding (0.425417ms)\n✔ rounded sizes accept decimal or binary but require consistent global interpretation (0.271042ms)\n✔ same report in retained snapshots is never fresh delivery (0.248875ms)\n✔ later edits cannot become a second original delivery or establish original accuracy (0.184375ms)\n✔ later mutable native inventory is not backdated to original report delivery (0.1705ms)\n✔ exclusive completion endpoint and observation cutoff are enforced (0.084ms)\n✔ conflicting report versions are explicit errors, not silent missingness (0.175541ms)\n✔ discovery retains direct candidates and full forward/reverse transitive closure plus absent refs (0.154583ms)\n✔ actual production history independently replays all partitions without shared caches (809.147208ms)\n✔ actual collector preserves frozen historical inapplicability and prospective missingness (1.558084ms)\n✔ collected partial run metadata is retained without being promoted to accuracy (7.5195ms)\n✔ collector rejects invalid windows and unsupported repositories explicitly (3.22325ms)\nℹ tests 22\nℹ suites 0\nℹ pass 22\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 877.254167\n",
+      "stderr": ""
+    },
+    "frozen": {
+      "executable": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+      "args": [
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/artifacts-summary/frozen",
+        "--function",
+        "docs/operational-value/proof/functions/artifacts-summary.mjs",
+        "--no-runs",
+        "github/gh-aw",
+        "artifacts-summary"
+      ],
+      "status": 1,
+      "stdout": "",
+      "stderr": "error: evaluation end must follow 2026-10-19T11:09:13Z\n"
+    },
+    "prospective": {
+      "executable": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+      "args": [
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--end",
+        "2026-10-19T11:17:25Z",
+        "--output-dir",
+        "docs/operational-value/proof/artifacts-summary/prospective",
+        "--function",
+        "docs/operational-value/proof/functions/artifacts-summary.mjs",
+        "--no-runs",
+        "github/gh-aw",
+        "artifacts-summary"
+      ],
+      "status": 0,
+      "stdout": "Timeline: docs/operational-value/proof/artifacts-summary/prospective/github-gh-aw/artifacts-summary-timeline.json\nDefinitions: docs/operational-value/proof/artifacts-summary/prospective/github-gh-aw/artifacts-summary-definitions.md\nInteractive pulse: docs/operational-value/proof/artifacts-summary/prospective/github-gh-aw/artifacts-summary-pulse.html\nEvidence archive: docs/operational-value/proof/artifacts-summary/prospective/github-gh-aw/artifacts-summary-evidence-archive.json\n",
+      "stderr": ""
+    }
+  }
+}

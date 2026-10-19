@@ -11,6 +11,14 @@ test("every root unit test runs in exactly one topical area", () => {
   assert.deepEqual(Object.values(partition).flat().sort(), files);
   assert.ok(partition.tooling.includes("backfill-stress-report.test.mjs"));
   assert.ok(partition.tooling.includes("source-map-compat.test.mjs"));
+  for (const file of ["blog-auditor-value.test.mjs", "daily-cli-performance-value.test.mjs",
+    "daily-model-resolution.test.mjs", "daily-observability-report-native.test.mjs",
+    "daily-model-resolution-native-schema.test.mjs", "daily-credit-limit-test-source-review.test.mjs",
+    "daily-aw-cross-repo-compile-check-value.test.mjs", "avenger-operational-value.test.mjs",
+    "operational-value-daily-model-inventory.test.mjs",
+    "weekly-editors-health-check-investigation.test.mjs"]) {
+    assert.ok(partition.tooling.includes(file), `${file} must run in standard CI`);
+  }
   assert.throws(() => partitionUnitTests([...files, "unclassified.test.mjs"]), /exactly one area/);
 });
 

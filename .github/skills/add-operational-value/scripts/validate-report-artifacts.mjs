@@ -2,6 +2,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { fail, isRepository, isSlug, readJson, requireArgs } from "./common.mjs";
+import { validateValueReview } from "./review-value.mjs";
 
 const args = process.argv.slice(2);
 requireArgs(args, 1, 2, "validate-report-artifacts.mjs <timeline.json> [definitions.md]");
@@ -44,6 +45,13 @@ const valid = [2, 3].includes(timeline.schemaVersion)
     }))))
   && (timeline.runs ?? []).every(({ runId, createdAt }) => runId != null && typeof createdAt === "string");
 if (!valid) fail("timeline does not satisfy the artifact contract");
+if (timeline.valueReview !== undefined || timeline.valueFunction.definition.review !== undefined) {
+  try {
+    validateValueReview(timeline);
+  } catch (error) {
+    fail(error.message);
+  }
+}
 
 if (args[1]) {
   if (!existsSync(args[1])) fail(`definitions not found: ${args[1]}`);

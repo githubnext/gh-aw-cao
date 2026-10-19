@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "e1efbb89684712dd6b2e1ad8728e1985d403afa55ccc5b8c44e6f7e1902b2143",
+  "status": "acquisition-complete",
+  "pending": [],
+  "command": "node scripts/reconcile-lockfile-stats.mjs BARE_SOURCE_CACHE API_CACHE PYTHON_WITH_PYYAML_6_0_3",
+  "offlineCommand": "LOCKFILE_STATS_OFFLINE=1 node scripts/reconcile-lockfile-stats.mjs BARE_SOURCE_CACHE API_CACHE PYTHON_WITH_PYYAML_6_0_3",
+  "note": "Reuse acquired cache files; do not repeat exhaustive discovery. Missing snapshots remain null and are not evidence of zero value."
+}

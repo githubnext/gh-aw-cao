@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "until": "2026-10-18T15:00:12Z",
+  "historyIndexSha256": "c928eab463ed316f202b08d3343b10358deee00f95ffb243fd9d41350da16f93",
+  "verifiedPartitions": 346,
+  "verifiedEntities": 58048,
+  "selectedEntities": 92,
+  "selection": "Exact workflowReference.workflowId or unverifiedWorkflowId equal to daily-model-resolution",
+  "acceptedNativeOutcomes": null,
+  "explanation": "All original selected normalized identities retained losslessly. Editable lineage is discovery, never proxy request evidence or accepted model resolution.",
+  "functionSha256AtDiscovery": "cfd556cc3367577d09b9318ec2c0f56fa98e3e0523c7cd9bb98f049f04ccd306"
+}

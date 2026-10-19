@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "contractSha256": "dea2e1b3f83fdc52790ae99f901ed3d7fee3330e6878588c291d3f4e98256444",
+  "factsSha256": "e20d48c877a7e7c74106e6d1dd2c38c44e9504e6e1e16b432773cd3dfb50558d",
+  "states": 55,
+  "sourceBlobs": 141,
+  "acquiredAt": "2026-10-18T20:05:55.163Z",
+  "until": "2026-10-18T15:00:12Z",
+  "producer": {
+    "path": "scripts/collect-version-currency-history.mjs",
+    "sha256": "5ee39e15731b8ea3025f50f2c643348804f3e5fb991986e4eca39c6cc7402c85"
+  }
+}

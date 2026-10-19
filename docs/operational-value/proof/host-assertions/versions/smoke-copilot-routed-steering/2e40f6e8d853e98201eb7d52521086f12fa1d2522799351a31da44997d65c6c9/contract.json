@@ -1,0 +1,118 @@
+{
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-copilot-routed-steering",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "eb187697b61ced44f0b6806267ae7e59500e48a5",
+  "interpreterSha256": "15df6030cce347982f0e5056f0e4bdd98539898a79395e3cdcae597b71fb1403",
+  "name": "Smoke Copilot Routed Steering",
+  "goal": "Deliver correlated AI-credit steering and finish routed work below its declared budget.",
+  "acceptance": "Partial facet: the source-defined host establishes routing, a correlated 80-percent credit notice reaching the main session, valid nonduplicate thresholds and successful below-seven-credit completion.",
+  "metricLabel": "Verified credit-steering assessments",
+  "limitations": [
+    "Correlated notice and below-budget completion do not independently prove the absence of every post-notice task command. The full prompt's immediate-stop behavior remains separate."
+  ],
+  "unit": "routing proofs",
+  "gates": [
+    {
+      "job": "agent",
+      "name": "Assert model-routing and steering evidence",
+      "meaning": "Partial facet: the source-defined host establishes routing, a correlated 80-percent credit notice reaching the main session, valid nonduplicate thresholds and successful below-seven-credit completion."
+    }
+  ],
+  "jobs": {
+    "agent": {
+      "name": "agent",
+      "sha256": "f9ec60fda3e4053709fdb0384380648ca034d0451f70a79f9ef280b12ad05210"
+    }
+  },
+  "adoption": {
+    "commit": "949b138a7d0b2fa51633ca864b6d1d30f6e91578",
+    "adoptedAt": "2026-10-13T21:42:43Z",
+    "baselineCommit": "f42cdfffdc9e58717ecfff710a93e9043a0d2886",
+    "baselineAt": "2026-10-13T21:41:54Z"
+  },
+  "dependencies": [
+    {
+      "path": ".github/aw/engines.json",
+      "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+    },
+    {
+      "path": "actions/setup/js/smoke_model_routing_assertions.cjs",
+      "gitBlob": "5ad3b388c9d9a5ba7e3495759a447c7fee856f9f"
+    }
+  ],
+  "runtimeTrees": [
+    {
+      "path": "actions",
+      "gitTree": "ba2d5737336b9a68bb5d493cb5da012b3ff329c0"
+    },
+    {
+      "path": ".github/workflows/shared",
+      "gitTree": "99472ca203e6cdbfd7ab8b1a2fa18db9d5959835"
+    }
+  ],
+  "historicalSourceProfiles": [
+    {
+      "sourceRevision": "463762fe9304d5271356803513f158cf59dc0171",
+      "jobs": {
+        "agent": {
+          "name": "agent",
+          "sha256": "32ce1bd94b10f40ac44dffad601f0e3ebc8b8dc499e8a4708401f73bf51aca33"
+        }
+      },
+      "dependencies": [
+        {
+          "path": ".github/aw/engines.json",
+          "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+        },
+        {
+          "path": "actions/setup/js/smoke_model_routing_assertions.cjs",
+          "gitBlob": "5ad3b388c9d9a5ba7e3495759a447c7fee856f9f"
+        }
+      ],
+      "runtimeTrees": [
+        {
+          "path": "actions",
+          "gitTree": "8bde65a297d295f5db9d0576b0e486d08bb1585b"
+        },
+        {
+          "path": ".github/workflows/shared",
+          "gitTree": "c716ab0399d143fdca8d32b9e6b52553f89df373"
+        }
+      ],
+      "review": "Source intent and native predicate steps are identical. Reviewed differences: read-only artifact export paths, Copilot CLI minimum-version configuration, and Pi model-alias/error-reporting integration. The session merger's added model.resolution events do not satisfy routing assertions. Historical runtime trees remain pinned as complete profiles, never mixed with current jobs."
+    },
+    {
+      "sourceRevision": "8c05fd87e12f5fd7fe5c67cdfedc3ef8441719e1",
+      "jobs": {
+        "agent": {
+          "name": "agent",
+          "sha256": "6642b5300150d74b7e4255955b900802ffb82fbe5e5fbb4d82c55914945602e2"
+        }
+      },
+      "dependencies": [
+        {
+          "path": ".github/aw/engines.json",
+          "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+        },
+        {
+          "path": "actions/setup/js/smoke_model_routing_assertions.cjs",
+          "gitBlob": "5ad3b388c9d9a5ba7e3495759a447c7fee856f9f"
+        }
+      ],
+      "runtimeTrees": [
+        {
+          "path": "actions",
+          "gitTree": "bd5c9cb94efdce8b523ba6032c7de34c4b5f9b70"
+        },
+        {
+          "path": ".github/workflows/shared",
+          "gitTree": "c716ab0399d143fdca8d32b9e6b52553f89df373"
+        }
+      ],
+      "review": "Source intent and native predicate steps are identical. Earlier scheduled runtime uses different AWF, MCP gateway and execution image versions. Native routing assertions and session parser are unchanged; session-payload model metadata does not establish proof. These are observed native predicates at that runtime version, not proof of equivalent overall engine behavior. Historical runtime trees remain pinned as complete profiles, never mixed with current jobs."
+    }
+  ]
+}

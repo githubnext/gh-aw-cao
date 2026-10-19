@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "smoke-workflow-call-with-inputs",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourcePath": ".github/workflows/smoke-workflow-call-with-inputs.md",
+  "sourceGitBlob": "08d153af00652b150838280e72700fcd9a3a36af",
+  "until": "2026-10-18T15:00:12Z",
+  "adoption": {
+    "commit": "9e1a4f71fca4274be4caec23cfb09b40995fd7b5",
+    "adoptedAt": "2026-03-12T18:42:05Z",
+    "baselineCommit": "c2c5da01cf4ee4d61fd1e2dcc387800e8f626ff1",
+    "baselineAt": "2026-03-12T17:50:05Z"
+  },
+  "goal": "Keep concurrent and sequential reusable-workflow callers isolated: each invocation uploads uniquely input-correlated artifacts whose contents and downstream consumer belong to that invocation.",
+  "acceptance": "All task-a/task-b concurrent and task-c sequential invocations have distinct provider artifact identities/names, SHA256-verified activation and agent payloads containing their exact declared task input, correct noop content, and source-bound protected consumer readback. All additional invocation-scoped artifact families must also be isolated when emitted.",
+  "filters": [
+    "Only source-defined smoke-multi-caller opportunities; standalone schedule/dispatch runs do not exercise multiple callers and are inventoried separately.",
+    "Initial attempts only; inventory later attempts without counting the same opportunity twice.",
+    "GitHub pull_request uses a merge checkout: missing immutable workflow execution identity remains unknown.",
+    "Source profiles preserve original caller inputs/defaults, producer/consumer steps and namespace algorithm; incompatible historical profiles remain unknown.",
+    "SHA256 namespace prefix depends on exact toJSON(inputs) serialization and run attempt. Never hash a guessed JSON serialization.",
+    "Identical-input calls are an explicitly documented unsupported edge case, not proven safe.",
+    "Jobs, successful uploads, artifact counts, task echoes and agent-authored noop text alone are not accepted outcome evidence."
+  ],
+  "limitations": [
+    "Historical payloads and protected readback can expire independently of run/job metadata.",
+    "Eight hex characters are a collision-resistant namespace, not a mathematical uniqueness guarantee.",
+    "Shared overwrite-enabled telemetry (aic-usage-scan-v2) is not invocation payload isolation; its isolation is not established.",
+    "No cost, universal race-safety, sole attribution or causal improvement claim.",
+    "The scenario was introduced at adoption; the repository reliability problem predates it, but no symmetric preserved pre-adoption three-caller payload evidence exists."
+  ],
+  "antecedent": {
+    "outcome": "pre-existing-but-not-reconstructable",
+    "evidence": "Adoption adds the callee, compiled lock and three-caller test against actual parent. Native artifact collision risk predates this test; neither workflow trace absence nor test creation proves zero collisions.",
+    "classification": "attainment-only",
+    "baselineProbe": {
+      "commit": "c2c5da01cf4ee4d61fd1e2dcc387800e8f626ff1",
+      "files": [
+        {
+          "path": ".github/workflows/smoke-workflow-call-with-inputs.md",
+          "exists": false
+        },
+        {
+          "path": ".github/workflows/smoke-multi-caller.yml",
+          "exists": false
+        }
+      ]
+    }
+  },
+  "metricDisposition": {
+    "primary": "Independent complete three-caller artifact isolation proofs",
+    "diagnostics": [
+      "Complete period proof count",
+      "Eligible/unknown/source-incompatible inventories"
+    ],
+    "rejected": [
+      "Overall run/job success",
+      "Artifact count alone",
+      "Self-reported noop alone",
+      "Static namespace code alone"
+    ]
+  },
+  "callerJobs": {
+    "task-a": {
+      "with": {
+        "task-description": "task-a - first invocation"
+      },
+      "needs": [],
+      "uses": "./.github/workflows/smoke-workflow-call-with-inputs.lock.yml"
+    },
+    "task-b": {
+      "with": {
+        "task-description": "task-b - second invocation"
+      },
+      "needs": [],
+      "uses": "./.github/workflows/smoke-workflow-call-with-inputs.lock.yml"
+    },
+    "task-c": {
+      "with": {
+        "task-description": "task-c - third invocation (after a and b)"
+      },
+      "needs": [
+        "task-a",
+        "task-b"
+      ],
+      "uses": "./.github/workflows/smoke-workflow-call-with-inputs.lock.yml"
+    }
+  },
+  "declaredInputs": {
+    "aw_context": {
+      "default": "",
+      "description": "Agent caller context (Reserved for Agentic Workflows).",
+      "required": false,
+      "type": "string"
+    },
+    "task-count": {
+      "default": 0,
+      "description": "Optional task count used to verify zero-valued numeric defaults",
+      "required": false,
+      "type": "number"
+    },
+    "task-description": {
+      "default": "generic task",
+      "description": "Short description of what this invocation should do",
+      "required": false,
+      "type": "string"
+    }
+  },
+  "artifactSteps": [
+    {
+      "job": "activation",
+      "name": "Publish daily AIC scan observations",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "aic-usage-scan-v2",
+        "path": "/tmp/gh-aw/agentic-workflow-usage-scan-v2.jsonl",
+        "overwrite": true,
+        "if-no-files-found": "ignore",
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '3' }}"
+      },
+      "if": "always() && env.GH_AW_MAX_DAILY_AI_CREDITS != ''"
+    },
+    {
+      "job": "activation",
+      "name": "Upload info artifact",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "${{ steps.artifact-prefix.outputs.prefix }}info",
+        "path": "/tmp/gh-aw/aw_info.json",
+        "if-no-files-found": "ignore",
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '0' }}"
+      },
+      "if": "success() || failure()"
+    },
+    {
+      "job": "activation",
+      "name": "Upload activation artifact",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "${{ steps.artifact-prefix.outputs.prefix }}activation",
+        "include-hidden-files": true,
+        "path": "/tmp/gh-aw/aw_info.json\n/tmp/gh-aw/models.json\n/tmp/gh-aw/aw-prompts/prompt.txt\n/tmp/gh-aw/aw-prompts/system.txt\n/tmp/gh-aw/aw-prompts/user.txt\n/tmp/gh-aw/aw-prompts/prompt-template.txt\n/tmp/gh-aw/aw-prompts/prompt-import-tree.json\n/tmp/gh-aw/github_rate_limits.jsonl\n/tmp/gh-aw/base\n/tmp/gh-aw/.github/agents\n/tmp/gh-aw/.github/skills\n/tmp/gh-aw/skill_inventory.json\n",
+        "if-no-files-found": "ignore",
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '1' }}"
+      },
+      "if": "success() || failure()"
+    },
+    {
+      "job": "agent",
+      "name": "Download activation artifact",
+      "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "with": {
+        "name": "${{ needs.activation.outputs.artifact_prefix }}activation",
+        "path": "/tmp/gh-aw"
+      },
+      "if": null
+    },
+    {
+      "job": "agent",
+      "name": "Upload agent artifacts",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "${{ needs.activation.outputs.artifact_prefix }}agent",
+        "path": "/tmp/gh-aw/aw-prompts/prompt.txt\n/tmp/gh-aw/agent_execution.json\n/tmp/gh-aw/agent_execution_exit_code.txt\n/tmp/gh-aw/agent-session.jsonl\n/tmp/gh-aw/agent-errors.jsonl\n/tmp/gh-aw/aw-prompts/user.txt\n/tmp/gh-aw/aw-prompts/system.txt\n/tmp/gh-aw/skill_inventory.json\n/tmp/gh-aw/sandbox/agent/logs/\n/tmp/gh-aw/redacted-urls.log\n/tmp/gh-aw/mcp-logs/\n/tmp/gh-aw/agent_usage.json\n/tmp/gh-aw/runtime/aw_info.json\n/tmp/gh-aw/agent_usage.jsonl\n/tmp/gh-aw/agent/model-endpoint-mismatch.json\n/tmp/gh-aw/agent/model-resolution.json\n/tmp/gh-aw/agent-stdio.log\n/tmp/gh-aw/pre-agent-audit.txt\n/tmp/gh-aw/github_rate_limits.jsonl\n/tmp/gh-aw/otel.jsonl\n/tmp/gh-aw/otlp-export-errors.jsonl\n/tmp/gh-aw/safeoutputs.jsonl\n/tmp/gh-aw/agent_output.json\n/tmp/gh-aw/aw-*.patch\n/tmp/gh-aw/aw-*.bundle\n/tmp/gh-aw/awf-config.json\n/tmp/gh-aw/awf-resolved-config.json\n/tmp/gh-aw/sandbox/firewall/logs/\n/tmp/gh-aw/sandbox/firewall/audit/\n/tmp/gh-aw/sandbox/firewall/awf-reflect.json\n",
+        "if-no-files-found": "ignore",
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '0' }}"
+      },
+      "if": "always() && steps.redact_secrets.outcome == 'success'"
+    },
+    {
+      "job": "conclusion",
+      "name": "Download agent output artifact",
+      "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "with": {
+        "pattern": "{${{ needs.activation.outputs.artifact_prefix }}agent,${{ needs.activation.outputs.artifact_prefix }}agent-output-fallback}",
+        "merge-multiple": true,
+        "path": "/tmp/gh-aw/"
+      },
+      "if": null
+    },
+    {
+      "job": "conclusion",
+      "name": "Download detection artifact",
+      "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "with": {
+        "name": "${{ needs.activation.outputs.artifact_prefix }}detection",
+        "path": "/tmp/gh-aw/threat-detection/"
+      },
+      "if": null
+    },
+    {
+      "job": "conclusion",
+      "name": "Download Safe Outputs Items Manifest",
+      "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "with": {
+        "pattern": "${{ needs.activation.outputs.artifact_prefix }}safe-outputs-items",
+        "merge-multiple": true,
+        "path": "/tmp/gh-aw/"
+      },
+      "if": "always()"
+    },
+    {
+      "job": "conclusion",
+      "name": "Upload usage artifact",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "${{ needs.activation.outputs.artifact_prefix }}usage",
+        "path": "/tmp/gh-aw/usage/aw_session.jsonl\n/tmp/gh-aw/usage/aw_info.json\n/tmp/gh-aw/usage/aw-info.jsonl\n/tmp/gh-aw/usage/agent_usage.json\n/tmp/gh-aw/usage/agent_usage.jsonl\n/tmp/gh-aw/usage/detection_usage.jsonl\n/tmp/gh-aw/usage/evals.jsonl\n/tmp/gh-aw/usage/graders/grader_manifest.json\n/tmp/gh-aw/usage/graders/grader_results.json\n/tmp/gh-aw/usage/github_rate_limits.jsonl\n/tmp/gh-aw/usage/agent/token_usage.jsonl\n/tmp/gh-aw/usage/agent/model-routing.jsonl\n/tmp/gh-aw/usage/agent/execution.json\n/tmp/gh-aw/usage/detection/token_usage.jsonl\n/tmp/gh-aw/usage/detection/execution.json\n/tmp/gh-aw/usage/detection/detection_result.json\n/tmp/gh-aw/usage/evals/token_usage.jsonl\n/tmp/gh-aw/usage/evals/execution.json\n/tmp/gh-aw/usage/experiment/state.jsonl\n/tmp/gh-aw/usage/experiment/state.json\n/tmp/gh-aw/usage/experiment/assignments.json\n/tmp/gh-aw/usage/activity/summary.json\n",
+        "if-no-files-found": "ignore",
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '0' }}"
+      },
+      "if": "always()"
+    },
+    {
+      "job": "conclusion",
+      "name": "Retry upload usage artifact",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "${{ needs.activation.outputs.artifact_prefix }}usage",
+        "path": "/tmp/gh-aw/usage/aw_session.jsonl\n/tmp/gh-aw/usage/aw_info.json\n/tmp/gh-aw/usage/aw-info.jsonl\n/tmp/gh-aw/usage/agent_usage.json\n/tmp/gh-aw/usage/agent_usage.jsonl\n/tmp/gh-aw/usage/detection_usage.jsonl\n/tmp/gh-aw/usage/evals.jsonl\n/tmp/gh-aw/usage/graders/grader_manifest.json\n/tmp/gh-aw/usage/graders/grader_results.json\n/tmp/gh-aw/usage/github_rate_limits.jsonl\n/tmp/gh-aw/usage/agent/token_usage.jsonl\n/tmp/gh-aw/usage/agent/model-routing.jsonl\n/tmp/gh-aw/usage/agent/execution.json\n/tmp/gh-aw/usage/detection/token_usage.jsonl\n/tmp/gh-aw/usage/detection/execution.json\n/tmp/gh-aw/usage/detection/detection_result.json\n/tmp/gh-aw/usage/evals/token_usage.jsonl\n/tmp/gh-aw/usage/evals/execution.json\n/tmp/gh-aw/usage/experiment/state.jsonl\n/tmp/gh-aw/usage/experiment/state.json\n/tmp/gh-aw/usage/experiment/assignments.json\n/tmp/gh-aw/usage/activity/summary.json\n",
+        "if-no-files-found": "ignore",
+        "overwrite": true,
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '0' }}"
+      },
+      "if": "always() && steps.upload-usage-artifact.outcome == 'failure'"
+    },
+    {
+      "job": "detection",
+      "name": "Download activation artifact",
+      "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "with": {
+        "name": "${{ needs.activation.outputs.artifact_prefix }}activation",
+        "path": "/tmp/gh-aw"
+      },
+      "if": null
+    },
+    {
+      "job": "detection",
+      "name": "Download agent output artifact",
+      "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "with": {
+        "pattern": "{${{ needs.agent.outputs.artifact_prefix }}agent,${{ needs.agent.outputs.artifact_prefix }}agent-output-fallback}",
+        "merge-multiple": true,
+        "path": "/tmp/gh-aw/"
+      },
+      "if": null
+    },
+    {
+      "job": "detection",
+      "name": "Upload threat detection log",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "${{ needs.agent.outputs.artifact_prefix }}detection",
+        "path": "/tmp/gh-aw/threat-detection/detection.log\n/tmp/gh-aw/threat-detection/execution.json\n/tmp/gh-aw/threat-detection/detection_usage.json\n/tmp/gh-aw/threat-detection/detection_usage.jsonl\n/tmp/gh-aw/threat-detection/sandbox/firewall/logs/\n/tmp/gh-aw/threat-detection/sandbox/firewall/audit/\n",
+        "if-no-files-found": "ignore",
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '0' }}"
+      },
+      "if": "always() && steps.detection_guard.outputs.run_detection == 'true' && steps.redact_detection_logs.outcome == 'success' && steps.redact_detection_artifacts.outcome == 'success'"
+    },
+    {
+      "job": "detection",
+      "name": "Upload skipped detection execution evidence",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "${{ needs.agent.outputs.artifact_prefix }}detection",
+        "path": "/tmp/gh-aw/threat-detection/execution.json",
+        "if-no-files-found": "ignore",
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '0' }}"
+      },
+      "if": "always() && steps.detection_guard.outputs.run_detection == 'false'"
+    },
+    {
+      "job": "safe_outputs",
+      "name": "Download agent output artifact",
+      "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "with": {
+        "pattern": "{${{ needs.activation.outputs.artifact_prefix }}agent,${{ needs.activation.outputs.artifact_prefix }}agent-output-fallback}",
+        "merge-multiple": true,
+        "path": "/tmp/gh-aw/"
+      },
+      "if": null
+    },
+    {
+      "job": "safe_outputs",
+      "name": "Upload Safe Outputs Items",
+      "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "with": {
+        "name": "${{ needs.activation.outputs.artifact_prefix }}safe-outputs-items",
+        "path": "/tmp/gh-aw/safe-output-items.jsonl\n/tmp/gh-aw/temporary-id-map.json\n/tmp/gh-aw/safe-output-errors.json\n",
+        "if-no-files-found": "ignore",
+        "retention-days": "${{ vars.GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS || '0' }}"
+      },
+      "if": "always()"
+    }
+  ],
+  "history": {
+    ".github/workflows/smoke-workflow-call-with-inputs.md": [
+      "5fdf98e4d2117e37d3260de02f7783ecce16ea49 2026-09-21T09:58:35-07:00 Migrate workflows to Docker runtime (#62406)",
+      "96a53c581e1354dc0768ff5964ea3485e434ee4e 2026-09-03T13:10:13-07:00 Fix zero-valued input defaults (#58291)",
+      "45277dcb8f19d6890098a8c2c588834d1d08ecb7 2026-08-25T17:22:34+02:00 Merge branch 'main' of https://github.com/github/gh-aw",
+      "fe9156568bf7e845e7ab097b6dbccd3f2e679b22 2026-08-20T13:54:00-07:00 Use Cloud Hypervisor for agentic workflows (#54346)",
+      "31d54a7cd7466bb4bb025985dfad631952ac1c7b 2026-08-16T17:52:52-07:00 Collapse sandbox security options into runtime profiles (#53168)",
+      "0de69c52ac006859a3739bc13c26dadbb997be58 2026-08-07T20:23:07-07:00 revert sbx to 10% of agentic workflows, set gvisor to 10% (#51294)",
+      "e123c10207028f35dd37390e62cc2ce80374348a 2026-08-07T18:13:15-07:00 feat: enable docker-sbx sandbox on ~50% of agentic workflows (daily/weekly/hourly/smoke) (#51264)",
+      "33ae87ae331774efd917d521c36b272263a8c1e8 2026-06-25T16:29:22-07:00 Fix empty firewall allowlist in Codex external detection job (gh-aw-detection) (#41525)",
+      "019f3baddc30b140e7dce1cc87e69be680544dd7 2026-06-25T06:32:52-07:00 chore: bump Codex 0.142.1, Copilot SDK 1.0.4 (#41430)",
+      "44bc1b75ada4ab8e8d09e801332e13f4b15adc71 2026-06-24T22:19:48-07:00 chore: set sandbox.agent.sudo: false on 30% of agentic workflows (#41380)",
+      "2957e5d1045a850116d178c0efe63db19ee12ff0 2026-06-24T15:57:29-07:00 chore: change sandbox sudo false to true in all agentic workflows (#41313)",
+      "cb2c0f24aa604f598635bd50eff0889c96f92135 2026-06-24T15:36:23-07:00 Rename frontmatter `sandbox.agent.network-isolation` → `sandbox.agent.default-route` (#41302)",
+      "b963dc5429d08de7f8f13e1223805195fb256dd3 2026-06-20T09:11:31-07:00 Enable gh-aw threat detection for 20 percent of workflows (#40477)",
+      "e8ca23ae1dcde800d1b19e7c73bf5dfe30b6efb5 2026-06-18T05:58:44-07:00 Add private: true to all non-upstream agentic workflows (#40048)",
+      "148e6173d21d6865e805b25e713cd2cb181bc6f0 2026-05-17T16:26:59+02:00 Rename 'shared/observability-otlp.md' to 'shared/otlp.md' (#32823)",
+      "054d63207ce4f87fc1392d1c48f412efa1c27508 2026-05-14T13:25:56-07:00 Add `emoji` frontmatter field (#32200)",
+      "842a49f98f59a8ed7013e622b54d02342b595679 2026-05-08T04:17:02-07:00 Import shared/observability-otlp.md in most agentic workflows (#30995)",
+      "d555622544af59f5fb656eb485ddf3a88c02948d 2026-04-27T22:12:16-07:00 feat: remove features.mcp-cli flag, rename mount-as-clis to cli-proxy (#28842)",
+      "a22c643988ada8ef06d44ab9d6b7f4f1a9ad1629 2026-04-16T12:54:20-07:00 feat: enable mcp-cli and mount-as-clis for 80 percent of workflows (#26715)",
+      "69fd9ea957177b975197b41bab2f9feca6f341cf 2026-04-15T17:09:36-07:00 feat: mount MCP servers as local CLIs after gateway starts (#25928)",
+      "be086b27a3619a6bfa5939cd1d92fd7ca76e5747 2026-03-15T14:33:30-07:00 Merge safe-outputs.allowed-domains and allowed-url-domains; rename default-redaction to default-safe-outputs (#21114)",
+      "e45ae5cd786aa0bfbf907306f7949859d060f419 2026-03-15T11:34:32-07:00 Add `safe-outputs.allowed-url-domains` for additive URL domain allowlisting (#21083)",
+      "9e1a4f71fca4274be4caec23cfb09b40995fd7b5 2026-03-12T11:42:05-07:00 Add artifact name prefix for workflow_call to prevent multi-caller clashing (#20685)"
+    ],
+    ".github/workflows/smoke-multi-caller.yml": [
+      "0a1a4c3c0770e80c48f60fc97ac1b7603ef7f244 2026-07-24T17:08:23+02:00 fix: add `actions: read` to smoke-trigger and smoke-multi-caller caller permissions (#47721)",
+      "bf5316dbffb62826d6cf00d669cfe6f5561075ec 2026-05-31T04:57:15-07:00 Fix reusable workflow caller timeout-minutes handling (#36107)",
+      "c96e5643b53b2cbeeeeb9448823e7259dd87ae05 2026-05-29T12:54:18-07:00 Add missing job timeouts to high-risk push/PR workflows (#35775)",
+      "9e1a4f71fca4274be4caec23cfb09b40995fd7b5 2026-03-12T11:42:05-07:00 Add artifact name prefix for workflow_call to prevent multi-caller clashing (#20685)"
+    ],
+    "actions/setup/sh/compute_artifact_prefix.sh": [
+      "f09faaa0feb2caf795329d6bf5d7b01159b79a9f 2026-04-22T13:54:24-07:00 chore(shell): disable history expansion in bash scripts and MCP CLI wrappers (#27851)",
+      "9e1a4f71fca4274be4caec23cfb09b40995fd7b5 2026-03-12T11:42:05-07:00 Add artifact name prefix for workflow_call to prevent multi-caller clashing (#20685)"
+    ]
+  },
+  "sourceClosureSha256": "d449898111bcc6cf8fec5212c8529157cfde3e6f24104a21f32e472be54ca925",
+  "interpreterSha256": "ca547b87ad7cbc026dfca8eaec8da5e400dfc6600bf5d69cf09601f346cab4ee"
+}

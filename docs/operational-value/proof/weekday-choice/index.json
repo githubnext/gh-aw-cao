@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "workflowId": "daily-choice-test",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "773e8e0f6b76878ead80f6709a62b6cb62fb7734780453ea6837de43de772a44",
+  "factsSha256": "1b34ede6c6bf0e79f6c3b679d2abac52276da8942837f07f742033849be902fc",
+  "sources": [
+    {
+      "gitBlob": "cf5c2c1a34aa56bbe1a634f74db4cb21ee9f2889",
+      "sha256": "e9bd9c549f9697c46c1f38c578cd22cddeaae294d490b0b3dd0c9c2cdfb4f443"
+    },
+    {
+      "gitBlob": "4995e90d2a2497056b1cb998241aac6086990aaf",
+      "sha256": "e32d6343e506d3453800faed11fca352ee56f4f06a20b0093d31c1cdcba27d52"
+    },
+    {
+      "gitBlob": "e6aebea01fdf770d12fa5230e05943ee487a45cc",
+      "sha256": "c97c818b1b4ac623dde10767b6e1519f6d98cd7f1b9aaff7675d49637fc6b001"
+    },
+    {
+      "gitBlob": "3732c4c369884bf12c6eb17b8a8d4a8995f05775",
+      "sha256": "14716f5476af65d1f13e14eaf59d814b339ec7989e03a316d7e9546cec779939"
+    },
+    {
+      "gitBlob": "fb27b188d4a9eb26f9828ad40b2a49636f6539f1",
+      "sha256": "9d2417295cd420540f1344991b53af18b607df0d322bcb9a721107e47f9cf725"
+    },
+    {
+      "gitBlob": "ce1338f5230410efb57788795bb98e430ae3426f",
+      "sha256": "52b176832fe0fd2f18dc1fa3ed12c53af8aeac44906e053d5b03daef455c2cc0"
+    }
+  ],
+  "observations": 243,
+  "proven": 4,
+  "acquiredAt": "2026-10-19T04:55:15.004Z",
+  "requests": 18,
+  "downloadedBytes": 1486154,
+  "producer": {
+    "path": "scripts/collect-choice-history.mjs",
+    "sha256": "2d5edbdb053734d9395b2bc2b42615afb6af9e1dccaf4310238228be1c984499"
+  }
+}

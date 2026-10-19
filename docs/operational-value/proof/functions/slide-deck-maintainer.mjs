@@ -1,0 +1,36 @@
+import { nativeSlideGeometryModule } from "../../../../scripts/native-slide-geometry-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativeSlideGeometryModule({
+  "repository": "github/gh-aw",
+  "workflowId": "slide-deck-maintainer",
+  "sourcePath": ".github/workflows/slide-deck-maintainer.md",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "directory": "docs/operational-value/proof/slide-geometry",
+  "sourceGitBlob": "642779daf290d9b2201a0201d14377d7fa8fe484",
+  "adoption": {
+    "commit": "50406c0cdabe5b497be711d504563d65cbb09050",
+    "adoptedAt": "2025-12-16T12:30:17Z",
+    "baselineCommit": "5a6d87320f5df8f52fbf773cec511cb620b844d7",
+    "baselineAt": "2025-12-16T12:29:33Z"
+  },
+  "deckPath": "docs/slides/index.md",
+  "themePath": "docs/slides/gh-aw-theme.css",
+  "interpreterSha256": "5412ea020b6071a27b366952bcce9b88dde2b5ef279335c95a8a5310274eea3f",
+  "sourceReaderSha256": "3a9662186e0d9abfd8c7b1a7e0beece3973c0c484e5cf28e5a24d39d4eeadfd9",
+  "renderer": {
+    "marp": "4.4.0",
+    "chromium": "153.0.8010.12",
+    "platform": "darwin-arm64",
+    "osRelease": "27.0.0",
+    "dependencyLockSha256": "a53e4ccdb26fccf298fa1aa19aa01050fa830ae65b7a2ad0fc50a1327fdbf0f1",
+    "scripts": "disabled",
+    "externalRequests": "blocked",
+    "viewport": [
+      1440,
+      900
+    ],
+    "scale": 1,
+    "geometryPolicy": "Positive-area descendants outside any of the four native section bounds; no rounding tolerance."
+  }
+});

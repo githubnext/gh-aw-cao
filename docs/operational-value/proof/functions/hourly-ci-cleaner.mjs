@@ -1,0 +1,30 @@
+import { nativeModelFormatModule } from "../../../../scripts/native-json-format-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativeModelFormatModule({
+  "repository": "github/gh-aw",
+  "workflowId": "hourly-ci-cleaner",
+  "sourcePath": ".github/workflows/hourly-ci-cleaner.md",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "directory": "docs/operational-value/proof/model-format",
+  "paths": [
+    "pkg/cli/data/models.json",
+    "actions/setup/js/models.json"
+  ],
+  "sourceGitBlob": "c2e8169963447ebd7aafce45897edc7c13668034",
+  "recipeSha256": "c82df14419d3e39b8f73d135b4bf8d84a8d7270f716e1703979362754e184d69",
+  "configSha256": "984e3a6e9b4810b13e5863fee9960d4974d5d3a3e091439aa151fe198c3e0beb",
+  "ignoreSha256": "1527b3370f18c95a31245786c5b3ba0c93aec383ce2ce241934af8c19f42b57d",
+  "toolSha256": "8c91222b8652d983e2bd3b60e4c2a574727534aa6647b60311d12e17551af552",
+  "interpreterSha256": "28ea0aa88b8c68011f55f06eb90f3dcde2e35362f094c09222d865664321e7eb",
+  "sourceReaderSha256": "3a9662186e0d9abfd8c7b1a7e0beece3973c0c484e5cf28e5a24d39d4eeadfd9",
+  "archiveReaderSha256": "f144b7f059bb1187b623b0b592360fd76d64338644a42bcb5c79a2c758a9a068",
+  "adoption": {
+    "commit": "414653ac34488f2ab625aacc091673411aa5e095",
+    "adoptedAt": "2025-12-11T05:32:58Z",
+    "baselineCommit": "fa4a871ba2b17762f9d637869555d40bad69417e",
+    "baselineAt": "2025-12-11T05:23:35Z"
+  },
+  "predecessorSha256": "24131fff6c72a80080949ea4d3f871b7feb8f1d5ebe9a1976e08e7651d33fe5f",
+  "modelInvocationSha256": "630be353ae3ee6954b9dbb51b10572a3b800dee3b43539efe0aa5a0ccc72c908"
+});

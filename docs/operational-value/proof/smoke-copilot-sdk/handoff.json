@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 2,
+  "workflow": "smoke-copilot-sdk",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "readiness": {
+    "implementation": "Implemented schema3 definition/collectBatch/scoreMetric; frozen source predicates, raw native compound command interpretation, immutable source/version/custody checks and disjoint native delivery deduplication.",
+    "producer": "Complete offline source/history discovery and bounded coordinator-original imports implemented; no network, SDK/inference, target-code execution, shared-cache mutation or remote writes. Runtime replay is Node-only: bounded classic-ZIP decoding validates full original SHA256, directory/local headers, member budgets, decompression sizes and CRC32; no Python dependency or per-period subprocess.",
+    "nativeEvidence": "One independently corroborated native SDK operation pair establishes two facets: cat exact run path/phrase and native bash arithmetic stdout42 newline. Original protected provider host stream agrees with original SDK event artifact and contemporaneous source. No synthetic standalone argv was manufactured from the actual compound command.",
+    "fullFunction": "Unknown. Frozen new-regular-file transition/current-time correctness and independent required issue-reporting acceptance are not established. The successful native printf command remains retained, not silently converted to an absent-before file observation.",
+    "repositoryOutcome": {
+      "nativeOperations": 2,
+      "fullGoal": null,
+      "coverage": "Known demonstrated partial effects only, not a complete-population total or code-quality score."
+    },
+    "contribution": {
+      "nativeOperations": 2,
+      "confidence": "receipt-verified SDK workflow/session linkage",
+      "soleCausation": false
+    },
+    "historical": "Actual content-verified workflow introduction and real-parent path absence anchor adoption. Only the exact October17 native source/runtime era is measured; all other eras/opportunities remain null. Introduction tested different repository-analysis/issue/label/comment semantics, which were not scored using the later goal.",
+    "costs": "not-measured",
+    "decision": "not-rated"
+  },
+  "nativeIdentity": {
+    "runId": 38984382289,
+    "attempt": 1,
+    "headSha": "354b5c3423ea95046f4db235f9fea7bb2885aaa8",
+    "agentJobId": 117252704344,
+    "executionStep": 30,
+    "agentArtifactId": 12081509894,
+    "nativeSessionId": "18c0f9eb-0d5e-4333-8179-5e430554033c",
+    "toolCallId": "call_9zs4nrJMKN2rlFd4EPNhZx2r",
+    "protectedAgentLog": "3_agent.txt",
+    "protectedEventLines": [2058, 2062],
+    "deliveredAt": "2026-10-17T00:04:06.679Z",
+    "sdkVersion": "1.0.16",
+    "cliVersion": "1.0.98",
+    "awfVersion": "v0.28.59",
+    "compiledBlob": "d3868b2f9d1c637afbdf6895ad8b33ae0db88f3e",
+    "artifactZipSha256": "5f0ef590e353a92100110e24de01375dee177e74a1f06cf067d5a7c0e17d1596",
+    "protectedAttemptZipSha256": "71a55adf3296c216aa2ff9699aca6f8f10373e8eaebcbccda7d57c4086f58847"
+  },
+  "retained": {
+    "sourceOriginals": 29,
+    "historyPartitionsVerified": 346,
+    "historyEntitiesVerified": 58048,
+    "directCandidates": 30,
+    "completeRelatedClosureCandidates": 2730,
+    "absentReferences": 16,
+    "acceptedNativeReceipts": 1,
+    "nativeArtifactMembers": 44,
+    "nativeCandidateEvents": 30,
+    "originals": "Full source/blob/API responses and allowlisted response headers, artifact ZIP and protected attempt ZIP are retained without truncation in digest-checked codec archives/parts. Only SDK-owned originals were imported."
+  },
+  "evaluation": {
+    "frozenStandard": "Actual standard evaluator now runs at exactly2026-10-18T15:00:12Z using content/real-parent-verified workflow adoption. One disjoint historical period has native-facets2, cat-readbacks1, bash-calculations1; file-effects and other periods remain null.",
+    "frozenCutoffSnapshot": "Generated under prospective-frozen/github-gh-aw; full native evidence/provenance retained.",
+    "prospective": "Separate later-end standard report under prospective/github-gh-aw. Re-evaluation does not redeliver October17 work; post-cutoff delivery is null.",
+    "adoptionCommit": "bb8c9da4da014da05cecdea2e148eb596b50b7b2",
+    "adoptedAt": "2026-02-14T17:16:36Z",
+    "realParent": "f7fbd651e3e4ebf69a9cddcfda267fc87134cb27",
+    "instrumentAuthoredAt": "2026-10-19T11:13:02Z",
+    "predecessor": "predecessor-v1.json.gz and its parts preserve the complete original verified owned package, external manifest, exact standard frozen rejection and separate prospective null report before this explicit source-grounded historical extension."
+  },
+  "validation": {
+    "focusedTests": "19 focused tests including actual protected native originals, original artifact-only non-admission, real-parent/source adoption, compound command identity, anti-forgery, partial quantities and disjoint windows.",
+    "standardCollector": "Actual --collector verification, not merely fixture/interface checks.",
+    "compile": "npm run compile succeeded:71 workflows, no lockfile writes.",
+    "lint": "npm run lint blocked by missing yaml in the shared agent-plugin validator; no installation authorized or attempted.",
+    "typecheck": "npm run typecheck:copilot blocked because tsc is unavailable; no installation authorized or attempted.",
+    "portableReplay": "Package command verifies every member of the32-member v019 seed, extracts fresh baseline plus seed plus owned archive, and replays focused tests, standard collector and both actual standard evaluations without shared Git/history."
+  },
+  "remainingEvidence": [
+    "Protected before/after file observations at the exact run-specific path and independent clock context for the frozen full-file task.",
+    "Independent source-prescribed issue title/body/task indicators/PASS-FAIL/run URL acceptance for full workflow reporting.",
+    "Intervening historical source/runtime profiles and native effect receipts; missing source originals remain explicitly listed by productionAssessment, not declared impossible or absent.",
+    "Matching independent workflow/version/period cost measurements and any agreed native keep threshold."
+  ],
+  "reusableSkillImprovement": {
+    "proposal": "Freeze an operation-effect matrix with invocation/path, native bytes, clock/file facets, producer and independent capture boundary. Acquire the smallest protected observation first. Interpret actual compound native execution without inventing standalone argv; preserve a supported partial operation when other task or transitive closure evidence is missing. Verify workflow adoption separately from rule-era applicability, preserving predecessor instruments/rejections before historical extension.",
+    "sourceGroundedReason": "This SDK event artifact lives in writable /tmp, but the source-owned session serializer also streams native events to protected provider job logs. Matching original call/session IDs, job/step timing, command/result bytes and the exact contemporaneous source makes two narrow effects measurable; successful jobs, assistant PASS text and artifact-only telemetry do not."
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "baseline": "37c9f53cb2bd99c35f5954820ea185a2eb4b6eac",
+  "sharedEvidenceOrCacheReads": false,
+  "dependencyMembersVerified": 32,
+  "verification": {
+    "executable": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+    "args": [
+      ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+      "--collector",
+      "docs/operational-value/proof/functions/artifacts-summary.mjs"
+    ],
+    "status": 0,
+    "stdout": "verified docs/operational-value/proof/functions/artifacts-summary.mjs\n",
+    "stderr": ""
+  },
+  "focusedTests": {
+    "executable": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+    "args": [
+      "--test",
+      "tests/unit/operational-value-artifacts-summary.test.mjs"
+    ],
+    "status": 0,
+    "stdout": "✔ schema3 native examples improve all metrics without caller acceptance flags (3.172709ms)\n✔ native counts and bytes are not normalized quality scores (0.286667ms)\n✔ fixed report_date determines exact UTC thirty-day analysis window (0.421458ms)\n✔ wrong count, bytes, average, latest date and status fail independently (0.48225ms)\n✔ both failed and successful runs count; cancelled and exact end runs do not (0.19475ms)\n✔ missing pagination cannot establish an all-clear (0.131ms)\n✔ known reconciled workflow rows survive missing broader inventory (0.263791ms)\n✔ published artifact-free workflows are omitted, with no invented inactive threshold (0.150458ms)\n✔ malformed byte sizes, foreign repository and duplicate native IDs fail closed (0.437375ms)\n✔ explicit native pagination rejects missing, repeated or foreign pages (0.335416ms)\n✔ original byte decoder rejects fabricated flags, wrong status and noncanonical encoding (0.077625ms)\n✔ rounded sizes accept decimal or binary but require consistent global interpretation (0.191791ms)\n✔ same report in retained snapshots is never fresh delivery (0.235458ms)\n✔ later edits cannot become a second original delivery or establish original accuracy (0.178334ms)\n✔ later mutable native inventory is not backdated to original report delivery (0.165833ms)\n✔ exclusive completion endpoint and observation cutoff are enforced (0.082375ms)\n✔ conflicting report versions are explicit errors, not silent missingness (0.172542ms)\n✔ discovery retains direct candidates and full forward/reverse transitive closure plus absent refs (0.148542ms)\n✔ actual production history independently replays all partitions without shared caches (216.596959ms)\n✔ actual collector preserves frozen historical inapplicability and prospective missingness (1.332375ms)\n✔ collected partial run metadata is retained without being promoted to accuracy (0.939458ms)\n✔ collector rejects invalid windows and unsupported repositories explicitly (2.296834ms)\nℹ tests 22\nℹ suites 0\nℹ pass 22\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 276.7485\n",
+    "stderr": ""
+  },
+  "frozen": {
+    "executable": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+    "args": [
+      ".github/skills/add-operational-value/scripts/evaluate.mjs",
+      "--end",
+      "2026-10-18T15:00:12Z",
+      "--output-dir",
+      "docs/operational-value/proof/artifacts-summary/replay-frozen",
+      "--function",
+      "docs/operational-value/proof/functions/artifacts-summary.mjs",
+      "--no-runs",
+      "github/gh-aw",
+      "artifacts-summary"
+    ],
+    "status": 1,
+    "stdout": "",
+    "stderr": "error: evaluation end must follow 2026-10-19T11:09:13Z\n"
+  },
+  "prospective": {
+    "executable": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+    "args": [
+      ".github/skills/add-operational-value/scripts/evaluate.mjs",
+      "--end",
+      "2026-10-19T11:17:25Z",
+      "--output-dir",
+      "docs/operational-value/proof/artifacts-summary/replay-prospective",
+      "--function",
+      "docs/operational-value/proof/functions/artifacts-summary.mjs",
+      "--no-runs",
+      "github/gh-aw",
+      "artifacts-summary"
+    ],
+    "status": 0,
+    "stdout": "Timeline: docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-timeline.json\nDefinitions: docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-definitions.md\nInteractive pulse: docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-pulse.html\nEvidence archive: docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-evidence-archive.json\n",
+    "stderr": ""
+  },
+  "nativeEvidenceScoresAndReviewIdentical": true,
+  "reportIdentities": [
+    {
+      "path": "docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-definitions.md",
+      "bytes": 5928,
+      "sha256": "87ee196c3d42fcf6239809d49db9b53917813ee1f2788ca1c7827da499e1ecd3"
+    },
+    {
+      "path": "docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-evidence-archive.json",
+      "bytes": 270,
+      "sha256": "ee96283defc4de4a8512c617d1b026225b531929853f38565a271155fe7e57dc"
+    },
+    {
+      "path": "docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-pulse.html",
+      "bytes": 18586,
+      "sha256": "6cabb980571e0dedf30b7c60ed88afa71cfaae818729fea5a9add023df545196"
+    },
+    {
+      "path": "docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-pulse.json",
+      "bytes": 5619,
+      "sha256": "b3eecbebc7b99458d0006d9a78f7545ee3b82b53aacba9acad1da9a1274f5f57"
+    },
+    {
+      "path": "docs/operational-value/proof/artifacts-summary/replay-prospective/github-gh-aw/artifacts-summary-timeline.json",
+      "bytes": 18058,
+      "sha256": "0dfcc073b45a1540cef88ee9cfd8cc8ab713b2d2ab9c0ed1825d63392a65c7cb"
+    }
+  ]
+}

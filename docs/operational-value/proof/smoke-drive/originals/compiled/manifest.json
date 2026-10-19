@@ -1,0 +1,57 @@
+{
+  "upstreamManifestSha256": "825e56e9be709b20f73e1a9125ef322af19473e0eaf08066b09921654987cc90",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "receipts": [
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/git/blobs/991896b0834edffd669cb0d6d2662b047fb7f238",
+      "sha": "991896b0834edffd669cb0d6d2662b047fb7f238",
+      "method": "GET",
+      "startedAt": "2026-10-19T11:47:16.685Z",
+      "receivedAt": "2026-10-19T11:47:17.153Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 11:47:17 GMT",
+        "etag": "W/\"cd28735f24bce99a260c10e452d004c8ab67a7272694e6e7ffbb15d4563e200b\"",
+        "x-github-request-id": "ECFB:8B0D8:194060:2477F1:6AD60344",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "11100",
+        "x-ratelimit-reset": "1792410880",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 229532,
+      "bodySha256": "b20469d657162ba62d53081ff6bbff17790a8f1e21d3c40362002a986ccebaa0",
+      "response": "991896b0834edffd669cb0d6d2662b047fb7f238.response.json",
+      "blobBytes": 166391,
+      "blobSha256": "71653491acc7294c44fe07566416f3df1e1658e8db7221d5bed82732e9421205",
+      "blob": "991896b0834edffd669cb0d6d2662b047fb7f238.blob"
+    },
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/git/blobs/825b32490f70cf7d368b125b11206f7369c8c5c4",
+      "sha": "825b32490f70cf7d368b125b11206f7369c8c5c4",
+      "method": "GET",
+      "startedAt": "2026-10-19T11:47:18.770Z",
+      "receivedAt": "2026-10-19T11:47:19.202Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 11:47:19 GMT",
+        "etag": "W/\"7ee527ac52ac1152c0b35c53af35540390b8d16ae36dfa06684ba4c85d397b1a\"",
+        "x-github-request-id": "FE09:122D0A:1737D5:2219CB:6AD60346",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "11099",
+        "x-ratelimit-reset": "1792410880",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 226222,
+      "bodySha256": "7e249af29de64a3f62502c1dece252045f9df85524a178add12097f471e2c1f8",
+      "response": "825b32490f70cf7d368b125b11206f7369c8c5c4.response.json",
+      "blobBytes": 163988,
+      "blobSha256": "aadcf27d0e20f8f002dda22e15002c65a96f36db1d71dff8c4ab1502cd67b2ca",
+      "blob": "825b32490f70cf7d368b125b11206f7369c8c5c4.blob"
+    }
+  ]
+}

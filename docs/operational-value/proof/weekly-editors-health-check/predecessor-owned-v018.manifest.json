@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "archive": "weekly-editors-health-check-owned-v018.tar.gz",
+  "archiveSha256": "51664253ab6cc2962861eadf88b73a541b2c34d2a878195a1b67a67e93b2363e",
+  "metadata": {
+    "schemaVersion": 1,
+    "workflow": "weekly-editors-health-check",
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "cutoff": "2026-10-18T15:00:12Z",
+    "sourceBlob": "e7d3355795fb9c5b79e6201300fc35d3e09c4e4b",
+    "sourceSha256": "35d957301e53b3acc71f8647d102d880bc287ee92316ff8ee67ca7156a23e86d",
+    "function": {
+      "path": "docs/operational-value/proof/functions/weekly-editors-health-check.mjs",
+      "sha256": "ae26ab8ecf3bf629b6bd74ae6de79f6c0ba64b8a0d62a614389554889a2cede5",
+      "metric": "available-editor-percent",
+      "unit": "percent",
+      "primaryBasis": "actor-independent constrained repository outcome",
+      "frozen": true,
+      "authoringModel": "gpt-6.1-sol"
+    },
+    "dependencies": {
+      "ownership": "Excluded from this workflow's owned archive; apply the shared seed separately.",
+      "seedArchiveSha256": "b51243e0777815f56b9e782825af50256d1b9ea68470857c7873a8a3275188ea",
+      "seedManifestSha256": "f38fb273e21b5114c9181836974cfa179b5b188e11d9e94258057fab39301ae3",
+      "verification": "All seed member byte lengths and SHA256 hashes matched before use.",
+      "executePermissions": "Six seeded CLI entry points needed executable permission restored for the seeded evaluator; no dependency content was changed."
+    },
+    "provenance": {
+      "frozenWorkflowAndImports": "Lossless bytes and Git/SHA256 identities in investigation.json and all referenced codec parts.",
+      "historicalInventories": "All twelve immutable first-parent inventory revisions retained: nine full contents and three explicit missing-object endpoints.",
+      "adoptionSource": "Original coordinator-supplied provider JSON, exact content, safe acquisition receipt, Git blob and SHA256 verified and preserved.",
+      "adoptionPair": "Actual source/compiled-workflow addition verified against its real parent; not inferred from a shallow boundary or first output.",
+      "outputHistory": "All 58048 normalized identities scanned through readOutputHistory; 346 partition digests verified. Full original index and all 18 selected candidate records retained."
+    },
+    "readiness": {
+      "intentAndNativeFunction": "implemented-and-frozen",
+      "productionCollector": "verified",
+      "nativeScorer": "verified-with-synthetic-positive-and-negative-fixtures",
+      "nativeEvaluationAndPlot": "generated-and-identity-checked",
+      "sourceClosure": "Workflow, imports, editor destination resolution and adoption source read completely; compiled bodies and earliest inventory blobs remain pending.",
+      "historicalOriginalResponseAcquisition": "open-awaiting-coordinated-approval",
+      "historicalCoverage": "unknown",
+      "fullGoalAcceptance": "not measured",
+      "functionality": "not measured",
+      "screenshotFreshness": "not measured",
+      "workflowContribution": "not measured",
+      "costs": "not measured",
+      "decision": "not rated"
+    },
+    "nativeCounts": {
+      "evaluatedSnapshotAssessments": 36,
+      "acceptedNumericNativeObservations": 0,
+      "originalHttpReceipts": 0,
+      "availableEditorCount": null,
+      "failedEditorCount": null,
+      "latestKnownEligibleEditorCount": 3,
+      "fixtureTestsAreNativeOutcomes": false
+    },
+    "validation": {
+      "focusedTests": "node --test tests/unit/weekly-editors-health-check-investigation.test.mjs tests/unit/weekly-editors-health-check-value.test.mjs",
+      "collector": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/weekly-editors-health-check.mjs",
+      "report": "node .github/skills/add-operational-value/scripts/validate-report-artifacts.mjs docs/operational-value/proof/weekly-editors-health-check/reports/github-gh-aw/weekly-editors-health-check-timeline.json",
+      "markdownCompile": "npm run compile completed: 72 workflows succeeded.",
+      "lint": "Unavailable: node_modules/.bin/eslint and global eslint are absent. No dependency installation or network release was authorized.",
+      "perFileBudget": "Every owned member and codec part independently checked at or below 256 KiB; no reader budget increased."
+    },
+    "openScope": [
+      "Acquire frozen and adoption compiled bodies and three genuinely missing earliest editor inventories using the exact endpoints in investigation.json.",
+      "Discover full-period Actions runs, including runs without surviving outputs, then resolve actual attempts, original protected HTTP tool responses, artifacts and receipt identity; continue pagination without treating the 18 candidate outputs as exhaustive run history.",
+      "If original logs include the ancillary documentation URL, retain its response separately; do not delete it to fit the constrained three-editor facet.",
+      "Absent, expired or agent-authored HTTP claims cannot become successful or failed editor outcomes.",
+      "Historical pre-adoption availability reconstruction remains unresolved; no adoption-relative or causal claim is justified.",
+      "Run applicable lint in a dependency-equipped integration workspace."
+    ]
+  },
+  "members": [
+    {
+      "path": "docs/operational-value/proof/functions/weekly-editors-health-check.mjs",
+      "bytes": 16113,
+      "sha256": "ae26ab8ecf3bf629b6bd74ae6de79f6c0ba64b8a0d62a614389554889a2cede5"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/analysis.json",
+      "bytes": 6786,
+      "sha256": "95d8a0ae8cd37620f6d3dbdb5061d13b4d0977976a09c8f5db7e4d9a621a45c3"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/handoff.json",
+      "bytes": 5023,
+      "sha256": "9e9b16b2371ecab0aec27d4c04571b31fd6a81df5e6d2d549238287518f5df5b"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/investigation-part-001.json.gz",
+      "bytes": 61270,
+      "sha256": "00f270814bced91fc698cde37e5327039384fead5498ad7c0e59edfeb4984d00"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/investigation-part-002.json.gz",
+      "bytes": 27539,
+      "sha256": "957d136c0af7b9ef2c2fab45eadfae5c86c88d0cac510b9bf9ed4c43dd65cca1"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/investigation-part-003.json.gz",
+      "bytes": 10176,
+      "sha256": "bb7e768a4e26fa91ca4b42f281eeec20de572747e707b3e751b50a5cfcfe89ec"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/investigation.json",
+      "bytes": 522,
+      "sha256": "e914166ad4e4a95e8c76192db49d1b13447e3cf80c40c0c718c8d449a258ab2b"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/reports/github-gh-aw/weekly-editors-health-check-definitions.md",
+      "bytes": 6810,
+      "sha256": "32e5108655f3392d92ec74ef315e5fa5aa8e7b06e69e5ff5ccf37affa18e08af"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/reports/github-gh-aw/weekly-editors-health-check-evidence-archive.json",
+      "bytes": 280,
+      "sha256": "de416e22e329ee34a358450ab7551a988ab73b876fa292402796177e517409f7"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/reports/github-gh-aw/weekly-editors-health-check-pulse.html",
+      "bytes": 20883,
+      "sha256": "b723dc27ef300e9742d8321ead6c054a5c5ff62b463e012730a7057819ab3dfe"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/reports/github-gh-aw/weekly-editors-health-check-pulse.json",
+      "bytes": 9653,
+      "sha256": "81cc55297760e4d7210e19447a9fc4719b081d505292faa766dbcc8ec6156d35"
+    },
+    {
+      "path": "docs/operational-value/proof/weekly-editors-health-check/reports/github-gh-aw/weekly-editors-health-check-timeline.json",
+      "bytes": 88272,
+      "sha256": "d55244e86b99222308999684e80d73c908f17967c4842b04e1fb910835b32daa"
+    },
+    {
+      "path": "scripts/investigate-weekly-editors-health-check.mjs",
+      "bytes": 10977,
+      "sha256": "15938a54727c6015cbc0ed5111bf5f91ef09e2325a3c61ef8e1a4225c8b54b54"
+    },
+    {
+      "path": "scripts/package-weekly-editors-health-check.mjs",
+      "bytes": 3649,
+      "sha256": "11816b4a16fc217e102f79cabf4a56c52d8877856409b37dba2f879a6765fc9a"
+    },
+    {
+      "path": "tests/unit/weekly-editors-health-check-investigation.test.mjs",
+      "bytes": 3426,
+      "sha256": "c1019f7c4ced78cc4178e2cdc9b24365ed39459008b3ca82945e389bc95c20e5"
+    },
+    {
+      "path": "tests/unit/weekly-editors-health-check-value.test.mjs",
+      "bytes": 7815,
+      "sha256": "90039a320f921ed0f14cb0341d2b180bc834959b80b16ea7fd783ae03eb0bae0"
+    }
+  ],
+  "verification": "Each listed archive member was independently extracted in memory and checked for exact byte length and SHA256."
+}

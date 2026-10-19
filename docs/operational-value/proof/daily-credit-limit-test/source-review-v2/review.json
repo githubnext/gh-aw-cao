@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "measurementKind": "immutable-source-facet-not-runtime-outcome",
+  "currentSourceClosure": {
+    "priorMissingEntriesResolved": 13,
+    "completeRuntimeTransitiveClosure": false,
+    "acquiredBodiesStatus": "All thirteen exact missing source originals now retained losslessly and identity-verified.",
+    "limitations": [
+      "Literal require discovery is a dependency inventory, not a complete dynamic dependency graph.",
+      "The lock checks out github/gh-aw actions without an explicit ref. A runtime checkout receipt is needed to bind the executed checker to an actual commit/blob; a frozen workflow head alone is insufficient.",
+      "Action pins and container digests identify intended dependencies, not proof of executed runtime or authenticated provider coverage."
+    ]
+  },
+  "predecessor": {
+    "preservedFiles": [
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/acquisition-review.json",
+        "bytes": 15120,
+        "sha256": "dfc1952b5c44f623eb7b815d9fad213ac4abc03d94bb2aa16634e7a3aa029db7"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/evaluation/github-gh-aw/daily-credit-limit-test-definitions.md",
+        "bytes": 8341,
+        "sha256": "eb9f34a62f35a2d988376cefa8e9ee98ff748dfa2fdc270df9982754b42c1341"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/evaluation/github-gh-aw/daily-credit-limit-test-evidence-archive.json",
+        "bytes": 276,
+        "sha256": "20e3ea878c657498d994d4a9f66d60737cb29c0dac5426fd838866584b6f7feb"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/evaluation/github-gh-aw/daily-credit-limit-test-pulse.html",
+        "bytes": 21828,
+        "sha256": "8f2b5d15f7cafef558bb51c15c7ade55847b27e2286f6255891b70fdb0780e83"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/evaluation/github-gh-aw/daily-credit-limit-test-pulse.json",
+        "bytes": 10000,
+        "sha256": "c3b31fae4293886059979a154bae73376bd6d79a7f44ab079387b80fc4509768"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/evaluation/github-gh-aw/daily-credit-limit-test-timeline.json",
+        "bytes": 21362,
+        "sha256": "c9ea6381ea080aa7711e6af5dcc8421bfdd0d0691f996e8957ab61d661348ab0"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/frozen-contract.json",
+        "bytes": 3411,
+        "sha256": "c89107d38bb0ad47a7fce925c71c6230b143f1e2712a6fd3abae0732ae6395cd"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/handoff.json",
+        "bytes": 5926,
+        "sha256": "874dcba6568a71d3c8913b19f6479963a6e5883f0a2b75ebba78a70d666b4364"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/lineage.json.gz",
+        "bytes": 57894,
+        "sha256": "f60f24c510559e25aa536986a94081c3522ad5d4e8b3a32469fe089ad6938360"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/native.json.gz",
+        "bytes": 292,
+        "sha256": "2392a2f34a18bf2ec50b1a728bf8a2c0fa9c6606a57f29f539e3760d2967b4e3"
+      },
+      {
+        "path": "docs/operational-value/proof/daily-credit-limit-test/sources.json.gz",
+        "bytes": 154834,
+        "sha256": "cec887dee01fb23dee4d8488614db5208bea78331b2fb57760c10b920c87e921"
+      },
+      {
+        "path": "docs/operational-value/proof/functions/daily-credit-limit-test.mjs",
+        "bytes": 25964,
+        "sha256": "0fb6eb98b12ca81fe712098e7eadeb869a17352ef4b3fcbabd780ba985d32a43"
+      },
+      {
+        "path": "scripts/daily-credit-limit-test-evidence.mjs",
+        "bytes": 10360,
+        "sha256": "a2669a8bf7cb99a598bbbaa311681f3a4fb01b93f8df7b6c707263a6bb70b0fa"
+      },
+      {
+        "path": "tests/unit/daily-credit-limit-test-value.test.mjs",
+        "bytes": 14651,
+        "sha256": "6e84164e6a3d5e93c3cb320bf1759047fbdfd39a8e13b070de6beb2549478ced"
+      }
+    ],
+    "status": "all fourteen bytes preserved; not admitted as a native-ready function",
+    "invalidatedAssumption": "Non-command routed workflow_dispatch was included as an eligible activation. The actual pinned checker bypasses every workflow_dispatch.",
+    "contractDisposition": "Needs separately reviewed replacement identity; never mutate or silently rescore predecessor reports.",
+    "authenticationDisposition": "Digest integrity and caller-supplied authentication=verified/producerStatus flags are not authenticated native evidence. The predecessor collector must not be a production native admission boundary."
+  },
+  "sourceFacts": {
+    "currentDailyCapAic": 1,
+    "currentEngine": "pi",
+    "currentModel": "copilot/gpt-5-mini",
+    "adoptionDailyCapAic": 10,
+    "adoptionEngine": "copilot",
+    "eligibleTriggerScopeUnderActualCurrentChecker": [
+      "schedule"
+    ],
+    "workflowDispatch": "all bypassed by actual checker, including routed non-command, malformed, empty and command contexts",
+    "thresholdComparison": "recorded-plus-estimated guardrail accounting >= cap; independent recorded-only eligibility remains a stricter proposed measurement, not runtime's own total",
+    "componentCoverageVersion": 3,
+    "notification": "Conclusion wiring passes daily guardrail fields and fail-closed mode to handler; source declaration does not prove a published message.",
+    "executionEvidence": "Compiled agent execution evidence and token_usage files do not establish a complete independent provider-request audit. Empty accounting can mean no billable response, not no request.",
+    "repoMemoryRead": "Missing shards are ignored; unreadable non-ENOENT reads throw in the actual ledger code."
+  },
+  "specificationDrift": [
+    {
+      "subject": "dispatch",
+      "specification": "Section 9.8 enumerates bypass cases; implementation bypasses every dispatch.",
+      "disposition": "Use actual pinned checker scope for a reviewed replacement; retain spec discrepancy."
+    },
+    {
+      "subject": "cache",
+      "specification": "Section 9.10 says component-coverage version 2; implementation requires 3.",
+      "disposition": "Do not replay version 2 as accepted current cache."
+    },
+    {
+      "subject": "repo-memory",
+      "specification": "Section 9.15 says unreadable shards are ignored; implementation throws except ENOENT.",
+      "disposition": "No repo-memory acquisition authorized; do not assume equivalent behavior."
+    }
+  ],
+  "sourceReferences": [
+    {
+      "blob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "line": 123,
+      "text": "    // Existing behavior: dispatch-routed runs with aw_context bypass the guardrail."
+    },
+    {
+      "blob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "line": 765,
+      "text": "      if (totalAIC < threshold) {"
+    },
+    {
+      "blob": "b612aa0736735b9f1a01d31525966d56acc50aa9",
+      "line": 30,
+      "text": "      entry.coverage_version !== 3 ||"
+    },
+    {
+      "blob": "9da7b5594b554c2e8522602756d1e267301cd479",
+      "line": 65,
+      "text": "      throw new Error(`Failed to read daily AIC repo-memory ledger ${filePath}: ${getErrorMessage(error)}`, { cause: error });"
+    },
+    {
+      "blob": "11aa7a405433b0dff64461a4b4f5b26f637c351d",
+      "line": 403,
+      "text": "    if: needs.activation.outputs.daily_ai_credits_exceeded != 'true'"
+    },
+    {
+      "blob": "11aa7a405433b0dff64461a4b4f5b26f637c351d",
+      "line": 1412,
+      "text": "          GH_AW_DAILY_AI_CREDITS_CONTINUE_ON_ERROR: \"false\""
+    },
+    {
+      "blob": "11aa7a405433b0dff64461a4b4f5b26f637c351d",
+      "line": 92,
+      "text": "      GH_AW_MAX_DAILY_AI_CREDITS: \"1\""
+    },
+    {
+      "blob": "60a2ab2fa1ff3f49efabcc82628b1efd3507482e",
+      "line": 3,
+      "text": "description: \"⚠️ INTENTIONALLY BROKEN — Tests that max-daily-ai-credits: 10 is enforced by the activation guardrail and that a limit-exceeded message is posted when the daily budget is consumed.\""
+    }
+  ],
+  "directDependencies": [
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./jsonl_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./artifact_client.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./daily_aic_workflow_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./daily_aic_cache_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./numeric_limits.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./error_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./github_rate_limit_logger.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./daily_aic_scan.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./daily_aic_api_budget.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./github_api_diagnostics.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./daily_aic_component_coverage.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "63160a3c91d4b5a472bdcea120878dfd2c5852a4",
+      "relativePath": "./daily_aic_repo_memory_ledger.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "b7f48109b45301bba0551792f7c58d8adda3372c",
+      "relativePath": "./jsonl_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "b7f48109b45301bba0551792f7c58d8adda3372c",
+      "relativePath": "./model_costs.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "1d6ffae10b73ca3206af7d6ffd2335af3e1a0fd5",
+      "relativePath": "./daily_aic_cache_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "1d6ffae10b73ca3206af7d6ffd2335af3e1a0fd5",
+      "relativePath": "./daily_aic_api_budget.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "b612aa0736735b9f1a01d31525966d56acc50aa9",
+      "relativePath": "./jsonl_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "24a1ca889f33ed5585cf9fec8bc192ff789a00ef",
+      "relativePath": "./daily_aic_workflow_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "24a1ca889f33ed5585cf9fec8bc192ff789a00ef",
+      "relativePath": "./daily_aic_api_budget.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "805ca55ec1394bfdbc5eb8b77e3da56257ebdf52",
+      "relativePath": "./github_api_diagnostics.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "9da7b5594b554c2e8522602756d1e267301cd479",
+      "relativePath": "./jsonl_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "9da7b5594b554c2e8522602756d1e267301cd479",
+      "relativePath": "./daily_aic_workflow_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "9da7b5594b554c2e8522602756d1e267301cd479",
+      "relativePath": "./error_helpers.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "d6d1746a4c577e0235446c5488ad72bdd9a8953e",
+      "relativePath": "./check_daily_aic_workflow_guardrail.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    },
+    {
+      "importerBlob": "d6d1746a4c577e0235446c5488ad72bdd9a8953e",
+      "relativePath": "./daily_aic_api_budget.cjs",
+      "status": "source dependency reference only; no code executed or dependency acquired"
+    }
+  ],
+  "historicalReadiness": {
+    "actualSourceAddition": "0fb669049b80755074f3891de4a85c848acdd167",
+    "actualParent": "29e09fa8f846b7e86bdecb541405f39238a06e07",
+    "adoptionSourceBody": "Now available; cap 10 and copilot, different from cap 1/pi current source.",
+    "status": "unknown-not-exhausted",
+    "limitation": "No per-era runtime checkout identity, historical native ledger, activation inventory or authenticated inference/publication evidence is retained. Newly acquired historical contents do not authorize backdating current predicates."
+  },
+  "nativeProducer": {
+    "status": "blocked-not-implemented",
+    "admittedNativeObservations": null,
+    "eligibleCount": null,
+    "outcome": null,
+    "contribution": null,
+    "costs": "not-measured",
+    "decision": "not-rated",
+    "reason": "Only immutable source acquisition is authorized and present. No actual runtime activation/run metadata, accounting artifacts, trusted provider audit or publication receipts were released. A truthful full native producer cannot be implemented from source declarations or digest-shaped trust flags.",
+    "acceptingVerifiedFlags": false,
+    "requiredAuthority": "A separately authenticated acquisition channel plus exact raw runtime identity/completeness facts; integrity hashes alone cannot supply authenticity.",
+    "acquisitionReleased": false,
+    "automaticResumption": false
+  },
+  "portfolio": {
+    "cutoff": "2026-10-18T15:00:12Z",
+    "reportPublished": false,
+    "prospectivePredecessorReport": "Retained separately, endpoint 2026-10-19T09:46:04Z, after cutoff; excluded from frozen portfolio.",
+    "retrospectiveEvaluationCreated": false
+  }
+}

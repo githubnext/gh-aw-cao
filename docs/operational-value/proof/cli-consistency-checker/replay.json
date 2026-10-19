@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-19T10:38:54Z",
+  "collector": {
+    "stdout": "verified docs/operational-value/proof/functions/cli-consistency-checker.mjs\n",
+    "status": 0
+  },
+  "frozenEvaluation": {
+    "end": "2026-10-18T15:00:12Z",
+    "status": 1,
+    "stdout": "",
+    "stderr": "error: evaluation end must follow 2026-10-18T15:00:12Z\n",
+    "reason": "Contract activation equals frozen cutoff. Refusing to backdate source predicates or fabricate a historical series."
+  },
+  "prospectiveEvaluation": {
+    "end": "2026-10-19T10:38:54Z",
+    "status": 0,
+    "stdout": "Timeline: docs/operational-value/proof/cli-consistency-checker/reports/prospective/github-gh-aw/cli-consistency-checker-timeline.json\nDefinitions: docs/operational-value/proof/cli-consistency-checker/reports/prospective/github-gh-aw/cli-consistency-checker-definitions.md\nInteractive pulse: docs/operational-value/proof/cli-consistency-checker/reports/prospective/github-gh-aw/cli-consistency-checker-pulse.html\nEvidence archive: docs/operational-value/proof/cli-consistency-checker/reports/prospective/github-gh-aw/cli-consistency-checker-evidence-archive.json\n",
+    "stderr": "",
+    "limitation": "Later evidence is separate and unavailable, never a carried-forward frozen score."
+  },
+  "nativeMetric": {
+    "literal-documentation-attainment": 100
+  },
+  "fullAcceptance": null,
+  "contribution": null
+}

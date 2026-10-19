@@ -1,0 +1,183 @@
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { censusDigest, readCensusJson, writeCensusJson } from "./operational-value-census-io.mjs";
+import { parseSpecTree } from "./collect-spec-condition-history.mjs";
+import { normalizePublishedVersions } from "./collect-version-currency-history.mjs";
+import { readNativePackagePins } from "./native-package-currency-value.mjs";
+
+const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+
+export function decodePackageGitBlob(response, expected) {
+  if (!/^[a-f0-9]{40}$/.test(expected) || response?.sha !== expected || response.encoding !== "base64"
+    || !Number.isSafeInteger(response.size) || response.size < 0 || response.size > 4 * 1024 * 1024
+    || typeof response.content !== "string") throw new Error("Invalid official package Git blob response");
+  const encoded = response.content.replace(/\n/g, "");
+  const bytes = Buffer.from(encoded, "base64");
+  const content = bytes.toString("utf8");
+  if (bytes.toString("base64") !== encoded || bytes.length !== response.size || !Buffer.from(content).equals(bytes)
+    || createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex") !== expected) {
+    throw new Error("Official package Git blob digest mismatch");
+  }
+  assertPublicPackageSource(content);
+  return content;
+}
+
+export function assertPublicPackageSource(text) {
+  if (typeof text !== "string" || Buffer.byteLength(text) > 4 * 1024 * 1024) throw new Error("Package source exceeds its byte budget");
+  if (/(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,}|npm_[A-Za-z0-9]{30,})/.test(text)) {
+    throw new Error("Refusing to retain a credential-shaped package source");
+  }
+  const value = JSON.parse(text);
+  const visit = value => {
+    if (typeof value === "string") {
+      for (const match of value.matchAll(/https?:\/\/[^\s"'<>]+/g)) {
+        const url = new URL(match[0]);
+        if (url.username || url.password || [...url.searchParams.keys()].some(key => /token|password|secret|signature/i.test(key))) {
+          throw new Error("Refusing to retain credential-bearing package URLs");
+        }
+      }
+    } else if (value && typeof value === "object") for (const item of Object.values(value)) visit(item);
+  };
+  visit(value);
+  return value;
+}
+
+export function collectPackageCurrencyHistory(cache, prepareOnly = false) {
+  const repository = "github/gh-aw", workflowId = "update-astro", workflowName = "Update Astro";
+  const sourceRevision = "c86377ec47b38f0b5af463277ee55d1d03d08da8", until = "2026-10-18T15:00:12Z";
+  const directory = "docs/operational-value/proof/package-currency";
+  const sourcePath = `.github/workflows/${workflowId}.md`, manifestPath = "docs/package.json", lockPath = "docs/package-lock.json";
+  const execute = (command, args, options = {}) => execFileSync(command, args, { encoding: "utf8",
+    timeout: 120000, maxBuffer: 16 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"], ...options });
+  const git = (args, options = {}) => execute("git", [`--git-dir=${cache}`, ...args], {
+    env: { ...process.env, GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" }, ...options,
+  });
+  const metadata = args => git(args).trim();
+  if (metadata(["remote", "get-url", "origin"]) !== `https://github.com/${repository}.git`) throw new Error("Package source remote mismatch");
+  const additions = metadata(["log", "--first-parent", "--diff-filter=A", "--format=%H", sourceRevision, "--", sourcePath]).split("\n");
+  if (additions.length !== 1 || !/^[a-f0-9]{40}$/.test(additions[0])) throw new Error("Ambiguous package-workflow adoption");
+  const adopted = additions[0], baseline = metadata(["rev-parse", `${adopted}^`]);
+  for (const file of [sourcePath, sourcePath.replace(/\.md$/, ".lock.yml")]) {
+    if (metadata(["diff-tree", "--no-commit-id", "--name-status", "-r", baseline, adopted, "--", file]) !== `A\t${file}`) {
+      throw new Error("Package-workflow adoption is not a true source/compiled addition");
+    }
+  }
+  const date = revision => new Date(metadata(["show", "-s", "--format=%cI", revision])).toISOString().replace(".000Z", "Z");
+  const manifest = assertPublicPackageSource(git(["show", `${sourceRevision}:${manifestPath}`]));
+  const tools = ["dependencies", "devDependencies"].flatMap(scope => Object.keys(manifest[scope] ?? {})
+    .sort().map(name => ({ id: name, constant: name, registry: "npm", name, scope, cooldownDays: 0 })));
+  if (!tools.length || tools.length > 40 || new Set(tools.map(tool => tool.name)).size !== tools.length
+    || tools.some(tool => !/^(?:@[a-z0-9_.-]+\/)?[a-z0-9_.-]+$/.test(tool.name))) {
+    throw new Error("Invalid or over-budget direct package cohort");
+  }
+  const contract = { repository, workflowId, workflowName, sourcePath, sourceRevision, until, directory,
+    sourceGitBlob: metadata(["rev-parse", `${sourceRevision}:${sourcePath}`]), manifestPath, lockPath, tools,
+    interpreterSha256: hash(readFileSync("scripts/native-package-currency-value.mjs")),
+    versionOracleSha256: hash(readFileSync("scripts/native-version-currency-value.mjs")),
+    adoption: { commit: adopted, adoptedAt: date(adopted), baselineCommit: baseline, baselineAt: date(baseline) } };
+  mkdirSync(`${directory}/sources`, { recursive: true });
+  const wrapper = `import { packageCurrencyModule } from "../../../../scripts/native-package-currency-value.mjs";\n\nexport const { definition, collectBatch, scoreMetric } = packageCurrencyModule(${JSON.stringify(contract, null, 2)});\n`;
+  const functionFile = `docs/operational-value/proof/functions/${workflowId}.mjs`;
+  if (existsSync(functionFile) && readFileSync(functionFile, "utf8") !== wrapper) throw new Error("Refusing to alter frozen package function");
+  writeFileSync(functionFile, wrapper);
+  writeCensusJson(`${directory}/contracts.json`, [contract]);
+  if (prepareOnly) return { prepared: workflowId, packages: tools.length };
+  if (existsSync(`${directory}/index.json`)) {
+    const index = readCensusJson(`${directory}/index.json`);
+    if (!index.complete || index.contractSha256 !== censusDigest(contract)
+      || index.factsSha256 !== censusDigest(readCensusJson(`${directory}/facts.json.gz`))) throw new Error("Frozen package acquisition changed");
+    for (const source of index.sources) {
+      const file = `${directory}/sources/${source.gitBlob}.json.gz`, raw = readCensusJson(file);
+      if (raw.id !== source.gitBlob || censusDigest(raw) !== source.sha256) throw new Error("Retained package source changed");
+    }
+    return { reused: true, states: index.states, packages: tools.length };
+  }
+  const releasesFile = `${directory}/releases.json.gz`;
+  const retained = existsSync(releasesFile) ? readCensusJson(releasesFile) : null;
+  if (retained && retained.contractSha256 !== censusDigest(contract)) throw new Error("Official package publication scope changed");
+  const releases = retained?.releases ?? {};
+  for (const tool of tools) {
+    if (releases[tool.id]) {
+      if (!releases[tool.id].complete || releases[tool.id].name !== tool.name) throw new Error("Invalid retained npm publication history");
+      continue;
+    }
+    let times;
+    try {
+      times = JSON.parse(execute("npm", ["view", tool.name, "time", "--json", "--registry=https://registry.npmjs.org",
+        "--fetch-timeout=60000", "--fetch-retries=1"], { timeout: 90000,
+        env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=512", NPM_CONFIG_UPDATE_NOTIFIER: "false" } }));
+    } catch (error) {
+      if (!["ETIMEDOUT", "ENOBUFS"].includes(error.code)) throw new Error(`Official npm publication request failed (${error.code ?? error.status ?? "invalid JSON"}).`);
+      console.error(`${tool.name}: bounded npm request failed; trying the official registry HTTP endpoint.`);
+      times = JSON.parse(execute("curl", ["--fail", "--silent", "--show-error", "--location", "--max-time", "60",
+        "--max-filesize", "16777216", `https://registry.npmjs.org/${encodeURIComponent(tool.name)}`])).time;
+    }
+    if (!times || typeof times !== "object" || Array.isArray(times)) throw new Error("Unexpected official npm publication response");
+    releases[tool.id] = { complete: true, registry: "npm", name: tool.name,
+      origin: `https://registry.npmjs.org/${encodeURIComponent(tool.name)}`, acquiredAt: new Date().toISOString(),
+      versions: normalizePublishedVersions(Object.entries(times).filter(([version]) => !["created", "modified"].includes(version))
+        .map(([version, publishedAt]) => ({ version, publishedAt })), until) };
+    writeCensusJson(releasesFile, { contractSha256: censusDigest(contract), releases });
+    console.log(JSON.stringify({ package: tool.name, publications: releases[tool.id].versions.length }));
+  }
+  const start = Date.parse(contract.adoption.adoptedAt), end = Date.parse(until), week = 7 * 86400000;
+  const endpoints = new Set([end, end - week]);
+  for (let at = start + week; at <= end; at += week) endpoints.add(at);
+  const blobs = new Map();
+  let totalBytes = 0;
+  const states = [...endpoints].filter(at => at > start).sort((a, b) => a - b).map(at => {
+    const windowEnd = new Date(at).toISOString().replace(".000Z", "Z");
+    const commit = metadata(["rev-list", "--first-parent", "-1", `--before=${windowEnd}`, sourceRevision]);
+    if (!/^[a-f0-9]{40}$/.test(commit)) throw new Error("Missing package source endpoint");
+    const tree = parseSpecTree(git(["ls-tree", "-rz", commit, "--", manifestPath, lockPath]));
+    const values = {}, files = [];
+    for (const file of [manifestPath, lockPath]) {
+      const record = tree.get(file);
+      if (!record) { values[file] = null; continue; }
+      if (record.mode !== "100644") throw new Error("Unsupported package-source file mode");
+      let content;
+      try {
+        content = git(["cat-file", "blob", record.blob]);
+      } catch (error) {
+        if (error.status !== 128 || !/Not a valid object name|could not get object info|bad file/i.test(String(error.stderr))) {
+          throw new Error(`Local package Git blob read failed (${error.code ?? error.status ?? "unknown"}).`);
+        }
+        console.error(`${record.blob}: source absent locally; retrieving the exact official Git blob.`);
+        const response = JSON.parse(execute("gh", ["api", `repos/${repository}/git/blobs/${record.blob}`], { timeout: 45000 }));
+        content = decodePackageGitBlob(response, record.blob);
+        if (git(["hash-object", "-w", "--stdin"], { input: content, stdio: ["pipe", "pipe", "pipe"] }).trim() !== record.blob) {
+          throw new Error("Cached package Git blob digest mismatch");
+        }
+      }
+      if (createHash("sha1").update(`blob ${Buffer.byteLength(content)}\0`).update(content).digest("hex") !== record.blob) {
+        throw new Error("Package source Git digest mismatch");
+      }
+      values[file] = assertPublicPackageSource(content);
+      if (!blobs.has(record.blob)) {
+        totalBytes += Buffer.byteLength(content);
+        if (totalBytes > 64 * 1024 * 1024 || blobs.size >= 500) throw new Error("Package source-closure budget exhausted");
+        const raw = { id: record.blob, content };
+        writeCensusJson(`${directory}/sources/${record.blob}.json.gz`, raw);
+        blobs.set(record.blob, { gitBlob: record.blob, sha256: censusDigest(raw) });
+      }
+      files.push({ path: file, gitBlob: record.blob });
+    }
+    return { windowEnd, commit, files, ...readNativePackagePins(values[manifestPath], values[lockPath], tools) };
+  });
+  const facts = { states, releases };
+  writeCensusJson(`${directory}/facts.json.gz`, facts);
+  const index = { schemaVersion: 1, complete: true, repository, workflowId, sourceRevision, until,
+    contractSha256: censusDigest(contract), factsSha256: censusDigest(facts), states: states.length,
+    sources: [...blobs.values()], sourceBytes: totalBytes, acquiredAt: new Date().toISOString(),
+    producer: { path: "scripts/collect-package-currency-history.mjs", sha256: hash(readFileSync(import.meta.filename)) } };
+  writeCensusJson(`${directory}/index.json`, index);
+  return { complete: true, packages: tools.length, states: states.length, sourceBlobs: blobs.size };
+}
+
+if (process.argv[1] === import.meta.filename) {
+  if (!process.argv[2] || process.argv.length > 4 || process.argv[3] && process.argv[3] !== "--prepare-only") {
+    throw new Error("usage: collect-package-currency-history.mjs BARE_GIT_CACHE [--prepare-only]");
+  }
+  console.log(JSON.stringify(collectPackageCurrencyHistory(process.argv[2], process.argv[3] === "--prepare-only")));
+}

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-goose",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "7f85bc59e99ac1cb70fd048f7304907b0ebfa2efb740325559f4d4dc3b092760",
+  "inventoryRuns": 532,
+  "observations": 532,
+  "proven": 0,
+  "partitions": [
+    {
+      "file": "smoke-goose-observations-001.json.gz",
+      "count": 40,
+      "sha256": "b0c3e2b8e052584bb7e97eaeb577ddf1f75b4223c35c40f85327df865fdcd97b"
+    },
+    {
+      "file": "smoke-goose-observations-002.json.gz",
+      "count": 40,
+      "sha256": "9afb6648a43d22c7409571cba7d56ac95e1b5bf6a4ca40d7e4bbedf2457bd6de"
+    },
+    {
+      "file": "smoke-goose-observations-003.json.gz",
+      "count": 40,
+      "sha256": "8e187ac2ffabd34f1cc815d658d5bec15eaad3960d53e79cce6bff1ce4fbea9c"
+    },
+    {
+      "file": "smoke-goose-observations-004.json.gz",
+      "count": 40,
+      "sha256": "086f76be054cfc7e7d71ac1df073dc3b219eeefde39f6e32b9b3977b6543030e"
+    },
+    {
+      "file": "smoke-goose-observations-005.json.gz",
+      "count": 40,
+      "sha256": "52eb1609389bd785fbbc4b042b5d32422e0f8474b346c2959a3022a5952b780e"
+    },
+    {
+      "file": "smoke-goose-observations-006.json.gz",
+      "count": 40,
+      "sha256": "4db4f21c3a515ecb18d7b3cabcea7d63e4c658b4f397d04d73fe893e3b6958a5"
+    },
+    {
+      "file": "smoke-goose-observations-007.json.gz",
+      "count": 40,
+      "sha256": "2eed17a3248de254aae3b155a669051c16349cb4a9f9d0ccae63e4939490a5ee"
+    },
+    {
+      "file": "smoke-goose-observations-008.json.gz",
+      "count": 40,
+      "sha256": "852a12d52b112c37a4748ed2cdb7bd39e84e86f14467d65c833333d7d946fe8f"
+    },
+    {
+      "file": "smoke-goose-observations-009.json.gz",
+      "count": 40,
+      "sha256": "730380263f098d296a0290f2de6e8d83bb03a3d3e51294a7603aedff1156aa7f"
+    },
+    {
+      "file": "smoke-goose-observations-010.json.gz",
+      "count": 40,
+      "sha256": "79a084f3b6e3331d642b59423b43e3c5e218eade79542d60183ce4dfc95e9a6d"
+    },
+    {
+      "file": "smoke-goose-observations-011.json.gz",
+      "count": 40,
+      "sha256": "00f5b5df399c9c71b3101a932548c74e168fb37fbca20ab53de15e9685d6e3e8"
+    },
+    {
+      "file": "smoke-goose-observations-012.json.gz",
+      "count": 40,
+      "sha256": "9102b2f3877451a392a108f46f1edcd81a6e14f31e13165e73296c8067317cef"
+    },
+    {
+      "file": "smoke-goose-observations-013.json.gz",
+      "count": 40,
+      "sha256": "c498cf269ffc84e38d5c5a38238f24e850083764ea7e2ae41d42a962f7b3c7d2"
+    },
+    {
+      "file": "smoke-goose-observations-014.json.gz",
+      "count": 12,
+      "sha256": "d44663a5292cd11471c91b63bcd94457274133666f28f4d52e3378cf25fe463e"
+    }
+  ],
+  "acquiredAt": "2026-10-18T20:19:34.090Z",
+  "rerunPolicy": "Only initial attempts; later artifact reuse cannot create duplicate native proof.",
+  "producer": {
+    "path": "scripts/collect-host-assertion-evidence.mjs",
+    "sha256": "a609e3ce234600e131387c260c39679941b0a810e5345c39df88803348fd305a"
+  }
+}

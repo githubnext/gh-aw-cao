@@ -19,12 +19,13 @@ try {
   trackedFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
     cwd: root,
     encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
   })
     .split("\0")
     .filter(Boolean)
     .filter((file) => existsSync(path.join(root, file)));
-} catch {
-  console.error("Unable to list tracked files. Ensure Git is installed and this command runs inside the repository.");
+} catch (error) {
+  console.error(`Unable to list repository files (${error.code ?? "unknown error"}). Ensure Git is installed and this command runs inside the repository.`);
   process.exit(1);
 }
 

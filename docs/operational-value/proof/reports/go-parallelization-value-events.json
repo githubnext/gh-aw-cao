@@ -1,0 +1,649 @@
+{
+  "schemaVersion": 1,
+  "kind": "operational-value-events",
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-go-test-parallelizer",
+  "workflowName": "Daily Go Test Parallelizer",
+  "sourcePath": ".github/workflows/daily-go-test-parallelizer.md",
+  "observedAt": "2026-10-18T16:39:13Z",
+  "cadenceDays": 7,
+  "metric": {
+    "id": "corroborated-net",
+    "name": "Corroborated unchanged-body parallel activations",
+    "unit": "tests",
+    "direction": "increase",
+    "version": "3f09b62e5f3b0686bda3e6a0332f2a0a95f725687de50546f647b5e522db718e"
+  },
+  "basis": "workflow-contribution",
+  "window": {
+    "startAt": "2026-07-27T04:58:37Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "opportunities": null,
+  "coverage": [
+    {
+      "startAt": "2026-07-27T04:58:37Z",
+      "endAt": "2026-10-18T15:00:12Z",
+      "status": "complete"
+    }
+  ],
+  "events": [
+    {
+      "id": "go-parallel:9ebbd78559ecc46afb0c1c4b3f76b3435e33967c",
+      "at": "2026-07-29T06:58:41Z",
+      "value": 3,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +3 / -0",
+      "detail": "3 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #48792",
+          "url": "https://github.com/github/gh-aw/pull/48792"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/9ebbd78559ecc46afb0c1c4b3f76b3435e33967c"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:680b76240b1f9dc7cc2d9a0603a5767d844295a2",
+      "at": "2026-08-01T06:49:57Z",
+      "value": 1,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +1 / -0",
+      "detail": "1 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #49499",
+          "url": "https://github.com/github/gh-aw/pull/49499"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/680b76240b1f9dc7cc2d9a0603a5767d844295a2"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:e27d7ae20a3eb9344c3532abce46d3c224edc9fd",
+      "at": "2026-08-05T12:54:37Z",
+      "value": 40,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +40 / -0",
+      "detail": "40 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #50509",
+          "url": "https://github.com/github/gh-aw/pull/50509"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/e27d7ae20a3eb9344c3532abce46d3c224edc9fd"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:73773bd8fa4ce0f7b0298659bb1f459791189887",
+      "at": "2026-08-07T13:33:15Z",
+      "value": 14,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +14 / -0",
+      "detail": "14 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #51024",
+          "url": "https://github.com/github/gh-aw/pull/51024"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/73773bd8fa4ce0f7b0298659bb1f459791189887"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:0ebafe7cd63ea8483545ccdfe8254db0abf7a6d8",
+      "at": "2026-08-08T06:27:40Z",
+      "value": 3,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +3 / -0",
+      "detail": "3 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #51331",
+          "url": "https://github.com/github/gh-aw/pull/51331"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/0ebafe7cd63ea8483545ccdfe8254db0abf7a6d8"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:0b12e2d631839af7d2af8dd744a9fb14a98dab64",
+      "at": "2026-08-09T11:02:52Z",
+      "value": 3,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +3 / -0",
+      "detail": "3 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #51539",
+          "url": "https://github.com/github/gh-aw/pull/51539"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/0b12e2d631839af7d2af8dd744a9fb14a98dab64"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:caa9b6be4d96b1c470a5c539938c8d8d9aa0b716",
+      "at": "2026-08-15T12:52:30Z",
+      "value": 20,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +20 / -0",
+      "detail": "20 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #52860",
+          "url": "https://github.com/github/gh-aw/pull/52860"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/caa9b6be4d96b1c470a5c539938c8d8d9aa0b716"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:7f15b3ea98891f44b3507e4520023b240b519f6d",
+      "at": "2026-08-16T12:32:02Z",
+      "value": 9,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +9 / -0",
+      "detail": "9 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #53083",
+          "url": "https://github.com/github/gh-aw/pull/53083"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/7f15b3ea98891f44b3507e4520023b240b519f6d"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:29a044c6eaa7efbb6af904ac455239d65fb5bf85",
+      "at": "2026-08-17T13:01:44Z",
+      "value": 2,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +2 / -0",
+      "detail": "2 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #53381",
+          "url": "https://github.com/github/gh-aw/pull/53381"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/29a044c6eaa7efbb6af904ac455239d65fb5bf85"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:059f46f72d30fadb985973564ce72e6bcac42b4c",
+      "at": "2026-08-17T16:00:06Z",
+      "value": 110,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +110 / -0",
+      "detail": "110 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #53407",
+          "url": "https://github.com/github/gh-aw/pull/53407"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/059f46f72d30fadb985973564ce72e6bcac42b4c"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:7fbe337cf2ac8c35762230003764ae780c76e4be",
+      "at": "2026-08-17T20:02:58Z",
+      "value": 110,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +110 / -0",
+      "detail": "110 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #53472",
+          "url": "https://github.com/github/gh-aw/pull/53472"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/7fbe337cf2ac8c35762230003764ae780c76e4be"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:f7c344f0bc81296a6d2b732d1f84a4a73c5e7060",
+      "at": "2026-08-17T21:05:50Z",
+      "value": 102,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +102 / -0",
+      "detail": "102 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #53491",
+          "url": "https://github.com/github/gh-aw/pull/53491"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/f7c344f0bc81296a6d2b732d1f84a4a73c5e7060"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:31f035a1d21379bade6aa96fd04dcb515aeef00a",
+      "at": "2026-08-18T13:08:28Z",
+      "value": 2,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +2 / -0",
+      "detail": "2 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #53692",
+          "url": "https://github.com/github/gh-aw/pull/53692"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/31f035a1d21379bade6aa96fd04dcb515aeef00a"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:5fa8e6299f7522b56bd154cc6c05be8ecb8c07dd",
+      "at": "2026-08-18T15:00:40Z",
+      "value": 22,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +22 / -0",
+      "detail": "22 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #53721",
+          "url": "https://github.com/github/gh-aw/pull/53721"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/5fa8e6299f7522b56bd154cc6c05be8ecb8c07dd"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:e735310f6076ca559900ea598dfe0728c6e835e0",
+      "at": "2026-08-19T09:55:36Z",
+      "value": 53,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +53 / -0",
+      "detail": "53 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #53931",
+          "url": "https://github.com/github/gh-aw/pull/53931"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/e735310f6076ca559900ea598dfe0728c6e835e0"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:c31f84be19d43594d3b65c07dc774fc8f344db93",
+      "at": "2026-08-19T13:15:30Z",
+      "value": 191,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +191 / -0",
+      "detail": "191 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #54002",
+          "url": "https://github.com/github/gh-aw/pull/54002"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/c31f84be19d43594d3b65c07dc774fc8f344db93"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:7a98e070d51f0c96a6b912ceed547786345c3457",
+      "at": "2026-08-19T21:52:47Z",
+      "value": 143,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +143 / -0",
+      "detail": "143 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #54078",
+          "url": "https://github.com/github/gh-aw/pull/54078"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/7a98e070d51f0c96a6b912ceed547786345c3457"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:0b8a771e720d9fc186f00913d3f40c3cde38d267",
+      "at": "2026-08-20T05:33:12Z",
+      "value": 53,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +53 / -0",
+      "detail": "53 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #54144",
+          "url": "https://github.com/github/gh-aw/pull/54144"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/0b8a771e720d9fc186f00913d3f40c3cde38d267"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:d9d13be8340d4f3a947f961e45a14513aa83f95f",
+      "at": "2026-08-20T17:04:07Z",
+      "value": 5,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +5 / -0",
+      "detail": "5 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #54291",
+          "url": "https://github.com/github/gh-aw/pull/54291"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/d9d13be8340d4f3a947f961e45a14513aa83f95f"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:fe71ce41724e918bd4fb6016f0903785916e0892",
+      "at": "2026-08-21T17:20:38Z",
+      "value": 65,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +65 / -0",
+      "detail": "65 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #54565",
+          "url": "https://github.com/github/gh-aw/pull/54565"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/fe71ce41724e918bd4fb6016f0903785916e0892"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:85c3c3f652aa45d94bf50782d64b8b4bcdc1091b",
+      "at": "2026-08-23T13:48:40Z",
+      "value": 10,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +10 / -0",
+      "detail": "10 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #55047",
+          "url": "https://github.com/github/gh-aw/pull/55047"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/85c3c3f652aa45d94bf50782d64b8b4bcdc1091b"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:6aaca65d160e51b7faca91cdc4eaab6e9d231d03",
+      "at": "2026-08-23T17:20:10Z",
+      "value": 6,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +6 / -0",
+      "detail": "6 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #55118",
+          "url": "https://github.com/github/gh-aw/pull/55118"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/6aaca65d160e51b7faca91cdc4eaab6e9d231d03"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:a6402732ec7bf2151f73e029caa49b375525d168",
+      "at": "2026-08-24T01:08:02Z",
+      "value": 37,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +37 / -0",
+      "detail": "37 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #55206",
+          "url": "https://github.com/github/gh-aw/pull/55206"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/a6402732ec7bf2151f73e029caa49b375525d168"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:f040d94251b501710d7defa844934ad4a7cd44e0",
+      "at": "2026-08-24T03:07:59Z",
+      "value": 38,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +38 / -0",
+      "detail": "38 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #55238",
+          "url": "https://github.com/github/gh-aw/pull/55238"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/f040d94251b501710d7defa844934ad4a7cd44e0"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:3223974841277c4b455e1bffeecbdaf8b5bf3af1",
+      "at": "2026-08-24T20:04:50Z",
+      "value": 103,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +103 / -0",
+      "detail": "103 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #55472",
+          "url": "https://github.com/github/gh-aw/pull/55472"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/3223974841277c4b455e1bffeecbdaf8b5bf3af1"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:feb234150b81c0f1035fde484e52cbe1b9f1a19f",
+      "at": "2026-08-25T03:17:27Z",
+      "value": 30,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +30 / -0",
+      "detail": "30 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #55580",
+          "url": "https://github.com/github/gh-aw/pull/55580"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/feb234150b81c0f1035fde484e52cbe1b9f1a19f"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:3fc63eabd776a64bbe7eeb233e66d1fec5801873",
+      "at": "2026-08-25T17:09:22Z",
+      "value": 43,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +43 / -0",
+      "detail": "43 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #55832",
+          "url": "https://github.com/github/gh-aw/pull/55832"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/3fc63eabd776a64bbe7eeb233e66d1fec5801873"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:df35b4ed8fa30401f200fa320431824af3c8c0d0",
+      "at": "2026-08-26T19:42:05Z",
+      "value": 8,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +8 / -0",
+      "detail": "8 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #56118",
+          "url": "https://github.com/github/gh-aw/pull/56118"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/df35b4ed8fa30401f200fa320431824af3c8c0d0"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:30a48e65f306ded34630d8e5c68412ff2cd6138a",
+      "at": "2026-08-26T21:54:21Z",
+      "value": 4,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +4 / -0",
+      "detail": "4 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #56136",
+          "url": "https://github.com/github/gh-aw/pull/56136"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/30a48e65f306ded34630d8e5c68412ff2cd6138a"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:5424e786bd0bdc7677340e0fc5573eeef52893c9",
+      "at": "2026-08-27T00:38:43Z",
+      "value": 41,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +41 / -0",
+      "detail": "41 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #56154",
+          "url": "https://github.com/github/gh-aw/pull/56154"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/5424e786bd0bdc7677340e0fc5573eeef52893c9"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:55e950d17953b83d17647f85363ce545796b4b6d",
+      "at": "2026-08-27T04:18:28Z",
+      "value": 18,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +18 / -0",
+      "detail": "18 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #56216",
+          "url": "https://github.com/github/gh-aw/pull/56216"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/55e950d17953b83d17647f85363ce545796b4b6d"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:f51eb84f0a6a6db55a3d651433e7040161bbcfe9",
+      "at": "2026-08-28T12:45:48Z",
+      "value": 5,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +5 / -0",
+      "detail": "5 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #56607",
+          "url": "https://github.com/github/gh-aw/pull/56607"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/f51eb84f0a6a6db55a3d651433e7040161bbcfe9"
+        }
+      ]
+    },
+    {
+      "id": "go-parallel:df99915f16bceffb468ea06165b1e644a4f8fe8d",
+      "at": "2026-08-29T20:53:09Z",
+      "value": 1,
+      "attribution": "corroborated",
+      "label": "Existing-test parallelization: +1 / -0",
+      "detail": "1 unchanged-body leading parallel activations; 0 withdrawals. Native partial progress, not proven race safety, speedup or full-suite acceptance.",
+      "evidence": [
+        {
+          "label": "Pull request #56962",
+          "url": "https://github.com/github/gh-aw/pull/56962"
+        },
+        {
+          "label": "Immutable first-parent change",
+          "url": "https://github.com/github/gh-aw/commit/df99915f16bceffb468ea06165b1e644a4f8fe8d"
+        }
+      ]
+    }
+  ],
+  "nativeContext": {
+    "repositoryNet": 2145,
+    "linkedNet": 1295,
+    "nativeCommits": 1718,
+    "blobs": 11601,
+    "linkedMergeCandidates": 54,
+    "nativeLinkedChanges": 33,
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "baseline": "870215a79912f85171230e5ffac272a2e0d406d6",
+    "oracleSha256": "753dd2574b4389eaee0a0bb63fb74f7c7357696cc6d8e7c7a6f52e833ba1cf2c"
+  },
+  "limitations": [
+    "Corroborated markers and explicit GitHub graph links are not safe-output creation receipts or exclusive causal attribution.",
+    "This cohort excludes unresolved workflow markers, comments, edited-away markers and deleted outputs.",
+    "Links discovered after the PR merged are not used to backdate contribution.",
+    "Merge and check rollups do not prove native improvement, race safety, behavior preservation or required-regression acceptance.",
+    "Counts are source-verified partial progress: unchanged existing top-level test bodies gain a leading parallel call. Added/renamed tests and changed bodies are not counted.",
+    "Package/build-constraint changes, generated files and directly detected incompatible process-state calls are excluded.",
+    "Same-file global references are retained as risk context; cross-file globals, resource isolation, race safety and full-suite acceptance are not established.",
+    "Complete coverage describes the declared immutable first-parent source facet and retained named-marker graph cohort, not all possible workflow contributions.",
+    "Delivery timestamps are immutable mainline commit committer times; GitHub merge times are retained separately.",
+    "Eligible safe opportunities and matching costs are not measured; no automatic keep/retire bar is inferred."
+  ]
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "revision": "3b6b90c09fb62933828e4890cbe4d71fac51d689",
+    "command": [
+      "go",
+      "build",
+      "./pkg/..."
+    ],
+    "toolchain": "go1.26.9",
+    "goos": "linux",
+    "goarch": "amd64",
+    "cgoEnabled": "0",
+    "exitCode": 0,
+    "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "executedRepositoryCode": false
+  },
+  {
+    "revision": "d3915e4a21040c00a6e11e1acb0aac42605abc4c",
+    "command": [
+      "go",
+      "build",
+      "./pkg/..."
+    ],
+    "toolchain": "go1.26.9",
+    "goos": "linux",
+    "goarch": "amd64",
+    "cgoEnabled": "0",
+    "exitCode": 0,
+    "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "executedRepositoryCode": false
+  },
+  {
+    "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "command": [
+      "go",
+      "build",
+      "./pkg/..."
+    ],
+    "toolchain": "go1.26.9",
+    "goos": "linux",
+    "goarch": "amd64",
+    "cgoEnabled": "0",
+    "exitCode": 0,
+    "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "executedRepositoryCode": false
+  }
+]

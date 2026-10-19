@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-credit-limit-test",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "workflowBlob": "950ad1930ee32372cb8f254b36eee121cbc94254",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "model": "gpt-6.1-sol",
+  "implementation": {
+    "module": "docs/operational-value/proof/functions/daily-credit-limit-test.mjs",
+    "exports": ["definition", "collectBatch", "scoreMetric"],
+    "status": "implemented-offline-native-receipt-contract",
+    "campaignRequired": false,
+    "collection": "One bounded retained archive read per batch; explicit bounded windows, source identities and independent eligibility/acceptance facets. No network or workflow execution.",
+    "measure": "Protected eligible activations, percent; independent accepted counts and denial/no-inference/notification facets retained separately from contribution.",
+    "boundaryDecisions": [
+      "Normative equality-at-cap is exceeded; cap is 1 AIC, not the per-run maximum.",
+      "Manual and command dispatch bypasses do not count as failures.",
+      "No accepted denial from generic failed jobs, missing inference logs or the intentionally nonexistent tool.",
+      "Unknown eligible population is null; observedEligibleCount is a separate bounded subtotal.",
+      "Positive partial native evidence survives missing full acceptance, cohort or contribution facts.",
+      "No historical predicate application before prospective contract activation at the frozen cutoff."
+    ]
+  },
+  "validation": {
+    "focusedTests": "node --test tests/unit/daily-credit-limit-test-value.test.mjs",
+    "focusedResult": "18 passed, 0 failed",
+    "collector": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/daily-credit-limit-test.mjs",
+    "collectorResult": "passed",
+    "syntax": "node --check on the owned module, acquisition script and test; passed",
+    "standardEvaluator": "node .github/skills/add-operational-value/scripts/evaluate.mjs --root . --end 2026-10-19T09:46:04Z --output-dir docs/operational-value/proof/daily-credit-limit-test/evaluation --function docs/operational-value/proof/functions/daily-credit-limit-test.mjs --no-runs github/gh-aw daily-credit-limit-test",
+    "standardEvaluatorResult": "passed; timeline, definitions, evidence archive and interactive pulse retained",
+    "bootstrapPermissionNote": "Seed scripts were not executable. Their execute bit was enabled only during standard evaluator execution and restored in finally; no helper content changes were made.",
+    "toolingLimitation": "No installed ESLint or TypeScript binaries were available; no installation was authorized. No workflow source was changed or executed."
+  },
+  "evidence": {
+    "productionHistoryReader": "readOutputHistory",
+    "verifiedPartitions": 346,
+    "verifiedDiscoveryEntities": 58048,
+    "selectedDiscoveryEntities": 158,
+    "discoveryUse": "Lineage discovery only; not native activations, acceptance, contribution, complete inference coverage or billing facts.",
+    "retainedSourceBodies": 13,
+    "missingSourceEntries": 13,
+    "sourceBodies": "Lossless base64 Git blobs with original Git ID, byte count and SHA-256; includes complete available workflow, reporting import, specification, compiler, notification templates and tests.",
+    "nativeObservations": "not acquired",
+    "syntheticFixtures": "Tests only; explicitly synthetic and dubious; excluded from actual native archive and evaluation.",
+    "actualSourceAddition": "0fb669049b80755074f3891de4a85c848acdd167",
+    "actualSourceParent": "29e09fa8f846b7e86bdecb541405f39238a06e07",
+    "additionReadiness": "Verified actual path addition against parent and not a shallow boundary; addition source and compiled bodies missing.",
+    "historicalReadiness": "unknown-not-exhausted"
+  },
+  "retainedEvaluation": {
+    "startInclusive": "2026-10-18T15:00:12Z",
+    "endExclusive": "2026-10-19T09:46:04Z",
+    "status": "initial partial native period; missing authenticated evidence",
+    "eligibleCount": null,
+    "primary": null,
+    "diagnostics": null,
+    "contribution": null,
+    "costs": "not measured",
+    "decision": "not rated; no source-derived keep bar",
+    "baseline": "not established; no adoption-relative comparison",
+    "causation": "not claimed"
+  },
+  "openScopes": [
+    {
+      "scope": "Current compiled/checker and transitive source-contract parity",
+      "status": "incomplete",
+      "manifest": "acquisition-review.json",
+      "reason": "Exact missing immutable blob endpoints retained; no acquisition authorized."
+    },
+    {
+      "scope": "Native producer authenticity and source-bound evidence collection",
+      "status": "not implemented or released",
+      "reason": "Receipt payload digests prove integrity, not origin authenticity. Independent producer authentication, full activation/usage inventory, provider request coverage and publication receipts are required.",
+      "producerEndpoints": "not discovered; explicitly null rather than invented"
+    },
+    {
+      "scope": "Historical contract eras and baseline reconstruction",
+      "status": "unknown, not exhausted",
+      "reason": "Missing adoption contents and native evidence cannot justify backdating current rules or an attainment-only historical reconstruction claim."
+    },
+    {
+      "scope": "Costs, counterfactual savings and keep/change decision",
+      "status": "not measured or rated",
+      "reason": "No matched cost evidence, counterfactual or agreed native keep bar."
+    }
+  ],
+  "safety": {
+    "networkUsed": false,
+    "fetchedCodeExecuted": false,
+    "remoteWrites": false,
+    "credentialsChanged": false,
+    "dependenciesInstalled": false,
+    "commitsOrPullRequestsCreated": false,
+    "automaticAcquisitionOrResumption": false,
+    "seedIncludedInHandoff": false
+  }
+}

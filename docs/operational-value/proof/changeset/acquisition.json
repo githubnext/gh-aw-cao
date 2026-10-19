@@ -1,0 +1,114 @@
+{
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "historyStart": "2026-10-04T15:00:12Z",
+  "nativeCommits": 97,
+  "sources": [
+    {
+      "mode": "100644",
+      "gitBlob": "66950e20545bc3608d6daac3343e6d0e978d4726",
+      "path": ".github/workflows/changeset.md",
+      "status": "available",
+      "bytes": 6482,
+      "sha256": "c0434158d7d86c3d7892952f04eaff1790675e611ef05602b5b0ab1cc4b87310"
+    },
+    {
+      "mode": "100644",
+      "gitBlob": "f1c6462e27c4299801059f433826b9ee700508d2",
+      "path": ".github/workflows/shared/changeset-format.md",
+      "status": "available",
+      "bytes": 1713,
+      "sha256": "05f0a0a08d2cb99f0bed9f0707c408a7e104b1c7c1aa9326713356fdbe33f99f"
+    },
+    {
+      "mode": "100644",
+      "gitBlob": "9668700a880548afc5bc455371cc1619156ea7d8",
+      "path": ".github/skills/jqschema/SKILL.md",
+      "status": "available",
+      "bytes": 994,
+      "sha256": "02f0d562f6fd6bd536039155da5a6baa495fad0aae342773b7a7d2f71e56b16c"
+    },
+    {
+      "mode": "100755",
+      "gitBlob": "daf0457d9a0a6bd1f47fc36bd594729f4e654b55",
+      "path": ".github/skills/jqschema/jqschema.sh",
+      "status": "available",
+      "bytes": 271,
+      "sha256": "7d0c3bc7cc6268e0b1cf5b9a1518c7b8274c4fcaf90df58ccab3d7ea071019cc"
+    },
+    {
+      "mode": "100644",
+      "gitBlob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+      "path": ".github/workflows/shared/otlp.md",
+      "status": "available",
+      "bytes": 635,
+      "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6"
+    },
+    {
+      "mode": "100644",
+      "gitBlob": "0fe00eb27e49c87a524732611401a9e160598448",
+      "path": ".github/workflows/shared/graders.md",
+      "status": "available",
+      "bytes": 365,
+      "sha256": "bb57d7dcf2b9d2acca6d18845f146bd58d18739a9012a87ed53a32df2a2a5804"
+    },
+    {
+      "mode": "100644",
+      "gitBlob": "960820a922eb16387851e72f71ceebcbdc22d327",
+      "path": ".github/workflows/shared/graders/state-revisit-probability-rep.md",
+      "status": "available",
+      "bytes": 664,
+      "sha256": "173791e1c929efcf9416b97d7a7739ee1e582456188cd9703009b57018d63afd"
+    },
+    {
+      "mode": "100644",
+      "gitBlob": "b23f3115ac5e6df908571b5369cac11cf840f50d",
+      "path": ".github/workflows/shared/graders/recurrence-determinism.md",
+      "status": "available",
+      "bytes": 1345,
+      "sha256": "c0abb51fbf3237c36697199f6381e1daa40761758025192ad7d2831d148f6a5a"
+    },
+    {
+      "mode": "100644",
+      "gitBlob": "02ffc9a3093a29ce6a79d1ec32a9a40641bb931b",
+      "path": ".github/workflows/shared/graders/recurrence-laminarity.md",
+      "status": "available",
+      "bytes": 1538,
+      "sha256": "6a5c4e8be3822de3deb337e8a81f3acaf69c49c3d19e7c017e593600d9bb590a"
+    },
+    {
+      "mode": "100755",
+      "gitBlob": "ec759136f8caa847db4091a86f6ab9e36815f7ce",
+      "path": "scripts/changeset.js",
+      "status": "available",
+      "bytes": 16916,
+      "sha256": "74dbcee529c233854d987ddc4fcd73d4cafd9a938335d7784b0600c99a2ae180"
+    },
+    {
+      "mode": "100755",
+      "gitBlob": "56a0a0f2d9cd09471311b18265b6ed4450a8acdf",
+      "path": "scripts/changeset.test.js",
+      "status": "available",
+      "bytes": 8326,
+      "sha256": "03754512fb6866b381b4a18ac2c5422c2c5b0ddc2aac54fa09450049738a13a9"
+    },
+    {
+      "mode": "100644",
+      "gitBlob": "1dcb61722434cdc0bc424fee843c21c1934e379d",
+      "path": ".changeset/README",
+      "status": "available",
+      "bytes": 79,
+      "sha256": "c6fb026fe05b0a8324f2c6c353be042ff3d66f164db41029b6603aac81c9aac7"
+    }
+  ],
+  "adoptionInvestigation": {
+    "candidateCommit": "06d7770e80228207b6436fd22cd01ce145daf71c",
+    "actualParent": "feef623b4840ab0b26128b8bc3d7d96907b07fd5",
+    "adoptedAt": "2025-11-01T16:31:43Z",
+    "sourceBlob": "5e7ba55aba29d40d35516838aa8aa8920a434e24",
+    "compiledBlob": "a7d2f1f94bed3f34a00833de0e093546b62a7c2b",
+    "originalSourceStatus": "missing local blob; historical acceptance rules not reconstructed"
+  },
+  "directCandidates": 38,
+  "closure": 3182
+}

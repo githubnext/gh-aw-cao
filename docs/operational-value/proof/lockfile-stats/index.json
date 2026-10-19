@@ -1,0 +1,21 @@
+{
+  "complete": true,
+  "contractSha256": "e1efbb89684712dd6b2e1ad8728e1985d403afa55ccc5b8c44e6f7e1902b2143",
+  "inventorySha256": "59984bda9b8d48109618143a70a678c53787435376ca905546fb40c02f29ba8b",
+  "assessmentsSha256": "4db2a2d8d9d51b6f263dc13d2bfd0f58749da7fa1caa72f2cdf6ea1b457e7554",
+  "observations": 414,
+  "eligibleRuns": 372,
+  "ineligibleRuns": 42,
+  "acquisitionComplete": true,
+  "pendingRetainedAcquisitions": 0,
+  "assessed": 45,
+  "verifiedFacts": 10662,
+  "incorrectFacts": 286,
+  "baselineProbe": {
+    "commit": "b2606df93230e9c44517a3191cbcc1ab2363a4ec",
+    "lockfiles": 25,
+    "nativeInputSha256": "81192d56594fab7ef3a10086901a4b281fb62feee43bf0b2454bc94d0342aa39",
+    "deliveredReport": null,
+    "reason": "Immutable Git reconstructs the census input but cannot establish a pre-adoption delivered assertion."
+  }
+}

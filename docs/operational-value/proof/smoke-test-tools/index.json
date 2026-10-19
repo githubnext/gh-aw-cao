@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "contractSha256": "5b56e008445f9b489474379b165e1e9eba34ea286b384cd38e66f6f80ee9133f",
+  "complete": true,
+  "acquisitionComplete": true,
+  "until": "2026-10-18T15:00:12Z",
+  "runs": 2899,
+  "observationsSha256": "1be7b373ae94c37916cd302f06e0230b13a451ac4ba42425ed3cf915e46242dc",
+  "sourcesSha256": "71240bb480f854b12407a35e098bc523d4b32c4ae3eb0e133c94da7d09ae6b3a",
+  "runsSha256": "ee19e3e4ab826a914d22a39f242572aca42b0b44756b522b4162458970e29b09",
+  "jobs": {
+    "available": 1148,
+    "initial-run-skipped": 999,
+    "empty-initial-job-history": 752
+  },
+  "logs": {
+    "no-initial-agent-execution": 1089,
+    "null": 999,
+    "HTTP 404": 334,
+    "HTTP 410": 293,
+    "empty-initial-attempt-log-archive": 151,
+    "available": 33
+  },
+  "retainedProofs": 102,
+  "evidenceReady": true,
+  "remoteRequests": 935,
+  "nativeReceiptsSha256": "8f4041e63142246e83ddf5d89f12e05a0c66b8bbc22a59a266d6dce0080fd8e5",
+  "sourceReviewSha256": "411dea88f45b4d535fda488849c615a1b70d01d21b95d5eb1f06ced9c8e0fd7c",
+  "provenRunTools": 98,
+  "nativeGaps": {
+    "No reviewed container-bound structured native command transport. Unstructured Copilot replies or mutable session artifacts cannot establish command/output lineage.": 4,
+    "Protected engine log retained, but no closed source-required command/output pair is independently established.": 18
+  }
+}

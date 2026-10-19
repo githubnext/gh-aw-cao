@@ -1,0 +1,172 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { parse } from "yaml";
+import { boundedPublicGitArchive } from "./bounded-public-git-archive.mjs";
+import { censusDigest, readCensusJson, writeCensusJson } from "./operational-value-census-io.mjs";
+import { credoHash, credoMarkdownPath, executeCredoSnippet, extractCredoSnippets } from "./native-credo-snippet-value.mjs";
+
+const directory = "docs/operational-value/proof/credo-snippets";
+const functionPath = "docs/operational-value/proof/functions/daily-elixir-credo-snippet-audit.mjs";
+const repository = "github/gh-aw";
+const revision = "c86377ec47b38f0b5af463277ee55d1d03d08da8";
+const until = "2026-10-18T15:00:12Z";
+const workflowId = "daily-elixir-credo-snippet-audit";
+const sourcePath = `.github/workflows/${workflowId}.md`;
+const [mode, cache, project] = process.argv.slice(2);
+if (!["--freeze", "--collect"].includes(mode) || !cache || !project) {
+  throw new Error("usage: collect-credo-snippet-history.mjs --freeze|--collect PRIVATE_GIT_CACHE PRIVATE_CREDO_PROJECT");
+}
+const archive = boundedPublicGitArchive(cache, repository, `${directory}/sources`);
+const metadata = archive.metadata;
+const iso = value => new Date(value).toISOString().replace(".000Z", "Z");
+const fileHash = file => credoHash(readFileSync(file));
+const source = archive.read(revision, sourcePath);
+const asText = row => row?.bytes.toString("utf8") ?? "";
+
+function policy(sourceText) {
+  const frontmatter = sourceText.match(/^---\n([\s\S]*?)\n---\n/);
+  if (!frontmatter) return null;
+  const config = parse(frontmatter[1]);
+  const task = sourceText.match(/Use Credo to improve[\s\S]*?## Constraints/);
+  if (!task || config.runtimes?.elixir?.version !== "1.17"
+    || !sourceText.includes('{:credo, "~> 1.7"')) return null;
+  return censusDigest({ task: task[0], elixir: "1.17", credo: "~> 1.7", strict: true });
+}
+
+function toolIdentity() {
+  const files = [];
+  const visit = dir => {
+    for (const name of readdirSync(dir).sort()) {
+      const file = path.join(dir, name), stat = statSync(file);
+      if (stat.isDirectory()) visit(file);
+      else if (stat.isFile()) files.push({ path: path.relative(project, file), sha256: fileHash(file) });
+      else throw new Error("Unsupported private toolchain file");
+    }
+  };
+  visit(path.join(project, "deps"));
+  const version = execFileSync("elixir", ["--version"], { timeout: 15000 }).toString().trim();
+  if (!version.includes("Elixir 1.17.3") || !version.includes("Erlang/OTP 27")) throw new Error("Pinned native runtime unavailable");
+  return { version, packageFiles: files, mixProject: readFileSync(path.join(project, "mix.exs"), "utf8"),
+    mixLock: readFileSync(path.join(project, "mix.lock"), "utf8"),
+    defaultConfigSha256: fileHash(path.join(project, "deps/credo/.credo.exs")),
+    otpDistributionSha256: "8276c969c0ee91f45d83b2002fb1a82e8b11a5cc57aa3b439faf8c418354c123",
+    elixirDistributionSha256: "379d4d0e8215112b4a3904db1bec1ee93108c36010c81926814c741f241a3d9a",
+    packageLockSha256: fileHash("package-lock.json"),
+    markdownParser: { unified: "11.0.5", remarkParse: "11.0.0" } };
+}
+
+if (metadata(["rev-parse", "--is-shallow-repository"]) !== "false") throw new Error("Shallow history cannot establish adoption");
+const addition = metadata(["log", "--reverse", "--diff-filter=A", "--format=%H", revision, "--", sourcePath]).split("\n")[0];
+if (addition !== "3fa71b5a2b43abf8a59b4a6ed58a2e2b245d9934") throw new Error("Actual workflow addition mismatch");
+const parent = metadata(["rev-parse", `${addition}^`]);
+if (archive.read(parent, sourcePath) !== null) throw new Error("Workflow existed before claimed adoption");
+const adoption = { commit: addition, adoptedAt: iso(metadata(["show", "-s", "--format=%cI", addition])),
+  baselineCommit: parent, baselineAt: iso(metadata(["show", "-s", "--format=%cI", parent])) };
+
+if (mode === "--freeze") {
+  if (existsSync(`${directory}/contract.json`) || existsSync(functionPath)) throw new Error("Refusing to overwrite frozen Credo contract");
+  const tools = toolIdentity();
+  const protectedToolSources = [".credo.exs", "lib/credo.ex", "lib/credo/config_file.ex",
+    "lib/credo/config_builder.ex", "lib/credo/sources.ex", "lib/credo/cli/options.ex",
+    "lib/credo/cli/output/formatter/json.ex", "lib/credo/execution/task/append_extra_config.ex"];
+  writeCensusJson(`${directory}/tools.json.gz`, { ...tools, sources: protectedToolSources.map(file => ({
+    path: file, content: readFileSync(path.join(project, "deps/credo", file), "utf8") })) });
+  const contract = { schemaVersion: 1, repository, repositoryId: 1036865607, workflowId, sourcePath,
+    sourceRevision: revision, until, sourceGitBlob: source.id, directory, adoption,
+    policySha256: policy(asText(source)), toolSha256: censusDigest(tools),
+    interpreterSha256: fileHash("scripts/native-credo-snippet-value.mjs"),
+    probeSha256: fileHash("scripts/credo-snippet-probe.exs"),
+    collectorSha256: fileHash(import.meta.filename),
+    sourceReaderSha256: fileHash("scripts/immutable-public-git-source.mjs"),
+    archiveReaderSha256: fileHash("scripts/bounded-public-git-archive.mjs"),
+    scope: { roots: ["docs/", ".github/workflows/"], extensions: ["md", "mdx", "markdown"],
+      languages: ["elixir", "ex", "exs", "iex"], parser: "CommonMark remark-parse 11.0.0" },
+    acceptance: "Count actual pinned native strict Credo diagnostics only for a nonempty completely checkable cohort. No snippets, parse failures, context fragments, waivers and missing runtime produce null, not clean zero.",
+    safety: "Only parse and statically lint snippet text; never evaluate or compile snippets or load repository executable configuration. Fixtures do not establish repository outcomes or workflow contribution." };
+  if (!contract.policySha256) throw new Error("Unsupported frozen source goal");
+  writeCensusJson(`${directory}/contract.json`, contract);
+  writeFileSync(functionPath, 'import { nativeCredoSnippetModule } from "../../../../scripts/native-credo-snippet-value.mjs";\n\n'
+    + `export const { definition, collectBatch, scoreMetric } = nativeCredoSnippetModule(${JSON.stringify(contract, null, 2)});\n`);
+  console.log(JSON.stringify({ frozen: true, contractSha256: censusDigest(contract), functionSha256: fileHash(functionPath) }));
+} else {
+  const contract = readCensusJson(`${directory}/contract.json`);
+  if (contract.collectorSha256 !== fileHash(import.meta.filename)
+    || contract.interpreterSha256 !== fileHash("scripts/native-credo-snippet-value.mjs")
+    || contract.probeSha256 !== fileHash("scripts/credo-snippet-probe.exs")
+    || contract.toolSha256 !== censusDigest(toolIdentity())) throw new Error("Frozen native Credo contract/toolchain changed");
+  if (existsSync(`${directory}/index.json`)) throw new Error("Refusing to overwrite retained Credo evidence");
+  const fixtureInputs = [
+    { name: "clean-expression", language: "elixir", content: "IO.puts(:ok)\n", expected: 0 },
+    { name: "native-warning", language: "elixir", content: "IO.inspect(:ok)\n", expected: 1 },
+    { name: "native-name", language: "elixir", content: "defmodule Demo do\n  def badName, do: :ok\nend\n", expected: 1 },
+    { name: "invalid", language: "elixir", content: "defmodule Demo do\n", expected: null },
+    { name: "interactive", language: "iex", content: "iex> IO.puts(:ok)\n", expected: null },
+    { name: "waiver", language: "elixir", content: "# credo:disable-for-this-file\nIO.inspect(:ok)\n", expected: null },
+    { name: "empty", language: "elixir", content: "", expected: null },
+    { name: "not-executed", language: "elixir", content: 'raise "must never execute source"\n', expected: 0 },
+  ];
+  const probes = fixtureInputs.map(input => {
+    const result = executeCredoSnippet(input, project);
+    if (result.diagnostics !== input.expected) throw new Error(`Native Credo boundary probe failed: ${input.name}`);
+    return { ...input, result };
+  });
+  writeCensusJson(`${directory}/probes.json`, { synthetic: true, neverRepositoryOutcomes: true, probes });
+  const times = new Set([adoption.adoptedAt, until, iso(Date.parse(until) - 7 * 86400000)]);
+  for (let at = Date.parse(adoption.adoptedAt) + 7 * 86400000; at <= Date.parse(until); at += 7 * 86400000) times.add(iso(at));
+  const policyCommits = metadata(["log", "--reverse", "--format=%H", revision, "--", sourcePath]).split("\n").filter(Boolean);
+  const policies = policyCommits.map(commit => {
+    const row = archive.read(commit, sourcePath);
+    const fingerprint = policy(asText(row));
+    return { commit, at: iso(metadata(["show", "-s", "--format=%cI", commit])), gitBlob: row.id,
+      policySha256: fingerprint, supported: fingerprint === contract.policySha256 };
+  });
+  for (const commit of policyCommits) {
+    for (const file of [sourcePath, ".github/workflows/shared/daily-pr-base.md",
+      ".github/workflows/shared/activation-app.md", ".github/workflows/shared/reporting.md",
+      ".github/shared-instructions.md"]) archive.read(commit, file);
+  }
+  const nativeFacts = new Map(), parsed = new Map(), states = [];
+  for (const windowEnd of [...times].sort()) {
+    const commit = metadata(["rev-list", "-1", "--first-parent", `--before=${windowEnd}`, revision]);
+    const inventory = metadata(["ls-tree", "-r", commit, "--", "docs", ".github/workflows"])
+      .split("\n").flatMap(line => {
+        const match = line.match(/^(\d+) (blob|commit) ([a-f0-9]{40})\t(.+)$/);
+        if (!match || !credoMarkdownPath(match[4])) return [];
+        return [{ path: match[4], mode: match[1], gitBlob: match[3] }];
+      });
+    if (!inventory.length) throw new Error("Empty immutable Markdown inventory");
+    const snippets = [];
+    let complete = true;
+    for (const entry of inventory) {
+      if (entry.mode !== "100644") { complete = false; continue; }
+      const row = archive.read(commit, entry.path);
+      if (!row || row.id !== entry.gitBlob) throw new Error("Source inventory/blob mismatch");
+      if (!parsed.has(row.id)) parsed.set(row.id, extractCredoSnippets(asText(row)));
+      for (const snippet of parsed.get(row.id)) {
+        const key = `${snippet.language}:${snippet.contentSha256}`;
+        if (!nativeFacts.has(key)) nativeFacts.set(key, executeCredoSnippet(snippet, project));
+        snippets.push({ path: entry.path, gitBlob: row.id, line: snippet.line,
+          language: snippet.language, ...nativeFacts.get(key) });
+      }
+    }
+    writeCensusJson(`${directory}/inventory-${commit}.json.gz`, inventory);
+    const state = { windowEnd, commit, complete, markdownFiles: inventory.length,
+      inventorySha256: censusDigest(inventory), eligible: snippets.length, snippets };
+    states.push(state);
+    console.error(JSON.stringify({ windowEnd, markdownFiles: inventory.length, eligible: snippets.length }));
+  }
+  const sources = archive.sources();
+  const facts = { schemaVersion: 1, states, policies };
+  writeCensusJson(`${directory}/facts.json.gz`, facts);
+  writeCensusJson(`${directory}/index.json`, { schemaVersion: 1, repository, sourceRevision: revision,
+    until, contractSha256: censusDigest(contract), factsSha256: censusDigest(facts),
+    toolsSha256: censusDigest(readCensusJson(`${directory}/tools.json.gz`)),
+    probesSha256: censusDigest(readCensusJson(`${directory}/probes.json`)),
+    complete: states.every(state => state.complete), sources,
+    status: states.some(state => state.eligible > 0) ? "native-evidence-acquired" : "no-eligible-opportunities",
+    measured: states.some(state => state.eligible > 0 && state.snippets.every(snippet => snippet.status === "checked")),
+    gap: "No repository diagnostic, contribution, keep decision or attention trend is inferred from synthetic probes or empty snippet populations." });
+  console.log(JSON.stringify({ states: states.length, sources: sources.length,
+    nativeSnippets: nativeFacts.size, eligibleSnapshots: states.filter(state => state.eligible > 0).length }));
+}

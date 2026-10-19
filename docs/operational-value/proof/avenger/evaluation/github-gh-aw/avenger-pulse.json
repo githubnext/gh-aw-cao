@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "avenger",
+  "workflowName": "Avenger",
+  "sourcePath": ".github/workflows/avenger.md",
+  "valueFunctionSha256": "eb7cf00726a29cf1109990683241e70c2a5450eef566649929c5ca77371b389d",
+  "window": {
+    "startAt": "2026-10-18T06:32:44Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "linked",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "linked",
+    "basis": "workflow-contribution",
+    "unit": "defects"
+  },
+  "metrics": [
+    {
+      "id": "repairs",
+      "name": "Independently demonstrated original repairs",
+      "role": "primary",
+      "direction": "increase",
+      "unit": "defects",
+      "formula": "Distinct original-condition identities in repairs; delivered at max(landing time, first matching protected native pass completion, evidence availability). Null without corresponding coverage, with accepted partial subtotals retained.",
+      "presentation": {
+        "name": "Independently demonstrated original repairs",
+        "legendLabel": "repairs",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "complete",
+      "name": "Repairs with full buildability acceptance",
+      "role": "diagnostic",
+      "direction": "increase",
+      "unit": "defects",
+      "formula": "Distinct original-condition identities in complete; delivered at max(landing time, first matching protected native pass completion, evidence availability). Null without corresponding coverage, with accepted partial subtotals retained.",
+      "presentation": {
+        "name": "Repairs with full buildability acceptance",
+        "legendLabel": "complete",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "linked",
+      "name": "Demonstrated Avenger contributions",
+      "role": "diagnostic",
+      "direction": "increase",
+      "unit": "defects",
+      "formula": "Distinct original-condition identities in linked; delivered at max(landing time, first matching protected native pass completion, evidence availability). Null without corresponding coverage, with accepted partial subtotals retained.",
+      "presentation": {
+        "name": "Demonstrated Avenger contributions",
+        "legendLabel": "linked",
+        "transform": "identity"
+      },
+      "basis": "workflow-contribution",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Shared workflow-enabled contribution, not exclusive authorship."
+      ]
+    },
+    {
+      "id": "introduced",
+      "name": "Independently demonstrated introduced defects",
+      "role": "diagnostic",
+      "direction": "decrease",
+      "unit": "defects",
+      "formula": "Distinct newly introduced conditions with an independently passing predecessor and failing landed successor, delivered once at max(failure completion, evidence availability); null without exhaustive coverage.",
+      "presentation": {
+        "name": "Independently demonstrated introduced defects",
+        "legendLabel": "introduced",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "incomplete",
+      "name": "Conditions with incomplete check evidence",
+      "role": "diagnostic",
+      "direction": "decrease",
+      "unit": "defects",
+      "formula": "Original conditions established in this interval whose native check/landing proof remains incomplete at observedAt; null without catalogue coverage. Not a count of failed runs.",
+      "presentation": {
+        "name": "Conditions with incomplete check evidence",
+        "legendLabel": "incomplete",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

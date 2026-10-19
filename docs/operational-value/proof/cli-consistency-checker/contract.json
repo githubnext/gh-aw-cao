@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 3,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "intent": {
+    "goal": "Make CLI commands consistent, well documented and free of user-facing defects.",
+    "sourceQuote": "Perform a comprehensive inspection of the `gh-aw` CLI tool to identify inconsistencies, typos, bugs, or documentation gaps.",
+    "fullAcceptance": "For each command, source-defined documentation and convention obligations plus independently verified real help, example validity and behavior must agree. No known required facet may be missing.",
+    "partialAcceptance": "A source-defined literal documentation obligation is attained exactly when its Contains/NotContains predicate, with the original source scope, holds on the immutable CLI documentation bytes."
+  },
+  "activation": {
+    "kind": "contract-activation",
+    "at": "2026-10-18T15:00:12Z",
+    "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "limitation": "Current-source contract activated at the frozen cutoff, not workflow adoption. No application to earlier intent or conventions."
+  },
+  "units": {
+    "primary": "percent of frozen literal documentation obligations attained",
+    "full": "percent of independently accepted commands; unavailable without complete command/help/behavior evidence"
+  },
+  "eligibility": {
+    "sourceTests": [
+      "TestUpdateDocsIncludeCoolDownOption",
+      "TestCompileDocsReflectCurrentOptions",
+      "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands"
+    ],
+    "included": "Every literal string Contains/NotContains assertion over text, compileSection or updateSection in these source-native tests.",
+    "excluded": "Engine-registry-dependent assertion remains inventoried and unavailable; not silently classified as clean.",
+    "scope": "compileSection and updateSection intentionally retain the original tests' suffix-of-document semantics, not a narrowed heading section."
+  },
+  "rules": [
+    {
+      "id": "TestUpdateDocsIncludeCoolDownOption:1",
+      "test": "TestUpdateDocsIncludeCoolDownOption",
+      "scope": "updateSection",
+      "operation": "Contains",
+      "expected": "`--cool-down`",
+      "expression": "\"`--cool-down`\"",
+      "line": 54
+    },
+    {
+      "id": "TestCompileDocsReflectCurrentOptions:1",
+      "test": "TestCompileDocsReflectCurrentOptions",
+      "scope": "compileSection",
+      "operation": "NotContains",
+      "expected": "`--no-models-dev-lookup`",
+      "expression": "\"`--no-models-dev-lookup`\"",
+      "line": 71
+    },
+    {
+      "id": "TestCompileDocsReflectCurrentOptions:2",
+      "test": "TestCompileDocsReflectCurrentOptions",
+      "scope": "compileSection",
+      "operation": "Contains",
+      "expected": "does not run codemods unless you pass `--fix`",
+      "expression": "\"does not run codemods unless you pass `--fix`\"",
+      "line": 72
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:1",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "#### `experiments`",
+      "expression": "\"#### `experiments`\"",
+      "line": 85
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:2",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "#### `graders`",
+      "expression": "\"#### `graders`\"",
+      "line": 86
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:3",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "cat request.json | gh aw graders run daily-file-diet operational-value",
+      "expression": "\"cat request.json | gh aw graders run daily-file-diet operational-value\"",
+      "line": 87
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:4",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "graders.operational-value.script",
+      "expression": "\"graders.operational-value.script\"",
+      "line": 88
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:5",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "NotContains",
+      "expected": "graders operational-value",
+      "expression": "\"graders operational-value\"",
+      "line": 89
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:6",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "#### `doctor`",
+      "expression": "\"#### `doctor`\"",
+      "line": 90
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:7",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "The `audit` command has two modes",
+      "expression": "\"The `audit` command has two modes\"",
+      "line": 91
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:8",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "NotContains",
+      "expected": "enabled/disabled status, schedules, and labels",
+      "expression": "\"enabled/disabled status, schedules, and labels\"",
+      "line": 92
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:9",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "Use `--json` to inspect the raw `on` data, including schedules",
+      "expression": "\"Use `--json` to inspect the raw `on` data, including schedules\"",
+      "line": 93
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:10",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "runs codemods, action version updates, and workflow compilation by default and uses `--no-fix` to skip all three steps",
+      "expression": "\"runs codemods, action version updates, and workflow compilation by default and uses `--no-fix` to skip all three steps\"",
+      "line": 94
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:11",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "Print the current version and build information for the gh aw CLI extension.",
+      "expression": "\"Print the current version and build information for the gh aw CLI extension.\"",
+      "line": 95
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:12",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "**Options:** `--repo/-r`, `--dir/-d`, `--require-owner-type`, `--json/-j`",
+      "expression": "\"**Options:** `--repo/-r`, `--dir/-d`, `--require-owner-type`, `--json/-j`\"",
+      "line": 96
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:13",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "`--require-owner-type` accepts `any`, `user`, or `org` and defaults to `any`",
+      "expression": "\"`--require-owner-type` accepts `any`, `user`, or `org` and defaults to `any`\"",
+      "line": 97
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:14",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "`--dir` and `--require-owner-type` require `--repo`",
+      "expression": "\"`--dir` and `--require-owner-type` require `--repo`\"",
+      "line": 98
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:15",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "Outside a checkout, run `gh auth login --hostname <host>` to authenticate and set `GH_HOST=<host>` so repository diagnostics target the correct host.",
+      "expression": "\"Outside a checkout, run `gh auth login --hostname <host>` to authenticate and set `GH_HOST=<host>` so repository diagnostics target the correct host.\"",
+      "line": 99
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:16",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "`doctor --repo` currently accepts `owner/repo` only.",
+      "expression": "\"`doctor --repo` currently accepts `owner/repo` only.\"",
+      "line": 100
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:17",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "For repository scope, `--repo` currently accepts `owner/repo` only.",
+      "expression": "\"For repository scope, `--repo` currently accepts `owner/repo` only.\"",
+      "line": 101
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:18",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": null,
+      "expression": "\"**Options:** `--engine/-e` (\"+engineFlagHelpList+\"), `--non-interactive`, `--repo/-r`\"",
+      "line": 102
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:19",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "**Options:** `--concurrency`, `--days`, `--period`, `--sample`, `--eval`, `--timeout`, `--repo/-r`, `--json/-j`",
+      "expression": "\"**Options:** `--concurrency`, `--days`, `--period`, `--sample`, `--eval`, `--timeout`, `--repo/-r`, `--json/-j`\"",
+      "line": 103
+    },
+    {
+      "id": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands:20",
+      "test": "TestCLIDocsReflectStatusAuditExperimentsAndGradersCommands",
+      "scope": "text",
+      "operation": "Contains",
+      "expected": "| `-h`, `--help` | Show help (`gh aw help [command]` for command-specific help) |\n| `-v`, `--verbose` | Enable verbose output showing detailed information |\n| `--banner` | Display ASCII logo banner with purple GitHub color theme |",
+      "expression": "\"| `-h`, `--help` | Show help (`gh aw help [command]` for command-specific help) |\\n| `-v`, `--verbose` | Enable verbose output showing detailed information |\\n| `--banner` | Display ASCII logo banner with purple GitHub color theme |\"",
+      "line": 104
+    }
+  ],
+  "rulesDigest": "84d146543a362e1912a10addab2bea46fb4bb957f0c5e4344d6024787b256e33",
+  "documentationPath": "docs/src/content/docs/setup/cli.md",
+  "normativePath": "pkg/cli/cli_consistency_help_test.go",
+  "window": {
+    "measurementKind": "snapshot",
+    "durationDays": 1,
+    "cadenceDays": 1,
+    "maturationDays": 0,
+    "reason": "Repository state, sampled at most once per daily workflow cadence; no overlapping flow totals."
+  },
+  "antecedentExistence": {
+    "result": "pre-existing-but-not-reconstructable",
+    "reason": "Commands, documentation and source-native convention checks can exist without the workflow. Historical source closure, actual adoption parent and contemporaneous native outputs have not been established in this bounded instrument.",
+    "classification": "attainment-only at contract activation; no workflow-adoption comparison"
+  },
+  "nativeMeasures": [
+    {
+      "name": "real command help",
+      "disposition": "required full-acceptance gate",
+      "status": "raw bytes and source/toolchain-bound capture receipts unavailable"
+    },
+    {
+      "name": "literal native documentation assertions",
+      "disposition": "implemented independent partial outcome, primary facet"
+    },
+    {
+      "name": "source-defined help prefix and usage/example order",
+      "disposition": "implemented raw-output interpreter; missing actual captured help"
+    },
+    {
+      "name": "example flag/path validity and behavioral agreement",
+      "disposition": "required full-acceptance gate; command registry and execution receipts not acquired"
+    },
+    {
+      "name": "commands inspected, findings/severity counts, issued tracking item",
+      "disposition": "rejected primary proxies"
+    },
+    {
+      "name": "trajectory graders and workflow evals",
+      "disposition": "mechanism diagnostics, not repository outcomes"
+    }
+  ],
+  "invariants": [
+    "No labels, finding counts, green runs, merged links or caller acceptance flags establish accepted commands.",
+    "Actor independent; partial conformance may improve without claiming whole CLI usability or causal contribution.",
+    "No monetary weights, subjective thresholds or keep/change bars.",
+    "Missing source or native evidence is null, never an all-clear.",
+    "Discovery lineage is retained losslessly, never scored as acceptance or contribution."
+  ],
+  "evidenceAvailability": {
+    "exactFrozenCutoff": "immutable source snapshot only",
+    "earlier": "incompatible/unacquired historical profile",
+    "later": "latest-commit closure and runtime receipts missing"
+  }
+}

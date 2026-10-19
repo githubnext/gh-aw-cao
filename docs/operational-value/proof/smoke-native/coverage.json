@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow-native-value-coverage",
+  "family": "smoke",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "functions": 3,
+  "evaluated": 3,
+  "nativeMeasured": 2,
+  "evidenceBlocked": 1,
+  "workflows": [
+    {
+      "workflowId": "smoke-agy",
+      "status": "native-partial-measured",
+      "function": "docs/operational-value/proof/functions/smoke-agy.mjs",
+      "sourceGitBlob": "99ab5af52c59187d131b662a17e7f18342d5d314",
+      "adoption": {
+        "commit": "8f294395da7ab9b3f299bb65e02da62c6aa0c8a2",
+        "adoptedAt": "2026-10-08T16:49:03Z",
+        "baselineCommit": "d3116e26ca8a320a3bdce2650b4689fca6c4e83e",
+        "baselineAt": "2026-10-08T16:34:34Z"
+      },
+      "sourceReceipt": "docs/operational-value/proof/smoke-native/smoke-agy-sources.json.gz",
+      "evidenceIndex": "docs/operational-value/proof/smoke-native/smoke-agy-index.json",
+      "contractSha256": "267265fd7738221465c0e32f7e8c12397563d8d4c75bff1e463b0999978622a4",
+      "interpreter": {
+        "path": "scripts/native-smoke-value.mjs",
+        "sha256": "953041410fe74c334c4b78301a6204f7687c6420f213f7c1918474b5c41aeb2a"
+      },
+      "reports": {
+        "timeline.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-agy-timeline.json",
+        "pulse.html": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-agy-pulse.html",
+        "pulse.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-agy-pulse.json",
+        "definitions.md": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-agy-definitions.md",
+        "evidence-archive.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-agy-evidence-archive.json"
+      },
+      "evaluation": {
+        "standardEvaluator": ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "replayedWindows": 3
+      },
+      "native": {
+        "unit": "behavior proofs",
+        "observedProvenBehaviors": 20,
+        "assertionCases": [
+          "result-schema",
+          "file-read",
+          "inference",
+          "shell-and-environment",
+          "tool-round-trip",
+          "staged-safe-output",
+          "native-mcp",
+          "native-infrastructure-mcp",
+          "native-safeoutputs",
+          "inference-accounting"
+        ],
+        "measuredAssessments": 2,
+        "observedFullyAcceptedAssessments": 2,
+        "completeFullAcceptanceCount": null,
+        "latestPeriod": {
+          "startAt": "2026-10-11T15:00:12Z",
+          "endAt": "2026-10-18T15:00:12Z"
+        },
+        "latestMetrics": {
+          "proven-behaviors": 20,
+          "full-acceptance": null
+        },
+        "inventoryRuns": 5,
+        "inventoryAttempts": 5,
+        "caveat": "Inventory totals describe acquisition coverage, not outcome/value. Native quantities count repeated independently observed monitoring assertions, not unique code changes or exclusive causation."
+      },
+      "outputCandidates": 0,
+      "gaps": [
+        "Execution host actions tree is not a reviewed frozen mainline tree",
+        "Unreviewed host receipt/telemetry producer: .github/workflows/shared/agy-conformance.md"
+      ],
+      "limitations": [
+        "Repeated monitoring proofs, not new repository fixes. Failed native conjunctions cannot identify failing constituent assertions."
+      ]
+    },
+    {
+      "workflowId": "smoke-aider",
+      "status": "native-partial-measured",
+      "function": "docs/operational-value/proof/functions/smoke-aider.mjs",
+      "sourceGitBlob": "3cab6f5c44dd031b3d0714404dc8816da83eb511",
+      "adoption": {
+        "commit": "0699202c88dcede28e9e9dc6359a2de2d130a0ef",
+        "adoptedAt": "2026-08-04T17:02:13Z",
+        "baselineCommit": "e9c80175689a1cb2050626c4b415d19094c67d77",
+        "baselineAt": "2026-08-04T16:55:23Z"
+      },
+      "sourceReceipt": "docs/operational-value/proof/smoke-native/smoke-aider-sources.json.gz",
+      "evidenceIndex": "docs/operational-value/proof/smoke-native/smoke-aider-index.json",
+      "contractSha256": "c62028e6d5c0a2a32ce3cd7bc872e4fef339db3490549b3ad67376b609076560",
+      "interpreter": {
+        "path": "scripts/native-smoke-value.mjs",
+        "sha256": "953041410fe74c334c4b78301a6204f7687c6420f213f7c1918474b5c41aeb2a"
+      },
+      "reports": {
+        "timeline.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-aider-timeline.json",
+        "pulse.html": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-aider-pulse.html",
+        "pulse.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-aider-pulse.json",
+        "definitions.md": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-aider-definitions.md",
+        "evidence-archive.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-aider-evidence-archive.json"
+      },
+      "evaluation": {
+        "standardEvaluator": ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "replayedWindows": 12
+      },
+      "native": {
+        "unit": "behavior proofs",
+        "observedProvenBehaviors": 10,
+        "assertionCases": [
+          "expected-file-content",
+          "successful-git-log-shell-evidence"
+        ],
+        "measuredAssessments": 5,
+        "observedFullyAcceptedAssessments": 0,
+        "completeFullAcceptanceCount": null,
+        "latestPeriod": {
+          "startAt": "2026-10-11T15:00:12Z",
+          "endAt": "2026-10-18T15:00:12Z"
+        },
+        "latestMetrics": {
+          "proven-behaviors": 4,
+          "full-acceptance": null
+        },
+        "inventoryRuns": 517,
+        "inventoryAttempts": 547,
+        "caveat": "Inventory totals describe acquisition coverage, not outcome/value. Native quantities count repeated independently observed monitoring assertions, not unique code changes or exclusive causation."
+      },
+      "outputCandidates": 33,
+      "gaps": [
+        "PR merge-ref checkout cannot be bound to the API head SHA without an independent retained checkout receipt",
+        "Unreviewed host receipt/telemetry producer: .github/workflows/shared/aider.md",
+        "Execution lock is not a reviewed frozen mainline blob"
+      ],
+      "limitations": [
+        "Two independently checked facets are partial: file content does not establish editing method; the host's git-log command/output regex does not prove the required cat readback, all repository-access semantics or safe-output publication.",
+        "Pre-checker historical runs and self-reported output issues cannot prove these native assertions."
+      ]
+    },
+    {
+      "workflowId": "smoke-claude-copilot",
+      "status": "evidence-blocked",
+      "function": "docs/operational-value/proof/functions/smoke-claude-copilot.mjs",
+      "sourceGitBlob": "4c33b4325cbf964f167739f378dabc8987bd59b2",
+      "adoption": {
+        "commit": "ace080ce67e4f4f6c51bebb40387c25553291c4a",
+        "adoptedAt": "2026-10-06T22:56:26Z",
+        "baselineCommit": "382f4b025fefaa7d6b2492c3608f098340bf6536",
+        "baselineAt": "2026-10-06T22:21:33Z"
+      },
+      "sourceReceipt": "docs/operational-value/proof/smoke-native/smoke-claude-copilot-sources.json.gz",
+      "evidenceIndex": "docs/operational-value/proof/smoke-native/smoke-claude-copilot-index.json",
+      "contractSha256": "6625a036e6c944d28ab3d380e3b473ae27b8dd0d91370f4efbd510a224c6de63",
+      "interpreter": {
+        "path": "scripts/native-smoke-value.mjs",
+        "sha256": "953041410fe74c334c4b78301a6204f7687c6420f213f7c1918474b5c41aeb2a"
+      },
+      "reports": {
+        "timeline.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-claude-copilot-timeline.json",
+        "pulse.html": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-claude-copilot-pulse.html",
+        "pulse.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-claude-copilot-pulse.json",
+        "definitions.md": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-claude-copilot-definitions.md",
+        "evidence-archive.json": "docs/operational-value/proof/smoke-native/reports/github-gh-aw/smoke-claude-copilot-evidence-archive.json"
+      },
+      "evaluation": {
+        "standardEvaluator": ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "replayedWindows": 3
+      },
+      "native": {
+        "unit": "behavior proofs",
+        "observedProvenBehaviors": null,
+        "assertionCases": [
+          "unpredictable-native-mcp-receipt",
+          "post-tool-inference-echo"
+        ],
+        "measuredAssessments": 0,
+        "observedFullyAcceptedAssessments": 0,
+        "completeFullAcceptanceCount": null,
+        "latestPeriod": {
+          "startAt": "2026-10-11T15:00:12Z",
+          "endAt": "2026-10-18T15:00:12Z"
+        },
+        "latestMetrics": {
+          "proven-behaviors": null,
+          "full-acceptance": null
+        },
+        "inventoryRuns": 0,
+        "inventoryAttempts": 0,
+        "caveat": "Inventory totals describe acquisition coverage, not outcome/value. Native quantities count repeated independently observed monitoring assertions, not unique code changes or exclusive causation."
+      },
+      "outputCandidates": 0,
+      "gaps": [
+        "No retained historical execution attempts or independent output candidates prove this canary's native behavior."
+      ],
+      "limitations": [
+        "No successful run/agent conclusion or self-reported receipt is a substitute for the protected assertion gate."
+      ]
+    }
+  ],
+  "costs": "not-measured",
+  "decision": "not-rated",
+  "integrationPaths": {
+    "contracts": "docs/operational-value/proof/smoke-native/contracts.json",
+    "coverage": "docs/operational-value/proof/smoke-native/coverage.json",
+    "functions": "docs/operational-value/proof/functions/smoke-{agy,aider,claude-copilot}.mjs",
+    "evidence": "docs/operational-value/proof/smoke-native",
+    "reports": "docs/operational-value/proof/smoke-native/reports/github-gh-aw",
+    "author": "scripts/author-smoke-native-functions.mjs",
+    "collector": "scripts/collect-smoke-native-evidence.mjs",
+    "replay": "scripts/summarize-smoke-native-evidence.mjs",
+    "tests": "tests/unit/cao-operational-value-smoke-native.test.mjs"
+  },
+  "lessons": [
+    "Bind native proof to the exact host assertion step and trusted environment, not the run/job/agent conclusion.",
+    "A source-defined regex assertion proves its precise conjunction, not every aspirational capability named in the prompt.",
+    "Match immutable execution lock blobs and host runtime trees to reviewed frozen mainline history; do not exclude legitimate dispatch branches by name.",
+    "Default pull-request checkouts can use merge refs rather than the API head SHA: require a retained checkout receipt or leave them unknown.",
+    "Specialized imported native extensions must be established separately from shared conformance; a failed gate cannot be decomposed into invented failed cases.",
+    "Preserve known partial native quantities and keep full source-goal acceptance separate.",
+    "A zero-run inventory plus absent issue/PR output candidates is an evidence gap, not zero behavioral value."
+  ],
+  "validation": {
+    "nativeReplay": "passed",
+    "reportReplay": "passed",
+    "maxFileBytes": 262144,
+    "scorerSha256": "953041410fe74c334c4b78301a6204f7687c6420f213f7c1918474b5c41aeb2a"
+  }
+}

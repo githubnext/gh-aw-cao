@@ -369,10 +369,19 @@ command; implementation modules depend on shared helpers, not the entry point.
 Successful-Run value computations keep produced safe outputs, native
 operational-grader measurements, and efficiency evidence separate; they do not
 turn runtime success or output creation into accepted value.
-Package-level `operational-value.mjs` programs compute repository-scoped metric
-records through `cao operational-value`. Activity appends those timestamped
-records to authoritative JSONL before the canonical Operational Value collection
-is rebuilt in SQLite, IndexedDB, and the hosted Postgres entity store.
+Workflow-local `.github/operational-value.mjs` and package-level
+`operational-value.mjs` adapters compute repository-scoped metric records through
+`cao operational-value`, importing frozen definitions from their adjacent
+`operational-value/` directory. Standalone definitions require no campaign or
+CAO policy and may express natural-language repository goals discovered in
+documents rather than workflows. Their deterministic evidence/score interface
+does not require gh-aw; the adapter is optional. Prospective goal contracts
+distinguish measurement activation from workflow adoption. Their observations
+omit campaign metadata. Activity appends those
+timestamped records to authoritative JSONL before the canonical Operational
+Value collection is rebuilt in SQLite, IndexedDB, and the hosted Postgres entity
+store. Explicit evaluation preserves accepted evidence in a separate
+contract-versioned archive; rolling dashboard projections are not that archive.
 Package-level `problem-clustering.mjs` programs read a private Activity SQLite
 snapshot and emit bounded problem records with actionable fix prompts through
 `cao cluster-problems`.

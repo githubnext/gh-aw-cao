@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "cli-consistency-checker",
+  "workflowName": "CLI Consistency Checker - source-native documentation facet",
+  "sourcePath": ".github/workflows/cli-consistency-checker.md",
+  "valueFunctionSha256": "993ee464f9de985a561db1627a18dea3cba0745ab5bdee3164025c3a47715ba1",
+  "window": {
+    "startAt": "2026-10-18T15:00:12Z",
+    "endAt": "2026-10-19T10:38:54Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "literal-documentation-attainment",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "literal-documentation-attainment",
+    "basis": "repository-outcome",
+    "unit": "percent of literal documentation obligations"
+  },
+  "metrics": [
+    {
+      "id": "literal-documentation-attainment",
+      "name": "Native literal documentation obligation attainment",
+      "role": "primary",
+      "formula": "100 * passed frozen literal source-defined documentation obligations / all frozen literal source-defined documentation obligations",
+      "direction": "increase",
+      "unit": "percent of literal documentation obligations",
+      "presentation": {
+        "name": "Literal documentation conformance",
+        "legendLabel": "Native doc obligations",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T15:00:12Z",
+        "endAt": "2026-10-19T10:38:54Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-19T10:35:36Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T10:35:36Z"
+        },
+        {
+          "at": "2026-10-19T10:38:54Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-19T10:38:54Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

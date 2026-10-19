@@ -1,0 +1,88 @@
+{
+  "fixture": "package probe\nimport \"fmt\"\nfunc Full(x int) int { return x+1 }\nfunc Partial(x int) int { if x>0 { return 1 }; return 0 }\nfunc Zero(x int) int { return x-1 }\nfunc Impure(x int) int { fmt.Println(x); return x }\n",
+  "tests": "package probe\nimport \"testing\"\nfunc TestNative(t *testing.T) {if Full(1)!=2 || Partial(1)!=1 { t.Fatal(\"native coverage fixture\") } }\n",
+  "testOutput": "ok  \tgithub.com/github/gh-aw/pkg/probe\t0.289s\tcoverage: 42.9% of statements\n",
+  "coverage": "github.com/github/gh-aw/pkg/probe/probe.go:3:\tFull\t\t100.0%\ngithub.com/github/gh-aw/pkg/probe/probe.go:4:\tPartial\t\t66.7%\ngithub.com/github/gh-aw/pkg/probe/probe.go:5:\tZero\t\t0.0%\ngithub.com/github/gh-aw/pkg/probe/probe.go:6:\tImpure\t\t0.0%\ntotal:\t\t\t\t\t\t(statements)\t42.9%\n",
+  "report": {
+    "module": "github.com/github/gh-aw",
+    "patterns": [
+      "./pkg/..."
+    ],
+    "functions_analyzed": 4,
+    "pure_functions": 3,
+    "coverage_loaded": true,
+    "candidates": [
+      {
+        "package": "github.com/github/gh-aw/pkg/probe",
+        "file": "pkg/probe/probe.go",
+        "line": 5,
+        "name": "Zero",
+        "signature": "func Zero(x int) int",
+        "exported": true,
+        "complexity": 1,
+        "statements": 2,
+        "coverage_pct": 0,
+        "has_test_file": true,
+        "fuzz_friendly": true,
+        "score": 1.25,
+        "purity_notes": [
+          "no observable side effects detected"
+        ]
+      },
+      {
+        "package": "github.com/github/gh-aw/pkg/probe",
+        "file": "pkg/probe/probe.go",
+        "line": 4,
+        "name": "Partial",
+        "signature": "func Partial(x int) int",
+        "exported": true,
+        "complexity": 2,
+        "statements": 4,
+        "coverage_pct": 66.7,
+        "has_test_file": true,
+        "fuzz_friendly": true,
+        "score": 0.8324999999999999,
+        "purity_notes": [
+          "no observable side effects detected"
+        ]
+      },
+      {
+        "package": "github.com/github/gh-aw/pkg/probe",
+        "file": "pkg/probe/probe.go",
+        "line": 3,
+        "name": "Full",
+        "signature": "func Full(x int) int",
+        "exported": true,
+        "complexity": 1,
+        "statements": 2,
+        "coverage_pct": 100,
+        "has_test_file": true,
+        "fuzz_friendly": true,
+        "score": 0,
+        "purity_notes": [
+          "no observable side effects detected"
+        ]
+      }
+    ]
+  },
+  "evidence": {
+    "valid": true,
+    "functions": [
+      {
+        "key": "pkg/probe/probe.go:3:Full",
+        "coverage": 100
+      },
+      {
+        "key": "pkg/probe/probe.go:4:Partial",
+        "coverage": 66.7
+      },
+      {
+        "key": "pkg/probe/probe.go:5:Zero",
+        "coverage": 0
+      }
+    ]
+  },
+  "fixtureSha256": "1f85a12cd5dca61d3dca8054d63dbac1eb0b18bfe334e2eef1cafab5e790e4e0",
+  "testsSha256": "9fac235bf8d10fd56368ae05fe90ee5aac44ad4405100854b4b88e9ce47ab5ea",
+  "binarySha256": "9fe3f6708a429bc3ab6cf405ea47fa00ae611ef63f816e374bcdb35dd8f26b26"
+}

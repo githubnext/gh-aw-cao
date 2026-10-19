@@ -564,6 +564,7 @@ async function main() {
   const trackedFiles = execFileSync("git", ["ls-files", "-z"], {
     cwd: root,
     encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
   }).split("\0").filter(Boolean);
   const injectedSecretValues = Object.entries(process.env)
     .filter(([name]) => /(?:TOKEN|SECRET|PASSWORD|PRIVATE_KEY)$/i.test(name))

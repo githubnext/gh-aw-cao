@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 3,
+  "repository": "github/gh-aw",
+  "workflowName": "Smoke Service Ports",
+  "generatedAt": "2026-10-19T11:45:11.601Z",
+  "evaluationMode": "attainment-only",
+  "reportKind": "same-source-retrospective-cutoff-reconstruction",
+  "interpretation": "Source-matched retrospective reconstruction, not ex-ante historical acceptance or an adoption comparison. The frozen standard evaluator rejected this cutoff before unchanged contract activation; this report does not claim standard evaluator success. The known source-defined observed subtotal is 3 Redis cases, 1 full host-bound session and 3 receipt-linked contributions. Population coverage remains partial; missing cohorts stay null, comparisons are unavailable, and there is no complete trend or agreed keep bar. Costs remain unmeasured. Evidence was acquired retrospectively; observedAt is the preserved cutoff assessment coordinate, not an acquisition or acceptance date.",
+  "collectionRequests": [
+    {
+      "observedAt": "2026-10-18T15:00:12Z",
+      "windowStart": "2026-10-14T15:00:12Z",
+      "windowEnd": "2026-10-16T15:00:12Z"
+    },
+    {
+      "observedAt": "2026-10-18T15:00:12Z",
+      "windowStart": "2026-10-16T15:00:12Z",
+      "windowEnd": "2026-10-18T15:00:12Z"
+    }
+  ],
+  "window": {
+    "startAt": "2026-10-14T15:00:12Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "evidenceCoverage": {
+    "completeFromAdoption": false,
+    "hasPreAdoptionBaseline": false,
+    "baselineDescription": "No adoption comparison; missing prior cohort and partial current population.",
+    "reason": "Source-matched retrospective reconstruction, not ex-ante historical acceptance or an adoption comparison. The frozen standard evaluator rejected this cutoff before unchanged contract activation; this report does not claim standard evaluator success. The known source-defined observed subtotal is 3 Redis cases, 1 full host-bound session and 3 receipt-linked contributions. Population coverage remains partial; missing cohorts stay null, comparisons are unavailable, and there is no complete trend or agreed keep bar. Costs remain unmeasured. Evidence was acquired retrospectively; observedAt is the preserved cutoff assessment coordinate, not an acquisition or acceptance date."
+  },
+  "runs": [],
+  "caveat": "Source-matched retrospective reconstruction, not ex-ante historical acceptance or an adoption comparison. The frozen standard evaluator rejected this cutoff before unchanged contract activation; this report does not claim standard evaluator success. The known source-defined observed subtotal is 3 Redis cases, 1 full host-bound session and 3 receipt-linked contributions. Population coverage remains partial; missing cohorts stay null, comparisons are unavailable, and there is no complete trend or agreed keep bar. Costs remain unmeasured. Evidence was acquired retrospectively; observedAt is the preserved cutoff assessment coordinate, not an acquisition or acceptance date.",
+  "snapshots": [
+    {
+      "observedAt": "2026-10-18T15:00:12Z",
+      "window": {
+        "startAt": "2026-10-14T15:00:12Z",
+        "endAt": "2026-10-16T15:00:12Z"
+      },
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "evidence": {
+        "key": "redis-source-defined-session-cases-v1",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Independent service/client observations of a Redis test session, regardless of actor.",
+        "filters": [
+          "Count each source-defined case at most once per service lifetime/session.",
+          "Use actual completed-operation timestamps in inclusive-start/exclusive-end disjoint event cohorts.",
+          "An independently proven partial protocol case does not require all broader safeguards.",
+          "Do not accept workflow success, editable issue lineage, agent summaries, digest-shaped flags or declared service health as end-to-end Redis proof.",
+          "No restart durability requirement; a GET without an observed preceding successful SET is not a round-trip."
+        ],
+        "collection": "Offline original run/attempt jobs and protected execution logs corroborate exact provider-digest-verified artifact tool calls. Recompute byte-framed PONG, SET/GET and projected INFO from those original payloads; caller flags cannot admit operations.",
+        "measurementKind": "interval",
+        "window": {
+          "durationDays": 2,
+          "cadenceDays": 2,
+          "maturationDays": 0
+        },
+        "purpose": "native-observation",
+        "contractDigest": "4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1",
+        "packetDigest": "bb779976b982c1b5bcde3c43b41d2a4aeab1b69bfc8df5fbb1bd09d426d8bb8a",
+        "windowStart": "2026-10-14T15:00:12Z",
+        "windowEnd": "2026-10-16T15:00:12Z",
+        "observedAt": "2026-10-18T15:00:12Z",
+        "coverageStatus": "missing",
+        "maturityStatus": "unavailable",
+        "eligibleCount": null,
+        "populationDigest": null,
+        "directCandidates": 17,
+        "relatedClosure": 56,
+        "candidateProtocolStatus": "Actual independently protected job execution corroborates original PONG, SET/GET and INFO tool frames.",
+        "nativeProtocolCases": null,
+        "ping": null,
+        "roundTrip": null,
+        "info": null,
+        "serviceStartup": null,
+        "tcpReachability": null,
+        "fullIntegration": null,
+        "workflowContribution": null,
+        "nativeEvents": [],
+        "eventCohort": "inclusive-start/exclusive-end",
+        "populationMeaning": "Observed-event lower bound, not an exhaustive repository opportunity count or attainment rate.",
+        "retrospectivelyAcquired": true,
+        "safeguards": {
+          "tokenTelemetry": null,
+          "sessionArtifact": null
+        },
+        "costs": {
+          "status": "not-measured",
+          "value": null
+        },
+        "keep": {
+          "status": "not-rated",
+          "reason": "No source-grounded keep bar."
+        },
+        "historicalApplicability": {
+          "status": "unresolved-adoption; partially-readable-contemporaneous-sources",
+          "apparentAddition": "74416d9a3f78063a065c03f3cc327f248e0d6e51",
+          "parent": "e1a597da8baa3f8fbd7682a8134659d8a3e93244",
+          "missingIntroductionBlob": "b0e303b917071aef8a80acbf35ec75d5a70dc6e3",
+          "establishedEarlierRules": {
+            "revision": "296262211b372a13b451ca9400369ac152db75d6",
+            "blob": "f5b6d2661d7e2ba04ad346f2e9c50d6552630ce7",
+            "meaning": "Same three host-endpoint Redis cases in readable April 2 source; not proof of operation or complete historical applicability."
+          },
+          "antecedent": "pre-existing-but-not-reconstructed",
+          "phenomenon": "Redis client/server PING, SET/GET and INFO can be attained by a person or another automation without this workflow.",
+          "evidenceGap": "The actual Oct17 run has independently corroborated native operations and the same intent-source blob. Introduction/adoption and complete historical population remain unknown; missing Git contents do not exhaust history."
+        },
+        "missingReason": "No authenticated event in this cohort; incomplete population is not an observed zero.",
+        "limitations": [
+          "One retained source-matched run has independently corroborated native operation receipts; other discovery candidates and actor-independent repository opportunities remain unassessed.",
+          "The original protected attempt1 run38987730359 is bound to job117263197566 and provider-verified agent artifact12084001298; this is not a complete run census.",
+          "A provider-digest-verified agent ZIP contains parsed Redis tool responses; admission is recomputed from independent original protected execution logs."
+        ]
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "immutable-workflow-intent",
+          "ref": "git:c86377ec47b38f0b5af463277ee55d1d03d08da8:.github/workflows/smoke-service-ports.md:ca493fccc2f54978d810cf6d93bbdf42dfa89313"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "preserved-native-input-custody",
+          "ref": "sha256:bb779976b982c1b5bcde3c43b41d2a4aeab1b69bfc8df5fbb1bd09d426d8bb8a"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "frozen-acceptance",
+          "ref": "sha256:4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1"
+        }
+      ]
+    },
+    {
+      "observedAt": "2026-10-18T15:00:12Z",
+      "window": {
+        "startAt": "2026-10-16T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "evidence": {
+        "key": "redis-source-defined-session-cases-v1",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Independent service/client observations of a Redis test session, regardless of actor.",
+        "filters": [
+          "Count each source-defined case at most once per service lifetime/session.",
+          "Use actual completed-operation timestamps in inclusive-start/exclusive-end disjoint event cohorts.",
+          "An independently proven partial protocol case does not require all broader safeguards.",
+          "Do not accept workflow success, editable issue lineage, agent summaries, digest-shaped flags or declared service health as end-to-end Redis proof.",
+          "No restart durability requirement; a GET without an observed preceding successful SET is not a round-trip."
+        ],
+        "collection": "Offline original run/attempt jobs and protected execution logs corroborate exact provider-digest-verified artifact tool calls. Recompute byte-framed PONG, SET/GET and projected INFO from those original payloads; caller flags cannot admit operations.",
+        "measurementKind": "interval",
+        "window": {
+          "durationDays": 2,
+          "cadenceDays": 2,
+          "maturationDays": 0
+        },
+        "purpose": "native-observation",
+        "contractDigest": "4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1",
+        "packetDigest": "bb779976b982c1b5bcde3c43b41d2a4aeab1b69bfc8df5fbb1bd09d426d8bb8a",
+        "windowStart": "2026-10-16T15:00:12Z",
+        "windowEnd": "2026-10-18T15:00:12Z",
+        "observedAt": "2026-10-18T15:00:12Z",
+        "coverageStatus": "partial",
+        "maturityStatus": "matured",
+        "eligibleCount": null,
+        "populationDigest": null,
+        "directCandidates": 17,
+        "relatedClosure": 56,
+        "candidateProtocolStatus": "Actual independently protected job execution corroborates original PONG, SET/GET and INFO tool frames.",
+        "nativeProtocolCases": 3,
+        "ping": 1,
+        "roundTrip": 1,
+        "info": 1,
+        "serviceStartup": true,
+        "tcpReachability": true,
+        "fullIntegration": 1,
+        "workflowContribution": 3,
+        "nativeEvents": [
+          {
+            "id": "38987730359:1:117263197566:dac9c77575ded334346f915c00343c7c4736ce83e6d8434336b94c463323c867",
+            "sessionId": "38987730359:1:117263197566:redis",
+            "completedAt": "2026-10-17T00:47:10.0140355Z",
+            "runId": 38987730359,
+            "attempt": 1,
+            "head": "7597eb9ca2da8362f551d4bc74cb9113835b16f8",
+            "jobId": 117263197566,
+            "cases": {
+              "ping": true,
+              "roundTrip": true,
+              "info": true
+            },
+            "fullIntegration": true,
+            "hostBoundary": true,
+            "workflowContribution": true,
+            "tcpReachability": true,
+            "serviceStartup": true,
+            "protectedLines": {
+              "request": 2500,
+              "response": 2504,
+              "service": 115,
+              "allowance": 1877,
+              "route": 1884,
+              "sandbox": 1908
+            },
+            "evidence": {
+              "artifactId": 12084001298,
+              "artifactDigest": "sha256:d55c1ad25dc17b86c39cb90fd573178a9d6adc7dd6246850975a00646637b0df",
+              "compiledBlob": "47ce50ac9931c8d9960f2fae8b88dae6e00c2ecf",
+              "commandSha256": "ca17f472dbde4fdfc96f1a21844a7e364c86c072851f06d0a14e9e7d5c9dc0e4",
+              "outputSha256": "1c3e13a3e844641ec68051b7e9b179d14ea717d3fca84e79edb52ae0c6fd6515"
+            },
+            "limitation": "Protected client execution proves these three operations and this sandbox boundary, not sole authorship, restart durability or complete repository-period coverage.",
+            "deliveredCases": {
+              "ping": true,
+              "roundTrip": true,
+              "info": true
+            },
+            "integrationDelivered": true
+          }
+        ],
+        "eventCohort": "inclusive-start/exclusive-end",
+        "populationMeaning": "Observed-event lower bound, not an exhaustive repository opportunity count or attainment rate.",
+        "retrospectivelyAcquired": true,
+        "safeguards": {
+          "tokenTelemetry": null,
+          "sessionArtifact": null
+        },
+        "costs": {
+          "status": "not-measured",
+          "value": null
+        },
+        "keep": {
+          "status": "not-rated",
+          "reason": "No source-grounded keep bar."
+        },
+        "historicalApplicability": {
+          "status": "unresolved-adoption; partially-readable-contemporaneous-sources",
+          "apparentAddition": "74416d9a3f78063a065c03f3cc327f248e0d6e51",
+          "parent": "e1a597da8baa3f8fbd7682a8134659d8a3e93244",
+          "missingIntroductionBlob": "b0e303b917071aef8a80acbf35ec75d5a70dc6e3",
+          "establishedEarlierRules": {
+            "revision": "296262211b372a13b451ca9400369ac152db75d6",
+            "blob": "f5b6d2661d7e2ba04ad346f2e9c50d6552630ce7",
+            "meaning": "Same three host-endpoint Redis cases in readable April 2 source; not proof of operation or complete historical applicability."
+          },
+          "antecedent": "pre-existing-but-not-reconstructed",
+          "phenomenon": "Redis client/server PING, SET/GET and INFO can be attained by a person or another automation without this workflow.",
+          "evidenceGap": "The actual Oct17 run has independently corroborated native operations and the same intent-source blob. Introduction/adoption and complete historical population remain unknown; missing Git contents do not exhaust history."
+        },
+        "missingReason": null,
+        "limitations": [
+          "One retained source-matched run has independently corroborated native operation receipts; other discovery candidates and actor-independent repository opportunities remain unassessed.",
+          "The original protected attempt1 run38987730359 is bound to job117263197566 and provider-verified agent artifact12084001298; this is not a complete run census.",
+          "A provider-digest-verified agent ZIP contains parsed Redis tool responses; admission is recomputed from independent original protected execution logs."
+        ]
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "immutable-workflow-intent",
+          "ref": "git:c86377ec47b38f0b5af463277ee55d1d03d08da8:.github/workflows/smoke-service-ports.md:ca493fccc2f54978d810cf6d93bbdf42dfa89313"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "preserved-native-input-custody",
+          "ref": "sha256:bb779976b982c1b5bcde3c43b41d2a4aeab1b69bfc8df5fbb1bd09d426d8bb8a"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "frozen-acceptance",
+          "ref": "sha256:4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1"
+        }
+      ]
+    }
+  ]
+}

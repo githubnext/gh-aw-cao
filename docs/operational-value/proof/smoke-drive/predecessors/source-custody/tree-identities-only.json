@@ -1,0 +1,79 @@
+{
+  "repository": "github/gh-aw",
+  "profiles": [
+    {
+      "runId": "38986380447",
+      "revision": "8c05fd87e12f5fd7fe5c67cdfedc3ef8441719e1",
+      "files": [
+        {
+          "path": ".github/workflows/shared/reporting.md",
+          "gitBlob": "263d2413472e62582c578897a8b06462da5ef171",
+          "bytes": 1386,
+          "sha256": "0929890c04f04878f9750464ef9a4bc799c87d236e4f936018a3bfc2dc3aae41",
+          "text": "---\n# Report formatting guidelines, exposed as an inline skill (see\n# /gh-aw/reference/inline-sub-agents/#explicit-end-marker and the\n# \"Use Inline Skills to Reduce Context\" section of the cost-management guide)\n# so agents invoke it on demand instead of always carrying the guidance in the\n# main prompt. The explicit \"## end skill:\" marker bounds this block exactly,\n# so importing it does not swallow any content that follows in the workflow\n# that imports it.\n#\n# New workflows: import this file (`imports: [shared/reporting.md]`) instead of\n# inlining report-formatting prose in the prompt, so the rules stay\n# single-sourced and do not drift.\n---\n\nUse the `reporting` skill when producing a report, issue, or PR comment to follow the formatting guidelines below.\n\n## skill: `reporting`\n---\ndescription: Report formatting guidelines for gh-aw workflows (header levels, collapsible details, run-ID links)\n---\n\n- Use `###` (or lower) headers only.\n- Keep summary and critical actions visible; move long detail into `<details>` blocks.\n- Structure reports as: overview → key metrics/issues → collapsible detail → next actions.\n- Format run IDs as links: `[§12345](https://github.com/owner/repo/actions/runs/12345)`.\n- Include up to 3 most relevant run URLs at end under `**References:**`.\n- Do NOT add footer attribution (system adds automatically).\n\n## end skill: `reporting`\n"
+        },
+        {
+          "path": ".github/workflows/shared/smoke-test-brevity.md",
+          "gitBlob": "f8fc28c7aeb29925cecd82159949da6015a4c477",
+          "bytes": 362,
+          "sha256": "3bffa03584a6b7097da3155078f7c88579a2ef2ea1c8f590884eaeefe5aaedca",
+          "text": "## Smoke Test Brevity\n\n**CRITICAL EFFICIENCY REQUIREMENTS:**\n- Keep ALL outputs extremely short and concise. Use single-line responses where possible.\n- NO verbose explanations or unnecessary context.\n- Minimize file reading - only read what is absolutely necessary for the task.\n- Use targeted, specific queries - avoid broad searches or large data retrievals.\n"
+        },
+        {
+          "path": ".github/workflows/smoke-drive.lock.yml",
+          "gitBlob": "991896b0834edffd669cb0d6d2662b047fb7f238",
+          "readableBytes": false,
+          "missingReason": "Tree identity known; original compiled bytes requested separately."
+        },
+        {
+          "path": ".github/workflows/smoke-drive.md",
+          "gitBlob": "b807269a21552c0e6ac518da7c44056024047e95",
+          "bytes": 2535,
+          "sha256": "c248dfa8a330663d99b11170fd2e8063d88843ee5f65dc837e65847d1dd40ec2",
+          "text": "---\nprivate: true\nemoji: \"💾\"\ndescription: Smoke test workflow that validates experimental GitHub Drives memory\non:\n  schedule: every 2 days\n  slash_command:\n    name: smoke-drive\n    strategy: centralized\n    events: [issues, issue_comment, pull_request, pull_request_comment]\n  workflow_dispatch:\n  pull_request:\n    types: [labeled]\n    names: [\"water\"]\n  reaction: \"rocket\"\n  status-comment: true\npermissions:\n  contents: read\n  issues: read\n  pull-requests: read\nname: Smoke Drive\nmodel: openai/gpt-6-astra\nengine:\n  id: codex\nstrict: true\nimports:\n  - shared/smoke-test-brevity.md\n  - shared/reporting.md\ntools:\n  drive-memory:\n    drive-name: smoke-drive\n    disk-size: 100M\n    prefetch: true\n    allowed-extensions: [\".txt\"]\n  bash:\n    - \"*\"\nsafe-outputs:\n  allowed-domains: [default-safe-outputs]\n  add-comment:\n    hide-older-comments: true\n    max: 2\n  create-issue:\n    expires: 2h\n    close-older-issues: true\n    close-older-key: \"smoke-drive\"\n    labels: [automation, testing]\n  add-labels:\n    allowed: [smoke-drive]\ntimeout-minutes: 10\nfeatures:\n  gh-aw-detection: false\nsandbox:\n  agent:\n    id: awf\n---\n\n# Smoke Test: Drive Memory Validation\n\n## Test Requirements\n\n1. **Drive memory persistence**: Read `/tmp/gh-aw/drive-memory/smoke-drive.txt` if it exists. Then replace it with exactly `run_id=${{ github.run_id }}` followed by a newline, and read it back. Do not create files with extensions other than `.txt` in the drive-memory directory.\n2. **Repository access**: Run `git log --oneline -1` in the repository checkout and confirm a commit is reported.\n\n## Output\n\n**ALWAYS create an issue** using the `create_issue` safe-output tool:\n- Title: \"Smoke Test: Drive - ${{ github.run_id }}\"\n- Body should include:\n  - Test results (✅ or ❌ for each test), including whether a previous drive-memory value was found\n  - Overall status: PASS or FAIL\n  - Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n**Only if this workflow was triggered by a pull_request event**: Use the `add_comment` safe-output tool to add a **very brief** comment (max 5-10 lines) to the triggering pull request (omit the `item_number` parameter to auto-target the triggering PR) containing:\n- ✅ or ❌ for each test result\n- Overall status: PASS or FAIL\n\nIf all tests pass and this workflow was triggered by a pull_request event, use the `add_labels` safe-output tool to add the label `smoke-drive` to the pull request (omit the `item_number` parameter to auto-target the triggering PR).\n"
+        }
+      ],
+      "commit": {
+        "text": "tree b1d595eaa5886e4f12fb5da6b9be56aab6603a7a\nparent 4c795016bd57a9ec9e76a9f1359dd13b601317f1\nauthor Peli de Halleux <pelikhan@users.noreply.github.com> 1792195518 -0700\ncommitter GitHub <noreply@github.com> 1792195518 -0700\ngpgsig -----BEGIN PGP SIGNATURE-----\n \n wsFcBAABCAAQBQJq0ru+CRC1aQ7uu5UhlAAATMAQADJoQeJRq4eCHf1gbXn8Y135\n 41+2BgHN/tQoQJl2nfqEIcCWPEloJJt/Vuj6ELHK31aoSpxoPszWakQlPnnaSwca\n kVoSC1w1a3+kS4uJd/6R9U0pQA37C6YM80Mz+kUoP8IIcDsLSryAy0xcdaa/vupz\n wRFUGYMLFu4TNPdxuqSI40sSjNv54jdKm0WBxnwbUfDC7bcxEUwarVzwn+VoLMzJ\n e1a9ybTQUdhUsG7vywx66kDnA2P3Hgj7x5Bi2RW7yB2JCcJXEgGVYuAJcLfgeXEH\n zNlxobsLdfo8M0Co57booE709d0G/seuNSvqU+Y0CQW+foAyAX2qNe771aVXT2O3\n YhlSyuvbl4T99Dl03k/Ev0NngGyOPVKzjarqP+uIyRJSzQobt0ytlTRkvkDKv8vS\n umBgcANJhR88ufNwDayc2cldkUWoYZTzfdJz8Zev0c+D1umyjERzlcKMbh8cvBb1\n T1KfMPbNSjT681diwUkuUjhSHhOwx6BR0tCLStD25LAnXafxLpWXpKHjBl0OfraL\n oTNbEcSOT5gciY7CSas3xDfrMJRT/UwnwQG1Yrzl4713ImIUeSfOoeUB4SKDajG9\n 7Iq9rINzIk6iJb2Bu4ZwpwGEYqw5UAvqANfQTROZ1JbUJUnweQfJdwR/QTbMGirt\n BT1f2dMjpfWV9fUdFqKf\n =yjx4\n -----END PGP SIGNATURE-----\n \n\ndocs: document unified-session eval results and answer distribution (#69522)\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>",
+        "sha256": "49e11581bbc3e4328db306bf794c899a67904a2e627855191dfbb6fa654a423a"
+      }
+    },
+    {
+      "runId": "38327858802",
+      "revision": "7eea6a06dd75d2f0e8f0a459ab4842c9a99727ea",
+      "files": [
+        {
+          "path": ".github/workflows/shared/reporting.md",
+          "gitBlob": "263d2413472e62582c578897a8b06462da5ef171",
+          "bytes": 1386,
+          "sha256": "0929890c04f04878f9750464ef9a4bc799c87d236e4f936018a3bfc2dc3aae41",
+          "text": "---\n# Report formatting guidelines, exposed as an inline skill (see\n# /gh-aw/reference/inline-sub-agents/#explicit-end-marker and the\n# \"Use Inline Skills to Reduce Context\" section of the cost-management guide)\n# so agents invoke it on demand instead of always carrying the guidance in the\n# main prompt. The explicit \"## end skill:\" marker bounds this block exactly,\n# so importing it does not swallow any content that follows in the workflow\n# that imports it.\n#\n# New workflows: import this file (`imports: [shared/reporting.md]`) instead of\n# inlining report-formatting prose in the prompt, so the rules stay\n# single-sourced and do not drift.\n---\n\nUse the `reporting` skill when producing a report, issue, or PR comment to follow the formatting guidelines below.\n\n## skill: `reporting`\n---\ndescription: Report formatting guidelines for gh-aw workflows (header levels, collapsible details, run-ID links)\n---\n\n- Use `###` (or lower) headers only.\n- Keep summary and critical actions visible; move long detail into `<details>` blocks.\n- Structure reports as: overview → key metrics/issues → collapsible detail → next actions.\n- Format run IDs as links: `[§12345](https://github.com/owner/repo/actions/runs/12345)`.\n- Include up to 3 most relevant run URLs at end under `**References:**`.\n- Do NOT add footer attribution (system adds automatically).\n\n## end skill: `reporting`\n"
+        },
+        {
+          "path": ".github/workflows/shared/smoke-test-brevity.md",
+          "gitBlob": "f8fc28c7aeb29925cecd82159949da6015a4c477",
+          "bytes": 362,
+          "sha256": "3bffa03584a6b7097da3155078f7c88579a2ef2ea1c8f590884eaeefe5aaedca",
+          "text": "## Smoke Test Brevity\n\n**CRITICAL EFFICIENCY REQUIREMENTS:**\n- Keep ALL outputs extremely short and concise. Use single-line responses where possible.\n- NO verbose explanations or unnecessary context.\n- Minimize file reading - only read what is absolutely necessary for the task.\n- Use targeted, specific queries - avoid broad searches or large data retrievals.\n"
+        },
+        {
+          "path": ".github/workflows/smoke-drive.lock.yml",
+          "gitBlob": "825b32490f70cf7d368b125b11206f7369c8c5c4",
+          "readableBytes": false,
+          "missingReason": "Tree identity known; original compiled bytes requested separately."
+        },
+        {
+          "path": ".github/workflows/smoke-drive.md",
+          "gitBlob": "b807269a21552c0e6ac518da7c44056024047e95",
+          "bytes": 2535,
+          "sha256": "c248dfa8a330663d99b11170fd2e8063d88843ee5f65dc837e65847d1dd40ec2",
+          "text": "---\nprivate: true\nemoji: \"💾\"\ndescription: Smoke test workflow that validates experimental GitHub Drives memory\non:\n  schedule: every 2 days\n  slash_command:\n    name: smoke-drive\n    strategy: centralized\n    events: [issues, issue_comment, pull_request, pull_request_comment]\n  workflow_dispatch:\n  pull_request:\n    types: [labeled]\n    names: [\"water\"]\n  reaction: \"rocket\"\n  status-comment: true\npermissions:\n  contents: read\n  issues: read\n  pull-requests: read\nname: Smoke Drive\nmodel: openai/gpt-6-astra\nengine:\n  id: codex\nstrict: true\nimports:\n  - shared/smoke-test-brevity.md\n  - shared/reporting.md\ntools:\n  drive-memory:\n    drive-name: smoke-drive\n    disk-size: 100M\n    prefetch: true\n    allowed-extensions: [\".txt\"]\n  bash:\n    - \"*\"\nsafe-outputs:\n  allowed-domains: [default-safe-outputs]\n  add-comment:\n    hide-older-comments: true\n    max: 2\n  create-issue:\n    expires: 2h\n    close-older-issues: true\n    close-older-key: \"smoke-drive\"\n    labels: [automation, testing]\n  add-labels:\n    allowed: [smoke-drive]\ntimeout-minutes: 10\nfeatures:\n  gh-aw-detection: false\nsandbox:\n  agent:\n    id: awf\n---\n\n# Smoke Test: Drive Memory Validation\n\n## Test Requirements\n\n1. **Drive memory persistence**: Read `/tmp/gh-aw/drive-memory/smoke-drive.txt` if it exists. Then replace it with exactly `run_id=${{ github.run_id }}` followed by a newline, and read it back. Do not create files with extensions other than `.txt` in the drive-memory directory.\n2. **Repository access**: Run `git log --oneline -1` in the repository checkout and confirm a commit is reported.\n\n## Output\n\n**ALWAYS create an issue** using the `create_issue` safe-output tool:\n- Title: \"Smoke Test: Drive - ${{ github.run_id }}\"\n- Body should include:\n  - Test results (✅ or ❌ for each test), including whether a previous drive-memory value was found\n  - Overall status: PASS or FAIL\n  - Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n**Only if this workflow was triggered by a pull_request event**: Use the `add_comment` safe-output tool to add a **very brief** comment (max 5-10 lines) to the triggering pull request (omit the `item_number` parameter to auto-target the triggering PR) containing:\n- ✅ or ❌ for each test result\n- Overall status: PASS or FAIL\n\nIf all tests pass and this workflow was triggered by a pull_request event, use the `add_labels` safe-output tool to add the label `smoke-drive` to the pull request (omit the `item_number` parameter to auto-target the triggering PR).\n"
+        }
+      ],
+      "commit": {
+        "text": "tree 656e547e06943d9789b300c10ae64a24d82aeb4e\nparent 29740a284a6e80c1d8d1997864196c75224d775a\nauthor Copilot <198982749+Copilot@users.noreply.github.com> 1791844091 -0700\ncommitter GitHub <noreply@github.com> 1791844091 -0700\ngpgsig -----BEGIN PGP SIGNATURE-----\n \n wsFcBAABCAAQBQJqzV77CRC1aQ7uu5UhlAAASr8QAFHOd8nD2iWiRWwKlty1vnRl\n dgIs/kim9iEOyK3lJMZ3EkutlRfMgIwiFpRW+TND/R12um2snAMAAbuxOvVnOup4\n s6DzFCuI9+bcV1Y3O7B7XdDtQUxpg5APCFBleKPcAjGuMJYSyBxdJgggCitwv2Fr\n /3q/H0y70W7Gp+UP/L3O1hWrdncK5JrdSvltWp8xTGdq4jrHzyI/AjRsB1QcphJh\n YSLsqGa+5xdh9AbND2mUmb21eu7s9PsN+5mi/8MyhtV9iXvJbPlgIPiKhhV6mkCL\n vncwuH76E2WH70lSi6zFXFqOeHGpJZOupZb5q3jYZ9pW8au0Me+yktZhAWUkxcgP\n U+1yxCJbfpwM0i+Q4E0wxoTG8BHUnp0kN780LeX3errN2OnLwwKw4O++JSbZoBBw\n u/uPOsUFgxOiuYYrFiG002I084uWK5Gk+HiwG5YYFOKuzDh6U8EyzSkBczEVWl+B\n 4OPHtHA1PvyQDd5HDBTRN68DfCTPYOnfHlDmpytqa8qUrt5R9nTHC+GSzJxcdGI0\n rs/se9YySf/O9n0SE2cpYsneXB23y6FlQhKtyMtJd9JJOisXfuAMXzsATlycs42Z\n oJHd6hHko9Sn3Ysp7AkxKBwKlcRyryXNwR1FSPJenRR3+vSD5L9txD4fYraYMNHi\n GgOYb2ttk+rA4T8U4TuW\n =Hg7l\n -----END PGP SIGNATURE-----\n \n\nRun routed smokes on pull requests and merges that touch routing code (#68095)\n\n* Initial plan\n\n* Plan: run routed smokes on PRs and merges touching routing code\n\nCo-authored-by: SivaKesava1 <11771739+SivaKesava1@users.noreply.github.com>\n\n* Run routed smokes on path-filtered pull_request and push to main\n\nCo-authored-by: SivaKesava1 <11771739+SivaKesava1@users.noreply.github.com>\n\n---------\n\nCo-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>\nCo-authored-by: SivaKesava1 <11771739+SivaKesava1@users.noreply.github.com>\nCo-authored-by: Siva Kesava R Kakarla <sivakakarla@microsoft.com>",
+        "sha256": "8f935e60619eaab2ad0f246e838ecd47d3ba628ad2c5fc120abe6e58de964d5c"
+      }
+    }
+  ]
+}

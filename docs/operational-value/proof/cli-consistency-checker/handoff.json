@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "scope": "cli-consistency-checker only; no campaign, policy, runtime, dashboard or shared-tool changes in the handoff",
+  "outcome": {
+    "implemented": "Schema-3 definition/collectBatch/scoreMetric with an actor-independent native documentation obligation checker and raw-help interpreter.",
+    "knownCurrentSnapshot": "22 of 22 literal source-native documentation obligations attained (100 percent of this partial facet).",
+    "unknownNativeRequirementCount": 1,
+    "fullAcceptedCommands": null,
+    "workflowContribution": null,
+    "interpretation": "A conforming documentation facet is not defect-free commands, whole CLI usability, a historical improvement, or causal workflow contribution. Removing one conforming requirement's evidence lowers the native facet by 100/22 percentage points, without a fabricated binary whole-CLI verdict."
+  },
+  "readiness": {
+    "checker": "implemented for literal native documentation assertions and two source-defined raw-help conventions",
+    "fullFunction": "partial-native-facet; full intended outcome remains not measured",
+    "producer": "reviewed discovery only; no original producer receipts available",
+    "evidence": "complete bytes for the frozen documentation/tests and 538 native source files; runtime output and dependency closure missing",
+    "fullAcceptance": "unavailable",
+    "contribution": "unavailable"
+  },
+  "lineage": {
+    "productionReader": "readOutputHistory",
+    "verifiedPartitions": 346,
+    "verifiedNormalizedEntities": 58048,
+    "markedWorkflowRoots": 185,
+    "selectedDiscoveryEntities": 2931,
+    "referencedIdentitiesAbsentFromInventory": 16,
+    "originalSelectedPartitionsPreserved": 291,
+    "status": "All selected forward/reverse relatedCandidates lineage retained losslessly as discovery; mutable observed state is not backdated."
+  },
+  "sourceBlockers": [
+    {
+      "path": "go.mod",
+      "gitBlob": "d9819a53f226d3387f86fb61780bbcb77dfc3bab",
+      "reason": "Tree metadata exists but complete blob content is absent from the supplied read-only cache."
+    },
+    {
+      "path": "go.sum",
+      "gitBlob": "57925721fa0880b0f3f4d03a8546a8618fbcb3d4",
+      "reason": "Tree metadata exists but complete blob content is absent from the supplied read-only cache."
+    }
+  ],
+  "nativeAcquisitionBlockers": [
+    "Original per-command and all-help.txt bytes with source, binary, toolchain, platform and capture identity.",
+    "Independent command-registry, example-validity and behavioral evidence at each requested snapshot.",
+    "Registry-derived native engineFlagHelpList assertion requires more than a literal documentation predicate.",
+    "Original safe-output creation receipts and verified producer run, attempt and head identities; raw producer issue bodies/API responses were not retained by the normalized inventory.",
+    "Independently validated repair graph and native before/after facts; issue closure, a related merge or a green run is insufficient.",
+    "Historical normative-source closure and genuine workflow adoption with its parent, before any adoption-relative comparison.",
+    "An independently established latest immutable source cutoff for later snapshots; the frozen score must not be carried forward."
+  ],
+  "evaluation": {
+    "classification": "attainment-only, contract activation at the frozen cutoff, not workflow adoption",
+    "frozenCutoffStandardEvaluation": "Explicitly rejected because an evaluation endpoint must follow activation. Earlier current-rule measurements were not fabricated.",
+    "frozenSnapshot": "frozen-snapshot.json.gz contains the actual native source collector result.",
+    "prospective": "reports/prospective is separate; its native metric is unavailable, with an explicit missing reason.",
+    "replay": "replay.json preserves the actual collector and standard evaluator responses."
+  },
+  "validation": {
+    "focusedTests": "node --test tests/unit/operational-value-cli-consistency-checker.test.mjs",
+    "collector": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/cli-consistency-checker.mjs",
+    "offlineReplay": "node scripts/replay-cli-consistency-checker.mjs",
+    "syntax": "node --check for every owned ECMAScript module",
+    "lint": "Blocked: node_modules/.bin/eslint is absent; no installation attempted.",
+    "typecheck": "Blocked: node_modules/.bin/tsc is absent; no installation attempted.",
+    "freshExtraction": "Owned archive manifest records independent fresh seed extraction, digest verification and replay.",
+    "workflowCompile": "No workflow Markdown source was edited. Markdown files under reports are standard evaluator outputs; compilation was not run because this offline task does not authorize dependency or import acquisition."
+  },
+  "preservation": {
+    "codec": "Unchanged seed json-archive.mjs; lossless base64 source and original normalized partition bytes, digest-checked bounded archive parts.",
+    "seed": "All 32 seed files verified and retained unchanged; excluded from the owned-only archive.",
+    "limits": "Every handoff member is at most 256 KiB; every ECMAScript module is at most 3000 lines.",
+    "prohibitedActions": "No network, fetch, installation, fetched target-code/workflow execution, dispatch, remote write, commit, PR or nested session."
+  }
+}

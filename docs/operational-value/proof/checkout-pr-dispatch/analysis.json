@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "workflow": "github/gh-aw:smoke-checkout-pr-dispatch",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "d03a4f83ff8fa6cb0a582b8cf4151e0268924ec4",
+  "evidenceCutoff": "2026-10-18T15:00:12Z",
+  "status": "blocked-independent-checkout-receipts",
+  "measurementReady": false,
+  "finding": "The workflow's intended PR checkout path is not demonstrated by retained independent evidence. Every retained executed agent workload is a no-PR schedule control; all 26 recorded PR-checkout steps were skipped.",
+  "sourceReview": {
+    "originalVerifiedGitBlobs": 256,
+    "firstParentWorkflowOrLockOrCheckerProfiles": 227,
+    "nativeCheckoutVersions": 11,
+    "reviewedInputs": [
+      "Original and frozen workflow intent",
+      "Every first-parent workflow/compiled lock/native-checker change through the frozen revision",
+      "Original and frozen transitive checker dependencies",
+      "Imported observability and reporting fragments",
+      "Protected runner invocation, setup copying, and event-info artifact producer",
+      "No-PR skip and closed/deleted-PR warning paths",
+      "Strict versus historical coercing dispatch parser",
+      "Fork, centralized router and collaborator/bot trust policy eras"
+    ],
+    "importantDistinction": "A compiled checkout_pr_success output can be true when there was no PR context or a closed PR could not be checked out. A non-main branch alone cannot establish the intended SHA, initialized/clean state, origin or visible history.",
+    "compiledPolicyVariants": {
+      "triggerShapes": 3,
+      "checkoutStepGates": [
+        "github.event.pull_request || github.event.issue.pull_request || github.event_name == 'workflow_dispatch'",
+        "github.event.pull_request || github.event.issue.pull_request || github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.aw_context || '{}').item_type == 'pull_request'"
+      ],
+      "jobGate": "needs.activation.outputs.daily_ai_credits_exceeded != 'true'",
+      "permissions": {
+        "contents": "read",
+        "pull-requests": "read"
+      },
+      "sourceBindingRequirement": "The protected actions-folder checkout names github/gh-aw without an explicit ref. A run's head SHA and a mainline checker blob therefore do not by themselves identify the loaded runtime checker. Acceptance additionally requires independent loaded-actions/script/dependency identity. Setup copies those scripts into runner.temp before the PR checkout; no source profile is claimed as execution proof."
+    }
+  },
+  "completeAcquisition": {
+    "scope": "All retained initial Actions invocations for this workflow from adoption through the exclusive cutoff, with all event classes and all branches.",
+    "runPages": 6,
+    "runs": 529,
+    "pullRequestEvents": 502,
+    "scheduleControls": 27,
+    "dispatchEvents": 0,
+    "jobInventoryRequests": 529,
+    "retainedJobs": 2784,
+    "runsWithNoInitialJobMetadata": 65,
+    "checkoutStepRecords": 26,
+    "executedCheckoutSteps": 0,
+    "skippedCheckoutSteps": 26,
+    "artifactInventoryRequests": 529,
+    "retainedArtifacts": 162,
+    "artifactBearingRuns": 33,
+    "unavailableJobOrArtifactResponses": 0,
+    "successfulDigestCheckedEndpoints": 1065,
+    "reruns": "Latest attempt is retained as metadata. Only attempt 1 jobs are inspected; run-level artifacts are discovery only and never assumed to belong to attempt 1.",
+    "artifactDisposition": "All artifact names are existing usage, safe-output, detection, agent, fallback, info or AIC-scan machinery. No independent protected checkout-conjunction producer exists in the source. Their existence does not prove a PR checkout. The info producer preserves selected context but not complete original event/expected head/clean workspace facts.",
+    "logDisposition": "No initial protected checkout step executed, so no protected positive checkout log was produced. Successful schedule-agent logs and self-authored output are not substituted for this missing path.",
+    "completenessLimit": "Complete retained Actions inventory is not complete historical event or eligible-opportunity evidence. Deleted runs/events and absent original webhook payloads cannot be reconstructed from this inventory."
+  },
+  "evaluation": {
+    "mode": "attainment-only",
+    "antecedent": "pre-existing-but-not-reconstructable",
+    "baseline": "The same Git checkout outcome existed before adoption, but immutable source cannot reconstruct the original event, contemporaneous PR head or historical runner worktree. No zero baseline is invented.",
+    "nativeMetrics": {
+      "verified-checkouts": {
+        "role": "primary",
+        "unit": "checkout proofs",
+        "value": null
+      },
+      "verified-heads": {
+        "role": "diagnostic",
+        "unit": "head-match proofs",
+        "value": null
+      }
+    },
+    "cadenceDays": 7,
+    "durationDays": 7,
+    "maturationDays": 0,
+    "evaluatedSnapshots": 13,
+    "nonNullMetricAssessments": 0,
+    "eligibleCount": null,
+    "unassessedPrEligibility": 502,
+    "knownNoPrControls": 27,
+    "recentMovement": "unavailable",
+    "adoptionComparison": "unavailable",
+    "trend": "not established",
+    "cost": "not measured",
+    "attribution": "not measured",
+    "decision": "not rated",
+    "plot": "Native-unit gap plot, not a measured value or zero-value series."
+  },
+  "validation": {
+    "focusedTests": "node --test tests/unit/cao-operational-value-checkout-pr.test.mjs: 11 passed",
+    "collector": "verify-value-function.mjs --collector: passed against actual retained acquisition",
+    "artifacts": "validate-report-artifacts.mjs: passed",
+    "lint": "ESLint on owned scripts and function: passed; repository intentionally ignores tests",
+    "types": "npm run typecheck:cao: passed",
+    "compile": "npm run compile: 72 workflows succeeded, 2 pre-existing action-version warnings",
+    "documentation": "npm run docs:build: passed",
+    "failClosed": "Actual replay fails when observations disappear or index population changes. All 256 original source blobs independently verify as native Git objects."
+  },
+  "registration": {
+    "function": "docs/operational-value/proof/functions/smoke-checkout-pr-dispatch.mjs",
+    "contract": "docs/operational-value/proof/checkout-pr-dispatch/contract.json",
+    "index": "docs/operational-value/proof/checkout-pr-dispatch/index.json",
+    "timeline": "docs/operational-value/reports/github-gh-aw/smoke-checkout-pr-dispatch-timeline.json",
+    "plot": "docs/operational-value/reports/github-gh-aw/smoke-checkout-pr-dispatch-pulse.html",
+    "primaryMetric": "verified-checkouts",
+    "provenanceKind": "protected-pr-checkout-inventory",
+    "readinessGuard": "Remain blocked unless index.measurementReady is true and replayed current native evidence has a non-null primary value with the required event/source/head/workspace receipts. Inventory completion, a generated plot, or synthetic validation examples do not satisfy readiness.",
+    "sharedRegistryEdited": false
+  },
+  "openRequirements": [
+    "A protected, source-bound original event/dispatch receipt that proves PR identity, trigger class and policy admission.",
+    "An independent contemporaneous expected head SHA/ref, including PR advancement/fetch races.",
+    "Protected pre-agent actual HEAD, branch, clean status, initialized Git state, origin and visible-history readback.",
+    "Historical source-policy coherence for any proposed receipt, including fork/bot/router and closed-PR behavior; independently bind the actually loaded actions checkout because its source ref is not explicitly pinned.",
+    "A complete eligible-opportunity denominator before claiming a complete total or trend."
+  ],
+  "reusableSkillLessons": [
+    "Enumerate all trigger classes before scoring; successful no-op schedules cannot verify a PR-specific path.",
+    "A success-shaped checkout output may deliberately cover skip and closed-object paths. Read every conditional return.",
+    "Preserve expected and actual Git identities independently; a branch name or HEAD export does not prove clean checkout.",
+    "Historical dispatch number parsing can change eligibility. Preserve coercing and strict parser eras rather than applying today's parser retroactively.",
+    "A fully exhausted execution inventory can still leave every native outcome unknown. Do not count an all-gap plot as measured coverage.",
+    "Inspect source-defined artifact producers before downloading agent payloads; machinery artifacts cannot supply an absent protected assertion.",
+    "A checkout of an actions repository without an explicit ref need not load scripts from the workflow run head. Require the actual loaded source identity, not a convenient revision assumption."
+  ]
+}

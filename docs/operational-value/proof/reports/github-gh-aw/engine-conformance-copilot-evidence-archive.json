@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "engine-conformance-copilot",
+  "functions": {
+    "56cebabef691f1811cc43e01ca72b682b676c340542b0628fdbcd414dbe542ec": {
+      "valueFunctionSha256": "56cebabef691f1811cc43e01ca72b682b676c340542b0628fdbcd414dbe542ec",
+      "snapshots": [
+        {
+          "observedAt": "2026-10-18T15:00:12Z",
+          "window": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "evidence": {
+            "valid": false,
+            "coverageStatus": "missing",
+            "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+            "assessments": [],
+            "observedValid": true,
+            "observedAssessments": [
+              {
+                "id": "39115709891:1",
+                "passed": [
+                  false,
+                  false,
+                  false,
+                  false,
+                  false
+                ]
+              }
+            ],
+            "observedReports": 1,
+            "observedRuns": 2,
+            "costs": "not-measured",
+            "limitation": "Stable core behavioral facet, not full staged-output/native-extension acceptance or exclusive workflow impact."
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "immutable-workflow-source",
+              "ref": "bc50789694feca00385ebd255ddf571341e5e1df"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "normalized-host-evidence-sha256",
+              "ref": "82c877ebaa06bbd02094f3b3784c62a20df64f70fd90bc14274d39ea40e4c93e"
+            }
+          ],
+          "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+          "metrics": {
+            "core-conformance": null,
+            "verified-probes": null,
+            "observed-core-passes": 0
+          }
+        }
+      ]
+    }
+  }
+}

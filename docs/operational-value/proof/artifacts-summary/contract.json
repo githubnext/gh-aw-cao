@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "workflow": "artifacts-summary",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceBlob": "f692218fe9dfec7d6de9cea16e0d0098f5d69603",
+  "contractFrozenAt": "2026-10-19T11:09:13Z",
+  "temporalAnchor": "contract-activation",
+  "frozenReportCutoff": "2026-10-18T15:00:12Z",
+  "goal": "For repository-wide retained Actions artifact inventories, attain an accurate storage view across all workflows, demonstrated by independent reconciliation of original report rows with complete source-native workflow, run and artifact API pages.",
+  "population": "Every workflow in the independent workflow inventory; every non-cancelled run created in [midnight UTC after assigned report_date minus 30 days, midnight UTC after assigned report_date); every retained artifact on those runs, including expired entries returned by the API.",
+  "primary": {
+    "id": "accurate-inventory-reports",
+    "unit": "reports",
+    "formula": "Count distinct repository report-date deliveries completed in the requested disjoint interval whose complete independently reconciled inventory, per-workflow count, bytes, average, latest eligible run and active status match the original report.",
+    "actorIndependent": true
+  },
+  "independentAcceptance": {
+    "source": "Original GitHub REST JSON bytes with exact repository/run identities, response acquisition timestamps and exhaustive page sequences. Agent assertions and caller-supplied scores/accepted flags are ignored.",
+    "report": "Original published Markdown table, immutable content digest, report date and stable delivery identity; publication must be independently bound to the original content before full delivery credit.",
+    "coverage": "All workflows, all runs in the fixed source window and all run artifact pages must reconcile to API total_count. Missing pages, deleted historical entries, mutable state without contemporaneous preservation, and unavailable report content remain unknown.",
+    "bytes": "Artifact size_in_bytes is authoritative. Report size cells must declare MB or GB; because the source does not specify decimal versus binary units, accept a consistently applied decimal or binary interpretation only when all rounded count/total/average cells agree.",
+    "time": "Run created_at supplies eligibility and latest run date. The immutable assigned report_date supplies the analysis endpoint, not execution wall clock. Cancelled runs are excluded. Latest-run cells must resolve to the exact timestamp or the same UTC calendar date when date-only.",
+    "status": "A workflow with retained artifacts in the window is Active. Workflows without artifacts are omitted, as required by the source. No invented inactive-age threshold.",
+    "scope": "All listed artifacts count, not only successful-run artifacts. Artifact IDs must be globally unique and run bindings must agree. Known checked workflow subtotals survive missing broader scope.",
+    "delivery": "Count each stable delivery identity once, at independent publication completion time, never by retaining a prior inventory snapshot. Workflow contribution additionally needs an independently bound original run, source path and head revision.",
+    "safeguards": "A valid original work-queue Claim, immutable report_date and matching profile are separate requirements for current workflow-linked delivery. Narrative insight correctness, retention-policy interpretation and optimization benefit remain unknown without independent evidence."
+  },
+  "metrics": [
+    "accurate-inventory-reports: actor-independent primary",
+    "verified-workflows: native partial progress, independently reconciled workflow rows",
+    "verified-storage-bytes: native exact integer artifact bytes in independently reconciled workflow rows",
+    "workflow-linked delivery: separately unavailable until independently bound original publication/run/Claim receipts can be checked; editable markers are not numeric contribution evidence"
+  ],
+  "rejectedProxies": [
+    "Successful workflow runs",
+    "Published report counts without independent accuracy validation",
+    "Artifact counts or byte totals alone",
+    "Editable tracking markers and body references",
+    "Self-graded artifacts_analyzed and summary_produced evals",
+    "Trajectory recurrence graders, which do not check inventory accuracy"
+  ],
+  "historicalApplicability": "The repository problem predates automation. This is a prospective complete-known-source instrument, not a claim of workflow adoption or exhausted historical evidence. Earlier eras require their contemporaneous source and independent inventory receipts. The observed source-addition candidate has a readable tree but its original source and compiled blob content are unavailable locally.",
+  "costs": "unmeasured",
+  "keepDecision": "not-rated; no owner-approved keep bar",
+  "zeroVersusMissing": "Zero requires a complete independent delivery/opportunity census and complete native acceptance evidence. No local receipts means unknown, never zero deliveries or no opportunities.",
+  "window": {
+    "measurementKind": "interval",
+    "durationDays": 30,
+    "cadenceDays": 30,
+    "maturationDays": 0
+  },
+  "historicalBaseline": null
+}

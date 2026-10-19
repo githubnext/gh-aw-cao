@@ -1,0 +1,58 @@
+import { hostAssertionModule } from "../../../../scripts/native-host-assertion-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = hostAssertionModule({
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-goose",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "1a509b6c1c8c4985734eeade222eb9bba3192286",
+  "interpreterSha256": "15df6030cce347982f0e5056f0e4bdd98539898a79395e3cdcae597b71fb1403",
+  "name": "Smoke Goose",
+  "goal": "Maintain the declared pinned Goose runtime and native GitHub MCP/session smoke conjunction.",
+  "acceptance": "The protected host requires checksum-verified Goose 1.54.0, a completed structured run, correlated successful native GitHub MCP requests/responses, canonical matched session events, independently merged PR identities and the remaining declared smoke fixtures.",
+  "metricLabel": "Verified Goose smoke assessments",
+  "unit": "smoke proofs",
+  "gates": [
+    {
+      "job": "agent",
+      "name": "Assert Goose smoke evidence",
+      "meaning": "The complete source-defined Goose host conjunction establishes native runtime/MCP/session capability."
+    }
+  ],
+  "limitations": [
+    "Native assertions are one conjunction, not independently counted feature deliveries. Fixture booleans and file existence alone do not establish compilation correctness; full build behavior, telemetry and exclusive causation remain separate."
+  ],
+  "jobs": {
+    "agent": {
+      "name": "agent",
+      "sha256": "8513f50be14106cee7574b9131503c4863bc977c926b0ed5b31824c08b0b4d56"
+    }
+  },
+  "adoption": {
+    "commit": "57b002417b2f0be0cd5b86325af2d6121c53d314",
+    "adoptedAt": "2026-08-04T05:10:51Z",
+    "baselineCommit": "cd85bff63f8535f58de6887345dec11fd0e70ec5",
+    "baselineAt": "2026-08-04T05:07:32Z"
+  },
+  "dependencies": [
+    {
+      "path": ".github/aw/engines.json",
+      "gitBlob": "630cb555f8513c3804a26fbe95ca0a6720761803"
+    },
+    {
+      "path": "actions/setup/js/parse_goose_log.cjs",
+      "gitBlob": "07be6874f2771f27a99a379032d7b434d617e65d"
+    }
+  ],
+  "runtimeTrees": [
+    {
+      "path": "actions",
+      "gitTree": "ba2d5737336b9a68bb5d493cb5da012b3ff329c0"
+    },
+    {
+      "path": ".github/workflows/shared",
+      "gitTree": "99472ca203e6cdbfd7ab8b1a2fa18db9d5959835"
+    }
+  ]
+});

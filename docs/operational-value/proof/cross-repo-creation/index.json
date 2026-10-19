@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "status": "open-blocked",
+  "measured": false,
+  "repository": "github/gh-aw",
+  "workflowId": "smoke-create-cross-repo-pr",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "5dbbfc2da6bd3b9624c7101bd8d3d8e7709ff5e6d1986131dfd78d1b46a421ce",
+  "sourcesSha256": "99803eb1f94a5bb8834110ae418fd20189a41344a43db7bc096a11a28f5189d8",
+  "discoverySha256": "fa5f9e20acf99ece08dbd92ee49a31a45f8a1caba62c860ba2307d2a34a16e59",
+  "probesSha256": "3dec03f32f5f26c4de32d727b7ca39540400205db346bde00000385d8547b78e",
+  "retainedRuns": 2265,
+  "sourceChanges": 24,
+  "compiledChanges": 853,
+  "reviewedSourceProfiles": 25,
+  "discoveryCandidates": 83,
+  "acceptedReceipts": null,
+  "nativeValue": null,
+  "missingReason": "Authorized independent numeric target identity, original execution-source binding, PR/base/head branch identities, complete base/head Git tree path proofs and exact fixture blob content at delivery.",
+  "readinessGuard": "status must not be measured/ready while acceptedReceipts or nativeValue is null; an all-unknown timeline does not contribute measured coverage."
+}

@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "smoke-update-cross-repo-pr",
+  "repository": "github/gh-aw",
+  "status": "blocked-not-measured",
+  "sourceReviewComplete": true,
+  "publicRetainedRunInventoryComplete": true,
+  "nativeEvidenceReady": false,
+  "complete": false,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "219be9c4d425130eeed0e2891de7c821b85ce7cf",
+  "until": "2026-10-18T15:00:12Z",
+  "functionPath": "docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs",
+  "functionSha256": "1feb895ef2704eba5706369c391d9dc9579df2e41488c7504c67b905be2bdd2d",
+  "interpreterSha256": "05949648176e54d77a8fcdc428956c567b2897a9fdf52a0d15df3d89bac68d85",
+  "contractPath": "docs/operational-value/proof/cross-repo-update/contract.json",
+  "contractSha256": "1139f8efe5402f0dfe106f74a5854a7b75dac1dab7db0848c13875600cb6d31f",
+  "acquisitionPath": "docs/operational-value/proof/cross-repo-update/acquisition.json",
+  "acquisitionSha256": "abf194014769eb6169d37280ec6e3006d73a678e6629ede97ae20fcf9f99fbce",
+  "sourcePath": "docs/operational-value/proof/cross-repo-update/sources.json",
+  "sourceProfiles": 27,
+  "retainedRunMetadataCount": 2266,
+  "nativeAssessmentCount": 0,
+  "independentlyMeasuredPeriods": 0,
+  "unavailableAssessments": 34,
+  "eligibleOpportunities": null,
+  "acceptedNativeAppends": null,
+  "signal": "insufficient-evidence",
+  "scope": "Public source/compiled profiles and public run metadata only; target visibility metadata only.",
+  "targetVisibility": {
+    "frontmatter": {
+      "unavailable": true,
+      "status": 1,
+      "reason": "gh: Not Found (HTTP 404)\n"
+    },
+    "prose": {
+      "id": 1165800218,
+      "fullName": "githubnext/gh-aw-side-repo",
+      "private": true,
+      "visibility": "private"
+    }
+  },
+  "missing": [
+    "Prose target metadata declares private visibility; no target bodies or bytes are authorized for this public proof.",
+    "No source-defined immutable Odyssey edition/line sequence.",
+    "No independently retained pre/post push receipt binding run, target repository ID, PR ID and branch.",
+    "Declared frontmatter target is unavailable; legacy prose target must not silently substitute for it.",
+    "No authorized historical target ref-update ledger."
+  ],
+  "classification": {
+    "mode": "attainment-only",
+    "antecedent": {
+      "result": "pre-existing-but-not-reconstructable",
+      "explanation": "The target branch condition could exist independently of this workflow. Public-only authority cannot reconstruct private target history; source also lacks a deterministic edition/sequence mapping. No absent trace is treated as zero."
+    },
+    "historicalBaseline": "unavailable",
+    "outcomeMeasurability": "blocked-by-authority-and-missing-sequence-oracle"
+  },
+  "retainedMeasures": [
+    {
+      "id": "sequential-appends",
+      "role": "primary",
+      "unit": "verified line appends",
+      "value": null
+    },
+    {
+      "id": "nonduplicate-line-appends",
+      "role": "diagnostic",
+      "unit": "verified line appends",
+      "value": null
+    }
+  ],
+  "rejectedProxies": [
+    "run counts",
+    "successful run/job counts",
+    "issue reports",
+    "PR state",
+    "push counts",
+    "editable agent text",
+    "current target state backdated into history"
+  ],
+  "registration": {
+    "contract": "docs/operational-value/proof/cross-repo-update/contract.json",
+    "index": "docs/operational-value/proof/cross-repo-update/index.json",
+    "function": "docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs",
+    "timeline": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-timeline.json",
+    "pulse": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-pulse.json",
+    "plot": "docs/operational-value/proof/cross-repo-update/reports/github-gh-aw/smoke-update-cross-repo-pr-pulse.html",
+    "primaryMetric": "sequential-appends",
+    "provenanceKind": "public-source-and-run-inventory",
+    "provenancePath": "docs/operational-value/proof/cross-repo-update/acquisition.json",
+    "provenanceRef": "abf194014769eb6169d37280ec6e3006d73a678e6629ede97ae20fcf9f99fbce",
+    "evidenceReadinessGuard": "index.nativeEvidenceReady === true && index.independentlyMeasuredPeriods > 0 && timeline.snapshots.some(s => Number.isFinite(s.metrics['sequential-appends']))",
+    "registerAsMeasured": false
+  },
+  "validations": [
+    {
+      "command": "node --test tests/unit/cao-operational-value-cross-repo-update.test.mjs",
+      "result": "10 passed"
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/evaluate.mjs --end 2026-10-18T15:00:12Z --output-dir docs/operational-value/proof/cross-repo-update/reports --function docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs github/gh-aw smoke-update-cross-repo-pr",
+      "result": "34 unavailable assessments, standard native-unit timeline/HTML plot; not measured"
+    },
+    {
+      "command": "npx eslint scripts/collect-cross-repo-update-value.mjs scripts/author-cross-repo-update-value.mjs scripts/native-cross-repo-update-value.mjs scripts/summarize-cross-repo-update-value.mjs docs/operational-value/proof/functions/smoke-update-cross-repo-pr.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "npm run typecheck:cao",
+      "result": "passed"
+    },
+    {
+      "command": "npm run compile",
+      "result": "72 succeeded, 2 pre-existing action-version warnings; gh aw v0.92.5"
+    }
+  ],
+  "lessons": [
+    "Check repository metadata visibility before any cross-repository content read; authenticated access never establishes public authority.",
+    "Freeze an edition/sequence mapping before scoring natural-language next-item goals; exact-byte append proof alone cannot establish semantic order.",
+    "Bind cross-repository outcomes to the exact source-era target, stable repository/PR identity, branch and independently retained pre/post head receipts.",
+    "Review compiled protected-file fallback behavior: a successful review request or handler result need not establish an actual target-branch content change.",
+    "Exhaust time-partitioned retained run inventories beyond the API's 1000-result filter cap, but never promote discovery completeness to native opportunity completeness.",
+    "An all-unknown native plot is a preserved evidence gap, not measured workflow coverage or zero operational value.",
+    "Registration provenance kind and reference must match actual collector provenance; missingness labels are not provenance identities.",
+    "Native receipt acceptance requires independently expected run/attempt/source/runtime/branch identities, exact artifact payload digests, producer host joins and protected chronology."
+  ]
+}

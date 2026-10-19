@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "kind": "operational-value-events",
+  "repository": "github/gh-aw",
+  "workflowSlug": "engine-conformance-pi",
+  "workflowName": "Engine Conformance pi",
+  "sourcePath": ".github/workflows/engine-conformance-pi.md",
+  "observedAt": "2026-10-18T16:26:04Z",
+  "cadenceDays": 7,
+  "metric": {
+    "id": "observed-core-passes",
+    "name": "Observed independently proven core behaviors",
+    "unit": "probes",
+    "direction": "increase",
+    "version": "fadc50ef2aae33dcfa0fc217365348db14f730f38c5e8b7457657055c0b82cc5"
+  },
+  "basis": "workflow-contribution",
+  "window": {
+    "startAt": "2026-10-03T18:10:37Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "coverage": [
+    {
+      "startAt": "2026-10-03T18:10:37.000Z",
+      "endAt": "2026-10-18T15:00:12Z",
+      "status": "complete"
+    }
+  ],
+  "opportunities": null,
+  "events": [
+    {
+      "id": "host-core:39115727173:1",
+      "at": "2026-10-18T09:35:41Z",
+      "value": 5,
+      "attribution": "receipt-verified",
+      "label": "5/5 independently proven core behaviors",
+      "detail": "Protected host assertions verify schema, file reading, inference, shell/environment and production MCP round-trip. This is verification work, not a run-success count or proof of repository improvement.",
+      "evidence": [
+        {
+          "label": "Exact execution attempt",
+          "url": "https://github.com/github/gh-aw/actions/runs/39115727173/attempts/1"
+        },
+        {
+          "label": "Immutable checker source",
+          "url": "https://github.com/github/gh-aw/blob/c86377ec47b38f0b5af463277ee55d1d03d08da8/.github/workflows/engine-conformance-pi.lock.yml"
+        }
+      ]
+    }
+  ],
+  "nativeContext": {
+    "observedCorePasses": 5,
+    "independentlyUsableAssessments": 1,
+    "survivingRuns": 1,
+    "unknownAssessments": 0,
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "nativeModelSha256": "50ef1e13f2524444c409dfb8ee4d09250318d8e2b98597b15067ec63c4f525da"
+  },
+  "limitations": [
+    "Native units are passing independent behavioral probe cases, not successful runs, output volume or financial value.",
+    "A source-verified successful host assertion step proves its conjunction only when the exact reviewed script and protected environment match and failures are not tolerated.",
+    "Receipt verification identifies the actual protected host execution; it does not claim a safe-output issue/PR creation receipt.",
+    "Failures are decomposed only from retained protected reports; generic job/agent failure is not assigned a made-up native zero.",
+    "The observed subtotal survives unknown assessments. Complete totals and rates crossing a missing assessment remain unknown.",
+    "Coverage is scoped to surviving enumerated Actions executions; deleted executions cannot be reconstructed by this instrument.",
+    "These checks verify observed configuration behavior, not exclusive workflow causation, speedups or full engine-specific/staged-output acceptance.",
+    "Repeated probe work can support assurance but does not establish that more execution is cost-effective; costs and a keep bar are not measured."
+  ]
+}

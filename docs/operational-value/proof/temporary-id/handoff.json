@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "workflowId": "smoke-temporary-id",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "status": "partial-native-evidence; full historical attainment remains open",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "24368e226f6cc0c5ddbf45d8c35a6a500ba3a94d",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "functionVersion": 3,
+  "functionSha256": "b4ed1c6b75c0db9947b28887f7c0fb94072eab7481d11298894d171b7b8b7f53",
+  "interpreterSha256": "7911ff0c28e076b2c9c80b32fd56a2143ddae0688c3baba1faa752a33227e4ae",
+  "archiveCompatibility": {
+    "codec": ".github/skills/add-operational-value/scripts/json-archive.mjs",
+    "limitBytesPerFile": 262144,
+    "predecessorDecodedSha256": "5532fd532bcfee709fe1b061966eb71fdc0c52661bf386f7a34b9dea89d9455d",
+    "runtimeDecodedSha256": "8bec511845046c9da13c3d5e86041f49d4bc9e2b4205c1531a009df9fa59fe11",
+    "preservation": "Both oversized archives are losslessly partitioned using the existing codec. All 37 current native observation windows, metrics, evidence and provenance remain byte-identical. Semantic index and contract hashes are unchanged. Function/interpreter fingerprints and generated report metadata change only to support the existing archive codec.",
+    "packaging": "COPYFILE_DISABLE=1; archive members must exactly equal the declared owned-file manifest, with no AppleDouble sidecars."
+  },
+  "contractSha256": "f88d0a3955e8f6c0844f1a30a06bd72e52703f25f4d6f953f62613477c6bad6e",
+  "indexSemanticSha256": "5bc3665396e70d9761f29be042504f494136fbf5e6caa4a4e897b27ce019a4d7",
+  "indexFileSha256": "21567d45282ac88f8480bf573009f7a0a5a8f6a6f3b6278e4aa475db21e455ed",
+  "registration": {
+    "function": "smoke-temporary-id/operational-value/smoke-temporary-id.mjs",
+    "interpreter": "scripts/native-temporary-id-value.mjs",
+    "contract": "docs/operational-value/proof/temporary-id/contract.json",
+    "index": "docs/operational-value/proof/temporary-id/index.json",
+    "timeline": "docs/operational-value/proof/reports/github-gh-aw/smoke-temporary-id-timeline.json",
+    "definitions": "docs/operational-value/proof/reports/github-gh-aw/smoke-temporary-id-definitions.md",
+    "plot": "docs/operational-value/proof/reports/github-gh-aw/smoke-temporary-id-pulse.html",
+    "plotPayload": "docs/operational-value/proof/reports/github-gh-aw/smoke-temporary-id-pulse.json",
+    "evidenceArchive": "docs/operational-value/proof/reports/github-gh-aw/smoke-temporary-id-evidence-archive.json",
+    "unresolvedScopes": "docs/operational-value/proof/temporary-id/open-evidence-scopes.json.gz",
+    "primaryMetric": "resolved-references",
+    "provenanceKind": "protected-receipt-body-graph-join",
+    "readinessGuard": [
+      "Require the exact function, interpreter, frozen contract and final index fingerprints above.",
+      "Require complete run/attempt inventory, all observation/graph partitions and matching source, protected receipt, runtime and supplemental acquisition digests.",
+      "Replay the production collectBatch boundary; it validates retained original ZIP digests, immutable Git source hashes, independent body/graph projections and protected-plus-independent comment targets.",
+      "Require at least one finite actual native primary observation with protected-receipt-body-graph-join provenance, not merely an index, fixture or plot file.",
+      "Keep readiness separate from complete evidence coverage: the actual series is partial, recent/adoption deltas remain unavailable, and full historical attainment is not claimed."
+    ]
+  },
+  "nativeSignal": {
+    "distinctDemonstratedReferences": 36,
+    "distinctDemonstratedParentChildLinks": 12,
+    "fullyAcceptedTriplets": 3,
+    "mappedTriplets": 6,
+    "independentMappedIssueIdentities": 18,
+    "latestSevenDayReferences": 6,
+    "latestSevenDayLinks": 2,
+    "latestSevenDayAcceptedTriplets": null,
+    "periodSnapshots": 37,
+    "snapshotsWithNativeReferences": 6,
+    "allUnknownSnapshots": 31,
+    "snapshotWarning": "Cutoff comparison windows overlap some cadence windows. Do not sum plotted snapshots; the distinct totals above are computed from unique initial run-attempt identities.",
+    "comparison": "Unavailable: incomplete period evidence and no accepted pre-adoption baseline.",
+    "decision": "not-rated",
+    "costAndCausation": "not-measured"
+  },
+  "inventory": {
+    "runs": 2475,
+    "attempts": 2787,
+    "confirmedExecutedInitialAttempts": 224,
+    "confirmedSkippedInitialAttempts": 1539,
+    "unknownInitialEligibility": 712,
+    "confirmedReferenceSlots": 1344,
+    "completeEligibleReferenceDenominator": null,
+    "eligibleProtectedHostScopes": 219,
+    "retainedProtectedHostLogsAndArchives": 26,
+    "retainedMaps": 23,
+    "emptyMaps": 17,
+    "independentPublicIssueNodes": 144,
+    "openInitialAttemptScopes": 933
+  },
+  "limitations": [
+    "712 job histories return no jobs; execution eligibility remains unknown and the full eligible denominator stays null.",
+    "193 of 219 eligible protected-host scopes lack retained host receipts. Three retained uploads lack a map and seventeen maps are empty. These are open historical evidence gaps, not measured zeros or permanent missingness.",
+    "The ten missing exact mapped public issues and all three protected comment targets were successfully acquired through the parent's coordinated read-only batch; no target remains unacquired for the six nonempty canonical maps.",
+    "The last three mapped executions have no protected-plus-independent summary comment receipt, so full acceptance stays null while six correct references and two graph edges count per execution.",
+    "Current bodies are admitted only with cutoff-valid platform last-edit timestamps. Historical graph edges require complete independent add/remove history.",
+    "Fixed same-length fixture IDs do not prove the broader length range described by the source. Group-parent creation, issue existence, success summaries and fallback Related to comments are not accepted goal evidence.",
+    "All original parent seed changes remain untouched and excluded from this handoff. No shared registry/skill/helper/benchmark edit, commit or remote write was made."
+  ],
+  "validation": [
+    {
+      "command": "TEMPORARY_ID_OFFLINE=1 node scripts/collect-temporary-id-evidence.mjs",
+      "result": "PASS: 2475 runs, 2787 attempts, zero network requests; all cached declared scopes replayed."
+    },
+    {
+      "command": "TEMPORARY_ID_OFFLINE=1 node scripts/join-temporary-id-evidence.mjs",
+      "result": "PASS: 23 protected maps, 26 reviewed runtime profiles, 55 retained runtime blobs, 36 references, 12 links, 3 full acceptances."
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector smoke-temporary-id/operational-value/smoke-temporary-id.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/evaluate.mjs --refresh --end 2026-10-18T15:00:12Z --output-dir docs/operational-value/proof/reports --function smoke-temporary-id/operational-value/smoke-temporary-id.mjs github/gh-aw smoke-temporary-id",
+      "result": "PASS: native timeline, definitions, pulse HTML/JSON and versioned evidence archive generated."
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/validate-report-artifacts.mjs docs/operational-value/proof/reports/github-gh-aw/smoke-temporary-id-timeline.json docs/operational-value/proof/reports/github-gh-aw/smoke-temporary-id-definitions.md",
+      "result": "PASS"
+    },
+    {
+      "command": "node --test tests/unit/operational-value-temporary-id.test.mjs",
+      "result": "PASS: 15 tests, zero failures/skips. Includes 256 KiB file-budget enforcement and exact decoded predecessor/runtime hashes, actual retained acquisition, missing protected/source/runtime/supplemental/graph evidence, forged map/graph projections and null unknown-eligibility denominator."
+    },
+    {
+      "command": "npx --no-install eslint scripts/*temporary-id*.mjs smoke-temporary-id/operational-value/smoke-temporary-id.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run typecheck:cao",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run compile",
+      "result": "PASS: all 72 workflows compiled strict/no-emit with the required schedule seed. Two existing action-version warnings; no generated lock edits."
+    }
+  ],
+  "portableReplay": "After restoring the owned archive into the seeded parent worktree, the focused test, function verifier and evaluator replay entirely from retained proof files without API access. Acquisition/join scripts additionally require this worker's private cache and shared discovery history; do not invoke them as a prerequisite to reading the already retained native evidence.",
+  "reusableSkillLessons": [
+    "An exhausted editable-marker output inventory is discovery-complete, not effect-complete. Follow every protected-map target; this recovered ten otherwise omitted issue nodes.",
+    "Keep direct partial improvements independent of full acceptance. Missing summary receipts must not erase correct cross-references and native graph links.",
+    "Use lastEditedAt for historical bodies, not general updatedAt. Reconstruct current graph state through complete event history instead of backdating it.",
+    "Normalize historical job display names, retain empty job histories as unknown eligibility and keep their eligible denominator null rather than inventing opportunities.",
+    "Review exact native producers across retained source versions: graph-link fallbacks can succeed as comments without creating real parent-child edges, and group parents are not fixture parents.",
+    "Bind the interpreter and semantic contract into the function fingerprint, retain predecessor proofs, and fail closed when source, receipt or independent readback evidence disappears.",
+    "Native cadence snapshots and cutoff-aligned comparison windows may overlap. Use unique opportunity identities for all-history totals and complete adjacent windows only for change.",
+    "Fixed fixture IDs can contradict prose coverage claims; same-length fixtures do not demonstrate boundary-length behavior. Source experiments, token telemetry and agent success assertions remain separate from native acceptance.",
+    "Coordinate exact public request manifests with protected-map bindings during provider quota pauses; accept verified HTTP200 responses individually rather than rejecting them because an unrelated later batch request failed."
+  ]
+}

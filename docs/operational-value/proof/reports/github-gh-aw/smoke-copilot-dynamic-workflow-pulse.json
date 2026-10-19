@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "smoke-copilot-dynamic-workflow",
+  "workflowName": "Smoke Copilot Dynamic Workflow",
+  "sourcePath": ".github/workflows/smoke-copilot-dynamic-workflow.md",
+  "valueFunctionSha256": "0c42bd28e9f742ef957f2b6a2b4a0f7e2e5864bbf7898adb23230b0c80fa4161",
+  "window": {
+    "startAt": "2026-10-06T17:16:08Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "verified-invocations",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "verified-invocations",
+    "basis": "repository-outcome",
+    "unit": "invocation proofs"
+  },
+  "metrics": [
+    {
+      "id": "verified-invocations",
+      "role": "primary",
+      "name": "Verified packaged dynamic invocations",
+      "unit": "invocation proofs",
+      "direction": "increase",
+      "formula": "Count independently source-bound completed native workflow invocations with exactly one correlated completed smoke-marker subagent; unknown attempts remain unknown.",
+      "presentation": {
+        "name": "Verified native invocations",
+        "legendLabel": "Native invocations",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-06T17:16:08Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-13T17:16:08Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-13T17:16:08Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "full-acceptance",
+      "role": "diagnostic",
+      "name": "Exact durable-result acceptance",
+      "unit": "accepted invocations",
+      "direction": "increase",
+      "formula": "Count verified invocations whose correlated durable result equals all five exact source-defined fields.",
+      "presentation": {
+        "name": "Exact result and invocation",
+        "legendLabel": "Full acceptance",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-06T17:16:08Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-13T17:16:08Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-13T17:16:08Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

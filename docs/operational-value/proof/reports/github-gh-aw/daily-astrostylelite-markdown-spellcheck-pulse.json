@@ -1,0 +1,674 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-astrostylelite-markdown-spellcheck",
+  "workflowName": "Daily AstroStyleLite Markdown Spellcheck",
+  "sourcePath": ".github/workflows/daily-astrostylelite-markdown-spellcheck.md",
+  "valueFunctionSha256": "08759e0a2ede8b2947cba2f22b2bddf2b225e747c88c95690fa6d658a73f4da0",
+  "window": {
+    "startAt": "2026-04-20T05:42:44Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-05-01T00:00:00.000Z",
+      "label": "May 2026"
+    },
+    {
+      "at": "2026-06-01T00:00:00.000Z",
+      "label": "Jun 2026"
+    },
+    {
+      "at": "2026-07-01T00:00:00.000Z",
+      "label": "Jul 2026"
+    },
+    {
+      "at": "2026-08-01T00:00:00.000Z",
+      "label": "Aug 2026"
+    },
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "native-findings",
+  "signal": {
+    "status": "worsening",
+    "attention": "review",
+    "current": 2499,
+    "previous": 2435,
+    "directionAwareGain": -64,
+    "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+    "opportunities": 259,
+    "metricId": "native-findings",
+    "basis": "repository-outcome",
+    "unit": "diagnostics"
+  },
+  "metrics": [
+    {
+      "id": "native-findings",
+      "role": "primary",
+      "name": "Native spelling diagnostics",
+      "unit": "diagnostics",
+      "direction": "decrease",
+      "formula": "Count every independently reported native spelling issue, including ordinary unknown words.",
+      "presentation": {
+        "name": "Native spelling diagnostics",
+        "legendLabel": "Native diagnostics",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "worsening",
+        "attention": "review",
+        "current": 2499,
+        "previous": 2435,
+        "directionAwareGain": -64,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 259
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-04-27T05:42:44Z",
+          "value": 1274,
+          "status": "complete",
+          "observedAt": "2026-04-27T05:42:44Z"
+        },
+        {
+          "at": "2026-05-04T05:42:44Z",
+          "value": 1351,
+          "status": "complete",
+          "observedAt": "2026-05-04T05:42:44Z"
+        },
+        {
+          "at": "2026-05-11T05:42:44Z",
+          "value": 1393,
+          "status": "complete",
+          "observedAt": "2026-05-11T05:42:44Z"
+        },
+        {
+          "at": "2026-05-18T05:42:44Z",
+          "value": 1421,
+          "status": "complete",
+          "observedAt": "2026-05-18T05:42:44Z"
+        },
+        {
+          "at": "2026-05-25T05:42:44Z",
+          "value": 1373,
+          "status": "complete",
+          "observedAt": "2026-05-25T05:42:44Z"
+        },
+        {
+          "at": "2026-06-01T05:42:44Z",
+          "value": 1408,
+          "status": "complete",
+          "observedAt": "2026-06-01T05:42:44Z"
+        },
+        {
+          "at": "2026-06-08T05:42:44Z",
+          "value": 1468,
+          "status": "complete",
+          "observedAt": "2026-06-08T05:42:44Z"
+        },
+        {
+          "at": "2026-06-15T05:42:44Z",
+          "value": 1480,
+          "status": "complete",
+          "observedAt": "2026-06-15T05:42:44Z"
+        },
+        {
+          "at": "2026-06-22T05:42:44Z",
+          "value": 1499,
+          "status": "complete",
+          "observedAt": "2026-06-22T05:42:44Z"
+        },
+        {
+          "at": "2026-06-29T05:42:44Z",
+          "value": 1544,
+          "status": "complete",
+          "observedAt": "2026-06-29T05:42:44Z"
+        },
+        {
+          "at": "2026-07-06T05:42:44Z",
+          "value": 1564,
+          "status": "complete",
+          "observedAt": "2026-07-06T05:42:44Z"
+        },
+        {
+          "at": "2026-07-13T05:42:44Z",
+          "value": 1609,
+          "status": "complete",
+          "observedAt": "2026-07-13T05:42:44Z"
+        },
+        {
+          "at": "2026-07-20T05:42:44Z",
+          "value": 1711,
+          "status": "complete",
+          "observedAt": "2026-07-20T05:42:44Z"
+        },
+        {
+          "at": "2026-07-27T05:42:44Z",
+          "value": 1728,
+          "status": "complete",
+          "observedAt": "2026-07-27T05:42:44Z"
+        },
+        {
+          "at": "2026-08-03T05:42:44Z",
+          "value": 1769,
+          "status": "complete",
+          "observedAt": "2026-08-03T05:42:44Z"
+        },
+        {
+          "at": "2026-08-10T05:42:44Z",
+          "value": 1821,
+          "status": "complete",
+          "observedAt": "2026-08-10T05:42:44Z"
+        },
+        {
+          "at": "2026-08-17T05:42:44Z",
+          "value": 1863,
+          "status": "complete",
+          "observedAt": "2026-08-17T05:42:44Z"
+        },
+        {
+          "at": "2026-08-24T05:42:44Z",
+          "value": 1932,
+          "status": "complete",
+          "observedAt": "2026-08-24T05:42:44Z"
+        },
+        {
+          "at": "2026-08-31T05:42:44Z",
+          "value": 1965,
+          "status": "complete",
+          "observedAt": "2026-08-31T05:42:44Z"
+        },
+        {
+          "at": "2026-09-07T05:42:44Z",
+          "value": 2022,
+          "status": "complete",
+          "observedAt": "2026-09-07T05:42:44Z"
+        },
+        {
+          "at": "2026-09-14T05:42:44Z",
+          "value": 2068,
+          "status": "complete",
+          "observedAt": "2026-09-14T05:42:44Z"
+        },
+        {
+          "at": "2026-09-21T05:42:44Z",
+          "value": 2066,
+          "status": "complete",
+          "observedAt": "2026-09-21T05:42:44Z"
+        },
+        {
+          "at": "2026-09-28T05:42:44Z",
+          "value": 2036,
+          "status": "complete",
+          "observedAt": "2026-09-28T05:42:44Z"
+        },
+        {
+          "at": "2026-10-05T05:42:44Z",
+          "value": 2127,
+          "status": "complete",
+          "observedAt": "2026-10-05T05:42:44Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 2435,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-12T05:42:44Z",
+          "value": 2446,
+          "status": "complete",
+          "observedAt": "2026-10-12T05:42:44Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 2499,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "forbidden-word-findings",
+      "role": "diagnostic",
+      "name": "Native forbidden-word diagnostics",
+      "unit": "diagnostics",
+      "direction": "decrease",
+      "formula": "Count native issues explicitly marked isFlagged true by the checker.",
+      "presentation": {
+        "name": "Native forbidden-word diagnostics",
+        "legendLabel": "Forbidden words",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 259
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-04-27T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-04-27T05:42:44Z"
+        },
+        {
+          "at": "2026-05-04T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-04T05:42:44Z"
+        },
+        {
+          "at": "2026-05-11T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-11T05:42:44Z"
+        },
+        {
+          "at": "2026-05-18T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-18T05:42:44Z"
+        },
+        {
+          "at": "2026-05-25T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-05-25T05:42:44Z"
+        },
+        {
+          "at": "2026-06-01T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-01T05:42:44Z"
+        },
+        {
+          "at": "2026-06-08T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-08T05:42:44Z"
+        },
+        {
+          "at": "2026-06-15T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-15T05:42:44Z"
+        },
+        {
+          "at": "2026-06-22T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-22T05:42:44Z"
+        },
+        {
+          "at": "2026-06-29T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-06-29T05:42:44Z"
+        },
+        {
+          "at": "2026-07-06T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-06T05:42:44Z"
+        },
+        {
+          "at": "2026-07-13T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-13T05:42:44Z"
+        },
+        {
+          "at": "2026-07-20T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-20T05:42:44Z"
+        },
+        {
+          "at": "2026-07-27T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-07-27T05:42:44Z"
+        },
+        {
+          "at": "2026-08-03T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-03T05:42:44Z"
+        },
+        {
+          "at": "2026-08-10T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-10T05:42:44Z"
+        },
+        {
+          "at": "2026-08-17T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-17T05:42:44Z"
+        },
+        {
+          "at": "2026-08-24T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-24T05:42:44Z"
+        },
+        {
+          "at": "2026-08-31T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-31T05:42:44Z"
+        },
+        {
+          "at": "2026-09-07T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-07T05:42:44Z"
+        },
+        {
+          "at": "2026-09-14T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-14T05:42:44Z"
+        },
+        {
+          "at": "2026-09-21T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-21T05:42:44Z"
+        },
+        {
+          "at": "2026-09-28T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-28T05:42:44Z"
+        },
+        {
+          "at": "2026-10-05T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-05T05:42:44Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-12T05:42:44Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-12T05:42:44Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "ordinary-unknown-findings",
+      "role": "diagnostic",
+      "name": "Native ordinary unknown-word diagnostics",
+      "unit": "diagnostics",
+      "direction": "decrease",
+      "formula": "Count native issues with isFlagged false; these are still included by the workflow's native jq filter.",
+      "presentation": {
+        "name": "Native ordinary unknown-word diagnostics",
+        "legendLabel": "Ordinary unknown words",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "worsening",
+        "attention": "review",
+        "current": 2499,
+        "previous": 2435,
+        "directionAwareGain": -64,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 259
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-04-27T05:42:44Z",
+          "value": 1274,
+          "status": "complete",
+          "observedAt": "2026-04-27T05:42:44Z"
+        },
+        {
+          "at": "2026-05-04T05:42:44Z",
+          "value": 1351,
+          "status": "complete",
+          "observedAt": "2026-05-04T05:42:44Z"
+        },
+        {
+          "at": "2026-05-11T05:42:44Z",
+          "value": 1393,
+          "status": "complete",
+          "observedAt": "2026-05-11T05:42:44Z"
+        },
+        {
+          "at": "2026-05-18T05:42:44Z",
+          "value": 1421,
+          "status": "complete",
+          "observedAt": "2026-05-18T05:42:44Z"
+        },
+        {
+          "at": "2026-05-25T05:42:44Z",
+          "value": 1373,
+          "status": "complete",
+          "observedAt": "2026-05-25T05:42:44Z"
+        },
+        {
+          "at": "2026-06-01T05:42:44Z",
+          "value": 1408,
+          "status": "complete",
+          "observedAt": "2026-06-01T05:42:44Z"
+        },
+        {
+          "at": "2026-06-08T05:42:44Z",
+          "value": 1468,
+          "status": "complete",
+          "observedAt": "2026-06-08T05:42:44Z"
+        },
+        {
+          "at": "2026-06-15T05:42:44Z",
+          "value": 1480,
+          "status": "complete",
+          "observedAt": "2026-06-15T05:42:44Z"
+        },
+        {
+          "at": "2026-06-22T05:42:44Z",
+          "value": 1499,
+          "status": "complete",
+          "observedAt": "2026-06-22T05:42:44Z"
+        },
+        {
+          "at": "2026-06-29T05:42:44Z",
+          "value": 1544,
+          "status": "complete",
+          "observedAt": "2026-06-29T05:42:44Z"
+        },
+        {
+          "at": "2026-07-06T05:42:44Z",
+          "value": 1564,
+          "status": "complete",
+          "observedAt": "2026-07-06T05:42:44Z"
+        },
+        {
+          "at": "2026-07-13T05:42:44Z",
+          "value": 1609,
+          "status": "complete",
+          "observedAt": "2026-07-13T05:42:44Z"
+        },
+        {
+          "at": "2026-07-20T05:42:44Z",
+          "value": 1711,
+          "status": "complete",
+          "observedAt": "2026-07-20T05:42:44Z"
+        },
+        {
+          "at": "2026-07-27T05:42:44Z",
+          "value": 1728,
+          "status": "complete",
+          "observedAt": "2026-07-27T05:42:44Z"
+        },
+        {
+          "at": "2026-08-03T05:42:44Z",
+          "value": 1769,
+          "status": "complete",
+          "observedAt": "2026-08-03T05:42:44Z"
+        },
+        {
+          "at": "2026-08-10T05:42:44Z",
+          "value": 1821,
+          "status": "complete",
+          "observedAt": "2026-08-10T05:42:44Z"
+        },
+        {
+          "at": "2026-08-17T05:42:44Z",
+          "value": 1863,
+          "status": "complete",
+          "observedAt": "2026-08-17T05:42:44Z"
+        },
+        {
+          "at": "2026-08-24T05:42:44Z",
+          "value": 1932,
+          "status": "complete",
+          "observedAt": "2026-08-24T05:42:44Z"
+        },
+        {
+          "at": "2026-08-31T05:42:44Z",
+          "value": 1965,
+          "status": "complete",
+          "observedAt": "2026-08-31T05:42:44Z"
+        },
+        {
+          "at": "2026-09-07T05:42:44Z",
+          "value": 2022,
+          "status": "complete",
+          "observedAt": "2026-09-07T05:42:44Z"
+        },
+        {
+          "at": "2026-09-14T05:42:44Z",
+          "value": 2068,
+          "status": "complete",
+          "observedAt": "2026-09-14T05:42:44Z"
+        },
+        {
+          "at": "2026-09-21T05:42:44Z",
+          "value": 2066,
+          "status": "complete",
+          "observedAt": "2026-09-21T05:42:44Z"
+        },
+        {
+          "at": "2026-09-28T05:42:44Z",
+          "value": 2036,
+          "status": "complete",
+          "observedAt": "2026-09-28T05:42:44Z"
+        },
+        {
+          "at": "2026-10-05T05:42:44Z",
+          "value": 2127,
+          "status": "complete",
+          "observedAt": "2026-10-05T05:42:44Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 2435,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-12T05:42:44Z",
+          "value": 2446,
+          "status": "complete",
+          "observedAt": "2026-10-12T05:42:44Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 2499,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

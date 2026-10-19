@@ -1,0 +1,101 @@
+import { copilotDynamicWorkflowModule } from "../../../../scripts/copilot-dynamic-workflow-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = copilotDynamicWorkflowModule({
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-copilot-dynamic-workflow",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "adoption": {
+    "commit": "ffc93b2f3118eae982d395381bdcd81cf8e1fc67",
+    "adoptedAt": "2026-10-06T17:16:08Z",
+    "baselineCommit": "ea26db6a5beb68ae37d97613f3e9c7923d92d515",
+    "baselineAt": "2026-10-06T16:04:42Z"
+  },
+  "sourceGitBlob": "c9663c6985318c8e2d0dfa833f62ca06873541c7",
+  "sourceProfileSha256": "753424d85d4baeced3b029b6b5e72176570cfc9f00f67d2b5310f4fea987314a",
+  "packageSha256": "621f7626cdd966a0bfd4843fd337dbe147b741f330591d95e5e52e21701f9826",
+  "interpreterSha256": "daaad6ddcb706c1628f52a78565a3ce050cc6b2f77512241a231df30e3e82000",
+  "sourceProfile": [
+    {
+      "path": ".github/workflows/smoke-copilot-dynamic-workflow.md",
+      "gitBlob": "c9663c6985318c8e2d0dfa833f62ca06873541c7",
+      "sha256": "175cebd20a896e72572b590c22fd75e42eb9158047018ab7d948ab706c94cf11"
+    },
+    {
+      "path": ".github/workflows/smoke-copilot-dynamic-workflow.lock.yml",
+      "gitBlob": "ccefb37a3fd2ca2c0e7c352a879c9db1c08f19d7",
+      "sha256": "d1b162b09458bd7aea4e72d778a1869ee8cdd1cba4dd42d29ecb9febd2c4a396"
+    },
+    {
+      "path": ".github/extensions/smoke-copilot-dynamic-workflow/extension.mjs",
+      "gitBlob": "02af209c8fd7cb7b3927ed68701962f828c292da",
+      "sha256": "79d9d128bedc69a2bf0acd160074ac3f1c05582fa3921ea8189a088e3532be87"
+    },
+    {
+      "path": ".github/extensions/smoke-copilot-dynamic-workflow/workflow.mjs",
+      "gitBlob": "88c540c62d50a5499c48ecfc5a5a1f4fd08539d6",
+      "sha256": "7b3aeedbd818cd1fc562cd4e5acad8b012215841dc07466e5b0aa7e539b183db"
+    },
+    {
+      "path": ".github/extensions/smoke-copilot-dynamic-workflow/support/.fixture.json",
+      "gitBlob": "82054e38560f6b6fcc126db1efcff3795be8845e",
+      "sha256": "f31251ecee5946164340948c52710e59a02268a8953c5c434a2079900bd89103"
+    },
+    {
+      "path": ".github/extensions/smoke-copilot-dynamic-workflow/workflow.test.mjs",
+      "gitBlob": "91812433400c525113a210f5b35b919920f2f680",
+      "sha256": "d66b9cc43236b8ce936046bb57b7e4eb4262009e3f814148ef2bf93cadce8335"
+    },
+    {
+      "path": "actions/setup/js/copilot_workflow_events.cjs",
+      "gitBlob": "2c6b50eb8996d5f2d66ac5dbb667a449381d8843",
+      "sha256": "6b6c2ef109a3f6a2f41ad15b024abcac631e5b24a0c01822b328ef7b036cb398"
+    },
+    {
+      "path": "actions/setup/js/copilot_session.cjs",
+      "gitBlob": "52bc6c9b122b344aaa326c05da210e561ca35f5f",
+      "sha256": "453114b72c6126f2c36dbdb58acefd19ecb08e23962b45215013935b4cf23016"
+    },
+    {
+      "path": "actions/setup/js/copilot_dynamic_workflow.test.cjs",
+      "gitBlob": "bb4da9dd113b1f8c891f3e74c122276d4388faf5",
+      "sha256": "fb5c480a5f1217fd45b24c654a79a52164471d0076015b0457c0fb99b07df8c2"
+    },
+    {
+      "path": "actions/setup/js/copilot_sdk_session.cjs",
+      "gitBlob": "87ee68365df350da58b7f16d8bb90d7cdd7a47ff",
+      "sha256": "bf581f9436aad89f8d77a9b6bbe8f53ef48be833079de6a39571b7b85826cb54"
+    },
+    {
+      "path": "actions/setup/js/parse_copilot_log.cjs",
+      "gitBlob": "f5259058d6e9e4e1a2819cd4850a3101a3edb6c7",
+      "sha256": "c7c495f800c0d5a2f94203c477a4391609ea468923cfac3d96650d3ed7edf2f0"
+    },
+    {
+      "path": "actions/setup/js/unified_session_payload.cjs",
+      "gitBlob": "bd297bbe2545d6e131d35f29cc6cf0ffaeb8f4af",
+      "sha256": "24b88d3bb28841b4cb09471d5418725908bf8159daa91b9b59aeadbd915c4f4c"
+    },
+    {
+      "path": "actions/setup/sh/copy_copilot_session_state.sh",
+      "gitBlob": "3be2adf23cad0f6a2b670517ed7230044a2b3b84",
+      "sha256": "1f117955f62c4b16ad596e8a44c50408affff6fb23c864f0fdefb221088d85ac"
+    },
+    {
+      "path": "actions/setup/sh/restore_base_github_folders.sh",
+      "gitBlob": "3c86ce0393c34ad5c783b383069a7763973de30d",
+      "sha256": "2db03def920cc82639ce849a5c0297765739a5f37ed1ed9a30156153d629125b"
+    }
+  ],
+  "callers": [
+    {
+      "path": ".github/workflows/smoke-trigger.yml",
+      "jobId": "call-smoke-copilot-dynamic-workflow",
+      "gitBlob": "873bc7fb6952436f8f471342eb1d76e03409a2a7",
+      "condition": "(github.event_name == 'workflow_dispatch' && inputs['dynamic-workflow']) || github.event.label.name == 'smoke-copilot-dynamic-workflow'"
+    }
+  ],
+  "frozenBeforeAcquisition": true
+});

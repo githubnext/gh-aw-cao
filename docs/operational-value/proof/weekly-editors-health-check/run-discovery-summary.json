@@ -1,0 +1,2427 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "weekly-editors-health-check",
+  "workflowId": 237095871,
+  "acquisition": {
+    "schemaVersion": 1,
+    "endpoint": "repos/github/gh-aw/actions/workflows/weekly-editors-health-check.lock.yml/runs?created=2026-02-21T22%3A11%3A11Z..2026-10-18T15%3A00%3A12Z&per_page=100&page=1",
+    "method": "GET",
+    "receivedAt": "2026-10-19T09:28:02.324Z",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "date": "Mon, 19 Oct 2026 09:28:02 GMT",
+      "etag": "W/\"5c4bfb2df3dc0595f0486b91a75b8b7f50711cf3f6de93a309c4d591275ee77f\"",
+      "x-github-request-id": "EFA4:38EF7A:F9897:1720DC:6AD5E29F",
+      "x-ratelimit-limit": "15000",
+      "x-ratelimit-remaining": "14934",
+      "x-ratelimit-reset": "1792403819",
+      "x-ratelimit-resource": "core"
+    },
+    "exitStatus": 0,
+    "errorCode": null,
+    "bodySha256": "c1eecdb7c0e188847cecb0c510350892bcc3db24760d50cfb214fa830f6e54c3",
+    "bodyBytes": 965207,
+    "stdoutSha256": "f6a1e5d10138259ec3b6321816ef82f6a2e19a77a9248ee3bd65352c1f304e74",
+    "refusal": false,
+    "attempts": 1,
+    "additionalRequests": 0,
+    "stderr": ""
+  },
+  "scope": {
+    "createdFrom": "2026-02-21T22:11:11Z",
+    "createdUntil": "2026-10-18T15:00:12Z",
+    "perPage": 100,
+    "page": 1
+  },
+  "discovery": {
+    "totalCount": 79,
+    "returnedCount": 79,
+    "link": null,
+    "nextCursor": null,
+    "providerReturnedAllMatchingRuns": true,
+    "retainedCandidateRunCount": 18,
+    "additionalRunsWithoutRetainedSeedOutputs": 61,
+    "oldestCreatedAt": "2026-02-21T22:11:54Z",
+    "newestCreatedAt": "2026-10-17T07:41:41Z",
+    "limitation": "One current provider listing, not an immutable historical execution ledger. Deleted runs and expired artifacts remain outside it. Provider totals and absent pagination do not establish response-evidence completeness."
+  },
+  "runs": [
+    {
+      "id": 39014584632,
+      "nodeId": "WFR_kwLOPc1QR88AAAAJFXNROA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "d3915e4a21040c00a6e11e1acb0aac42605abc4c",
+      "runAttempt": 1,
+      "createdAt": "2026-10-17T07:41:41Z",
+      "startedAt": "2026-10-17T07:41:41Z",
+      "updatedAt": "2026-10-17T07:47:05Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/39014584632",
+        "artifacts": "repos/github/gh-aw/actions/runs/39014584632/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/39014584632/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/39014584632/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/39014584632/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/39014584632/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/39014584632/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 38035600919,
+      "nodeId": "WFR_kwLOPc1QR88AAAAI2xk2Fw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "957aa80dca9e15d46d6b7b7bbd93eba385e34047",
+      "runAttempt": 1,
+      "createdAt": "2026-10-10T07:46:54Z",
+      "startedAt": "2026-10-10T07:46:54Z",
+      "updatedAt": "2026-10-10T07:52:04Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/38035600919",
+        "artifacts": "repos/github/gh-aw/actions/runs/38035600919/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/38035600919/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/38035600919/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/38035600919/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/38035600919/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/38035600919/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 37107503940,
+      "nodeId": "WFR_kwLOPc1QR88AAAAIo8eTRA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "306bc6bdf8df80f039c69df518a2dc4b73a0f544",
+      "runAttempt": 1,
+      "createdAt": "2026-10-03T07:47:18Z",
+      "startedAt": "2026-10-03T07:47:18Z",
+      "updatedAt": "2026-10-03T07:52:16Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/37107503940",
+        "artifacts": "repos/github/gh-aw/actions/runs/37107503940/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/37107503940/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/37107503940/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/37107503940/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/37107503940/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/37107503940/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 36227558660,
+      "nodeId": "WFR_kwLOPc1QR88AAAAIb1StBA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "4740543b75dfeb74d973b194163c83f22c7936e9",
+      "runAttempt": 1,
+      "createdAt": "2026-09-26T07:41:41Z",
+      "startedAt": "2026-09-26T07:41:41Z",
+      "updatedAt": "2026-09-26T07:51:23Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/36227558660",
+        "artifacts": "repos/github/gh-aw/actions/runs/36227558660/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/36227558660/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/36227558660/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/36227558660/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/36227558660/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/36227558660/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 35429966254,
+      "nodeId": "WFR_kwLOPc1QR88AAAAIP8phrg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "00457477720387bcc7d7baaf841dedb22ad06617",
+      "runAttempt": 1,
+      "createdAt": "2026-09-19T07:40:29Z",
+      "startedAt": "2026-09-19T07:40:29Z",
+      "updatedAt": "2026-09-19T07:45:31Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/35429966254",
+        "artifacts": "repos/github/gh-aw/actions/runs/35429966254/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/35429966254/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/35429966254/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/35429966254/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/35429966254/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/35429966254/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 34681310282,
+      "nodeId": "WFR_kwLOPc1QR88AAAAIEyrMSg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "b9caa39b18e2577a2a495c76d43efd5fb9d506b0",
+      "runAttempt": 1,
+      "createdAt": "2026-09-12T07:39:45Z",
+      "startedAt": "2026-09-12T07:39:45Z",
+      "updatedAt": "2026-09-12T07:50:12Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/34681310282",
+        "artifacts": "repos/github/gh-aw/actions/runs/34681310282/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/34681310282/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/34681310282/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/34681310282/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/34681310282/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/34681310282/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 33953152663,
+      "nodeId": "WFR_kwLOPc1QR88AAAAH58P-lw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "28eebfac27dbbcb90ecc2121f72568289610487b",
+      "runAttempt": 1,
+      "createdAt": "2026-09-05T07:39:20Z",
+      "startedAt": "2026-09-05T07:39:20Z",
+      "updatedAt": "2026-09-05T07:48:55Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/33953152663",
+        "artifacts": "repos/github/gh-aw/actions/runs/33953152663/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/33953152663/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/33953152663/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/33953152663/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/33953152663/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/33953152663/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 33241334542,
+      "nodeId": "WFR_kwLOPc1QR88AAAAHvVaDDg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "579b578fa0148b040af55c8076cc310a00fc2bc1",
+      "runAttempt": 1,
+      "createdAt": "2026-08-29T07:38:56Z",
+      "startedAt": "2026-08-29T07:38:56Z",
+      "updatedAt": "2026-08-29T07:49:32Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/33241334542",
+        "artifacts": "repos/github/gh-aw/actions/runs/33241334542/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/33241334542/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/33241334542/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/33241334542/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/33241334542/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/33241334542/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 32560521048,
+      "nodeId": "WFR_kwLOPc1QR88AAAAHlMIfWA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "004e949a0f1006d3f4622b2a1c14ede80cdda73d",
+      "runAttempt": 1,
+      "createdAt": "2026-08-22T07:46:56Z",
+      "startedAt": "2026-08-22T07:46:56Z",
+      "updatedAt": "2026-08-22T07:52:06Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/32560521048",
+        "artifacts": "repos/github/gh-aw/actions/runs/32560521048/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/32560521048/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/32560521048/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/32560521048/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/32560521048/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/32560521048/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 31872780326,
+      "nodeId": "WFR_kwLOPc1QR88AAAAHa8QIJg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "19e875b8b03b9540159c8f8549954a86ab6c2446",
+      "runAttempt": 1,
+      "createdAt": "2026-08-15T07:45:43Z",
+      "startedAt": "2026-08-15T07:45:43Z",
+      "updatedAt": "2026-08-15T07:55:24Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/31872780326",
+        "artifacts": "repos/github/gh-aw/actions/runs/31872780326/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/31872780326/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/31872780326/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/31872780326/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/31872780326/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/31872780326/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 31247183012,
+      "nodeId": "WFR_kwLOPc1QR88AAAAHRnospA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "ef11208896d169916726da0011b4712ade36bd8d",
+      "runAttempt": 1,
+      "createdAt": "2026-08-08T07:53:32Z",
+      "startedAt": "2026-08-08T07:53:32Z",
+      "updatedAt": "2026-08-08T08:02:38Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/31247183012",
+        "artifacts": "repos/github/gh-aw/actions/runs/31247183012/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/31247183012/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/31247183012/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/31247183012/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/31247183012/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/31247183012/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 30691717495,
+      "nodeId": "WFR_kwLOPc1QR88AAAAHJV5xdw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "fc336481d00d9e6aa2e33cf50cc5c04c2e5cfc56",
+      "runAttempt": 1,
+      "createdAt": "2026-08-01T08:25:01Z",
+      "startedAt": "2026-08-01T08:25:01Z",
+      "updatedAt": "2026-08-01T08:35:19Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/30691717495",
+        "artifacts": "repos/github/gh-aw/actions/runs/30691717495/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/30691717495/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/30691717495/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/30691717495/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/30691717495/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/30691717495/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 30606889300,
+      "nodeId": "WFR_kwLOPc1QR88AAAAHIFARVA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "794abcfef846ac6a4230668236175fda4a42f8bb",
+      "runAttempt": 1,
+      "createdAt": "2026-07-31T05:28:17Z",
+      "startedAt": "2026-07-31T05:28:17Z",
+      "updatedAt": "2026-07-31T05:28:17Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/30606889300",
+        "artifacts": "repos/github/gh-aw/actions/runs/30606889300/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/30606889300/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/30606889300/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/30606889300/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/30606889300/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/30606889300/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 30150942843,
+      "nodeId": "WFR_kwLOPc1QR88AAAAHBSLgew",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "7f2e404a25de6bc5dd623219ee2a5bfdfd52b864",
+      "runAttempt": 1,
+      "createdAt": "2026-07-25T08:20:58Z",
+      "startedAt": "2026-07-25T08:20:58Z",
+      "updatedAt": "2026-07-25T08:26:46Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/30150942843",
+        "artifacts": "repos/github/gh-aw/actions/runs/30150942843/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/30150942843/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/30150942843/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/30150942843/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/30150942843/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/30150942843/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 29637093061,
+      "nodeId": "WFR_kwLOPc1QR88AAAAG5oImxQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "61e04948ab68087f083dcfb0cac862b3e67abd43",
+      "runAttempt": 1,
+      "createdAt": "2026-07-18T08:13:29Z",
+      "startedAt": "2026-07-18T08:13:29Z",
+      "updatedAt": "2026-07-18T08:26:45Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/29637093061",
+        "artifacts": "repos/github/gh-aw/actions/runs/29637093061/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/29637093061/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/29637093061/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/29637093061/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/29637093061/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/29637093061/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 29259446736,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGz_-50A",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "65bfd424ad3a765a98a7264a7f9564a460cfe9a9",
+      "runAttempt": 1,
+      "createdAt": "2026-07-13T14:47:28Z",
+      "startedAt": "2026-07-13T14:47:28Z",
+      "updatedAt": "2026-07-13T14:47:28Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/29259446736",
+        "artifacts": "repos/github/gh-aw/actions/runs/29259446736/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/29259446736/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/29259446736/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/29259446736/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/29259446736/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/29259446736/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 29145845859,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGyTpQYw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "8601da533a1ef95b177a9359c0cedb535d52bdc4",
+      "runAttempt": 1,
+      "createdAt": "2026-07-11T08:16:05Z",
+      "startedAt": "2026-07-11T08:16:05Z",
+      "updatedAt": "2026-07-11T08:25:15Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/29145845859",
+        "artifacts": "repos/github/gh-aw/actions/runs/29145845859/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/29145845859/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/29145845859/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/29145845859/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/29145845859/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/29145845859/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 28700529398,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGrq9S9g",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "9c66ffec987845e3641e3968eb54ab72f8098842",
+      "runAttempt": 1,
+      "createdAt": "2026-07-04T08:28:10Z",
+      "startedAt": "2026-07-04T08:28:10Z",
+      "updatedAt": "2026-07-04T08:37:34Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/28700529398",
+        "artifacts": "repos/github/gh-aw/actions/runs/28700529398/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/28700529398/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/28700529398/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/28700529398/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/28700529398/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/28700529398/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 28283885211,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGldnWmw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "eed4304d8740f0593f2797276cb8299d228ffd9b",
+      "runAttempt": 1,
+      "createdAt": "2026-06-27T08:28:27Z",
+      "startedAt": "2026-06-27T08:28:27Z",
+      "updatedAt": "2026-06-27T08:36:47Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/28283885211",
+        "artifacts": "repos/github/gh-aw/actions/runs/28283885211/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/28283885211/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/28283885211/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/28283885211/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/28283885211/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/28283885211/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 27865776572,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGfO4BvA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "e1d2f30e59a8beae8c5a6c97cd9eedd5fc573753",
+      "runAttempt": 1,
+      "createdAt": "2026-06-20T08:34:34Z",
+      "startedAt": "2026-06-20T08:34:34Z",
+      "updatedAt": "2026-06-20T08:43:18Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/27865776572",
+        "artifacts": "repos/github/gh-aw/actions/runs/27865776572/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/27865776572/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/27865776572/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/27865776572/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/27865776572/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/27865776572/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 27461880010,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGZNsIyg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "27e0d8d42d29fc834817966f72b9d890ba99e91b",
+      "runAttempt": 1,
+      "createdAt": "2026-06-13T08:39:23Z",
+      "startedAt": "2026-06-13T08:39:23Z",
+      "updatedAt": "2026-06-13T08:48:14Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/27461880010",
+        "artifacts": "repos/github/gh-aw/actions/runs/27461880010/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/27461880010/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/27461880010/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/27461880010/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/27461880010/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/27461880010/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 27057447296,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGTL_hgA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "9f9af349b8b72e8da7d9adf3ebdbb0f84654760b",
+      "runAttempt": 1,
+      "createdAt": "2026-06-06T08:28:22Z",
+      "startedAt": "2026-06-06T08:28:22Z",
+      "updatedAt": "2026-06-06T08:36:20Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/27057447296",
+        "artifacts": "repos/github/gh-aw/actions/runs/27057447296/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/27057447296/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/27057447296/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/27057447296/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/27057447296/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/27057447296/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 26679225880,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGNjSuGA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "adab887a3f9b2ef08c605fb35e4dcd0c1f25491a",
+      "runAttempt": 1,
+      "createdAt": "2026-05-30T08:27:30Z",
+      "startedAt": "2026-05-30T08:27:30Z",
+      "updatedAt": "2026-05-30T08:35:22Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/26679225880",
+        "artifacts": "repos/github/gh-aw/actions/runs/26679225880/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/26679225880/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/26679225880/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/26679225880/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/26679225880/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/26679225880/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 26328075922,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGIUaOkg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "5288def99678943633b818ad02840b8e58864dbc",
+      "runAttempt": 1,
+      "createdAt": "2026-05-23T08:26:21Z",
+      "startedAt": "2026-05-23T08:26:21Z",
+      "updatedAt": "2026-05-23T08:28:33Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/26328075922",
+        "artifacts": "repos/github/gh-aw/actions/runs/26328075922/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/26328075922/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/26328075922/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/26328075922/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/26328075922/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/26328075922/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 25957156543,
+      "nodeId": "WFR_kwLOPc1QR88AAAAGCyrGvw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "ac972de906d61fef2e6764d90ad5c9ddc4f40031",
+      "runAttempt": 1,
+      "createdAt": "2026-05-16T08:19:35Z",
+      "startedAt": "2026-05-16T08:19:35Z",
+      "updatedAt": "2026-05-16T08:23:24Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/25957156543",
+        "artifacts": "repos/github/gh-aw/actions/runs/25957156543/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/25957156543/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/25957156543/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/25957156543/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/25957156543/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/25957156543/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 25596257122,
+      "nodeId": "WFR_kwLOPc1QR88AAAAF9afjYg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "dbcf5e9a885190f12c515ad22836b3ade09404a6",
+      "runAttempt": 1,
+      "createdAt": "2026-05-09T08:14:30Z",
+      "startedAt": "2026-05-09T08:14:30Z",
+      "updatedAt": "2026-05-09T08:20:44Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/25596257122",
+        "artifacts": "repos/github/gh-aw/actions/runs/25596257122/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/25596257122/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/25596257122/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/25596257122/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/25596257122/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/25596257122/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 25247601775,
+      "nodeId": "WFR_kwLOPc1QR88AAAAF4N_Ubw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "5c52ed41bf0941b4e3806134f618ccb8b0dce6f0",
+      "runAttempt": 1,
+      "createdAt": "2026-05-02T08:10:48Z",
+      "startedAt": "2026-05-02T08:10:48Z",
+      "updatedAt": "2026-05-02T08:20:47Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/25247601775",
+        "artifacts": "repos/github/gh-aw/actions/runs/25247601775/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/25247601775/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/25247601775/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/25247601775/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/25247601775/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/25247601775/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 24931545534,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFzgkxvg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "14ace4d41d59a9ff93f17cd987b900b01a4252bd",
+      "runAttempt": 1,
+      "createdAt": "2026-04-25T13:03:58Z",
+      "startedAt": "2026-04-25T13:03:58Z",
+      "updatedAt": "2026-04-25T13:13:11Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/24931545534",
+        "artifacts": "repos/github/gh-aw/actions/runs/24931545534/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/24931545534/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/24931545534/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/24931545534/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/24931545534/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/24931545534/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 24605296944,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFupcJMA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "395fb25ee80fc80976cb83e107b090fd4af675d5",
+      "runAttempt": 1,
+      "createdAt": "2026-04-18T13:04:03Z",
+      "startedAt": "2026-04-18T13:04:03Z",
+      "updatedAt": "2026-04-18T13:05:59Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": true,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/24605296944",
+        "artifacts": "repos/github/gh-aw/actions/runs/24605296944/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/24605296944/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/24605296944/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/24605296944/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/24605296944/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/24605296944/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 24283057325,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFp2IMrQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "87085b3477d30beea73e9e5668ff9a9b3224a6d5",
+      "runAttempt": 1,
+      "createdAt": "2026-04-11T13:03:36Z",
+      "startedAt": "2026-04-11T13:03:36Z",
+      "updatedAt": "2026-04-11T13:07:44Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/24283057325",
+        "artifacts": "repos/github/gh-aw/actions/runs/24283057325/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/24283057325/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/24283057325/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/24283057325/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/24283057325/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/24283057325/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23979456714,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFlUl4yg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "e255fc73267fe83918dfc27bc0ef2995cebb1c57",
+      "runAttempt": 1,
+      "createdAt": "2026-04-04T13:03:28Z",
+      "startedAt": "2026-04-04T13:03:28Z",
+      "updatedAt": "2026-04-04T13:07:22Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23979456714",
+        "artifacts": "repos/github/gh-aw/actions/runs/23979456714/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23979456714/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23979456714/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23979456714/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23979456714/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23979456714/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23685814568,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFg8jZKA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "3239a61ef60615fab86261b74ffbb014f5330ca3",
+      "runAttempt": 1,
+      "createdAt": "2026-03-28T13:03:33Z",
+      "startedAt": "2026-03-28T13:03:33Z",
+      "updatedAt": "2026-03-28T13:07:00Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23685814568",
+        "artifacts": "repos/github/gh-aw/actions/runs/23685814568/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23685814568/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23685814568/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23685814568/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23685814568/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23685814568/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23219475458,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZ_0UAg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "58b00a7f19a1aaf5a74c6fdb5b67a3c40c1f40b8",
+      "runAttempt": 1,
+      "createdAt": "2026-03-17T22:31:23Z",
+      "startedAt": "2026-03-17T22:31:23Z",
+      "updatedAt": "2026-03-17T22:31:23Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23219475458",
+        "artifacts": "repos/github/gh-aw/actions/runs/23219475458/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23219475458/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23219475458/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23219475458/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23219475458/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23219475458/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23217791052,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZ-NgTA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "b92e3ba34fc8e6c7c53bdbc7aef733cfdab55f9e",
+      "runAttempt": 1,
+      "createdAt": "2026-03-17T21:43:25Z",
+      "startedAt": "2026-03-17T21:43:25Z",
+      "updatedAt": "2026-03-17T21:43:25Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23217791052",
+        "artifacts": "repos/github/gh-aw/actions/runs/23217791052/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23217791052/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23217791052/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23217791052/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23217791052/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23217791052/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23217124950,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZ9k2Vg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "d129c57f30a819d84d0a13016785ee711f8653ff",
+      "runAttempt": 1,
+      "createdAt": "2026-03-17T21:25:44Z",
+      "startedAt": "2026-03-17T21:25:44Z",
+      "updatedAt": "2026-03-17T21:25:44Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23217124950",
+        "artifacts": "repos/github/gh-aw/actions/runs/23217124950/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23217124950/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23217124950/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23217124950/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23217124950/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23217124950/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23216138564,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZ8opRA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "6ed36b2849ff85f6684ae4faee40d7daddddc434",
+      "runAttempt": 1,
+      "createdAt": "2026-03-17T20:58:49Z",
+      "startedAt": "2026-03-17T20:58:49Z",
+      "updatedAt": "2026-03-17T20:58:49Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23216138564",
+        "artifacts": "repos/github/gh-aw/actions/runs/23216138564/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23216138564/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23216138564/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23216138564/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23216138564/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23216138564/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23215791646,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZ8TeHg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "9cc5215a6591475d245658391b51b4c721323ba1",
+      "runAttempt": 1,
+      "createdAt": "2026-03-17T20:49:49Z",
+      "startedAt": "2026-03-17T20:49:49Z",
+      "updatedAt": "2026-03-17T20:49:49Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23215791646",
+        "artifacts": "repos/github/gh-aw/actions/runs/23215791646/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23215791646/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23215791646/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23215791646/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23215791646/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23215791646/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23201802942,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZu9qvg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "98405d185ee725e31b02e6c63a73c6b36e8fb335",
+      "runAttempt": 1,
+      "createdAt": "2026-03-17T15:21:36Z",
+      "startedAt": "2026-03-17T15:21:36Z",
+      "updatedAt": "2026-03-17T15:21:36Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23201802942",
+        "artifacts": "repos/github/gh-aw/actions/runs/23201802942/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23201802942/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23201802942/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23201802942/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23201802942/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23201802942/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23201763106,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZu7PIg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "70ff74e24e2784aebcb8ac22ca8f85ad8ef22a07",
+      "runAttempt": 1,
+      "createdAt": "2026-03-17T15:20:45Z",
+      "startedAt": "2026-03-17T15:20:45Z",
+      "updatedAt": "2026-03-17T15:20:45Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23201763106",
+        "artifacts": "repos/github/gh-aw/actions/runs/23201763106/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23201763106/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23201763106/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23201763106/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23201763106/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23201763106/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23167785337,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZOhZeQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "430d87731e09a1a53b696d1f3d0db4d8df9c4b31",
+      "runAttempt": 1,
+      "createdAt": "2026-03-16T21:56:02Z",
+      "startedAt": "2026-03-16T21:56:02Z",
+      "updatedAt": "2026-03-16T21:59:50Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23167785337",
+        "artifacts": "repos/github/gh-aw/actions/runs/23167785337/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23167785337/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23167785337/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23167785337/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23167785337/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23167785337/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23162385723,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZJX1Ow",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "ec101110ed6ca1636a1b0156651097927368e5b1",
+      "runAttempt": 1,
+      "createdAt": "2026-03-16T19:37:11Z",
+      "startedAt": "2026-03-16T19:37:11Z",
+      "updatedAt": "2026-03-16T19:37:11Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23162385723",
+        "artifacts": "repos/github/gh-aw/actions/runs/23162385723/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23162385723/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23162385723/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23162385723/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23162385723/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23162385723/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23162314920,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFZJTgqA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "7fd3eb8b5baaab68a4573f417e3c0f2b4b49df10",
+      "runAttempt": 1,
+      "createdAt": "2026-03-16T19:35:24Z",
+      "startedAt": "2026-03-16T19:35:24Z",
+      "updatedAt": "2026-03-16T19:35:24Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23162314920",
+        "artifacts": "repos/github/gh-aw/actions/runs/23162314920/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23162314920/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23162314920/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23162314920/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23162314920/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23162314920/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23113740375,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYa-wVw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "489d820c71bfc3d93ddd77aa67c9a60b44f5f1d5",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T15:47:55Z",
+      "startedAt": "2026-03-15T15:47:55Z",
+      "updatedAt": "2026-03-15T15:47:55Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23113740375",
+        "artifacts": "repos/github/gh-aw/actions/runs/23113740375/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23113740375/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23113740375/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23113740375/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23113740375/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23113740375/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23101975497,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYPwryQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "a77a2e5e0f4c7700e30d89db1f6b7fbc3dde7672",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T02:54:46Z",
+      "startedAt": "2026-03-15T02:54:46Z",
+      "updatedAt": "2026-03-15T02:54:46Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23101975497",
+        "artifacts": "repos/github/gh-aw/actions/runs/23101975497/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23101975497/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23101975497/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23101975497/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101975497/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101975497/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23101214753,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYPCQIQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "47ab8dd71dbf94390847928e1021fe03d7404117",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T02:05:02Z",
+      "startedAt": "2026-03-15T02:05:02Z",
+      "updatedAt": "2026-03-15T02:05:02Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23101214753",
+        "artifacts": "repos/github/gh-aw/actions/runs/23101214753/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23101214753/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23101214753/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23101214753/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101214753/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101214753/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23101109633,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYO71gQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "e9d40caf4b240399ffe9cbb84175f84c81b975ba",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:58:42Z",
+      "startedAt": "2026-03-15T01:58:42Z",
+      "updatedAt": "2026-03-15T01:58:42Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23101109633",
+        "artifacts": "repos/github/gh-aw/actions/runs/23101109633/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23101109633/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23101109633/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23101109633/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101109633/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101109633/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23101085422,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYO6W7g",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "c87077e01c3c5afcbe480b9482c4712ec6bc5192",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:57:08Z",
+      "startedAt": "2026-03-15T01:57:08Z",
+      "updatedAt": "2026-03-15T01:57:08Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23101085422",
+        "artifacts": "repos/github/gh-aw/actions/runs/23101085422/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23101085422/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23101085422/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23101085422/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101085422/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101085422/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23101077321,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYO53SQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "511385bb165aebcfb3eceb6aefd7119313024380",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:56:38Z",
+      "startedAt": "2026-03-15T01:56:38Z",
+      "updatedAt": "2026-03-15T01:56:38Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23101077321",
+        "artifacts": "repos/github/gh-aw/actions/runs/23101077321/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23101077321/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23101077321/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23101077321/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101077321/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101077321/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23101072601,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYO5k2Q",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "1a426d0a6a23f67ea17651889bed7763c4580714",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:56:19Z",
+      "startedAt": "2026-03-15T01:56:19Z",
+      "updatedAt": "2026-03-15T01:56:19Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23101072601",
+        "artifacts": "repos/github/gh-aw/actions/runs/23101072601/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23101072601/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23101072601/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23101072601/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101072601/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101072601/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23101067010,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYO5PAg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "5f164653ab6630213690114037cb3762d73404b9",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:55:52Z",
+      "startedAt": "2026-03-15T01:55:52Z",
+      "updatedAt": "2026-03-15T01:55:52Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23101067010",
+        "artifacts": "repos/github/gh-aw/actions/runs/23101067010/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23101067010/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23101067010/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23101067010/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101067010/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101067010/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23101033833,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYO3NaQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "fa93d3a1272191a59592cc270a6c6789e2a2c165",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:53:44Z",
+      "startedAt": "2026-03-15T01:53:44Z",
+      "updatedAt": "2026-03-15T01:53:44Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23101033833",
+        "artifacts": "repos/github/gh-aw/actions/runs/23101033833/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23101033833/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23101033833/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23101033833/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101033833/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23101033833/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100936168,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOxP6A",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "7a12b5592aa788e41248898603556e13eae13855",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:47:11Z",
+      "startedAt": "2026-03-15T01:47:11Z",
+      "updatedAt": "2026-03-15T01:47:11Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100936168",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100936168/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100936168/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100936168/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100936168/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100936168/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100936168/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100902798,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOvNjg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "6e8a2f3157089ea7025391aa8cd0f3b5ade80b00",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:44:59Z",
+      "startedAt": "2026-03-15T01:44:59Z",
+      "updatedAt": "2026-03-15T01:44:59Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100902798",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100902798/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100902798/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100902798/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100902798/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100902798/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100902798/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100887283,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOuQ8w",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "50e49919f483506d0a27bcbd13cc74bfb0f6c7ba",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:44:03Z",
+      "startedAt": "2026-03-15T01:44:03Z",
+      "updatedAt": "2026-03-15T01:44:03Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100887283",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100887283/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100887283/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100887283/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100887283/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100887283/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100887283/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100879355,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOtx-w",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "131a2bba4b5246b3fe41444833854baea1a69bd6",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:43:29Z",
+      "startedAt": "2026-03-15T01:43:29Z",
+      "updatedAt": "2026-03-15T01:43:29Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100879355",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100879355/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100879355/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100879355/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100879355/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100879355/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100879355/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100857986,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOsegg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "ff5a81bfa97fba0cd25cfba86c17641a7b2ea11f",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:42:06Z",
+      "startedAt": "2026-03-15T01:42:06Z",
+      "updatedAt": "2026-03-15T01:42:06Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100857986",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100857986/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100857986/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100857986/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100857986/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100857986/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100857986/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100843686,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOrmpg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "334e52c2696e14abfd7d928486b7febb36382a75",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:41:19Z",
+      "startedAt": "2026-03-15T01:41:19Z",
+      "updatedAt": "2026-03-15T01:41:19Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100843686",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100843686/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100843686/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100843686/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100843686/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100843686/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100843686/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100243380,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOG9tA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "4e2b550d680ae1b72e21afa1d60ee19d59389a16",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:03:43Z",
+      "startedAt": "2026-03-15T01:03:43Z",
+      "updatedAt": "2026-03-15T01:03:43Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100243380",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100243380/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100243380/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100243380/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100243380/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100243380/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100243380/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100232996,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOGVJA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "1333b4a97d2ebe6fe55f8dd824922b97bfbf577c",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:03:12Z",
+      "startedAt": "2026-03-15T01:03:12Z",
+      "updatedAt": "2026-03-15T01:03:12Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100232996",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100232996/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100232996/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100232996/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100232996/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100232996/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100232996/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100223406,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYOFvrg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "5a8a60ab96ae14e6a346de91688ad7c3cc97190b",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T01:02:36Z",
+      "startedAt": "2026-03-15T01:02:36Z",
+      "updatedAt": "2026-03-15T01:02:36Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100223406",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100223406/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100223406/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100223406/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100223406/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100223406/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100223406/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23100100208,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYN-OcA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "7f805c04fbcb5c7744a341c26941383f41a7c6f0",
+      "runAttempt": 1,
+      "createdAt": "2026-03-15T00:55:14Z",
+      "startedAt": "2026-03-15T00:55:14Z",
+      "updatedAt": "2026-03-15T00:55:14Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23100100208",
+        "artifacts": "repos/github/gh-aw/actions/runs/23100100208/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23100100208/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23100100208/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23100100208/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100100208/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23100100208/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23098265377,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYMOPIQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "4173449562d013cc861571b7972c81a727cb80de",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T23:02:07Z",
+      "startedAt": "2026-03-14T23:02:07Z",
+      "updatedAt": "2026-03-14T23:02:07Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23098265377",
+        "artifacts": "repos/github/gh-aw/actions/runs/23098265377/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23098265377/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23098265377/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23098265377/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23098265377/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23098265377/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23098025873,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYL_nkQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "62f815e570acf861595305f77790a9a25d392ee1",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T22:47:46Z",
+      "startedAt": "2026-03-14T22:47:46Z",
+      "updatedAt": "2026-03-14T22:47:46Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23098025873",
+        "artifacts": "repos/github/gh-aw/actions/runs/23098025873/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23098025873/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23098025873/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23098025873/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23098025873/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23098025873/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23097138084,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYLJbpA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "9079cb1e31fff9e0056875403bf0226463437a67",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T21:53:25Z",
+      "startedAt": "2026-03-14T21:53:25Z",
+      "updatedAt": "2026-03-14T21:53:25Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23097138084",
+        "artifacts": "repos/github/gh-aw/actions/runs/23097138084/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23097138084/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23097138084/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23097138084/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23097138084/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23097138084/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23096757412,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYKyMpA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "3723aa1335bfc46f4fb4f04e07a10aacbb47c32e",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T21:30:14Z",
+      "startedAt": "2026-03-14T21:30:14Z",
+      "updatedAt": "2026-03-14T21:30:14Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23096757412",
+        "artifacts": "repos/github/gh-aw/actions/runs/23096757412/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23096757412/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23096757412/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23096757412/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23096757412/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23096757412/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23096004032,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYKENwA",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "3cb345209edc856a5366366029970ccf59933401",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T20:43:45Z",
+      "startedAt": "2026-03-14T20:43:45Z",
+      "updatedAt": "2026-03-14T20:43:45Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23096004032",
+        "artifacts": "repos/github/gh-aw/actions/runs/23096004032/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23096004032/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23096004032/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23096004032/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23096004032/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23096004032/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23095959267,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYKBe4w",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "a22aab6c966604a09e430b0ac419f1458855cc85",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T20:41:02Z",
+      "startedAt": "2026-03-14T20:41:02Z",
+      "updatedAt": "2026-03-14T20:41:02Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23095959267",
+        "artifacts": "repos/github/gh-aw/actions/runs/23095959267/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23095959267/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23095959267/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23095959267/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23095959267/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23095959267/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23094742041,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYI3MGQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "5a47eb39a4801c89da0bd9b34bc44e93472b2478",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T19:27:19Z",
+      "startedAt": "2026-03-14T19:27:19Z",
+      "updatedAt": "2026-03-14T19:27:19Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23094742041",
+        "artifacts": "repos/github/gh-aw/actions/runs/23094742041/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23094742041/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23094742041/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23094742041/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23094742041/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23094742041/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23094335933,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYIeZvQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "de9842ff8f1c670632bdcc1d87657478e6518030",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T19:02:26Z",
+      "startedAt": "2026-03-14T19:02:26Z",
+      "updatedAt": "2026-03-14T19:02:26Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23094335933",
+        "artifacts": "repos/github/gh-aw/actions/runs/23094335933/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23094335933/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23094335933/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23094335933/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23094335933/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23094335933/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23089441539,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFYDzrAw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "e1eddb98f5fed55253931552c81a55a2e989d06c",
+      "runAttempt": 1,
+      "createdAt": "2026-03-14T14:02:37Z",
+      "startedAt": "2026-03-14T14:02:37Z",
+      "updatedAt": "2026-03-14T14:02:37Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23089441539",
+        "artifacts": "repos/github/gh-aw/actions/runs/23089441539/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23089441539/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23089441539/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23089441539/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23089441539/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23089441539/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 23073861627,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFX08v-w",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "b0a4edde0bebf5ef0174e41686fe8043c5540533",
+      "runAttempt": 1,
+      "createdAt": "2026-03-13T22:58:51Z",
+      "startedAt": "2026-03-13T22:58:51Z",
+      "updatedAt": "2026-03-13T22:58:51Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/23073861627",
+        "artifacts": "repos/github/gh-aw/actions/runs/23073861627/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/23073861627/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/23073861627/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/23073861627/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23073861627/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/23073861627/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 22876535603,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFU4w7Mw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "3bd8be1cbe229930084b0506c4ed90c1a937c290",
+      "runAttempt": 1,
+      "createdAt": "2026-03-09T21:54:01Z",
+      "startedAt": "2026-03-09T21:54:01Z",
+      "updatedAt": "2026-03-09T21:58:14Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/22876535603",
+        "artifacts": "repos/github/gh-aw/actions/runs/22876535603/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/22876535603/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/22876535603/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/22876535603/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22876535603/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22876535603/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 22597453073,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFQunFEQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "38cf6da2cfc16d57f179961435ca7743410ae869",
+      "runAttempt": 1,
+      "createdAt": "2026-03-02T21:55:07Z",
+      "startedAt": "2026-03-02T21:55:07Z",
+      "updatedAt": "2026-03-02T21:57:59Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/22597453073",
+        "artifacts": "repos/github/gh-aw/actions/runs/22597453073/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/22597453073/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/22597453073/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/22597453073/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22597453073/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22597453073/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 22340736815,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFM5yXLw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "0b5f03df07605357d1542d4cb345f1e8967f20e3",
+      "runAttempt": 1,
+      "createdAt": "2026-02-24T07:20:42Z",
+      "startedAt": "2026-02-24T07:20:42Z",
+      "updatedAt": "2026-02-24T07:20:42Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/22340736815",
+        "artifacts": "repos/github/gh-aw/actions/runs/22340736815/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/22340736815/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/22340736815/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/22340736815/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22340736815/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22340736815/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 22340468549,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFM5h_RQ",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "389bc350e0c6fc4ae331e7fcbaabcac8e6da3418",
+      "runAttempt": 1,
+      "createdAt": "2026-02-24T07:10:24Z",
+      "startedAt": "2026-02-24T07:10:24Z",
+      "updatedAt": "2026-02-24T07:10:24Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/22340468549",
+        "artifacts": "repos/github/gh-aw/actions/runs/22340468549/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/22340468549/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/22340468549/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/22340468549/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22340468549/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22340468549/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 22340320959,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFM5Y-vw",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "2e2e452503c441931ffc939b81f5da30698b584a",
+      "runAttempt": 1,
+      "createdAt": "2026-02-24T07:04:53Z",
+      "startedAt": "2026-02-24T07:04:53Z",
+      "updatedAt": "2026-02-24T07:04:53Z",
+      "status": "completed",
+      "conclusion": "failure",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/22340320959",
+        "artifacts": "repos/github/gh-aw/actions/runs/22340320959/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/22340320959/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/22340320959/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/22340320959/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22340320959/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22340320959/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 22326714105,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFMsae-Q",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "ebf4932ca8c3ca33df59487e86e65c0a55bcae88",
+      "runAttempt": 1,
+      "createdAt": "2026-02-23T22:03:17Z",
+      "startedAt": "2026-02-23T22:03:17Z",
+      "updatedAt": "2026-02-23T22:06:31Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/22326714105",
+        "artifacts": "repos/github/gh-aw/actions/runs/22326714105/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/22326714105/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/22326714105/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/22326714105/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22326714105/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22326714105/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 22265679333,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFLyNN5Q",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "82f704282d19b7650e4632a609731476137ccc95",
+      "runAttempt": 1,
+      "createdAt": "2026-02-21T22:35:18Z",
+      "startedAt": "2026-02-21T22:35:18Z",
+      "updatedAt": "2026-02-21T22:38:13Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/22265679333",
+        "artifacts": "repos/github/gh-aw/actions/runs/22265679333/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/22265679333/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/22265679333/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/22265679333/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22265679333/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22265679333/attempts/1/logs"
+      ]
+    },
+    {
+      "id": 22265348250,
+      "nodeId": "WFR_kwLOPc1QR88AAAAFLx5Amg",
+      "repositoryId": 1036865607,
+      "workflowId": 237095871,
+      "path": ".github/workflows/weekly-editors-health-check.lock.yml",
+      "headSha": "b3d55d8233a71fe28cfb26ec0fcc1427b246ab16",
+      "runAttempt": 1,
+      "createdAt": "2026-02-21T22:11:54Z",
+      "startedAt": "2026-02-21T22:11:54Z",
+      "updatedAt": "2026-02-21T22:14:51Z",
+      "status": "completed",
+      "conclusion": "success",
+      "survivingSeedOutputCandidate": false,
+      "providerEndpoints": {
+        "metadata": "repos/github/gh-aw/actions/runs/22265348250",
+        "artifacts": "repos/github/gh-aw/actions/runs/22265348250/artifacts",
+        "jobs": "repos/github/gh-aw/actions/runs/22265348250/jobs",
+        "logs": "repos/github/gh-aw/actions/runs/22265348250/logs"
+      },
+      "exactNextEndpoints": [
+        "repos/github/gh-aw/actions/runs/22265348250/artifacts?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22265348250/attempts/1/jobs?per_page=100&page=1",
+        "repos/github/gh-aw/actions/runs/22265348250/attempts/1/logs"
+      ]
+    }
+  ],
+  "originalReceiptScope": {
+    "runIdentity": "Verify repository id, workflow path, immutable head SHA, actual run attempt and producer job before accepting any response.",
+    "frozenArtifacts": [
+      {
+        "name": "agent",
+        "files": [
+          "agent-session.jsonl",
+          "agent-stdio.log",
+          "sandbox/agent/logs/",
+          "mcp-logs/",
+          "agent_execution.json"
+        ],
+        "retention": "GH_AW_DEFAULT_ARTIFACT_RETENTION_DAYS or 0; actual retention and expiry must come from the provider."
+      },
+      {
+        "name": "info",
+        "files": [
+          "aw_info.json"
+        ],
+        "role": "Producer identity, not response acceptance."
+      },
+      {
+        "name": "activation",
+        "files": [
+          "aw_info.json",
+          "aw-prompts/prompt-import-tree.json"
+        ],
+        "role": "Source/import identity, not HTTP acceptance."
+      }
+    ],
+    "adoptionArtifacts": [
+      {
+        "name": "agent-artifacts",
+        "files": [
+          "aw_info.json",
+          "mcp-logs/",
+          "sandbox/firewall/logs/",
+          "agent-stdio.log"
+        ]
+      },
+      {
+        "name": "agent_outputs",
+        "files": [
+          "sandbox/agent/logs/",
+          "redacted-urls.log"
+        ]
+      }
+    ],
+    "matching": "Bind each original HTTP GET tool request and response to the immutable inventory and resolved URL at that run's head. Keep retries/attempts and captures distinct.",
+    "safeguards": [
+      "Agent narrative, PR status table, successful run and screenshot do not substitute for an original independently attributable response.",
+      "Preserve original command and stdout/stderr, raw event bytes, timestamps, immutable artifact identity, provider digest and producer binding.",
+      "Retain ancillary documentation responses and all attempted editor endpoints even when outside the three-editor constrained facet.",
+      "Source-defined curl GET does not follow redirects; redirected 200 responses cannot replace the original URL's actual status.",
+      "Classify expired or absent artifacts as missing instrumentation; distinguish reliable recorded connection failures from collector/setup failures.",
+      "No original HTTP data has been acquired by this offline investigator."
+    ]
+  },
+  "nextAcquisition": {
+    "authorization": "not released",
+    "exactEndpoints": [
+      "repos/github/gh-aw/actions/runs/39014584632/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/39014584632/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/39014584632/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/38035600919/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/38035600919/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/38035600919/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/37107503940/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/37107503940/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/37107503940/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/36227558660/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/36227558660/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/36227558660/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/35429966254/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/35429966254/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/35429966254/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/34681310282/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/34681310282/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/34681310282/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/33953152663/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/33953152663/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/33953152663/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/33241334542/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/33241334542/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/33241334542/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/32560521048/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/32560521048/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/32560521048/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/31872780326/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/31872780326/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/31872780326/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/31247183012/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/31247183012/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/31247183012/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/30691717495/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/30691717495/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/30691717495/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/30606889300/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/30606889300/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/30606889300/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/30150942843/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/30150942843/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/30150942843/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/29637093061/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/29637093061/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/29637093061/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/29259446736/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/29259446736/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/29259446736/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/29145845859/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/29145845859/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/29145845859/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/28700529398/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/28700529398/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/28700529398/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/28283885211/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/28283885211/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/28283885211/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/27865776572/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/27865776572/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/27865776572/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/27461880010/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/27461880010/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/27461880010/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/27057447296/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/27057447296/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/27057447296/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/26679225880/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/26679225880/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/26679225880/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/26328075922/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/26328075922/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/26328075922/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/25957156543/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/25957156543/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/25957156543/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/25596257122/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/25596257122/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/25596257122/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/25247601775/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/25247601775/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/25247601775/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/24931545534/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/24931545534/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/24931545534/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/24605296944/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/24605296944/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/24605296944/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/24283057325/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/24283057325/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/24283057325/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23979456714/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23979456714/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23979456714/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23685814568/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23685814568/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23685814568/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23219475458/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23219475458/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23219475458/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23217791052/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23217791052/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23217791052/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23217124950/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23217124950/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23217124950/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23216138564/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23216138564/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23216138564/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23215791646/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23215791646/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23215791646/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23201802942/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23201802942/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23201802942/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23201763106/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23201763106/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23201763106/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23167785337/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23167785337/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23167785337/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23162385723/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23162385723/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23162385723/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23162314920/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23162314920/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23162314920/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23113740375/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23113740375/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23113740375/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23101975497/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101975497/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101975497/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23101214753/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101214753/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101214753/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23101109633/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101109633/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101109633/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23101085422/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101085422/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101085422/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23101077321/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101077321/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101077321/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23101072601/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101072601/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101072601/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23101067010/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101067010/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101067010/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23101033833/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101033833/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23101033833/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100936168/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100936168/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100936168/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100902798/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100902798/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100902798/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100887283/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100887283/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100887283/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100879355/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100879355/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100879355/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100857986/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100857986/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100857986/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100843686/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100843686/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100843686/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100243380/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100243380/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100243380/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100232996/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100232996/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100232996/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100223406/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100223406/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100223406/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23100100208/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100100208/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23100100208/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23098265377/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23098265377/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23098265377/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23098025873/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23098025873/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23098025873/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23097138084/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23097138084/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23097138084/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23096757412/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23096757412/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23096757412/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23096004032/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23096004032/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23096004032/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23095959267/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23095959267/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23095959267/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23094742041/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23094742041/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23094742041/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23094335933/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23094335933/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23094335933/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23089441539/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23089441539/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23089441539/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/23073861627/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23073861627/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/23073861627/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/22876535603/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22876535603/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22876535603/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/22597453073/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22597453073/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22597453073/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/22340736815/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22340736815/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22340736815/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/22340468549/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22340468549/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22340468549/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/22340320959/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22340320959/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22340320959/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/22326714105/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22326714105/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22326714105/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/22265679333/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22265679333/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22265679333/attempts/1/logs",
+      "repos/github/gh-aw/actions/runs/22265348250/artifacts?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22265348250/attempts/1/jobs?per_page=100&page=1",
+      "repos/github/gh-aw/actions/runs/22265348250/attempts/1/logs"
+    ],
+    "gates": [
+      "Request a new coordinated slot before any further acquisition; no automatic pagination or artifact download.",
+      "Bind actual attempts and producer jobs to returned run ID, repository ID, workflow path and immutable head SHA.",
+      "Artifact listing establishes exact IDs, hashes and expiration before any artifact-byte acquisition is proposed.",
+      "Only original tool request/response pairs with actual URL, timestamp and captured status can establish reachability.",
+      "Do not count run success/failure as editor availability or missing artifacts as editor failure."
+    ]
+  },
+  "nativeEvidence": {
+    "originalHttpReceipts": 0,
+    "acceptedNativeObservations": 0,
+    "availableEditorCount": null,
+    "failedEditorCount": null,
+    "functionChanged": false
+  },
+  "predecessor": {
+    "file": "predecessor-closure-v018.json",
+    "archiveSha256": "e87be8f96431165719ffba42f4007ebaa16d050981046e29cc46e9960aa0c8ff",
+    "verifiedMemberCount": 22,
+    "interpretation": "Entire previous closure preserved through the existing lossless partition codec before this request."
+  }
+}

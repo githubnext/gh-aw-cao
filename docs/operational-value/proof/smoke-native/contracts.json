@@ -1,0 +1,126 @@
+[
+  {
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "workflowId": "smoke-agy",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "sourceGitBlob": "99ab5af52c59187d131b662a17e7f18342d5d314",
+    "interpreterSha256": "953041410fe74c334c4b78301a6204f7687c6420f213f7c1918474b5c41aeb2a",
+    "adoption": {
+      "commit": "8f294395da7ab9b3f299bb65e02da62c6aa0c8a2",
+      "adoptedAt": "2026-10-08T16:49:03Z",
+      "baselineCommit": "d3116e26ca8a320a3bdce2650b4689fca6c4e83e",
+      "baselineAt": "2026-10-08T16:34:34Z"
+    },
+    "name": "Smoke Agy (Experimental)",
+    "goal": "Verify experimental Agy authentication, inference, AWF, native MCP and staged safe outputs.",
+    "acceptance": "Six shared behavioral cases plus native challenge transport, native infrastructure MCP, native safeoutputs and inference accounting are independently asserted. Full acceptance requires both complete host gates with their fixture/execution safeguards.",
+    "limitations": [
+      "Repeated monitoring proofs, not new repository fixes. Failed native conjunctions cannot identify failing constituent assertions."
+    ],
+    "protectedSteps": [
+      {
+        "name": "Prepare engine conformance fixtures",
+        "sha256": "ce65837943982b10b2b8b9afa0c37b8e304004286990f453c1a41aea2ee4cf47"
+      },
+      {
+        "name": "Assert engine conformance",
+        "sha256": "3bdd3167e4cf7ab1a59c28be5f80919d1cb6af3cb27d261f61e465dcd0287f7a"
+      },
+      {
+        "name": "Assert native Agy MCP transport and inference accounting",
+        "sha256": "d518ea60c4e6670c748d3241e526c2db62c00168e29ad4e697bdb248d28ac93d"
+      }
+    ],
+    "protectedImports": [
+      {
+        "path": ".github/workflows/shared/agy-conformance.md",
+        "acceptedGitBlobs": [
+          "3172d2e613e4f9a27880fc05f26fad64a089d227"
+        ]
+      },
+      {
+        "path": ".github/workflows/shared/engine-conformance.md",
+        "acceptedGitBlobs": [
+          "1b304b512a227fdc46929d4d3c1d0bac23b5e812"
+        ]
+      }
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "workflowId": "smoke-aider",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "sourceGitBlob": "3cab6f5c44dd031b3d0714404dc8816da83eb511",
+    "interpreterSha256": "953041410fe74c334c4b78301a6204f7687c6420f213f7c1918474b5c41aeb2a",
+    "adoption": {
+      "commit": "0699202c88dcede28e9e9dc6359a2de2d130a0ef",
+      "adoptedAt": "2026-08-04T17:02:13Z",
+      "baselineCommit": "e9c80175689a1cb2050626c4b415d19094c67d77",
+      "baselineAt": "2026-08-04T16:55:23Z"
+    },
+    "name": "Smoke Aider",
+    "goal": "Verify Aider prompt delivery, SEARCH/REPLACE file editing, shell/repository access and safe-output publication.",
+    "acceptance": "The host checker independently verifies exact expected file content and a successful native shell tool event whose command matches git-log syntax and whose output contains a commit-shaped line. Full acceptance additionally requires independently proven SEARCH/REPLACE editing, readback and correct event-specific safe-output publication, not an agent PASS claim.",
+    "limitations": [
+      "Two independently checked facets are partial: file content does not establish editing method; the host's git-log command/output regex does not prove the required cat readback, all repository-access semantics or safe-output publication.",
+      "Pre-checker historical runs and self-reported output issues cannot prove these native assertions."
+    ],
+    "protectedSteps": [
+      {
+        "name": "Verify Aider smoke test evidence",
+        "sha256": "e0cc064e2d9b9c24b7110589c603d231fdfb86ad18d1ad976850c2023314d0c0"
+      }
+    ],
+    "protectedImports": [
+      {
+        "path": ".github/workflows/shared/aider.md",
+        "acceptedGitBlobs": [
+          "285072bfa3dae9c592e78381b863bb76429830b6",
+          "fd3fdae355ea5171a5b5985bba28996bf70ef64e",
+          "67393d932cc9e005eed15a3a455f5183815628ef",
+          "82dbb7a2e5c0eb0b0136602693644f38c5efc38c",
+          "fa2e1f224e8d189c91ed5226c85c26af708a7007"
+        ]
+      }
+    ]
+  },
+  {
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "workflowId": "smoke-claude-copilot",
+    "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "until": "2026-10-18T15:00:12Z",
+    "sourceGitBlob": "4c33b4325cbf964f167739f378dabc8987bd59b2",
+    "interpreterSha256": "953041410fe74c334c4b78301a6204f7687c6420f213f7c1918474b5c41aeb2a",
+    "adoption": {
+      "commit": "ace080ce67e4f4f6c51bebb40387c25553291c4a",
+      "adoptedAt": "2026-10-06T22:56:26Z",
+      "baselineCommit": "382f4b025fefaa7d6b2492c3608f098340bf6536",
+      "baselineAt": "2026-10-06T22:21:33Z"
+    },
+    "name": "Smoke Claude Copilot",
+    "goal": "Detect Copilot Anthropic Messages inference, streaming tool-use and follow-up inference incompatibilities without model fallback.",
+    "acceptance": "The protected host validates an unpredictable MCP receipt and an exactly matching single noop after tool-result inference, with successful execution and disabled fallback in the trusted environment.",
+    "limitations": [
+      "No successful run/agent conclusion or self-reported receipt is a substitute for the protected assertion gate."
+    ],
+    "protectedSteps": [
+      {
+        "name": "Assert Claude Copilot inference evidence",
+        "sha256": "a78ae2e54d720d1bb0ba7a08d8193cce30ff5d9e99f0c05bfff60e3b830384b2"
+      }
+    ],
+    "protectedImports": [
+      {
+        "path": ".github/workflows/smoke-claude-copilot.md",
+        "acceptedGitBlobs": [
+          "4c33b4325cbf964f167739f378dabc8987bd59b2"
+        ]
+      }
+    ]
+  }
+]

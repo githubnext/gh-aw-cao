@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "coverageStatus": "missing",
+  "captures": [],
+  "reason": "No protected independent historical browser captures or snippet compiler receipts in authorized offline evidence. Acquisition pending; no fixture is counted."
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "workflowId": "daily-work-queue-formal-verification",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "95a204f460a4f0956f5e75bc2b9152c297e04c60bc9ff2a9a385e15963cf0268",
+  "factsSha256": "ec14c46e328eebd6cb4ee87fabb8f6b75eaa0e92f6c067332f37074cb1b95bbe",
+  "sourcesSha256": "059465ae6a611e88d00662626116d7a24d02ba64978e545827f5fdc2d1806379",
+  "inventoryRuns": 10,
+  "observations": 20,
+  "available": 4,
+  "knownModels": 2,
+  "acquiredAt": "2026-10-18T21:02:40.301Z",
+  "producer": {
+    "path": "scripts/collect-formal-search-evidence.mjs",
+    "sha256": "8722ffc2178a896ec91706f545f08913ac25f23b13a9950caf630eed34bf15e2"
+  }
+}

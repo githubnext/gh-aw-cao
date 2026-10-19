@@ -1,0 +1,80 @@
+---
+title: "What Daily CLI Performance measures"
+description: "Definitions, evidence rules, and interpretation for the Daily CLI Performance operational-value report."
+---
+
+This page explains the operational-value timeline in plain language. It defines what was measured; it does not decide whether an agent or workflow caused the observed changes.
+
+## Value review
+
+**Assessment:** not-rated. No agreed native keep bar and review duration.
+
+**Latest repository outcome:** unknown nanoseconds per compile; unavailable
+
+**Measurement:** interval; 1-day window, 1-day cadence.
+
+**Recent change:** unavailable: Fresh complete mature evidence is required for recent movement.
+
+**Review basis:** No keep bar has been agreed; native evidence is still reported.
+
+**Outcome-matched costs:** Not measured. No cost-per-outcome or monetary return is inferred.
+
+| Period ending, UTC | Simple compile ns/op (nanoseconds per compile) | Eligible opportunities | Evidence |
+|---|---:|---:|---|
+| 2026-10-07T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-08T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-09T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-10T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-11T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-12T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-13T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-14T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-15T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-16T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-17T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+| 2026-10-18T15:00:12Z | unknown | unknown | incomplete-evidence: No original protected simple-compilation benchmark rows with immutable timing, iteration, environment and independent fixture/correctness evidence were acquired. Retained reports, successful runs and merges are not substitutes. |
+
+The latest 12 periods are shown; the full native series is in the timeline.
+Repository attainment includes other actors. Only a separately declared, independently verified contribution measure supports a workflow keep/change recommendation; it is not causal attribution.
+Demonstrated workflow-enabled improvements count as shared contribution even when another agent or person implements them. Report measured progress, full goal completion, safeguards and attribution confidence separately. An unknown quality dimension does not cancel independently verified improvement; a merge alone does not verify that improvement.
+
+## How to read the timeline
+
+- Observations begin at workflow adoption on `2025-12-31`.
+- No comparable pre-adoption evidence is available. Complete adjacent post-adoption periods may still show recent change, but not change relative to adoption.
+- Each dot is one immutable observation. Missing evidence is omitted, never treated as zero.
+- Execution activity is diagnostic only. It does not prove repository value.
+- Recent change compares the immediately preceding equal-duration period, not lifetime movement. Interval windows must abut without overlap; snapshot values compare cutoff states.
+- Two observations show observed change, not a sustained trend, statistical anomaly or target attainment. Unknown coverage, gaps and provisional evidence make comparison unavailable.
+- Adoption comparison is separate. Stable-but-bad outcomes are not healthy merely because their latest delta is zero; workload-mix changes can explain aggregate movement.
+
+## What was measured
+
+**Goal:** Keep workflow compilation fast, detect regressions, and support independently verified latency improvements.
+
+**Accepted outcome:** Original independently produced BenchmarkCompileSimpleWorkflow timing rows, bound to immutable compiler/benchmark revisions and unchanged controlled execution/correctness profiles; successful compilation of the fixture is independently demonstrated.
+
+### Simple compilation latency
+
+- **What it tells you:** Simple compilation latency. This is a `primary` measure.
+- **Native measurement formula:** `Median original reported ns/op for BenchmarkCompileSimpleWorkflow within one daily cohort and exactly one controlled profile. Preserve reported precision and iteration counts; never invent elapsed totals.`
+- **Unit:** `nanoseconds per compile`
+- **Goal:** Lower values are better.
+- **Chart display:** The chart shows the native value directly on a metric-specific axis.
+
+## Evidence rules
+
+- **Repository:** `github/gh-aw`
+- **Evidence population:** Original completed operations of BenchmarkCompileSimpleWorkflow, from independent protected producers, in each inclusive-start/exclusive-end daily cohort.
+- **Collection:** Read digest-checked offline preserved investigation once per batch. Separate bounded public acquisition from scoring; no API, code execution, lazy Git fetch or local rerun. Retain all candidate lineage and all unresolved scope.
+- **Observation window:** 1 days, sampled every 1 days
+- **Maturation delay:** 0 days
+- **Filters:** `Frozen intent blob 3c67fd8d57eeefa431030bc9c2c8e21618536f6e; benchmark blob 64356d580f083070879242b472a85c91179776ab.`; `Retain original raw Go timing output, positive completed iterations, producer/run/artifact digest and immutable compiler head.`; `Require independent fixture-success and unchanged protected correctness scope at the measured head; the benchmark discards CompileWorkflow errors.`; `Never combine hardware, runner image, Go version, dependency, benchmark, flags, CPU or correctness profiles.`; `Current protected producer profile: cgo.yml job bench at blob 9f23e662b4f4ed70f3771eae570c11fa236db9eb, make bench, -benchtime=3x. The agent's two-second profile is not interchangeable.`; `Agent prose, self-generated JSON, example code, successful jobs and fresh local benchmark runs are not accepted historical measurements.`; `Missing original timings or profiles are unknown, not zero; rounded ns/op does not reconstruct exact elapsed nanoseconds.`
+
+The frozen definitions and formulas are applied to every post-adoption observation. The structured evidence, exact snapshots, provenance, units, and native values are recorded in the adjacent `daily-cli-performance-timeline.json` artifact.
+
+## Important limitation
+
+This report can show whether the intended outcome is attained after adoption. It cannot estimate change from pre-adoption conditions or attribute attainment to the workflow.
+
+Value-function SHA-256: `600cc3e8e43f807759e24a7008f5f4e40c368d37809bb6f0290d5bc6490ab8dd`

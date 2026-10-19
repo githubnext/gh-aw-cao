@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "workflow": "blog-auditor",
+  "source": {
+    "gitBlob": "b641655a917ed1502a3cea3f7cddc511588e84c0",
+    "sha256": "3d3829366ec4534e7f72b10265e376fec0fba30021b523b06e7b4f80699e203b",
+    "fullCurrentSourceRead": true,
+    "recursiveImportsRead": 8,
+    "compiledWorkflowRetained": true,
+    "compiledCron": "26 11 * * 3",
+    "dispatchedManualRuns": "Supplement the same weekly monitoring slot, not additional credited weekly delivery.",
+    "currentSourceClosure": "source.json.gz",
+    "predecessor": "adoption-source.json.gz",
+    "fullOriginalImportRead": true,
+    "fullOriginalCompiledSourceRetained": true,
+    "originalCompiledCron": "0 12 * * 3",
+    "originalAgentPermissions": ["actions: read", "contents: read"],
+    "originalReportingImport": "adoption-df3ea140fda9a2e77f44426d64b58e7fd22b383e.json.gz",
+    "originalCompiledSource": "adoption-61296b06dd6643ed2f0ecedcb50b0e2ae7bfee83.json.gz"
+  },
+  "nativeProblem": "The public project blog can be unavailable, redirect unexpectedly, omit expected accessibility content, or contain workflow snippets rejected by the schema compiler.",
+  "operationalValue": "For weekly target-page observation opportunities, independently assess the declared HTTP, domain, snapshot-length and keyword checks, and validate eligible workflow snippets with a pinned native compiler; count useful monitoring coverage without equating it with technical correctness.",
+  "nativeUnits": {
+    "primary": "Independently assessed page assertions (checks). A verified failure is useful monitoring work, not a passing page.",
+    "diagnostics": [
+      "Passing page assertions (checks)",
+      "Independently compiled snippets (snippets)",
+      "Schema-valid snippets (snippets)",
+      "Fully passing explicit-check checkpoints (checkpoints), including latest compiler reference",
+      "Workflow-linked independently assessed page assertions (checks)"
+    ],
+    "noInventedWeights": true,
+    "noGenericQualityScore": true,
+    "noKeepBar": true,
+    "costs": "not measured"
+  },
+  "predicateInterpretations": {
+    "page": [
+      "HTTP status exactly 200",
+      "HTTPS exact githubnext.com or www.githubnext.com hostname; credentials rejected",
+      "Accessibility snapshot length strictly greater than 5000 JavaScript UTF-16 code units; not HTML byte count",
+      "Detailed prompt keywords: case-sensitive GitHub, workflow and compile, plus agentic-workflows or agentic workflows"
+    ],
+    "snippet": [
+      "Code-element language hint yaml/yml/markdown/md",
+      "Root opening and closing --- frontmatter markers",
+      "At least one top-level on, engine, tools, permissions or safe-outputs field",
+      "Independent compile receipt bound to exact snippet bytes and immutable compiler revision",
+      "Zero snippets is known only from independently protected complete DOM extraction",
+      "A successful schema compile does not establish runtime behavior or factual correctness"
+    ],
+    "sourceAmbiguities": [
+      "Concise prompt omits the detailed prompt's agentic workflows keyword alternative; current contract explicitly measures the detailed profile, not equivalence between experiment variants.",
+      "The source says characters without defining Unicode grapheme semantics; instrument declares JavaScript string length explicitly.",
+      "HTTPS and credential rejection narrow the source's allowed-domain condition as a safety safeguard; this is not inferred historical behavior."
+    ]
+  },
+  "sourceMeasureDisposition": [
+    { "measure": "HTTP/domain/length/keywords", "role": "native monitored assertion coverage and separate passing diagnostics" },
+    { "measure": "Total snippets and compiler errors", "role": "native validation and schema-validity diagnostics; independent receipts required" },
+    { "measure": "Latest schema", "role": "full-check gate requiring independent release-reference evidence" },
+    { "measure": "AIC and run_duration_ms", "role": "unmeasured cost diagnostics, not native delivery" },
+    { "measure": "discussion_created, audit-completed and discussion-created evals", "role": "rejected as primary; agent completion/output proxies" },
+    { "measure": "validation_pass_rate", "role": "not accepted from experiment or agent self-report; independently recomputed native results only" },
+    { "measure": "empty_output_rate and missed_validation_failures", "role": "experiment safeguards, not proof of page state" },
+    { "measure": "min_samples 20 and token reduction 20 percent", "role": "experiment-specific analysis settings, not an operational-value keep threshold" },
+    { "measure": "Recurrence graders and OTLP", "role": "trajectory/observability diagnostics, not page technical acceptance" },
+    { "measure": "Discussion publication, one-day expiry and older-discussion closing", "role": "output lifecycle; discussion absence is neither failed monitoring nor zero delivery" },
+    { "measure": "Page uptime duration, factual freshness and defects remediated", "role": "not inferred from point captures, keywords, merges or reports; additional independent evidence required" }
+  ],
+  "antecedent": {
+    "outcomePredatesWorkflow": true,
+    "canHumanOrOtherSystemAttain": true,
+    "sameNativeFormulaBeforeAdoption": "Coherent for the same declared current-source target and predicates, but no independent historical captures are supplied.",
+    "baselineObserved": false,
+    "mode": "attainment-only",
+    "historicalEvidenceStatus": "acquisition pending, not claimed exhausted",
+    "adoptionCommit": "31dbf0d7997d44bd86983726e83b7ba3813eafac",
+    "realParent": "7a9f18a670557265211c70d5f92b100fa00344e4",
+    "adoptionDifference": "Original workflow used /project/agentic-workflows, keyword compiler, noon Wednesday cron, issue/comment outputs and no snippet validation. Current-source observations cannot silently be applied to that historical intent era."
+  },
+  "investigation": {
+    "sharedHistoryPartitionsVerified": 346,
+    "sharedHistoryEntitiesVerified": 58048,
+    "workflowIssueSeeds": 8,
+    "downstreamPrCandidates": 2,
+    "candidateClosureEntities": 10,
+    "unresolvedInventoryReferences": 0,
+    "independentNativeObservations": 0,
+    "fixtureObservationsCounted": 0,
+    "scopeComplete": false,
+    "reason": "Surviving issue/PR inventory exhausted, but Discussions, complete run inventory, protected browser payloads, compiler results and downstream native graph acceptance are not acquired."
+  }
+}

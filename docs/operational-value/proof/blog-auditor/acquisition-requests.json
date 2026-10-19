@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "cutoff": "2026-10-18T15:00:12Z",
+  "approved": false,
+  "requests": [
+    {
+      "stage": 1,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/workflows/blog-auditor.lock.yml/runs?per_page=100&created=%3C2026-10-18T15%3A00%3A12Z",
+      "purpose": "Full bounded run discovery, all conclusions and branches; pagination approval/cursor required"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/31592844313",
+      "purpose": "Bind historical source and execution identity; reuse shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/31592844313/jobs?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/31592844313/artifacts?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/32248266707",
+      "purpose": "Bind historical source and execution identity; reuse shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/32248266707/jobs?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/32248266707/artifacts?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/32964188587",
+      "purpose": "Bind historical source and execution identity; reuse shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/32964188587/jobs?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/32964188587/artifacts?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/33624866771",
+      "purpose": "Bind historical source and execution identity; reuse shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/33624866771/jobs?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/33624866771/artifacts?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/34345827916",
+      "purpose": "Bind historical source and execution identity; reuse shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/34345827916/jobs?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/34345827916/artifacts?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/35090640542",
+      "purpose": "Bind historical source and execution identity; reuse shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/35090640542/jobs?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/35090640542/artifacts?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/37614815854",
+      "purpose": "Bind historical source and execution identity; reuse shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/37614815854/jobs?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/37614815854/artifacts?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/38557306226",
+      "purpose": "Bind historical source and execution identity; reuse shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/38557306226/jobs?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 2,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/actions/runs/38557306226/artifacts?per_page=100",
+      "purpose": "Identify protected native producers; reuse existing verified shared metadata first"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/issues/52282/timeline?per_page=100",
+      "purpose": "Authoritative downstream graph discovery, not acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/issues/53979/timeline?per_page=100",
+      "purpose": "Authoritative downstream graph discovery, not acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/issues/56015/timeline?per_page=100",
+      "purpose": "Authoritative downstream graph discovery, not acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/issues/57921/timeline?per_page=100",
+      "purpose": "Authoritative downstream graph discovery, not acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/issues/59707/timeline?per_page=100",
+      "purpose": "Authoritative downstream graph discovery, not acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/issues/61335/timeline?per_page=100",
+      "purpose": "Authoritative downstream graph discovery, not acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/issues/66536/timeline?per_page=100",
+      "purpose": "Authoritative downstream graph discovery, not acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/issues/68676/timeline?per_page=100",
+      "purpose": "Authoritative downstream graph discovery, not acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/pulls/57951",
+      "purpose": "Candidate graph identity; merge alone not native acceptance"
+    },
+    {
+      "stage": 3,
+      "method": "GET",
+      "endpoint": "repos/github/gh-aw/pulls/66560",
+      "purpose": "Candidate graph identity; merge alone not native acceptance"
+    },
+    {
+      "stage": 1,
+      "method": "POST",
+      "endpoint": "graphql",
+      "query": "query { repository(owner:\"github\",name:\"gh-aw\") { databaseId discussions(first:100,after:null,orderBy:{field:CREATED_AT,direction:ASC}) { nodes { id number url createdAt updatedAt category { name } } pageInfo { hasNextPage endCursor } } } }",
+      "purpose": "Missing Discussion inventory; metadata only, not accepted native work"
+    }
+  ],
+  "pagination": "No traversal or download until coordinated approval; retain provider cursors and stop on actual quota signals.",
+  "artifactDownload": "No exact protected-native artifact is identified; download requests remain unformed pending source/job review, not implicit permission for agent logs."
+}

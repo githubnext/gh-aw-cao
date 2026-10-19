@@ -1,0 +1,115 @@
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { parsePurelockCoverage } from "./native-purelock-value.mjs";
+import { censusDigest, writeCensusJson } from "./operational-value-census-io.mjs";
+
+const hash = value => createHash("sha256").update(value).digest("hex");
+const execute = (command, args) => execFileSync(command, args, {
+  timeout: 120000, maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"],
+});
+
+export class PendingPurelockEvidence extends Error {
+  constructor(endpoint) {
+    super(`Pending coordinated acquisition: ${endpoint}`);
+    this.name = "PendingPurelockEvidence";
+    this.endpoint = endpoint;
+  }
+}
+
+export function eligiblePurelockCiRun(item, run, before, repositoryId) {
+  return item.head_sha === run.headSha && item.repository?.id === repositoryId
+    && item.head_repository?.id === repositoryId && item.path === ".github/workflows/ci.yml"
+    && item.head_branch === "main" && item.run_attempt === 1 && ["push", "schedule", "workflow_dispatch"].includes(item.event)
+    && item.updated_at < before && item.created_at < before;
+}
+
+export function acquirePurelockCiCoverage({ api, reader, run, receipt, scratch, contract, target, runGo, coverage, offline = false }) {
+  const step = receipt.job.steps.find(step => step.name === "Collect per-function coverage");
+  if (!step?.startedAt) throw new Error("Missing protected coverage selection time");
+  const runs = [];
+  for (let page = 1; page <= 5; page++) {
+    const result = api(`repos/github/gh-aw/actions/workflows/ci.yml/runs?branch=main&head_sha=${run.headSha}&status=success&per_page=100&page=${page}&created=%3C%3D${encodeURIComponent(step.startedAt)}`);
+    if (result.total_count > 500) throw new Error("Same-checkout CI inventory exceeds its budget");
+    runs.push(...result.workflow_runs);
+    if (runs.length === result.total_count) break;
+    if (page === 5 || result.workflow_runs.length !== 100) throw new Error("Incomplete same-checkout CI inventory");
+  }
+  const eligible = runs.filter(item => eligiblePurelockCiRun(item, run, step.startedAt, contract.repositoryId));
+  const expected = censusDigest([...parsePurelockCoverage(coverage)].sort(([a], [b]) => a.localeCompare(b)));
+  for (const ci of eligible.sort((a, b) => b.created_at.localeCompare(a.created_at))) {
+    if (!Number.isSafeInteger(ci.id) || ci.id < 1) throw new Error("Invalid CI run identity");
+    const source = reader.read(ci.head_sha, ".github/workflows/ci.yml");
+    if (source?.sha256 !== contract.ciSourceSha256) continue;
+    const artifacts = api(`repos/github/gh-aw/actions/runs/${ci.id}/artifacts?per_page=100`);
+    const jobs = api(`repos/github/gh-aw/actions/runs/${ci.id}/jobs?per_page=100`);
+    if (artifacts.artifacts.length !== artifacts.total_count || jobs.jobs.length !== jobs.total_count) throw new Error("Incomplete CI producer inventory");
+    const profiles = artifacts.artifacts.filter(item => item.name.startsWith("ci-integration-coverage-"));
+    const integrationJobs = jobs.jobs.filter(item => item.name.startsWith("Integration: "));
+    if (!profiles.length || profiles.length !== integrationJobs.length || profiles.some(item => item.expired)) continue;
+    const projected = [], bodies = [];
+    for (const artifact of profiles.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!Number.isSafeInteger(artifact.id) || artifact.id < 1
+        || artifact.workflow_run.id !== ci.id || artifact.workflow_run.head_sha !== run.headSha
+        || artifact.workflow_run.repository_id !== contract.repositoryId || artifact.size_in_bytes > 4 * 1024 * 1024
+        || artifact.created_at > step.startedAt || !/^sha256:[a-f0-9]{64}$/.test(artifact.digest)) throw new Error("Invalid CI coverage artifact identity");
+      const suffix = artifact.name.slice("ci-integration-coverage-".length);
+      const matching = integrationJobs.filter(item => item.name.slice("Integration: ".length)
+        .replace(/[^a-zA-Z0-9]/g, "-").replace(/--*/g, "-") === suffix);
+      if (matching.length !== 1 || matching[0].conclusion !== "success"
+        || ![`Run integration tests - ${matching[0].name.slice("Integration: ".length)}`, "Upload integration coverage artifacts"]
+          .every(name => matching[0].steps.filter(step => step.name === name && step.conclusion === "success").length === 1)) {
+        throw new Error("CI profile lacks its complete protected native producer");
+      }
+      const archive = path.join(scratch, `${artifact.id}.zip`);
+      if (!existsSync(archive) && offline) throw new PendingPurelockEvidence(`repos/github/gh-aw/actions/artifacts/${artifact.id}/zip`);
+      if (!existsSync(archive)) writeFileSync(archive, execute("gh", ["api", `repos/github/gh-aw/actions/artifacts/${artifact.id}/zip`]));
+      if (`sha256:${hash(readFileSync(archive))}` !== artifact.digest) throw new Error("CI artifact digest mismatch");
+      const members = execute("unzip", ["-Z1", archive]).toString().trim().split("\n");
+      const profile = `coverage-integration-${suffix}.out`, results = `test-result-integration-${suffix}.json`;
+      if (members.length !== 2 || !members.includes(profile) || !members.includes(results)) throw new Error("Unexpected CI profile members");
+      const bytes = execute("unzip", ["-p", archive, profile]);
+      if (bytes.length > 8 * 1024 * 1024 || !/^mode: (?:set|count|atomic)\r?\n/.test(bytes.toString())) throw new Error("Invalid native CI profile");
+      const body = bytes.toString().split("\n").slice(1).join("\n");
+      if (!body.trim().split("\n").every(line => /^github\.com\/github\/gh-aw\/[a-zA-Z0-9_./-]+\.go:\d+\.\d+,\d+\.\d+ \d+ \d+$/.test(line))) {
+        throw new Error("Malformed native CI coverage block");
+      }
+      const record = { runId: ci.id, artifactId: artifact.id, profile: bytes.toString() };
+      const profileFile = `ci-profile-${ci.id}-${artifact.id}.json.gz`;
+      writeCensusJson(path.join(contract.directory, profileFile), record);
+      bodies.push(body);
+      projected.push({ id: artifact.id, name: artifact.name, digest: artifact.digest, profileSha256: hash(bytes),
+        jobId: matching[0].id, createdAt: artifact.created_at,
+        profileRecord: { file: profileFile, sha256: censusDigest(record) },
+        producer: { name: matching[0].name, conclusion: matching[0].conclusion,
+          startedAt: matching[0].started_at, completedAt: matching[0].completed_at,
+          steps: matching[0].steps.map(({ name, conclusion, started_at, completed_at }) => ({
+            name, conclusion, startedAt: started_at, completedAt: completed_at,
+          })) } });
+    }
+    const merged = `mode: atomic\n${bodies.join("")}`, input = path.join(target, "purelock-ci-profile.out");
+    if (Buffer.byteLength(merged) > 128 * 1024 * 1024) throw new Error("Merged CI profile exceeds its budget");
+    writeFileSync(input, merged);
+    const files = [...new Set(merged.split("\n").slice(1).filter(Boolean).map(line =>
+      line.split(":")[0].replace(/^github\.com\/github\/gh-aw\//, "")))];
+    const sourceEntries = files.map(file => {
+      const value = reader.read(run.headSha, file);
+      if (!value) throw new Error("Missing exact covered CI source");
+      const filename = path.join(target, file);
+      if (!existsSync(filename)) {
+        mkdirSync(path.dirname(filename), { recursive: true });
+        writeFileSync(filename, value.bytes);
+      }
+      if (hash(readFileSync(filename)) !== value.sha256) throw new Error("Covered CI source differs from exact checkout");
+      return { path: file, gitBlob: value.id, sha256: value.sha256 };
+    });
+    const output = runGo(["tool", "cover", "-func=purelock-ci-profile.out"], target);
+    const actual = censusDigest([...parsePurelockCoverage(output)].sort(([a], [b]) => a.localeCompare(b)));
+    const proof = { runId: ci.id, commit: ci.head_sha, sourceGitBlob: source.id, createdAt: ci.created_at,
+      updatedAt: ci.updated_at, artifacts: projected, sourceEntries, profileSha256: hash(merged), outputSha256: hash(output), exactNativeCoverageMatch: expected === actual };
+    writeCensusJson(`${contract.directory}/ci-replay-${ci.id}.json.gz`, { proof, output });
+    if (expected === actual) return proof;
+  }
+  return null;
+}

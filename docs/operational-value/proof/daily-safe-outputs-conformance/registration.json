@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowSlug": "daily-safe-outputs-conformance",
+  "functionPath": "docs/operational-value/proof/functions/daily-safe-outputs-conformance.mjs",
+  "proofPath": "docs/operational-value/proof/daily-safe-outputs-conformance",
+  "contractKey": "safe-output-independent-native-conformance-v2",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceBlob": "c6e53bc51866009d78d03b17b7ba371bf9b38ad3",
+  "instrumentSha256": "c99bd121e341226c7a669fc575a837bbbfb85e358b6f1d0e45402f55fc52e56e",
+  "comparatorSha256": "071a0ef753d0860471742e11f134f6bdf266e0befeea75a38672b3fb54ff0ee2",
+  "sourceReviewSha256": "65304d615e83852d735b7a95742aeca59436dbc7074ca0a90d4c199aba37ec34",
+  "sealedV1ArchiveSha256": "6011397d18252ade907e7009356a3d77a1166bf4e3a2fb30e6926675cb207391",
+  "sealedV1ManifestSha256": "0a33399c1436edbb3811f933a677fcd2449ba254ef22b7849fe8ad834141623d",
+  "dependency": {
+    "seedVersion": "0.18",
+    "archiveSha256": "b51243e0777815f56b9e782825af50256d1b9ea68470857c7873a8a3275188ea",
+    "manifestSha256": "f38fb273e21b5114c9181836974cfa179b5b188e11d9e94258057fab39301ae3",
+    "ownership": "All seeded bytes and mode-only CLI repairs excluded. Apply the verified seed before using this package."
+  },
+  "provenance": {
+    "sources": "Lossless Git-ID/SHA256/length-verified blob archives; current source and adoption closure retained.",
+    "adoptionReceipts": "Original public provider response and safe-header bytes for all four supplied objects retained in adoption-sources.json.gz.",
+    "discovery": "Shared complete surviving issue/PR cursor archive projected into discovery.json.gz with full selected candidates and index authority.",
+    "discoveryArchiveSha256": "c928eab463ed316f202b08d3343b10358deee00f95ffb243fd9d41350da16f93",
+    "collection": "Six immutable cutoffs; 635 collection blobs; 512 missing immutable objects retained as explicit exact endpoint needs.",
+    "baselineProbe": "Two pre-adoption immutable availability cutoffs: 96/410 and 106/449 selected blobs available; 452 unique absent objects. Complete tree metadata and exact endpoints preserved in baseline-availability.json.gz. Availability is not accepted baseline measurement.",
+    "acquisition": "Worker made no GitHub calls or cache writes. Provider receipts are coordinator-supplied. No fetched application/workflow code executed."
+  },
+  "readiness": {
+    "functionInterfaceVerified": true,
+    "actualNativeCollectorAndScorerVerified": true,
+    "losslessSourceIdentitiesVerified": true,
+    "standardEvaluationGenerated": true,
+    "nativeDiagnosticPlotIdentityVerified": true,
+    "fullSpecificationReviewed": true,
+    "all55RuleFamiliesReconciled": true,
+    "completeNativeInstrument": false,
+    "demonstratedPrimaryRemediation": false,
+    "workflowContributionMeasured": false,
+    "fullGoalMeasured": false,
+    "measurementReady": false,
+    "contractAcceptance": "Source-reviewed v2 partial structural contract; source-derived surviving-file correction implemented without modifying original instrument. Historical classification remains provisional, not measurement-ready for the complete goal."
+  },
+  "results": {
+    "latestPartialUnsuppressedFindings": 3,
+    "latestRawSuppressedFindings": 13,
+    "clearedFindings": null,
+    "linkedRemediations": null,
+    "trend": "insufficient-evidence",
+    "decision": "not-rated",
+    "cost": "not-measured"
+  },
+  "openScope": [
+    "Sixteen source-cited corrections/ambiguities reconciled in source-review.json; SRC-12 corrected in v2, other specification/schema/runtime obligations remain explicit limits, not blanket acceptance.",
+    "Comparable pre-adoption native probe remains unresolved. Attainment-only output is provisional, not proof that reconstruction was exhausted.",
+    "35 of 55 native rule families have no replayed predicates; the other 20 are partial lexical checks, not full rule or behavioral acceptance.",
+    "512 immutable source blobs missing in the authorized cache; exact endpoints retained in native-evidence.json.gz.",
+    "452 missing pre-adoption availability objects; independent endpoint plan in baseline-availability.json.gz. Overlap with later missing-source inventory is not an additional unique-object total.",
+    "Original producer/run/check/creation-receipt and linked implementation evidence; exact candidate endpoint plan retained in discovery.json.gz.",
+    "228 surviving marker candidates and 131 run IDs are discovery only, not acceptance or attribution.",
+    "Deleted/transferred outputs, edited-away markers, comments/discussions and complete history remain unknown.",
+    "Root CAO typecheck blocked by missing TypeScript; no dependency installation under the acquisition hold."
+  ],
+  "validation": {
+    "focusedTests": "11 passing, including actual retained-source replay, full-review ledger, v2 surviving-file safeguard, all source/provider identities, and standard plot identity",
+    "lint": "Targeted ESLint passed",
+    "workflowCompile": "72 workflows compiled in dry-run, two warnings",
+    "typescript": "Blocked: TypeScript unavailable",
+    "plot": "reports/github-gh-aw/daily-safe-outputs-conformance-pulse.html",
+    "timeline": "reports/github-gh-aw/daily-safe-outputs-conformance-timeline.json",
+    "limitations": "Plot values are native units; primary remains missing and diagnostic 3 remains partial. No keep bar, quality score, weights or causal claims."
+  }
+}

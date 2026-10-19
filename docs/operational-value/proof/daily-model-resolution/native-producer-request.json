@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-model-resolution",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "cutoff": "2026-10-18T15:00:12Z",
+  "status": "request-only-no-acquisition-or-automatic-resumption",
+  "blockedBoundary": "Protected run-source/declaration, final-retry child identity, per-request proxy binding and complete cohort receipts have not been acquired or decoded. Native checker is implemented for safe normalized projections; collector rejects asserted records until this producer exists.",
+  "firstPhase": {
+    "maxImmutableBlobs": 2,
+    "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "purpose": "Review exact native field shapes and provider correlation. These are test fixtures, never outcome history.",
+    "requests": [
+      {
+        "path": "pkg/cli/testdata/model_routing_golden/copilot-cli-builtin-subagents/agent-session.jsonl",
+        "gitBlob": "235e45b977f4e12a88b53efc70adc9f1a5f5fab1",
+        "endpoint": "repos/github/gh-aw/git/blobs/235e45b977f4e12a88b53efc70adc9f1a5f5fab1"
+      },
+      {
+        "path": "pkg/cli/testdata/model_routing_golden/copilot-cli-builtin-subagents/sandbox/firewall/logs/api-proxy-logs/token-usage.jsonl",
+        "gitBlob": "9ceaea6a74b40d3d9c051af1d56a7e884ddb0e95",
+        "endpoint": "repos/github/gh-aw/git/blobs/9ceaea6a74b40d3d9c051af1d56a7e884ddb0e95"
+      }
+    ]
+  },
+  "laterPhaseNotAuthorized": {
+    "purpose": "Source-era and artifact discovery only; no field is accepted merely because a report links it.",
+    "maxDiscoveryRuns": 3,
+    "runIds": ["39100831703", "39006578654", "38856329120"],
+    "endpoints": [
+      "repos/github/gh-aw/actions/runs/39100831703",
+      "repos/github/gh-aw/actions/runs/39006578654",
+      "repos/github/gh-aw/actions/runs/38856329120"
+    ],
+    "limitation": "All three lineage candidates predate the frozen current profile's validFrom. No current predicate may be applied without independently reviewing an immutable compatible source profile. No artifact download or historical expansion is requested in this phase."
+  },
+  "privacy": "Preserve source identities, allowlisted native identity/model/request facts, hashes and protected provider receipts; do not publish prompts, tokens, credentials or raw agent prose.",
+  "acceptance": "Reconcile final retry/source provenance; exclude router/classifier and main-agent requests. Ambiguous correlations, missing artifacts and unverifiable closures stay null. Digest-shaped caller claims are not provider receipts."
+}

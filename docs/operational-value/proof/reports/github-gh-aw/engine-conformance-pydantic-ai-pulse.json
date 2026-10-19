@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "engine-conformance-pydantic-ai",
+  "workflowName": "Engine Conformance pydantic-ai",
+  "sourcePath": ".github/workflows/engine-conformance-pydantic-ai.md",
+  "valueFunctionSha256": "8c3ce1f219919eebbff6f1f1e7193ea36b13b3696a4fe7d9b7f702633a5276ba",
+  "window": {
+    "startAt": "2026-10-03T18:10:37Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "observed-core-passes",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "observed-core-passes",
+    "basis": "workflow-contribution",
+    "unit": "probes"
+  },
+  "metrics": [
+    {
+      "id": "core-conformance",
+      "name": "Host-verified core conformance",
+      "role": "primary",
+      "formula": "100 * passed stable behavioral cases / assessed stable behavioral cases in complete admitted assessments",
+      "unit": "percent",
+      "direction": "increase",
+      "presentation": {
+        "name": "Core behavioral conformance",
+        "legendLabel": "Verified conformance",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-10T18:10:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-10T18:10:37Z"
+        },
+        {
+          "at": "2026-10-17T18:10:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-17T18:10:37Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "verified-probes",
+      "name": "Independently verified behavioral cases",
+      "role": "diagnostic",
+      "formula": "count actual independently asserted stable behavioral cases, whether passing or failing; not successful runs",
+      "unit": "probes",
+      "direction": "increase",
+      "presentation": {
+        "name": "Independently verified cases",
+        "legendLabel": "Behavioral cases",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-10T18:10:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-10T18:10:37Z"
+        },
+        {
+          "at": "2026-10-17T18:10:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-17T18:10:37Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "observed-core-passes",
+      "name": "Observed independently proven core behaviors",
+      "role": "diagnostic",
+      "formula": "count protected host behavioral assertions that demonstrably pass; preserve this observed subtotal when other attempts are unknown",
+      "unit": "probes",
+      "direction": "increase",
+      "presentation": {
+        "name": "Observed core behavior proofs",
+        "legendLabel": "Proven behaviors",
+        "transform": "identity"
+      },
+      "basis": "workflow-contribution",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-10T18:10:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-10T18:10:37Z"
+        },
+        {
+          "at": "2026-10-17T18:10:37Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-17T18:10:37Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Shared workflow-enabled contribution, not exclusive authorship."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

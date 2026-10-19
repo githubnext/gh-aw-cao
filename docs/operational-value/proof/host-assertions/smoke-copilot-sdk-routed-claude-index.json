@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-copilot-sdk-routed-claude",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "a21cd552770f27815b08d79a789ef5a1fde6942dc67985931c16531e1af683b2",
+  "inventoryRuns": 50,
+  "observations": 50,
+  "proven": 1,
+  "partitions": [
+    {
+      "file": "smoke-copilot-sdk-routed-claude-observations-001.json.gz",
+      "count": 40,
+      "sha256": "1f7ccc1cde19cf9e72fe82eea89e6591807e07d1d4affe2e0f4a32a432ed149e"
+    },
+    {
+      "file": "smoke-copilot-sdk-routed-claude-observations-002.json.gz",
+      "count": 10,
+      "sha256": "8ccc8535088c549a5f526c4941f808c3a248b4837df622b7e4c287741055b897"
+    }
+  ],
+  "acquiredAt": "2026-10-18T19:34:49.800Z",
+  "rerunPolicy": "Only initial attempts; later artifact reuse cannot create duplicate native proof.",
+  "producer": {
+    "path": "scripts/collect-host-assertion-evidence.mjs",
+    "sha256": "a609e3ce234600e131387c260c39679941b0a810e5345c39df88803348fd305a"
+  }
+}

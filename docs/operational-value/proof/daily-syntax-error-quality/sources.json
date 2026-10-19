@@ -1,0 +1,219 @@
+{
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceCommit": "c86377ec47b38f0b5af463277ee55d1d03d08da8\n64b168bfd0bc790a98d7bef51c49bf74ffc6fe21\n2026-10-17T23:32:44-07:00\n",
+  "files": [
+    {
+      "path": ".github/workflows/daily-syntax-error-quality.md",
+      "gitBlob": "8dae2d78259ddc6dcd2e81ef156a246accfba506",
+      "sha256": "be34597922a4b7bf13506b48913b66f29402da55fcc078bd15704117326b13ce",
+      "file": "sources/001.json.gz"
+    },
+    {
+      "path": ".github/workflows/shared/reporting.md",
+      "gitBlob": "263d2413472e62582c578897a8b06462da5ef171",
+      "sha256": "0929890c04f04878f9750464ef9a4bc799c87d236e4f936018a3bfc2dc3aae41",
+      "file": "sources/002.json.gz"
+    },
+    {
+      "path": ".github/workflows/shared/otlp.md",
+      "gitBlob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+      "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6",
+      "file": "sources/003.json.gz"
+    },
+    {
+      "path": "pkg/workflow/compiler.go",
+      "gitBlob": "d65cd5ca2e6e3098a85d93ad1e27284800217448",
+      "sha256": "f3fb952621409326279be9a2b33d585d985778d84e782a3e8a06af3f16bf5de0",
+      "file": "sources/004.json.gz"
+    },
+    {
+      "path": "pkg/workflow/compiler_error_formatter.go",
+      "gitBlob": "0819a23255d20768032a0a3dae174fca2b13210d",
+      "sha256": "8526cb027bac378f03eeede35ebd80438d9250365d169b50853a9af3abbf60f8",
+      "file": "sources/005.json.gz"
+    },
+    {
+      "path": "pkg/workflow/compiler_orchestrator.go",
+      "gitBlob": "dec9b745e1bf68325c4724f4104edaaa99a8affe",
+      "sha256": "dd485ee9d1d92ec4813b8a38166849d1cf35469c57f9665cf7d8de69caf7d0aa",
+      "file": "sources/006.json.gz"
+    },
+    {
+      "path": "pkg/workflow/compiler_orchestrator_frontmatter.go",
+      "gitBlob": "481f8e57e7ff29c46ea90c0b7562ddfdd8ba312b",
+      "sha256": "63498b8b6f10390d806c84ba34046f34925789dbee8605047dd3a5c0d2f6f25d",
+      "file": "sources/007.json.gz"
+    },
+    {
+      "path": "pkg/workflow/frontmatter_error.go",
+      "gitBlob": "e6dd8897249cc6b7a0754ea54b0a053c25ce5a09",
+      "sha256": "e63f30664b97e33fa022dbd34e376c51bf615a55bdfd6c436d1c210379b3d35c",
+      "file": "sources/008.json.gz"
+    },
+    {
+      "path": "pkg/workflow/workflow_errors.go",
+      "gitBlob": "259fcd0974cee58e70ff1f0ffec70612c45deb38",
+      "sha256": "401a14d2237233d99beac95c331c0d2a5ca1d17f87e5917d17b377ee2f8ef715",
+      "file": "sources/009.json.gz"
+    },
+    {
+      "path": "pkg/workflow/error_message_quality_test.go",
+      "gitBlob": "227c32789d459b5f6cc2e1f04b62d61665b4dcce",
+      "sha256": "9c440c672071af37b15e4cdc399a54fe5f5f6ae792b76d378c3596f8e11803bb",
+      "file": "sources/010.json.gz"
+    },
+    {
+      "path": "pkg/workflow/compiler_error_formatter_test.go",
+      "gitBlob": "d631ee16da9fa9963bd33fbd142eed0009012f5a",
+      "sha256": "2fb2b14503b81dea57a65dbcefa8c5bb10ae3c8978be7177a857f13b84d15207",
+      "file": "sources/011.json.gz"
+    },
+    {
+      "path": "pkg/workflow/compiler_error_formatting_test.go",
+      "gitBlob": "7c321e20a3ac2907c5f63eb0babb9515a3fa5055",
+      "sha256": "9b8652bcda2d6597169a4df611ddca8fc3d0d5ea0ed2068f06eb2a091f18b388",
+      "file": "sources/012.json.gz"
+    },
+    {
+      "path": "pkg/parser/frontmatter.go",
+      "gitBlob": "05fe606e2ec6c45c00f9b193693ee00524bd3c95",
+      "sha256": "3116ebb8261596b881a8748518ae1cdc13eee945fd0687d92c03bfdfed1445ff",
+      "file": "sources/013.json.gz"
+    },
+    {
+      "path": "pkg/parser/frontmatter_content.go",
+      "gitBlob": "29227b905bc81eab090ef285c1f59a05b6992ef1",
+      "sha256": "5030877796f524d037c4d3d42287c2dea4d15d1856805726072c1d0695eac909",
+      "file": "sources/014.json.gz"
+    },
+    {
+      "path": "pkg/parser/yaml_error.go",
+      "gitBlob": "fb9f4e6c67c2537657ab127bccaedec80fe4b7e3",
+      "sha256": "09ddf43069386bd0297abe8518282efdc052199457659af3b636c09a445056f3",
+      "file": "sources/015.json.gz"
+    },
+    {
+      "path": "pkg/parser/schema_errors.go",
+      "gitBlob": "c35a28f14c66123d026adff6a266cb955c377742",
+      "sha256": "adc5290ec9c8c34cc537c4c3c41342fbc3d028a420a10a2e5dc9d5b37dbd6a46",
+      "file": "sources/016.json.gz"
+    },
+    {
+      "path": "pkg/parser/schema_validation.go",
+      "gitBlob": "afe68a2036c7b3ecf37c3e8533a4b2ef0c549d88",
+      "sha256": "990c7d4e121e69ee88f5b43e4ee0fceb30facf33bd6aa2fe60f72bacb0dc3d2f",
+      "file": "sources/017.json.gz"
+    },
+    {
+      "path": "pkg/parser/schema_compiler.go",
+      "gitBlob": "f41ca32e82e3438e9486aaba62a475113617cd2a",
+      "sha256": "8865c00c62781b8efaf7b7597a3ec1ccec13f8d407de12904a6d6eb4f3a67da2",
+      "file": "sources/018.json.gz"
+    },
+    {
+      "path": "pkg/parser/schema_suggestions.go",
+      "gitBlob": "221c3b471fd0cd9dab3c0fb3e9a6b5607e2286e0",
+      "sha256": "1870e579e07a912d3b51d89790a39f8f5dbcc196b589ab46cd17c1753318287b",
+      "file": "sources/019.json.gz"
+    },
+    {
+      "path": "pkg/parser/schema_location_test.go",
+      "gitBlob": "61ba31389827347ec796107cb4d9b8e41c0e189e",
+      "sha256": "9b634028eb300fdfef95990502868dc64b91d73c76ab8297327b94143ba7f990",
+      "file": "sources/020.json.gz"
+    },
+    {
+      "path": "pkg/parser/schemas/main_workflow_schema.json",
+      "gitBlob": "b1d8b1b19f7afb0dd140a078f52e3e670e7b6f53",
+      "sha256": "af7fa8d2ccdc803240e494842785d56154f3d9ca19d0be661e9e447627793fc9",
+      "file": "sources/021.json.gz"
+    },
+    {
+      "path": "pkg/console/console.go",
+      "gitBlob": "7210001a4dd5b43a4d8956c3d6a2dbc0fc65c685",
+      "sha256": "169d59b95a9f65d87fbf64fe543d98de9fea74c4639de3311bad07719b405ae3",
+      "file": "sources/022.json.gz"
+    },
+    {
+      "path": "pkg/console/console_types.go",
+      "gitBlob": "d5f7ee781b7bd98aa7840e032f36b53aa927685f",
+      "sha256": "1a86a1767d0ec2d3163ec3609df8c234854c481387b38f99ee5b2bde3257c616",
+      "file": "sources/023.json.gz"
+    },
+    {
+      "path": "pkg/cli/compile_config.go",
+      "gitBlob": "10ef3e478dbf16758e1250bb5c84f88945ef54f2",
+      "sha256": "e949a254a984a5b0a89ee1d6132af793412939a46b2a3e46878de3c5c8235e6b",
+      "file": "sources/024.json.gz"
+    },
+    {
+      "path": "pkg/cli/compile_output_formatter.go",
+      "gitBlob": "0de357aa5f7474a4fbd2f2bf295dc401da33439c",
+      "sha256": "18e29d7e96e490fc974859a21b5836e836b11138f40bb559a85427c2548eef2c",
+      "file": "sources/025.json.gz"
+    },
+    {
+      "path": "pkg/cli/compile_validation.go",
+      "gitBlob": "04e3e89b89dc9e3a2b36d4ad75e629dc915d40fb",
+      "sha256": "bd2b43e987b6f4eb9ac502a572293ee1be980cc1034c1bb1684ad28c77dea722",
+      "file": "sources/026.json.gz"
+    },
+    {
+      "path": "pkg/cli/compile_json_output_test.go",
+      "gitBlob": "d6bae0fac6e65e518c6026974eb91d17db395890",
+      "sha256": "68894ac1a792134e8b28d93fd3383daa9071b03c87f05eba857388c868bff4c3",
+      "file": "sources/027.json.gz"
+    },
+    {
+      "path": "pkg/cli/compile_workflow_processor.go",
+      "gitBlob": "50b73bd8d9809fab9038ca145583a5ab9913005e",
+      "sha256": "82c713c18a2372f9280de7aae4e093ec7c3f38c3e0f36b99157b7e2c3cda85e7",
+      "file": "sources/028.json.gz"
+    },
+    {
+      "path": "pkg/cli/validation_issue.go",
+      "gitBlob": "3d5384d019c99644992e0b65c6bbbe47fa0515ee",
+      "sha256": "073877efdb2f15b69de5c332cb517ab1b1a28a82300a67a96c3c4a5f471a0b14",
+      "file": "sources/029.json.gz"
+    },
+    {
+      "path": "pkg/validationerror/validationerror.go",
+      "gitBlob": "612dccc27778351239b31acb67f12d1f7df18d90",
+      "sha256": "aaf662efeb878654d0f7aa669e1060f968015898ef5db0a8ba4dd785917244af",
+      "file": "sources/030.json.gz"
+    },
+    {
+      "path": "pkg/console/testdata/TestGolden_ErrorFormatting/error_with_context.golden",
+      "gitBlob": "406fb359230cceb2d28c84ee193ce7aafa3ed282",
+      "sha256": "f168d4cda72323af91f93a3a0ca525b73e4f6aab228aacfe04242c0aeddb066c",
+      "file": "sources/031.json.gz"
+    },
+    {
+      "path": "pkg/console/testdata/TestGolden_ErrorFormatting/basic_error.golden",
+      "gitBlob": "29da706650d6f7589782b9700ec9b99bd0bf7ac1",
+      "sha256": "a83ab8e07243813097ee8835a0e81abcf971c9bcfbbdab0da57ae9006d88ef50",
+      "file": "sources/032.json.gz"
+    }
+  ],
+  "missing": [
+    {
+      "path": ".github/workflows/daily-syntax-error-quality.lock.yml",
+      "reason": "fatal: bad object c86377ec47b38f0b5af463277ee55d1d03d08da8:.github/workflows/daily-syntax-error-quality.lock.yml"
+    },
+    {
+      "path": "go.mod",
+      "reason": "fatal: bad object c86377ec47b38f0b5af463277ee55d1d03d08da8:go.mod"
+    },
+    {
+      "path": ".github/shared-instructions.md",
+      "reason": "fatal: path '.github/shared-instructions.md' does not exist in 'c86377ec47b38f0b5af463277ee55d1d03d08da8'"
+    }
+  ],
+  "optionalRuntimeImport": {
+    "path": ".github/shared-instructions.md",
+    "status": "Not included: optional runtime instruction is not a compiler diagnostic oracle."
+  }
+}

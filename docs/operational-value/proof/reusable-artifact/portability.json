@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "codec": "existing json-archive.mjs lossless decoded-byte partitioning",
+  "fileLimit": 262144,
+  "indexes": [
+    {
+      "path": "docs/operational-value/proof/reusable-artifact/index.json",
+      "originalBytes": 734398,
+      "originalRawSha256": "33caa028db0f16e0039cb462f14a4830bbd799e828e30159f2e6494e58b14c4c",
+      "decodedSha256": "33caa028db0f16e0039cb462f14a4830bbd799e828e30159f2e6494e58b14c4c",
+      "partitionManifestRawSha256": "41f09a41244fbfa8c5a71f681c9819b1e08c095032e3921be04b939ef05d8197",
+      "byteForByteEqual": true,
+      "members": [
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/index-part-001.json.gz",
+          "bytes": 28483,
+          "rawSha256": "c4457f60c4f47ae57557cb07b81e0ffd22400e0298febaa278537c1b3a0122f0"
+        },
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/index-part-002.json.gz",
+          "bytes": 14626,
+          "rawSha256": "3f331d76ea354a1bc8202577649a82b6f9c5c54dfbb9d573fee57250f331e0b5"
+        },
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/index-part-003.json.gz",
+          "bytes": 13315,
+          "rawSha256": "58a21fe6b8913502c7805e58b17c87f8340ee06e7f24d7c5116e783946311814"
+        },
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/index-part-004.json.gz",
+          "bytes": 12966,
+          "rawSha256": "bad1f76e45b696c6b7d7fdf30acca99ece544fd3091b82d49e2f7c7e4c0cceb1"
+        },
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/index.json",
+          "bytes": 608,
+          "rawSha256": "41f09a41244fbfa8c5a71f681c9819b1e08c095032e3921be04b939ef05d8197"
+        }
+      ]
+    },
+    {
+      "path": "docs/operational-value/proof/reusable-artifact/versions/pre-original-source-receipts/index.json",
+      "originalBytes": 734346,
+      "originalRawSha256": "7b5ae73fa881b42d9b4dc88687c86cb4ae469ba81e9b9a6d5c749422687b3d81",
+      "decodedSha256": "7b5ae73fa881b42d9b4dc88687c86cb4ae469ba81e9b9a6d5c749422687b3d81",
+      "partitionManifestRawSha256": "ffd9ba3ddbc7f6ad7fef5b8a8b2a758c6443b296499a74dd4294a152c2359cb9",
+      "byteForByteEqual": true,
+      "members": [
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/versions/pre-original-source-receipts/index-part-001.json.gz",
+          "bytes": 28428,
+          "rawSha256": "efc6c4c02a37f042515758461cfd1f8f051d7a3da923c0d01f0324da824f3334"
+        },
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/versions/pre-original-source-receipts/index-part-002.json.gz",
+          "bytes": 14648,
+          "rawSha256": "32b30e0b575f1e0db1043449f95bea438f4f9271405d4684157f38975cc02ccd"
+        },
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/versions/pre-original-source-receipts/index-part-003.json.gz",
+          "bytes": 13282,
+          "rawSha256": "65245406eb210b4d3f3d8fa0f5aa4e03e1fcf68f287297be4f35c163033b8277"
+        },
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/versions/pre-original-source-receipts/index-part-004.json.gz",
+          "bytes": 12935,
+          "rawSha256": "f506449e48989c4c23e2e8a14408b971da5d0aed4d7e8bbaec15d35c418d0dc2"
+        },
+        {
+          "path": "docs/operational-value/proof/reusable-artifact/versions/pre-original-source-receipts/index.json",
+          "bytes": 608,
+          "rawSha256": "ffd9ba3ddbc7f6ad7fef5b8a8b2a758c6443b296499a74dd4294a152c2359cb9"
+        }
+      ]
+    }
+  ]
+}

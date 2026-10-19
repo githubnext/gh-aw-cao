@@ -1,0 +1,331 @@
+{
+  "cutoff": "2026-10-18T15:00:12Z",
+  "definition": {
+    "schemaVersion": 3,
+    "slug": "smoke-service-ports",
+    "repository": "github/gh-aw",
+    "workflowName": "Smoke Service Ports",
+    "sourcePath": ".github/workflows/smoke-service-ports.md",
+    "intent": {
+      "goal": "Verify sandbox host-service-port access to Redis end-to-end.",
+      "acceptance": "All three cases in one session, with independently observed sandbox-to-host endpoint binding.",
+      "temporalAnchor": "contract-activation"
+    },
+    "adoption": {
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "adoptedAt": "2026-10-19T11:13:09Z",
+      "baselineCommit": null,
+      "baselineAt": null
+    },
+    "activationRevisionMeaning": "Pinned immutable intent-source revision, not a workflow adoption or a claim that the new contract was committed there.",
+    "historicalApplicability": {
+      "status": "unresolved-adoption; partially-readable-contemporaneous-sources",
+      "apparentAddition": "74416d9a3f78063a065c03f3cc327f248e0d6e51",
+      "parent": "e1a597da8baa3f8fbd7682a8134659d8a3e93244",
+      "missingIntroductionBlob": "b0e303b917071aef8a80acbf35ec75d5a70dc6e3",
+      "establishedEarlierRules": {
+        "revision": "296262211b372a13b451ca9400369ac152db75d6",
+        "blob": "f5b6d2661d7e2ba04ad346f2e9c50d6552630ce7",
+        "meaning": "Same three host-endpoint Redis cases in readable April 2 source; not proof of operation or complete historical applicability."
+      },
+      "antecedent": "pre-existing-but-not-reconstructed",
+      "phenomenon": "Redis client/server PING, SET/GET and INFO can be attained by a person or another automation without this workflow.",
+      "evidenceGap": "No contemporaneous independent native operation receipts in the retained input; missing Git contents do not exhaust history."
+    },
+    "evaluation": {
+      "mode": "attainment-only"
+    },
+    "evidence": {
+      "key": "redis-source-defined-session-cases-v1",
+      "repositories": [
+        "github/gh-aw"
+      ],
+      "opportunity": "Independent service/client observations of a Redis test session, regardless of actor.",
+      "filters": [
+        "Count each source-defined case at most once per service lifetime/session.",
+        "Use actual completed-operation timestamps in inclusive-start/exclusive-end disjoint event cohorts.",
+        "An independently proven partial protocol case does not require all broader safeguards.",
+        "Do not accept workflow success, editable issue lineage, agent summaries, digest-shaped flags or declared service health as end-to-end Redis proof.",
+        "No restart durability requirement; a GET without an observed preceding successful SET is not a round-trip."
+      ],
+      "collection": "Offline digest-bound original inputs and source blobs; source-specific native RESP parser. Independent receipt authentication is unavailable in the retained packet and cannot be supplied by caller flags.",
+      "measurementKind": "interval",
+      "window": {
+        "durationDays": 2,
+        "cadenceDays": 2,
+        "maturationDays": 0
+      }
+    },
+    "model": {
+      "architecture": "Parse native byte-framed Redis exchanges separately from independent receipt admission, endpoint proof and workflow contribution.",
+      "recommendation": "Retain partial proven operations; request only the exact missing run/attempt/service/client receipt endpoints. Do not infer zero or a keep decision.",
+      "presentation": {
+        "label": "Verified Redis cases",
+        "betterLabel": "More independently proven cases"
+      }
+    },
+    "summary": {
+      "nativeLabel": "Independently verified Redis cases per two-day event cohort"
+    },
+    "metrics": [
+      {
+        "id": "verified-redis-cases",
+        "name": "Verified Redis cases",
+        "role": "primary",
+        "formula": "sum over distinct sessions of independently authenticated PONG, SET/GET round-trip and INFO server cases",
+        "direction": "increase",
+        "unit": "cases",
+        "presentation": {
+          "name": "Verified Redis cases",
+          "legendLabel": "Verified Redis cases",
+          "transform": "identity"
+        }
+      },
+      {
+        "id": "host-bound-sessions",
+        "name": "Full host-bound integration sessions",
+        "role": "diagnostic",
+        "formula": "count distinct sessions with all three cases plus independently demonstrated sandbox-to-host.docker.internal:6379 binding",
+        "direction": "increase",
+        "unit": "sessions",
+        "presentation": {
+          "name": "Full host-bound integration sessions",
+          "legendLabel": "Host-bound sessions",
+          "transform": "identity"
+        }
+      },
+      {
+        "id": "workflow-contribution",
+        "name": "Receipt-linked workflow contributions",
+        "role": "diagnostic",
+        "formula": "count accepted Redis cases with an independent matching workflow run/head/attempt/client/service receipt",
+        "direction": "increase",
+        "unit": "cases",
+        "presentation": {
+          "name": "Receipt-linked workflow contributions",
+          "legendLabel": "Workflow contributions",
+          "transform": "identity"
+        }
+      }
+    ],
+    "validationExamples": {
+      "targetAttained": {
+        "purpose": "synthetic-validation-only",
+        "contractDigest": "4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1",
+        "sessions": [
+          {
+            "id": "synthetic-validation-session",
+            "exchanges": [
+              {
+                "id": "ping",
+                "sequence": 1,
+                "request": "KjENCiQ0DQpQSU5HDQo=",
+                "response": "K1BPTkcNCg=="
+              },
+              {
+                "id": "set",
+                "sequence": 2,
+                "request": "KjMNCiQzDQpTRVQNCiQxMA0Kc21va2VfdGVzdA0KJDE2DQpzZXJ2aWNlLXBvcnRzLW9rDQo=",
+                "response": "K09LDQo="
+              },
+              {
+                "id": "get",
+                "sequence": 3,
+                "request": "KjINCiQzDQpHRVQNCiQxMA0Kc21va2VfdGVzdA0K",
+                "response": "JDE2DQpzZXJ2aWNlLXBvcnRzLW9rDQo="
+              },
+              {
+                "id": "info",
+                "sequence": 4,
+                "request": "KjINCiQ0DQpJTkZPDQokNg0Kc2VydmVyDQo=",
+                "response": "JDMxDQojIFNlcnZlcg0KcmVkaXNfdmVyc2lvbjo3LjIuMA0KDQo="
+              }
+            ]
+          }
+        ],
+        "boundaryFixture": true,
+        "contributionFixture": true,
+        "neverNativeAdmission": true
+      },
+      "targetMissed": {
+        "purpose": "synthetic-validation-only",
+        "contractDigest": "4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1",
+        "sessions": [
+          {
+            "id": "synthetic-validation-session",
+            "exchanges": [
+              {
+                "id": "ping",
+                "sequence": 1,
+                "request": "KjENCiQ0DQpQSU5HDQo=",
+                "response": "K1BPTkcNCg=="
+              },
+              {
+                "id": "set",
+                "sequence": 2,
+                "request": "KjMNCiQzDQpTRVQNCiQxMA0Kc21va2VfdGVzdA0KJDE2DQpzZXJ2aWNlLXBvcnRzLW9rDQo=",
+                "response": "K09LDQo="
+              },
+              {
+                "id": "get",
+                "sequence": 3,
+                "request": "KjINCiQzDQpHRVQNCiQxMA0Kc21va2VfdGVzdA0K",
+                "response": "JDExDQp3cm9uZy12YWx1ZQ0K"
+              },
+              {
+                "id": "info",
+                "sequence": 4,
+                "request": "KjINCiQ0DQpJTkZPDQokNg0Kc2VydmVyDQo=",
+                "response": "JDANCg0K"
+              }
+            ]
+          }
+        ],
+        "boundaryFixture": false,
+        "contributionFixture": false,
+        "neverNativeAdmission": true
+      },
+      "missing": {
+        "purpose": "native-observation",
+        "missingReason": "Native service/client receipts absent"
+      },
+      "malformed": {
+        "purpose": "native-observation",
+        "accepted": true,
+        "verifiedCases": 3
+      }
+    },
+    "validationLimitation": "Synthetic parser examples test arithmetic and protocol handling only. Their purpose and complete content are allowlisted; native collection never imports them or accepts their flags as authority.",
+    "rejectedMetrics": [
+      "Green jobs, reports, issue closure and comments are mechanism/activity signals, not Redis outcomes.",
+      "Declared Redis health PING proves neither agent reachability nor SET/GET nor INFO.",
+      "TCP connectivity alone is not an application response.",
+      "Restart/disk durability would expand the source-defined acceptance and is not measured."
+    ]
+  },
+  "invocation": {
+    "command": "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+    "args": [
+      ".github/skills/add-operational-value/scripts/evaluate.mjs",
+      "--root",
+      "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-sturdy-eureka",
+      "--function",
+      "docs/operational-value/proof/functions/smoke-service-ports.mjs",
+      "--no-runs",
+      "--end",
+      "2026-10-18T15:00:12Z",
+      "--output-dir",
+      "docs/operational-value/proof/smoke-service-ports/frozen-standard",
+      "github/gh-aw",
+      "smoke-service-ports"
+    ],
+    "status": 1,
+    "signal": null,
+    "stdout": "",
+    "stderr": "error: evaluation end must follow 2026-10-19T11:13:09Z\n"
+  },
+  "requests": [
+    {
+      "windowStart": "2026-10-16T15:00:12Z",
+      "windowEnd": "2026-10-18T15:00:12Z",
+      "observedAt": "2026-10-18T15:00:12Z"
+    }
+  ],
+  "collections": [
+    {
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "evidence": {
+        "key": "redis-source-defined-session-cases-v1",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Independent service/client observations of a Redis test session, regardless of actor.",
+        "filters": [
+          "Count each source-defined case at most once per service lifetime/session.",
+          "Use actual completed-operation timestamps in inclusive-start/exclusive-end disjoint event cohorts.",
+          "An independently proven partial protocol case does not require all broader safeguards.",
+          "Do not accept workflow success, editable issue lineage, agent summaries, digest-shaped flags or declared service health as end-to-end Redis proof.",
+          "No restart durability requirement; a GET without an observed preceding successful SET is not a round-trip."
+        ],
+        "collection": "Offline digest-bound original inputs and source blobs; source-specific native RESP parser. Independent receipt authentication is unavailable in the retained packet and cannot be supplied by caller flags.",
+        "measurementKind": "interval",
+        "window": {
+          "durationDays": 2,
+          "cadenceDays": 2,
+          "maturationDays": 0
+        },
+        "purpose": "native-observation",
+        "contractDigest": "4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1",
+        "packetDigest": "4ddc88cd4bb38a40b5dd5b11d49611eafa60b3fad3da1af5b940079bf798cb38",
+        "windowStart": "2026-10-16T15:00:12Z",
+        "windowEnd": "2026-10-18T15:00:12Z",
+        "observedAt": "2026-10-18T15:00:12Z",
+        "coverageStatus": "missing",
+        "maturityStatus": "unavailable",
+        "eligibleCount": null,
+        "populationDigest": null,
+        "directCandidates": 17,
+        "relatedClosure": 56,
+        "candidateProtocolStatus": "Actual ZIP contains parsed PONG, SET/GET and INFO tool outputs, still awaiting independent protected corroboration.",
+        "nativeProtocolCases": null,
+        "ping": null,
+        "roundTrip": null,
+        "info": null,
+        "serviceStartup": null,
+        "tcpReachability": null,
+        "fullIntegration": null,
+        "workflowContribution": null,
+        "safeguards": {
+          "tokenTelemetry": null,
+          "sessionArtifact": null
+        },
+        "costs": {
+          "status": "not-measured",
+          "value": null
+        },
+        "keep": {
+          "status": "not-rated",
+          "reason": "No source-grounded keep bar."
+        },
+        "historicalApplicability": {
+          "status": "unresolved-adoption; partially-readable-contemporaneous-sources",
+          "apparentAddition": "74416d9a3f78063a065c03f3cc327f248e0d6e51",
+          "parent": "e1a597da8baa3f8fbd7682a8134659d8a3e93244",
+          "missingIntroductionBlob": "b0e303b917071aef8a80acbf35ec75d5a70dc6e3",
+          "establishedEarlierRules": {
+            "revision": "296262211b372a13b451ca9400369ac152db75d6",
+            "blob": "f5b6d2661d7e2ba04ad346f2e9c50d6552630ce7",
+            "meaning": "Same three host-endpoint Redis cases in readable April 2 source; not proof of operation or complete historical applicability."
+          },
+          "antecedent": "pre-existing-but-not-reconstructed",
+          "phenomenon": "Redis client/server PING, SET/GET and INFO can be attained by a person or another automation without this workflow.",
+          "evidenceGap": "No contemporaneous independent native operation receipts in the retained input; missing Git contents do not exhaust history."
+        },
+        "missingReason": "No independently authenticated Redis client/server response payloads, socket receipts or sandbox host-route observations in the authorized retained input. No retained run/attempt/head and protected client/service payload joining receipts for the 17 direct run references. A provider-digest-verified agent ZIP contains parsed Redis tool responses; independent protected host producer corroboration is still missing."
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "immutable-workflow-intent",
+          "ref": "git:c86377ec47b38f0b5af463277ee55d1d03d08da8:.github/workflows/smoke-service-ports.md:ca493fccc2f54978d810cf6d93bbdf42dfa89313"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "preserved-native-input-custody",
+          "ref": "sha256:4ddc88cd4bb38a40b5dd5b11d49611eafa60b3fad3da1af5b940079bf798cb38"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "frozen-acceptance",
+          "ref": "sha256:4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1"
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "verified-redis-cases": null,
+    "host-bound-sessions": null,
+    "workflow-contribution": null
+  },
+  "interpretation": "Actual standard evaluator rejection retained unchanged. Explicit cutoff snapshot is an unavailable retrospective assessment, not a backdated activation or historical native result."
+}

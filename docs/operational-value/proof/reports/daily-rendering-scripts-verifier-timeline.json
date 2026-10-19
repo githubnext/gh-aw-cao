@@ -1,0 +1,624 @@
+{
+  "repository": "github/gh-aw",
+  "workflowName": "Daily Rendering Scripts Verifier: observed provider-error preservation",
+  "adoptionAt": "2026-10-18T10:14:01Z",
+  "evaluationMode": "attainment-only",
+  "window": {
+    "startAt": "2026-09-12T10:16:09Z",
+    "endAt": "2026-10-18T10:27:52.934Z"
+  },
+  "evidenceCoverage": {
+    "scope": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation.",
+    "independentInput": true,
+    "creatorReceipt": true
+  },
+  "runs": [],
+  "schemaVersion": 3,
+  "definitionSchemaVersion": 3,
+  "generatedAt": "2026-10-18T10:27:52.934Z",
+  "workflowSlug": "daily-rendering-scripts-verifier",
+  "sourcePath": ".github/workflows/daily-rendering-scripts-verifier.md",
+  "valueFunction": {
+    "path": "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-fuzzy-meme/tests/fixtures/operational-value-proof/rendering.mjs",
+    "sha256": "d3a28acf8da60703858e34e7b483d50bc89918da47606c33629cefb081fa97ee",
+    "definition": {
+      "schemaVersion": 3,
+      "slug": "daily-rendering-scripts-verifier",
+      "repository": "github/gh-aw",
+      "workflowName": "Daily Rendering Scripts Verifier: observed provider-error preservation",
+      "sourcePath": ".github/workflows/daily-rendering-scripts-verifier.md",
+      "intent": {
+        "goal": "Correctly parse and render engine output, including provider failures.",
+        "acceptance": "An observed provider error must survive normalization and appear in the rendered summary.",
+        "temporalAnchor": "contract-activation"
+      },
+      "adoption": {
+        "commit": "d3915e4a21040c00a6e11e1acb0aac42605abc4c",
+        "adoptedAt": "2026-10-18T10:14:01Z",
+        "baselineCommit": null,
+        "baselineAt": null
+      },
+      "evaluation": {
+        "mode": "attainment-only"
+      },
+      "evidence": {
+        "key": "observed-provider-error",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "One fixed, independently acquired provider-error input from run 35497537350; evaluated retrospectively, including before its discovery.",
+        "filters": [
+          "An observed provider error must survive normalization and appear in the rendered summary.",
+          "Do not treat this selected case as the workflow's entire opportunity population."
+        ],
+        "collection": "Replay pinned parser code on the preserved minimal real-input projection; correlate only through the verified Actions safe-output receipt.",
+        "measurementKind": "snapshot",
+        "window": {
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        }
+      },
+      "model": {
+        "architecture": "Goal -> real input -> immutable code replay -> independently checked behavior -> safe-output creation receipt -> merged revision -> historical snapshots.",
+        "recommendation": "Retain native evidence; this selected case establishes a delivered repair, not overall workflow economics.",
+        "presentation": {
+          "label": "Observed error preserved",
+          "betterLabel": "higher conformance"
+        }
+      },
+      "summary": {
+        "nativeLabel": "Observed provider-error cases faithfully preserved"
+      },
+      "metrics": [
+        {
+          "id": "conformance",
+          "role": "primary",
+          "name": "Observed provider-error conformance",
+          "formula": "100 * cases satisfying both error-preservation checks / eligible observed input cases",
+          "unit": "percent",
+          "direction": "increase",
+          "presentation": {
+            "name": "Observed input conformance",
+            "legendLabel": "Input conformance",
+            "transform": "identity"
+          }
+        },
+        {
+          "id": "linked-repairs",
+          "role": "diagnostic",
+          "name": "Receipt-linked repairs delivered in the measurement window",
+          "formula": "1 only when the verified creator receipt matches the PR, its original patch repairs the observed input, the merged revision passes, and merge time is inside this window; otherwise 0",
+          "unit": "repairs",
+          "direction": "increase",
+          "presentation": {
+            "name": "New receipt-linked repairs",
+            "legendLabel": "New linked repairs",
+            "transform": "identity"
+          }
+        }
+      ],
+      "validationExamples": {
+        "targetAttained": {
+          "valid": true,
+          "coverageStatus": "complete",
+          "eligibleCount": 1,
+          "cases": [
+            {
+              "id": "observed-provider-error",
+              "rendered": true,
+              "normalized": true
+            }
+          ],
+          "linkedRepair": true
+        },
+        "targetMissed": {
+          "valid": true,
+          "coverageStatus": "complete",
+          "eligibleCount": 1,
+          "cases": [
+            {
+              "id": "observed-provider-error",
+              "rendered": false,
+              "normalized": false
+            }
+          ],
+          "linkedRepair": false
+        },
+        "missing": {
+          "valid": false,
+          "coverageStatus": "missing"
+        },
+        "malformed": {
+          "valid": true,
+          "coverageStatus": "complete",
+          "cases": []
+        }
+      }
+    }
+  },
+  "metricReview": {
+    "comparisonPolicy": "adjacent-period-v1",
+    "architecture": "Goal -> real input -> immutable code replay -> independently checked behavior -> safe-output creation receipt -> merged revision -> historical snapshots.",
+    "recommendation": "Retain native evidence; this selected case establishes a delivered repair, not overall workflow economics.",
+    "presentation": {
+      "label": "Observed error preserved",
+      "betterLabel": "higher conformance"
+    },
+    "metrics": [
+      {
+        "id": "conformance",
+        "role": "primary",
+        "name": "Observed provider-error conformance",
+        "formula": "100 * cases satisfying both error-preservation checks / eligible observed input cases",
+        "unit": "percent",
+        "direction": "increase",
+        "presentation": {
+          "name": "Observed input conformance",
+          "legendLabel": "Input conformance",
+          "transform": "identity"
+        },
+        "status": "evaluated",
+        "currentValue": 100,
+        "recentComparison": {
+          "status": "available",
+          "reason": null,
+          "referenceWindow": {
+            "startAt": "2026-10-03T10:16:09Z",
+            "endAt": "2026-10-10T10:16:09Z"
+          },
+          "currentWindow": {
+            "startAt": "2026-10-10T10:16:09Z",
+            "endAt": "2026-10-17T10:16:09Z"
+          },
+          "referenceValue": 100,
+          "currentValue": 100,
+          "nativeDelta": 0,
+          "directionAwareGain": 0,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": false
+        },
+        "adoptionComparison": {
+          "status": "unavailable",
+          "reason": "No accepted reference before contract activation.",
+          "referenceWindow": null,
+          "currentWindow": {
+            "startAt": "2026-10-10T10:16:09Z",
+            "endAt": "2026-10-17T10:16:09Z"
+          },
+          "referenceValue": null,
+          "currentValue": 100,
+          "nativeDelta": null,
+          "directionAwareGain": null,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": null
+        }
+      },
+      {
+        "id": "linked-repairs",
+        "role": "diagnostic",
+        "name": "Receipt-linked repairs delivered in the measurement window",
+        "formula": "1 only when the verified creator receipt matches the PR, its original patch repairs the observed input, the merged revision passes, and merge time is inside this window; otherwise 0",
+        "unit": "repairs",
+        "direction": "increase",
+        "presentation": {
+          "name": "New receipt-linked repairs",
+          "legendLabel": "New linked repairs",
+          "transform": "identity"
+        },
+        "status": "evaluated",
+        "currentValue": 0,
+        "recentComparison": {
+          "status": "available",
+          "reason": null,
+          "referenceWindow": {
+            "startAt": "2026-10-03T10:16:09Z",
+            "endAt": "2026-10-10T10:16:09Z"
+          },
+          "currentWindow": {
+            "startAt": "2026-10-10T10:16:09Z",
+            "endAt": "2026-10-17T10:16:09Z"
+          },
+          "referenceValue": 0,
+          "currentValue": 0,
+          "nativeDelta": 0,
+          "directionAwareGain": 0,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": false
+        },
+        "adoptionComparison": {
+          "status": "unavailable",
+          "reason": "No accepted reference before contract activation.",
+          "referenceWindow": null,
+          "currentWindow": {
+            "startAt": "2026-10-10T10:16:09Z",
+            "endAt": "2026-10-17T10:16:09Z"
+          },
+          "referenceValue": null,
+          "currentValue": 0,
+          "nativeDelta": null,
+          "directionAwareGain": null,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": null
+        }
+      }
+    ]
+  },
+  "summary": {
+    "nativeLabel": "Observed provider-error cases faithfully preserved"
+  },
+  "snapshots": [
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": false,
+            "normalized": false
+          }
+        ],
+        "linkedRepair": false,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "00457477720387bcc7d7baaf841dedb22ad06617",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-09-12T10:16:09Z",
+        "endAt": "2026-09-19T10:16:09Z"
+      },
+      "metrics": {
+        "conformance": 0,
+        "linked-repairs": 0
+      }
+    },
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": true,
+            "normalized": true
+          }
+        ],
+        "linkedRepair": true,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "4740543b75dfeb74d973b194163c83f22c7936e9",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-09-19T10:16:09Z",
+        "endAt": "2026-09-26T10:16:09Z"
+      },
+      "metrics": {
+        "conformance": 100,
+        "linked-repairs": 1
+      }
+    },
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": true,
+            "normalized": true
+          }
+        ],
+        "linkedRepair": false,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "306bc6bdf8df80f039c69df518a2dc4b73a0f544",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-09-26T10:16:09Z",
+        "endAt": "2026-10-03T10:16:09Z"
+      },
+      "metrics": {
+        "conformance": 100,
+        "linked-repairs": 0
+      }
+    },
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": true,
+            "normalized": true
+          }
+        ],
+        "linkedRepair": false,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "595e115b17a9378895d4a37298f60f91f64719ad",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-10-03T10:16:09Z",
+        "endAt": "2026-10-10T10:16:09Z"
+      },
+      "metrics": {
+        "conformance": 100,
+        "linked-repairs": 0
+      }
+    },
+    {
+      "evidence": {
+        "valid": true,
+        "coverageStatus": "complete",
+        "eligibleCount": 1,
+        "maturityStatus": "matured",
+        "populationDigest": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+        "cases": [
+          {
+            "id": "8a0b8c37876ae7b0285829adac62cfd3a1fbf3f9c5559431fab84994468bd033",
+            "rendered": true,
+            "normalized": true
+          }
+        ],
+        "linkedRepair": false,
+        "scopeLimitation": "Retrospective, deliberately selected positive case; one observed input is not complete workflow coverage or blinded intent validation."
+      },
+      "commit": "d3915e4a21040c00a6e11e1acb0aac42605abc4c",
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "real-input-proof",
+          "ref": "239823e6e95f65192061c55890dab525fc1970eb0384f33cfb95697798ca981d"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-input-artifact",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497537350/artifacts/10600856995"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "actions-creation-receipt",
+          "ref": "https://github.com/github/gh-aw/actions/runs/35497567942/artifacts/10601673074"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "merged-repair",
+          "ref": "https://github.com/github/gh-aw/commit/7c2a123b7b0f16f19440bcde72da505ad65352b9"
+        }
+      ],
+      "observedAt": "2026-10-18T10:27:52.934Z",
+      "window": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      },
+      "metrics": {
+        "conformance": 100,
+        "linked-repairs": 0
+      }
+    }
+  ],
+  "valueReview": {
+    "schemaVersion": 1,
+    "primaryMetricId": "conformance",
+    "current": {
+      "value": 100,
+      "unit": "percent",
+      "status": "complete",
+      "window": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      },
+      "eligibleCount": 1,
+      "stale": false
+    },
+    "periods": [
+      {
+        "window": {
+          "startAt": "2026-09-12T10:16:09Z",
+          "endAt": "2026-09-19T10:16:09Z"
+        },
+        "observedAt": "2026-10-18T10:27:52.934Z",
+        "status": "complete",
+        "missingReason": null,
+        "eligibleCount": 1,
+        "metrics": {
+          "conformance": 0,
+          "linked-repairs": 0
+        }
+      },
+      {
+        "window": {
+          "startAt": "2026-09-19T10:16:09Z",
+          "endAt": "2026-09-26T10:16:09Z"
+        },
+        "observedAt": "2026-10-18T10:27:52.934Z",
+        "status": "complete",
+        "missingReason": null,
+        "eligibleCount": 1,
+        "metrics": {
+          "conformance": 100,
+          "linked-repairs": 1
+        }
+      },
+      {
+        "window": {
+          "startAt": "2026-09-26T10:16:09Z",
+          "endAt": "2026-10-03T10:16:09Z"
+        },
+        "observedAt": "2026-10-18T10:27:52.934Z",
+        "status": "complete",
+        "missingReason": null,
+        "eligibleCount": 1,
+        "metrics": {
+          "conformance": 100,
+          "linked-repairs": 0
+        }
+      },
+      {
+        "window": {
+          "startAt": "2026-10-03T10:16:09Z",
+          "endAt": "2026-10-10T10:16:09Z"
+        },
+        "observedAt": "2026-10-18T10:27:52.934Z",
+        "status": "complete",
+        "missingReason": null,
+        "eligibleCount": 1,
+        "metrics": {
+          "conformance": 100,
+          "linked-repairs": 0
+        }
+      },
+      {
+        "window": {
+          "startAt": "2026-10-10T10:16:09Z",
+          "endAt": "2026-10-17T10:16:09Z"
+        },
+        "observedAt": "2026-10-18T10:27:52.934Z",
+        "status": "complete",
+        "missingReason": null,
+        "eligibleCount": 1,
+        "metrics": {
+          "conformance": 100,
+          "linked-repairs": 0
+        }
+      }
+    ],
+    "decision": {
+      "status": "not-rated",
+      "reason": "No agreed native keep bar and review duration.",
+      "policy": null
+    },
+    "recentComparison": {
+      "status": "available",
+      "reason": null,
+      "referenceWindow": {
+        "startAt": "2026-10-03T10:16:09Z",
+        "endAt": "2026-10-10T10:16:09Z"
+      },
+      "currentWindow": {
+        "startAt": "2026-10-10T10:16:09Z",
+        "endAt": "2026-10-17T10:16:09Z"
+      },
+      "referenceValue": 100,
+      "currentValue": 100,
+      "nativeDelta": 0,
+      "directionAwareGain": 0,
+      "referenceDenominator": null,
+      "currentDenominator": null,
+      "populationChanged": false
+    },
+    "cost": {
+      "status": "not-measured",
+      "total": null,
+      "unit": null,
+      "costPerAcceptedOutcome": null
+    },
+    "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+  }
+}

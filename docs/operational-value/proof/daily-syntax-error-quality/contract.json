@@ -1,0 +1,85 @@
+{
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "workflowBlob": "8dae2d78259ddc6dcd2e81ef156a246accfba506",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "goal": "Compiler errors that help developers actually correct syntax.",
+  "problem": "A developer can receive compiler errors without a correct source location or a correct actionable syntax correction, regardless of who introduced the error or improved the compiler.",
+  "acceptedPartialOutcome": "For a full native-accepted original with exactly one numeric-engine mutation, the actual native diagnostic identifies the exact file and line, with its column inside either the engine-key token or the invalid numeric-value token (not whitespace or unrelated text). Separately, a unique explicit native correction restores that same accepted original.",
+  "scope": "A deliberately closed numeric-engine oracle, not a general YAML parser, general compiler reimplementation, full diagnostic-quality score or usability judgment.",
+  "sourceReadBoundary": {
+    "preservedCompleteReadableFiles": 32,
+    "workflowAndBothDeclaredImports": "Read and preserved in full.",
+    "compilerAndDiagnostics": "Read and preserved complete selected compiler, frontmatter, schema diagnostic and console formatting sources, including native ValidationResult/ValidationIssue declarations and tests.",
+    "compiledWorkflow": "Exact path is known but its blob is not readable from the authorized cache with GIT_NO_LAZY_FETCH=1. It was not reconstructed from Markdown.",
+    "optionalRuntimeImport": "The optional .github/shared-instructions.md does not exist in the frozen tree.",
+    "toolchain": "go.mod blob is not readable in the authorized cache; no source or compiler execution, build or dependency installation was attempted."
+  },
+  "temporalSemantics": {
+    "activationMeaning": "The source-era lower bound is the actual frozen source commit time, not a claimed workflow adoption or the time this contract was authored. Evaluation is current-source-only reconstruction under that exact revision.",
+    "earliestSupportedNativeCompletion": "2026-10-18T06:32:44Z",
+    "latestEvaluationEndpoint": "2026-10-18T15:00:12Z",
+    "historicalSourceProfiles": "Not acquired. Earlier native evidence has not been exhausted; do not backdate the current predicate.",
+    "diagnosticCohorts": "One-day intervals with inclusive starts and exclusive ends; the leading short cohort is interim. Select by original native execution completion time, not issue creation, merge, source commit or archive acquisition.",
+    "deliveryCohorts": "Separate one-day inclusive/exclusive merge-time intervals, only after native before/after evidence and actual workflow-linked delivery are independently established. No delivered value is currently produced.",
+    "comparison": "No pre-adoption baseline, native observations, comparable recent change, causal effect, keep threshold or utility/savings estimate is established."
+  },
+  "antecedentExistence": [
+    {
+      "measure": "Correct diagnostic locations",
+      "phenomenon": "Pre-existing independently of this workflow; human compiler improvements count equally.",
+      "reconstruction": "Current-source checker implemented. No original historical compiler/input receipts acquired and no historical profiles tested.",
+      "disposition": "Primary partial native facet in percent; missing originals return null."
+    },
+    {
+      "measure": "Verified explicit diagnostic repairs",
+      "phenomenon": "Pre-existing independently of this workflow.",
+      "reconstruction": "Same original input pair and native outputs as location facet; never infer a repair from words such as hint or from an agent score.",
+      "disposition": "Separate diagnostic partial facet in percent; not averaged with location."
+    },
+    {
+      "measure": "Developer correction-task success or time-to-repair",
+      "phenomenon": "Pre-existing independently of the workflow.",
+      "reconstruction": "No independent native task instrument or original task receipts acquired.",
+      "disposition": "Full usability unavailable, not replaced by the producing agent's clarity/actionability judgments."
+    },
+    {
+      "measure": "Workflow-linked delivered compiler diagnostic improvement",
+      "phenomenon": "Compiler improvement pre-exists; workflow-specific linkage does not establish the outcome.",
+      "reconstruction": "Editable issue/PR inventory is discovery only. No original producer receipt, accepted graph, merge/parent diff and paired native diagnostics acquired.",
+      "disposition": "Unavailable and separate from actor-independent partial attainment."
+    }
+  ],
+  "workflowNativeMeasureDispositions": [
+    {
+      "measure": "Clarity /25, actionability /25, context /20, examples /15, consistency /15, total /100",
+      "disposition": "Rejected as measured usability. Producing-agent assessments, not independently established repository outcomes."
+    },
+    {
+      "measure": "Average >=65 and individual >=50; conflicting >=70 issue guideline",
+      "disposition": "Workflow output-routing gates only. Neither threshold is a utility target, keep bar or operational-value formula."
+    },
+    {
+      "measure": "Two workflows, two categories, error output captured, issue/noop, at most 20 turns and ten calls",
+      "disposition": "Coverage, process or efficiency diagnostics, never successful correction or delivered improvement."
+    },
+    {
+      "measure": "IDE-parseable file:line:column, suggestions and examples",
+      "disposition": "Format alone is insufficient. Retain only objectively correct key locations and exact independently accepted restoration repairs in the bounded native facet."
+    },
+    {
+      "measure": "Issue creation, closure, merge, editable marker or related PR",
+      "disposition": "Discovery/lifecycle, not acceptance, usability or attribution."
+    }
+  ],
+  "independenceAndCustody": "Native before/after compile JSON and native go version -m bytes are decoded, never aggregate caller trust flags. Local preserved originals still require an authoritative custody boundary; checksum verification alone is not proof of origin. The production evidence archive is intentionally empty rather than populated with validation fixtures.",
+  "readiness": {
+    "source": "Partial: full workflow/imports and selected native compiler/diagnostic sources retained; compiled workflow and go.mod blobs unreadable.",
+    "checker": "Implemented for the closed current-source native location/restoration facet; positive, negative, malformed, trust-flag and boundary tests are included.",
+    "fullFunction": "Partial only: full developer usability and actual workflow-linked delivery are not implemented as accepted measures.",
+    "nativeProducer": "Unavailable: the frozen workflow does not persist the input/result/build-info evidence needed by this collector.",
+    "evidence": "Discovery archive verified in full (346 partitions, 58048 entities); 69 syntax workflow candidates retained as discovery only; zero native cases acquired.",
+    "historicalEvidence": "Unacquired, not exhausted. No acquisition or resumption is authorized."
+  }
+}

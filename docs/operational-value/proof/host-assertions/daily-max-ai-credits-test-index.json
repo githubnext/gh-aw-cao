@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "daily-max-ai-credits-test",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "9ec43dc97ba2be5a25e74092b25c8a8112ceb94eb0948d8297c156f869a0fa29",
+  "inventoryRuns": 144,
+  "observations": 144,
+  "proven": 2,
+  "partitions": [
+    {
+      "file": "daily-max-ai-credits-test-observations-001.json.gz",
+      "count": 40,
+      "sha256": "de770049e98d53b1c4ee59cbc7f8b43d6ca692a3a809d47cf162e121e546414d"
+    },
+    {
+      "file": "daily-max-ai-credits-test-observations-002.json.gz",
+      "count": 40,
+      "sha256": "7ee21273f86eee72a152e6c8a6ee16d34b78ebac9ace672a15a088635d726aa1"
+    },
+    {
+      "file": "daily-max-ai-credits-test-observations-003.json.gz",
+      "count": 40,
+      "sha256": "791b3382f5ea70e3ae1c394f666fcbbbdc753103392fc5643bea36ce948b6140"
+    },
+    {
+      "file": "daily-max-ai-credits-test-observations-004.json.gz",
+      "count": 24,
+      "sha256": "274532e1812603b7cdf739205a7a7ee5063fdb65d25d3b18d0e7b324d23428ef"
+    }
+  ],
+  "acquiredAt": "2026-10-18T19:14:27.178Z",
+  "rerunPolicy": "Only initial attempts; later artifact reuse cannot create duplicate native proof.",
+  "producer": {
+    "path": "scripts/collect-host-assertion-evidence.mjs",
+    "sha256": "7dcafb26fce3a00c7e860191ee29037f64ac3e08409458e447b05be07083210f"
+  }
+}

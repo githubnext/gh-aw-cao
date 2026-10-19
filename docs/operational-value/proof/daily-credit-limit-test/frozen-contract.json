@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "daily-credit-limit-test",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceBlob": "950ad1930ee32372cb8f254b36eee121cbc94254",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "designBoundary": "Frozen from selected source and retained normative specification before native outcome inspection. Issue/PR discovery is not outcome evidence.",
+  "operationalValue": "For independently eligible daily guardrail activations, prevent agent inference and publish the required limit-exceeded message, measured as fully protected eligible activations per period.",
+  "nativeMeasure": "100 * fully protected eligible activations / independently eligible activations; percent. Raw accepted counts and independently verified denial, inference and notification facets remain separate.",
+  "scope": "Exact frozen source/compiled/checker identity, public repository ID 1036865607; no per-run max-credit smoke test or nonexistent-tool success criterion.",
+  "eligibility": "Complete same-workflow independent recorded preceding-24-hour ledger total >= 1 AIC at scan start, after documented bypass rules. Equality follows normative specification section 9.14; direct manual dispatch is intentionally bypassed under section 9.8.",
+  "time": "Intervals are inclusive-start/exclusive-end, grouped by activation scan time; each attempt is a distinct opportunity. Usage deduplicates latest completed metadata by run ID, not every attempt. Completion matures the opportunity; no fixed delay substitutes for terminal evidence.",
+  "historicalReadiness": "Unknown, not exhausted. Current source-scoped prospective activation is the frozen cutoff, not the actual source addition. No adoption-relative baseline, retrospective predicate application or outcome claims.",
+  "evaluation": "The standard evaluator retains the partial initial prospective window ending 2026-10-19T09:46:04Z, the supplied session time. No post-cutoff native evidence was acquired; absent coverage remains missing, not future outcome evidence. No network acquisition or automatic resumption is authorized.",
+  "acceptance": "Independent above/equal-cap eligibility AND source-bound daily guardrail denial AND complete independent provider/agent request inventory proving no agent inference through terminal disposition AND immutable conclusion-job limit-exceeded message receipt.",
+  "partialEvidence": "Preserve positive native facet counts and known accepted lower bounds through unrelated evidence gaps. Unknown denominator, unassessed eligibility, empty population and incomplete acceptance cannot become zero percent or full attainment.",
+  "contribution": "Separate authenticated producer linkage; missing attribution does not erase actor-independent accepted work. Editable markers and closed issues are discovery candidates only.",
+  "costsAndDecision": "Costs not measured. No invented savings, weights, native keep bar, causal effect or keep/retire recommendation.",
+  "sourceReadiness": "Incomplete current compiled/checker bodies and adoption contents are enumerated; full available source/import/spec bodies retained losslessly.",
+  "producerReadiness": "No native producer implemented or released. Receipt digest integrity is not origin authenticity; independently authenticated exports are required before native readiness can be claimed."
+}

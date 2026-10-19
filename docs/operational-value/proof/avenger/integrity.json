@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "workflow": "avenger",
+  "function": {
+    "file": "docs/operational-value/proof/functions/avenger.mjs",
+    "sha256": "eb7cf00726a29cf1109990683241e70c2a5450eef566649929c5ca77371b389d",
+    "lines": 552
+  },
+  "contractSha256": "61e1feab1c1b56b3f5bd4ebc16dd665136e06adec288d6b5adc1939a8e5d27fd",
+  "sourceArchiveSha256": "811b2e7ccd81eb48409fe5e0699acc4703725598b97f6a347ca0daac491eb3ad",
+  "sources": [
+    {
+      "path": ".github/workflows/avenger.md",
+      "mode": "100644",
+      "gitBlob": "c2dc70ea2ff6d1e684b4cfd17c3a1e61bb85f56d",
+      "sha256": "7b003b1d1d9e28b08b8cf4f26643d7912c484de48570e3ed69048c4368496485",
+      "bytes": 11331
+    },
+    {
+      "path": ".github/workflows/avenger.lock.yml",
+      "mode": "100644",
+      "gitBlob": "5be1879d15ce8140632682cf2129d7632d0278fa",
+      "sha256": "2dcd2c079f406cdf2c165fc38972ed2b14d6949b9a0200a9ee7b067e68dc4793",
+      "bytes": 181251
+    },
+    {
+      "path": ".github/workflows/shared/otlp.md",
+      "mode": "100644",
+      "gitBlob": "f68eee05a7f9d4379511148f65aa2ed8bf7667dd",
+      "sha256": "be10fc106d10b46d927b990cdb5c9ebe6fe1f979c471444ba7b2d1f53cd34af6",
+      "bytes": 635
+    },
+    {
+      "path": ".github/workflows/shared/graders.md",
+      "mode": "100644",
+      "gitBlob": "0fe00eb27e49c87a524732611401a9e160598448",
+      "sha256": "bb57d7dcf2b9d2acca6d18845f146bd58d18739a9012a87ed53a32df2a2a5804",
+      "bytes": 365
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "mode": "100644",
+      "gitBlob": "48c10a8731efd8b78cf7ee2a3145ca1f2261cf60",
+      "sha256": "f25f759e0a746bba003577bc88e219b926b4253737029ae11de6c28e078df393",
+      "bytes": 81564
+    },
+    {
+      "path": "Makefile",
+      "mode": "100644",
+      "gitBlob": "2d1f1f3b840f876b8a24a6ca1beaa2006163adac",
+      "sha256": "19d0951294bfbb06e7ef4138e5f3c6c469575a5a53df1301d7c8e94e3e4609e6",
+      "bytes": 72162
+    },
+    {
+      "path": ".golangci.yml",
+      "mode": "100644",
+      "gitBlob": "59adb18d6f0614a101cafeacc194c74f92a8895d",
+      "sha256": "35d264b92a61d379a0488b8f7ca2222614b2d188c897ed8409bbe4e64344c79a",
+      "bytes": 5796
+    },
+    {
+      "path": "actions/setup/js/package.json",
+      "mode": "100644",
+      "gitBlob": "93c46322ece5b3e734395bb25c9b9edebc38d76d",
+      "sha256": "bce9c4660ffb3c149f67b9a91934d53e93f6721bf5cb16a2f5d6d4345799dd83",
+      "bytes": 2379
+    },
+    {
+      "path": "actions/setup/js/package-lock.json",
+      "mode": "100644",
+      "gitBlob": "0d7099405b810bb4951d952158f855bbc7caa417",
+      "sha256": "a833cbe90e366bcdbbd315d20defc758f54cb53ce440ed887c06c354ed377873",
+      "bytes": 159157
+    },
+    {
+      "path": ".prettierignore",
+      "mode": "100644",
+      "gitBlob": "c138c3b0e6f3168b330f637e285dd0fa63f4e6ca",
+      "sha256": "1527b3370f18c95a31245786c5b3ba0c93aec383ce2ce241934af8c19f42b57d",
+      "bytes": 395
+    },
+    {
+      "path": ".prettierrc.json",
+      "mode": "100644",
+      "gitBlob": "0a7bde006d687108efbb16bedb6b94de7640240f",
+      "sha256": "14c07044e30ff1b874814e2d59224faff495cf4e2a9f2fc8a930ccfe3c9e61f0",
+      "bytes": 475
+    },
+    {
+      "path": "scripts/check-stale-lock-files.sh",
+      "mode": "100755",
+      "gitBlob": "6231ea5c2774dbca934b3deb3c1e48cd3d5648b9",
+      "sha256": "9515232cf69c4362f9fc5beb391d4f428ec05b8295c9e56f4652fbf85cf0961e",
+      "bytes": 5341
+    },
+    {
+      "path": "scripts/check-skill-file-paths.sh",
+      "mode": "100755",
+      "gitBlob": "5b6426a33cc09d2661a5d851a3b79641b75f8c13",
+      "sha256": "64e4f659018ae1532bc8ab2fc4fd7e8a15dc572a9e72f10df345c305f1676c18",
+      "bytes": 3333
+    },
+    {
+      "path": "scripts/validate-cjs-syntax.sh",
+      "mode": "100755",
+      "gitBlob": "f3d5ba49e544e4e586ffd4ce823c49b25b1ad330",
+      "sha256": "4b27223a34a94f112615868babfe51bd02e324f7ff22ee38031e055e84626af5",
+      "bytes": 2076
+    },
+    {
+      "path": "scripts/validate-model-alias-chains.js",
+      "mode": "100644",
+      "gitBlob": "07cf1db7e7dbb4b65b2eeae1e95273baee8761f0",
+      "sha256": "1c8f6c737249425c718ddabfbc2f5c93233c43835352e126055fd681ba7a62be",
+      "bytes": 2686
+    },
+    {
+      "path": "scripts/check-action-sh-no-python.sh",
+      "mode": "100755",
+      "gitBlob": "a833ef270b3e36285f6c0546df9f87c9ab882659",
+      "sha256": "b1ef5f22771ab1ea9aaf6e9026ee1658d883092767f9a453bd3d61046874ab3a",
+      "bytes": 2201
+    },
+    {
+      "path": "scripts/check-stale-schema-binary.sh",
+      "mode": "100755",
+      "gitBlob": "d059059e480f130833dd3991a0a89de9f6eaff55",
+      "sha256": "414308a2fe0335573b058b9ad4d3fae7b32231513b0da5ee84b33e5782f14b06",
+      "bytes": 5400
+    },
+    {
+      "path": "scripts/resolve-base-commit.sh",
+      "mode": "100755",
+      "gitBlob": "7370831370ebb7c4817ffdee923b5fc37fb127d2",
+      "sha256": "c32980a17a704d760a67a9474b3501e77a1a36d3ac7be17697b612344502af43",
+      "bytes": 5448
+    },
+    {
+      "path": "scripts/check-workflow-drift.sh",
+      "mode": "100755",
+      "gitBlob": "0818b8671e6904263468465565f8fe7c751fa80b",
+      "sha256": "27e40430c0d040e51d22f9364f0d2e004b79a55f6d4ddac76326ad79c9f5ce23",
+      "bytes": 5739
+    },
+    {
+      "path": "pkg/workflow/wasm_golden_test.go",
+      "mode": "100644",
+      "gitBlob": "3712a51ec5914a1e8a5b00a24496f715aca94a56",
+      "sha256": "31acf16e47fcefd506170410e4196a7f11e19906e8228ae4be3258eba75d2a17",
+      "bytes": 24546
+    },
+    {
+      "path": ".github/workflows/shared/graders/state-revisit-probability-rep.md",
+      "mode": "100644",
+      "gitBlob": "960820a922eb16387851e72f71ceebcbdc22d327",
+      "sha256": "173791e1c929efcf9416b97d7a7739ee1e582456188cd9703009b57018d63afd",
+      "bytes": 664
+    },
+    {
+      "path": ".github/workflows/shared/graders/recurrence-determinism.md",
+      "mode": "100644",
+      "gitBlob": "b23f3115ac5e6df908571b5369cac11cf840f50d",
+      "sha256": "c0abb51fbf3237c36697199f6381e1daa40761758025192ad7d2831d148f6a5a",
+      "bytes": 1345
+    },
+    {
+      "path": ".github/workflows/shared/graders/recurrence-laminarity.md",
+      "mode": "100644",
+      "gitBlob": "02ffc9a3093a29ce6a79d1ec32a9a40641bb931b",
+      "sha256": "6a5c4e8be3822de3deb337e8a81f3acaf69c49c3d19e7c017e593600d9bb590a",
+      "bytes": 1538
+    }
+  ],
+  "adoptionSources": [
+    {
+      "path": ".github/workflows/avenger.md",
+      "gitBlob": "e83c88a224a24d4a1f862e928ef15db487a35a0c",
+      "bytes": 8481,
+      "sha256": "eb0ef110f8c77fe98da8435023bfab1ad659dc6a5f4f2978b9b857b9fbecce69"
+    }
+  ],
+  "reports": [
+    {
+      "file": "docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-definitions.md",
+      "bytes": 8114,
+      "sha256": "c61b538f74ac3b632f57f6c790f6911c1b3099f52927a863411349ed12a21d48"
+    },
+    {
+      "file": "docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-evidence-archive.json",
+      "bytes": 260,
+      "sha256": "b8a8d3dcdedf5a85d53c7808b6a4b757aaf4a42528e17b82826f12c4e5b488a8"
+    },
+    {
+      "file": "docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-pulse.html",
+      "bytes": 21217,
+      "sha256": "5f60bb5a1d3622b6d7a94bab681fda099e990c6fe332dba0f379f742e1a1bd52"
+    },
+    {
+      "file": "docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-pulse.json",
+      "bytes": 9030,
+      "sha256": "53cede5af88afca66a3f1c44b99d0581a6382f80a26018e0e9b3a60ea513fd5c"
+    },
+    {
+      "file": "docs/operational-value/proof/avenger/evaluation/github-gh-aw/avenger-timeline.json",
+      "bytes": 24945,
+      "sha256": "e73a0b8b8cf6276b1f8630499f08cf1fc0132ffb5db3bca1be0d7cef57aa8c6e"
+    }
+  ],
+  "actualCollector": {
+    "request": {
+      "observedAt": "2026-10-18T15:00:12Z",
+      "windowStart": "2026-10-18T06:32:44Z",
+      "windowEnd": "2026-10-18T15:00:12Z"
+    },
+    "metrics": {
+      "repairs": null,
+      "complete": null,
+      "linked": null,
+      "introduced": null,
+      "incomplete": null
+    },
+    "coverageStatus": "missing",
+    "provenance": [
+      {
+        "repository": "github/gh-aw",
+        "kind": "immutable-git-source",
+        "ref": "c86377ec47b38f0b5af463277ee55d1d03d08da8:.github/workflows/avenger.md#c2dc70ea2ff6d1e684b4cfd17c3a1e61bb85f56d"
+      },
+      {
+        "repository": "github/gh-aw",
+        "kind": "verified-source-closure",
+        "ref": "sha256:811b2e7ccd81eb48409fe5e0699acc4703725598b97f6a347ca0daac491eb3ad"
+      },
+      {
+        "repository": "github/gh-aw",
+        "kind": "retained-native-archive",
+        "ref": "sha256:c90271385ac474dcc2d92eb9ece62c678fbcac7fcedbf427da4fc88295c4734d"
+      },
+      {
+        "repository": "github/gh-aw",
+        "kind": "discovery-not-outcome",
+        "ref": "sha256:e29c1237adfb1a33a95e37b4b97c5058bf2020e095356cec4c0d16a883a4fb40"
+      }
+    ]
+  },
+  "validation": {
+    "focusedTests": 37,
+    "pass": 37,
+    "fail": 0,
+    "actualCollectorVerifier": "passed",
+    "standardEvaluator": "passed with local seed executable permission temporarily restored",
+    "gitDiffCheck": "passed",
+    "nodeSyntax": "passed",
+    "lint": "unavailable; no install authorized",
+    "typecheck": "unavailable; no install authorized",
+    "productionSchedule": "one actual leading partial interval; separate four-window pure scheduling probe is contiguous/non-overlapping, not an observation or collection"
+  }
+}

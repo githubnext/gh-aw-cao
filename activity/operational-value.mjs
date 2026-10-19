@@ -40,7 +40,7 @@ async function discoverOperationalValueScripts(root) {
   const entries = await readdir(directory, { withFileTypes: true });
   const scripts = [];
   for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    if (!entry.isDirectory() || (entry.name.startsWith('.') && entry.name !== '.github')) continue;
     const script = path.join(directory, entry.name, 'operational-value.mjs');
     try {
       if ((await stat(script)).isFile()) scripts.push({ package: entry.name, script });
@@ -404,13 +404,12 @@ function historicalObservationTimes(definition, observedAt, retentionWindow) {
 }
 
 function operationalValueKey(campaign, repository, valueId, timestamp) {
-  const campaignKey = String(campaign ?? '').trim().toLowerCase();
-  if (!campaignKey) throw new Error('Operational value campaign is required for cache key');
+  const campaignKey = String(campaign ?? '.github').trim().toLowerCase();
   return `${campaignKey}\0${String(repository).toLowerCase()}\0${valueId}\0${timestamp}`;
 }
 
 function operationalValueDefinitionKey(campaign, valueId) {
-  return `${String(campaign).toLowerCase()}\0${valueId}`;
+  return `${String(campaign ?? '.github').toLowerCase()}\0${valueId}`;
 }
 
 function operationalValueCadenceKey(value, definition) {
@@ -427,7 +426,7 @@ function operationalValueCadenceKey(value, definition) {
   const timestamp = Date.parse(value.timestamp);
   const bucket = Math.ceil((timestamp - adoption) / cadence);
   const bucketEnd = new Date(adoption + bucket * cadence).toISOString();
-  return `${String(value.campaign).toLowerCase()}\0${String(value.repository).toLowerCase()}\0${value.value_id}\0${bucketEnd}`;
+  return operationalValueKey(value.campaign, value.repository, value.value_id, bucketEnd);
 }
 
 async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
@@ -451,13 +450,17 @@ async function retainedOperationalValueEnvelopes(outputPath, cutoff) {
       throw new Error(`${outputPath}:${index + 1} has an invalid operational value timestamp`);
     }
     const campaign = String(envelope.operational_value?.campaign ?? '').trim();
-    // Legacy retained envelopes written before campaign-scoped value identity
-    // cannot be matched safely and are pruned as obsolete retained evidence.
-    if (timestamp >= cutoff && campaign) retained.push(envelope);
+    const workflow = envelope.operational_value?.workflow_slug;
+    // Do not reinterpret ambiguous pre-scope legacy records as standalone goals.
+    const standalone = envelope.operational_value?.definition_scope === 'standalone'
+      && OPERATIONAL_VALUE_SLUG.test(workflow ?? '')
+      && envelope.operational_value.value_id?.startsWith(`${workflow}.`)
+      && OPERATIONAL_VALUE_ID.test(envelope.operational_value.value_id);
+    if (timestamp >= cutoff && (campaign || standalone)) retained.push(envelope);
     else if (timestamp >= cutoff) legacyPruned += 1;
   });
   if (legacyPruned > 0) {
-    console.warn(`Warning: pruned ${legacyPruned} legacy operational value envelope(s) without campaign identity from ${outputPath}`);
+    console.warn(`Warning: pruned ${legacyPruned} legacy operational value envelope(s) without measurement scope from ${outputPath}`);
   }
   return retained;
 }
@@ -542,7 +545,10 @@ export async function runOperationalValue({
         timeoutMs: workerTimeoutMs
       });
       const parsed = parseOperationalValueOutput(workerOutput, entry.script, uniqueRepositories);
-      values.push(...parsed.values.map((record) => ({ ...record, campaign: entry.package })));
+      values.push(...parsed.values.map((record) => ({
+        ...record,
+        ...(entry.package === '.github' ? {} : { campaign: entry.package })
+      })));
       if (parsed.definitions.length > 0) {
         activeValueIds.set(entry.package, new Set(
           parsed.definitions.flatMap((definition) => definition.valueIds)
@@ -664,8 +670,10 @@ export async function runOperationalValue({
       operational_value: {
         timestamp: record.timestamp,
         repository: record.repository,
-        campaign: record.campaign,
-        campaign_id: `campaign:${record.campaign}`,
+        ...(record.campaign ? {
+          campaign: record.campaign,
+          campaign_id: `campaign:${record.campaign}`
+        } : { definition_scope: 'standalone' }),
         value_id: record.valueId,
         value: record.value,
         metric_role: record.metricRole ?? 'primary',
@@ -693,7 +701,7 @@ export async function runOperationalValue({
     }));
     const currentRetained = retained.filter((envelope) => {
       const value = envelope.operational_value;
-      const activeIds = activeValueIds.get(value.campaign);
+      const activeIds = activeValueIds.get(value.campaign ?? '.github');
       return !activeIds || activeIds.has(value.value_id);
     });
     const merged = new Map();

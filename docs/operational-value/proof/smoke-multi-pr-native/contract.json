@@ -1,0 +1,2462 @@
+{
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-multi-pr",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceGitBlob": "edc4cd49f2c9fb6ce86eaebcb9c74108b4da325a",
+  "until": "2026-10-18T15:00:12Z",
+  "directory": "docs/operational-value/proof/smoke-multi-pr-native",
+  "adoption": {
+    "commit": "b58fd691e7da212fa79b9408b3aa0bfc69b00b24",
+    "adoptedAt": "2026-02-21T02:35:50Z",
+    "baselineCommit": "3b6ab5488e05abd34d6a599d61459477e45d5299",
+    "baselineAt": "2026-02-21T02:18:44Z"
+  },
+  "nativeContract": {
+    "primary": "verified-payload-deliveries",
+    "unit": "branch payloads",
+    "cadenceDays": 7,
+    "population": "Every retained initial workflow execution before the cutoff; reruns are separately inventoried and never double-credit an initial execution.",
+    "acceptedEvidence": "A source-bound protected create-pull-request operation receipt binds the original branch/base/head identities to immutable target-tree pre/post bytes. The base lacks the expected file; the head changes exactly that file with the run-specific required content, unchanged supplied bytes and no sibling payload. CRLF cases retain every carriage return. Each case is credited once, at the native delivery receipt.",
+    "partialProgress": "Each independently verified branch payload counts even when its sibling or the summary-comment acceptance is unknown. Two PRs or a merge do not prove payload delivery.",
+    "contentPolicy": "Documentation and original configuration cases have the source's four required LF lines. CRLF cases have the first four required CRLF lines and the final CRLF annotation, accepting the literal annotation or the six-line expansion produced by the source's actual Bash printf; preserve the exact representation and report it separately. A nonempty printable timestamp must parse as a date.",
+    "missing": "Missing/expired operations, original head/base receipts, supplied payload bytes, source identity or immutable target trees remain null; no successes are inferred from run/job status or editable PR bodies.",
+    "historicalEras": "Original config case and later CRLF case are different predicates; keep profile-specific quantities and do not infer a comparable trend across the switch.",
+    "fullAcceptance": "Exactly two correct separate branches from main in one initial execution, matching intended bytes, plus protected proof of the required summary comment. Contribution is receipt-bound, not sole attribution; costs unmeasured.",
+    "antecedent": "The multi-PR test opportunities are introduced with this workflow. Generic PR creation existed earlier but is not the same test; no invented pre-adoption baseline.",
+    "canonicalSources": "Canonical run/tool/issue summaries do not contain original Git trees, binary payloads or protected patch/application receipts. Immutable Git plus retained Actions artifacts/logs are required; no dashboard query is substituted."
+  },
+  "profiles": [
+    {
+      "revision": "5fdf98e4d2117e37d3260de02f7783ecce16ea49",
+      "at": "2026-09-21T16:58:35Z",
+      "workflowGitBlob": "edc4cd49f2c9fb6ce86eaebcb9c74108b4da325a",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 2 days",
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        },
+        "sandbox": {
+          "agent": {
+            "id": "awf"
+          }
+        }
+      }
+    },
+    {
+      "revision": "45277dcb8f19d6890098a8c2c588834d1d08ecb7",
+      "at": "2026-08-25T15:22:34Z",
+      "workflowGitBlob": "3ba470365a1411f92144450639ad956b23ca10f8",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 2 days",
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        },
+        "sandbox": {
+          "agent": {
+            "runtime": "cloud-hypervisor",
+            "id": "awf"
+          }
+        }
+      }
+    },
+    {
+      "revision": "fe9156568bf7e845e7ab097b6dbccd3f2e679b22",
+      "at": "2026-08-20T20:54:00Z",
+      "workflowGitBlob": "2d861da49695fd4f4c10a391b47e7fd76d5eab40",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        },
+        "sandbox": {
+          "agent": {
+            "runtime": "cloud-hypervisor",
+            "id": "awf"
+          }
+        }
+      }
+    },
+    {
+      "revision": "31d54a7cd7466bb4bb025985dfad631952ac1c7b",
+      "at": "2026-08-17T00:52:52Z",
+      "workflowGitBlob": "98911f117f873f8476c3af0d0ea92918cc852226",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        },
+        "sandbox": {
+          "agent": {
+            "id": "awf"
+          }
+        }
+      }
+    },
+    {
+      "revision": "a147264e7a887b334d3b9c845875d3a2ad7d3d4a",
+      "at": "2026-08-15T04:45:48Z",
+      "workflowGitBlob": "5348167040c408e7688ddce0654222c9c3bccb58",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md",
+        "shared/reporting.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md",
+          "shared/reporting.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        },
+        "sandbox": {
+          "agent": {
+            "id": "awf",
+            "sudo": false
+          }
+        }
+      }
+    },
+    {
+      "revision": "0de69c52ac006859a3739bc13c26dadbb997be58",
+      "at": "2026-08-08T03:23:07Z",
+      "workflowGitBlob": "34a5033635c903b644abe3481f79e2d9591bc133",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        },
+        "sandbox": {
+          "agent": {
+            "id": "awf",
+            "sudo": false
+          }
+        }
+      }
+    },
+    {
+      "revision": "e123c10207028f35dd37390e62cc2ce80374348a",
+      "at": "2026-08-08T01:13:15Z",
+      "workflowGitBlob": "737796e10d73ba42fd0b18b9936454e18e93553a",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        },
+        "sandbox": {
+          "agent": {
+            "id": "awf",
+            "runtime": "docker-sbx",
+            "sudo": true
+          }
+        }
+      }
+    },
+    {
+      "revision": "1170fc484978ff65b6e026755866aea0af490710",
+      "at": "2026-07-07T06:08:34Z",
+      "workflowGitBlob": "3094733a97cde762a199e317b5f66fb69bb7c9bd",
+      "taskSha256": "aeb497fd31d1c328e0b73ea0d04fc86b0f8384b85b58768ab4f1d19d8295b570",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        }
+      }
+    },
+    {
+      "revision": "33ae87ae331774efd917d521c36b272263a8c1e8",
+      "at": "2026-06-25T23:29:22Z",
+      "workflowGitBlob": "04905d11367528b6f836165a69c8a9305d227450",
+      "taskSha256": "9fb90a10570979392c18b814488d3225571144bfa9ca08b5ac01f398d7293a07",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": {
+          "gh-aw-detection": false
+        }
+      }
+    },
+    {
+      "revision": "b963dc5429d08de7f8f13e1223805195fb256dd3",
+      "at": "2026-06-20T16:11:31Z",
+      "workflowGitBlob": "3051cd3cddf4a23c9bb628bedaeafcc76fe8328d",
+      "taskSha256": "9fb90a10570979392c18b814488d3225571144bfa9ca08b5ac01f398d7293a07",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ],
+        "features": {
+          "gh-aw-detection": true
+        }
+      }
+    },
+    {
+      "revision": "e8ca23ae1dcde800d1b19e7c73bf5dfe30b6efb5",
+      "at": "2026-06-18T12:58:44Z",
+      "workflowGitBlob": "03b56572f1137545312c37679f8d737b2e0bcaef",
+      "taskSha256": "9fb90a10570979392c18b814488d3225571144bfa9ca08b5ac01f398d7293a07",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "private": true,
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "64a66de2e17a1d19a25b08a999d9e18cf84ebde2",
+      "at": "2026-06-08T00:29:41Z",
+      "workflowGitBlob": "0aba2433b8e0a69e627501d8619d75059a8c9656",
+      "taskSha256": "9fb90a10570979392c18b814488d3225571144bfa9ca08b5ac01f398d7293a07",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{ai_credits_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "ae50ebcc389c1c3258921687fe84145895695ee7",
+      "at": "2026-06-03T22:15:00Z",
+      "workflowGitBlob": "9805334eb31a04086b224d4e2ed840e9f9860eab",
+      "taskSha256": "fb2c77bd63aea888411124eb70890cacc96373342038aa55d1a6c62c81d80960",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "slash_command": {
+            "name": "smoke-multi-pr",
+            "strategy": "centralized",
+            "events": [
+              "issues",
+              "issue_comment",
+              "pull_request",
+              "pull_request_comment"
+            ]
+          },
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "148e6173d21d6865e805b25e713cd2cb181bc6f0",
+      "at": "2026-05-17T14:26:59Z",
+      "workflowGitBlob": "d2497a59f8d479d9163b9e7192d42d6864232f9c",
+      "taskSha256": "fb2c77bd63aea888411124eb70890cacc96373342038aa55d1a6c62c81d80960",
+      "era": "crlf",
+      "imports": [
+        "shared/otlp.md"
+      ],
+      "frontmatter": {
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "054d63207ce4f87fc1392d1c48f412efa1c27508",
+      "at": "2026-05-14T20:25:56Z",
+      "workflowGitBlob": "65afcdb23cfba1db4e1b09ef301209d2a2f9541b",
+      "taskSha256": "fb2c77bd63aea888411124eb70890cacc96373342038aa55d1a6c62c81d80960",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "emoji": "🧪",
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "f3c24880af69f8e5c7d6b6c17ee116583137f979",
+      "at": "2026-04-30T23:11:29Z",
+      "workflowGitBlob": "697155e199e0c1062b65d9de0e0ddafacb56c855",
+      "taskSha256": "fb2c77bd63aea888411124eb70890cacc96373342038aa55d1a6c62c81d80960",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "d555622544af59f5fb656eb485ddf3a88c02948d",
+      "at": "2026-04-28T05:12:16Z",
+      "workflowGitBlob": "382a62faa66ea537cfe2561a8681e1c87a07d1d8",
+      "taskSha256": "3afd8f91aee4aa908d1f3d5c638c95969ad1886a272439de66945877171cbe95",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "cli-proxy": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "25fed92bcba25c4a0eb7765a29d05bec8f81ec3b",
+      "at": "2026-04-18T01:02:45Z",
+      "workflowGitBlob": "ac6453f339c232a19e63d8e150056b5305533038",
+      "taskSha256": "3afd8f91aee4aa908d1f3d5c638c95969ad1886a272439de66945877171cbe95",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "mount-as-clis": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ],
+        "features": {
+          "mcp-cli": true
+        }
+      }
+    },
+    {
+      "revision": "a22c643988ada8ef06d44ab9d6b7f4f1a9ad1629",
+      "at": "2026-04-16T19:54:20Z",
+      "workflowGitBlob": "46b3798a475f5649af8fe8920d1a19de7cebe3df",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "mount-as-clis": true,
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ],
+        "features": {
+          "mcp-cli": true
+        }
+      }
+    },
+    {
+      "revision": "69fd9ea957177b975197b41bab2f9feca6f341cf",
+      "at": "2026-04-16T00:09:36Z",
+      "workflowGitBlob": "fe31583f3f9330f03ec56c328450470c0e0fdd5e",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ],
+        "features": {
+          "mcp-cli": true
+        }
+      }
+    },
+    {
+      "revision": "ad056e58f8e50808e55bab01f18aadbd0847c155",
+      "at": "2026-04-14T16:56:50Z",
+      "workflowGitBlob": "3829593c1064c21ad45c141824b9ce2c505ae654",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "c816157bbd6053b70a81e00763298b272f4fe8cf",
+      "at": "2026-04-05T01:46:52Z",
+      "workflowGitBlob": "d8658324709b2fab6e34442eeb1ab563032d9749",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [
+        "shared/observability-otlp.md"
+      ],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10,
+        "imports": [
+          "shared/observability-otlp.md"
+        ]
+      }
+    },
+    {
+      "revision": "296262211b372a13b451ca9400369ac152db75d6",
+      "at": "2026-04-02T19:13:13Z",
+      "workflowGitBlob": "a45506e908f01425bf9c99aa971e86b925504126",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{effective_tokens_suffix}{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "be086b27a3619a6bfa5939cd1d92fd7ca76e5747",
+      "at": "2026-03-15T21:33:30Z",
+      "workflowGitBlob": "af689d422f06876966edc75f59191ee9cdf5234d",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-domains": [
+            "default-safe-outputs"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "e45ae5cd786aa0bfbf907306f7949859d060f419",
+      "at": "2026-03-15T18:34:32Z",
+      "workflowGitBlob": "be494d3520f859ec8f318dbd708d13dceb06b4ba",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "allowed-url-domains": [
+            "default-redaction"
+          ],
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "4dc2684ff140b371e372ec5c684497198c61b1dc",
+      "at": "2026-03-03T15:09:14Z",
+      "workflowGitBlob": "569de5833a22b886e707b9771c3c4b3903b6f877",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*{history_link}",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "fe2713ba4bb447a2e38905f4a47920531bc59cdd",
+      "at": "2026-02-24T04:25:20Z",
+      "workflowGitBlob": "ff60f03f351bd972e21632225d5d8cd79ffd14f3",
+      "taskSha256": "75aadfd54d090783dfd0849d3d9e9db86252dee9ba98c6d765ec118e0deea14c",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "8cb3b78bd9dbda56bd1e2caed0d97b95489b0840",
+      "at": "2026-02-24T03:10:10Z",
+      "workflowGitBlob": "8cf0465fe2359af3cd381cfc9e6e83a75d1c38d3",
+      "taskSha256": "a230da689852f613664e949842049d0fc828ef080b45df2da39adf11aa4242fd",
+      "era": "crlf",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *",
+            "printf *"
+          ]
+        },
+        "safe-outputs": {
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    },
+    {
+      "revision": "b58fd691e7da212fa79b9408b3aa0bfc69b00b24",
+      "at": "2026-02-21T02:35:50Z",
+      "workflowGitBlob": "4f6df82933bd0387a5a306d25062b96d2a9f3310",
+      "taskSha256": "85ca0ec4aaa1aed8005cb902d74b586183fd42b37bb87a4b0c73b6e3660d8059",
+      "era": "configuration",
+      "imports": [],
+      "frontmatter": {
+        "name": "Smoke Multi PR",
+        "description": "Test creating multiple pull requests in a single workflow run",
+        "on": {
+          "schedule": "every 24h",
+          "workflow_dispatch": null,
+          "pull_request": {
+            "types": [
+              "labeled"
+            ],
+            "names": [
+              "smoke-multi-pr"
+            ]
+          },
+          "reaction": "eyes",
+          "status-comment": true
+        },
+        "permissions": {
+          "contents": "read",
+          "pull-requests": "read"
+        },
+        "engine": "copilot",
+        "strict": true,
+        "network": {
+          "allowed": [
+            "defaults",
+            "node"
+          ]
+        },
+        "tools": {
+          "edit": null,
+          "bash": [
+            "date",
+            "echo *"
+          ]
+        },
+        "safe-outputs": {
+          "create-pull-request": {
+            "title-prefix": "[smoke-multi-pr] ",
+            "if-no-changes": "warn",
+            "labels": [
+              "ai-generated"
+            ],
+            "expires": "2h",
+            "max": 2
+          },
+          "add-comment": {
+            "hide-older-comments": true,
+            "max": 1
+          },
+          "messages": {
+            "append-only-comments": true,
+            "footer": "> 🧪 *Multi PR smoke test by [{workflow_name}]({run_url})*",
+            "run-started": "🧪 [{workflow_name}]({run_url}) is now testing multiple PR creation...",
+            "run-success": "✅ [{workflow_name}]({run_url}) successfully created multiple PRs.",
+            "run-failure": "❌ [{workflow_name}]({run_url}) failed to create multiple PRs. Check the logs."
+          }
+        },
+        "timeout-minutes": 10
+      }
+    }
+  ]
+}

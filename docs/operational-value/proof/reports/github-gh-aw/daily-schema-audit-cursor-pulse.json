@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-schema-audit-cursor",
+  "workflowName": "Daily Schema Consistency Audit",
+  "sourcePath": ".github/workflows/daily-schema-audit-cursor.md",
+  "valueFunctionSha256": "082ebb93e3b7811a601add0a8b08ba9a820cc7cfe9ff42983ca0d4f9228fec43",
+  "window": {
+    "startAt": "2026-08-07T19:10:33Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "unused-root-definitions",
+  "signal": {
+    "status": "steady",
+    "attention": "not-indicated",
+    "current": 0,
+    "previous": 0,
+    "directionAwareGain": 0,
+    "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+    "opportunities": 49,
+    "metricId": "unused-root-definitions",
+    "basis": "repository-outcome",
+    "unit": "definitions"
+  },
+  "metrics": [
+    {
+      "id": "unused-root-definitions",
+      "role": "primary",
+      "name": "Unreachable root schema definitions",
+      "unit": "definitions",
+      "direction": "decrease",
+      "formula": "Count root $defs entries not reachable from the evaluation root through applicable schema children and resolved local references.",
+      "presentation": {
+        "name": "Unreachable root schema definitions",
+        "legendLabel": "Unused definitions",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 49
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-08-14T19:10:33Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-08-14T19:10:33Z"
+        },
+        {
+          "at": "2026-08-21T19:10:33Z",
+          "value": 2,
+          "status": "complete",
+          "observedAt": "2026-08-21T19:10:33Z"
+        },
+        {
+          "at": "2026-08-28T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-28T19:10:33Z"
+        },
+        {
+          "at": "2026-09-04T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-04T19:10:33Z"
+        },
+        {
+          "at": "2026-09-11T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-11T19:10:33Z"
+        },
+        {
+          "at": "2026-09-18T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-18T19:10:33Z"
+        },
+        {
+          "at": "2026-09-25T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-25T19:10:33Z"
+        },
+        {
+          "at": "2026-10-02T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-02T19:10:33Z"
+        },
+        {
+          "at": "2026-10-09T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-09T19:10:33Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-16T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-16T19:10:33Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "unresolved-local-references",
+      "role": "diagnostic",
+      "name": "Unresolved local schema references",
+      "unit": "references",
+      "direction": "decrease",
+      "formula": "Count declared local $ref occurrences whose native JSON Pointer resolution is absent or does not target a valid Draft-7 schema object/boolean.",
+      "presentation": {
+        "name": "Unresolved local schema references",
+        "legendLabel": "Unresolved references",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "steady",
+        "attention": "not-indicated",
+        "current": 0,
+        "previous": 0,
+        "directionAwareGain": 0,
+        "reason": "Direction-aware comparison of comparable periods at arithmetic precision; descriptive, not statistical or causal.",
+        "opportunities": 49
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-08-14T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-14T19:10:33Z"
+        },
+        {
+          "at": "2026-08-21T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-21T19:10:33Z"
+        },
+        {
+          "at": "2026-08-28T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-08-28T19:10:33Z"
+        },
+        {
+          "at": "2026-09-04T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-04T19:10:33Z"
+        },
+        {
+          "at": "2026-09-11T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-11T19:10:33Z"
+        },
+        {
+          "at": "2026-09-18T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-18T19:10:33Z"
+        },
+        {
+          "at": "2026-09-25T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-09-25T19:10:33Z"
+        },
+        {
+          "at": "2026-10-02T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-02T19:10:33Z"
+        },
+        {
+          "at": "2026-10-09T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-09T19:10:33Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-16T19:10:33Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-16T19:10:33Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 0,
+          "status": "complete",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

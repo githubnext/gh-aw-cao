@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-model-resolution",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceReadiness": "workflow-imports-reviewed-native-producer-closure-incomplete",
+  "sourceReviewedApproval": false,
+  "contractFrozen": true,
+  "currentFacetFrozen": true,
+  "nativeInstrumentImplemented": true,
+  "nativeProducerImplemented": false,
+  "collectorInterfaceVerified": true,
+  "evaluationArtifactsGenerated": true,
+  "functionReady": false,
+  "nativeEvidenceReady": false,
+  "evaluationReady": false,
+  "nativePlotReady": false,
+  "adoption": {
+    "commit": "548c141635dc069a4d17f49f4342859dcc91baf3",
+    "adoptedAt": "2026-06-24T01:15:59Z",
+    "parent": "1b8bc51787713467a966e0c842672fb996763806",
+    "addition": "Source and compiled workflow absent in real parent tree; both present in adoption tree. Original contents subsequently supplied centrally and independently Git-SHA/SHA256 verified.",
+    "baseline": "unknown; reconstruction has not been exhausted"
+  },
+  "source": {
+    "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "path": ".github/workflows/daily-model-resolution.md",
+    "gitBlob": "3471ba651640eddacc0d18bab008bba570a347d6",
+    "sha256": "a07f8145b20b75cccb8c383d408b8cbfafbf0827ecc8328868d9fdcc649c18db",
+    "review": "Complete current and adoption workflow prose read, all direct imports and adoption noop-reminder runtime import read. Optional shared instructions absent at both revisions. Both compiled YAML job maps and relevant metadata, prompt, inline-model restore, execution and artifact producer steps reviewed. Protected producer transitive code/receipt decoder remains incomplete; this is not full source-reviewed native approval."
+  },
+  "proposalOnly": {
+    "goal": "Verify actual sub-agent model-size resolution against source declarations through independently bound api-proxy records.",
+    "notAcceptance": "The current explicit-size facet has been frozen separately in the module. Complete inherited-model and protected producer acceptance remain unresolved; the census proposal itself was not treated as an acceptance contract.",
+    "openSemantics": [
+      "Adoption source and compiled behavior now reviewed at the workflow/evidence-producer surface; intermediate historical source eras and protected producer decoder remain unverified.",
+      "Frozen top-level instructions compare inherited to parent aw_info; embedded analyzer calls inherited unknown. Preserve this disagreement until source review.",
+      "A per-run model histogram cannot bind a model to a child dispatch; parent requests do not establish child outcomes.",
+      "Naming-based model size classification is separate from capability, optimality and task correctness.",
+      "Determine authoritative child request/session identities and coverage from native producer semantics before accepting any observations."
+    ]
+  },
+  "results": {
+    "nativeDiagnostic": null,
+    "fullAcceptance": null,
+    "workflowContribution": null,
+    "costs": null,
+    "costStatus": "not measured",
+    "decision": "not rated",
+    "missingReason": "The frozen current-source classifier and identity checker are implemented, but no protected producer decoder or accepted native cohort exists. All 59 standard evaluation windows remain missing. The 92 lineage candidates are discovery only."
+  },
+  "verification": {
+    "collector": "actual --collector interface verification passed; this does not establish native evidence readiness",
+    "standardEvaluator": "ran offline through 2026-10-18T15:00:12Z; 59 production disjoint observation windows, all metrics null; plot is an unavailable-evidence projection, not a native measurement",
+    "hashManifest": "verification.json",
+    "focusedTests": "node --test tests/unit/daily-model-resolution-source.test.mjs"
+  },
+  "openScope": "Original three source requests resolved centrally. Native decoder/producer request and unknown historical eras remain open in native-producer-request.json. ESLint and TypeScript are not installed locally; installation is prohibited. No automatic acquisition or resumption."
+}

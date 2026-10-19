@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "workflow": "smoke-copilot-dynamic-workflow",
+  "status": "passed-with-explicit-native-evidence-gap",
+  "commands": [
+    {
+      "command": "CAO_DYNAMIC_OFFLINE=1 node scripts/collect-copilot-dynamic-workflow-value.mjs .operational-value-dynamic-private/source.git .operational-value-dynamic-private/api",
+      "result": "Passed. Complete retained source/caller closure and 50 candidate receipt inventories replayed without API calls."
+    },
+    {
+      "command": "node --test tests/unit/cao-operational-value-copilot-dynamic-workflow.test.mjs tests/unit/cao-operational-value-host-assertions.test.mjs tests/unit/cao-operational-value-smoke-native.test.mjs",
+      "result": "33 passed, zero failed or skipped; eight focused dynamic-workflow cases include actual retained acquisition, fail-closed missing evidence/source checks, and lossless original predecessor tar replay through digest-checked JSON parts."
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/smoke-copilot-dynamic-workflow.mjs",
+      "result": "Passed."
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/evaluate.mjs --root CHECKOUT --end 2026-10-18T15:00:12Z --refresh --output-dir docs/operational-value/proof/reports --function docs/operational-value/proof/functions/smoke-copilot-dynamic-workflow.mjs github/gh-aw smoke-copilot-dynamic-workflow",
+      "result": "Passed. Three explicit unavailable assessments; both native metric series remain null. Refresh changed acquisition provenance, not the outcome formula or an accepted measurement."
+    },
+    {
+      "command": "node .github/skills/add-operational-value/scripts/validate-report-artifacts.mjs docs/operational-value/proof/reports/github-gh-aw/smoke-copilot-dynamic-workflow-timeline.json docs/operational-value/proof/reports/github-gh-aw/smoke-copilot-dynamic-workflow-definitions.md",
+      "result": "Passed."
+    },
+    {
+      "command": "npx eslint scripts/copilot-dynamic-workflow-value.mjs scripts/collect-copilot-dynamic-workflow-value.mjs docs/operational-value/proof/functions/smoke-copilot-dynamic-workflow.mjs",
+      "result": "Passed."
+    },
+    {
+      "command": "npm run typecheck:cao",
+      "result": "Passed."
+    },
+    {
+      "command": "npm run compile",
+      "result": "72 workflows compiled successfully with --strict --no-emit --no-check-update --schedule-seed githubnext/gh-aw-cao. Two unrelated existing action-version warnings."
+    },
+    {
+      "command": "npm run docs:build",
+      "result": "Passed Astro build, agent documentation validation and external-agent discovery integration test."
+    }
+  ],
+  "portablePredecessor": {
+    "wrapper": "versions/pre-package-binding-hardening.json",
+    "decodedTarSha256": "b18e5c95dedba5d50845215ad89d37dd21c6595fdb971b8852ec0280eb205316",
+    "decodedTarBytes": 6534421,
+    "parts": 45,
+    "largestPartBytes": 186209,
+    "perFileLimitBytes": 262144,
+    "currentFrozenFunctionUnchanged": true
+  },
+  "nativeRuntimeExecution": {
+    "performed": false,
+    "reason": "No dispatch, remote writes or paid replacement execution was authorized. Unit-test projections do not establish real native invocation."
+  },
+  "acceptance": {
+    "functionAndCollector": "validated",
+    "sourceAndCandidateInventory": "complete",
+    "independentRuntimeReceipt": "unavailable",
+    "fullNativeOutcome": null,
+    "measuredCoverage": false
+  }
+}

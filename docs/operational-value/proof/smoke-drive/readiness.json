@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "workflow": "smoke-drive",
+  "contract": {
+    "status": "frozen",
+    "sourceGrounded": true,
+    "sameRunAndDurablePersistenceSeparated": true,
+    "historicalInterpretation": "Explicit same-source retrospective reconstruction, not an ex-ante historical rule."
+  },
+  "acquisition": {
+    "status": "retained-selected-native-originals",
+    "directCandidates": 25,
+    "bidirectionalClosureEntities": 37,
+    "absentReferences": 0,
+    "originalHistoryEntitiesVerified": 58048,
+    "originalHistoryPartitionsVerified": 346,
+    "nativeAttemptsRetained": 2,
+    "completeExecutionCensus": false
+  },
+  "nativeMeasurement": {
+    "status": "source-bound-negative-cases-verified",
+    "sameRunAttainmentsInRetainedAttempts": 0,
+    "fullGoalAttainmentsInRetainedAttempts": 0,
+    "reason": "Protected drive-service permission denial prevented both agents from starting.",
+    "crossRunPersistence": null,
+    "repositoryGitLogAccess": null,
+    "positiveDeliveryClaim": null,
+    "missingEvidence": "No independently accepted producer write, restored state receipt or agent command execution in either selected attempt."
+  },
+  "history": {
+    "status": "actual-introduction-and-real-parent-verified",
+    "actualAdoption": {
+      "commit": "bc565025e57baa1395065fb45c19f3d2b235c4a0",
+      "at": "2026-08-22T13:21:39Z"
+    },
+    "baseline": {
+      "commit": "01fb3b77f0e9478f91653232d2d89680dfad6678",
+      "at": "2026-08-22T13:16:02Z",
+      "nativeOutcome": null
+    },
+    "recentComparableMovement": null,
+    "missingReason": "Partial selected current period and missing immediately preceding native period. No pre-adoption outcome baseline is invented.",
+    "sourceEraCoverage": "Exact-head source, both imports and compiled originals support the two October cases. Older run metadata is retained but is not native-outcome evidence or proof of unchanged goal semantics."
+  },
+  "standardInterface": {
+    "schemaVersion": 3,
+    "collector": "passed actual --collector verification",
+    "evaluation": "passed actual offline --refresh at 2026-10-18T15:00:12Z",
+    "periods": 9,
+    "timeline": "reports/github-gh-aw/smoke-drive-timeline.json",
+    "pulse": "reports/github-gh-aw/smoke-drive-pulse.html",
+    "versioning": "Function pins acceptance, Git lineage proof and native oracle hashes. A changed dependency requires an explicit function-version change.",
+    "predecessors": "Unresolved adoption, original standard rejection, initial reports and module predecessor are preserved additively."
+  },
+  "publication": {
+    "status": "offline-case-study-only",
+    "continuousCollection": "not deployed",
+    "remoteMemoryWrites": "not authorized or performed",
+    "cost": "not measured",
+    "keep": "not rated"
+  },
+  "skillImprovement": "Freeze separate memory-test facets: exact same-run bytes, independently restored prior bytes, actual git-log result, and reporting. A protected not-started receipt plus skipped execution and failed mount proves no execution in that attempt, not lost or correct persistent state."
+}

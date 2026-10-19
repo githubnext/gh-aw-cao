@@ -1,0 +1,419 @@
+[
+  {
+    "manifest": {
+      "bytes": 9287,
+      "sha256": "b029a2cbb3933e012e7aaf33208115d5606301299f671461a626071d9645758b",
+      "parts": [
+        {
+          "file": "originals/b029a2cbb3933e012e7aaf33208115d5606301299f671461a626071d9645758b-0.gz",
+          "bytes": 2144,
+          "sha256": "826ad5dc525ebb05a2f839ce81267d8c89aef85c0d17fcf98956561262f25fa0"
+        }
+      ]
+    },
+    "receipts": [
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/runs/39091097441",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:44:12.750Z",
+        "receivedAt": "2026-10-19T11:44:13.103Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "date": "Mon, 19 Oct 2026 11:44:13 GMT",
+          "etag": "W/\"b2c3929d3d19c685d4c53f295c8883997ca0df45fae67a82251c33cdbb5a42f9\"",
+          "x-github-request-id": "F53E:21D439:DD97A:1478D1:6AD6028C",
+          "x-ratelimit-limit": "15000",
+          "x-ratelimit-remaining": "10122",
+          "x-ratelimit-reset": "1792411043",
+          "x-ratelimit-resource": "core"
+        },
+        "file": "4f3b84f01e5343271b7baa4e7ebab784d207d0a5f98a355fc16cd749c5a3f01c.json",
+        "bytes": 11701,
+        "sha256": "ac52d1bfc43e45d1c050b4e8222fb1da0794dddaabbff9ecd9e4e7f7e59b158a",
+        "manifestIndex": 4,
+        "originals": {
+          "file": {
+            "bytes": 11701,
+            "sha256": "ac52d1bfc43e45d1c050b4e8222fb1da0794dddaabbff9ecd9e4e7f7e59b158a",
+            "parts": [
+              {
+                "file": "originals/ac52d1bfc43e45d1c050b4e8222fb1da0794dddaabbff9ecd9e4e7f7e59b158a-0.gz",
+                "bytes": 1738,
+                "sha256": "92268f0020cbf2b139bf6b237b470232c755c18c14a5c80e930ca9686eb99288"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/runs/39091097441/artifacts?per_page=100",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:44:14.705Z",
+        "receivedAt": "2026-10-19T11:44:15.100Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "date": "Mon, 19 Oct 2026 11:44:15 GMT",
+          "etag": "W/\"56deb32734f164f74c8bbf3c4ee8bfb350fa6b439c2a2ff4a76beaac1083b496\"",
+          "x-github-request-id": "F55C:21D439:DF267:149D2D:6AD6028E",
+          "x-ratelimit-limit": "15000",
+          "x-ratelimit-remaining": "10120",
+          "x-ratelimit-reset": "1792411043",
+          "x-ratelimit-resource": "core"
+        },
+        "file": "64ddaf1a045ab399a83c9049b4b4755c8474c63895f714b98d7b1e348d5d91f9.json",
+        "bytes": 4151,
+        "sha256": "f5f64dcabb5092cdbfe802e9f4f7398c66334db78e1284944f72779745e915c5",
+        "manifestIndex": 5,
+        "originals": {
+          "file": {
+            "bytes": 4151,
+            "sha256": "f5f64dcabb5092cdbfe802e9f4f7398c66334db78e1284944f72779745e915c5",
+            "parts": [
+              {
+                "file": "originals/f5f64dcabb5092cdbfe802e9f4f7398c66334db78e1284944f72779745e915c5-0.gz",
+                "bytes": 896,
+                "sha256": "0f14e86e150da6758c21b23953ce5ee31e38120cfefc5b862d3ecf01d9d8f5c2"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/runs/39046729028",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:44:16.702Z",
+        "receivedAt": "2026-10-19T11:44:17.166Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "date": "Mon, 19 Oct 2026 11:44:17 GMT",
+          "etag": "W/\"12217565a7740b19a1c396afc359a3bb9fffefac0bde4aa51aa0e6c59aa14135\"",
+          "x-github-request-id": "E875:A0569:105725:17A2DB:6AD60290",
+          "x-ratelimit-limit": "15000",
+          "x-ratelimit-remaining": "10119",
+          "x-ratelimit-reset": "1792411043",
+          "x-ratelimit-resource": "core"
+        },
+        "file": "a16ee39770957f6a57cedd9fcec19b60c13163dc4e30869e3d6963656d395502.json",
+        "bytes": 11997,
+        "sha256": "d95cc97a4f57fa94e5da74c18f0f1076f22b9dba8e9d2d9ee294b40ce6fd2ff7",
+        "manifestIndex": 6,
+        "originals": {
+          "file": {
+            "bytes": 11997,
+            "sha256": "d95cc97a4f57fa94e5da74c18f0f1076f22b9dba8e9d2d9ee294b40ce6fd2ff7",
+            "parts": [
+              {
+                "file": "originals/d95cc97a4f57fa94e5da74c18f0f1076f22b9dba8e9d2d9ee294b40ce6fd2ff7-0.gz",
+                "bytes": 1715,
+                "sha256": "bf7ef5a35d586e6f64e08ad5d85a8bb7be503e2b5882b9a3f9d31ef5f0e23393"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/runs/39046729028/artifacts?per_page=100",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:44:18.768Z",
+        "receivedAt": "2026-10-19T11:44:19.260Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "date": "Mon, 19 Oct 2026 11:44:19 GMT",
+          "etag": "W/\"9eaa3f94a53ed1de0681201db9b9555d88f79309940722b356c9d9d9c4e0a505\"",
+          "x-github-request-id": "FCE6:1DBA9D:103389:176AAB:6AD60292",
+          "x-ratelimit-limit": "15000",
+          "x-ratelimit-remaining": "10118",
+          "x-ratelimit-reset": "1792411043",
+          "x-ratelimit-resource": "core"
+        },
+        "file": "eabcc95b4f9b286af14d02371310b0fad2b8be43f3ad36e063615bb15a845358.json",
+        "bytes": 4158,
+        "sha256": "453146354a391a0bbd9d200a9cd4324fd981ac55eca35cb5d3397111aeedfe0e",
+        "manifestIndex": 7,
+        "originals": {
+          "file": {
+            "bytes": 4158,
+            "sha256": "453146354a391a0bbd9d200a9cd4324fd981ac55eca35cb5d3397111aeedfe0e",
+            "parts": [
+              {
+                "file": "originals/453146354a391a0bbd9d200a9cd4324fd981ac55eca35cb5d3397111aeedfe0e-0.gz",
+                "bytes": 902,
+                "sha256": "cb90ebf7904d126caab2f94efba320f32f0676e659e0ea003993e772d2252cdf"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/runs/38995408127",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:44:20.862Z",
+        "receivedAt": "2026-10-19T11:44:21.359Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "date": "Mon, 19 Oct 2026 11:44:21 GMT",
+          "etag": "W/\"7f86490e654ab4fb648b41a4c2ae67eab466b7b27b17c5aacdc501c0e173bca3\"",
+          "x-github-request-id": "ED27:309620:EFF56:15F1F1:6AD60294",
+          "x-ratelimit-limit": "15000",
+          "x-ratelimit-remaining": "10117",
+          "x-ratelimit-reset": "1792411043",
+          "x-ratelimit-resource": "core"
+        },
+        "file": "2d0bb1a6aebc21c3fe06b5faec7782a8614f1b3f0f0bd19db5657e6d8f23993d.json",
+        "bytes": 11697,
+        "sha256": "4d2d75e2c4d0ec610e7ce3a62e9b28c90851fd0282f4de463b9d994c8656e302",
+        "manifestIndex": 8,
+        "originals": {
+          "file": {
+            "bytes": 11697,
+            "sha256": "4d2d75e2c4d0ec610e7ce3a62e9b28c90851fd0282f4de463b9d994c8656e302",
+            "parts": [
+              {
+                "file": "originals/4d2d75e2c4d0ec610e7ce3a62e9b28c90851fd0282f4de463b9d994c8656e302-0.gz",
+                "bytes": 1721,
+                "sha256": "e2bcf115106233cb587fe5992b3c153362f36a0c5ad870db687599a16f2d64e5"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/runs/38995408127/artifacts?per_page=100",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:44:22.961Z",
+        "receivedAt": "2026-10-19T11:44:23.351Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "date": "Mon, 19 Oct 2026 11:44:23 GMT",
+          "etag": "W/\"b992bc67ff20f5e407797422e467ad65878842b7edf0a4e3b1719f6d9f683762\"",
+          "x-github-request-id": "EB35:F895:12BA54:1B186E:6AD60297",
+          "x-ratelimit-limit": "15000",
+          "x-ratelimit-remaining": "10116",
+          "x-ratelimit-reset": "1792411043",
+          "x-ratelimit-resource": "core"
+        },
+        "file": "4f0df5f551c9f0e3aab598fd7adf3daf4ee2c44c604666e63a6d48d1415b9a27.json",
+        "bytes": 4151,
+        "sha256": "e69b4fb6c849064d3ccf1931821eb4a43572fba45e1eacbae811fabf6d0ba1fa",
+        "manifestIndex": 9,
+        "originals": {
+          "file": {
+            "bytes": 4151,
+            "sha256": "e69b4fb6c849064d3ccf1931821eb4a43572fba45e1eacbae811fabf6d0ba1fa",
+            "parts": [
+              {
+                "file": "originals/e69b4fb6c849064d3ccf1931821eb4a43572fba45e1eacbae811fabf6d0ba1fa-0.gz",
+                "bytes": 900,
+                "sha256": "9c9b7ab2eacd644f51cfb7a521efe41e4fd28939b211085c2e3e3f0b2456952b"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "manifest": {
+      "bytes": 7098,
+      "sha256": "33e97a67b4c74252e39dbe2ab26961d7cb9bfd8c47da38cd91800357d84b8783",
+      "parts": [
+        {
+          "file": "originals/33e97a67b4c74252e39dbe2ab26961d7cb9bfd8c47da38cd91800357d84b8783-0.gz",
+          "bytes": 1817,
+          "sha256": "f750580a7e4e10f8e3e5e6bf7f8e23d672eebb2d63bd482ac557b425b167e378"
+        }
+      ]
+    },
+    "receipts": [
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/runs/39091097441/attempts/1/jobs?per_page=100",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:45:52.698Z",
+        "receivedAt": "2026-10-19T11:45:53.672Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "date": "Mon, 19 Oct 2026 11:45:53 GMT",
+          "etag": "W/\"68bcd9b4b072927de52f769b03113a8ce04edad9e97c04fb28f249172afa52ff\"",
+          "x-github-request-id": "F18B:5B367:159E69:1F1E04:6AD602F0",
+          "x-ratelimit-limit": "15000",
+          "x-ratelimit-remaining": "10104",
+          "x-ratelimit-reset": "1792411043",
+          "x-ratelimit-resource": "core"
+        },
+        "file": "917c8d895469040ef5849afb1b32a62612cd224677bf72582d7bd0d76b4cc6b7.json",
+        "bytes": 33562,
+        "sha256": "20608b67458d5567607763db65d99c84f4103fc47bbbdf853f73094de1bd44a8",
+        "manifestIndex": 6,
+        "originals": {
+          "file": {
+            "bytes": 33562,
+            "sha256": "20608b67458d5567607763db65d99c84f4103fc47bbbdf853f73094de1bd44a8",
+            "parts": [
+              {
+                "file": "originals/20608b67458d5567607763db65d99c84f4103fc47bbbdf853f73094de1bd44a8-0.gz",
+                "bytes": 3450,
+                "sha256": "371874ee8c4d37a3bf5ce20e5c7a92b289ea200adab3daa0a9a803fd534fd209"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/runs/39091097441/attempts/1/logs",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:45:55.275Z",
+        "receivedAt": "2026-10-19T11:45:56.599Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/zip",
+          "date": "Mon, 19 Oct 2026 11:45:56 GMT",
+          "x-github-request-id": "F1E0:147923:5A1B5:67DE9:6AD602F3"
+        },
+        "file": "02f0cd19c258e25a408a9a8e7181102678b2960f035dc6e2b087e2979023a5a6.zip",
+        "bytes": 210554,
+        "sha256": "9e6893fcc76aaca26d0e8a161576df8d287febfa3376fb6a5a8669f0b8d32b27",
+        "manifestIndex": 7,
+        "originals": {
+          "file": {
+            "bytes": 210554,
+            "sha256": "9e6893fcc76aaca26d0e8a161576df8d287febfa3376fb6a5a8669f0b8d32b27",
+            "parts": [
+              {
+                "file": "originals/9e6893fcc76aaca26d0e8a161576df8d287febfa3376fb6a5a8669f0b8d32b27-0.gz",
+                "bytes": 196377,
+                "sha256": "7b9eee6f0cb922d374ec27868576800cc6edcb0eefd2f158e220c42f7af0511f"
+              },
+              {
+                "file": "originals/9e6893fcc76aaca26d0e8a161576df8d287febfa3376fb6a5a8669f0b8d32b27-1.gz",
+                "bytes": 13428,
+                "sha256": "1f4c9ba45c4dc4771bcce04d6bfed285e3e26d8cd48cc39d2eeab32e56c20dcc"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/actions/artifacts/12122926422/zip",
+        "digest": "sha256:382633b2d169faf23c913206c5638d7d379afdfddc6f3f8a194f4e1c3b04bd5f",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:45:58.201Z",
+        "receivedAt": "2026-10-19T11:45:59.658Z",
+        "status": 200,
+        "headers": {
+          "content-length": "350255",
+          "content-type": "application/zip",
+          "date": "Mon, 19 Oct 2026 11:45:58 GMT",
+          "etag": "\"0x8DF2CC207F5E972\""
+        },
+        "file": "dcf297390384f4db328e6f1c9ed577012748c5b0fd662a885f58cc9338212cae.zip",
+        "bytes": 350255,
+        "sha256": "382633b2d169faf23c913206c5638d7d379afdfddc6f3f8a194f4e1c3b04bd5f",
+        "manifestIndex": 8,
+        "originals": {
+          "file": {
+            "bytes": 350255,
+            "sha256": "382633b2d169faf23c913206c5638d7d379afdfddc6f3f8a194f4e1c3b04bd5f",
+            "parts": [
+              {
+                "file": "originals/382633b2d169faf23c913206c5638d7d379afdfddc6f3f8a194f4e1c3b04bd5f-0.gz",
+                "bytes": 195194,
+                "sha256": "32592ab57f44bf8c9eb523d04b379b9bb536e51f4c3f1526eedacc64c5625421"
+              },
+              {
+                "file": "originals/382633b2d169faf23c913206c5638d7d379afdfddc6f3f8a194f4e1c3b04bd5f-1.gz",
+                "bytes": 150471,
+                "sha256": "e2248c161fcf16280ae4f5e69eef98fc4db03b7f6e13bd25f82c3e335d4bf132"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "manifest": {
+      "bytes": 3907,
+      "sha256": "825e56e9be709b20f73e1a9125ef322af19473e0eaf08066b09921654987cc90",
+      "parts": [
+        {
+          "file": "originals/825e56e9be709b20f73e1a9125ef322af19473e0eaf08066b09921654987cc90-0.gz",
+          "bytes": 1136,
+          "sha256": "5bb4c69b82be4069b6ff4acf7576ee81f66f4dbef0685a5ff88e10c18ff7dc99"
+        }
+      ]
+    },
+    "receipts": [
+      {
+        "workflow": "smoke-copilot-small",
+        "endpoint": "repos/github/gh-aw/git/blobs/26cce08b22a4760fc38dd53cdd0e8efcd86bba97",
+        "sha": "26cce08b22a4760fc38dd53cdd0e8efcd86bba97",
+        "method": "GET",
+        "startedAt": "2026-10-19T11:47:14.473Z",
+        "receivedAt": "2026-10-19T11:47:15.068Z",
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "date": "Mon, 19 Oct 2026 11:47:14 GMT",
+          "etag": "W/\"8de31fd564a9aae793f40e6caa739e3a72ec9faf3a920cd7105542fa91350c21\"",
+          "x-github-request-id": "F8BA:1DBA9D:186EE3:23730B:6AD60342",
+          "x-ratelimit-limit": "15000",
+          "x-ratelimit-remaining": "11101",
+          "x-ratelimit-reset": "1792410880",
+          "x-ratelimit-resource": "core"
+        },
+        "bodyBytes": 216244,
+        "bodySha256": "ddecdab7408b2ba1b614d2922e8a55237232d5957c7474b179139441f85d2e3c",
+        "response": "26cce08b22a4760fc38dd53cdd0e8efcd86bba97.response.json",
+        "blobBytes": 156745,
+        "blobSha256": "532aee5c68579063171f813661419f1dd58066edddb3ca8c23617e5625b857d1",
+        "blob": "26cce08b22a4760fc38dd53cdd0e8efcd86bba97.blob",
+        "manifestIndex": 0,
+        "originals": {
+          "response": {
+            "bytes": 216244,
+            "sha256": "ddecdab7408b2ba1b614d2922e8a55237232d5957c7474b179139441f85d2e3c",
+            "parts": [
+              {
+                "file": "originals/ddecdab7408b2ba1b614d2922e8a55237232d5957c7474b179139441f85d2e3c-0.gz",
+                "bytes": 57382,
+                "sha256": "b7f098424a13232c40058106ba668e433158d22552cbc9212b6c4aa2f1049956"
+              },
+              {
+                "file": "originals/ddecdab7408b2ba1b614d2922e8a55237232d5957c7474b179139441f85d2e3c-1.gz",
+                "bytes": 7558,
+                "sha256": "5a47be8e5a9522dfad354c77e5ab4ac88e1cab1de27c064c5147e57615a41db7"
+              }
+            ]
+          },
+          "blob": {
+            "bytes": 156745,
+            "sha256": "532aee5c68579063171f813661419f1dd58066edddb3ca8c23617e5625b857d1",
+            "parts": [
+              {
+                "file": "originals/532aee5c68579063171f813661419f1dd58066edddb3ca8c23617e5625b857d1-0.gz",
+                "bytes": 28843,
+                "sha256": "a27d10005586ff0b4cc725171e02b2b2696dec61e4cc4979d7be94537dce061d"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+]

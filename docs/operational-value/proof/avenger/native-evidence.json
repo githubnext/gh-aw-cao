@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "avenger-native-ci-repairs",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "observedAt": "2026-10-18T15:00:12Z",
+  "conditions": [],
+  "repairs": [],
+  "introduced": [],
+  "receipts": [],
+  "coverage": [],
+  "missingReason": "Offline discovery history supplies issue/PR identities and editable run references, not original native failure, required-check policy, immutable landing, unchanged exercised pass, introduced-defect assessment or independent contribution receipts. No native observation is accepted, no zero is inferred, and acquisition is not exhausted."
+}

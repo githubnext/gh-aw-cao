@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-work-queue-formal-verification",
+  "workflowName": "Daily Work Queue Formal Verification",
+  "sourcePath": ".github/workflows/daily-work-queue-formal-verification.md",
+  "valueFunctionSha256": "7e80db18e5ecbf52acd8cce52591ca27ab777f09281bc8c319720a4a02ee8cde",
+  "window": {
+    "startAt": "2026-10-08T14:35:14Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "explored-states",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": 196955486,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "explored-states",
+    "basis": "repository-outcome",
+    "unit": "configuration-states"
+  },
+  "metrics": [
+    {
+      "id": "explored-states",
+      "role": "primary",
+      "name": "Largest bounded search per configuration",
+      "unit": "configuration-states",
+      "direction": "increase",
+      "formula": "Sum the largest observed distinct-state counts for the two fixed configurations; count shared states separately by configuration.",
+      "presentation": {
+        "name": "Largest bounded search per configuration",
+        "legendLabel": "Bounded search states",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 196955486,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-08T14:35:14Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-15T14:35:14Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-15T14:35:14Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 196955486,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "exhausted-configurations",
+      "role": "diagnostic",
+      "name": "Exhausted fixed configurations",
+      "unit": "configurations",
+      "direction": "increase",
+      "formula": "Count configurations with an independently confirmed zero-queue, no-error native exhaustion, separately from partial exploration.",
+      "presentation": {
+        "name": "Exhausted fixed configurations",
+        "legendLabel": "Exhausted configurations",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 1,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-08T14:35:14Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-15T14:35:14Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-15T14:35:14Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 1,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

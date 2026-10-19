@@ -1,0 +1,574 @@
+{
+  "repository": "github/gh-aw",
+  "workflowName": "Engine Conformance kiro",
+  "adoptionAt": "2026-10-03T18:10:37Z",
+  "evaluationMode": "attainment-only",
+  "window": {
+    "startAt": "2026-10-03T18:10:37Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "evidenceCoverage": {
+    "completeFromAdoption": false,
+    "hasPreAdoptionBaseline": false,
+    "baselineDescription": "No pre-adoption comparison is included; observations begin at adoption.",
+    "reason": "No comparable pre-adoption outcome evaluation is established for this contract."
+  },
+  "runs": [],
+  "caveat": "The evidence measures post-adoption attainment only; without a comparable pre-adoption baseline it cannot establish improvement or causation.",
+  "schemaVersion": 3,
+  "definitionSchemaVersion": 3,
+  "generatedAt": "2026-10-18T16:33:36Z",
+  "workflowSlug": "engine-conformance-kiro",
+  "sourcePath": ".github/workflows/engine-conformance-kiro.md",
+  "valueFunction": {
+    "path": "docs/operational-value/proof/functions/engine-conformance-kiro.mjs",
+    "sha256": "5a4a5f99a52f6da91adb5b4a9f9b814f76a7f7fd7f9a39bf15e721f1a733b070",
+    "definition": {
+      "schemaVersion": 3,
+      "slug": "engine-conformance-kiro",
+      "repository": "github/gh-aw",
+      "workflowName": "Engine Conformance kiro",
+      "sourcePath": ".github/workflows/engine-conformance-kiro.md",
+      "intent": {
+        "goal": "Verify kiro's configured file, inference, shell/environment and production MCP capabilities through independent host assertions.",
+        "acceptance": "Five stable host-checked behavioral cases match protected fixture/receipt expectations. Count observed behavior, not workflow/job/agent success or the agent's completion claim.",
+        "temporalAnchor": "workflow-adoption"
+      },
+      "adoption": {
+        "commit": "a4cd539c00675ff60b56934e9dc66153cb88aab1",
+        "adoptedAt": "2026-10-03T18:10:37Z",
+        "baselineCommit": "1a62fa28ef5d2339aa1d62c7dbf20e6767b8a8b6",
+        "baselineAt": "2026-10-03T18:09:18Z"
+      },
+      "evaluation": {
+        "mode": "attainment-only"
+      },
+      "evidence": {
+        "key": "engine-host-core-five-v1",
+        "repositories": [
+          "github/gh-aw"
+        ],
+        "opportunity": "Five stable behavioral probe cases per actual conformance assessment on the frozen mainline history.",
+        "filters": [
+          "Only protected host assertions from an approved immutable checker script are accepted.",
+          "Agent execution and fixture checks are admission/context, never numerator outcomes.",
+          "Incomplete run inventories, expired evidence, incompatible scripts or failed admission remain unknown, not zero conformance.",
+          "The later staged-safe-output probe and engine-native extensions are not silently folded into the stable five-case series."
+        ],
+        "collection": "Replay normalized bounded Actions attempt evidence. Acquisition and host-script verification happen separately, never per evaluation window.",
+        "measurementKind": "interval",
+        "window": {
+          "durationDays": 7,
+          "cadenceDays": 7,
+          "maturationDays": 0
+        }
+      },
+      "model": {
+        "architecture": "The same five independently asserted behavioral cases across reviewed immutable checker versions.",
+        "recommendation": "Interpret conformance as observed configuration condition, not exclusive workflow impact; no keep/retire threshold is inferred.",
+        "presentation": {
+          "label": "Host-verified engine conformance",
+          "betterLabel": "More required behaviors independently conform"
+        }
+      },
+      "summary": {
+        "nativeLabel": "Host-verified core behavioral conformance"
+      },
+      "metrics": [
+        {
+          "id": "core-conformance",
+          "name": "Host-verified core conformance",
+          "role": "primary",
+          "formula": "100 * passed stable behavioral cases / assessed stable behavioral cases in complete admitted assessments",
+          "unit": "percent",
+          "direction": "increase",
+          "presentation": {
+            "name": "Core behavioral conformance",
+            "legendLabel": "Verified conformance",
+            "transform": "identity"
+          }
+        },
+        {
+          "id": "verified-probes",
+          "name": "Independently verified behavioral cases",
+          "role": "diagnostic",
+          "formula": "count actual independently asserted stable behavioral cases, whether passing or failing; not successful runs",
+          "unit": "probes",
+          "direction": "increase",
+          "presentation": {
+            "name": "Independently verified cases",
+            "legendLabel": "Behavioral cases",
+            "transform": "identity"
+          }
+        },
+        {
+          "id": "observed-core-passes",
+          "name": "Observed independently proven core behaviors",
+          "role": "diagnostic",
+          "formula": "count protected host behavioral assertions that demonstrably pass; preserve this observed subtotal when other attempts are unknown",
+          "unit": "probes",
+          "direction": "increase",
+          "presentation": {
+            "name": "Observed core behavior proofs",
+            "legendLabel": "Proven behaviors",
+            "transform": "identity"
+          }
+        }
+      ],
+      "signal": {
+        "metricId": "observed-core-passes",
+        "basis": "workflow-contribution"
+      },
+      "validationExamples": {
+        "targetAttained": {
+          "valid": true,
+          "observedValid": true,
+          "assessments": [
+            {
+              "id": "fixture-0",
+              "passed": [
+                true,
+                true,
+                true,
+                true,
+                true
+              ]
+            },
+            {
+              "id": "fixture-1",
+              "passed": [
+                true,
+                true,
+                true,
+                true,
+                true
+              ]
+            }
+          ],
+          "observedAssessments": [
+            {
+              "id": "fixture-0",
+              "passed": [
+                true,
+                true,
+                true,
+                true,
+                true
+              ]
+            },
+            {
+              "id": "fixture-1",
+              "passed": [
+                true,
+                true,
+                true,
+                true,
+                true
+              ]
+            }
+          ]
+        },
+        "targetMissed": {
+          "valid": true,
+          "observedValid": true,
+          "assessments": [
+            {
+              "id": "fixture-0",
+              "passed": [
+                false,
+                false,
+                false,
+                false,
+                false
+              ]
+            }
+          ],
+          "observedAssessments": [
+            {
+              "id": "fixture-0",
+              "passed": [
+                false,
+                false,
+                false,
+                false,
+                false
+              ]
+            }
+          ]
+        },
+        "missing": {
+          "valid": false
+        },
+        "malformed": {
+          "valid": true,
+          "assessments": [
+            {
+              "id": "bad",
+              "passed": [
+                "true"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "metricReview": {
+    "comparisonPolicy": "adjacent-period-v1",
+    "architecture": "The same five independently asserted behavioral cases across reviewed immutable checker versions.",
+    "recommendation": "Interpret conformance as observed configuration condition, not exclusive workflow impact; no keep/retire threshold is inferred.",
+    "presentation": {
+      "label": "Host-verified engine conformance",
+      "betterLabel": "More required behaviors independently conform"
+    },
+    "metrics": [
+      {
+        "id": "core-conformance",
+        "name": "Host-verified core conformance",
+        "role": "primary",
+        "formula": "100 * passed stable behavioral cases / assessed stable behavioral cases in complete admitted assessments",
+        "unit": "percent",
+        "direction": "increase",
+        "presentation": {
+          "name": "Core behavioral conformance",
+          "legendLabel": "Verified conformance",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "currentValue": null,
+        "recentComparison": {
+          "status": "unavailable",
+          "reason": "The immediately preceding equal-duration period is unavailable.",
+          "referenceWindow": null,
+          "currentWindow": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "referenceValue": null,
+          "currentValue": null,
+          "nativeDelta": null,
+          "directionAwareGain": null,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": null
+        },
+        "adoptionComparison": {
+          "status": "unavailable",
+          "reason": "No accepted reference before adoption.",
+          "referenceWindow": null,
+          "currentWindow": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "referenceValue": null,
+          "currentValue": null,
+          "nativeDelta": null,
+          "directionAwareGain": null,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": null
+        }
+      },
+      {
+        "id": "verified-probes",
+        "name": "Independently verified behavioral cases",
+        "role": "diagnostic",
+        "formula": "count actual independently asserted stable behavioral cases, whether passing or failing; not successful runs",
+        "unit": "probes",
+        "direction": "increase",
+        "presentation": {
+          "name": "Independently verified cases",
+          "legendLabel": "Behavioral cases",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "currentValue": null,
+        "recentComparison": {
+          "status": "unavailable",
+          "reason": "The immediately preceding equal-duration period is unavailable.",
+          "referenceWindow": null,
+          "currentWindow": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "referenceValue": null,
+          "currentValue": null,
+          "nativeDelta": null,
+          "directionAwareGain": null,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": null
+        },
+        "adoptionComparison": {
+          "status": "unavailable",
+          "reason": "No accepted reference before adoption.",
+          "referenceWindow": null,
+          "currentWindow": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "referenceValue": null,
+          "currentValue": null,
+          "nativeDelta": null,
+          "directionAwareGain": null,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": null
+        }
+      },
+      {
+        "id": "observed-core-passes",
+        "name": "Observed independently proven core behaviors",
+        "role": "diagnostic",
+        "formula": "count protected host behavioral assertions that demonstrably pass; preserve this observed subtotal when other attempts are unknown",
+        "unit": "probes",
+        "direction": "increase",
+        "presentation": {
+          "name": "Observed core behavior proofs",
+          "legendLabel": "Proven behaviors",
+          "transform": "identity"
+        },
+        "status": "unevaluated",
+        "currentValue": null,
+        "recentComparison": {
+          "status": "unavailable",
+          "reason": "The immediately preceding equal-duration period is unavailable.",
+          "referenceWindow": null,
+          "currentWindow": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "referenceValue": null,
+          "currentValue": null,
+          "nativeDelta": null,
+          "directionAwareGain": null,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": null
+        },
+        "adoptionComparison": {
+          "status": "unavailable",
+          "reason": "No accepted reference before adoption.",
+          "referenceWindow": null,
+          "currentWindow": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "referenceValue": null,
+          "currentValue": null,
+          "nativeDelta": null,
+          "directionAwareGain": null,
+          "referenceDenominator": null,
+          "currentDenominator": null,
+          "populationChanged": null
+        }
+      }
+    ]
+  },
+  "summary": {
+    "nativeLabel": "Host-verified core behavioral conformance"
+  },
+  "snapshots": [
+    {
+      "observedAt": "2026-10-10T18:10:37Z",
+      "window": {
+        "startAt": "2026-10-03T18:10:37Z",
+        "endAt": "2026-10-10T18:10:37Z"
+      },
+      "evidence": {
+        "valid": false,
+        "coverageStatus": "missing",
+        "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+        "assessments": [],
+        "observedValid": false,
+        "observedAssessments": [],
+        "observedReports": 0,
+        "observedRuns": 0,
+        "costs": "not-measured",
+        "limitation": "Stable core behavioral facet, not full staged-output/native-extension acceptance or exclusive workflow impact."
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "immutable-workflow-source",
+          "ref": "ecbfe51fd61c2e0ba4fa75d2f686c388b68c7e40"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "normalized-host-evidence-sha256",
+          "ref": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      ],
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "metrics": {
+        "core-conformance": null,
+        "verified-probes": null,
+        "observed-core-passes": null
+      }
+    },
+    {
+      "observedAt": "2026-10-17T18:10:37Z",
+      "window": {
+        "startAt": "2026-10-10T18:10:37Z",
+        "endAt": "2026-10-17T18:10:37Z"
+      },
+      "evidence": {
+        "valid": false,
+        "coverageStatus": "missing",
+        "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+        "assessments": [],
+        "observedValid": false,
+        "observedAssessments": [],
+        "observedReports": 0,
+        "observedRuns": 0,
+        "costs": "not-measured",
+        "limitation": "Stable core behavioral facet, not full staged-output/native-extension acceptance or exclusive workflow impact."
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "immutable-workflow-source",
+          "ref": "ecbfe51fd61c2e0ba4fa75d2f686c388b68c7e40"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "normalized-host-evidence-sha256",
+          "ref": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      ],
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "metrics": {
+        "core-conformance": null,
+        "verified-probes": null,
+        "observed-core-passes": null
+      }
+    },
+    {
+      "observedAt": "2026-10-18T15:00:12Z",
+      "window": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "evidence": {
+        "valid": false,
+        "coverageStatus": "missing",
+        "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+        "assessments": [],
+        "observedValid": false,
+        "observedAssessments": [],
+        "observedReports": 0,
+        "observedRuns": 0,
+        "costs": "not-measured",
+        "limitation": "Stable core behavioral facet, not full staged-output/native-extension acceptance or exclusive workflow impact."
+      },
+      "provenance": [
+        {
+          "repository": "github/gh-aw",
+          "kind": "immutable-workflow-source",
+          "ref": "ecbfe51fd61c2e0ba4fa75d2f686c388b68c7e40"
+        },
+        {
+          "repository": "github/gh-aw",
+          "kind": "normalized-host-evidence-sha256",
+          "ref": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      ],
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "metrics": {
+        "core-conformance": null,
+        "verified-probes": null,
+        "observed-core-passes": null
+      }
+    }
+  ],
+  "valueReview": {
+    "schemaVersion": 1,
+    "primaryMetricId": "core-conformance",
+    "current": {
+      "value": null,
+      "unit": "percent",
+      "status": "unavailable",
+      "window": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "eligibleCount": null,
+      "stale": false
+    },
+    "periods": [
+      {
+        "window": {
+          "startAt": "2026-10-03T18:10:37Z",
+          "endAt": "2026-10-10T18:10:37Z"
+        },
+        "observedAt": "2026-10-10T18:10:37Z",
+        "status": "incomplete-evidence",
+        "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+        "eligibleCount": null,
+        "metrics": {
+          "core-conformance": null,
+          "verified-probes": null,
+          "observed-core-passes": null
+        }
+      },
+      {
+        "window": {
+          "startAt": "2026-10-10T18:10:37Z",
+          "endAt": "2026-10-17T18:10:37Z"
+        },
+        "observedAt": "2026-10-17T18:10:37Z",
+        "status": "incomplete-evidence",
+        "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+        "eligibleCount": null,
+        "metrics": {
+          "core-conformance": null,
+          "verified-probes": null,
+          "observed-core-passes": null
+        }
+      },
+      {
+        "window": {
+          "startAt": "2026-10-11T15:00:12Z",
+          "endAt": "2026-10-18T15:00:12Z"
+        },
+        "observedAt": "2026-10-18T15:00:12Z",
+        "status": "incomplete-evidence",
+        "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+        "eligibleCount": null,
+        "metrics": {
+          "core-conformance": null,
+          "verified-probes": null,
+          "observed-core-passes": null
+        }
+      }
+    ],
+    "decision": {
+      "status": "not-rated",
+      "reason": "No agreed native keep bar and review duration.",
+      "policy": null
+    },
+    "recentComparison": {
+      "status": "unavailable",
+      "reason": "Fresh complete mature evidence is required for recent movement.",
+      "referenceWindow": null,
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "referenceValue": null,
+      "currentValue": null,
+      "nativeDelta": null,
+      "directionAwareGain": null,
+      "referenceDenominator": null,
+      "currentDenominator": null,
+      "populationChanged": null
+    },
+    "cost": {
+      "status": "not-measured",
+      "total": null,
+      "unit": null,
+      "costPerAcceptedOutcome": null
+    },
+    "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+  }
+}

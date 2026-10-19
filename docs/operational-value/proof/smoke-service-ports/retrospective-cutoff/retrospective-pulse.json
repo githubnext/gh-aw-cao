@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "smoke-service-ports",
+  "workflowName": "Smoke Service Ports",
+  "sourcePath": ".github/workflows/smoke-service-ports.md",
+  "valueFunctionSha256": "ddb0db3bc0dc9b571394f5c5bc59646948e085160e82f04cbfb7e361c6c8d62a",
+  "window": {
+    "startAt": "2026-10-14T15:00:12Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "verified-redis-cases",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": 3,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "verified-redis-cases",
+    "basis": "repository-outcome",
+    "unit": "cases"
+  },
+  "metrics": [
+    {
+      "id": "verified-redis-cases",
+      "name": "Verified Redis cases",
+      "role": "primary",
+      "formula": "sum over distinct sessions of independently authenticated PONG, SET/GET round-trip and INFO server cases",
+      "direction": "increase",
+      "unit": "cases",
+      "presentation": {
+        "name": "Verified Redis cases",
+        "legendLabel": "Verified Redis cases",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 3,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-16T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-14T15:00:12Z",
+        "endAt": "2026-10-16T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-16T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "host-bound-sessions",
+      "name": "Full host-bound integration sessions",
+      "role": "diagnostic",
+      "formula": "count distinct sessions with all three cases plus independently demonstrated sandbox-to-host.docker.internal:6379 binding",
+      "direction": "increase",
+      "unit": "sessions",
+      "presentation": {
+        "name": "Full host-bound integration sessions",
+        "legendLabel": "Host-bound sessions",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 1,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-16T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-14T15:00:12Z",
+        "endAt": "2026-10-16T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-16T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 1,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "workflow-contribution",
+      "name": "Receipt-linked workflow contributions",
+      "role": "diagnostic",
+      "formula": "count accepted Redis cases with an independent matching workflow run/head/attempt/client/service receipt",
+      "direction": "increase",
+      "unit": "cases",
+      "presentation": {
+        "name": "Receipt-linked workflow contributions",
+        "legendLabel": "Workflow contributions",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 3,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-16T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-14T15:00:12Z",
+        "endAt": "2026-10-16T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-10-16T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": 3,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return.",
+  "reportKind": "same-source-retrospective-cutoff-reconstruction",
+  "interpretation": "Source-matched retrospective reconstruction, not ex-ante historical acceptance or an adoption comparison. The frozen standard evaluator rejected this cutoff before unchanged contract activation; this report does not claim standard evaluator success. The known source-defined observed subtotal is 3 Redis cases, 1 full host-bound session and 3 receipt-linked contributions. Population coverage remains partial; missing cohorts stay null, comparisons are unavailable, and there is no complete trend or agreed keep bar. Costs remain unmeasured. Evidence was acquired retrospectively; observedAt is the preserved cutoff assessment coordinate, not an acquisition or acceptance date.",
+  "preservedStandardEvaluatorRejection": {
+    "path": "docs/operational-value/proof/smoke-service-ports/frozen-standard-invocation.json",
+    "sha256": "f3c9838782a6e7bf3543e6b6d6e7adc8c349bcbf47db83961647ed0260cc12e9"
+  }
+}

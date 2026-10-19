@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-model-resolution",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "status": "resolved-by-explicit-coordinator-packet-2026-10-19",
+  "authority": "Request only. No acquisition, network access, lazy fetch, producer execution or automatic resumption is authorized.",
+  "scope": {
+    "maxBlobs": 3,
+    "operations": ["Read immutable public Git blob bytes after coordinator approval"],
+    "repositoryVisibility": "Public repository identity supplied by the coordinator; revalidate before any later acquisition.",
+    "acceptance": "Verify each returned object with SHA1('blob ' + byteLength + NUL + originalBytes); retain original bytes and SHA256.",
+    "notAuthorized": ["outcome history acquisition", "Actions dispatch", "application probes", "remote writes", "dependency installation"]
+  },
+  "requests": [
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": ".github/workflows/daily-model-resolution.md",
+      "gitBlob": "02317ee742842849af4716368c5ac55afdd9cfc6",
+      "reason": "Actual adoption source is absent locally; later workflow prose cannot establish adoption-time eligibility, classification or acceptance.",
+      "suggestedEndpoint": "repos/github/gh-aw/git/blobs/02317ee742842849af4716368c5ac55afdd9cfc6"
+    },
+    {
+      "revision": "548c141635dc069a4d17f49f4342859dcc91baf3",
+      "path": ".github/workflows/daily-model-resolution.lock.yml",
+      "gitBlob": "01f4d457a15cfa538c22fd505167ede1126809f0",
+      "reason": "Missing compiled adoption contract prevents checking effective imports, engine behavior and protected evidence producers.",
+      "suggestedEndpoint": "repos/github/gh-aw/git/blobs/01f4d457a15cfa538c22fd505167ede1126809f0"
+    },
+    {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "path": ".github/workflows/daily-model-resolution.lock.yml",
+      "gitBlob": "fe49cac313067559ff1fd25e10e24d3af8a9587e",
+      "reason": "Missing frozen compiled contract prevents reviewing effective source/import/producer closure.",
+      "suggestedEndpoint": "repos/github/gh-aw/git/blobs/fe49cac313067559ff1fd25e10e24d3af8a9587e"
+    }
+  ],
+  "afterReceipt": "Original bytes, responses and receipts independently verified and preserved under acquisition/. Adoption source and frozen source share the size predicate but differ in engine and run-analyzer declaration. Current facet retained without backdating. Remaining native producer/history scope is recorded separately in native-producer-request.json."
+}

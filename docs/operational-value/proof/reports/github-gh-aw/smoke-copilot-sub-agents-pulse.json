@@ -1,0 +1,339 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "smoke-copilot-sub-agents",
+  "workflowName": "Smoke Copilot Sub Agents",
+  "sourcePath": ".github/workflows/smoke-copilot-sub-agents.md",
+  "valueFunctionSha256": "a5dedcc16c656ba3e2b119be31b9bbec4889ed269246a2e58acebc73d4b4a657",
+  "window": {
+    "startAt": "2026-07-01T06:29:45Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [
+    {
+      "at": "2026-08-01T00:00:00.000Z",
+      "label": "Aug 2026"
+    },
+    {
+      "at": "2026-09-01T00:00:00.000Z",
+      "label": "Sep 2026"
+    },
+    {
+      "at": "2026-10-01T00:00:00.000Z",
+      "label": "Oct 2026"
+    }
+  ],
+  "selectedMetricId": "observed-proofs",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "observed-proofs",
+    "basis": "repository-outcome",
+    "unit": "delegation proofs"
+  },
+  "metrics": [
+    {
+      "id": "observed-proofs",
+      "role": "primary",
+      "name": "Verified three-agent SDK assessments",
+      "unit": "delegation proofs",
+      "direction": "increase",
+      "formula": "Count initial-run native predicates established by every exact protected host assertion.",
+      "presentation": {
+        "name": "Verified three-agent SDK assessments",
+        "legendLabel": "Observed native proofs",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-07-08T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-08T06:29:45Z"
+        },
+        {
+          "at": "2026-07-15T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-15T06:29:45Z"
+        },
+        {
+          "at": "2026-07-22T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-22T06:29:45Z"
+        },
+        {
+          "at": "2026-07-29T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-29T06:29:45Z"
+        },
+        {
+          "at": "2026-08-05T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-05T06:29:45Z"
+        },
+        {
+          "at": "2026-08-12T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-12T06:29:45Z"
+        },
+        {
+          "at": "2026-08-19T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-19T06:29:45Z"
+        },
+        {
+          "at": "2026-08-26T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-26T06:29:45Z"
+        },
+        {
+          "at": "2026-09-02T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-02T06:29:45Z"
+        },
+        {
+          "at": "2026-09-09T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-09T06:29:45Z"
+        },
+        {
+          "at": "2026-09-16T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-16T06:29:45Z"
+        },
+        {
+          "at": "2026-09-23T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-23T06:29:45Z"
+        },
+        {
+          "at": "2026-09-30T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-30T06:29:45Z"
+        },
+        {
+          "at": "2026-10-07T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-07T06:29:45Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-14T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-14T06:29:45Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "complete-proofs",
+      "role": "diagnostic",
+      "name": "Complete native proof count",
+      "unit": "delegation proofs",
+      "direction": "increase",
+      "formula": "The same count, only when all eligible initial-run predicate assessments are known.",
+      "presentation": {
+        "name": "Complete native proof count",
+        "legendLabel": "Complete native proofs",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-11T15:00:12Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": {
+        "startAt": "2026-10-04T15:00:12Z",
+        "endAt": "2026-10-11T15:00:12Z"
+      },
+      "series": [
+        {
+          "at": "2026-07-08T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-08T06:29:45Z"
+        },
+        {
+          "at": "2026-07-15T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-15T06:29:45Z"
+        },
+        {
+          "at": "2026-07-22T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-22T06:29:45Z"
+        },
+        {
+          "at": "2026-07-29T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-07-29T06:29:45Z"
+        },
+        {
+          "at": "2026-08-05T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-05T06:29:45Z"
+        },
+        {
+          "at": "2026-08-12T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-12T06:29:45Z"
+        },
+        {
+          "at": "2026-08-19T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-19T06:29:45Z"
+        },
+        {
+          "at": "2026-08-26T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-08-26T06:29:45Z"
+        },
+        {
+          "at": "2026-09-02T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-02T06:29:45Z"
+        },
+        {
+          "at": "2026-09-09T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-09T06:29:45Z"
+        },
+        {
+          "at": "2026-09-16T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-16T06:29:45Z"
+        },
+        {
+          "at": "2026-09-23T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-23T06:29:45Z"
+        },
+        {
+          "at": "2026-09-30T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-09-30T06:29:45Z"
+        },
+        {
+          "at": "2026-10-07T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-07T06:29:45Z"
+        },
+        {
+          "at": "2026-10-11T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-11T15:00:12Z"
+        },
+        {
+          "at": "2026-10-14T06:29:45Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-14T06:29:45Z"
+        },
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "incomplete-evidence",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

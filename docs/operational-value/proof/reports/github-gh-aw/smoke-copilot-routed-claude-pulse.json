@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "smoke-copilot-routed-claude",
+  "workflowName": "Smoke Copilot Routed Claude",
+  "sourcePath": ".github/workflows/smoke-copilot-routed-claude.md",
+  "valueFunctionSha256": "24f591f9a81c0c6dfad685485642a245cd510633e492fa7fd7376b36259af245",
+  "window": {
+    "startAt": "2026-10-13T02:29:00Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "observed-proofs",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": 1,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": null,
+    "metricId": "observed-proofs",
+    "basis": "repository-outcome",
+    "unit": "routing proofs"
+  },
+  "metrics": [
+    {
+      "id": "observed-proofs",
+      "role": "primary",
+      "name": "Verified Copilot Claude routing",
+      "unit": "routing proofs",
+      "direction": "increase",
+      "formula": "Count initial-run native predicates established by every exact protected host assertion.",
+      "presentation": {
+        "name": "Verified Copilot Claude routing",
+        "legendLabel": "Observed native proofs",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": 1,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-13T02:29:00Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "complete-proofs",
+      "role": "diagnostic",
+      "name": "Complete native proof count",
+      "unit": "routing proofs",
+      "direction": "increase",
+      "formula": "The same count, only when all eligible initial-run predicate assessments are known.",
+      "presentation": {
+        "name": "Complete native proof count",
+        "legendLabel": "Complete native proofs",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": null
+      },
+      "currentWindow": {
+        "startAt": "2026-10-13T02:29:00Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

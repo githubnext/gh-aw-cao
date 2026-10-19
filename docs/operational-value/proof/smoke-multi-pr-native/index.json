@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "meaningOfComplete": "All retained opportunity rows are present and digest-checked; not a claim of complete outcome/eligibility receipt coverage.",
+  "acquisitionOpen": false,
+  "acquisitionComplete": true,
+  "workflowId": "smoke-multi-pr",
+  "repository": "github/gh-aw",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "edc4cd49f2c9fb6ce86eaebcb9c74108b4da325a",
+  "observations": 2365,
+  "contractSha256": "5a96a217dc88b5a3a9166e35d7acb0349ddcabcf5c514b97f6f2f849e6f32d07",
+  "frozenContractSha256": "d5d787be36ba5d0e5a33015c119a5008082eec3c81c2e1cd661164e7a5593de0",
+  "sourceReviewSha256": "050e4b0ea92d5d24ae509ef1cdca03e7a7c97cde752444aa72c9839c9d0b594c",
+  "deliveriesSha256": "e47431a2e18b8450d1dd8d6928224a9be975dcdd5560d50b872153728ac3d82e",
+  "parts": [
+    {
+      "file": "observations-001.json.gz",
+      "count": 100,
+      "sha256": "d3a8ae44538de867ecc1df10fe83af672c7fee2cd98349176159a010ef03b122"
+    },
+    {
+      "file": "observations-002.json.gz",
+      "count": 100,
+      "sha256": "de3aa5dd0392687f750c33a898246b1757f3698c5347276d95384323cdb00e4a"
+    },
+    {
+      "file": "observations-003.json.gz",
+      "count": 100,
+      "sha256": "a35db78cf3c84c97d8cc4cd016e0bb3ac2116796c553b7071cad64a399fa7280"
+    },
+    {
+      "file": "observations-004.json.gz",
+      "count": 100,
+      "sha256": "e1a586863663dde79968df7a55fa8a9c89fafd4d399aa32042211b269c8742aa"
+    },
+    {
+      "file": "observations-005.json.gz",
+      "count": 100,
+      "sha256": "3d11c5614598a1f2fef48e452952277876a8e841c48a7e832762e207d159ed33"
+    },
+    {
+      "file": "observations-006.json.gz",
+      "count": 100,
+      "sha256": "2ee8493438daedbc8b48837fd065611a614fdead79ef1e40c58cbb283d3be80b"
+    },
+    {
+      "file": "observations-007.json.gz",
+      "count": 100,
+      "sha256": "665c49e4d747e22a729575ea632d0c6cf1d07fa8610fdfd08e64ac0e311be13c"
+    },
+    {
+      "file": "observations-008.json.gz",
+      "count": 100,
+      "sha256": "22d235e792e54c2c9f2dbcaa593e5301e6b199e0d4869bee6c186946ba9f43e6"
+    },
+    {
+      "file": "observations-009.json.gz",
+      "count": 100,
+      "sha256": "a0ca3c7215e145af60f6246737b26faf1d2a17254d22fb219efb7c24c65998b5"
+    },
+    {
+      "file": "observations-010.json.gz",
+      "count": 100,
+      "sha256": "8173981074a6bd115989b4de83e30ed161950a7938db06b1bc9815f28ee9542a"
+    },
+    {
+      "file": "observations-011.json.gz",
+      "count": 100,
+      "sha256": "d77386f60d0ecc6427f9eca594ba4aad2e1f98aefa2ab12dbf16a2eff0e18159"
+    },
+    {
+      "file": "observations-012.json.gz",
+      "count": 100,
+      "sha256": "4598d60c4efda5bacad4130be1424bb6c5427620064bafbee1a9cd839258c374"
+    },
+    {
+      "file": "observations-013.json.gz",
+      "count": 100,
+      "sha256": "fe6f3c26303edb80b3a12b2529d02de281444cebf21342e1695588a84357859b"
+    },
+    {
+      "file": "observations-014.json.gz",
+      "count": 100,
+      "sha256": "19b0d1c2ab4756494151d6d20d1f962a089f729b0398fd3e3b2dfe9cca10dc12"
+    },
+    {
+      "file": "observations-015.json.gz",
+      "count": 100,
+      "sha256": "c957c4bfc7b0c61627bdfe48c10008667c9c6fbe07d17b351424f7ba3216addc"
+    },
+    {
+      "file": "observations-016.json.gz",
+      "count": 100,
+      "sha256": "8fee24b27a92851bf9d73f3cc79955a1427ab0e1e75c0d95969d4089eb6fd52f"
+    },
+    {
+      "file": "observations-017.json.gz",
+      "count": 100,
+      "sha256": "d43c6b9c4ba44c574e68a5c48d8d9fa49782e8147078c68d21005aed2dea9775"
+    },
+    {
+      "file": "observations-018.json.gz",
+      "count": 100,
+      "sha256": "b4b0b96166ef1d4617a39e61f2dab2488d034482e419527aabb5b5609dded7ba"
+    },
+    {
+      "file": "observations-019.json.gz",
+      "count": 100,
+      "sha256": "52b0ecfa1dc4cb43c932e8c3c0c41d09e775716fabaf2286521b711d8cfdf648"
+    },
+    {
+      "file": "observations-020.json.gz",
+      "count": 100,
+      "sha256": "4c799a94075b5541792e447bdb56c52f304b7a5347a0d3e0bc83235623f2b56e"
+    },
+    {
+      "file": "observations-021.json.gz",
+      "count": 100,
+      "sha256": "e4421a77fb0bf4c4a6dd503aa1bfb08beafe4ca464f2b0f25a7f41abe28b2155"
+    },
+    {
+      "file": "observations-022.json.gz",
+      "count": 100,
+      "sha256": "397223c35bdc3c1f5f62fc99808bacdbb0dac8c5f2a883f3187c94f37d4d8d90"
+    },
+    {
+      "file": "observations-023.json.gz",
+      "count": 100,
+      "sha256": "8fdeebb9d4bad5211ccff9d31db07ab5fb88f45a94901d4a66c43d14933acd21"
+    },
+    {
+      "file": "observations-024.json.gz",
+      "count": 65,
+      "sha256": "fc7d017f336b67da170a95156c4f76c4ed63d16ed985c849dfbb9779f1b595a7"
+    }
+  ],
+  "originals": {
+    "sources.json.gz": "20898c812c3b24334eac7adc58c745cd7b2a4135aa37d3212140350b1adc6036",
+    "host-sources.json.gz": "1b0d3f66dfb4889b764abd30c3a2fb7b9c35ef9c0a2a49d49935fcfe24e08005",
+    "inventory.json.gz": "e23ffcec0aa5c9f2fbda9686fbc8406bea85482a6f01718241972816dfcd560e",
+    "receipts.json.gz": "cda81740d8bcdfcfe5692bf004263153e9d3e8f42683f76d00a0d321ba0f03d3",
+    "deliveries.json.gz": "e47431a2e18b8450d1dd8d6928224a9be975dcdd5560d50b872153728ac3d82e",
+    "additional-protected-jobs.json.gz": "0c86ceaf448b6a26887222915ae57b6f6dc54be22df8fe9702e11ef280aa1d2e"
+  },
+  "primaryMetricId": "verified-payload-deliveries",
+  "verified-payload-deliveries": 44,
+  "verified-crlf-deliveries": 21,
+  "unassessed-payload-cases": 4684,
+  "candidateCases": 4730,
+  "provenCases": 44,
+  "assessedCases": 46,
+  "coverageStatus": "partial",
+  "countsMeaning": "Retained candidate executions/cases are an inventory upper bound, not proof that every skipped trigger was eligible. Eligibility gaps remain explicit.",
+  "readinessGuard": "Import the frozen module, verify this index/partitions and source/target Git objects, and require at least one real non-null independent native payload value. Never count an all-unknown plot, run/PR count or fixture-only proof as measured.",
+  "additionalProtectedReceipts": {
+    "acquisitionOpen": false,
+    "httpStatusCounts": {
+      "404": 9,
+      "410": 179
+    },
+    "unavailableLogs": 188
+  },
+  "openRequirements": [
+    "Missing protected-operation, original-payload and target-byte receipts remain explicit outcome gaps; acquisition status is separate.",
+    "Expired/unretained original receipts cannot be replaced by mutable PR bodies or present-day heads.",
+    "Full two-PR and protected summary-comment acceptance, complete eligibility coverage, costs and sole attribution are not established."
+  ]
+}

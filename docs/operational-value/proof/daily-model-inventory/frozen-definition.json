@@ -1,0 +1,504 @@
+{
+  "functionSha256": "14eff5cf9c9793610fc6e3e87fb658e86522603fda07a3fe2dd9d32e6fb2e230",
+  "definition": {
+    "schemaVersion": 3,
+    "slug": "daily-model-inventory",
+    "repository": "github/gh-aw",
+    "workflowName": "Daily Model Inventory Checker",
+    "sourcePath": ".github/workflows/daily-model-inventory.md",
+    "intent": {
+      "goal": "Keep the built-in model alias mapping usable against live applicable provider inventories.",
+      "acceptance": "An alias has at least one source-defined recursive pattern or exact fallback matching an independently complete applicable live provider inventory.",
+      "temporalAnchor": "contract-activation"
+    },
+    "adoption": {
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "adoptedAt": "2026-10-18T06:32:44Z",
+      "baselineCommit": null,
+      "baselineAt": null
+    },
+    "evaluation": {
+      "mode": "attainment-only"
+    },
+    "evidence": {
+      "key": "current-source-live-alias-support",
+      "repositories": [
+        "github/gh-aw"
+      ],
+      "opportunity": "Each built-in alias key at the pinned current-source cutoff, including meta-aliases and per-engine aliases; each key counted once.",
+      "filters": [
+        "Built-in alias map only; no workflow overrides or task-family usefulness inference.",
+        "Case-insensitive literal provider matching; star cannot cross slash; strip parameters before presence checks.",
+        "Use complete independent account-scoped inventory; errors, skipped/empty/paginated-incomplete providers are unknown.",
+        "Current source predicates never applied to an unknown historical source era.",
+        "models.json pricing/history is not live inventory; retain historical entries without automatic removal."
+      ],
+      "collection": "Batch offline replay of retained whole immutable sources and protected provider capture pages. Canonical activity discovery lacks live provider facts. No network or fetched-code execution.",
+      "measurementKind": "snapshot",
+      "window": {
+        "durationDays": 1,
+        "cadenceDays": 1,
+        "maturationDays": 0
+      }
+    },
+    "model": {
+      "architecture": "Deterministic source-matched presence oracle; repository outcome is independent of workflow output and actor.",
+      "recommendation": "Report native aliases and unknown coverage; no thresholds or keep decision are inferred.",
+      "presentation": {
+        "label": "Stale alias definitions",
+        "betterLabel": "Fewer stale aliases"
+      }
+    },
+    "summary": {
+      "nativeLabel": "Aliases without live support"
+    },
+    "metrics": [
+      {
+        "id": "stale-aliases",
+        "name": "Stale alias definitions",
+        "role": "primary",
+        "formula": "Count aliases with no live resolution; null unless the entire alias population is independently assessed.",
+        "direction": "decrease",
+        "unit": "aliases",
+        "presentation": {
+          "name": "Stale alias definitions",
+          "legendLabel": "Stale aliases",
+          "transform": "identity"
+        }
+      },
+      {
+        "id": "known-stale-aliases",
+        "name": "Established stale subtotal",
+        "role": "diagnostic",
+        "formula": "Count positively established stale aliases among assessed opportunities; a lower bound during partial coverage, not an all-clear.",
+        "direction": "decrease",
+        "unit": "aliases",
+        "presentation": {
+          "name": "Established stale subtotal",
+          "legendLabel": "Known stale subtotal",
+          "transform": "identity"
+        }
+      },
+      {
+        "id": "supported-aliases",
+        "name": "Independently supported aliases",
+        "role": "diagnostic",
+        "formula": "Count alias keys with a live matching candidate from at least one complete applicable inventory; preserve partial support independently of full acceptance.",
+        "direction": "increase",
+        "unit": "aliases",
+        "presentation": {
+          "name": "Independently supported aliases",
+          "legendLabel": "Supported aliases",
+          "transform": "identity"
+        }
+      }
+    ],
+    "validationExamples": {
+      "targetAttained": {
+        "sourceReady": true,
+        "aliasMap": {
+          "family": [
+            "copilot/desired*"
+          ]
+        },
+        "inventories": [
+          {
+            "provider": "copilot",
+            "repository": "github/gh-aw",
+            "repositoryId": 1036865607,
+            "capturedAt": "2026-10-18T15:00:12Z",
+            "accessScope": "synthetic-test-only",
+            "endpoint": "http://api-proxy:10000/reflect",
+            "complete": true,
+            "pages": [
+              {
+                "cursor": null,
+                "status": 200,
+                "body": {
+                  "models_fetch_complete": true,
+                  "endpoints": [
+                    {
+                      "provider": "copilot",
+                      "configured": true,
+                      "models": [
+                        "desired-5"
+                      ]
+                    }
+                  ]
+                },
+                "sha256": "78e7767639db9fefcd33045664a801bcffbbd9f4fb3a238efba812227c9ab0b1"
+              }
+            ],
+            "receipt": {
+              "kind": "protected-provider-capture",
+              "sha256": "5ea313f08aa046c02d558b74d5fffe1363d902e6d5f8994f153b1102adc0192c",
+              "capture": {
+                "provider": "copilot",
+                "repository": "github/gh-aw",
+                "repositoryId": 1036865607,
+                "capturedAt": "2026-10-18T15:00:12Z",
+                "accessScope": "synthetic-test-only",
+                "endpoint": "http://api-proxy:10000/reflect",
+                "complete": true,
+                "pagesSha256": "99fe289ea8b52a05440b17eec1c907264f66e820954c1fe4c2d2ca15e7ad623b"
+              },
+              "ref": "synthetic:test-only"
+            }
+          },
+          {
+            "provider": "anthropic",
+            "repository": "github/gh-aw",
+            "repositoryId": 1036865607,
+            "capturedAt": "2026-10-18T15:00:12Z",
+            "accessScope": "synthetic-test-only",
+            "endpoint": "https://api.anthropic.com/v1/models",
+            "complete": true,
+            "pages": [
+              {
+                "cursor": null,
+                "status": 200,
+                "body": {
+                  "data": [
+                    {
+                      "id": "desired-5"
+                    }
+                  ],
+                  "has_more": false
+                },
+                "sha256": "91b03be788e05ad01120fbcdb48b80293ef4bf0178f8e95a44c5f322945d40b7"
+              }
+            ],
+            "receipt": {
+              "kind": "protected-provider-capture",
+              "sha256": "1da77af6c10dbe75b4d6319d07ad1372c708c0f16831af9bed4fa4e07464b3b9",
+              "capture": {
+                "provider": "anthropic",
+                "repository": "github/gh-aw",
+                "repositoryId": 1036865607,
+                "capturedAt": "2026-10-18T15:00:12Z",
+                "accessScope": "synthetic-test-only",
+                "endpoint": "https://api.anthropic.com/v1/models",
+                "complete": true,
+                "pagesSha256": "264d224fdf810088e37c75999d9435225889e117f9488db1ea6462d6fc6cc861"
+              },
+              "ref": "synthetic:test-only"
+            }
+          },
+          {
+            "provider": "openai",
+            "repository": "github/gh-aw",
+            "repositoryId": 1036865607,
+            "capturedAt": "2026-10-18T15:00:12Z",
+            "accessScope": "synthetic-test-only",
+            "endpoint": "https://api.openai.com/v1/models",
+            "complete": true,
+            "pages": [
+              {
+                "cursor": null,
+                "status": 200,
+                "body": {
+                  "data": [
+                    {
+                      "id": "desired-5"
+                    }
+                  ]
+                },
+                "sha256": "bdeaeeb56edd0211ccfb4a39024b900e190afa6d7cb738cf582214d68c387d3c"
+              }
+            ],
+            "receipt": {
+              "kind": "protected-provider-capture",
+              "sha256": "4c25ba35eb7cad3b4b636b4c217c3e717f7ab2d20a4653b2dd7e565f24316928",
+              "capture": {
+                "provider": "openai",
+                "repository": "github/gh-aw",
+                "repositoryId": 1036865607,
+                "capturedAt": "2026-10-18T15:00:12Z",
+                "accessScope": "synthetic-test-only",
+                "endpoint": "https://api.openai.com/v1/models",
+                "complete": true,
+                "pagesSha256": "2a4bd6cf40a27cd8463ce4ab33e7ec7bcf4298d802f31c5a9ce5b3224e7cf610"
+              },
+              "ref": "synthetic:test-only"
+            }
+          },
+          {
+            "provider": "gemini",
+            "repository": "github/gh-aw",
+            "repositoryId": 1036865607,
+            "capturedAt": "2026-10-18T15:00:12Z",
+            "accessScope": "synthetic-test-only",
+            "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+            "complete": true,
+            "pages": [
+              {
+                "cursor": null,
+                "status": 200,
+                "body": {
+                  "models": [
+                    {
+                      "name": "models/desired-5"
+                    }
+                  ]
+                },
+                "sha256": "0e871de411b8bfee3c8f0af1f0a9a7f5ea6828bb2d34d6f985b0eee110aa5a85"
+              }
+            ],
+            "receipt": {
+              "kind": "protected-provider-capture",
+              "sha256": "1e87e609b8a48df05f31fbcaacee40798ba53aeeb69f72deb0aeee7cf1863848",
+              "capture": {
+                "provider": "gemini",
+                "repository": "github/gh-aw",
+                "repositoryId": 1036865607,
+                "capturedAt": "2026-10-18T15:00:12Z",
+                "accessScope": "synthetic-test-only",
+                "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+                "complete": true,
+                "pagesSha256": "2cb26478867d4c90f2284cbd833366a0a2e38e80b5d2698943cc209d96e14462"
+              },
+              "ref": "synthetic:test-only"
+            }
+          }
+        ],
+        "windowEnd": "2026-10-18T15:00:12Z",
+        "observedAt": "2026-10-18T15:00:12Z"
+      },
+      "targetMissed": {
+        "sourceReady": true,
+        "aliasMap": {
+          "family": [
+            "copilot/desired*"
+          ]
+        },
+        "inventories": [
+          {
+            "provider": "copilot",
+            "repository": "github/gh-aw",
+            "repositoryId": 1036865607,
+            "capturedAt": "2026-10-18T15:00:12Z",
+            "accessScope": "synthetic-test-only",
+            "endpoint": "http://api-proxy:10000/reflect",
+            "complete": true,
+            "pages": [
+              {
+                "cursor": null,
+                "status": 200,
+                "body": {
+                  "models_fetch_complete": true,
+                  "endpoints": [
+                    {
+                      "provider": "copilot",
+                      "configured": true,
+                      "models": [
+                        "other-5"
+                      ]
+                    }
+                  ]
+                },
+                "sha256": "bbfd82716f878a98fc6db799c2d4895861612015cb39ee63f9027c77b337f688"
+              }
+            ],
+            "receipt": {
+              "kind": "protected-provider-capture",
+              "sha256": "9339203717cc543ceaf07ea89cfc779c5804b1038a6829543823ff24b6b4c08c",
+              "capture": {
+                "provider": "copilot",
+                "repository": "github/gh-aw",
+                "repositoryId": 1036865607,
+                "capturedAt": "2026-10-18T15:00:12Z",
+                "accessScope": "synthetic-test-only",
+                "endpoint": "http://api-proxy:10000/reflect",
+                "complete": true,
+                "pagesSha256": "3c84d69890ab6699b290ef5e1f0950740afab354dc1e7c50ffe7b03ec809eeef"
+              },
+              "ref": "synthetic:test-only"
+            }
+          },
+          {
+            "provider": "anthropic",
+            "repository": "github/gh-aw",
+            "repositoryId": 1036865607,
+            "capturedAt": "2026-10-18T15:00:12Z",
+            "accessScope": "synthetic-test-only",
+            "endpoint": "https://api.anthropic.com/v1/models",
+            "complete": true,
+            "pages": [
+              {
+                "cursor": null,
+                "status": 200,
+                "body": {
+                  "data": [
+                    {
+                      "id": "other-5"
+                    }
+                  ],
+                  "has_more": false
+                },
+                "sha256": "39f220a52694d938389be20e645e6b635d1a70a9500d7905e2efaf34a6fde71a"
+              }
+            ],
+            "receipt": {
+              "kind": "protected-provider-capture",
+              "sha256": "0902aedc8472d71bc05239b4ef6646f54c3794c3dab1a5e074d36d5d18674026",
+              "capture": {
+                "provider": "anthropic",
+                "repository": "github/gh-aw",
+                "repositoryId": 1036865607,
+                "capturedAt": "2026-10-18T15:00:12Z",
+                "accessScope": "synthetic-test-only",
+                "endpoint": "https://api.anthropic.com/v1/models",
+                "complete": true,
+                "pagesSha256": "474899cd91ab469187bf0640fe4e206b19c32e1dcd574c0625c4506180f920d2"
+              },
+              "ref": "synthetic:test-only"
+            }
+          },
+          {
+            "provider": "openai",
+            "repository": "github/gh-aw",
+            "repositoryId": 1036865607,
+            "capturedAt": "2026-10-18T15:00:12Z",
+            "accessScope": "synthetic-test-only",
+            "endpoint": "https://api.openai.com/v1/models",
+            "complete": true,
+            "pages": [
+              {
+                "cursor": null,
+                "status": 200,
+                "body": {
+                  "data": [
+                    {
+                      "id": "other-5"
+                    }
+                  ]
+                },
+                "sha256": "d95b6fae855f59b478bbe72074731bdcfb0038e6f1db35039c8bf2e48177415f"
+              }
+            ],
+            "receipt": {
+              "kind": "protected-provider-capture",
+              "sha256": "e92b4bb4d01dc976b280ab8ea2725820ab66e1ecfe8b794487873bc94f3b2c8b",
+              "capture": {
+                "provider": "openai",
+                "repository": "github/gh-aw",
+                "repositoryId": 1036865607,
+                "capturedAt": "2026-10-18T15:00:12Z",
+                "accessScope": "synthetic-test-only",
+                "endpoint": "https://api.openai.com/v1/models",
+                "complete": true,
+                "pagesSha256": "a263899a9e90b7799ee784f7aea552f8689f3e8be2e58bc453eff55d20ec25ac"
+              },
+              "ref": "synthetic:test-only"
+            }
+          },
+          {
+            "provider": "gemini",
+            "repository": "github/gh-aw",
+            "repositoryId": 1036865607,
+            "capturedAt": "2026-10-18T15:00:12Z",
+            "accessScope": "synthetic-test-only",
+            "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+            "complete": true,
+            "pages": [
+              {
+                "cursor": null,
+                "status": 200,
+                "body": {
+                  "models": [
+                    {
+                      "name": "models/other-5"
+                    }
+                  ]
+                },
+                "sha256": "1aa48ded7f57dfb2fd4d4e4d118234a5e29b8c81c6d45cfa8534bb96e142a857"
+              }
+            ],
+            "receipt": {
+              "kind": "protected-provider-capture",
+              "sha256": "6dc8dc2ca44cb85aa7c39ded7b696b195fc1b781bd1ea42f1c124800ac056b13",
+              "capture": {
+                "provider": "gemini",
+                "repository": "github/gh-aw",
+                "repositoryId": 1036865607,
+                "capturedAt": "2026-10-18T15:00:12Z",
+                "accessScope": "synthetic-test-only",
+                "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+                "complete": true,
+                "pagesSha256": "db1c77fdacd1053c35fedfcf189ec145e9ce11d1a91ff4979cd646eedf78c4be"
+              },
+              "ref": "synthetic:test-only"
+            }
+          }
+        ],
+        "windowEnd": "2026-10-18T15:00:12Z",
+        "observedAt": "2026-10-18T15:00:12Z"
+      },
+      "missing": {
+        "sourceReady": true,
+        "aliasMap": {
+          "family": [
+            "copilot/desired*"
+          ]
+        },
+        "inventories": [],
+        "windowEnd": "2026-10-18T15:00:12Z",
+        "observedAt": "2026-10-18T15:00:12Z"
+      },
+      "malformed": {
+        "sourceReady": true,
+        "aliasMap": {
+          "family": []
+        },
+        "inventories": []
+      }
+    },
+    "sourceProfile": {
+      "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "cutoff": "2026-10-18T15:00:12Z",
+      "workflowGitBlob": "809b23ebbfc03d891701382286cf0c3417c6b153",
+      "retainedSha256": "598da2b86274b5cdf911be8a6d572208e3987d6286d213663fedfb4d6efc2852",
+      "sourcesArchiveSha256": "f7fa02fd6558a0d4302f7e3c8690395cda633b2d14a1621b10ebe3e2e6a5e491",
+      "resolverSha256": "39528919527af89e76154e9e80c08b6ef38361290ae097d58ad26a3154d1d015",
+      "nativePort": "Existence subset of resolveModelAlias/buildProviderCatalog/globMatch; no remote code executed. Ranking is immaterial to existence; no engine invocation success is claimed.",
+      "addition": {
+        "commit": "a38bf5047d5f3823d4008d161a56d0bb735d98cc",
+        "parent": "7c1cc96022a05da6c253224b9d0f0bddae68d19b",
+        "actualParentVerified": true,
+        "adoptedAt": "2026-05-03T20:03:36Z",
+        "contents": "retained",
+        "importGap": "shared/observability-otlp.md blob bb9913da15c04bce33be1c2cda580b3a1e409b4d absent offline",
+        "compiledGitBlob": "e59422ca7af808a73c507f4bb312ace31a7ca18b"
+      }
+    },
+    "antecedent": {
+      "result": "pre-existing-but-not-reconstructable",
+      "qualification": "Reconstruction unavailable in supplied offline evidence, not exhausted globally. Source addition, actual parent, adoption workflow and original alias checker retained; dated provider inventories missing. One transitive historical telemetry import is missing.",
+      "counterfactual": "A maintainer can restore alias live support without this workflow; the same native unit can predate adoption."
+    },
+    "safeguards": {
+      "fullAcceptance": "Not measured: pricing mirror equality/history preservation, SDK routing, billing agreement, capability/task semantics and all provider coverage remain distinct.",
+      "contribution": "Not measured. Discovery issue/PR/run links are not native acceptance or creation receipts.",
+      "delivery": "Snapshot state is not delivered work; never sum daily backlog snapshots or award repeated repair credit.",
+      "costs": "Not measured; no savings, weights or cost-per-report.",
+      "comparison": "Compare only adjacent equal-duration complete cutoffs with equal population, source profile and access scopes. No source-era mixing or adoption-relative claim.",
+      "rejected": [
+        "Issue and PR counts",
+        "Run success",
+        "Agent no-change claims",
+        "models.json historical entries as live support",
+        "Inferred family pricing as independently established billing",
+        "Arbitrary thresholds or normalized scores"
+      ],
+      "nativeMeasures": {
+        "liveSupport": "Primary native stale burden and diagnostic supported/known-stale counts.",
+        "providerCounts": "Evidence coverage only, not value.",
+        "pricingGaps": "Separate acceptance dimension; no current authority.",
+        "taskAliasGaps": "Not selected: usefulness/capability intent has no frozen deterministic eligibility.",
+        "proposedAliasChanges": "Rejected output proxy.",
+        "preservedPricingMirrors": "Repository guard, not live availability evidence."
+      }
+    }
+  },
+  "freezeBasis": "Complete frozen current workflow, imports, runtime checker, alias payload and relevant specification. No live provider outcomes were available or used to select predicates."
+}

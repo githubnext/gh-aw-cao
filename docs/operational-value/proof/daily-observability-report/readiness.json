@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "daily-observability-report",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "status": "current-native-function-evidence-blocked",
+  "adoption": {
+    "commit": "aa36291c042c40d6f46e86f0b8604ec1d671a77c",
+    "adoptedAt": "2026-01-17T21:13:11Z",
+    "baselineCommit": "ad364429f1c9100b8b35926b4e58084f5c18b8ce",
+    "baselineAt": "2026-01-17T20:22:18Z",
+    "additionVerifiedAgainstRealParent": true,
+    "sourceBytesAvailable": true,
+    "compiledBytesAvailable": true,
+    "importClosureAvailable": true
+  },
+  "ready": {
+    "sourceClosure": true,
+    "currentIntentImportsAndNativeSchema": true,
+    "historicalSourceClosure": true,
+    "historicalMetricCompatibility": false,
+    "acceptanceFrozen": true,
+    "function": true,
+    "nativeEvidence": false,
+    "evaluation": true,
+    "plot": true,
+    "collectorVerified": true
+  },
+  "verification": {
+    "collector": "verified docs/operational-value/proof/functions/daily-observability-report.mjs",
+    "functionSha256": "4bef54d77456292b2c30ad666bb5227b6599920cd2c0008cd6aae8ccfbc58de1",
+    "sourceSha256": "8f25e7051cd418b94e94d3bb5a7f783c274cce57fd3e5af47c682fb8758deea8",
+    "timelineSha256": "ca0ec4b4586ac500e037d7dd57bd06e52b633db30d2779492ea5dc2033f018b5",
+    "focusedTests": "node --test tests/unit/daily-observability-report-native.test.mjs tests/unit/daily-observability-report-readiness.test.mjs",
+    "lint": "ESLint unavailable locally; dependency installation not authorized"
+  },
+  "boundaries": {
+    "acceptance": "Frozen current-profile independent structural MCP telemetry prerequisite, not full debugging or firewall acceptance.",
+    "nativeDiagnostic": "Usable raw MCP telemetry is separate from firewall coverage and effective debugging.",
+    "sample": "The source caps analysis at 20 runs; no fleet-wide coverage may be inferred.",
+    "fullAcceptance": null,
+    "contribution": null,
+    "nativeValue": null,
+    "costs": "not measured",
+    "decision": "not rated",
+    "historicalClassification": "unresolved; missing baseline evidence is not exhausted reconstruction",
+    "outcomesInspectedBeforeFreeze": false,
+    "syntheticObservations": false
+  },
+  "resolvedSourceRequests": [
+    {
+      "gitBlob": "6e4ad427297f871e3a16e62d1cf19847634102e5",
+      "blobSha256": "2e0efb7d3b27b462de2f84637f902204b723296acbd4902acc7138eb125f2cff",
+      "originalResponseSha256": "b9e57434bfc8ddca008f6a9de2a08eda477fad1f26ebc41d4b82faad4f709ddc",
+      "receivedAt": "2026-10-19T09:48:29.050Z"
+    },
+    {
+      "gitBlob": "00a32d5c50bc0fa581a5a22088b2c1038b3a8e83",
+      "blobSha256": "309f8664aa6e77f5fdded960f49a03c80c18c4d39c947b9e35ee781b359c03d2",
+      "originalResponseSha256": "eb51da9d46a3509d40304b695eeb53d7c0bd39bf2250ee96e1e96275fc254113",
+      "receivedAt": "2026-10-19T09:48:31.101Z"
+    },
+    {
+      "gitBlob": "528fea7c90c422fd2a5c112c520b7083bbc1364b",
+      "blobSha256": "357b92bbedac5f6ab388d1bdefccbd27ac1baae1e027092fe3dda23c138bbbcb",
+      "originalResponseSha256": "193838b8104f4823917bb0d3a23b6e8541b5b26a9f650d2b5a901328c7334be3",
+      "receivedAt": "2026-10-19T09:48:33.219Z"
+    },
+    {
+      "gitBlob": "77e16fa313dea04900d1b798b80498c1d971be1d",
+      "blobSha256": "6a4e09cefde06d6bcb8b9501e0b24ec9b071dced89add449492b42722c47fc1d",
+      "originalResponseSha256": "a771516e0e5915e9ca47cb1958bb12b421fb38dc37810386fd6c1709899e8343",
+      "receivedAt": "2026-10-19T08:08:51.451Z"
+    }
+  ],
+  "acquisitionRequests": [
+    {
+      "kind": "native-producer",
+      "endpoint": "GET /repos/github/gh-aw/actions/runs?created=WINDOW_START..WINDOW_END&per_page=100",
+      "followupEndpoints": [
+        "GET /repos/github/gh-aw/actions/runs/{run_id}",
+        "GET /repos/github/gh-aw/git/blobs/{immutable_configuration_blob}",
+        "GET /repos/github/gh-aw/actions/runs/{run_id}/artifacts",
+        "GET /repos/github/gh-aw/actions/artifacts/{artifact_id}/zip"
+      ],
+      "allowedNow": false,
+      "reason": "Independently establish complete candidate inventory, declared capped selection, immutable MCP eligibility and recursive raw telemetry bytes; templates are not resolved run identities."
+    }
+  ],
+  "openScopes": [
+    "Preserve reviewed source-era differences: adoption gateway-only broad population versus current capped cohort plus RPC fallback.",
+    "Probe retained pre-adoption run inventories, immutable configurations and raw artifacts; do not invent a baseline or classification.",
+    "Acquire native evidence under the frozen current profile; do not backdate predicates into unverified historical source eras.",
+    "Only after freeze, use production readOutputHistory for lineage discovery, never raw telemetry acceptance.",
+    "After source review, request bounded run/configuration/artifact manifests and raw payloads with immutable provenance and cohort binding.",
+    "Resolve unavailable native observations; a verified missing-evidence collector or empty plot is not a native measurement."
+  ],
+  "limitations": [
+    "No network acquisition, fetched-code execution, deployment, policy change, commit or campaign enrollment.",
+    "Adoption source, compiled bytes and sole import are retained; historical source readiness does not establish compatible native evidence.",
+    "No report statement, MCP status 200, successful workflow or synthetic fixture is an observed raw telemetry outcome.",
+    "Original adoption source is now available; its predicates differ from the current-only function and are not silently reinterpreted."
+  ]
+}

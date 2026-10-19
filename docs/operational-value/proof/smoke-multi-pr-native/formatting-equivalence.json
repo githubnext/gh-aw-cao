@@ -1,0 +1,773 @@
+{
+  "schemaVersion": 1,
+  "kind": "formatting-only-equivalence",
+  "predecessorSha256": "0ba2ae5905c4dccf126c8728aa375fb7359b1b3f21bee5fda500b5a12124e6af",
+  "replacementSha256": "e4241801eed432e088516e68ee7575abe06ba87934a45690a60e3a083211916f",
+  "modulePath": "docs/operational-value/proof/functions/smoke-multi-pr.mjs",
+  "archivePath": "docs/operational-value/proof/smoke-multi-pr-native/versions/0ba2ae5905c4dccf126c8728aa375fb7359b1b3f21bee5fda500b5a12124e6af/formatting-predecessor.json.gz",
+  "archiveSha256": "11cf04c4fb06a0fe949a314f07f68c11aae04c159f77d5e16c0f0be167423467",
+  "astSha256": "ce1bdd7225375edeb994db2a34ca565604db8986bcdfe884be46d3716f722177",
+  "tokenLexemesSha256": "8860400956a6982b8a4bccae3434a6bbec1e7822ba06276c8b7bff9c9273e296",
+  "tokens": 9333,
+  "beforeLines": 3336,
+  "afterLines": 2652,
+  "preservedFiles": [
+    {
+      "path": "docs/operational-value/proof/functions/smoke-multi-pr.mjs",
+      "sha256": "0ba2ae5905c4dccf126c8728aa375fb7359b1b3f21bee5fda500b5a12124e6af"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-definitions.md",
+      "sha256": "74e70226f6c1fe5a3efc6f1f41cb09676da12b35d22fff4cccac445804b6ab70"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-001.json.gz",
+      "sha256": "6b08cbd27e81231b25f2d8e5c5a1e1303bb1d1796eade84fb5bf9378d1990664"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-002.json.gz",
+      "sha256": "3380e62aa3ea650823bd745c5e604f4ae40a3dcf3bd4bd7b51840a6d4f46d192"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-003.json.gz",
+      "sha256": "979dc2369cc528dc94bbabb597c33c0ef002640fbd648785df4eb9c18b34740b"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-004.json.gz",
+      "sha256": "8ae35a0cfbe6271ebe534ce697c1821487a993e16cdd837c4e345c2b96181cc9"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-005.json.gz",
+      "sha256": "47a13c93843c1975d6560884ec5ffe31923deb911015eeec709db06514671269"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-006.json.gz",
+      "sha256": "c2ac0bc05546f96c2b81a9851c28157d7275b9d0acd40295970ba6c79baefe50"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-007.json.gz",
+      "sha256": "6ff381c90b6f49119d73c8e3191b6bb00aa628be9ec67a16771137fdf0eed961"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-008.json.gz",
+      "sha256": "545eb0d41e52f9f4f66042ea13991f3bd0bc91ba3818d9060d5798ad9bd5c4f4"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-009.json.gz",
+      "sha256": "53815728753bc37a9ff80d949bd31b7c4c1678deb001e79e739af115872e54f5"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-010.json.gz",
+      "sha256": "d38f8c17ed11ab78c1aadae4670b548e066ff3b7a6572db1a200e4adf6571e20"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-011.json.gz",
+      "sha256": "5055b450b65ca1724dd4612453f4a19caec7556536142ea3a2f9529d0c1b565e"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-012.json.gz",
+      "sha256": "7ad9103f5905fa54196d43e6ee4cf14c3c18792f6ad48f9a80e0bb1c65aec143"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-013.json.gz",
+      "sha256": "1090a4aecfcb2cb95e5251651ac618e4d7f778e1e53909cda0457033b83c7641"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-014.json.gz",
+      "sha256": "c1f6b904cae6b0fbf484948e99c7e47dceb88784de0475ff6e1294676a0f7d96"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-015.json.gz",
+      "sha256": "ef2e5fb6d1521fdcec5fd420a35cf01807e80d3656e2d40bc5abf82aa457b9be"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-016.json.gz",
+      "sha256": "0d7c8b2795368b780ac269de38f81441525a4e8da85c0729d6f7ffd0d525417d"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-017.json.gz",
+      "sha256": "75cd211de6bef25f94a544772e17361a1f8e5844adee46e94fb9fd139a6ee2f7"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-018.json.gz",
+      "sha256": "c8c2c749d70d55b455d11f3df61c2d6ed124ab300163a824c37ccf365efe43ab"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-019.json.gz",
+      "sha256": "fee60627ce5e02136a35315c4ea020f20fee53c00c9f9cdfa1670a47be0916e7"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-020.json.gz",
+      "sha256": "eb2d19a0176424059a334cc4193edc8ae987e460fb537435e1d43fac2b47dcb2"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-021.json.gz",
+      "sha256": "255bf9556b03b4465099c4bd434186f84e0700901935ee49a53046ab7dd93d45"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-022.json.gz",
+      "sha256": "accf644535e9fa67d3293fd0d36762b9a654d61cb3988c49f36ff2eef152ebe6"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-023.json.gz",
+      "sha256": "51c9486daa8df7bee236cb11054b70164ab2517965cb86c207aafc9c2bfe9337"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-024.json.gz",
+      "sha256": "23b20ebbf389e99588b3aafd5f5f7ba6d3b4ec069ba4c64121352c269cd843cf"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-025.json.gz",
+      "sha256": "f59eb96b02c27566800829d8c1f7959fd055412306abb44d108818b810fbd16a"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-026.json.gz",
+      "sha256": "c6eaf237c49d274db6e9bb0217757ba754ff373aa2f46d978daf02d9c277784c"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-027.json.gz",
+      "sha256": "f8a5718eb763ab5a6c093f4f5da297ce5ec71b0f69f93001b9d75d0ce4ffbbdc"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-028.json.gz",
+      "sha256": "807a268ae42b3b45986f07174461bdcc48731739dde75dd9c5af919013a03d4c"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-029.json.gz",
+      "sha256": "c582b5bdb6b47047c4c198ace638813bc409a41f1ce0b0807096f2a1f923c418"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-030.json.gz",
+      "sha256": "abd1c21ad5aad9a48adb197fef2a63e7dae713b44c0c7e767e5dda1087467ce6"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-031.json.gz",
+      "sha256": "484810e5b387ea68f1340bb2b8a84512b6ef638d2a0683a7f442470f3182a3bc"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-032.json.gz",
+      "sha256": "11931f69ad6968b07ea6c0d30097cabff39096a8803d3a149b3ee3bdd428f46c"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-033.json.gz",
+      "sha256": "6f315f912c2d82d50cdbc02d27abdbc13db2255f763183c9a8757e0659e92e2d"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-034.json.gz",
+      "sha256": "2c4dadf597c3c3cff4d3e5efa359321a18051cf3caec1ea5df7cddf18a7e9a93"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-035.json.gz",
+      "sha256": "4bcce3fdbd4269065c3c5fe4cca1475a21c376e774ddc731b26562f64e244aea"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-036.json.gz",
+      "sha256": "c720da35d57ab5b2fae048a6e4bd07b55622082dd76b6caf76029feb16a48318"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-037.json.gz",
+      "sha256": "8d9728b26f955babfc334c991343a4c1422fcb8fe3c20721f1f647011b2a850e"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-038.json.gz",
+      "sha256": "b0fbb988f670441467682e21bad8903049b87b0ee5a20fd7eaff0eaeecd18982"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-039.json.gz",
+      "sha256": "9839a6fe15447e9c412f6dc63b02720b06a221589169866ff51fd421c15a46aa"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-040.json.gz",
+      "sha256": "fd3edaebcd57f932c7a04d03eeda6198b52f57bb2b4e4083599ff3f2b477329f"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-041.json.gz",
+      "sha256": "77ad0153674a6144d6acfd6621e71b29aa85b3066c230bc6015e048f1df7f7eb"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-042.json.gz",
+      "sha256": "457ab667808e6cba77a0a50a32de4cdda1b2df3161b3d4ad5c343ef3f090c099"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-043.json.gz",
+      "sha256": "8171709dc665badd0a9f5a976fd8a088622f9da9aaa8f634e09a4aaa412697b3"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-044.json.gz",
+      "sha256": "c607eadb18d64b9f191ad71588c4d367318d5c13cbb8d9e13109dd6407e09c8c"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-045.json.gz",
+      "sha256": "8c7f181cfa1f1b01525d8c65e44862dd4e905f95fad9037d47b9b3af195beed4"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-046.json.gz",
+      "sha256": "e808ae2eb74f340c4d9af4bc869fa50fed2dbdd76e3705c2baa455d78ff4ea78"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-047.json.gz",
+      "sha256": "8205c97d4094076ca1716616669e124fba4846e2e16ea4eee84b83e193ab81f2"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-048.json.gz",
+      "sha256": "5896f9730b0ecf618edf2a5c92088929e4938474c72c934d7fa7dfb38cea9b34"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-049.json.gz",
+      "sha256": "418cec25ea6dcdf2834c0dcadbb5245e3cde455b2e01cc65c513b98c8da1d796"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-050.json.gz",
+      "sha256": "b50f3b8a65b7cd333803e81fd1f58f96bb1ba214bd0c5b1c79b5b31d0a0df151"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-051.json.gz",
+      "sha256": "ebadea816032f3cccc512f6a90d0fcb8f0fbbc0fba8f89321166e7a0182cb932"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-052.json.gz",
+      "sha256": "e99e54215d57906b1ff629be723e81aa469d627da08845154d3e4dc4359e0bde"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-053.json.gz",
+      "sha256": "f737ad48475b018a17998a759ec77cf9ed7fe60e17a24e88d587843545b32332"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-054.json.gz",
+      "sha256": "fe2d506ba067cb4ad1394170713ccbb00e11caefe236eff1aeb474bc3df88310"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive-part-055.json.gz",
+      "sha256": "3e77204dc7e7355e1249798471fff3c4f206c479652a24796f723870e643a25d"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-evidence-archive.json.gz",
+      "sha256": "0c5ccfbf5c1186011028fb358f1470b0338ce4b964785889d5824d81531b1890"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-pulse.html",
+      "sha256": "c31e23428e7b0e686b8522bfc45d54d15e530b8baa4acccbca2dcc0c2fb62a0a"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-pulse.json",
+      "sha256": "ba3054970595af50ecce43b017e321a4a40d3c3dd07a944253caef14774b1c5c"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-001.json.gz",
+      "sha256": "785f6973bf2702bccf41f6a1329ae221bee8a51c2be364278d47b5537e900d9d"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-002.json.gz",
+      "sha256": "55768dc275659d66c682355a52a48268b6696e8d0f4c7f4b70ca352071340eaa"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-003.json.gz",
+      "sha256": "adfc3a73f0add9c1042a70fe6429de02002cc931464ad3cc6b22fbc977b93030"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-004.json.gz",
+      "sha256": "0ee4e702cf342215d8522611e44e86a99e72a46e698c302545b28985008ec93a"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-005.json.gz",
+      "sha256": "92458cc5135d040212e2131d44e9c4023e83ca058daafcd7ba767b9140f90218"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-006.json.gz",
+      "sha256": "39ea79a35dbc60591be6b1f59dc5598d39bdd4f0af11c14f21962b33fbbf00b5"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-007.json.gz",
+      "sha256": "c7cc67a4ad0c8dd292f88d30ec82a0a964ab2a318f573588de72d60b71d06ad8"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-008.json.gz",
+      "sha256": "352830eefb6600f86f03ab9d1dad7f22e48ca6364aa83bdc71ddde669986b474"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-009.json.gz",
+      "sha256": "d7c115a9b20763a3a7c79aad70e0f5d4e0913057e273581187b1f863ddfa0086"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-010.json.gz",
+      "sha256": "d9491bfe6c681f36816b55a6c925293b11d82079cdce38fb92bab6fb8abcef1f"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-011.json.gz",
+      "sha256": "e743f8d199ff95c7cdce829c610a7b168a82837e59e3dde47728cb9c27f683d8"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-012.json.gz",
+      "sha256": "6264fdd3e33cc0ae60d9320ca0ded453d197bf7f7e719df802c25fc7c87c962b"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-013.json.gz",
+      "sha256": "e6b2ca1f3da2f4af00ce3048053c11aa2bc9d293c68f73d12830210a945afab3"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-014.json.gz",
+      "sha256": "fabf6f189de21d3846b2cd2799e22fa348e6f98740fa1b292805c5dc6041ba1a"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline-part-015.json.gz",
+      "sha256": "184b7140cd0593fca25a3088585791d0134d39aea805094df82bdbe3c0761840"
+    },
+    {
+      "path": "docs/operational-value/proof/reports/github-gh-aw/smoke-multi-pr-timeline.json",
+      "sha256": "2b8015081b8bb6796c8fa610c0c55ddf4f6dc9078bea5630ef648fa20b8146f2"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/additional-protected-jobs.json.gz",
+      "sha256": "13aa09206dfda11fcd81951ec34a5a57ff256d034507a20dfc3bbd600b868da7"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/contract.json",
+      "sha256": "2eefa3a2c8e50de27c330109c1a06cf8e8ad9cdcc8df84f320b2c7f9b29187f6"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/contracts.json",
+      "sha256": "98b8254441be9afb111234ed37cc579799430971335fe06bd1f84f64035b9f1f"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-001.json.gz",
+      "sha256": "f91a32adc8668cf0827b64887c179ae8a9f4b9e2cf6b2706ef3d0a67f61ada54"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-002.json.gz",
+      "sha256": "4345083a0205504eb121859c1bd179d5616993b54b24479e80c2506e6c41f615"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-003.json.gz",
+      "sha256": "269c8725965af4a6da35ea6166dcb908414ee1b076564e2b049ce3a67af70cc3"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-004.json.gz",
+      "sha256": "37f3169d5fb22a10577634b24f0741a4af451d6051600f65f2354028f54adeab"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-005.json.gz",
+      "sha256": "11e1614778d92638cb6abfe98b27ea1f36522046ddbe372d80ac99a66e0b6ab1"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-006.json.gz",
+      "sha256": "5fae6997adfd70a72d8b11bd4cb6096df1ecfa7c2529f8d6e5dfd04fc533ec06"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-007.json.gz",
+      "sha256": "2af01449f7731ba0ae08c2b7c14aac22a7ac7f06af9fe98e5a2b35b8fd6fa427"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-008.json.gz",
+      "sha256": "52ee6bd5d62cee8d064adf8ed95f4107c7342f4497a9b1409559508376343cf0"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-009.json.gz",
+      "sha256": "4680b8822e685a36d99f5de81c982b722422feaf687ea0d22e9a786c1c8239e2"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-010.json.gz",
+      "sha256": "84bc7685aca7308bd14d10192776a5febb671280b828369182fcda25ba1e7ac5"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-011.json.gz",
+      "sha256": "993fc104d8728f98fc87fbe62a9f419e9f3e169818e3e6fce4b724df98d225cf"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-012.json.gz",
+      "sha256": "7c7c8dd1c7c6813a02fdc30c0b18b33218c2edeeb4da16d6aececdd2a0bd1ba9"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-013.json.gz",
+      "sha256": "c9963b3b8da318f67a50c46ad8c8cfe866f60b7f8278ec1a6685e71b1313ac5a"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-014.json.gz",
+      "sha256": "dfb1fb7bc344a64ebddd00c29b7ea1dde9fd2e908e270deb03bba1d8ce647397"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-015.json.gz",
+      "sha256": "c3a737814b4c4b5ef460d767225ab51f266f0fe4fcf3c681b462404363b4d95e"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-016.json.gz",
+      "sha256": "b178dbff66f7a9d394115f7aa94a586e2cff0ac5c86a8889ad9d710496e328ed"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries-part-017.json.gz",
+      "sha256": "6c734f6a18f4a3f0a0e74edc45131a2fb537cc25c00d896143e53f8fb9e641a9"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/deliveries.json.gz",
+      "sha256": "7b15af29a2627ef2b410d720826a23e92d00ac0a59a9cf62e3b96ad0f2edf91e"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-001.json.gz",
+      "sha256": "789859e2c46fbbc73069a16f780ef47fbe0d80ee55bc1cdfa4e0f9ac78930152"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-002.json.gz",
+      "sha256": "16c2de1fe46cbe17f993f25966a89efe07762b7d4da388f16f6f0c77fbe06aaf"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-003.json.gz",
+      "sha256": "2253b04904cda87758c97425e685a2a48a2ee7be5a83c48faaeeee38bfba71f0"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-004.json.gz",
+      "sha256": "54294c6e766b66bbbe2e001dc3e0df5b987a1dffa480bca304bd91b4986e335e"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-005.json.gz",
+      "sha256": "ee1a4838a4eada65e9850e43221b7b2ed4cc3e40a1b6e5d7fc4a010dda8f79d1"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-006.json.gz",
+      "sha256": "36bbe3c49bca98d8261e5134a2d2f26e730a6a6f15979b98b06e1151f4b9c64f"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-007.json.gz",
+      "sha256": "6efc550436c904d2fe0777ed951f25aa67e9e1dc55cf4627bd688d76e37d9194"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-008.json.gz",
+      "sha256": "aa37658476c27f6942dd9920a8f22bf38093a5ba9e36e1391e3d97d18f9c9f6d"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-009.json.gz",
+      "sha256": "f5cf3b9416a0598e03a2ed093b845eef4b19ded3cabcd36c203b3aa34b9ad3ff"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-010.json.gz",
+      "sha256": "4b3ee7a9c43043932440cccd493cddd41b1c1c10635be415871ac506d8be73b2"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-011.json.gz",
+      "sha256": "0f341380dfc0ef41ed663529366c6d43b905d5eb821878c65e58698bbc3b13d8"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-012.json.gz",
+      "sha256": "e14fb0a5e3a76926100c5fedc5c35ef351b7ffba7ee54ab43d679a7deb0b2fb1"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-013.json.gz",
+      "sha256": "dfca13d2b04b3c7f213a189f0e07a8f79ac732aa36189b4fb79c44d6c346d2d8"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-014.json.gz",
+      "sha256": "8a3145597a78290bcd06121db5c17dee60adcee6439be70c35d61845224954e3"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-015.json.gz",
+      "sha256": "aaba2c37b1323a73ac350f9fa92dd9a8a456c6e23152d63b1fa6c1f0b40c43e3"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-016.json.gz",
+      "sha256": "123771bb50e06c3fd2b8c321fd433c8b0fee09315e7cef80111ace97f46e9768"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-017.json.gz",
+      "sha256": "a8abe0bf8826829e420993fa0a16532c951225e07ba9b731540d2169bd948905"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-018.json.gz",
+      "sha256": "65352b2831bdb89d0abe9253e97c3834566da79d758a76e01e301d2eb3f69926"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-019.json.gz",
+      "sha256": "f32b4998f1fed30ace508abb3b14c54e52c6cb5899060cc5c604ec6ce9328b36"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-020.json.gz",
+      "sha256": "59181e211726d84e1369ab536d9e218850c123bbe86192945128069ea7ece613"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-021.json.gz",
+      "sha256": "99245af23988302787e355f349ef443dc2a30dc822213e1565a2e79c853b39ff"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-022.json.gz",
+      "sha256": "6d197f4859f4c15e3d0bb2d0654016ea1ef344c5dec182e290e3881b48a38f5d"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-023.json.gz",
+      "sha256": "f640556d5fcafd618cd3a1e06b6a12d685178ad4d8da516ed4c82afe4f391672"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-024.json.gz",
+      "sha256": "ec79caaca92f60f23615fc614a75f4574eb946aa21012bca27848e04adb2f002"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-025.json.gz",
+      "sha256": "b2532fbd1dd71257003e047cb3bcb70cdf556f8132b3eb3f775f4af10b2e0f72"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-026.json.gz",
+      "sha256": "586eebf308ff43d7a5781ec177503089076eeec72c7d5124918cf3c6a12ce2ed"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-027.json.gz",
+      "sha256": "fa111277192260d5ca801a8e86a36aeb8874eb82371abd4c54eb546bdee0c302"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-028.json.gz",
+      "sha256": "e99e5c15040cee28614f8e9f1bcc325b939232bbdfd530908b60a8a4fa5a7a79"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-029.json.gz",
+      "sha256": "50eb9f59024ce1d5f64151c078b51badca15adb8ec43e2d6e8828c0961a83380"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-030.json.gz",
+      "sha256": "891d24907b84b095f9378b2054d6e777e36fa3d6c9d9bbba8825a040e2ab1bde"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-031.json.gz",
+      "sha256": "eaaae2b7f0fd8da487af80d937648a6dde54cac6d6d1c536e9e0fe2add1ca4e9"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-032.json.gz",
+      "sha256": "58a2c34ed8054d9668505b7210fc550079d753ce08bd379d9ebad41f73f379a1"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-033.json.gz",
+      "sha256": "0c7bba41bd5053a2338315119de95b4ae99720aa250ea406513bdd96d106b541"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-034.json.gz",
+      "sha256": "c5a5bb7d8a543fb548dd716e1991ee0975536fcc424b480ac08acc06d19026f8"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-035.json.gz",
+      "sha256": "504bd6f4d09e3c39396992df26674d40bbfc2c8fdc98ac56bfbfc6ce9371b5fb"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-036.json.gz",
+      "sha256": "ec5f2c72ea63a2d15a8804ce6560deff99df6f86fd5b43ef26c843b295387724"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-037.json.gz",
+      "sha256": "f0926097eb30b64ad4bef8988f325dd9d7a57de01e97fd06f8c7995f799668df"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-038.json.gz",
+      "sha256": "3e9441dee4b9195c1616de6a3d5807e0bedad359b9b6b4986eabbfe736a8495c"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-039.json.gz",
+      "sha256": "21e4fc8f074e093d8d388e12edcad0494bbc6be9f35b3785795ce3401105f08c"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources-part-040.json.gz",
+      "sha256": "5767bf774bbc2b488c3d772165189da1613db068a7990d1611d3eba814b92c5c"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/host-sources.json.gz",
+      "sha256": "e65e966f72753e9cf1737eccf798e62b24577724bbf220ae6ed2f9158a723012"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/index.json",
+      "sha256": "05b42d0fe9fc0da0a0deb48c42d531caf6f514dbd62776929a7f5dd7598d0b69"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/inventory.json.gz",
+      "sha256": "9c6ca5878587d3293723a2bcb60814f885857e8a8946d4838ce60b57361613e4"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-001.json.gz",
+      "sha256": "833a9978e7ee952e03446cd47cf35a889d133ce2333ba3c07bc83d4a1761e041"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-002.json.gz",
+      "sha256": "87371a4dc34d1ec247c1d827a62118862667b7373674f21baf70f4382920a985"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-003.json.gz",
+      "sha256": "be6ee5ac9aa7c7e216e5a94b40554f8af4a75a1b965a9a9f799d42b521b72209"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-004.json.gz",
+      "sha256": "4ff99e6e0f120d7a76b93a039c94c679fb577ca0faf722375d9e84d9e7701173"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-005.json.gz",
+      "sha256": "17ed389a04e537155464ec12362aee3d50b5a03d87c8375d723d7e6cc4a7c162"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-006.json.gz",
+      "sha256": "9b21a8657980bb9a45f761072c1ed65ab9d9f5b5160917971a5c2b4bd5b366fb"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-007.json.gz",
+      "sha256": "753deececee7964ef19f0ca74980da3b841a98bfd06f064c760b95a50740d66f"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-008.json.gz",
+      "sha256": "023ab1f557ec951209ce259e6012c69862a49c5ae34087437370bb8e30c88c3f"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-009.json.gz",
+      "sha256": "767b27e8ec7fbf5884c265ab26afdd1af886b8dc4b1c50a27289ea582c732903"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-010.json.gz",
+      "sha256": "2f15f8c654c834797e73a08a9dc6bbb24b982b389b1bf0c8ad9797892a5f2c14"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-011.json.gz",
+      "sha256": "6581a724c07b7d5b2a253bebf1c3da7a518fcbee5df888f8ccdfaabc3fe24d8a"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-012.json.gz",
+      "sha256": "f531dc7a0cf97fc2432fed08419892d8117461187c131c1d3a60227cb7b0f16a"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-013.json.gz",
+      "sha256": "e506565666542da2ac86788cba26032baf684439497f72163b979329a3c082b6"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-014.json.gz",
+      "sha256": "ea336a60d0df9da4d24e492891c54b0465d809b67b4c3646ede200c8a23ad9dd"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-015.json.gz",
+      "sha256": "15e6de9363e5cf2624c4b8b2c9bc6c30937762672ae4d74e8947229ee05413c1"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-016.json.gz",
+      "sha256": "cfd834e26cdbb4ba2151d7ee74909c8250a7ac8174d289a7ab26aa418c299bcf"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-017.json.gz",
+      "sha256": "26db1bb3f47b550bb7dd7393e295acb0fad977d78a6179135bdf1e39e5fce730"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-018.json.gz",
+      "sha256": "2fc741ba3840f5566612cf700ef59ae0bcd386df688b601bd936df96bb05d585"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-019.json.gz",
+      "sha256": "9dbb628c66d4ef0a8b276a04760738614e401c2be91c5d9766e19c7edfabba1a"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-020.json.gz",
+      "sha256": "809473c32518e37853089013d907238754c9872e867194efc2220c6875c8201a"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-021.json.gz",
+      "sha256": "76b71dbcf19bdf27d015119e7a1ee4edd38e16a2b773d0e2b44cfc33decb92c8"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-022.json.gz",
+      "sha256": "3c4b02d2575fc563edebad1ba705ef3edfd092f85214ca6dc871493bedc7f9c9"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-023.json.gz",
+      "sha256": "620aeb60b76b6d7ea709931913bfde2388f6be7e2c3416f548047502e1e640a2"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/observations-024.json.gz",
+      "sha256": "e73e13b96716dc9d53a47b27a6b4a6e5477eaaba7de00dc94b853266315f4f28"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/receipts.json.gz",
+      "sha256": "f9fb7edcdbb018b75c76331dd6164447b896093cb387181e91926a8558f6ecc7"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-001.json.gz",
+      "sha256": "981495254396337fe6fe781b5eee90dde1809a64e48a12410e56028fe81866b4"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-002.json.gz",
+      "sha256": "6db093fba9fc29a9baaf6276cb621a6f9f9bd4b28d96b37126ee99ab2e7f8aa6"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-003.json.gz",
+      "sha256": "e3acd87c7a4923acd7e6e0150439aedb912141885f19df8743d2f0dc95aac837"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-004.json.gz",
+      "sha256": "9903adbf2f36cc77e334d9306585d088f514dfe671001f7058f8861d4670b393"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-005.json.gz",
+      "sha256": "ea7f42823c998af3c92f9dee82d5c9347d3bfa472529300317a005137688d186"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-006.json.gz",
+      "sha256": "3684100762f696f284e490c6231b2d719f429bb0bec24b461721c038d51b1d5c"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-007.json.gz",
+      "sha256": "5a1b1e18cb6f50423566308cc72d94fab03a8cdeda93ba51251a8bbd68e56878"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-008.json.gz",
+      "sha256": "453b6589a6a3201795d213eb2121df4e49cf8b3fe676024e111b625be8783d2f"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-009.json.gz",
+      "sha256": "d91b1543db76d926bca99c5593f7b30fcfd0e2521a71ff1cb6dd75f6f2952ce4"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-010.json.gz",
+      "sha256": "f89cb6a481a5697908c8319d7c00935315501273b684121fbb40dc6436d30b3d"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-011.json.gz",
+      "sha256": "c2dab562ed7c1981135963a2bd8dd31e69761095c0a42ddf245c00ae559b1232"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review-part-012.json.gz",
+      "sha256": "3eee9fbab6c8b31c67e0281519db0c266b5e1effb5d3383dc67e698bf83b8459"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/source-review.json.gz",
+      "sha256": "b739067efaffa6207b3124399b9507b41c238ba22a951fc1313a6c7422313c00"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/sources.json.gz",
+      "sha256": "07b2a1828dcdd0fa9787ee83d7a471207b6e800267a3d3b6d7f46ce46a66d362"
+    },
+    {
+      "path": "docs/operational-value/proof/smoke-multi-pr-native/upstream-license.txt",
+      "sha256": "2510b446bc1f0cf9702453075d20cd88631e20e5642658edb7325d9c1eb534f7"
+    },
+    {
+      "path": "scripts/collect-smoke-multi-pr-receipts.mjs",
+      "sha256": "4bf92da10010be3826fc447de6450adf60b44b545872fd23ce21557af157c9ac"
+    },
+    {
+      "path": "scripts/collect-smoke-multi-pr-value.mjs",
+      "sha256": "a03279acd43c9403d96f070d182f98514eeaed3bf2e6bc1a4ee01d414e4455cf"
+    },
+    {
+      "path": "scripts/finalize-smoke-multi-pr-value.mjs",
+      "sha256": "d9d0ebb4d195e8ae0c6f380152ecfce947165c0c0e42fc15eda033ef489003e4"
+    },
+    {
+      "path": "scripts/format-smoke-multi-pr-value.mjs",
+      "sha256": "1938b5dd99a8ec0af6aed79298296f52b8b5aa653624a7aff7caeb91a5a2887c"
+    },
+    {
+      "path": "scripts/native-smoke-multi-pr-value.mjs",
+      "sha256": "9fa7d8d93434671a0ae0d05ee3b275420bba437de96d7e6a44f5fdab10cbde58"
+    },
+    {
+      "path": "scripts/review-smoke-multi-pr-sources.mjs",
+      "sha256": "f3a848e00806424c0627ac637889bd8c51fc0697673205c87ec02a44d79c66e0"
+    },
+    {
+      "path": "scripts/smoke-multi-pr-fixtures.mjs",
+      "sha256": "bdf60a221dee5319cacc2d8e1a717011c3f5f2f8e82e0785377508f94991f562"
+    },
+    {
+      "path": "scripts/verify-smoke-multi-pr-deliveries.mjs",
+      "sha256": "8071a9e5cef9ed876df4b6ffeceffc417b3b970abb239d882955417f8a949f7f"
+    },
+    {
+      "path": "tests/unit/cao-operational-value-smoke-multi-pr-native.test.mjs",
+      "sha256": "079ea5bc684a5d37a4a00ac6bcde807e77b3bcb57e4d36921dbbb079ba2d7327"
+    }
+  ],
+  "invariant": "Only inter-token whitespace changes. Original sources, proofs, indexes and observation identities remain byte-preserved; active reports use the new function SHA."
+}

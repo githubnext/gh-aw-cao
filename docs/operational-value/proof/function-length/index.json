@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "repository": "github/gh-aw",
+  "workflowId": "lint-monster",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "contractSha256": "5ad09fafde54cbdc46d6a460d2f565ffb6c90fae16d92bd06b54373e9470b572",
+  "factsSha256": "b7e14ff856a3790b592cff694aa3dcf1cb3aceb40c691942fc570566a558274d",
+  "rulesSha256": "e5c0c8f804b4756ad4dffb52d818cb37a23c1b506af87e9f5274289df3ac7377",
+  "states": 24,
+  "sourceBlobs": 6632,
+  "sourceBytes": 91260201,
+  "acquiredAt": "2026-10-19T03:26:31.583Z",
+  "producer": {
+    "path": "scripts/collect-function-length-history.mjs",
+    "sha256": "a495a330857d50c05d3ec48b8689601b2ae5684411bc597609fbb422b5b4b595"
+  }
+}

@@ -1,0 +1,166 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { censusDigest, readCensusJson } from "./operational-value-census-io.mjs";
+
+export class FormalSearchEvidenceGap extends Error {}
+
+const integer = value => {
+  if (typeof value !== "string" || !/^(?:0|[1-9]\d*)$/.test(value) || !Number.isSafeInteger(Number(value))) {
+    throw new FormalSearchEvidenceGap("Native state count is malformed or exceeds exact numeric precision.");
+  }
+  return Number(value);
+};
+
+export function parseFormalSearchCounters(log) {
+  const final = /^(\d+) states generated, (\d+) distinct states found, (\d+) states left on queue\.$/;
+  const progress = /^Progress\((\d+)\) at \d{4}-\d\d-\d\d \d\d:\d\d:\d\d: ([\d,]+) states generated(?: \([\d,.Ee+-]+ s\/min\))?, ([\d,]+) distinct states found(?: \([\d,.Ee+-]+ ds\/min\))?, ([\d,]+) states left on queue\.$/;
+  if (typeof log !== "string" || Buffer.byteLength(log) > 8 * 1024 * 1024) {
+    throw new FormalSearchEvidenceGap("TLC log is missing or exceeds the bounded parser budget.");
+  }
+  const lines = log.split(/\r?\n/), safeLines = [];
+  let latest = null, completed = null;
+  for (const line of lines) {
+    const p = line.match(progress), f = line.match(final);
+    if (!p && !f) continue;
+    const values = (p ? p.slice(2) : f.slice(1)).map(value => {
+      if (!/^(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)$/.test(value)) throw new FormalSearchEvidenceGap("Malformed native TLC decimal formatting.");
+      return integer(value.replaceAll(",", ""));
+    });
+    const [generated, distinct, remaining] = values;
+    if (distinct <= 0 || distinct > generated || remaining > distinct) {
+      throw new FormalSearchEvidenceGap("Inconsistent native TLC state counts.");
+    }
+    const counters = { generated, distinct, remaining, depth: p ? integer(p[1]) : null };
+    if (p) latest = counters;
+    else completed = counters;
+    safeLines.push(line);
+  }
+  if (!latest && !completed) throw new FormalSearchEvidenceGap("No independently readable TLC state-search evidence.");
+  const noErrors = lines.includes("Model checking completed. No error has been found.");
+  return { counters: completed ?? latest, final: completed, noErrors,
+    safeLog: [...safeLines, ...(noErrors ? ["Model checking completed. No error has been found."] : [])].join("\n") };
+}
+
+export function normalizeFormalSearch(result, log, contract, model, run, job) {
+  const start = Date.parse(result?.started_at), end = Date.parse(result?.finished_at);
+  if (result?.schema_version !== 1 || result.repository !== contract.repository
+    || result.sha !== run.head_sha || String(result.run_id) !== String(run.id) || String(result.run_attempt) !== "1"
+    || result.config !== model.id || result.module !== model.module
+    || result.tlc_sha256 !== contract.tlcSha256 || result.tlc_actual_sha256 !== contract.tlcSha256
+    || censusDigest(result.source_sha256) !== censusDigest(model.sourceSha256)
+    || !Number.isFinite(start) || !Number.isFinite(end) || end < start
+    || !Number.isFinite(Date.parse(job.started_at)) || !Number.isFinite(Date.parse(job.completed_at))
+    || start < Date.parse(job.started_at) || end >= Date.parse(job.completed_at) + 1000
+    || end >= Date.parse(contract.until) || result.timeout_seconds !== 16800
+    || !["passed", "timed_out", "violation", "tool_error"].includes(result.status)) {
+    throw new FormalSearchEvidenceGap("Formal-search result is not bound to the declared source, tool, run and host interval.");
+  }
+  const command = result.command;
+  const tokens = { 1: "-XX:+UseParallelGC", 2: "-Xmx1g", 3: "-cp", 5: "tlc2.TLC",
+    6: "-workers", 7: "2", 8: "-seed", 9: "1", 10: "-fp", 11: "0", 12: "-checkpoint", 13: "5",
+    14: "-config", 16: "-metadir" };
+  if (!Array.isArray(command) || command.length !== 19
+    || Object.entries(tokens).some(([position, token]) => command[position] !== token)
+    || !command[4]?.endsWith("/tla2tools.jar") || !command[15]?.endsWith(`/${model.id}.cfg`)
+    || !command[18]?.endsWith(`/${model.module}.tla`)) {
+    throw new FormalSearchEvidenceGap("Native TLC execution settings differ from the frozen search contract.");
+  }
+  const parsed = parseFormalSearchCounters(log);
+  const nativeCounts = result.final_counts ?? result.latest_progress;
+  if (!nativeCounts || ["states_generated", "distinct_states", "states_remaining"].some((key, position) =>
+    integer(nativeCounts[key]) !== [parsed.counters.generated, parsed.counters.distinct, parsed.counters.remaining][position])) {
+    throw new FormalSearchEvidenceGap("Protected result counters disagree with independently parsed TLC output.");
+  }
+  const exhausted = result.status === "passed" && result.exhausted === true && result.exit_code === 0
+    && result.signal === null && parsed.noErrors && parsed.final?.remaining === 0;
+  if (result.status === "passed" && !exhausted || result.exhausted !== (result.status === "passed")) {
+    throw new FormalSearchEvidenceGap("Native verdict overstates finite-state exhaustion.");
+  }
+  return { model: model.id, at: result.finished_at, counters: parsed.counters, exhausted,
+    verdict: result.status, safeLog: parsed.safeLog,
+    result: { schema_version: result.schema_version, repository: result.repository, sha: result.sha,
+      run_id: String(result.run_id), run_attempt: "1", config: result.config, module: result.module,
+      tlc_sha256: result.tlc_sha256, tlc_actual_sha256: result.tlc_actual_sha256,
+      source_sha256: result.source_sha256, started_at: result.started_at, finished_at: result.finished_at,
+      timeout_seconds: result.timeout_seconds, command: command.map((token, position) =>
+        [0, 4, 15, 17, 18].includes(position) ? position === 0 ? "java" : `/native/${position === 4 ? "tla2tools.jar"
+          : position === 15 ? `${model.id}.cfg` : position === 18 ? `${model.module}.tla` : "state"}` : token),
+      status: result.status, exhausted: result.exhausted, exit_code: result.exit_code, signal: result.signal,
+      final_counts: result.final_counts, latest_progress: result.latest_progress } };
+}
+
+export function formalSearchFrontier(rows, models, at) {
+  const before = Date.parse(at);
+  if (!Number.isFinite(before)) throw new Error("Invalid formal-search endpoint");
+  const frontier = models.map(model => {
+    const candidates = rows.filter(row => row.status === "available" && row.model === model.id && Date.parse(row.at) < before);
+    const best = candidates.reduce((best, row) => !best || row.counters.distinct > best.counters.distinct ? row : best, null);
+    return { model: model.id, distinct: best?.counters.distinct ?? null,
+      exhausted: candidates.some(row => row.exhausted), assessments: candidates.length };
+  });
+  return { valid: frontier.every(row => Number.isSafeInteger(row.distinct) && row.distinct > 0),
+    frontier, known: frontier.filter(row => row.distinct !== null).length, eligible: models.length };
+}
+
+export function scoreFormalSearch(id, evidence) {
+  if (!["explored-states", "exhausted-configurations"].includes(id) || evidence?.valid !== true
+    || !Array.isArray(evidence.frontier) || !evidence.frontier.length
+    || evidence.frontier.length !== evidence.eligible || evidence.known !== evidence.eligible
+    || new Set(evidence.frontier.map(row => row.model)).size !== evidence.eligible
+    || evidence.frontier.some(row => !Number.isSafeInteger(row.distinct) || row.distinct <= 0 || typeof row.exhausted !== "boolean")) return null;
+  const total = evidence.frontier.reduce((sum, row) => sum + (id === "explored-states" ? row.distinct : Number(row.exhausted)), 0);
+  return Number.isSafeInteger(total) ? total : null;
+}
+
+export function formalSearchModule(contract) {
+  if (createHash("sha256").update(readFileSync(import.meta.filename)).digest("hex") !== contract.interpreterSha256) {
+    throw new Error("Frozen native formal-search interpreter changed");
+  }
+  const example = n => ({ valid: true, known: 2, eligible: 2,
+    frontier: [{ model: "a", distinct: n, exhausted: false }, { model: "b", distinct: n, exhausted: false }] });
+  const metric = (id, role, name, unit, formula) => ({ id, role, name, unit, direction: "increase", formula,
+    presentation: { name, legendLabel: id === "explored-states" ? "Bounded search states" : "Exhausted configurations",
+      transform: "identity" } });
+  return { definition: { schemaVersion: 3, slug: contract.workflowId, repository: contract.repository,
+    workflowName: "Daily Work Queue Formal Verification", sourcePath: `.github/workflows/${contract.workflowId}.md`,
+    intent: { goal: "Deliver reproducible bounded exploration evidence for the two unresolved work-queue configurations.",
+      acceptance: "Source-bound, checksum-pinned native TLC output independently establishes distinct-state counts for each fixed model/configuration. Unfinished searches are partial exploration, never proofs.",
+      temporalAnchor: "workflow-adoption" },
+    adoption: contract.adoption, evaluation: { mode: "attainment-only" },
+    evidence: { key: "native-bounded-formal-search-v1", repositories: [contract.repository],
+      interpreterSha256: contract.interpreterSha256, models: contract.models, tlcSha256: contract.tlcSha256,
+      opportunity: "The two fixed model/configuration state spaces at the frozen source revision.",
+      filters: ["Use the largest independently observed distinct-state count per unchanged configuration.",
+        "Repeated searches do not sum into new lifetime value; different model/configuration hashes are not comparable.",
+        "The primary cohort requires both configurations; missing evidence is not zero.",
+        "Bounded exploration is not invariant exhaustion, validated checkpoint recovery, unbounded proof, exclusive causation or measured cost."],
+      collection: "Protected native matrix-job artifacts, source/tool hashes and allowlisted raw TLC counter lines.",
+      measurementKind: "snapshot", window: { durationDays: 7, cadenceDays: 7, maturationDays: 0 } },
+    model: { architecture: "Fixed-cohort native exploration frontier from independently parsed protected TLC output.",
+      recommendation: "Inspect unresolved searches, counterexamples and source/tooling gaps separately from exploration progress.",
+      presentation: { label: "Bounded configuration-state exploration", betterLabel: "More independently evidenced bounded exploration" } },
+    summary: { nativeLabel: "Configuration-states explored" },
+    metrics: [metric("explored-states", "primary", "Largest bounded search per configuration", "configuration-states",
+      "Sum the largest observed distinct-state counts for the two fixed configurations; count shared states separately by configuration."),
+    metric("exhausted-configurations", "diagnostic", "Exhausted fixed configurations", "configurations",
+      "Count configurations with an independently confirmed zero-queue, no-error native exhaustion, separately from partial exploration.")],
+    validationExamples: { targetAttained: example(100), targetMissed: example(1), missing: { valid: false },
+      malformed: { ...example(1), known: 1 } } },
+  scoreMetric: scoreFormalSearch, collectBatch(requests) {
+    const directory = "docs/operational-value/proof/formal-search", index = readCensusJson(`${directory}/index.json`);
+    const rows = readCensusJson(`${directory}/facts.json.gz`);
+    if (!index.complete || index.contractSha256 !== censusDigest(contract) || index.factsSha256 !== censusDigest(rows)) {
+      throw new Error("Formal-search acquisition scope or retained facts changed");
+    }
+    return requests.map(request => {
+      if (request.repository && request.repository !== contract.repository) throw new Error("Formal-search repository mismatch");
+      const evidence = Date.parse(request.windowEnd) <= Date.parse(contract.until)
+        ? formalSearchFrontier(rows, contract.models, request.windowEnd) : { valid: false, reason: "Endpoint is beyond the frozen evidence cutoff." };
+      return { evidence: { ...evidence, costs: "not-measured", checkpointRecovery: "not-measured",
+        fullGoalAcceptance: "not-measured", workflowCausation: "not-measured" },
+      provenance: [{ repository: contract.repository, kind: "immutable-workflow-source", ref: contract.sourceGitBlob },
+        { repository: contract.repository, kind: "native-formal-search-index", ref: censusDigest(index) }],
+      commit: contract.sourceRevision };
+    });
+  } };
+}

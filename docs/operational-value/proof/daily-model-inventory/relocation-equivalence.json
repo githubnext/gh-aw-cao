@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "reason": "Ownership-path correction only; no outcome, acceptance or temporal change.",
+  "originalFunction": {
+    "path": "docs/operational-value/gh-aw-workflows/proof/functions/daily-model-inventory.mjs",
+    "sha256": "9cd92ee723af124ad252dcca90d719244ee89c63c074053540303c60a94c3f45"
+  },
+  "relocatedFunction": {
+    "path": "docs/operational-value/proof/functions/daily-model-inventory.mjs",
+    "sha256": "14eff5cf9c9793610fc6e3e87fb658e86522603fda07a3fe2dd9d32e6fb2e230"
+  },
+  "preservedPackage": {
+    "archiveSha256": "b2deff26d2e433e66b30d3503af5425a49dd448ff2ccd2908d0e44512b6c2bac",
+    "manifestSha256": "7e20d591c2f6a9201d62ad3bf72141a96e4810bd766e3a6c44640b1dcdad069d",
+    "archive": "pre-relocation.json.gz",
+    "originalMembers": [
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/discovery.json.gz",
+        "sha256": "6062ac216aaf2acbefba52fe56bb48deebb9dbc294e4feef3e18e4a9514f913d",
+        "bytes": 58713
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/frozen-definition.json",
+        "sha256": "17d789406329cbbfe57a228b3ff260cbb11746d827178d8e3b63a0da9d38a109",
+        "bytes": 20603
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/handoff.json",
+        "sha256": "5a9d61f8ed1f9f40a6dd90b3e92f9ba81af6c7bf23868e49d66ca694e4c3d2fc",
+        "bytes": 10071
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/ingest-source-packet.mjs",
+        "sha256": "e18f7b9c5d984265b4079cb0ad6d2bebba6a94d6092f11d3cab05b52994b551e",
+        "bytes": 5652
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/native-observation.json",
+        "sha256": "b1ae4366f89b7ed76ef96b67c1a8b110d74c120b240edfb7ca06ce25c72a85a1",
+        "bytes": 42910
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/native.test.mjs",
+        "sha256": "84ed50f3b1b920783ee7bac3fa95e49e3224f2456c6e62d42f3c9f5c1b92d5a4",
+        "bytes": 11865
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/package-handoff.mjs",
+        "sha256": "2205b88e51c1aae202f82a950734a8074c1cbcf7eec97acbebde5fd83ea2a20d",
+        "bytes": 5160
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/predecessor-contract.json.gz",
+        "sha256": "ec5715f94a5355b43044de892160b4bfc9577648f9e85210518fd8ec9738d7cb",
+        "bytes": 101850
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/reports/github-gh-aw/daily-model-inventory-definitions.md",
+        "sha256": "01906bb5e8e7b7536e0c0331f6608ed98b47f1f7f18e9bae362afd9913309b18",
+        "bytes": 5903
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/reports/github-gh-aw/daily-model-inventory-evidence-archive.json",
+        "sha256": "1ca0d5706e74dbbba6a55237ce33dbaf69500d1d59d48f1b4045aa83a1fabfcd",
+        "bytes": 274
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/reports/github-gh-aw/daily-model-inventory-pulse.html",
+        "sha256": "caaba057050b5e95ca8a3a2616e0351a64ffb60ad1a193d1b066404bbb9bbe4f",
+        "bytes": 18614
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/reports/github-gh-aw/daily-model-inventory-pulse.json",
+        "sha256": "1d530febb5a90f30b224008d87fc0cf14cae696ed212e24185fd10402eb6ba40",
+        "bytes": 5635
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/reports/github-gh-aw/daily-model-inventory-timeline.json",
+        "sha256": "ee6b6dceeb24dce939699e282a728fd753401b521a1a973f45ad7ea219ff0372",
+        "bytes": 43583
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/retain-sources.mjs",
+        "sha256": "2a7844902eb2a5316ae41e731d758e29ff1d9b19755c9664c86b122020efdf23",
+        "bytes": 7793
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/retained.json",
+        "sha256": "598da2b86274b5cdf911be8a6d572208e3987d6286d213663fedfb4d6efc2852",
+        "bytes": 10076
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/run-offline.mjs",
+        "sha256": "491b1fed393f2d5f68265be76615adc5d6ac60751c62b88ac63cffe7dc1d9f3d",
+        "bytes": 6743
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/runbook.json",
+        "sha256": "0300c49fdd2c5178bbcbf4409e9ccc76550dbaf672e24e510fd0b65d3cac1652",
+        "bytes": 4247
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/source-packet.json.gz",
+        "sha256": "f1c2d96e49fa673da3b04137d44587ac581a3f7342425f82ac6fe001e0755cac",
+        "bytes": 84191
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/daily-model-inventory/sources.json.gz",
+        "sha256": "f7fa02fd6558a0d4302f7e3c8690395cda633b2d14a1621b10ebe3e2e6a5e491",
+        "bytes": 92470
+      },
+      {
+        "path": "docs/operational-value/gh-aw-workflows/proof/functions/daily-model-inventory.mjs",
+        "sha256": "9cd92ee723af124ad252dcca90d719244ee89c63c074053540303c60a94c3f45",
+        "bytes": 24305
+      }
+    ]
+  },
+  "equivalence": {
+    "functionDifference": "Exactly one relative shared-codec import, pointing to the same helper.",
+    "definitionIdentical": true,
+    "threeCutoffCollectionsIdentical": true,
+    "fixtureCollectionsIdentical": true,
+    "allMetricExamplesIdentical": true,
+    "originalObservationsIdenticalExceptPathOnlyFunctionIdentity": true,
+    "reportSnapshotsIdentical": true,
+    "pulseIdenticalExceptPathOnlyFunctionIdentity": true,
+    "focusedTestsDifference": "Only two imports; all 18 tests preserved under normal tests/unit/*.test.mjs discovery.",
+    "originalFocusedTestsPassed": 18
+  }
+}

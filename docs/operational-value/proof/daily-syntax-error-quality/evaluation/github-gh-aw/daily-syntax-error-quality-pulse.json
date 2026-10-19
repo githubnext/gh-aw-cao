@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-syntax-error-quality",
+  "workflowName": "Daily Syntax Error Quality Check",
+  "sourcePath": ".github/workflows/daily-syntax-error-quality.md",
+  "valueFunctionSha256": "462fa7418078739f91377cf8378966ebef3fbd7c6294e1047503da56a39b9eb3",
+  "window": {
+    "startAt": "2026-10-18T06:32:44Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "correct-location-percent",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": 0,
+    "metricId": "correct-location-percent",
+    "basis": "repository-outcome",
+    "unit": "percent"
+  },
+  "metrics": [
+    {
+      "id": "correct-location-percent",
+      "name": "Correct native diagnostic locations",
+      "role": "primary",
+      "formula": "100 * correctLocations / eligibleCount; null for absent, unsupported, incomplete or empty native evidence",
+      "direction": "increase",
+      "unit": "percent",
+      "presentation": {
+        "name": "Correct native diagnostic locations",
+        "legendLabel": "Correct locations",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": 0
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "verified-repair-percent",
+      "name": "Verified explicit diagnostic repairs",
+      "role": "diagnostic",
+      "formula": "100 * verifiedRepairs / eligibleCount; a unique native Did you mean or Example repair must restore the unchanged, native-accepted original",
+      "direction": "increase",
+      "unit": "percent",
+      "presentation": {
+        "name": "Verified explicit diagnostic repairs",
+        "legendLabel": "Verified repairs",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "interval",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": 0
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

@@ -1,0 +1,8 @@
+kind: service-monitor
+goal: Keep the API error rate near the documented reference.
+measurement:
+  reference: 2 percent
+  source: complete request and error counters
+  direction: target
+  unit: percent
+notes: Synthetic non-gh-aw intent fixture; this file does not deploy a workflow.

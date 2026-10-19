@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "engine-conformance-codex",
+  "functions": {
+    "7820ef864bb83c790a05624341bbb501a297f63388ea7948324dd333dc807a75": {
+      "valueFunctionSha256": "7820ef864bb83c790a05624341bbb501a297f63388ea7948324dd333dc807a75",
+      "snapshots": [
+        {
+          "observedAt": "2026-10-17T18:10:37Z",
+          "window": {
+            "startAt": "2026-10-10T18:10:37Z",
+            "endAt": "2026-10-17T18:10:37Z"
+          },
+          "evidence": {
+            "valid": false,
+            "coverageStatus": "missing",
+            "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+            "assessments": [
+              {
+                "id": "39021458069:1",
+                "passed": [
+                  true,
+                  true,
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ],
+            "observedValid": true,
+            "observedAssessments": [
+              {
+                "id": "39021458069:1",
+                "passed": [
+                  true,
+                  true,
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ],
+            "observedReports": 1,
+            "observedRuns": 3,
+            "costs": "not-measured",
+            "limitation": "Stable core behavioral facet, not full staged-output/native-extension acceptance or exclusive workflow impact."
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "immutable-workflow-source",
+              "ref": "f2e5b61825073e70f387b9d9ac1f7003e0f54800"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "normalized-host-evidence-sha256",
+              "ref": "f282c4b8f2bd3586751137b428622194cbcfab37f50f8b6fd8a9631eb3390cd9"
+            }
+          ],
+          "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+          "metrics": {
+            "core-conformance": null,
+            "verified-probes": null,
+            "observed-core-passes": 5
+          }
+        },
+        {
+          "observedAt": "2026-10-18T15:00:12Z",
+          "window": {
+            "startAt": "2026-10-11T15:00:12Z",
+            "endAt": "2026-10-18T15:00:12Z"
+          },
+          "evidence": {
+            "valid": false,
+            "coverageStatus": "missing",
+            "missingReason": "No complete independently admitted host-evidence cohort for this period.",
+            "assessments": [
+              {
+                "id": "39021458069:1",
+                "passed": [
+                  true,
+                  true,
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ],
+            "observedValid": true,
+            "observedAssessments": [
+              {
+                "id": "39021458069:1",
+                "passed": [
+                  true,
+                  true,
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ],
+            "observedReports": 1,
+            "observedRuns": 3,
+            "costs": "not-measured",
+            "limitation": "Stable core behavioral facet, not full staged-output/native-extension acceptance or exclusive workflow impact."
+          },
+          "provenance": [
+            {
+              "repository": "github/gh-aw",
+              "kind": "immutable-workflow-source",
+              "ref": "f2e5b61825073e70f387b9d9ac1f7003e0f54800"
+            },
+            {
+              "repository": "github/gh-aw",
+              "kind": "normalized-host-evidence-sha256",
+              "ref": "f282c4b8f2bd3586751137b428622194cbcfab37f50f8b6fd8a9631eb3390cd9"
+            }
+          ],
+          "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+          "metrics": {
+            "core-conformance": null,
+            "verified-probes": null,
+            "observed-core-passes": 5
+          }
+        }
+      ]
+    }
+  }
+}

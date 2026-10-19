@@ -1,0 +1,29 @@
+import { nativeInstructionSizeModule } from "../../../../scripts/native-instruction-size-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativeInstructionSizeModule({
+  "repository": "github/gh-aw",
+  "workflowId": "instructions-janitor",
+  "sourcePath": ".github/workflows/instructions-janitor.md",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "directory": "docs/operational-value/proof/instruction-size",
+  "sourceGitBlob": "881f592b2c687a79c8e1ae7bf57280920004c7c7",
+  "lineLimit": 400,
+  "scope": ".github/aw/*.md",
+  "interpreterSha256": "8150eefc87fbd0ea2135f472b3dcd87ac6f829df55a55e8c58a4e2ec5e996b86",
+  "sourceReaderSha256": "3a9662186e0d9abfd8c7b1a7e0beece3973c0c484e5cf28e5a24d39d4eeadfd9",
+  "tool": {
+    "command": "wc -l",
+    "binary": "/usr/bin/wc",
+    "sha256": "adcd3578fe789c4411723dd601adef2a83d2d475c58f3a8f4820a3f17be4cb8d",
+    "size": 167584,
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "adoption": {
+    "commit": "ed43d43858ff7833db943cc44c4878dbb042cf95",
+    "adoptedAt": "2025-10-23T14:54:52Z",
+    "baselineCommit": "f5beb1190d0e97e65c4d9b64acef0095c59dcc32",
+    "baselineAt": "2025-10-23T14:41:45Z"
+  }
+});

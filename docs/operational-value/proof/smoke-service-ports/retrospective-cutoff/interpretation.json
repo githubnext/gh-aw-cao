@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "reportKind": "same-source-retrospective-cutoff-reconstruction",
+  "interpretation": "Source-matched retrospective reconstruction, not ex-ante historical acceptance or an adoption comparison. The frozen standard evaluator rejected this cutoff before unchanged contract activation; this report does not claim standard evaluator success. The known source-defined observed subtotal is 3 Redis cases, 1 full host-bound session and 3 receipt-linked contributions. Population coverage remains partial; missing cohorts stay null, comparisons are unavailable, and there is no complete trend or agreed keep bar. Costs remain unmeasured. Evidence was acquired retrospectively; observedAt is the preserved cutoff assessment coordinate, not an acquisition or acceptance date.",
+  "generatedAt": "2026-10-19T11:45:11.601Z",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "standardEvaluator": {
+    "status": "rejected",
+    "exitCode": 1,
+    "preservedOriginal": "docs/operational-value/proof/smoke-service-ports/frozen-standard-invocation.json"
+  },
+  "nativeObservedSubtotal": {
+    "verified-redis-cases": 3,
+    "host-bound-sessions": 1,
+    "workflow-contribution": 3
+  },
+  "completePopulation": false,
+  "exAnteAcceptance": false,
+  "adoptionComparison": false,
+  "completeTrend": false,
+  "keepDecision": "not-rated",
+  "costs": "not-measured",
+  "sourceSnapshot": {
+    "path": "docs/operational-value/proof/smoke-service-ports/frozen-cutoff-assessment.json",
+    "sha256": "2c12244eead69cbf29223b61d2e8bbef449ce840301a5d47c62b8294c25fe5bb"
+  },
+  "requestShape": [
+    "observedAt",
+    "windowStart",
+    "windowEnd"
+  ],
+  "productionTimeline": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/timeline.json",
+  "productionPulseModel": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/production-pulse.json",
+  "productionPulseHtml": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/production-pulse.html",
+  "labeledPulseHtml": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/retrospective-pulse.html",
+  "labeledPulseJson": "docs/operational-value/proof/smoke-service-ports/retrospective-cutoff/retrospective-pulse.json",
+  "presentationOnly": "The labeled HTML adds only a static interpretation notice to a separate copy of the production renderer output. The labeled JSON adds report-classification metadata only. The production model, HTML, definition, evidence and provenance are retained unchanged.",
+  "preservation": {
+    "module": "ddb0db3bc0dc9b571394f5c5bc59646948e085160e82f04cbfb7e361c6c8d62a",
+    "contract": "4c0eed3da70530595c838fefe3a0dec5fa215055389bff7c79b00e0e5f5aced1",
+    "cutoffSnapshot": "2c12244eead69cbf29223b61d2e8bbef449ce840301a5d47c62b8294c25fe5bb",
+    "rejection": "f3c9838782a6e7bf3543e6b6d6e7adc8c349bcbf47db83961647ed0260cc12e9",
+    "predecessor": "80e4ec5a8988b42b7131505288a641552982b04f10df36ddd81f2a4c47991e00",
+    "originalStatus": 1,
+    "adoption": {
+      "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+      "adoptedAt": "2026-10-19T11:13:09Z",
+      "baselineCommit": null,
+      "baselineAt": null
+    }
+  }
+}

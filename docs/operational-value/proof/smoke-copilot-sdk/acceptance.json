@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "frozenBeforeNativeEvidence": true,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "workflowPath": ".github/workflows/smoke-copilot-sdk.md",
+  "workflowBlob": "baf972d19ce8044f2c3b4eecf127aa0ab7db74ec",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "goal": "Verify SDK file writing/read-back and shell calculation capabilities.",
+  "population": "Independently identified executions of the source-prescribed run-specific file and arithmetic challenge, regardless of actor; SDK contribution requires additional protected execution linkage.",
+  "operations": [
+    {
+      "id": "file-writing",
+      "path": "/tmp/gh-aw/agent/smoke-copilot-sdk-RUN_ID.txt",
+      "contentPrefix": "Copilot SDK smoke test passed at ",
+      "acceptance": "Independent host before/after file observations prove a new regular file at the exact run-specific path with the prescribed single-line content and a current date/time. Timestamp spelling and line terminator are unspecified by the source; do not invent a format or freshness tolerance."
+    },
+    {
+      "id": "cat-readback",
+      "command": "cat /tmp/gh-aw/agent/smoke-copilot-sdk-RUN_ID.txt",
+      "acceptance": "Independent native execution receipt proves cat read the exact file, exited zero, and returned the observed file bytes containing smoke test passed."
+    },
+    {
+      "id": "bash-calculation",
+      "command": "echo $((6 * 7))",
+      "stdoutBase64": "NDIK",
+      "acceptance": "Independent native bash receipt proves the exact expression ran, exited zero, and produced 42 followed by a newline, not merely an asserted result or unrelated arithmetic."
+    }
+  ],
+  "reporting": "The source also requests an issue with the run-specific title, three task indicators, overall PASS/FAIL and the exact run URL. Reporting is a separate full-workflow gate, never evidence of task effects.",
+  "primary": "Number of independently verified source-prescribed native operations delivered in a disjoint period.",
+  "partial": "Retain separately proven native operations even when other operations, reporting, timestamp correctness or SDK contribution are unknown.",
+  "fullFunction": "All three source-defined tasks, timestamp correctness, independent SDK execution linkage and required issue reporting must be established together for one execution.",
+  "repositoryOutcome": "Actor-independent native operation proofs; not an assertion of repository code improvement.",
+  "contribution": "Require independent protected linkage to this workflow, source revision, run and attempt; editable issue markers are discovery only.",
+  "custody": "Only exact retained original independently protected host receipts reviewed and allowlisted by immutable identity can enter production scoring. Caller booleans, digest-shaped strings, successful jobs, agent tool claims and synthetic fixture observations cannot grant admission.",
+  "history": "The exact historical source/rule applicability and actual workflow introduction must be independently established before reconstruction. Neither the census activation nor oldest output is workflow adoption.",
+  "periods": "Inclusive start, exclusive end; count each operation proof once at its native delivery time, never count a retained file as fresh delivery.",
+  "missing": "Missing authoritative population or intrinsic operation evidence is null, not zero. Verified partial quantities remain visible; complete totals require complete independently evidenced coverage.",
+  "costs": "Not measured without independent matching version and period evidence.",
+  "decision": "Not rated; no source-defined keep threshold.",
+  "excluded": [
+    "Agent completion or issue PASS text as proof",
+    "File declarations or asserted tool calls",
+    "Overall job success as operation verification",
+    "Arbitrary normalized or weighted quality scores",
+    "Historical activation backdating",
+    "Fixtures in production observations"
+  ]
+}

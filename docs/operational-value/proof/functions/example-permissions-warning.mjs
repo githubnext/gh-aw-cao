@@ -1,0 +1,30 @@
+import { nativePermissionModule } from "../../../../scripts/native-permission-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativePermissionModule({
+  "repository": "github/gh-aw",
+  "workflowId": "example-permissions-warning",
+  "sourcePath": ".github/workflows/example-permissions-warning.md",
+  "compiledPath": ".github/workflows/example-permissions-warning.lock.yml",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "directory": "docs/operational-value/proof/native-permissions",
+  "sourceGitBlob": "5fbe132ceb932846ef18b95d065955010d2d7746",
+  "requiredScopes": [
+    "contents",
+    "issues",
+    "pull-requests"
+  ],
+  "interpreterSha256": "147398df7e790c193d9bd314224b67adb9cd3c3b86ae1c0be7b714bb1c2f7f55",
+  "sourceReaderSha256": "3a9662186e0d9abfd8c7b1a7e0beece3973c0c484e5cf28e5a24d39d4eeadfd9",
+  "yaml": {
+    "version": "2.9.0",
+    "lockSha256": "c28e588c9ac106d72729505c0d6fb800671118adeea81e48da8fa91de858f385"
+  },
+  "adoption": {
+    "commit": "9bf9ee98b11d07fb740eec76e6f1fec2135cc928",
+    "adoptedAt": "2025-10-31T04:13:41Z",
+    "baselineCommit": "cf9598e64281ce0c6c506450e451fde18216917c",
+    "baselineAt": "2025-10-31T03:15:04Z"
+  },
+  "policy": "Current read-scope configuration facet; original intentional warning-demo states are not comparable goal acceptance."
+});

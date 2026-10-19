@@ -1,0 +1,5 @@
+{
+  "command": "node_modules/.bin/eslint",
+  "status": 127,
+  "stderr": "Local eslint unavailable; no installation or registry request attempted."
+}

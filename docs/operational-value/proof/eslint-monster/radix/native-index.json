@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflow": "eslint-monster",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceGitBlob": "142319d6a938db921d5db885fd01d159a929c7bc",
+  "adoptionGitBlob": "2a03df41cc7f75321d3bd4796bc184264c665288",
+  "baseline": "5b7ef28a594bd0a936367cd130726c4980bc2637",
+  "adoptionVerified": true,
+  "adoptionParent": "5b7ef28a594bd0a936367cd130726c4980bc2637",
+  "sourceParentAbsent": true,
+  "commits": 906,
+  "blobs": 3293,
+  "bytes": 94069665,
+  "paths": [
+    "actions/setup/js/*.cjs"
+  ],
+  "parserVersion": "10.4.0",
+  "oracleSha256": "a77d056e5ce33d425767e6730e231d686d76636c592ebca4a7fe52b696f66837",
+  "collectorSha256": "fb62f55885f72b0a38865998988d4a6954ab63b1cf98c785971caea897bc12b2",
+  "partitions": [
+    {
+      "file": "native-001.json.gz",
+      "sha256": "889ebeb58af0cba1f677696480a623c74a159c0f08db2c010bce052f2c159ee6",
+      "rows": 200
+    },
+    {
+      "file": "native-002.json.gz",
+      "sha256": "34283f092514176a2ff9ed66a1957ec528a04a47d426c19b901741db7d2b2a93",
+      "rows": 200
+    },
+    {
+      "file": "native-003.json.gz",
+      "sha256": "0c94d82641f2c0ec32284fbb5da5b5eba586371fe9ecc2425803f4b6d8f0735f",
+      "rows": 200
+    },
+    {
+      "file": "native-004.json.gz",
+      "sha256": "d9f007c49f8da35ed80b0e589b247d89d6e467fadb987d311de50feaec6a7e2e",
+      "rows": 200
+    },
+    {
+      "file": "native-005.json.gz",
+      "sha256": "2cc5cd2e2b7cfd252c7f8648e4e143f69cae64a37ca1c8d66c552019185f7b46",
+      "rows": 200
+    },
+    {
+      "file": "native-006.json.gz",
+      "sha256": "06057fe6908c2df0a9f39c985d936ff9f9630162e24ddcfc81912a03431d5c9a",
+      "rows": 200
+    },
+    {
+      "file": "native-007.json.gz",
+      "sha256": "e53aaeddea0858592494a919107eb4b18e13cbb9d99539f52b361b8bc93c0bdf",
+      "rows": 200
+    },
+    {
+      "file": "native-008.json.gz",
+      "sha256": "909c1a8f18aed2e62d1723f7752f3ce45c4db66cdd05278a5a818c2bc6582924",
+      "rows": 200
+    },
+    {
+      "file": "native-009.json.gz",
+      "sha256": "7ff196ec715ade16e289c3ae6f7869674b14897b89db5892866f89843302d3dc",
+      "rows": 200
+    },
+    {
+      "file": "native-010.json.gz",
+      "sha256": "ee5e5a3bf35708675f18a8254814adc5a8f7e47d85e31cdf5902ab4121fc3c17",
+      "rows": 200
+    },
+    {
+      "file": "native-011.json.gz",
+      "sha256": "5897209639bc34bd416989b16189473aa67362aeecb8e2511179dbf47ba88008",
+      "rows": 200
+    },
+    {
+      "file": "native-012.json.gz",
+      "sha256": "073ac1b7f9d0cdbe427cafafb17dc6aa16b5b1731d5f1687c0881ffa3b8added",
+      "rows": 200
+    },
+    {
+      "file": "native-013.json.gz",
+      "sha256": "230f3065579150ccf90c7b5856e350fafe8d75e35d0b71e46ada18393c173e88",
+      "rows": 200
+    },
+    {
+      "file": "native-014.json.gz",
+      "sha256": "dd8763e302ffa7ce50d357e144b945166221ac63b25373c9b9fa0b95860faf34",
+      "rows": 200
+    },
+    {
+      "file": "native-015.json.gz",
+      "sha256": "642580921fef6d2324f185847c959c2ae4dd1a2a6cff8effffe9b22d7000a7c2",
+      "rows": 200
+    },
+    {
+      "file": "native-016.json.gz",
+      "sha256": "7db00c05f28f3650576b34853038bc7bd0f2f66fe6d1cdaf000f7015016ad6c1",
+      "rows": 20
+    }
+  ],
+  "eslintVersion": "9.39.5",
+  "parentIndexSha256": "d1a809754c0b8eff7fefd3e3be95912a4a0dff4ba0c70e3c2b52ce91b8ce127e"
+}

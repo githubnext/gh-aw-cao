@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "workflowSlug": "daily-model-inventory",
+  "workflowName": "Daily Model Inventory Checker",
+  "sourcePath": ".github/workflows/daily-model-inventory.md",
+  "valueFunctionSha256": "14eff5cf9c9793610fc6e3e87fb658e86522603fda07a3fe2dd9d32e6fb2e230",
+  "window": {
+    "startAt": "2026-10-18T06:32:44Z",
+    "endAt": "2026-10-18T15:00:12Z"
+  },
+  "ticks": [],
+  "selectedMetricId": "stale-aliases",
+  "signal": {
+    "status": "insufficient-evidence",
+    "attention": "evidence-needed",
+    "current": null,
+    "previous": null,
+    "directionAwareGain": null,
+    "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+    "opportunities": 62,
+    "metricId": "stale-aliases",
+    "basis": "repository-outcome",
+    "unit": "aliases"
+  },
+  "metrics": [
+    {
+      "id": "stale-aliases",
+      "name": "Stale alias definitions",
+      "role": "primary",
+      "formula": "Count aliases with no live resolution; null unless the entire alias population is independently assessed.",
+      "direction": "decrease",
+      "unit": "aliases",
+      "presentation": {
+        "name": "Stale alias definitions",
+        "legendLabel": "Stale aliases",
+        "transform": "identity"
+      },
+      "basis": "repository-outcome",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": 62
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Repository movement is not this workflow's causal impact."
+      ]
+    },
+    {
+      "id": "known-stale-aliases",
+      "name": "Established stale subtotal",
+      "role": "diagnostic",
+      "formula": "Count positively established stale aliases among assessed opportunities; a lower bound during partial coverage, not an all-clear.",
+      "direction": "decrease",
+      "unit": "aliases",
+      "presentation": {
+        "name": "Established stale subtotal",
+        "legendLabel": "Known stale subtotal",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": 62
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    },
+    {
+      "id": "supported-aliases",
+      "name": "Independently supported aliases",
+      "role": "diagnostic",
+      "formula": "Count alias keys with a live matching candidate from at least one complete applicable inventory; preserve partial support independently of full acceptance.",
+      "direction": "increase",
+      "unit": "aliases",
+      "presentation": {
+        "name": "Independently supported aliases",
+        "legendLabel": "Supported aliases",
+        "transform": "identity"
+      },
+      "basis": "diagnostic",
+      "kind": "snapshot",
+      "signal": {
+        "status": "insufficient-evidence",
+        "attention": "evidence-needed",
+        "current": null,
+        "previous": null,
+        "directionAwareGain": null,
+        "reason": "Need fresh complete mature comparable periods; missing evidence is not zero value.",
+        "opportunities": 62
+      },
+      "currentWindow": {
+        "startAt": "2026-10-18T06:32:44Z",
+        "endAt": "2026-10-18T15:00:12Z"
+      },
+      "previousWindow": null,
+      "series": [
+        {
+          "at": "2026-10-18T15:00:12Z",
+          "value": null,
+          "status": "partial-window",
+          "observedAt": "2026-10-18T15:00:12Z"
+        }
+      ],
+      "weekly": [],
+      "cumulative": [],
+      "events": [],
+      "notes": [
+        "Snapshots and overlapping interval aggregates are never summed into lifetime delivery.",
+        "Diagnostic movement is not a workflow keep/retire recommendation."
+      ]
+    }
+  ],
+  "decision": {
+    "status": "not-rated",
+    "reason": "No agreed native keep bar and review duration.",
+    "policy": null
+  },
+  "cost": {
+    "status": "not-measured",
+    "total": null,
+    "unit": null,
+    "costPerAcceptedOutcome": null
+  },
+  "limitation": "Native outcome evidence and declared contribution are not causal attribution or a monetary return."
+}

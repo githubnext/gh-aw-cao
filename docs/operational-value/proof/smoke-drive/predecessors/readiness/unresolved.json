@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "workflow": "smoke-drive",
+  "contract": {
+    "status": "frozen",
+    "sourceGrounded": true,
+    "sameRunAndDurablePersistenceSeparated": true,
+    "historicalInterpretation": "Explicit same-source retrospective reconstruction, not an ex-ante historical rule."
+  },
+  "acquisition": {
+    "status": "retained-selected-native-originals",
+    "directCandidates": 25,
+    "bidirectionalClosureEntities": 37,
+    "absentReferences": 0,
+    "originalHistoryEntitiesVerified": 58048,
+    "originalHistoryPartitionsVerified": 346,
+    "nativeAttemptsRetained": 2,
+    "completeExecutionCensus": false
+  },
+  "nativeMeasurement": {
+    "status": "source-bound-negative-cases-verified",
+    "sameRunAttainmentsInRetainedAttempts": 0,
+    "fullGoalAttainmentsInRetainedAttempts": 0,
+    "reason": "Protected drive-service permission denial prevented both agents from starting.",
+    "crossRunPersistence": null,
+    "repositoryGitLogAccess": null,
+    "positiveDeliveryClaim": null,
+    "missingEvidence": "No independently accepted producer write, restored state receipt or agent command execution in either selected attempt."
+  },
+  "history": {
+    "status": "actual-introduction-requested",
+    "actualAdoption": null,
+    "baseline": null,
+    "recentComparableMovement": null,
+    "missingReason": "Partial selected current period and missing immediately preceding native period; retained Git boundary is not adoption."
+  },
+  "publication": {
+    "status": "offline-case-study-only",
+    "continuousCollection": "not deployed",
+    "remoteMemoryWrites": "not authorized or performed",
+    "cost": "not measured",
+    "keep": "not rated"
+  },
+  "skillImprovement": "Freeze separate memory-test facets: exact same-run bytes, independently restored prior bytes, actual git-log result, and reporting. A protected not-started receipt plus skipped execution and failed mount proves no execution in that attempt, not lost or correct persistent state."
+}

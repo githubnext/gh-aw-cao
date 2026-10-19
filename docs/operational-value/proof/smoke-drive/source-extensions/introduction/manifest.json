@@ -1,0 +1,68 @@
+{
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "requests": [
+    [
+      "smoke-drive",
+      "53207eeb06a8051204147bcb5c7d08a7f90dd4dc"
+    ],
+    [
+      "smoke-drive",
+      "1eb3c45688723558ee6342ecdf2154c6dd0e340a"
+    ]
+  ],
+  "receipts": [
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/git/blobs/53207eeb06a8051204147bcb5c7d08a7f90dd4dc",
+      "sha": "53207eeb06a8051204147bcb5c7d08a7f90dd4dc",
+      "method": "GET",
+      "startedAt": "2026-10-19T12:09:46.090Z",
+      "receivedAt": "2026-10-19T12:09:46.572Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 12:09:46 GMT",
+        "etag": "W/\"4cc0e5a0552c0c814c2cbfbb2ab0cf15355ba43194803cdb4d6b46469247e7f9\"",
+        "x-github-request-id": "E8A4:309620:551255:7BAA44:6AD6088A",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14674",
+        "x-ratelimit-reset": "1792414484",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 3738,
+      "bodySha256": "98651b605a5d6e4d568d77193fcd58887b191121e0c63750b1d359d4a4ac2486",
+      "response": "53207eeb06a8051204147bcb5c7d08a7f90dd4dc.response.json",
+      "blobBytes": 2511,
+      "blobSha256": "b207320c9c99241e6e6929143e5579d29391a5a896c2d698e28ffc2feb6491ca",
+      "blob": "53207eeb06a8051204147bcb5c7d08a7f90dd4dc.blob"
+    },
+    {
+      "workflow": "smoke-drive",
+      "endpoint": "repos/github/gh-aw/git/blobs/1eb3c45688723558ee6342ecdf2154c6dd0e340a",
+      "sha": "1eb3c45688723558ee6342ecdf2154c6dd0e340a",
+      "method": "GET",
+      "startedAt": "2026-10-19T12:09:48.178Z",
+      "receivedAt": "2026-10-19T12:09:48.843Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 12:09:48 GMT",
+        "etag": "W/\"3846cff1e72eeb74a568bbea427ba6bac5d38328659d0866f3f31c90e3f61184\"",
+        "x-github-request-id": "FB3F:2C64EC:59B22D:81A6D5:6AD6088C",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14672",
+        "x-ratelimit-reset": "1792414484",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 196312,
+      "bodySha256": "99e6504394695c12532981a6b87454182a9f2414e993d8e5cd3ea9262d6d5eda",
+      "response": "1eb3c45688723558ee6342ecdf2154c6dd0e340a.response.json",
+      "blobBytes": 142279,
+      "blobSha256": "ec74feb6191b9cb5cfaed18883a4463e47dc392a4ca355eb9e2b7de3165b1c88",
+      "blob": "1eb3c45688723558ee6342ecdf2154c6dd0e340a.blob"
+    }
+  ],
+  "complete": true,
+  "finishedAt": "2026-10-19T12:09:48.848Z"
+}

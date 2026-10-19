@@ -1,0 +1,45 @@
+import { nativeSpellingModule } from "../../../../scripts/native-spelling-value.mjs";
+
+export const { definition, collectBatch, scoreMetric } = nativeSpellingModule({
+  "repository": "github/gh-aw",
+  "workflowId": "daily-astrostylelite-markdown-spellcheck",
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "sourcePath": ".github/workflows/daily-astrostylelite-markdown-spellcheck.md",
+  "directory": "docs/operational-value/proof/native-spelling",
+  "sourceGitBlob": "3ee01b81f0afde472c35769e2c57272f2bc4f02c",
+  "interpreterSha256": "40debfc4ef9fc1fa646c5d778818819b9b1f4139a5cf6fdb1c607c9f57b177cb",
+  "sourceReaderSha256": "3a9662186e0d9abfd8c7b1a7e0beece3973c0c484e5cf28e5a24d39d4eeadfd9",
+  "tool": {
+    "checker": "cspell",
+    "version": "8.19.4",
+    "reporterVersion": "8.19.4",
+    "node": "v25.0.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "jq": "jq-1.7.1-apple",
+    "lockSha256": "7a2a9ef5af195d542b092cd4fd03ec8864575cfc480bbc58f6af06ff3eb6fac8",
+    "installedFilesSha256": "c90299a1de4cbd6f706be9ce1bfe047c219cd834d1278bb83b300d7af13f14cf",
+    "installedFiles": 1642,
+    "installedBytes": 9424488
+  },
+  "configuration": {
+    "gitBlob": "43d5a9c7ef3daf4c3358d0d580d9524cac77c554",
+    "sha256": "79173802a33b19ff47cd256e9e6b95c0943a10648d1143ac803c3fcc981e04b6",
+    "runtimeSha256": "890a9d60d5338acf5f2f143535fc5ad6fed0fd6d54f9f474c06f75fbfce4face"
+  },
+  "dictionary": null,
+  "policy": "Frozen cutoff-native CSpell configuration and selected technical dictionary across all historical source endpoints; changing in-document waivers are not comparable repairs.",
+  "limits": {
+    "states": 100,
+    "filesPerState": 2000,
+    "sourceBlobs": 6000,
+    "sourceBytes": 268435456
+  },
+  "adoption": {
+    "commit": "e4729b3d90afe948d7294dd6365efa8c01547137",
+    "adoptedAt": "2026-04-20T05:42:44Z",
+    "baselineCommit": "e99a27e3c9f90db2a37362cb2e7ecbf6aea2e5c7",
+    "baselineAt": "2026-04-20T04:17:15Z"
+  }
+});
