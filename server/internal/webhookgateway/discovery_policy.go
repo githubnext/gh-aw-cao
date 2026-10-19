@@ -67,14 +67,13 @@ func (p PolicySnapshot) CommandSourceAllowed(s Subscription) bool {
 	}
 	d := p.Policy.Discovery
 	if s.Compiler == nil || d == nil || !d.ActivateCommands || s.Compiler.CommandFilter == nil ||
-		s.Source.ServerURL != d.GitHubServerURL() {
+		s.Source.ServerURL != d.GitHubServerURL() || validateCommandDeclaration(*s.Compiler, DefaultLimits()) != nil {
 		return false
 	}
 	for _, source := range d.Repositories {
 		if source.RepositoryID == s.Source.RepositoryID && source.ReceivingInstallationID == s.Source.InstallationID &&
 			p.RepositoryAllowed(source.Repository) && CompilerRepositoryMatches(*s.Compiler, source.Repository) {
-			remove := s.Compiler.CommandFilter.RemoveLabel
-			return remove == nil || !*remove || source.AllowLabelRemoval
+			return !RequiresLabelRemoval(s) || source.AllowLabelRemoval
 		}
 	}
 	return false

@@ -742,6 +742,10 @@ equivalent exact `label` literal. No command body/arguments are stored or
 forwarded. `gateway.events` is compiler-local access to normalized deliveries,
 not another wire field or an authority channel.
 
+Gateway label commands require compiled `remove_label:true`; false metadata is
+rejected, not a read-only activation option. Authoring omission defaults to true.
+This user-directed receiver tightening precedes the next upstream publication;
+the pinned `40c476c` conformance evidence covers the valid consuming form.
 Compiled `remove_label:true` alone cannot write. The exact source row must also
 have independently reviewed `allowLabelRemoval:true`, and the receiving App
 must currently have the selected event category's write permission. This does

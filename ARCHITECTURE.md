@@ -741,7 +741,10 @@ base path, must agree with the receiving API client and resource origin/path.
 URLs cannot register a server or confer access. Compiler prompt `gateway.events`
 is local normalized-delivery sugar, not an extra payload channel.
 
-Label consumption additionally requires the source's independently reviewed
+Gateway label commands require `remove_label:true` metadata; false is rejected,
+not a read-only activation mode. This receiver-side tightening is user-directed
+ahead of the next upstream publication; pinned `40c476c` conformance covers the
+valid consuming form. Label consumption additionally requires the source's independently reviewed
 `allowLabelRemoval` grant and current receiving-App issues/pull_requests/discussions
 write permission, never just `remove_label` metadata. Only the dispatch role has
 this capability; receive and local simulation remain mutation-free. Each write

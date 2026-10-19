@@ -186,7 +186,7 @@ func TestCommandEventSplitAndLabelExactness(t *testing.T) {
 }
 
 func TestCommandAdmissionIsSeparatelyReviewedAndLabelWritesAreExplicit(t *testing.T) {
-	for _, scenario := range []string{"disabled", "no-write", "read-only", "outside-org", "outside-repo", "unavailable"} {
+	for _, scenario := range []string{"disabled", "no-write", "outside-org", "outside-repo", "unavailable"} {
 		t.Run(scenario, func(t *testing.T) {
 			base, registry, _, _ := commandFixture(t, "label_command")
 			switch scenario {
@@ -195,13 +195,6 @@ func TestCommandAdmissionIsSeparatelyReviewedAndLabelWritesAreExplicit(t *testin
 				base.Policy.Discovery.Repositories[0].AllowLabelRemoval = false
 			case "no-write":
 				base.Policy.Discovery.Repositories[0].AllowLabelRemoval = false
-			case "read-only":
-				for i := range registry.Records[0].Workflows[0].Triggers {
-					c := registry.Records[0].Workflows[0].Triggers[i].CommandFilter
-					if c.RemoveLabel != nil {
-						*c.RemoveLabel = false
-					}
-				}
 			case "outside-org", "outside-repo":
 				for i := range registry.Records[0].Workflows[0].Triggers {
 					trigger := &registry.Records[0].Workflows[0].Triggers[i]
@@ -223,7 +216,7 @@ func TestCommandAdmissionIsSeparatelyReviewedAndLabelWritesAreExplicit(t *testin
 				if !result.CommandSourceAllowed(subscription) {
 					t.Fatal("registry published an unauthorized command")
 				}
-				if subscription.Source.Event == "label_command" && scenario != "read-only" {
+				if subscription.Source.Event == "label_command" {
 					t.Fatal("unreviewed label write activated")
 				}
 			}

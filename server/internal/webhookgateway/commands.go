@@ -106,7 +106,8 @@ func validateCommandDeclaration(t CompilerTrigger, l Limits) error {
 		t.Provider != "" || t.ActivityNormalization != nil || len(t.Conditions) != 0 || t.AnyOf != nil ||
 		len(c.Names) == 0 || len(c.Names) > min(maxNames, l.MaxArrayItems) || len(c.Events) == 0 || len(c.Events) > len(commandEvents) ||
 		!slices.Contains([]string{"inline", alternate}, c.Strategy) ||
-		(t.Event == "label_command") != (c.RemoveLabel != nil) {
+		(t.Event == "label_command") != (c.RemoveLabel != nil) ||
+		c.RemoveLabel != nil && !*c.RemoveLabel {
 		return ErrInvalid
 	}
 	if !slices.IsSorted(c.Names) || !slices.IsSorted(c.Events) || !slices.IsSorted(t.NativeEvents) {

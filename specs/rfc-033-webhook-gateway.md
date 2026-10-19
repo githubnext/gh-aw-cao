@@ -583,7 +583,10 @@ NOT imply deployment or independently reviewed activation.
 `label-command/v1` policy, nonempty sorted/distinct `names` (slash at most 25,
 label at most 50), sorted/distinct semantic `events`, and native `strategy`.
 Slash supports `inline`/`centralized`; labels support `inline`/`decentralized`
-and require boolean `remove_label`. Slash MUST omit `remove_label`, including
+and require `remove_label:true`; false or missing metadata MUST reject. Authoring
+omission defaults to true. This mandatory-consumption receiver tightening is
+user-directed ahead of the next upstream publication; pinned `40c476c`
+conformance covers the valid consuming form. Slash MUST omit `remove_label`, including
 null. `native_events` MUST be the sorted/distinct native source union and
 `types` the exact action union. `conditions` MUST be empty; `any_of`, `provider`
 and `activity_normalization` MUST be absent. Shared repos/orgs intersect

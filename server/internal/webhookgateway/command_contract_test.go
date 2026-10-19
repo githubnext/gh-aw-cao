@@ -9,7 +9,7 @@ import (
 
 func TestCommandPublishedMetadataBounds(t *testing.T) {
 	for _, family := range []string{"slash_command", "label_command"} {
-		for _, scenario := range []string{"wrong-strategy", "too-many-names", "expression", "unsorted-names", "unsorted-events", "unsorted-native", "missing-action", "bodyless-source"} {
+		for _, scenario := range []string{"wrong-strategy", "too-many-names", "expression", "unsorted-names", "unsorted-events", "unsorted-native", "missing-action", "bodyless-source", "false-removal"} {
 			t.Run(family+"/"+scenario, func(t *testing.T) {
 				_, _, _, s := commandFixture(t, family)
 				filter := s.Compiler.CommandFilter
@@ -46,6 +46,8 @@ func TestCommandPublishedMetadataBounds(t *testing.T) {
 					s.Compiler.Types = nil
 				case "bodyless-source":
 					filter.Events = []string{"pull_request_review"}
+				case "false-removal":
+					filter.RemoveLabel = new(bool)
 				}
 				if validateCommandDeclaration(*s.Compiler, DefaultLimits()) == nil {
 					t.Fatal("invalid command metadata activated")
