@@ -562,7 +562,7 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const compiledJoins = Array.isArray(definition.joins)
       ? definition.joins.map((join) => (
           isPlainObject(join) && typeof join.source === 'string'
-            ? { ...join, source: compile(join.source, [], inputTime, includeHistory) }
+            ? { ...join, source: compile(join.source, joinKeyPredicates(join, inputPredicates), inputTime, includeHistory) }
             : join
         ))
       : undefined;
@@ -630,13 +630,18 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
  */
 function predicatesBeforeQuery(definition, predicates) {
   if (definition.limit !== undefined
-      || (Array.isArray(definition.window) && definition.window.length > 0)
       || definition['temporal-series']
-      || (Array.isArray(definition.predict) && definition.predict.length > 0)
-      || (Array.isArray(definition.joins) && definition.joins.length > 0)) return [];
-  const computed = new Set(Array.isArray(definition.compute)
-    ? definition.compute.filter(isPlainObject).map((value) => value.as)
+      || definition.facet
+      || (Array.isArray(definition.predict) && definition.predict.length > 0)) return [];
+  const computed = new Set(['compute', 'window'].flatMap((clause) => (
+    Array.isArray(definition[clause]) ? definition[clause].filter(isPlainObject).map((value) => value.as) : []
+  )));
+  const joined = new Set(Array.isArray(definition.joins)
+    ? definition.joins.filter(isPlainObject).flatMap((join) => (
+        Array.isArray(join.fields) ? join.fields.filter(isPlainObject).map((value) => value.as ?? value.field) : []
+      ))
     : []);
+  const windows = Array.isArray(definition.window) ? definition.window.filter(isPlainObject) : [];
   const groups = isPlainObject(definition.aggregate)
     ? new Set(Array.isArray(definition.aggregate.by) ? definition.aggregate.by : [])
     : null;
@@ -645,8 +650,28 @@ function predicatesBeforeQuery(definition, predicates) {
     : null;
   return predicates.flatMap((predicate) => {
     const field = selected ? selected.get(predicate.field) : predicate.field;
-    if (typeof field !== 'string' || computed.has(field) || (groups && !groups.has(field))) return [];
+    if (typeof field !== 'string' || computed.has(field) || joined.has(field)
+        || (groups && !groups.has(field))
+        || windows.some((window) => !Array.isArray(window.groupby) || !window.groupby.includes(field))) return [];
     return [{ ...predicate, field }];
+  });
+}
+
+/**
+ * Only mandatory equality on a preserved left key can narrow a join's right
+ * input. Other right-side evidence (including cross-run baselines) stays intact.
+ * @param {Record<string, unknown>} join
+ * @param {Array<Record<string, unknown>>} predicates
+ */
+function joinKeyPredicates(join, predicates) {
+  if (!Array.isArray(join.on)) return [];
+  const keys = join.on;
+  return predicates.flatMap((predicate) => {
+    if (predicate.optional || !Object.hasOwn(predicate, 'equals')) return [];
+    const key = keys.find((pair) => isPlainObject(pair) && pair.left === predicate.field);
+    return isPlainObject(key) && typeof key.right === 'string'
+      ? [{ ...predicate, field: key.right }]
+      : [];
   });
 }
 

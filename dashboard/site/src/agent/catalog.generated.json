@@ -1137,7 +1137,7 @@
       "intent": "Inspect one run's authoritative routing timeline and coverage.",
       "subject": "Unified-session model routing facts for one run.",
       "objective": "Trace proxy decisions and missing accounting without exposing content.",
-      "acceptance": "Untimed facts have no invented timestamp and agent-written outcomes remain advisory.",
+      "acceptance": "Scope complete run partitions before session selection and accounting joins; preserve every attempt until latest-session selection. Untimed facts have no invented timestamp and agent-written outcomes remain advisory.",
       "experimental": false,
       "parameters": [
         {

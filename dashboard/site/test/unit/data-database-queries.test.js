@@ -628,6 +628,33 @@ describe('canonical view sources', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
+  it('retains orphan evidence when a computed run-key constraint can match missing run identity', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    await putCanonicalRecord('audits', { id: 'orphan-audit', runId: 'absent-run', type: 'workflow.info' });
+    const definitions = [{
+      name: 'orphan-run-key', from: 'audits',
+      compute: [{ as: 'run-key', function: 'concat', args: [
+        { field: 'organization' }, { value: '/' }, { field: 'repository' }, { value: ':' }, { field: 'run' }
+      ] }],
+      select: [{ field: 'event' }, { field: 'run-key' }]
+    }];
+    const canonical = await queryCanonicalViewSources(indexedDB, sources, ['audits']);
+    const projected = executeDashboardQueries(definitions, canonical, ['orphan-run-key']);
+    const key = projected['orphan-run-key'].rows.find(row => row.event === 'orphan-audit')?.['run-key'];
+    expect(key).toBe('/:');
+    const scoped = [...definitions, {
+      name: 'orphan-selected', from: 'orphan-run-key',
+      filter: { predicates: [{ field: 'run-key', equals: key }] },
+      select: [{ field: 'event' }]
+    }];
+    const native = await queryNativeCountSources(indexedDB, sources, scoped, ['orphan-selected']);
+    expect(native).not.toHaveProperty('orphan-selected');
+    const result = await loadCanonicalViewSources(indexedDB, sources, {
+      queries: scoped, sourceNames: ['orphan-selected']
+    });
+    expect(result['orphan-selected'].rows).toEqual([{ event: 'orphan-audit' }]);
+  });
+
   it('streams row-local computed daily run aggregates without changing declarative results', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 

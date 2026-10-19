@@ -88,6 +88,18 @@ evidence or a cause. The `routing-run` drill-down SHALL list each run's
 resolution roles with configured-to-resolved model, status, cause, engine and
 provider, showing unknown values rather than manufacturing rows.
 
+Run drill-down queries SHALL constrain complete run partitions before projecting
+Audit evidence, using canonical run identities and the Audit run index. This
+constraint MUST preserve all attempts until session selection, all events and
+accounting phases within the selected run, and reactive refreshes. A constraint
+may cross a window only on its partition keys and may narrow a joined source
+only through a preserved mandatory equality key. Cross-run history and
+observational baselines MUST retain their required evidence. Tables SHALL use
+canonical pagination and fail-closed output budgets, not synthesize semantic
+source-query limits before view scope. All authored query limits, including a
+displayed source's limit, remain semantic boundaries and MUST NOT be moved across
+scope.
+
 The Model routing page currently provides adoption, objective/classifier
 dimensions, label-to-pick counts, workflow stability, exclusive AIC/token
 attribution, complete-cost distributions and observational baselines, deviation
