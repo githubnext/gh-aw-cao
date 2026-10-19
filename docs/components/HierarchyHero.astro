@@ -178,11 +178,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     }
 
     :global(:root[data-theme="dark"] .content-panel:has(.hierarchy-hero)) {
-      --cao-page-bg: #030705;
-      --cao-page-grid-minor: rgba(63, 185, 80, 0.045);
-      --cao-page-grid-major: rgba(63, 185, 80, 0.1);
-      --cao-page-glow: rgba(63, 185, 80, 0.14);
-      --cao-page-secondary-glow: rgba(63, 185, 80, 0.08);
+      --cao-page-bg: #000000;
       --cao-signal-bg: rgba(13, 17, 23, 0.92);
       --cao-signal-border: rgba(240, 246, 252, 0.18);
       --cao-phone-bg: #21262d;
@@ -193,9 +189,6 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       --cao-section-bg: rgba(13, 17, 23, 0.84);
       --cao-section-border: rgba(240, 246, 252, 0.15);
       --cao-section-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.18);
-      --cao-section-accent-start: 16%;
-      --cao-section-accent-end: 7%;
-      --cao-section-glow-strength: 30%;
       --cao-story-heading: #f0f6fc;
       --cao-story-text: #b1bac4;
       --cao-story-eyebrow: #b1bac4;
@@ -203,13 +196,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       --cao-loop-text: #f0f6fc;
       --cao-loop-muted: #b1bac4;
       --cao-loop-border: #30363d;
-      background-image:
-        radial-gradient(ellipse 58rem 42rem at 76% 8%, var(--cao-page-glow), transparent 72%),
-        radial-gradient(ellipse 54rem 46rem at 16% 48%, var(--cao-page-secondary-glow), transparent 74%),
-        linear-gradient(var(--cao-page-grid-major) 1px, transparent 1px),
-        linear-gradient(90deg, var(--cao-page-grid-major) 1px, transparent 1px),
-        linear-gradient(var(--cao-page-grid-minor) 1px, transparent 1px),
-        linear-gradient(90deg, var(--cao-page-grid-minor) 1px, transparent 1px);
+      background-image: none;
     }
 
     :global(.sl-container:has(> .hierarchy-hero)) {
@@ -257,7 +244,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       --cao-secondary-bg-hover: #30363d;
       --cao-secondary-border: #30363d;
       --cao-secondary-border-hover: #8c959f;
-      --cao-hero-glow: rgba(63, 185, 80, 0.13);
+      background-image: none;
     }
 
     .visually-hidden {
@@ -593,10 +580,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     }
 
     :global(:root[data-theme="dark"]) .product-story {
-      background:
-        radial-gradient(ellipse 80% 120% at 0% 0%, rgba(63, 185, 80, 0.16), transparent 70%),
-        radial-gradient(ellipse 80% 120% at 100% 100%, rgba(63, 185, 80, 0.1), transparent 72%),
-        rgba(13, 17, 23, 0.88);
+      background: var(--cao-page-bg);
     }
 
     :global(:root[data-theme="dark"]) .product-story::before {

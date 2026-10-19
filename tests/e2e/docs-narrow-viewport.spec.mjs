@@ -381,8 +381,20 @@ for (const { name, viewport } of [
           && getComputedStyle(frame).overflow === "hidden"
           && frame.clientHeight < image.getBoundingClientRect().height;
       }))).toBe(true);
-      expect(await pageCanvas.evaluate((element) => getComputedStyle(element).backgroundImage))
-        .toContain("linear-gradient");
+      if (colorScheme === "dark") {
+        await expect(pageCanvas).toHaveCSS("background-color", "rgb(0, 0, 0)");
+        await expect(pageCanvas).toHaveCSS("background-image", "none");
+        await expect(page.locator(".hierarchy-hero")).toHaveCSS("background-image", "none");
+        for (const story of await page.locator(".product-story").all()) {
+          await expect(story).toHaveCSS("background-color", "rgb(0, 0, 0)");
+          await expect(story).toHaveCSS("background-image", "none");
+          expect(await story.evaluate((element) => getComputedStyle(element, "::before").display))
+            .toBe("none");
+        }
+      } else {
+        expect(await pageCanvas.evaluate((element) => getComputedStyle(element).backgroundImage))
+          .toContain("linear-gradient");
+      }
       expect(await page.locator("html").evaluate((element) => element.scrollWidth))
         .toBeLessThanOrEqual(viewport.width);
     });

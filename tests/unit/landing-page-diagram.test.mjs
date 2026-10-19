@@ -268,19 +268,20 @@ test("the campaign catalog remains independent of setup wizard configuration", (
   assert.doesNotMatch(catalog, /controlPolicy|configuredOperationEntries|selectConfiguredOperations/);
 });
 
-test("landing page uses a theme-aware blueprint background", () => {
+test("landing page keeps dark backgrounds plain black and the light blueprint intact", () => {
   assert.match(hero, /--cao-page-grid-minor: rgba\(26, 127, 55,/);
   assert.match(hero, /--cao-page-grid-major: rgba\(26, 127, 55,/);
   assert.match(hero, /:global\(:root\[data-theme="dark"\] \.content-panel:has\(\.hierarchy-hero\)\)/);
-  assert.match(hero, /--cao-page-grid-minor: rgba\(63, 185, 80,/);
-  assert.match(hero, /--cao-page-grid-major: rgba\(63, 185, 80,/);
   assert.match(hero, /--cao-story-text: #4d5560/);
   assert.match(hero, /--cao-story-text: #b1bac4/);
   assert.match(hero, /--cao-section-accent-start: 12%/);
-  assert.match(hero, /--cao-section-accent-start: 16%/);
-  assert.match(hero, /--cao-page-grid-major: rgba\(63, 185, 80, 0\.1\)/);
-  assert.match(hero, /--cao-page-glow: rgba\(63, 185, 80, 0\.14\)/);
-  assert.match(hero, /radial-gradient\(ellipse 58rem 42rem at 76% 8%/);
+  const darkCanvas = hero.match(/:global\(:root\[data-theme="dark"\] \.content-panel:has\(\.hierarchy-hero\)\) \{([^}]+)\}/)?.[1];
+  assert.ok(darkCanvas);
+  assert.match(darkCanvas, /--cao-page-bg: #000000;/);
+  assert.match(darkCanvas, /background-image: none;/);
+  assert.doesNotMatch(darkCanvas, /gradient\(/);
+  assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.hierarchy-hero \{[^}]*background-image: none;/);
+  assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.product-story \{\s*background: var\(--cao-page-bg\);/);
   assert.match(hero, /:global\(:root\[data-theme="dark"\]\) \.product-story::before \{[\s\S]*?display: none/);
   assert.match(hero, /\.section-eyebrow::before \{[\s\S]*?border-radius: 1px/);
   assert.doesNotMatch(hero, /--section-accent: #(?:58a6ff|a371f7)/);
