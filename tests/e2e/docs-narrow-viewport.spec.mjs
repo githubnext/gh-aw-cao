@@ -397,6 +397,15 @@ for (const { name, viewport } of [
       } else {
         expect(await pageCanvas.evaluate((element) => getComputedStyle(element).backgroundImage))
           .toContain("linear-gradient");
+        for (const story of await page.locator(".product-story").all()) {
+          await expect(story).toHaveCSS("background-color", "rgba(255, 255, 255, 0.84)");
+          const background = await story.evaluate((element) => getComputedStyle(element).backgroundImage);
+          expect(background.match(/radial-gradient\(/g)).toHaveLength(2);
+          expect(background).toContain("at 0% 0%");
+          expect(background).toContain("at 100% 100%");
+          expect(background).toContain("0.12");
+          expect(background).toContain("0.05");
+        }
       }
       expect(await page.locator("html").evaluate((element) => element.scrollWidth))
         .toBeLessThanOrEqual(viewport.width);

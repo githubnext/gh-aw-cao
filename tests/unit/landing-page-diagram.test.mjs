@@ -275,6 +275,9 @@ test("landing page keeps the dark canvas black with green story highlights and t
   assert.match(hero, /--cao-story-text: #4d5560/);
   assert.match(hero, /--cao-story-text: #b1bac4/);
   assert.match(hero, /--cao-section-accent-start: 12%/);
+  assert.match(hero, /--cao-section-accent-end: 5%/);
+  assert.match(hero, /radial-gradient\(\s*ellipse 80% 120% at 0% 0%,\s*color-mix\(in srgb, var\(--section-accent\) var\(--cao-section-accent-start\), transparent\)/);
+  assert.match(hero, /radial-gradient\(\s*ellipse 80% 120% at 100% 100%,\s*color-mix\(in srgb, var\(--section-accent\) var\(--cao-section-accent-end\), transparent\)/);
   const darkCanvas = hero.match(/:global\(:root\[data-theme="dark"\] \.content-panel:has\(\.hierarchy-hero\)\) \{([^}]+)\}/)?.[1];
   assert.ok(darkCanvas);
   assert.match(darkCanvas, /--cao-page-bg: #000000;/);
