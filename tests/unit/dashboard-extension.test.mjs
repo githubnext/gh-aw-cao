@@ -59,14 +59,12 @@ test("dashboard canvas shares concurrent opens and closes pending startup", asyn
 
 test("dashboard canvas uses hook context and retains each preview's working directory", async () => {
   const previews = [];
-  const commands = [];
   const { config, closePreviews } = createDashboardExtension({
     workingDirectory: "/initial",
     startPreview: async (options) => {
       previews.push(options);
       return { url: `http://127.0.0.1:1234/${previews.length}`, close: async () => {} };
     },
-    executeCommand: async (options) => { commands.push(options); },
     approveCommand: async () => true,
   });
   const canvas = config.canvases[0];
@@ -81,9 +79,8 @@ test("dashboard canvas uses hook context and retains each preview's working dire
   assert.equal(previews[0].dataBackend, "indexeddb");
   assert.equal(previews[1].dataBackend, undefined);
   assert.equal(await previews[0].approveCliAction({ command: "gh aw compile" }), true);
-  await previews[0].executeCliAction({ command: "gh aw compile" });
-  assert.equal(commands[0].workingDirectory, "/first");
-  assert.equal(commands[0].command, "gh aw compile");
+  assert.equal(previews[0].executeCliAction, undefined);
+  assert.equal(previews[0].generateQuery, undefined);
   await closePreviews();
 });
 

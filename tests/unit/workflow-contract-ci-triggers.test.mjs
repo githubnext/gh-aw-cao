@@ -79,6 +79,9 @@ test("Go extension quality checks cover root-module sources and lint configurati
       ".github/workflows/cao.json",
       ".github/actions/setup-gh-aw/action.yml",
       ".golangci.yml",
+      "operator_assets.go",
+      "docs/dashboard-language-specification.md",
+      ".github/skills/generate-dashboard-ir/SKILL.md",
       "cmd/gh-cao/main.go",
       "internal/cli/doctor.go",
       "internal/cli/doctor_test.go",
@@ -86,6 +89,9 @@ test("Go extension quality checks cover root-module sources and lint configurati
       "internal/ghcli/gh.go",
       "internal/cli/native_queries.go",
       "dashboard/catalog.go",
+      "dashboard/localpreview/workspace.go",
+      "dashboard/queryengine/native_engine.go",
+      "server/internal/server/server.go",
       "dashboard/site/src/data/queries/database.json",
       "dashboard/site/src/data/queries/declarative.js",
       "dashboard/site/src/data/storage/sqlite-indexeddb.js",
@@ -97,7 +103,6 @@ test("Go extension quality checks cover root-module sources and lint configurati
     ]) {
       assert.ok(runsForFile("go-extension.yml", event, file), `${event}: ${file}`);
     }
-    assert.equal(runsForFile("go-extension.yml", event, "server/internal/server/server.go"), false);
   }
 
   const { jobs, defaults } = parse(workflow("go-extension.yml"));
@@ -120,11 +125,11 @@ test("Go extension quality checks cover root-module sources and lint configurati
   assert.equal(lint["working-directory"] ?? ".", ".");
   assert.equal(format.shell, "bash");
   assert.equal(format.run, [
-    'golangci-lint fmt --diff ./cmd/... ./internal/... ./dashboard | tee "$RUNNER_TEMP/go-extension-fmt.diff"',
+    'golangci-lint fmt --diff . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"',
     'test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"',
     "",
   ].join("\n"));
-  assert.equal(lint.run, "golangci-lint run ./cmd/... ./internal/... ./dashboard");
+  assert.equal(lint.run, "golangci-lint run . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/...");
   const standalone = steps.find((step) => step.name === "Check standalone execution without Node.js");
   assert.match(standalone.run, /PATH="" "\$binary" pages --json/);
   assert.match(standalone.run, /PATH="" "\$binary" query --database explicit.sqlite --collection runs/);
@@ -199,7 +204,7 @@ test("pull request triggers route frontend, control, server, and test changes se
 test("main pushes retain browser and integration coverage for representative inputs", () => {
   const cases = [
     ["actions.yml", "tests/e2e/dashboard-mobile-live.spec.mjs"],
-    ["actions.yml", "dashboard/local-server.mjs"],
+    ["actions.yml", "dashboard/localpreview/workspace.go"],
     ["actions.yml", "tests/e2e/dashboard-tree-analysis.mjs"],
     ["actions.yml", "self-care/dashboard-fragments/overview.json"],
     ["azure-local-integration.yml", "scripts/azure-local/azure-local.sh"],
@@ -218,6 +223,48 @@ test("main pushes retain browser and integration coverage for representative inp
     assert.ok(runsForFile(name, "push", file), `${name}: ${file}`);
   }
   assert.equal(parse(workflow("actions.yml")).jobs.mobile.if, undefined);
+});
+
+test("native preview changes select browser CI and live view assessments", () => {
+  for (const event of ["pull_request", "push"]) {
+    for (const file of [
+      "cmd/gh-cao/main.go",
+      "internal/cli/dashboard.go",
+      "dashboard/catalog.go",
+      "dashboard/localpreview/workspace.go",
+      "dashboard/queryengine/native_engine.go",
+      "tests/e2e/dashboard-site-fixture.mjs",
+      "server/internal/sqlitex/store.go",
+      "server/internal/localops/localops.go",
+      "server/internal/server/local.go",
+      "server/preview/preview.go",
+      "go.mod",
+      "go.sum",
+      "server/go.mod",
+      "server/go.sum",
+    ]) assert.ok(runsForFile("cid.yml", event, file), `${event}: ${file}`);
+  }
+});
+
+test("native browser jobs install pinned Go before building or launching a preview", () => {
+  for (const [name, jobId, command, buildsExplicitly] of [
+    ["cid.yml", "playwright-integration", "npm run test:e2e", false],
+    ["cid.yml", "ingestion-scale", "npm run test:e2e:dashboard-ingestion", true],
+    ["cid.yml", "query-complexity", "npm run dashboard:data:download", false],
+    ["actions.yml", "mobile", "npx playwright test", true],
+    ["dashboard-views.yml", "assess", "npm run test:e2e:dashboard-views", true],
+  ]) {
+    const steps = parse(workflow(name)).jobs[jobId].steps;
+    const goIndex = steps.findIndex((step) => step.uses?.startsWith("actions/setup-go@"));
+    const runIndex = steps.findIndex((step) => step.run?.includes(command));
+    assert.ok(goIndex >= 0 && goIndex < runIndex, `${name}/${jobId} must install Go before running`);
+    assert.match(steps[goIndex].uses, /^actions\/setup-go@[a-f0-9]{40}$/);
+    assert.equal(steps[goIndex].with["go-version-file"], "go.mod");
+    if (buildsExplicitly) {
+      const buildIndex = steps.findIndex((step) => step.run === "npm --prefix dashboard/site run build:preview");
+      assert.ok(goIndex < buildIndex && buildIndex < runIndex, `${name}/${jobId} must build before testing`);
+    }
+  }
 });
 
 test("mixed workflows keep fast checks on PRs and gate expensive jobs off PRs", () => {

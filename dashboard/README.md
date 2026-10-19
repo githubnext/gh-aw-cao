@@ -19,7 +19,8 @@ The dashboard campaign publishes an access-controlled static view of Central Age
 - `.github/workflows/shared/control.mjs`: deterministic policy command adapter used by the build workflow.
 - `dashboard/report`: deterministic collection modules executed by the activity action plus Dashboard Language source adaptation.
 - `dashboard/site`: the bundled Dashboard Language validator, presenter, configuration, and browser runtime.
-- `dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.
+- `server/`: the Go HTTP server for both local SQLite previews and hosted PostgreSQL deployments.
+- `gh cao dashboard serve`: native local artifact preparation, live reload, trusted authoring, and command execution through that same Go server.
 
 The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot plus a deterministic `inventory-sources.json` sidecar from the reviewed control policy, installed campaign ownership records, local control workflow inventory, and paginated Actions workflow registries for resolved repositories. Campaign default-branch revisions, the latest stable gh-aw release, and generated lock compiler metadata are collected as independent version evidence. Registry and version lookup failures remain explicit partial evidence, and repository-owned workflows remain standalone rather than becoming campaign workers or rollout authority. An Activity-triggered dashboard build restores the exact triggering run and attempt's cache, or downloads that run's `cao-activity-index` artifact on a cache miss. It never substitutes another run's snapshot or an empty bootstrap. Manual builds can reuse the latest cached snapshot, falling back to a successful default-branch Activity run with a successful `index` job. The browser ingests the activity JSONL and then the sidecar so configured campaigns, including campaigns without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
 
@@ -64,23 +65,26 @@ the immutable resolved commit recorded by gh-aw.
 
 ## Local preview
 
-From the root of an installed control repository, start the dashboard with Node.js:
+From the root of a control repository, use the native Go extension and
+authenticated GitHub CLI:
 
 ```bash
-npm run dashboard:local
+gh cao dashboard serve
+gh cao dashboard serve --repo OWNER/REPOSITORY
+gh cao dashboard serve --data .cao/downloaded-dashboard
 ```
 
-The server requires GitHub CLI authentication with Actions read access. It downloads the latest non-expired `central-agentic-ops-dashboard` artifact and serves its activity shards and `inventory-sources.json` through the same canonical browser-ingestion path as the Pages site. Run the dashboard action first; the server fails rather than opening a dashboard without data when the artifact cannot be downloaded. Use `--repo OWNER/REPOSITORY` to download from another control repository.
+The command requires GitHub CLI authentication with Actions read access. It downloads the latest non-expired `central-agentic-ops-dashboard` artifact, validates successful trusted default-branch workflow provenance and payload hashes, and opens the artifact's canonical SQLite snapshot natively. Dashboard Language is evaluated by the shared Go query engine, including aliases and continuation pages. No Node.js, npm, PostgreSQL, Redis, OAuth setup, or site build is needed. Run the dashboard action first; startup fails rather than substituting missing data. `--data DIRECTORY` selects an explicitly prepared artifact for offline use. In a source checkout, `go run ./cmd/gh-cao dashboard serve` and `npm run dashboard:local` invoke this same native implementation.
 
-Open only the unguessable URL printed by the server. The server uses only Node.js built-ins plus GitHub CLI, binds to the loopback interface by default, rejects unexpected request hosts, and serves the bundled site without a build step. Use `--port` or `--host` to override its address.
+Open only the unguessable URL printed by the server. Go owns preparation, declarative document composition, HTTP routing, capability-path and Host/Origin checks, static assets, compression, queries, diagnostics, repository memory, revision SSE, CLI output streams, live-reload WebSockets, Copilot authoring, and the durable command executor. The canvas extension is only a transport and trusted-host approval adapter; it does not implement operator commands or query semantics. JavaScript remains in the Actions pipeline and browser UI, not the operator runtime. The listener binds to loopback by default. Use `--port` or `--host` to override its address. `--data-backend indexeddb` retains browser-ingestion previews through the same Go listener; SQLite is the default.
 
-### Go-backed local server: Redis or memory
+### Hosted server: PostgreSQL with reviewed operational storage
 
-Select a Go-backed server explicitly with the same script:
+Hosted deployments retain their explicit Go entry point:
 
 ```bash
-npm run dashboard:local -- --operational-store redis --policy .github/workflows/cao.redis.json
-npm run dashboard:local -- --operational-store memory --policy .github/workflows/cao.memory.json
+go -C server run ./cmd/cao-dashboard serve-hosted --operational-store redis --policy .github/workflows/cao.redis.json
+go -C server run ./cmd/cao-dashboard serve-hosted --operational-store memory --policy .github/workflows/cao.memory.json
 ```
 
 The policy paths above are examples: supply an existing reviewed host policy or
@@ -89,7 +93,7 @@ deployment profile selecting that backend. `--policy` takes precedence over
 `.github/workflows/cao.json` is used. The selector checks the resolved policy,
 including profile imports, and never rewrites it or overrides its authority.
 
-Go mode builds and launches `serve-hosted` in one owning process. It requires Go,
+Hosted mode runs `serve-hosted` in one owning process. It requires Go,
 PostgreSQL, a built dashboard (`npm run dashboard:server:build`), and the normal
 hosted OAuth, authorization, and HTTPS/proxy configuration. Use `--site` to select
 another built site, `--host`/`--port` for the listener, and `--cert`/`--key` for
@@ -99,9 +103,9 @@ co-resident workers when collection is enabled. Memory mode does not require
 Redis and loses operational state on restart.
 
 PostgreSQL owns canonical dashboard entities and query execution in both modes.
-The browser never receives database credentials. Canvas, static artifact
+The browser never receives database credentials. Canvas, local artifact
 download (`--repo`), replacement, and preview trace options are not available in
-Go mode. Omitting `--operational-store` retains the browser-only preview described
+hosted mode. The separate `gh cao dashboard serve` command selects the local SQLite preview described
 above. See [`../server/README.md`](../server/README.md) for hosted configuration,
 webhooks, backfill, and recovery guarantees.
 
@@ -169,9 +173,10 @@ and timed-out commands. Attach by command ID to replay retained stdout/stderr
 and follow new output. Cancel explicitly to terminate work; Retry creates a new
 entry linked to a failed or timed-out command.
 
-The command service runs displayed `gh aw` and `gh cao` commands in a
-pseudo-terminal through `node-pty`, capturing colors even when gh-aw requires
-TTY detection. Install its native runtime with `npm ci` in `dashboard/site`.
+The Go command service runs displayed `gh aw` and native `gh cao` commands in a
+pseudo-terminal, capturing colors even when gh-aw requires TTY detection.
+Legacy declared `./cao.sh` actions resolve to the installed Go operator; the
+operator never launches the Actions JavaScript runtime. No npm installation is required.
 The pseudo-terminal combines stdout and stderr in terminal order. Authentication,
 JSON preparation, and stdin-backed commands retain separate pipes. Color settings
 apply only to displayed commands, not authentication or JSON preparation reads.
@@ -186,7 +191,7 @@ change the parent shell environment.
 The queue defaults to four concurrent executions (configure with
 `--command-concurrency 1..32`) and a 15-minute execution deadline, beginning when
 a command starts. GitHub-dependent work uses the existing
-Go GitHub quota service through a local helper, refreshing quota with the same
+Go GitHub quota service in process, refreshing quota with the same
 GitHub CLI authentication context as execution. Missing quota evidence pauses
 starts instead of bypassing protection. Running commands are not terminated
 merely because quota falls. A source checkout can run the helper with Go.

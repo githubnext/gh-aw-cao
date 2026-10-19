@@ -349,7 +349,12 @@
         const previousLoadedDashboardTableSources = new Set(loadedDashboardTableSources);
         try {
           resetDashboardState(schema);
-          updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader));
+          updateWithViewTransition(document, () => {
+            if (!window.dispatchEvent(new CustomEvent("dashboard-preview-before-render", {
+              cancelable: true, detail: { dashboard: schema },
+            }))) return;
+            renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader);
+          });
           if (traceId && dashboardSocket?.readyState === WebSocket.OPEN) {
             dashboardSocket.send(JSON.stringify({
               type: "browser.trace",

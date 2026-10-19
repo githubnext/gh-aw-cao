@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import { join, relative, sep } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { parseUnifiedSessionDocument } from '../../src/data/adapters/unified-session.js';
 import { normalizedActivityShards } from './normalized-shard.js';
 import { originalSessions, replay, runCacheLine } from '../model-resolution-fixture.js';
+import { publishNativeFixture } from '../../../../tests/helpers/native-dashboard.mjs';
+import { startDashboardSiteFixture } from '../../../../tests/e2e/dashboard-site-fixture.mjs';
 
 /**
  * Serves a copy of the site with the supplied normalized activity shards.
@@ -13,21 +14,13 @@ import { originalSessions, replay, runCacheLine } from '../model-resolution-fixt
  */
 async function startRoutingServer(dataBackend, shards, run, timestamp, repository = 'octo/api') {
   const [organization, name] = repository.split('/');
-  const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
-  const workspace = await mkdtemp(fileURLToPath(new URL('../../../../.cao-routing-e2e-', import.meta.url)));
-  const siteRoot = fileURLToPath(new URL('../../', import.meta.url));
-  await cp(siteRoot, join(workspace, 'site'), {
-    recursive: true,
-    filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(relative(siteRoot, path).split(sep)[0])
-  });
   /** @type {{ url: string, close: () => Promise<void> }} */
-  const server = await startDashboardServer({
-    workingDirectory: workspace, siteRoot: join(workspace, 'site'), catalogRoot: null,
+  const server = await startDashboardSiteFixture({
+    catalogRoot: null,
     port: 0, canvas: true, dataBackend,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-    executeCliAction: async () => { throw new Error('CLI actions are disabled in routing browser tests.'); },
     approveCliAction: async () => false,
-    downloadData: async (/** @type {string} */ destination) => {
+    downloadData: publishNativeFixture(async (/** @type {string} */ destination) => {
       await mkdir(destination, { recursive: true });
       await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
         repositories: { rows: [{ organization, repository: name, 'observed-at': timestamp }],
@@ -38,17 +31,15 @@ async function startRoutingServer(dataBackend, shards, run, timestamp, repositor
         await mkdir(directory, { recursive: true });
         await writeFile(join(directory, `logs-${run}-${'a'.repeat(64)}-${'1'.repeat(16)}.jsonl`), shards[phase]);
       }
-    }
+    })
   });
-  return { server, workspace };
+  return server;
 }
 
 for (const dataBackend of ['indexeddb', 'sqlite']) {
   test.describe(`${dataBackend} model routing`, () => {
     /** @type {{ url: string, close: () => Promise<void> }} */
     let server;
-    let workspace = '';
-
     test.beforeAll(async () => {
       const now = Date.now();
       const timestamp = new Date(now).toISOString();
@@ -74,11 +65,10 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
           created_at: timestamp, updated_at: timestamp, status: 'completed', conclusion: 'success',
           cao_unified_session: { version: 1, path: 'usage/aw_session.jsonl', ...document } }
       }));
-      ({ server, workspace } = await startRoutingServer(dataBackend, shards, '101', timestamp));
+      server = await startRoutingServer(dataBackend, shards, '101', timestamp);
     });
     test.afterAll(async () => {
       await server?.close();
-      if (workspace) await rm(workspace, { recursive: true, force: true });
     });
 
     for (const width of [1280, 390]) {
@@ -119,19 +109,16 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
   test.describe(`${dataBackend} model resolution`, () => {
     /** @type {{ url: string, close: () => Promise<void> }} */
     let server;
-    let workspace = '';
-
     test.beforeAll(async () => {
       const now = Date.now();
       // Minimized real smoke sessions plus documented controlled replays (alias move and failures).
       const sessions = [...originalSessions, replay('opus-before'), replay('opus-after'),
         replay('pi-main-model-unavailable'), replay('pi-main-catalog-unavailable')];
       const shards = normalizedActivityShards(sessions.map((source) => runCacheLine(source, now)).join('\n'));
-      ({ server, workspace } = await startRoutingServer(dataBackend, shards, '39091103540', new Date(now).toISOString(), 'github/gh-aw'));
+      server = await startRoutingServer(dataBackend, shards, '39091103540', new Date(now).toISOString(), 'github/gh-aw');
     });
     test.afterAll(async () => {
       await server?.close();
-      if (workspace) await rm(workspace, { recursive: true, force: true });
     });
 
     for (const width of [1280, 390]) {

@@ -270,19 +270,48 @@ export function renderQueryEditor(context) {
       if (!draft || draft !== draftDocument) throw new Error('Generate a valid preview before saving.');
       const result = await validateQueryEditorDocument(draft, signal);
       if (!result.ok) throw new Error('The draft is no longer valid. Generate a new preview before saving.');
-      const response = await fetch('./__custom_views', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
-        body: JSON.stringify({ document: draft })
-      });
-      const saved = await response.json();
-      if (!response.ok) throw new Error(saved.error || `Custom view save failed with HTTP ${response.status}.`);
-      signal.throwIfAborted();
-      if (typeof saved.id !== 'string' || !/^local-[a-f0-9]{24}$/.test(saved.id) || !saved.dashboard?.dashboard) {
-        throw new Error('Custom view save returned an invalid view location.');
+      /** @type {CustomEvent | undefined} */
+      let pendingUpdate;
+      const deferUpdate = (/** @type {Event} */ event) => {
+        if (!(event instanceof CustomEvent)) return;
+        if (event.type === 'dashboard-preview-before-render') {
+          pendingUpdate ??= event;
+          event.preventDefault();
+        } else {
+          pendingUpdate = event;
+          event.stopImmediatePropagation();
+        }
+      };
+      window.addEventListener('dashboard-preview-update', deferUpdate, { capture: true });
+      window.addEventListener('dashboard-preview-before-render', deferUpdate, { capture: true });
+      try {
+        const response = await fetch('./__custom_views', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+          body: JSON.stringify({ document: draft })
+        });
+        const saved = await response.json();
+        if (!response.ok) throw new Error(saved.error || `Custom view save failed with HTTP ${response.status}.`);
+        signal.throwIfAborted();
+        if (typeof saved.id !== 'string' || !/^local-[a-f0-9]{24}$/.test(saved.id) || !saved.dashboard?.dashboard) {
+          throw new Error('Custom view save returned an invalid view location.');
+        }
+        if (pendingUpdate) {
+          const latest = await fetch('./dashboard.json', { cache: 'no-store', signal });
+          if (!latest.ok) throw new Error(`Saved dashboard refresh failed with HTTP ${latest.status}.`);
+          saved.dashboard = await latest.json();
+          signal.throwIfAborted();
+        }
+        window.removeEventListener('dashboard-preview-update', deferUpdate, { capture: true });
+        window.removeEventListener('dashboard-preview-before-render', deferUpdate, { capture: true });
+        pendingUpdate = undefined;
+        publishNotification({ message: `Custom view saved to ${saved.path}.`, tone: 'success' });
+        globalThis.location.hash = `#page-${saved.id}`;
+        globalThis.dispatchEvent(new CustomEvent('dashboard-preview-update', { detail: { dashboard: saved.dashboard } }));
+      } finally {
+        window.removeEventListener('dashboard-preview-update', deferUpdate, { capture: true });
+        window.removeEventListener('dashboard-preview-before-render', deferUpdate, { capture: true });
+        if (pendingUpdate) window.dispatchEvent(new CustomEvent('dashboard-preview-update', { detail: pendingUpdate.detail }));
       }
-      publishNotification({ message: `Custom view saved to ${saved.path}.`, tone: 'success' });
-      globalThis.location.hash = `#page-${saved.id}`;
-      globalThis.dispatchEvent(new CustomEvent('dashboard-preview-update', { detail: { dashboard: saved.dashboard } }));
     }, 'save');
   }
   const form = h('form', {

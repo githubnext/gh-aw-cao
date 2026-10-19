@@ -1,6 +1,6 @@
 // @ts-check
 
-import { parseDashboardCommand } from "./cli-actions.mjs";
+import { callOperator } from "./operator.mjs";
 
 /** @typedef {{ command: string, workingDirectory: string, input?: string }} DashboardCommandApproval */
 
@@ -9,6 +9,6 @@ import { parseDashboardCommand } from "./cli-actions.mjs";
  * @param {DashboardCommandApproval} request
  */
 export async function approveDashboardCommand(request) {
-  parseDashboardCommand(request.command);
+  await callOperator(["dashboard", "action", "--validate", "--command", request.command], "");
   return true;
 }

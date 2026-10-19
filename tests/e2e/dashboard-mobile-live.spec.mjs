@@ -1,14 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { createWriteStream } from "node:fs";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { pipeline } from "node:stream/promises";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { startDashboardServer } from "../helpers/native-dashboard.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
-import {
-  deployedActivityShardEntries,
-  legacyPhaseJsonToJsonl,
-} from "./dashboard-deployed-refresh-helpers.mjs";
+import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 import {
   summarizeAccessibilityTree,
   summarizeDomTree,
@@ -216,43 +210,14 @@ test.beforeAll(async () => {
   if (!dataUrl) throw new Error("DASHBOARD_DATA_URL is required.");
   preview = await startDashboardServer({
     downloadData: async (destination) => {
-      const inventoryUrl = new URL("inventory-sources.json", dataUrl);
-      const payloadHashesUrl = new URL("payload-hashes.json", dataUrl);
-      const [payloadHashesResponse, inventoryResponse] = await Promise.all([
-        fetchDeployedData(payloadHashesUrl),
-        fetchDeployedData(inventoryUrl),
-      ]);
-      if (!payloadHashesResponse.ok) {
-        throw new Error(`Unable to download deployed dashboard manifest: HTTP ${payloadHashesResponse.status}.`);
-      }
-      if (!inventoryResponse.ok) throw new Error(`Unable to download deployed dashboard inventory: HTTP ${inventoryResponse.status}.`);
-      if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
-      const payloadHashes = await payloadHashesResponse.json();
-      const shards = deployedActivityShardEntries(payloadHashes);
-      const selectedShards = shards.slice(0, mobileDebugShardLimit());
-      expectedActivityShardPaths = selectedShards.map(({ name }) => `/${name}`);
-      await mkdir(destination, { recursive: true });
-      const inventoryPath = join(destination, "inventory-sources.json");
-      await pipeline(inventoryResponse.body, createWriteStream(inventoryPath));
-      let activityBytes = 0;
-      for (const { name, sourceName } of selectedShards) {
-        const response = await fetchDeployedData(new URL(sourceName, dataUrl));
-        if (!response.ok) throw new Error(`Unable to download deployed dashboard shard ${sourceName}: HTTP ${response.status}.`);
-        if (!response.body) throw new Error(`Deployed dashboard shard ${sourceName} has no body.`);
-        const shardPath = join(destination, name);
-        await mkdir(dirname(shardPath), { recursive: true });
-        if (sourceName.endsWith(".json")) {
-          await writeFile(shardPath, legacyPhaseJsonToJsonl(Buffer.from(await response.arrayBuffer())));
-        } else {
-          await pipeline(response.body, createWriteStream(shardPath));
-        }
-        activityBytes += (await stat(shardPath)).size;
-      }
-      const inventory = await stat(inventoryPath);
+      const { shards, activityBytes, inventoryBytes } = await downloadDeployedDashboardData(
+        destination, new URL("payload-hashes.json", dataUrl), fetchDeployedData, mobileDebugShardLimit(),
+      );
+      expectedActivityShardPaths = shards.map(({ name }) => `/${name}`);
       sourcePayload = {
         activityBytes,
-        inventoryBytes: inventory.size,
-        totalBytes: activityBytes + inventory.size,
+        inventoryBytes,
+        totalBytes: activityBytes + inventoryBytes,
       };
     },
     host: "127.0.0.1",

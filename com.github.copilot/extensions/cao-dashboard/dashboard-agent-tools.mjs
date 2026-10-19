@@ -1,52 +1,15 @@
 import { readFile } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
 import { resolveBundledResource } from "./bundled-resources.mjs";
+import { callOperator } from "./operator.mjs";
 
 const maximumSpecificationLines = 400;
-const maximumToolResultBytes = 1_000_000;
 
 export async function executeDashboardQueryRequest({
   queries,
   sources,
   requested,
 }) {
-  const queryEnginePath = await resolveBundledResource("queryEngine");
-  const queryEngine = await import(pathToFileURL(queryEnginePath).href);
-  if (typeof queryEngine.executeDashboardQueries !== "function") {
-    throw new Error(
-      "Dashboard query module does not export executeDashboardQueries.",
-    );
-  }
-
-  const normalizedSources = Object.fromEntries(
-    Object.entries(sources).map(([name, source]) => [
-      name,
-      normalizeLogicalSource(name, source),
-    ]),
-  );
-  const originalTime = console.time;
-  const originalTimeEnd = console.timeEnd;
-  console.time = () => {};
-  console.timeEnd = () => {};
-  let result;
-  try {
-    result = queryEngine.executeDashboardQueries(
-      queries,
-      normalizedSources,
-      requested,
-    );
-  } finally {
-    console.time = originalTime;
-    console.timeEnd = originalTimeEnd;
-  }
-
-  const serialized = JSON.stringify(result, null, 2);
-  if (Buffer.byteLength(serialized) > maximumToolResultBytes) {
-    throw new Error(
-      "Dashboard query result exceeds 1 MB. Add a query limit or request fewer queries.",
-    );
-  }
-  return serialized;
+  return callOperator(["dashboard", "evaluate"], JSON.stringify({ queries, sources, requested }));
 }
 
 export async function readDashboardDataSpecification({
@@ -80,35 +43,4 @@ export async function readDashboardDataSpecification({
     null,
     2,
   );
-}
-
-function normalizeLogicalSource(name, input) {
-  if (Array.isArray(input)) {
-    return {
-      source: name,
-      rows: input,
-      metadata: {
-        "source-id": name,
-        availability: "available",
-        completeness: "complete",
-        freshness: "unknown",
-      },
-    };
-  }
-  if (!input || typeof input !== "object" || !Array.isArray(input.rows)) {
-    throw new Error(
-      `Dashboard logical source "${name}" must be an array or an object with a rows array.`,
-    );
-  }
-  return {
-    ...input,
-    source: typeof input.source === "string" ? input.source : name,
-    metadata: {
-      "source-id": name,
-      availability: "available",
-      completeness: "complete",
-      freshness: "unknown",
-      ...(input.metadata ?? {}),
-    },
-  };
 }

@@ -41,6 +41,28 @@ test("selects every page for dashboard assessment data changes", () => {
   }), ["experiments", "cost"]);
 });
 
+test("selects affected views for native preview implementation and dependency changes", () => {
+  for (const file of [
+    "cmd/gh-cao/main.go",
+    "internal/cli/dashboard.go",
+    "dashboard/catalog.go",
+    "dashboard/localpreview/workspace.go",
+    "dashboard/queryengine/native_engine.go",
+    "server/preview/preview.go",
+    "server/internal/sqlitex/store.go",
+    "server/internal/localops/localops.go",
+    "server/internal/server/local.go",
+    "go.mod",
+    "go.sum",
+  ]) {
+    assert.deepEqual(selectAffectedPageIds({
+      dashboard,
+      changedFiles: [file],
+      baseRef: "unused",
+    }), ["experiments", "cost"], file);
+  }
+});
+
 test("selects pages for primary dashboard fragment changes", () => {
   assert.deepEqual(selectAffectedPageIds({
     dashboard,

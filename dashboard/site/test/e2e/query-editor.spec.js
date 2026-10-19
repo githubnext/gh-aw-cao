@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import { join, relative, sep } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import previewDocument from '../fixtures/query-editor.json' with { type: 'json' };
 import sources from '../fixtures/query-editor-sources.json' with { type: 'json' };
 import { normalizedRunShard } from './normalized-shard.js';
+import { publishNativeFixture } from '../../../../tests/helpers/native-dashboard.mjs';
+import { startDashboardSiteFixture } from '../../../../tests/e2e/dashboard-site-fixture.mjs';
 
 for (const dataBackend of ['indexeddb', 'sqlite']) {
 test.describe(`${dataBackend} canvas query editor`, () => {
@@ -13,39 +14,36 @@ let server;
 let workspace = '';
 
 test.beforeAll(async () => {
-  const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
-  workspace = await mkdtemp(fileURLToPath(new URL('../../../../.cao-dashboard-e2e-', import.meta.url)));
-  const siteRoot = fileURLToPath(new URL('../../', import.meta.url));
-  await cp(siteRoot, join(workspace, 'site'), {
-    recursive: true,
-    filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(relative(siteRoot, path).split(sep)[0])
-  });
-  server = await startDashboardServer({
-    workingDirectory: workspace,
-    siteRoot: join(workspace, 'site'),
+  const fixture = await startDashboardSiteFixture({
     catalogRoot: null, port: 0, canvas: true, dataBackend,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-    executeCliAction: async () => ({}), approveCliAction: async () => false,
-    generateQuery: async () => ({ document: JSON.stringify(previewDocument, null, 2) }),
-    enhanceQueryIntent: async (/** @type {Record<string, string>} */ request) => Object.fromEntries(
-      ['intent', 'subject', 'objective', 'acceptance'].map((name) => [name, `Enhanced ${name}: ${request[name] || 'measurable criteria'}`])
-    ),
-    downloadData: async (/** @type {string} */ destination) => {
+    approveCliAction: async () => false,
+    downloadData: publishNativeFixture(async (/** @type {string} */ destination) => {
       await mkdir(destination, { recursive: true });
       await mkdir(join(destination, 'gh-aw-logs-runs'), { recursive: true });
       await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify(sources));
       await writeFile(join(destination, 'gh-aw-logs-runs', `logs-1-${'a'.repeat(64)}-${'1'.repeat(16)}.jsonl`),
         normalizedRunShard(await readFile(new URL('../fixtures/query-editor-runs.jsonl', import.meta.url), 'utf8')));
-    },
+    }),
   });
+  server = fixture;
+  workspace = fixture.workspace;
 });
 test.afterAll(async () => {
   await server?.close();
-  if (workspace) await rm(workspace, { recursive: true, force: true });
 });
 
 /** @param {import('@playwright/test').Page} page */
 async function openEditor(page) {
+  await page.context().route('**/__query_designer', (route) => route.fulfill({
+    json: { document: JSON.stringify(previewDocument) }
+  }));
+  await page.context().route('**/__query_designer/enhance', (route) => {
+    const request = route.request().postDataJSON();
+    return route.fulfill({ json: Object.fromEntries(
+      ['intent', 'subject', 'objective', 'acceptance'].map((name) => [name, `Enhanced ${name}: ${request[name] || 'measurable criteria'}`])
+    ) });
+  });
   if (dataBackend === 'sqlite') {
     await page.addInitScript(() => {
       IDBFactory.prototype.open = () => { throw new Error('SQLite canvas must not open browser IndexedDB.'); };
@@ -120,6 +118,20 @@ for (const width of [1280, 390]) {
 
 test('saves a validated rendered view locally and restores it after reload', async ({ page }) => {
   await openEditor(page);
+  await page.route('**/__custom_views', async (route) => {
+    const response = await route.fetch();
+    const saved = await response.json();
+    if (response.ok()) {
+      const allowed = await page.evaluate((dashboard) => {
+        window.dispatchEvent(new CustomEvent('dashboard-preview-update', { detail: { dashboard } }));
+        return window.dispatchEvent(new CustomEvent('dashboard-preview-before-render', {
+          cancelable: true, detail: { dashboard }
+        }));
+      }, saved.dashboard);
+      expect(allowed).toBe(false);
+    }
+    await route.fulfill({ response });
+  });
   const save = page.getByRole('button', { name: 'Save as custom view', exact: true });
   await expect(save).toBeDisabled();
   await page.getByRole('textbox', { name: 'Intent', exact: true }).fill('Compare run conclusions');

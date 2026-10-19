@@ -2,9 +2,12 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+import { execFileSync } from 'node:child_process';
+import { startDashboardServer, publishNativeFixture, nativeExecutable } from '../../../../tests/helpers/native-dashboard.mjs';
+import { nativeCommandFixture } from '../../../../tests/helpers/native-command-fixture.mjs';
 /** @type {(command: string) => string[]} */
-const parseDashboardCommand = (await import(new URL('../../../cli-actions.mjs', import.meta.url).href)).parseDashboardCommand;
+const parseDashboardCommand = (command) => JSON.parse(execFileSync(nativeExecutable,
+  ['dashboard', 'action', '--validate', '--command', command], { encoding: 'utf8' }));
 
 for (const width of [1440, 390]) {
   test(`Upgrade copy dialog contains clicks inside the repository card at ${width}px`, async ({ page }, testInfo) => {
@@ -12,17 +15,17 @@ for (const width of [1440, 390]) {
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', port: 0,
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-      downloadData: async (/** @type {string} */ destination) => {
+      downloadData: publishNativeFixture(async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
         const metadata = { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' };
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
           repositories: { metadata, rows: [{ organization: 'octo', repository: 'example' }] },
           workflows: { metadata, rows: [{
             organization: 'octo', repository: 'example', workflow: 'demo.md', 'workflow-name': 'Demo',
             'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.92.0'
           }] }
         }));
-      }
+      })
     });
     try {
       await page.setViewportSize({ width, height: 900 });
@@ -86,22 +89,19 @@ for (const { width, canExecute } of [
     const commands = [];
     /** @type {() => void} */
     let finish = () => {};
-    const execution = new Promise((resolve) => { finish = () => resolve(undefined); });
+    const commandFixture = await nativeCommandFixture(testInfo.outputPath('external-cli'), {
+      onCommand: (command) => commands.push(command)
+    });
+    finish = commandFixture.finish;
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', admin: canExecute, port: 0,
-      cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
-      cliQueueAdmission: async () => ({ concurrency: 1 }),
+      commandFixture,
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-      executeCliAction: async (/** @type {{ command: string }} */ { command }) => {
-        commands.push(command);
-        await execution;
-        return { ok: true, exitCode: 0 };
-      },
-      downloadData: async (/** @type {string} */ destination) => {
+      downloadData: publishNativeFixture(async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
         const metadata = { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' };
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
           campaigns: { metadata, rows: campaigns.map((campaign) => ({
             campaign, 'campaign-name': campaign, 'campaign-version': 'v1',
             'campaign-current-version': 'v2', 'campaign-update-state': 'update-available',
@@ -117,7 +117,7 @@ for (const { width, canExecute } of [
               'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.92.0' };
           }) }
         }));
-      }
+      })
     });
     try {
       await page.setViewportSize({ width, height: 900 });

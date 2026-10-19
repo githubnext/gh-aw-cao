@@ -1,192 +1,110 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { nativeDashboardFixture, startNativeDashboard } from "../helpers/native-dashboard.mjs";
 
 const document = await readFile(new URL("../../dashboard/site/test/fixtures/query-editor.json", import.meta.url), "utf8");
 const intent = { intent: "Find failing workflows", subject: "Workflow failures", acceptance: "Show native conclusions." };
 
-async function preview(t, options = {}) {
-  const { dashboardDocument = document, ...serverOptions } = options;
-  const root = await mkdtemp(join(tmpdir(), "cao-query-editor-test-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  await mkdir(join(root, "site"));
-  await writeFile(join(root, "site", "index.html"), "<!doctype html><body>CAO preview</body>");
-  await writeFile(join(root, "site", "dashboard.json"), dashboardDocument);
-  const server = await startDashboardServer({
-    siteRoot: join(root, "site"), catalogRoot: null, workingDirectory: root, port: 0,
-    output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-    executeCliAction: async () => ({}), approveCliAction: async () => true,
-    downloadData: async (destination) => {
-      await mkdir(destination, { recursive: true });
-      await writeFile(join(destination, "sources.json"), "{}");
-    },
-    ...serverOptions,
-  });
-  t.after(() => server.close());
-  return { ...server, root };
+async function preview(t, { canvas = false, dashboardDocument = document } = {}) {
+  const data = await nativeDashboardFixture();
+  let server;
+  t.after(async () => { await server?.close(); await data.close(); });
+  const dashboard = join(data.workspace, "dashboard.json");
+  await writeFile(dashboard, dashboardDocument);
+  const settings = { ...data, canvas, dashboard, ghExecutable: join(data.workspace, "unavailable-gh") };
+  server = await startNativeDashboard(settings);
+  return {
+    root: data.workspace,
+    get url() { return server.url; },
+    close: () => server.close(),
+    async restart() { await server.close(); server = await startNativeDashboard(settings); },
+  };
 }
-
 const requestOptions = (server, payload = intent, origin = new URL(server.url).origin) => ({
   method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify(payload),
 });
+const manifest = async (server) => (await fetch(`${server.url}/dashboard.json`)).json();
+const chunk = async (server, page) => (await fetch(`${server.url}/${page.chunk}`)).json();
 
-test("query editor is injected only into SDK-enabled canvases, not query-flag-spoofed ordinary previews", async (t) => {
-  const normal = await preview(t, { generateQuery: async () => ({ document }) });
-  assert.equal((await fetch(`${normal.url}/__query_designer`, requestOptions(normal))).status, 404);
+test("native query editor is canvas-only and query flags cannot grant authoring capability", async (t) => {
+  const normal = await preview(t);
+  for (const path of ["/__query_designer", "/__query_designer/enhance", "/__custom_views"]) {
+    assert.equal((await fetch(`${normal.url}${path}`, requestOptions(normal))).status, 404);
+  }
   assert.equal((await fetch(`${normal.url}/?local-preview=canvas`)).status, 200);
-  const normalDashboard = await (await fetch(`${normal.url}/dashboard.json`)).json();
-  assert.ok(!normalDashboard.dashboard.pages.some(({ id }) => id === "query-editor"));
-
-  const canvas = await preview(t, { canvas: true, generateQuery: async () => ({ document }) });
-  const dashboard = await (await fetch(`${canvas.url}/dashboard.json`)).json();
+  assert.equal((await manifest(normal)).dashboard.pages.some(({ id }) => id === "query-editor"), false);
+  const canvas = await preview(t, { canvas: true });
+  const dashboard = await manifest(canvas);
   const page = dashboard.dashboard.pages.find(({ id }) => id === "query-editor");
   assert.ok(page);
-  assert.deepEqual(dashboard.dashboard.navigation, [
-    { label: "Experimental", experimental: true, pages: ["query-editor"] },
-  ]);
-  const chunk = await (await fetch(`${canvas.url}/${page.chunk}`)).json();
-  assert.equal(chunk.page.views[0].element, "query-editor");
-  assert.deepEqual(chunk.page.views[0].data.sources, []);
+  const experimental = dashboard.dashboard.navigation.filter(({ experimental }) => experimental);
+  assert.equal(experimental.length, 1);
+  assert.deepEqual(experimental[0].pages, ["query-editor"]);
+  const editor = await chunk(canvas, page);
+  assert.equal(editor.page.views[0].element, "query-editor");
+  assert.deepEqual(editor.page.views[0].data.sources, []);
 });
 
-test("query editor joins the existing Experimental section without duplicating navigation", async (t) => {
+test("native authoring joins existing Experimental navigation exactly once", async (t) => {
   const base = JSON.parse(document);
   base.dashboard.navigation = [{ label: "Experimental", experimental: true, pages: ["query-preview"] }];
-  const canvas = await preview(t, {
-    canvas: true, generateQuery: async () => ({ document }), dashboardDocument: JSON.stringify(base),
-  });
-  const dashboard = await (await fetch(`${canvas.url}/dashboard.json`)).json();
-  assert.deepEqual(dashboard.dashboard.navigation, [
-    { label: "Experimental", experimental: true, pages: ["query-preview", "query-editor"] },
-  ]);
+  const server = await preview(t, { canvas: true, dashboardDocument: JSON.stringify(base) });
+  const sections = (await manifest(server)).dashboard.navigation.filter(({ experimental }) => experimental);
+  assert.equal(sections.length, 1);
+  assert.deepEqual(sections[0].pages, ["query-preview", "query-editor"]);
 });
 
-test("query generation enforces capability paths, Origin, method, bounded intent and one active request", async (t) => {
-  let submitted;
-  let finish;
-  const server = await preview(t, {
-    canvas: true,
-    generateQuery: async (input) => {
-      submitted = input;
-      return new Promise((resolve) => { finish = resolve; });
-    },
-  });
+// SDK success, repair, concurrency, cancellation, no-tools and output budgets are covered with native Go providers.
+test("native authoring HTTP rejects unsafe transport and budgets before starting an SDK session", async (t) => {
+  const server = await preview(t, { canvas: true });
   const endpoint = `${server.url}/__query_designer`;
   assert.equal((await fetch(endpoint)).status, 405);
   assert.equal((await fetch(endpoint, requestOptions(server, intent, "https://untrusted.test"))).status, 403);
-  assert.equal((await fetch(endpoint, requestOptions(server, { ...intent, model: "custom" }))).status, 400);
-  const oversized = await fetch(endpoint, requestOptions(server, { ...intent, acceptance: "x".repeat(512) }));
-  assert.equal(oversized.status, 400);
-  assert.match((await oversized.json()).error, /at most 512 characters/);
+  for (const payload of [null, [], {}, { ...intent, model: "custom" }, { ...intent, acceptance: "x".repeat(512) }]) {
+    assert.equal((await fetch(endpoint, requestOptions(server, payload))).status, 400);
+  }
   assert.equal((await fetch(endpoint, requestOptions(server, { ...intent, intent: "x".repeat(200000) }))).status, 413);
   assert.equal((await fetch(`${new URL(server.url).origin}/__query_designer`, requestOptions(server))).status, 404);
-  const pending = fetch(endpoint, requestOptions(server));
-  while (!submitted) await new Promise((resolve) => setTimeout(resolve, 5));
-  assert.deepEqual(submitted, intent);
-  assert.equal((await fetch(endpoint, requestOptions(server))).status, 409);
-  finish({ document });
-  assert.deepEqual(await (await pending).json(), { document });
+  const enhancement = `${endpoint}/enhance`;
+  assert.equal((await fetch(enhancement)).status, 405);
+  assert.equal((await fetch(enhancement, requestOptions(server, { intent: "Find failures", tools: ["shell"] }))).status, 400);
+  assert.equal((await fetch(enhancement, requestOptions(server, { intent: "Find failures" }, "https://untrusted.test"))).status, 403);
 });
 
-test("disconnect cancels generation and failures do not expose SDK prompt content", async (t) => {
-  let started;
-  let cancelled;
-  const starting = new Promise((resolve) => { started = resolve; });
-  const cancellation = new Promise((resolve) => { cancelled = resolve; });
-  let calls = 0;
-  const server = await preview(t, {
-    canvas: true,
-    generateQuery: async (_intent, { signal }) => {
-      if (++calls > 1) throw new Error("private model prompt content");
-      started();
-      return new Promise((_resolve, reject) => signal.addEventListener("abort", () => {
-        cancelled();
-        reject(new DOMException("Cancelled", "AbortError"));
-      }, { once: true }));
-    },
-  });
-
-  const controller = new AbortController();
-  const pending = fetch(`${server.url}/__query_designer`, { ...requestOptions(server), signal: controller.signal });
-  await starting;
-  controller.abort();
-  await assert.rejects(pending, { name: "AbortError" });
-  await cancellation;
-  await new Promise((resolve) => setTimeout(resolve, 10));
-  const response = await fetch(`${server.url}/__query_designer`, requestOptions(server));
-  assert.equal(response.status, 503);
-  assert.doesNotMatch(await response.text(), /private model prompt content/);
-});
-
-test("all-field improvement accepts partial intent but cannot request tools or run outside canvas", async (t) => {
-  const request = { intent: "Find failing workflows" };
-  const improved = { ...intent, objective: "Prioritize investigation" };
-  let submitted;
-  const server = await preview(t, {
-    canvas: true, generateQuery: async () => ({ document }),
-    enhanceQueryIntent: async (input) => { submitted = input; return improved; },
-  });
-  const endpoint = `${server.url}/__query_designer/enhance`;
-  assert.equal((await fetch(endpoint, requestOptions(server, { ...request, tools: ["shell"] }))).status, 400);
-  assert.equal((await fetch(endpoint, requestOptions(server, request, "https://untrusted.test"))).status, 403);
-  assert.deepEqual(await (await fetch(endpoint, requestOptions(server, request))).json(), improved);
-  assert.deepEqual(submitted, request);
-  const normal = await preview(t, { enhanceQueryIntent: async () => improved });
-  assert.equal((await fetch(`${normal.url}/__query_designer/enhance`, requestOptions(normal, request))).status, 404);
-});
-
-test("field improvement can condense overlong input but rejects over-budget callback output", async (t) => {
-  const request = { ...intent, acceptance: "x".repeat(512) };
-  const improved = { ...intent, objective: "Prioritize investigation." };
-  let valid = true;
-  const server = await preview(t, {
-    canvas: true,
-    enhanceQueryIntent: async () => valid ? improved : { ...improved, acceptance: "x".repeat(512) },
-  });
-  const endpoint = `${server.url}/__query_designer/enhance`;
-  const accepted = await fetch(endpoint, requestOptions(server, request));
-  assert.equal(accepted.status, 200);
-  assert.deepEqual(await accepted.json(), improved);
-  valid = false;
-  const rejected = await fetch(endpoint, requestOptions(server, request));
-  assert.equal(rejected.status, 503);
-  assert.doesNotMatch(await rejected.text(), /x{512}/);
-});
-
-test("custom view saves require a valid canvas document and populate isolated local navigation", async (t) => {
-    const server = await preview(t, { canvas: true, generateQuery: async () => ({ document }) });
-    const endpoint = `${server.url}/__custom_views`;
-    assert.equal((await fetch(endpoint)).status, 405);
-    assert.equal((await fetch(endpoint, requestOptions(server, { document }, "https://untrusted.test"))).status, 403);
-    assert.equal((await fetch(endpoint, requestOptions(server, { document, path: "../outside.json" }))).status, 400);
-    assert.equal((await fetch(endpoint, requestOptions(server, { document: "[invalid" }))).status, 400);
-    const response = await fetch(endpoint, requestOptions(server, { document }));
-    assert.equal(response.status, 201);
-    const saved = await response.json();
-    assert.match(saved.id, /^local-[a-f0-9]{24}$/);
-    assert.deepEqual(JSON.parse(await readFile(join(server.root, saved.path), "utf8")), JSON.parse(document));
-    assert.ok(saved.dashboard.dashboard.navigation.some((section) => section.label === "Custom views" && section.pages.includes(saved.id)));
-    const page = saved.dashboard.dashboard.pages.find((page) => page.id === saved.id);
-    const chunk = await (await fetch(`${server.url}/${page.chunk}`)).json();
-    assert.equal(chunk.page.views[0].data.source, `${saved.id}-failure-counts`);
-    assert.equal((await (await fetch(endpoint, requestOptions(server, { document }))).json()).id, saved.id);
-    await server.close();
-    const restarted = await preview(t, {
-      canvas: true, generateQuery: async () => ({ document }),
-      workingDirectory: server.root, siteRoot: join(server.root, "site"),
-    });
-    const restored = await (await fetch(`${restarted.url}/dashboard.json`)).json();
-    const restoredPage = restored.dashboard.pages.find((page) => page.id === saved.id);
-    assert.ok(restoredPage);
-    const restoredChunk = await (await fetch(`${restarted.url}/${restoredPage.chunk}`)).json();
-    assert.equal(restoredChunk.page.views[0].data.source, `${saved.id}-failure-counts`);
-    await writeFile(join(server.root, saved.path), "[invalid");
-    const failed = await fetch(`${restarted.url}/__custom_views`, requestOptions(restarted, { document }));
-    assert.equal(failed.status, 503);
-    assert.doesNotMatch(await failed.text(), new RegExp(server.root));
-    const normal = await preview(t, { generateQuery: async () => ({ document }) });
-    assert.equal((await fetch(`${normal.url}/__custom_views`, requestOptions(normal, { document }))).status, 404);
+test("native custom views validate, isolate sources, deduplicate and restore durable saves without exposing storage failures", async (t) => {
+  const server = await preview(t, { canvas: true });
+  const endpoint = () => `${server.url}/__custom_views`;
+  assert.equal((await fetch(endpoint())).status, 405);
+  assert.equal((await fetch(endpoint(), requestOptions(server, { document }, "https://untrusted.test"))).status, 403);
+  for (const payload of [{ document, path: "../outside.json" }, { document: "[invalid" }, { document: "{}" }]) {
+    assert.equal((await fetch(endpoint(), requestOptions(server, payload))).status, 400);
+  }
+  const unsafe = JSON.parse(document);
+  unsafe.dashboard["cli-actions"] = [{ id: "unsafe", label: "Unsafe", icon: "play", command: "gh aw compile" }];
+  assert.equal((await fetch(endpoint(), requestOptions(server, { document: JSON.stringify(unsafe) }))).status, 400);
+  const response = await fetch(endpoint(), requestOptions(server, { document }));
+  assert.equal(response.status, 201);
+  const saved = await response.json();
+  assert.match(saved.id, /^local-[a-f0-9]{24}$/);
+  assert.match(saved.path, /^\.cao\/dashboard\/custom-views\/local-[a-f0-9]{24}\.json$/);
+  assert.deepEqual(JSON.parse(await readFile(join(server.root, saved.path), "utf8")), JSON.parse(document));
+  const dashboard = await manifest(server);
+  assert.ok(dashboard.dashboard.navigation.some(({ label, pages }) => label === "Custom views" && pages.includes(saved.id)));
+  const page = dashboard.dashboard.pages.find(({ id }) => id === saved.id);
+  assert.equal((await chunk(server, page)).page.views[0].data.source, `${saved.id}-failure-counts`);
+  const duplicate = await (await fetch(endpoint(), requestOptions(server, { document }))).json();
+  assert.equal(duplicate.id, saved.id);
+  assert.equal((await manifest(server)).dashboard.pages.filter(({ id }) => id === saved.id).length, 1);
+  await server.restart();
+  const restoredPage = (await manifest(server)).dashboard.pages.find(({ id }) => id === saved.id);
+  assert.ok(restoredPage);
+  assert.equal((await chunk(server, restoredPage)).page.views[0].data.source, `${saved.id}-failure-counts`);
+  const separate = await preview(t, { canvas: true });
+  assert.equal((await manifest(separate)).dashboard.pages.some(({ id }) => id === saved.id), false);
+  await writeFile(join(server.root, saved.path), "[invalid");
+  const failed = await fetch(endpoint(), requestOptions(server, { document }));
+  assert.equal(failed.status, 503);
+  assert.equal((await failed.text()).includes(server.root), false);
 });

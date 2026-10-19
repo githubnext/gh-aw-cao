@@ -9,23 +9,19 @@ import {
   executeDashboardQueryRequest,
   readDashboardDataSpecification,
 } from "./dashboard-agent-tools.mjs";
-import { executeDashboardCommand } from "./cli-actions.mjs";
 import { approveDashboardCommand } from "./approval.mjs";
 import { startLocalDashboardPreview } from "./local-preview.mjs";
-import { enhanceQueryEditorIntent, generateDashboardQuery } from "./query-designer.mjs";
 
 /**
  * @param {{
  *   workingDirectory?: string,
  *   startPreview?: typeof startLocalDashboardPreview,
- *   executeCommand?: typeof executeDashboardCommand,
  *   approveCommand?: (request: import("./approval.mjs").DashboardCommandApproval) => Promise<boolean>,
  * }} [options]
  */
 export function createDashboardExtension({
   workingDirectory = process.cwd(),
   startPreview = startLocalDashboardPreview,
-  executeCommand = executeDashboardCommand,
   approveCommand = approveDashboardCommand,
 } = {}) {
   /** @type {Map<string, ReturnType<typeof startLocalDashboardPreview>>} */
@@ -201,8 +197,6 @@ export function createDashboardExtension({
                 workingDirectory: previewWorkingDirectory,
                 repository: input && typeof input === "object" && !Array.isArray(input)
                   && typeof input.repository === "string" ? input.repository : undefined,
-                generateQuery: generateDashboardQuery,
-                enhanceQueryIntent: enhanceQueryEditorIntent,
                 dataBackend: input && typeof input === "object" && !Array.isArray(input)
                   && (input.dataBackend === "sqlite" || input.dataBackend === "indexeddb") ? input.dataBackend : undefined,
                 approveCliAction: async ({ command, input: commandInput }) => {
@@ -215,17 +209,15 @@ export function createDashboardExtension({
                   if (stopping) throw new Error("The CAO dashboard extension is shutting down.");
                   return approved === true;
                 },
-                executeCliAction: ({ command, input: commandInput, onOutput, signal }) =>
-                  executeCommand({
-                    command,
-                    input: commandInput,
-                    workingDirectory: previewWorkingDirectory,
-                    githubToken: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
-                    onOutput,
-                    signal,
-                  }),
               });
               previews.set(context.instanceId, pending);
+              const monitored = pending;
+              void monitored.then((preview) => {
+                const forget = () => {
+                  if (previews.get(context.instanceId) === monitored) previews.delete(context.instanceId);
+                };
+                void preview.finished?.then(forget, forget);
+              }, () => {});
             }
             const preview = await pending;
             return {

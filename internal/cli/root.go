@@ -60,6 +60,7 @@ Help, version, and catalog discovery work offline.`,
 			},
 		},
 		doctorCommand(ghVersion, gh),
+		dashboardCommand(),
 	)
 	addPolicyCommands(root, gh)
 	root.AddCommand(repositoryCommands(runtime))

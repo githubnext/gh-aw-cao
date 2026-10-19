@@ -95,6 +95,11 @@ export async function cliQueueOperation(payload, signal, notify = () => {}) {
     if (event.type === 'output' && Number.isSafeInteger(event.sequence) && event.sequence > sequence) {
       sequence = event.sequence;
       notify(event);
+    } else if (event.type === 'status') {
+      if (String(event.command?.id) !== String(payload.commandId) || !COMMAND_STATUSES.includes(event.command?.status)) {
+        throw new Error('Invalid command status update.');
+      }
+      notify(event);
     } else if (event.type === 'complete') complete = event;
     else if (event.type === 'error') throw new Error(event.error || 'Command output failed.');
   };

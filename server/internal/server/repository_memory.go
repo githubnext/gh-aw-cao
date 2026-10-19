@@ -119,6 +119,9 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		writeError(response, http.StatusServiceUnavailable, "repository memory is unavailable")
 		return
 	}
+	if a.localDatabase != nil {
+		content = localRedact(content)
+	}
 	writeJSON(response, http.StatusOK, map[string]string{"content": string(content)})
 }
 

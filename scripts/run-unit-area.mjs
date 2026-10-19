@@ -51,7 +51,16 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
   const files = readdirSync(unitDirectory).filter((file) => file.endsWith(".test.mjs")).sort();
   const selected = partitionUnitTests(files)[area].map((file) => join(unitDirectory, file));
-  const result = spawnSync(process.execPath, ["--test", ...selected], { stdio: "inherit" });
+  const executable = process.env.CAO_EXECUTABLE || join(root, ".tmp", process.platform === "win32" ? "gh-cao.exe" : "gh-cao");
+  if (!process.env.CAO_EXECUTABLE) {
+    const build = spawnSync("go", ["build", "-o", executable, "./cmd/gh-cao"], { cwd: root, stdio: "inherit" });
+    if (build.error) throw build.error;
+    if (build.status !== 0) throw new Error(`Native Go test binary build failed (${build.signal ?? build.status}).`);
+  }
+  const result = spawnSync(process.execPath, ["--test", ...selected], {
+    stdio: "inherit",
+    env: { ...process.env, CAO_EXECUTABLE: executable },
+  });
   if (result.error) throw result.error;
   if (result.signal) process.kill(process.pid, result.signal);
   process.exitCode = result.status ?? 1;

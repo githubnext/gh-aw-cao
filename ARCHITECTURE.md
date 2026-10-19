@@ -135,6 +135,27 @@ volatile memory adapter for an explicitly acknowledged single-process server.
 The PostgreSQL operational adapter implements durable
 deployment-scoped services in separate `cao_operational_*` tables. Operational
 adapters never store dashboard entities or execute dashboard queries.
+The same Go server also serves local previews from a disposable SQLite canonical
+projection, without hosted operational services, PostgreSQL, or Redis.
+`gh cao dashboard serve` prepares verified artifact snapshots, composes and
+watches Dashboard Language documents, and runs the server in-process.
+It uses the artifact's canonical SQLite projection directly, without invoking
+JavaScript ingestion, query workers, SDK callbacks or command executors.
+The canvas adapter forwards only lifecycle and trusted-host approval over private
+process pipes. Go owns local capability-path,
+Host/Origin checks, static assets, compression, WebSockets, revision SSE,
+diagnostics, memory, command HTTP endpoints, and query execution.
+`server/internal/sqlitex/` reads dependency-scoped canonical collections inside
+SQLite read transactions; `dashboard/queryengine/` is the shared native
+Dashboard Language evaluator used by both that adapter and the Go CLI.
+The optional IndexedDB preview remains available through the same Go listener.
+Local CLI queues retain their separate durable operational SQLite database;
+preview projection disposal must not erase approved command history.
+JavaScript remains the Actions pipeline and browser implementation, not an
+operator runtime. The root Go module imports the server's narrow public
+`preview` package; the server imports the shared root query-engine package.
+These package dependencies remain acyclic, and both module test suites cover
+the shared evaluator and server boundary.
 Local admin and trusted canvas CLI actions use a separate, single-owner
 operational SQLite queue in `.cao/cli-actions.sqlite`, never browser IndexedDB
 or the disposable dashboard projection. Capability-protected local endpoints
@@ -499,7 +520,7 @@ reconstructable.
 | `<operation>/operational-value.mjs` | Optional deterministic repository-scoped operational-value computation installed with its package. |
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
-| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Independent, entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds the dashboard's authoritative JSON contracts. Actions pipeline commands remain Node-owned. |
+| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go`, `dashboard/localpreview/` | Entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, local dashboard service, SQLite queries, computations and MCP; embeds the dashboard's authoritative contracts and imports the server's narrow public preview package. Actions pipeline commands remain Node-owned. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
@@ -520,7 +541,8 @@ reconstructable.
 | `tests/` | Unit, integration, load, and workflow-contract tests. |
 | `scripts/` | Repository validation and maintenance utilities. |
 
-The extension's root `go.mod` is separate from `server/go.mod`.
+The extension's root `go.mod` and `server/go.mod` retain separate build targets,
+with local module replacements for the shared preview API and query evaluator.
 `cmd/gh-cao/` owns process lifecycle and depends on `internal/cli/`, which
 depends on `internal/ghcli/` and the declarative assets embedded by
 `dashboard/catalog.go`. Shared logging comes from

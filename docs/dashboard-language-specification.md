@@ -1420,7 +1420,7 @@ checkbox, unchecked by default, which adds `--auto-merge` only when selected.
 This gh-aw option requires **Create pull request**.
 
 For CLI-action presentation and confirmation, canvas CLI-action mode also
-includes explicitly enabled local admin previews (`local-server.mjs --admin`).
+includes explicitly enabled local admin previews (`gh cao dashboard serve --admin`).
 This host capability does not change the document vocabulary, copy-only
 restrictions, action authority, or per-run confirmation requirements. Commands
 start headlessly after confirmation in the web interface, without a second
@@ -1429,7 +1429,14 @@ opens the command's full-page, read-only console, with no separate
 terminal-window option. Its first output line shows the executed command.
 Terminal emulation cannot be expressed by data marks and does not query or
 derive dashboard evidence.
-Displayed `gh aw` and `gh cao` commands use a pseudo-terminal with ANSI color
+The native output stream also publishes authoritative command-status updates.
+An attached terminal updates its status as queued work starts, without
+re-querying or inferring state from output. Detaching the view does not cancel work.
+The query editor coordinates definition hot reloads with an in-flight custom-view
+save so its own broadcast cannot dispose the saving editor before navigation.
+This HTTP/WebSocket lifecycle coordination is host UI behavior, not a data query
+or a declarative mark; other preview clients continue receiving live updates.
+Displayed `gh aw` and native `gh cao` commands use a pseudo-terminal with ANSI color
 enabled, combining stdout/stderr in terminal order.
 Prompts and pagers are disabled. Stdin-backed commands and
 preparation reads retain separate pipes.
@@ -1508,12 +1515,13 @@ A CLI action may declare `copy-only: true`. Presenters must expose its resolved
 command for copying and must not execute it.
 
 A dashboard CLI action command is a single-line GitHub CLI invocation.
-Presenters recognize `gh cao ...`, `gh aw ...`, `gh workflow run <workflow> ...`, and
+Presenters recognize `gh cao ...` (or `gh-cao ...`), `gh aw ...`, `gh workflow run <workflow> ...`, and
 `gh agent-task create --from-file -` by default; the workflow command triggers a workflow that declares `workflow_dispatch`, while the agent-task command receives the reviewed prompt through standard input.
 `gh cao <command>` is a first-class cli-actions command, not a shell alias.
-Local and Copilot hosts MUST launch the configured GitHub CLI executable with
-an argument vector beginning with `cao`, preserving the approved subcommand and
-arguments. They MUST NOT rewrite it to a repository shell script or a Node.js operator command.
+Local and Copilot hosts MUST resolve it to the native Go operator, preserving
+the approved subcommand and arguments. They MUST NOT rewrite it to a repository
+shell script or a Node.js operator command. Legacy persisted `./cao.sh`
+declarations are translated to native operator commands; new declarations use `gh cao`.
 Native CAO actions use the same declaration resolution, per-invocation approval,
 durable queue, output streaming, cancellation, and retry protocol as other CLI
 actions. Recognizing the prefix MUST NOT widen the experimental

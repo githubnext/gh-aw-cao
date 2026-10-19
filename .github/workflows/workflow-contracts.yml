@@ -51,13 +51,23 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      # Terminal contracts need node-pty's native build and terminal preparation.
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            server/go.sum
+      # Browser build contracts still exercise the site's bundled dependencies.
       - name: Install dashboard dependencies
         if: matrix.area == 'dashboard'
         run: npm ci --prefix dashboard/site
+      - name: Build native dashboard server
+        run: npm --prefix dashboard/site run build:preview
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Run ${{ matrix.area }} unit contracts
+        env:
+          CAO_EXECUTABLE: ${{ github.workspace }}/.tmp/gh-cao
         run: npm run test:unit:area -- ${{ matrix.area }}
 
   test:
@@ -110,8 +120,16 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            server/go.sum
       - name: Install dashboard dependencies
         run: npm ci --prefix dashboard/site
+      - name: Build native dashboard server
+        run: npm --prefix dashboard/site run build:preview
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Run integration and load contracts

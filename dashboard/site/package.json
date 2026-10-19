@@ -3,18 +3,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "node scripts/prepare-terminal.mjs",
     "build": "node ./scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . && node ./scripts/lint-octicons.mjs && npm run validate:dashboards",
     "test": "vitest run --environment jsdom",
+    "build:preview": "go -C ../.. build -o .tmp/gh-cao ./cmd/gh-cao",
+    "pretest:e2e": "npm run build:preview",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
     "test:performance": "node ./scripts/build.mjs dist test/performance/fixtures/control-settings.json && node ./test/performance/lighthouse.mjs",
     "validate:corpus": "node ./scripts/validate-corpus.mjs",
     "validate:dashboards": "node ./scripts/validate-dashboards.mjs",
     "analyze:dead-views": "node ./scripts/render-dead-views.mjs",
     "analyze:query-graphs": "node ./scripts/validate-dashboards.mjs --render-query-graphs",
-    "dev": "cd .. && node local-server.mjs"
+    "dev": "go -C ../.. run ./cmd/gh-cao dashboard serve"
   },
   "overrides": {
     "source-map-js": "$source-map-js"
@@ -24,7 +25,6 @@
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "esbuild": "^0.28.2",
-    "node-pty": "^1.1.0",
     "strip-ansi": "^7.2.0",
     "yaml": "^2.9.0"
   },

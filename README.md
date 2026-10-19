@@ -147,20 +147,20 @@ The plugin must be enabled in the client; the `com.github.copilot/extensions/`
 bundle is not automatically discovered as a repository-local extension. The
 canvas requires GitHub CLI authentication with Actions read access and a current
 `central-agentic-ops-dashboard` artifact from a successful dashboard run. It
-uses only the installed plugin's server, query engine, specification, and site;
-it never imports executable modules from the active checkout. When necessary it
-stages the bundled site in a temporary workspace directory without relaxing the
-local server's path restrictions. Workspace campaign documents remain JSON
+launches the installed native `gh cao dashboard serve` command; it never imports
+executable modules from the active checkout. Go prepares a temporary workspace
+without relaxing the local server's path restrictions. Workspace campaign documents remain JSON
 data. Closing the canvas or stopping/reloading the extension removes its
 temporary preview files and prevents new previews from starting.
 
-Canvas previews ingest the downloaded inventory and Activity shards into a
-temporary server-side SQLite projection in an isolated data worker. The page
+Canvas previews open the verified artifact's canonical SQLite snapshot natively
+through the same Go server used for hosted dashboards. The page
 uses the remote HTTP query backend, not browser IndexedDB; declarative queries,
 pagination, diagnostics, and revision subscriptions stay behind the preview's
-capability URL. Ordinary non-canvas local previews default to the static browser
-backend. Select either backend explicitly with
-`npm run dashboard:local -- --data-backend sqlite --repo OWNER/REPOSITORY` or
+capability URL. Both canvas and ordinary local previews default to SQLite.
+No Node.js, npm, PostgreSQL, Redis, or hosted OAuth configuration is required.
+Select either backend explicitly with
+`gh cao dashboard serve --data-backend sqlite --repo OWNER/REPOSITORY` or
 `--data-backend indexeddb`. The canvas open input also accepts
 `dataBackend: "sqlite"` or `"indexeddb"`. SQLite initialization failures stop
 startup rather than silently falling back to IndexedDB.
@@ -174,11 +174,13 @@ Unavailable or stale reads retain snapshot versions without fabricating fresh
 installed-version evidence. Upgrade is hidden only when recorded versions are known current;
 missing installed-version or release evidence keeps the action available.
 
-`--data-backend postgres` selects the existing Go/PostgreSQL server, with
+Hosted `cao-dashboard serve-hosted` selects the existing Go/PostgreSQL server, with
 PostgreSQL operational storage by default; `--operational-store` may select
 Redis or memory instead. This mode requires the reviewed host policy, built
 site, database, and OAuth/HTTPS configuration described in
 [the server guide](server/README.md), and does not support canvas preview mode.
+The JavaScript runtime remains for Actions and the browser UI; operator
+preparation, authoring, command execution, and HTTP serving are native Go.
 
 CLI actions are approved in the canvas's command-review dialog; there is no
 second host confirmation prompt or interactive-elicitation requirement.

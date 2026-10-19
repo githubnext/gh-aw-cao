@@ -1,93 +1,103 @@
-import { cp, mkdtemp, realpath, rm } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, sep } from "node:path";
-import { pathToFileURL } from "node:url";
-import { resolveBundledResource } from "./bundled-resources.mjs";
+import { realpath } from "node:fs/promises";
+import { createInterface } from "node:readline";
+import { spawnOperator } from "./operator.mjs";
 
 /**
+ * Start the native operator; JavaScript handles only the canvas lifecycle and
+ * trusted host approval, never server preparation, queries or command execution.
  * @param {{
- *   workingDirectory: string,
- *   repository?: string,
- *   dataBackend?: 'sqlite' | 'indexeddb',
- *   ghExecutable?: string,
- *   generateQuery?: typeof import('./query-designer.mjs').generateDashboardQuery,
- *   enhanceQueryIntent?: typeof import('./query-designer.mjs').enhanceQueryEditorIntent,
- *   approveCliAction: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
- *   executeCliAction: (action: {
- *     id: string, command: string, input?: string, signal?: AbortSignal,
- *     onOutput: (event: { stream: "stdout" | "stderr", data: string }) => void,
- *   }) => Promise<unknown>,
+ * workingDirectory: string, repository?: string, dataBackend?: "sqlite" | "indexeddb",
+ * ghExecutable?: string, dataDirectory?: string,
+ * approveCliAction: (action: {id: string, command: string, input?: string}) => Promise<boolean>
  * }} options
  */
 export async function startLocalDashboardPreview({
-  workingDirectory,
-  repository,
-  dataBackend = "sqlite",
-  executeCliAction,
-  approveCliAction,
-  ghExecutable = "gh",
-  generateQuery,
-  enhanceQueryIntent,
+  workingDirectory, repository, dataBackend = "sqlite", ghExecutable = "gh",
+  dataDirectory, approveCliAction,
 }) {
-  const localServerPath = await resolveBundledResource("localServer");
-  const localServer = await import(pathToFileURL(localServerPath).href);
-  if (typeof localServer.startDashboardServer !== "function") {
-    throw new Error(
-      "dashboard/local-server.mjs does not export startDashboardServer.",
-    );
+  if (typeof approveCliAction !== "function") {
+    throw new Error("Canvas requires trusted CLI action approval.");
   }
-
   const workspace = await realpath(workingDirectory);
-  const dashboardDirectory = dirname(await realpath(localServerPath));
-  const dashboardRelativePath = relative(workspace, dashboardDirectory);
-  const isWorkspaceDashboard = dashboardRelativePath === ""
-    || (!isAbsolute(dashboardRelativePath)
-      && dashboardRelativePath !== ".."
-      && !dashboardRelativePath.startsWith(`..${sep}`));
-  let stagedDirectory;
-  let siteRoot = await resolveBundledResource("site");
+  const child = spawnOperator(["dashboard", "serve", "--workspace", workspace,
+    "--canvas", "--control-stdio", "--host", "127.0.0.1", "--port", "0",
+    "--data-backend", dataBackend, "--gh-executable", ghExecutable,
+    ...(repository ? ["--repo", repository] : []),
+    ...(dataDirectory ? ["--data", dataDirectory] : []),
+  ], { workingDirectory: workspace });
+  const lines = createInterface({ input: child.stdout });
+  let stopping = false;
+  let closing;
+  let diagnostic = "";
+  let accept;
+  let reject;
+  const ready = new Promise((resolve, fail) => { accept = resolve; reject = fail; });
+  child.stdin.on("error", (error) => {
+    if (!stopping) reject(error);
+  });
+  const send = (message) => {
+    if (!child.stdin.destroyed) child.stdin.write(`${JSON.stringify(message)}\n`);
+  };
+  lines.on("line", (line) => {
+    let message;
+    try { message = JSON.parse(line); }
+    catch {
+      reject(new Error("Invalid native dashboard response."));
+      child.kill("SIGTERM");
+      return;
+    }
+    if (message.event === "ready") {
+      const address = new URL(message.url);
+      if (address.protocol !== "http:" || address.hostname !== "127.0.0.1"
+        || !/^\/[a-f0-9]{48}$/.test(address.pathname)) {
+        reject(new Error("Invalid native dashboard address."));
+        child.kill("SIGTERM");
+      } else accept(message.url);
+    } else if (message.id && message.operation === "approve") {
+      const payload = message.payload;
+      void Promise.resolve().then(() => approveCliAction(Object.freeze({
+        id: payload.id ?? payload.actionId, command: payload.command,
+        ...(payload.input === undefined ? {} : { input: payload.input }),
+      }))).then((approved) => send({ id: message.id, result: !stopping && approved === true }),
+        () => send({ id: message.id, result: false }));
+    } else if (message.id) {
+      send({ id: message.id, error: { status: 403, message: "Only trusted host approval is supported." } });
+    }
+  });
+  child.stderr.on("data", (chunk) => { diagnostic = `${diagnostic}${chunk}`.slice(-4096); });
+  child.once("error", reject);
+  const exited = new Promise((resolve) => child.once("close", (code, signal) => {
+    lines.close();
+    if (!stopping) reject(new Error(diagnostic.trim() || "Native dashboard stopped unexpectedly."));
+    resolve({ code, signal });
+  }));
+  const finished = exited.then(({ code, signal }) => {
+    if (!stopping) throw new Error(diagnostic.trim() || `Native dashboard stopped (${signal ?? code}).`);
+  });
+  void finished.catch(() => {});
+  const close = () => {
+    closing ??= (async () => {
+      stopping = true;
+      child.kill("SIGTERM");
+      const force = setTimeout(() => child.kill("SIGKILL"), 7500);
+      force.unref();
+      const { code, signal } = await exited;
+      clearTimeout(force);
+      if (code !== 0 && code !== 143 && signal !== "SIGTERM") throw new Error("Native dashboard shutdown failed.");
+    })();
+    return closing;
+  };
+  const timeout = setTimeout(() => {
+    reject(new Error("Native dashboard did not become ready."));
+    child.kill("SIGTERM");
+  }, 120_000);
+  timeout.unref();
   try {
-    if (!isWorkspaceDashboard) {
-      stagedDirectory = await mkdtemp(join(workspace, ".cao-dashboard-preview-"));
-      const stagedSite = join(stagedDirectory, "site");
-      const sourceSite = siteRoot;
-      await cp(sourceSite, stagedSite, {
-        recursive: true,
-        filter: (source) => !["node_modules", "dist", "test", "test-results", "scripts", ".tmp"]
-          .includes(relative(sourceSite, source).split(sep)[0]),
-      });
-      siteRoot = stagedSite;
-    }
-    const preview = await localServer.startDashboardServer({
-      workingDirectory: workspace,
-      siteRoot,
-      catalogRoot: isWorkspaceDashboard ? dirname(dashboardDirectory) : workspace,
-      repository,
-      ghExecutable,
-      canvas: true,
-      generateQuery,
-      enhanceQueryIntent,
-      dataBackend,
-      executeCliAction,
-      approveCliAction,
-      host: "127.0.0.1",
-      port: 0,
-      output: (...values) => console.error(...values),
-      requestOutput: () => {},
-      traceOutput: () => {},
-    });
-    return {
-      url: preview.url,
-      async close() {
-        await preview.close();
-        if (stagedDirectory) {
-          await rm(stagedDirectory, { recursive: true, force: true });
-        }
-      },
-    };
+    return { url: await ready, finished, close };
   } catch (error) {
-    if (stagedDirectory) {
-      await rm(stagedDirectory, { recursive: true, force: true });
-    }
+    await close().catch(() => {});
     throw error;
+  } finally {
+    clearTimeout(timeout);
   }
 }

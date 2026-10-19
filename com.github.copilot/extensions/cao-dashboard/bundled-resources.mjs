@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 export const bundledResources = Object.freeze({
   queryEngine: "dashboard/site/src/data/queries/declarative.js",
-  localServer: "dashboard/local-server.mjs",
+  localServer: "cmd/gh-cao/main.go",
   site: "dashboard/site",
   dataSpecification: "specs/dashboard-data.md",
   languageSpecification: "docs/dashboard-language-specification.md",

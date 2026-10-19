@@ -208,11 +208,13 @@ Exhausted capacity MUST fail explicitly rather than silently discard work.
 
 ## Local launcher modes
 
-`dashboard/local-server.mjs` has three explicit modes:
+`gh cao dashboard serve` selects the native local profile; the hosted
+`cao-dashboard serve-hosted` command selects reviewed deployment profiles:
 
 | Invocation | Runtime | Operational authority |
 | --- | --- | --- |
-| No `--operational-store` | Existing Node.js static/browser preview | No operational adapter, OAuth session store, collection worker, or server-owned canonical database |
+| `gh cao dashboard serve` | In-process Go server, SQLite by default | Disposable native SQLite canonical projection; no hosted operational adapter, OAuth store or collector |
+| `gh cao dashboard serve --data-backend indexeddb` | The same Go listener | Browser-owned canonical projection; no hosted operational authority |
 | `--operational-store redis` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting Redis |
 | `--operational-store memory` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting memory with every volatile-memory guard above |
 | `--operational-store postgres` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting the durable PostgreSQL operational adapter |
@@ -233,7 +235,7 @@ passed as `CAO_POLICY_PATH` to the child without mutating the parent's
 environment. The Go loader remains the sole authority for profile composition
 and configuration validation.
 
-All Go modes require PostgreSQL for canonical entities and query execution,
+All **hosted** modes require PostgreSQL for canonical entities and query execution,
 the built dashboard, and the ordinary hosted OAuth and HTTPS/proxy protections.
 The launcher MUST NOT substitute the legacy local bearer-capability profile
 for hosted authentication. `--site`, `--host`, `--port`, and paired
@@ -242,9 +244,20 @@ protections. A direct TLS listener MUST use its actual TLS transport without
 requiring forwarded headers unless trusted proxy CIDRs are explicitly
 configured. A loopback listener without direct TLS retains the existing
 trusted-proxy profile; an HTTPS-looking header from an untrusted peer MUST NOT
-authorize access. Browser-preview-only canvas, artifact-download, replacement, and
-trace flags MUST be rejected in Go mode; Go-only flags MUST be rejected in
-browser mode.
+authorize access. Local-preview-only canvas, artifact-download, replacement, and
+trace flags MUST be rejected in hosted mode; hosted-only flags MUST be rejected in
+local preview mode. The local SQLite profile MUST NOT infer hosted rollout or
+execution authority from local storage. Local admin and trusted canvas commands
+retain their separate durable command queue and trusted approval requirements.
+
+The operator MUST NOT invoke a JavaScript launcher, preparation/query worker,
+SDK provider or command executor. All of these operations belong to Go `gh-cao`.
+The canvas adapter MAY forward lifecycle and trusted-host approval over private
+pipes, but MUST NOT implement operator behavior. Go owns capability paths, Host/Origin
+validation, HTTP methods and body limits, static assets, compression, WebSockets,
+SSE, query/diagnostic/memory endpoints, and command output streaming. Native
+SQLite reads MUST use dependency-scoped consistent read transactions and the
+shared Go declarative evaluator; unknown sources MUST fail explicitly.
 
 The launcher builds into a temporary directory and launches the binary
 directly, rather than leaving a detached `go run` child. Interrupt and

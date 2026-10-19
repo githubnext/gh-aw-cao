@@ -2,7 +2,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+import { startDashboardServer, publishNativeFixture } from '../../../../tests/helpers/native-dashboard.mjs';
+import { nativeCommandFixture } from '../../../../tests/helpers/native-command-fixture.mjs';
+
+const addCommand = 'gh workflow run add-repository.yml --repo {{repository}}';
 
 for (const width of [1440, 390]) {
   test(`Commands is absent without queue support at ${width}px`, async ({ page }, testInfo) => {
@@ -10,9 +13,9 @@ for (const width of [1440, 390]) {
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', port: 0,
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-      downloadData: async (/** @type {string} */ destination) => {
+      downloadData: publishNativeFixture(async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
           repositories: {
             metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
             rows: [{ organization: 'acme', repository: 'control' }]
@@ -22,7 +25,7 @@ for (const width of [1440, 390]) {
             rows: [{ organization: 'acme', repository: 'control', workflow: 'demo.md', 'workflow-name': 'Demo' }]
           }
         }));
-      }
+      })
     });
     /** @type {string[]} */
     const queueRequests = [];
@@ -66,27 +69,24 @@ for (const width of [1440, 390]) {
     let cancellations = 0;
     /** @type {(() => void) | undefined} */
     let finish;
+    const commandFixture = await nativeCommandFixture(testInfo.outputPath('external-cli'), {
+      onCommand: () => { runs += 1; },
+      onCanceled: () => { cancellations += 1; },
+      initialOutput: [
+        { stream: 'stdout', data: 'Persistent command output\r\n' },
+        { stream: 'stdout', data: 'https://github.com/octo/example/pull/1\r\n' },
+        { stream: 'stdout', data: 'https://ghe.example.test:8443/github/octo/example/pull/42\r\n' }
+      ]
+    });
+    finish = commandFixture.finish;
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', admin: true, port: 0,
-      cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
-      cliQueueAdmission: async () => ({ concurrency: 1 }),
+      commandFixture, fixtureActions: { 'add-repository': addCommand },
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-      lookupSelector: async () => [{ value: 'octo/example', label: 'octo/example' }],
-      executeCliAction: async (/** @type {{ onOutput: (event: {stream: string, data: string}) => void, signal?: AbortSignal }} */ { onOutput, signal }) => {
-        runs += 1;
-        onOutput({ stream: 'stdout', data: 'Persistent command output\r\n' });
-        onOutput({ stream: 'stdout', data: 'https://github.com/octo/example/pull/1\r\n' });
-        onOutput({ stream: 'stdout', data: 'https://ghe.example.test:8443/github/octo/example/pull/42\r\n' });
-        await new Promise((resolve) => {
-          finish = () => resolve(undefined);
-          signal?.addEventListener('abort', () => { cancellations += 1; resolve(undefined); }, { once: true });
-        });
-        return { ok: true, exitCode: 0 };
-      },
-      downloadData: async (/** @type {string} */ destination) => {
+      downloadData: publishNativeFixture(async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
           repositories: {
             metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
             rows: [{ organization: 'acme', repository: 'control', 'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.91.5' }]
@@ -97,7 +97,7 @@ for (const width of [1440, 390]) {
               'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.91.5' }]
           }
         }));
-      }
+      })
     });
     try {
       await page.setViewportSize({ width, height: 900 });
@@ -148,7 +148,7 @@ for (const width of [1440, 390]) {
       if (width <= 700) await page.getByRole('button', { name: 'Select view', exact: true }).click();
       await activity.click();
       await expect(page).toHaveURL(/#page-commands$/);
-      const command = history.getByRole('link', { name: 'gh cao repos add octo/example', exact: true }).first();
+      const command = history.getByRole('link', { name: 'gh workflow run add-repository.yml --repo octo/example', exact: true }).first();
       await expect(command).toBeVisible();
       const queuedTime = history.locator('time').first();
       await expect(queuedTime).toBeVisible();
@@ -178,8 +178,8 @@ for (const width of [1440, 390]) {
       const terminal = page.getByRole('region', { name: 'Read-only command terminal' });
       await expect(terminal).toBeVisible();
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Persistent command output');
-      await expect(terminal.locator('.xterm-accessibility-tree [role="listitem"]').first())
-        .toHaveText('$ gh cao repos add octo/example');
+      await expect.poll(async () => (await terminal.locator('.xterm-accessibility-tree [role="listitem"]').allTextContents()).join(''))
+        .toContain('$ gh workflow run add-repository.yml --repo octo/example');
       const resultLink = consoleView.getByRole('link', { name: 'Open pull request', exact: true });
       await expect(resultLink).toHaveAttribute('href', 'https://ghe.example.test:8443/github/octo/example/pull/42');
       await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(preview.url).origin });
@@ -200,7 +200,7 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/#page-commands$/);
       await expect(consoleView).not.toBeVisible();
       await expect(history).toContainText('completed');
-      await history.getByRole('link', { name: 'gh cao repos add octo/example', exact: true }).first().click();
+      await history.getByRole('link', { name: 'gh workflow run add-repository.yml --repo octo/example', exact: true }).first().click();
       await expect(consoleView).toBeVisible();
       await back.click();
       await expect(page).toHaveURL(/#page-commands$/);

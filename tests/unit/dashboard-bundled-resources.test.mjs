@@ -12,13 +12,15 @@ async function relocatedPlugin(root) {
   const plugin = join(root, "plugin");
   await mkdir(join(plugin, "specs"), { recursive: true });
   await cp(join(repositoryRoot, "plugin.json"), join(plugin, "plugin.json"));
+  await mkdir(join(plugin, "cmd/gh-cao"), { recursive: true });
+  await cp(join(repositoryRoot, "cmd/gh-cao/main.go"), join(plugin, "cmd/gh-cao/main.go"));
   await cp(join(repositoryRoot, "specs/dashboard-data.md"), join(plugin, "specs/dashboard-data.md"));
   await cp(join(repositoryRoot, "com.github.copilot"), join(plugin, "com.github.copilot"), { recursive: true });
   const dashboard = join(repositoryRoot, "dashboard");
   await cp(dashboard, join(plugin, "dashboard"), {
     recursive: true,
     filter: (path) => !relative(dashboard, path).split(sep)
-      .some((part) => ["node_modules", "dist", "test", "test-results"].includes(part)),
+      .some((part) => ["node_modules", "dist", "test", "test-results", ".tmp"].includes(part)),
   });
   return realpath(plugin);
 }
@@ -58,7 +60,7 @@ test("a relocated complete plugin resolves its own executable and specification 
     const specification = JSON.parse(await tools.readDashboardDataSpecification({ startLine: 1, endLine: 3 }));
     assert.ok(specification.path.startsWith(plugin));
     const resources = await import(pathToFileURL(join(plugin, "com.github.copilot/extensions/cao-dashboard/bundled-resources.mjs")).href);
-    assert.equal(await resources.resolveBundledResource("localServer"), join(plugin, "dashboard/local-server.mjs"));
+    assert.equal(await resources.resolveBundledResource("localServer"), join(plugin, "cmd/gh-cao/main.go"));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

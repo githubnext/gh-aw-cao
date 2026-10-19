@@ -117,6 +117,7 @@ describe('persistent command terminal', () => {
       command: { id: 'persistent-1', status: 'completed' },
       result: { ok: true, pullRequestUrl }
     });
+
     const root = renderCommandTerminal(context);
     document.body.append(root);
     const link = /** @type {HTMLAnchorElement} */ (root.querySelector('a'));
@@ -130,6 +131,20 @@ describe('persistent command terminal', () => {
     /** @type {HTMLButtonElement} */ (root.querySelector('.command-terminal-copy')).click();
     await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(pullRequestUrl));
     expect(window.location.hash).toBe('#page-command?command=persistent-1');
+  });
+
+  it('updates a queued console from live server status without querying again', async () => {
+    queue.available.mockReturnValue(true);
+    queue.get.mockResolvedValue({ id: 'persistent-1', status: 'queued', command: 'gh aw compile' });
+    queue.attach.mockImplementation((_id, notify) => {
+      notify({ type: 'status', command: { id: 'persistent-1', status: 'running' } });
+      return new Promise(() => {});
+    });
+    const root = renderCommandTerminal(context);
+    document.body.append(root);
+    await vi.waitFor(() => expect(root.querySelector('[role="status"]')?.textContent).toBe('persistent-1 · running'));
+    expect(queue.get).toHaveBeenCalledOnce();
+    expect(terminalWrites.mock.calls.flat()).not.toContain('undefined');
   });
 
   it('restores a persisted PR result when reopening a completed command', async () => {

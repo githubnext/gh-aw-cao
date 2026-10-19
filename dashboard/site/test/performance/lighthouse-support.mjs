@@ -18,7 +18,7 @@ export async function preparePerformanceData(fullRoot, emptyRoot, sourceUrl, loc
     await downloadDeployedDashboardData(fullRoot, sourceUrl, (input) => (
       String(input) === String(sourceUrl) ? Promise.resolve(Response.json(manifest)) : fetch(input)
     ));
-    await writeFile(join(fullRoot, 'payload-hashes.json'), JSON.stringify(manifest));
+    manifest = JSON.parse(await readFile(join(fullRoot, 'payload-hashes.json'), 'utf8'));
   }
   const shards = deployedActivityShardEntries(manifest);
   let bytes = 0;

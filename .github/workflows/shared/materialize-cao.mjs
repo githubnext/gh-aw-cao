@@ -267,7 +267,7 @@ export function packCaoRuntime(sourceRoot, destination, { tracked = false, prepa
   const unpacked = path.join(destination, 'unpacked');
   mkdirSync(staging, { recursive: true });
   mkdirSync(unpacked, { recursive: true });
-  for (const resource of rootResources) {
+  for (const resource of manifest.files) {
     if (tracked) copyTrackedResource(sourceRoot, staging, resource);
     else copyResource(sourceRoot, staging, resource);
   }

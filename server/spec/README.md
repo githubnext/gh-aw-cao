@@ -6,6 +6,14 @@ Language queries and SSE, health, agent discovery, hosted sessions, canonical
 entities, repository memory, ingestion/administration, and the optional MCP HTTP
 transport. MCP protocol messages and tool schemas, and static dashboard assets,
 are intentionally out of scope.
+`local.tsp` additionally describes local preview authoring and command endpoints.
+The SQLite preview mounts API paths beneath a random per-process capability
+prefix; mutation requests require the matching Origin and JSON content type.
+These operations do not grant hosted authority. Live-reload WebSocket framing
+and static assets remain outside OpenAPI. Go owns the preview listener and
+native SQLite query boundary, artifact preparation, SDK authoring and local
+command executor. The canvas adapter forwards lifecycle and trusted-host approval
+over private process pipes; it contains no operator implementation.
 
 `storage.tsp` is a separate, **fresh-only** physical Postgres contract.
 `storage.tspconfig.yaml` runs the repository-owned `postgres-emitter.mjs` to
@@ -156,7 +164,8 @@ add a new port only when a second implementation or parity test needs one.
    generated API signatures before proceeding; install spec dependencies with
    `npm --prefix server/spec ci` before running either command.
 
-The Go server has **two authentication profiles**: the loopback local profile
+The Go server has a **SQLite preview capability-path profile** and two
+TLS/hosted authentication profiles: the loopback local TLS profile
 requires an `Authorization: Bearer` capability for protected `/api/` routes;
 hosted mode requires an authorized `cao_session` cookie and `X-CSRF-Token` on
 mutations. Health/readiness and `GET`/`HEAD /llms.txt` are public, while the webhook

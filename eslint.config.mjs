@@ -3,6 +3,8 @@ import noHardcodedGitHubActionsUrl from "./eslint-rules/no-hardcoded-github-acti
 export default [
   {
     ignores: [
+      ".tmp/**",
+      ".cao-dashboard-e2e-*/**",
       ".cao-dashboard-preview-*/**",
       "dashboard/site/**",
       "node_modules/**",

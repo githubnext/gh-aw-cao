@@ -1,35 +1,10 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
-const { startDashboardServer } = await import(new URL("../../../local-server.mjs", import.meta.url).href);
+import { nativeDashboardFixture, startNativeDashboard } from "../../../../tests/helpers/native-dashboard.mjs";
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   test(`canvas queries SQLite without opening browser IndexedDB at ${viewport.width}px`, async ({ page }, testInfo) => {
-    const preview = await startDashboardServer({
-      workingDirectory: fileURLToPath(new URL("../../../../", import.meta.url)),
-      repository: "acme/control",
-      canvas: true,
-      port: 0,
-      cliQueuePath: testInfo.outputPath(".cao", "cli-actions.sqlite"),
-      approveCliAction: async () => false,
-      executeCliAction: async () => { throw new Error("CLI actions are not expected."); },
-      output: () => {},
-      requestOutput: () => {},
-      traceOutput: () => {},
-      downloadData: async (/** @type {string} */ destination) => {
-        await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, "sources.json"), JSON.stringify({
-          repositories: {
-            metadata: {
-              "as-of": new Date().toISOString(), availability: "available",
-              completeness: "complete", freshness: "fresh",
-            },
-            rows: [{ organization: "acme", repository: "control" }],
-          },
-        }));
-      },
-    });
+    const fixture = await nativeDashboardFixture();
+    const preview = await startNativeDashboard({ workspace: fixture.workspace, data: fixture.data, canvas: true });
     try {
       await page.setViewportSize(viewport);
       await page.addInitScript(() => {
@@ -66,7 +41,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
         return queryRemoteDashboard(["repositories"], { pages: [] });
       });
       expect(repositories.sources.repositories.rows).toHaveLength(1);
-      expect(repositories.sources.repositories.rows[0].repository).toBe("control");
+      expect(repositories.sources.repositories.rows[0]).toMatchObject({
+        organization: "acme", repository: "control", "repository-coordinate": "acme/control",
+      });
       await page.screenshot({ path: testInfo.outputPath(`canvas-sqlite-${viewport.width}.png`), fullPage: true });
       await testInfo.attach(`canvas-sqlite-${viewport.width}`, {
         path: testInfo.outputPath(`canvas-sqlite-${viewport.width}.png`), contentType: "image/png",
@@ -74,6 +51,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     } finally {
       await page.goto("about:blank");
       await preview.close();
+      await fixture.close();
     }
   });
 }

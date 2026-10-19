@@ -2,7 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+import { startDashboardServer, publishNativeFixture } from '../../../../tests/helpers/native-dashboard.mjs';
+import { nativeCommandFixture } from '../../../../tests/helpers/native-command-fixture.mjs';
 
 for (const width of [1440, 390]) {
   test(`admin action opens a persistent full-view terminal at ${width}px`, async ({ page }, testInfo) => {
@@ -13,29 +14,26 @@ for (const width of [1440, 390]) {
     let emitOutput;
     let runs = 0;
     let cancellations = 0;
+    const commandFixture = await nativeCommandFixture(testInfo.outputPath('external-cli'), {
+      onCommand: () => { runs += 1; },
+      onCanceled: () => { cancellations += 1; },
+      initialOutput: [{ stream: 'stdout', data: '\u001b[32mStarting repository setup\u001b[0m\r\nProgress: 10%' }],
+      completionOutput: [
+        { stream: 'stdout', data: '\r\u001b[2KProgress: 100%\r\n' },
+        { stream: 'stderr', data: 'Repository staged.\r\n' }
+      ]
+    });
+    finish = commandFixture.finish;
+    emitOutput = commandFixture.emitOutput;
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', admin: true, port: 0,
-      cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
-      cliQueueAdmission: async () => ({ concurrency: 1 }),
+      commandFixture,
+      fixtureActions: { 'add-repository': 'gh workflow run add-repository.yml --repo {{repository}}' },
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-      lookupSelector: async () => [{ value: 'octo/example', label: 'octo/example' }],
-      executeCliAction: async (/** @type {{ signal?: AbortSignal, onOutput: (event: { stream: string, data: string }) => void }} */ { onOutput, signal }) => {
-        runs += 1;
-        emitOutput = onOutput;
-        onOutput({ stream: 'stdout', data: '\u001b[32mStarting repository setup\u001b[0m\r\nProgress: 10%' });
-        await new Promise((resolve) => {
-          finish = () => resolve(undefined);
-          signal?.addEventListener('abort', () => { cancellations += 1; resolve(undefined); }, { once: true });
-        });
-        if (signal?.aborted) return { ok: false, exitCode: null, error: 'CLI action cancelled.' };
-        onOutput({ stream: 'stdout', data: '\r\u001b[2KProgress: 100%\r\n' });
-        onOutput({ stream: 'stderr', data: 'Repository staged.\r\n' });
-        return { ok: true, exitCode: 0 };
-      },
-      downloadData: async (/** @type {string} */ destination) => {
+      downloadData: publishNativeFixture(async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
           repositories: {
             metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
             rows: [{ organization: 'acme', repository: 'control', 'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.91.5' }]
@@ -46,7 +44,7 @@ for (const width of [1440, 390]) {
               'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.91.5' }]
           }
         }));
-      }
+      })
     });
     try {
       await page.setViewportSize({ width, height: 900 });
@@ -74,7 +72,7 @@ for (const width of [1440, 390]) {
       await expect(terminal).toHaveCSS('border-right-width', '0px');
       await expect(terminal).toHaveCSS('border-bottom-width', '0px');
       await expect(terminal).toHaveCSS('border-left-width', '0px');
-      await expect(page.locator('#page-title')).toHaveText('gh cao repos add octo/example');
+      await expect(page.locator('#page-title')).toHaveText('gh workflow run add-repository.yml --repo octo/example');
       const subtitle = page.locator('.overview-header [data-page-description]');
       await expect(subtitle).toBeVisible();
       await expect(subtitle).toContainText('running');
@@ -151,7 +149,7 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(/#page-commands$/);
       expect(cancellations).toBe(0);
       finish?.();
-      const command = page.getByRole('link', { name: 'gh cao repos add octo/example', exact: true });
+      const command = page.getByRole('link', { name: 'gh workflow run add-repository.yml --repo octo/example', exact: true });
       await command.click();
       await expect(consoleView.getByRole('status')).toContainText('completed');
       await expect(subtitle).toContainText('completed');
@@ -178,7 +176,7 @@ for (const width of [1440, 390]) {
       await expect(terminal.locator('.xterm-accessibility-tree')).toContainText('Starting repository setup');
       await consoleView.getByRole('button', { name: 'Copy command output', exact: true }).click();
       const copied = await page.evaluate(() => navigator.clipboard.readText());
-      expect(copied).toContain('$ gh cao repos add octo/example');
+      expect(copied).toContain('$ gh workflow run add-repository.yml --repo octo/example');
       expect(copied).toContain('Starting repository setup');
       expect(copied).not.toContain('\x1b');
       await expect(terminal.locator('.xterm-rows span').filter({ hasText: 'Starting repository setup' }))

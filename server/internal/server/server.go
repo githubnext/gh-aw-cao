@@ -41,6 +41,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlitex"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
@@ -99,6 +100,8 @@ type App struct {
 	services         operational.OperationalServices
 	ownedOperational operational.Store
 	database         *postgresx.Store
+	localDatabase    *sqlitex.Store
+	localOperations  LocalOperations
 	ownedDatabase    *postgresx.Store
 	closeDatabase    sync.Once
 	closeError       error
@@ -997,6 +1000,9 @@ func (a *App) adminAuthorized(request *http.Request) bool {
 }
 
 func (a *App) adminAuthorizedContext(ctx context.Context) bool {
+	if a.localDatabase != nil {
+		return false
+	}
 	if a.oauth == nil {
 		a.logAuthBranch("admin.local_mode_allowed")
 		return true
@@ -1204,7 +1210,7 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	defer a.hub.Unsubscribe(channel)
-	active, _ := a.database.State(request.Context())
+	active, _ := a.queryStore().State(request.Context())
 	healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
 	writeEvent(response, active.Revision, healthRevision)
 	flusher.Flush()
@@ -1324,10 +1330,18 @@ func (a *App) query(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics)
-	if status, err := a.chargeQueryRateLimit(ctx, response, result.Metrics.RateLimitCost); err != nil {
-		fail(status, err.Error())
-		return
+	if a.localDatabase == nil {
+		result.Metrics.RateLimitCost = queryRateLimitCost(result.Metrics)
+		if status, err := a.chargeQueryRateLimit(ctx, response, result.Metrics.RateLimitCost); err != nil {
+			fail(status, err.Error())
+			return
+		}
+	} else {
+		for _, source := range result.Sources {
+			for _, row := range source.Rows {
+				localRedactJSON(map[string]any(row))
+			}
+		}
 	}
 	span.SetAttributes(queryTelemetryAttributes(input, result)...)
 	span.SetStatus(codes.Ok, "")
@@ -1354,6 +1368,19 @@ type queryResponse struct {
 }
 
 func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollectionHealth bool) (queryResponse, int, error) {
+	if a.localDatabase != nil {
+		var response queryResponse
+		var status int
+		err := a.localDatabase.WithReadTransaction(ctx, func(ctx context.Context, reader postgresx.NativeReader) error {
+			var err error
+			response, status, err = a.executeQueryWithReader(ctx, input, false, reader)
+			return err
+		})
+		if err != nil && status == 0 {
+			status = http.StatusServiceUnavailable
+		}
+		return response, status, err
+	}
 	if a.database == nil {
 		return queryResponse{}, http.StatusServiceUnavailable, errors.New("dashboard data is unavailable")
 	}
@@ -1506,6 +1533,17 @@ func (loader *databaseLoader) ExecuteSQLPlan(definitions []query.Definition, req
 
 func (loader *databaseLoader) runtimeSource(ctx context.Context, name string, definitions []query.Definition) (model.Source, error) {
 	if name == "cli-commands" || name == "cli-command-summary" || name == "cli-command-statuses" {
+		if loader.app != nil && loader.app.localOperations != nil {
+			var sources map[string]model.Source
+			if err := loader.app.localOperations.Call(ctx, "queue.sources", nil, &sources); err != nil {
+				return model.Source{}, err
+			}
+			source, ok := sources[name]
+			if !ok {
+				return model.Source{}, errors.New("local queue source is not registered")
+			}
+			return source, nil
+		}
 		return unavailableSource(name), nil
 	}
 	if name == simulationDaysSourceName {
@@ -1593,12 +1631,12 @@ func paginationOffset(source, revision string, page paginationRequest) (int, err
 }
 
 func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
-	active, err := a.database.State(request.Context())
+	active, err := a.queryStore().State(request.Context())
 	if err != nil || !active.Ready {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
 	}
-	diagnostics, err := a.database.Diagnostics(request.Context())
+	diagnostics, err := a.queryStore().Diagnostics(request.Context())
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard diagnostics are unavailable")
 		return
@@ -1608,7 +1646,7 @@ func (a *App) diagnostics(response http.ResponseWriter, request *http.Request) {
 }
 
 func (a *App) refresh(response http.ResponseWriter, request *http.Request) {
-	active, err := a.database.State(request.Context())
+	active, err := a.queryStore().State(request.Context())
 	if err != nil {
 		writeError(response, http.StatusServiceUnavailable, "dashboard data is unavailable")
 		return
@@ -1857,7 +1895,7 @@ func (hub *eventHub) observe(ctx context.Context, app *App) {
 			needsHealth = needsHealth || allowed
 		}
 		hub.mu.Unlock()
-		active, err := app.database.State(ctx)
+		active, err := app.queryStore().State(ctx)
 		if err != nil {
 			continue
 		}

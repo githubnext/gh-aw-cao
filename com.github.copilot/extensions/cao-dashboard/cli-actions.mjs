@@ -1,8 +1,1 @@
-export {
-  ensureGhAwAvailable,
-  executeDashboardCommand,
-  installGhAwWithCurl,
-  parseDashboardCommand,
-  resolveGhAwCompilerVersion,
-  runDashboardCommandStreaming,
-} from "../../../dashboard/cli-actions.mjs";
+export { executeDashboardCommand } from "./operator.mjs";

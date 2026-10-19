@@ -477,6 +477,10 @@ func readInventory(ctx context.Context, writer *postgresx.Writer, path, expected
 
 // inventoryRow is mechanical field normalization, not a query evaluator.
 // Canonical IDs use the same stable coordinate rules as ingestion.json.
+func NormalizeInventoryRow(name string, input model.Row) (string, model.Row, error) {
+	return inventoryRow(name, input)
+}
+
 func inventoryRow(name string, input model.Row) (string, model.Row, error) {
 	source := "$" + name
 	var row model.Row

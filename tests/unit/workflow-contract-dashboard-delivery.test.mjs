@@ -147,7 +147,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(deadViewsComment.block, /issues\.createComment/);
   assert.deepEqual(queryComplexity.needs, []);
   assert.match(queryComplexity.block, /if: github\.event_name != 'pull_request'/);
-  assert.match(queryComplexity.block, /node activity\/cao\.mjs dashboard-complexity/);
+  assert.match(queryComplexity.block, /go run \.\/cmd\/gh-cao dashboard-complexity/);
   assert.match(queryComplexity.block, /npm run dashboard:data:download/);
   assert.match(queryComplexity.block, /--database \.cao\/gh-aw-logs\.sqlite/);
   assert.match(queryComplexity.block, /--input dashboard\/site\/dashboard\.json/);
@@ -637,12 +637,15 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /Memory\.getDOMCounters/);
   assert.match(mobileTest, /VmRSS/);
   assert.match(mobileTest, /payload-hashes\.json/);
-  assert.match(mobileTest, /deployedActivityShardEntries\(payloadHashes\)/);
+  const downloader = readFileSync(join(root, "tests", "e2e", "dashboard-view-data.mjs"), "utf8");
+  assert.match(mobileTest, /downloadDeployedDashboardData\([\s\S]*?fetchDeployedData, mobileDebugShardLimit\(\)/);
+  assert.match(downloader, /deployedActivityShardEntries\(manifest\)\.slice\(0, maximumShardCount\)/);
+  assert.match(downloader, /writeVerified\(snapshotResponse, "gh-aw-logs\.sqlite"\)/);
   assert.match(mobileTest, /gh-aw-logs-\(\?:runs\|records\)/);
   assert.match(mobileTest, /inventory-sources\.json/);
   assert.match(mobileTest, /process\.env\.MOBILE_BROWSER === "webkit"[\s\S]*?Math\.min\(requested \?\? maximumWebKitShardCount, maximumWebKitShardCount\)/);
-  assert.match(mobileTest, /shards\.slice\(0, mobileDebugShardLimit\(\)\)/);
-  assert.match(mobileTest, /for \(const \{ name, sourceName \} of selectedShards\)[\s\S]*?legacyPhaseJsonToJsonl[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
+  assert.match(downloader, /for \(const \{ name, sourceName, hash \} of shards\)[\s\S]*?legacyPhaseJsonToJsonl\(original\)/);
+  assert.match(downloader, /preparedManifest\[name\] = digest\(converted\)/);
   assert.match(mobileTest, /parameters\.set\("debug-shard-limit", String\(shardLimit\)\)/);
   assert.doesNotMatch(mobileTest, /fetch\(dataUrl\)/);
   assert.doesNotMatch(mobileTest, /logsResponse\.text\(\)/);

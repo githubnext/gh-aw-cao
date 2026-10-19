@@ -236,4 +236,22 @@ describe('worker command queue', () => {
     expect(fetch.mock.calls.every(([, options]) => options.method === 'POST')).toBe(true);
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ idempotencyKey: 'retry-once' });
   });
+
+  it('forwards authoritative live status without advancing the output cursor', async () => {
+    configureCliQueue(true);
+    const status = { type: 'status', command: { id: 42, status: 'running' } };
+    const complete = { type: 'complete', command: { id: 42, status: 'completed' }, result: { ok: true } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+      [status, complete].map((event) => JSON.stringify(event)).join('\n')
+    )));
+    const notify = vi.fn();
+    expect(await cliQueueOperation({ action: 'attach', commandId: 42, after: 1 }, undefined, notify)).toEqual(complete);
+    expect(notify).toHaveBeenCalledExactlyOnceWith(status);
+  });
+
+  it.each([{ id: 43, status: 'running' }, { id: 42, status: 'unknown' }])('rejects invalid status %j', async (command) => {
+    configureCliQueue(true);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'status', command }))));
+    await expect(cliQueueOperation({ action: 'attach', commandId: 42 })).rejects.toThrow('Invalid command status update.');
+  });
 });

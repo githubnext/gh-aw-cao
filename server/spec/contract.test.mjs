@@ -20,7 +20,22 @@ test('every registered HTTP route has a TypeSpec operation (except static assets
       .filter(method => ['get', 'post'].includes(method))
       .map(method => `${method} ${path}`))
     .sort()
-  assert.deepEqual(documented, registered)
+  assert.deepEqual(documented.filter(route => !route.includes(' /__')), registered)
+})
+
+test('local preview authoring and command routes are specified independently of hosted authority', () => {
+  for (const [path, method] of [
+    ['/__query_designer', 'post'], ['/__query_designer/enhance', 'post'],
+    ['/__custom_views', 'post'], ['/__dialog_selector', 'post'],
+    ['/__cli_commands', 'get'], ['/__cli_commands', 'post'],
+    ['/__cli_commands/{id}', 'get'], ['/__cli_commands/{id}/output', 'get'],
+    ['/__cli_commands/{id}/cancel', 'post'], ['/__cli_commands/{id}/retry', 'post'],
+    ['/__cli_action', 'post']
+  ]) {
+    const operation = openapi.paths[path]?.[method]
+    assert.ok(operation, `${method} ${path}`)
+    if (method === 'post') assert.ok(operation.parameters.some(parameter => parameter.name === 'Origin'))
+  }
 })
 
 test('agent discovery describes public GET and body-free HEAD responses', () => {
@@ -51,7 +66,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.6.0')
+  assert.equal(openapi.info.version, '2.7.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }

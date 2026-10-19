@@ -92,12 +92,15 @@ function workflowDispatchArgumentsAreValid(args) {
 export function isReadOnlyCliAction(action) {
   if (action.arguments?.length || typeof action.command !== 'string') return false;
   const tokens = parseCliActionTokens(action.command);
+  const operatorOffset = tokens?.[0] === 'gh' && tokens[1] === 'cao' ? 2 : tokens?.[0] === 'gh-cao' ? 1 : 0;
+  const operator = tokens?.slice(operatorOffset);
   const allowed = Boolean(tokens && (
     tokens[0] === 'gh' && tokens[1] === 'aw'
       && ['status', 'list', 'logs', 'version'].includes(tokens[2]) && tokens.length === 3
-    || tokens[0] === 'gh' && tokens[1] === 'cao' && (
-      ['query', 'query-info', 'prompt'].includes(tokens[2])
-        && tokens.length === 4 && IDENTIFIER_PATTERN.test(tokens[3])
+    || operatorOffset > 0 && operator && (
+      ['version', 'queries', 'pages'].includes(operator[0]) && operator.length === 1
+      || ['query', 'query-info', 'prompt'].includes(operator[0])
+        && operator.length === 2 && IDENTIFIER_PATTERN.test(operator[1])
     )
   ));
   debugActionValidator({ event: 'read-only-cli-check', status: allowed ? 'allowed' : 'rejected', tokenCount: tokens?.length ?? 0 });

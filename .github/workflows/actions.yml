@@ -9,7 +9,19 @@ on:
     paths:
       - .github/workflows/actions.yml
       - dashboard/site/**
-      - dashboard/local-server.mjs
+      - dashboard/localpreview/**
+      - dashboard/catalog.go
+      - dashboard/queryengine/**
+      - cmd/gh-cao/**
+      - internal/cli/dashboard*.go
+      - server/preview/**
+      - server/internal/localops/**
+      - server/internal/sqlitex/**
+      - server/internal/server/local*.go
+      - go.mod
+      - go.sum
+      - server/go.mod
+      - server/go.sum
       - dashboard/report/**
       - "**/dashboard.json"
       - "**/dashboard-fragments/**"
@@ -18,6 +30,8 @@ on:
       - tests/playwright/configs/mobile.config.mjs
       - tests/integration/dashboard-deployed-data.test.mjs
       - tests/e2e/dashboard-mobile-live.spec.mjs
+      - tests/e2e/dashboard-view-data.mjs
+      - tests/helpers/native-*.mjs
       - tests/e2e/dashboard-deployed-refresh-helpers.mjs
       - tests/e2e/dashboard-screenshot.mjs
       - tests/e2e/dashboard-tree-analysis.mjs
@@ -78,6 +92,14 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --ignore-scripts
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            server/go.sum
+      - name: Build native dashboard server
+        run: npm --prefix dashboard/site run build:preview
       - name: Install browser
         # Playwright's system dependencies come from the Ubuntu archives. The runner
         # image also configures Google's Chrome repository, whose index intermittently

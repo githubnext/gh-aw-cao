@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardServer } from "../helpers/native-dashboard.mjs";
 import { performanceSnapshotTimestamp } from "../../dashboard/site/test/performance/lighthouse-contract.js";
 import { deployedActivityShardEntries } from "./dashboard-deployed-refresh-helpers.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";

@@ -7,9 +7,17 @@ on:
       - .github/workflows/cao.json
       - .github/actions/setup-gh-aw/**
       - .golangci.yml
+      - operator_assets.go
+      - docs/dashboard-language-specification.md
+      - .github/skills/generate-dashboard-ir/**
+      - .github/skills/author-dashboard-intent/**
+      - .github/skills/dashboard-authoring/**
       - cmd/**
       - internal/**
       - dashboard/catalog.go
+      - dashboard/localpreview/**
+      - dashboard/queryengine/**
+      - server/**
       - go.mod
       - go.sum
       - package.json
@@ -31,9 +39,17 @@ on:
       - .github/workflows/cao.json
       - .github/actions/setup-gh-aw/**
       - .golangci.yml
+      - operator_assets.go
+      - docs/dashboard-language-specification.md
+      - .github/skills/generate-dashboard-ir/**
+      - .github/skills/author-dashboard-intent/**
+      - .github/skills/dashboard-authoring/**
       - cmd/**
       - internal/**
       - dashboard/catalog.go
+      - dashboard/localpreview/**
+      - dashboard/queryengine/**
+      - server/**
       - go.mod
       - go.sum
       - package.json
@@ -74,10 +90,10 @@ jobs:
       - name: Check formatting
         shell: bash
         run: |
-          golangci-lint fmt --diff ./cmd/... ./internal/... ./dashboard | tee "$RUNNER_TEMP/go-extension-fmt.diff"
+          golangci-lint fmt --diff . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/... | tee "$RUNNER_TEMP/go-extension-fmt.diff"
           test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"
       - name: Lint
-        run: golangci-lint run ./cmd/... ./internal/... ./dashboard
+        run: golangci-lint run . ./cmd/... ./internal/... ./dashboard ./dashboard/localpreview/... ./dashboard/queryengine/...
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"

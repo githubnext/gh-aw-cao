@@ -1,316 +1,150 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import test from "node:test";
-import { createCliActionApi, resolveQueuedCliAction } from "../../dashboard/cli-action-api.mjs";
-import { parseDashboardCommand } from "../../dashboard/cli-actions.mjs";
-import { cliActionTemplateContext } from "../../dashboard/site/src/cli-action-template.js";
+import { nativeDashboardFixture, startNativeDashboard } from "../helpers/native-dashboard.mjs";
+import { nativeCommandFixture } from "../helpers/native-command-fixture.mjs";
 
-const dashboard = { dashboard: { "cli-actions": [
-  { id: "compile", command: "gh aw compile", arguments: [{ id: "strict", flag: "--strict", default: true }] },
-  { id: "update", command: "gh cao update --repo {repository}" },
-  { id: "copy", command: "gh aw compile", "copy-only": true },
-] } };
+const baseDocument = JSON.parse(await readFile(new URL("../../dashboard/site/test/fixtures/query-editor.json", import.meta.url), "utf8"));
+const actions = [
+  { id: "dispatch", label: "Dispatch", icon: "play", command: "gh workflow run maintenance.yml --repo {{repository}}",
+    arguments: [{ id: "release", label: "Release", flag: "--ref release", default: false }] },
+  { id: "copy", label: "Copy", icon: "copy", command: "gh workflow run maintenance.yml", "copy-only": true },
+];
 
-test("queue admission resolves only declared actions and validated arguments", () => {
-  assert.equal(resolveQueuedCliAction(dashboard, { id: "compile" }).command, "gh aw compile --strict");
-  assert.equal(resolveQueuedCliAction(dashboard, { id: "compile", arguments: { strict: false } }).command, "gh aw compile");
-  for (const payload of [
-    { id: "compile", command: "sh -c whoami" },
-    { id: "compile", arguments: { unsafe: true } },
-    { id: "compile", input: "unexpected" },
-    { id: "update", values: { repository: "octo/repo; whoami" } },
-  ]) assert.throws(() => resolveQueuedCliAction(dashboard, payload), { status: 400 });
-  assert.throws(() => resolveQueuedCliAction(dashboard, { id: "missing" }), { status: 404 });
-  assert.throws(() => resolveQueuedCliAction(dashboard, { id: "copy" }), { status: 403 });
-});
-
-test("built-in update and upgrade actions carry CAO attribution as one PR message argument", () => {
-  const document = JSON.parse(readFileSync(new URL("../../dashboard/site/dashboard.json", import.meta.url), "utf8"));
-  const context = cliActionTemplateContext({ repository: "acme/control", caoUrl: "https://ops.example.com/central/" });
-  for (const id of ["update-repository", "update-campaign", "upgrade-repository", "upgrade-target-repository"]) {
-    const update = id.startsWith("update");
-    const values = update ? { campaign: "activity" } : { repository: "octo/example" };
-    const message = update
-      ? "This pull request was requested through [Central Agentic Ops (CAO)](https://github.com/acme/control) to update the activity campaign from its upstream source, keeping installed workflows current with published fixes and improvements. Return to the [CAO dashboard](https://ops.example.com/central/#page-maintenance-campaigns)."
-      : "This pull request was requested through [Central Agentic Ops (CAO)](https://github.com/acme/control) to upgrade GitHub Agentic Workflows in octo/example, refreshing workflow tooling, action versions, and generated lock files. Return to the [CAO dashboard](https://ops.example.com/central/#page-maintenance).";
-    for (const createPr of [true, false]) {
-      const invocation = resolveQueuedCliAction(document, {
-        id, values, arguments: { "create-pull-request": createPr },
-      }, context);
-      const tokens = parseDashboardCommand(invocation.command);
-      assert.deepEqual(tokens, [
-        ...(update
-          ? ["gh", "aw", "update", "https://github.com/githubnext/gh-aw-cao/activity", "--repo", "acme/control"]
-          : ["gh", "aw", "upgrade", "--repo", "octo/example"]),
-        "--pr-message", message, ...(createPr ? ["--create-pull-request"] : []),
-      ]);
-    }
-  }
-});
-
-test("queue resolution rejects browser overrides of host identity and missing CAO context", () => {
-  const document = { dashboard: { "cli-actions": [{
-    id: "upgrade", command: "gh aw upgrade --repo {{repository}} --pr-message '{{cao-url}}'",
-  }] } };
-  const context = { "cao-url": "https://ops.example.com/central/" };
-  for (const field of ["cao-url", "cao-repository", "cao-repository-url"]) {
-    assert.throws(() => resolveQueuedCliAction(document, {
-      id: "upgrade", values: { repository: "octo/target", [field]: "https://attacker.example/" },
-    }, context), { status: 400 });
-  }
-  assert.throws(() => resolveQueuedCliAction(document, {
-    id: "upgrade", values: { repository: "octo/target" },
-  }), { status: 400 });
-});
-
-async function fixture(queue, approve = async () => true, { getDashboard = () => dashboard, getTemplateContext = () => ({}) } = {}) {
-  const handler = createCliActionApi({
-    queue, getDashboard, getTemplateContext, approve,
-    isAllowedOrigin: (origin) => origin === "http://trusted",
-    readJsonRequest: async (request) => {
-      let body = "";
-      for await (const chunk of request) body += chunk;
-      return JSON.parse(body);
-    },
-    sendJson: (response, status, value) => {
-      response.writeHead(status, { "Content-Type": "application/json" });
-      response.end(JSON.stringify(value));
-    },
+async function fixture(t, options = {}) {
+  const data = await nativeDashboardFixture();
+  let server;
+  let commands;
+  t.after(async () => {
+    await server?.close();
+    commands?.close();
+    await data.close();
   });
-  const server = createServer(async (request, response) => {
-    const url = new URL(request.url, "http://localhost");
-    if (!await handler(request, response, url.pathname, url)) response.writeHead(404).end();
-  });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  commands = await nativeCommandFixture(join(data.workspace, "external-gh"), options);
+  const document = structuredClone(baseDocument);
+  document.dashboard["cli-actions"] = actions;
+  const dashboard = join(data.workspace, "dashboard.json");
+  await writeFile(dashboard, JSON.stringify(document));
+  const settings = { ...data, dashboard, admin: true, ghExecutable: commands.ghExecutable, caoUrl: "https://ops.example.test/central/" };
+  server = await startNativeDashboard(settings);
   return {
-    url: `http://127.0.0.1:${server.address().port}`,
-    close: () => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); },
+    ...data, commands, document, dashboard,
+    get url() { return server.url; },
+    request(path = "", method = "GET", payload, headers = {}) {
+      return fetch(`${server.url}${path}`, {
+        method, headers: { "Content-Type": "application/json", Origin: new URL(server.url).origin, ...headers },
+        ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+      });
+    },
+    async restart() { await server.close(); server = await startNativeDashboard(settings); },
   };
 }
 
-const headers = { "Content-Type": "application/json", Origin: "http://trusted" };
+const invocation = { id: "dispatch", values: { repository: "octo/example" } };
+async function complete(server, id) {
+  const response = await server.request(`/__cli_commands/${id}/output`);
+  assert.equal(response.status, 200);
+  const events = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
+  assert.equal(events.at(-1).type, "complete");
+  return events;
+}
+async function until(check) {
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    if (await check()) return;
+    await delay(10);
+  }
+  assert.fail("Native command did not reach the expected state.");
+}
 
-test("queue API rejects cross-origin mutations and preserves trusted approval", async () => {
-  let enqueued = 0;
-  const queue = { enqueue: () => { enqueued++; } };
-  const server = await fixture(queue, async () => false);
-  try {
-    const post = (customHeaders) => fetch(`${server.url}/__cli_commands`, {
-      method: "POST", headers: customHeaders, body: JSON.stringify({ id: "compile" }),
-    });
-    assert.equal((await post({ ...headers, Origin: "http://attacker" })).status, 403);
-    assert.equal((await post({ "Content-Type": "application/json" })).status, 403);
-    assert.equal((await post(headers)).status, 403);
-    assert.equal(enqueued, 0);
-  } finally { await server.close(); }
+test("native queue API resolves declarations, rejects overrides, and enforces Origin and capability paths", async (t) => {
+  const server = await fixture(t);
+  for (const [payload, status] of [
+    [{ id: "missing" }, 404], [{ id: "copy" }, 403],
+    [{ ...invocation, command: "sh -c whoami" }, 400],
+    [{ ...invocation, arguments: { unsafe: true } }, 400],
+    [{ ...invocation, input: "unexpected" }, 400],
+    [{ ...invocation, values: { repository: "octo/repo;whoami" } }, 400],
+    ...["cao-url", "cao-repository", "cao-repository-url"].map((field) => [
+      { ...invocation, values: { ...invocation.values, [field]: "attacker/override" } }, 400,
+    ]),
+  ]) assert.equal((await server.request("/__cli_commands", "POST", payload)).status, status, JSON.stringify(payload));
+  assert.equal((await server.request("/__cli_commands", "POST", invocation, { Origin: "https://untrusted.test" })).status, 403);
+  assert.equal((await server.request("/__cli_commands", "POST", invocation, { Origin: "" })).status, 403);
+  assert.equal((await fetch(`${new URL(server.url).origin}/__cli_commands`)).status, 404);
+  for (const query of ["limit=-1", "limit=301", "limit=1.5", "offset=01", "offset=-1", "status=queued,unknown", "status=queued,"]) {
+    assert.equal((await server.request(`/__cli_commands?${query}`)).status, 400, query);
+  }
+  for (const suffix of ["", "/output", "/cancel", "/retry"]) {
+    assert.equal((await server.request(`/__cli_commands/999999${suffix}`, suffix === "/cancel" || suffix === "/retry" ? "POST" : "GET",
+      suffix === "/cancel" || suffix === "/retry" ? {} : undefined)).status, 404);
+  }
+  assert.equal(server.commands.runs, 0);
 });
 
-test("queue API durably enqueues with an idempotency key and validates pagination", async () => {
-  const calls = [];
-  const server = await fixture({
-    enqueue: (invocation, key) => { calls.push({ invocation, key }); return { id: "command-1", status: "queued" }; },
-    list: (options) => ({ commands: [], total: 0, running: 0, options }),
+test("native output resumes by cursor and persists enterprise PR completion, ANSI and bounded history across restart", async (t) => {
+  const server = await fixture(t, {
+    hold: false,
+    initialOutput: [{ stream: "stdout", data: "https://github.com/octo/repo/pull/1\n" }],
+    completionOutput: [
+      { stream: "stderr", data: "\x1b[32mhttps://ghe.example.test:8443/github/team/project/pull/42\x1b[0m\n" },
+      { stream: "stdout", data: "No more changes.\n" },
+    ],
   });
-  try {
-    const response = await fetch(`${server.url}/__cli_commands`, {
-      method: "POST", headers: { ...headers, "Idempotency-Key": "update-batch-1" },
-      body: JSON.stringify({ id: "compile" }),
-    });
+  const headers = { "Idempotency-Key": "persistent-request" };
+  const response = await server.request("/__cli_commands", "POST", { ...invocation, arguments: { release: true } }, headers);
+  assert.equal(response.status, 202);
+  const job = await response.json();
+  assert.equal(job.command, "gh workflow run maintenance.yml --repo octo/example --ref release");
+  assert.equal((await (await server.request("/__cli_commands", "POST", { ...invocation, arguments: { release: true } }, headers)).json()).id, job.id);
+  assert.equal((await server.request("/__cli_commands", "POST", invocation, headers)).status, 409);
+  const events = await complete(server, job.id);
+  const output = events.filter(({ type }) => type === "output");
+  assert.ok(output.length >= 2);
+  assert.deepEqual(output.map(({ sequence }) => sequence), output.map((_, index) => index + 1));
+  const expected = "https://ghe.example.test:8443/github/team/project/pull/42";
+  assert.equal(events.at(-1).result.pullRequestUrl, expected);
+  assert.match(output.map(({ data }) => data).join(""), /\x1b\[32mhttps:\/\/ghe/);
+  assert.equal(output.map(({ data }) => data).join("").match(/No more changes\./g).length, 1);
+  const resumed = await server.request(`/__cli_commands/${job.id}/output?after=${output[0].sequence}`);
+  const resumedEvents = (await resumed.text()).trim().split("\n").map((line) => JSON.parse(line));
+  assert.deepEqual(resumedEvents.filter(({ type }) => type === "output"), output.slice(1));
+  const history = await (await server.request("/__cli_commands?limit=1&offset=0")).json();
+  assert.equal(history.total, 1);
+  assert.equal(history.commands[0].result.pullRequestUrl, expected);
+  assert.equal(history.commands[0].repository, invocation.values.repository);
+  for (const key of ["input", "arguments", "values", "stdout", "stderr"]) assert.equal(Object.hasOwn(history.commands[0], key), false);
+  assert.equal((await server.request(`/__cli_commands/${job.id}/retry`, "POST", {})).status, 409);
+  await server.restart();
+  const restored = await (await server.request(`/__cli_commands/${job.id}`)).json();
+  assert.equal(restored.result.pullRequestUrl, expected);
+  assert.deepEqual((await complete(server, job.id)).filter(({ type }) => type === "output"), output);
+  assert.equal(server.commands.runs, 1);
+});
+
+test("native queue cancellation, status pagination, output detachment and shutdown preserve command lifetimes", async (t) => {
+  const server = await fixture(t, { initialOutput: [{ stream: "stdout", data: "running\n" }] });
+  const jobs = [];
+  for (let index = 0; index < 6; index++) {
+    const response = await server.request("/__cli_commands", "POST", invocation, { "Idempotency-Key": `queued-${index}` });
     assert.equal(response.status, 202);
-    assert.equal((await response.json()).id, "command-1");
-    assert.equal(calls[0].key, "update-batch-1");
-    assert.equal(calls[0].invocation.actionId, "compile");
-    for (const query of ["limit=-1", "offset=1e9", "limit=301", "offset=nope"]) {
-      assert.equal((await fetch(`${server.url}/__cli_commands?${query}`)).status, 400);
-    }
-  } finally { await server.close(); }
-});
-
-test("output replay follows a persistent cursor and emits terminal state", async () => {
-  let unsubscribed = 0;
-  const chunks = [
-    { sequence: 1, stream: "stdout", data: "earlier\n" },
-    { sequence: 2, stream: "stderr", data: "last\n" },
-  ];
-  const server = await fixture({
-    detail: () => ({ id: "command-1", status: "failed", exitCode: 7 }),
-    output: (_id, after, limit) => chunks.filter((chunk) => chunk.sequence > after).slice(0, limit),
-    subscribe: () => () => { unsubscribed++; },
-  });
-  try {
-    const response = await fetch(`${server.url}/__cli_commands/command-1/output?after=1`);
-    const events = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
-    assert.deepEqual(events[0], { type: "output", ...chunks[1] });
-    assert.equal(events.length, 2);
-    assert.equal(events[1].result.ok, false);
-    assert.equal(events[1].result.exitCode, 7);
-    assert.equal(unsubscribed, 1);
-  } finally { await server.close(); }
-});
-
-test("output completion includes the durable enterprise pull request result", async () => {
-  const pullRequestUrl = "https://ghe.example.test:8443/github/team/project/pull/42";
-  const server = await fixture({
-    detail: () => ({
-      id: "command-1", status: "completed", exitCode: 0,
-      result: { ok: true, exitCode: 0, pullRequestUrl },
-    }),
-    output: () => [],
-    subscribe: () => () => {},
-  });
-  try {
-    const response = await fetch(`${server.url}/__cli_commands/command-1/output`);
-    assert.deepEqual(JSON.parse(await response.text()).result, { ok: true, exitCode: 0, pullRequestUrl });
-  } finally { await server.close(); }
-});
-
-test("history polling excludes stdin and output bodies from summary rows", async () => {
-  const server = await fixture({
-    list: () => ({
-      commands: [{
-        id: "command-1", actionId: "compile", status: "completed", input: "approved prompt",
-        stdout: "retained output", stderr: "", arguments: {}, values: {
-          repository: "octo/repo", campaign: "maintenance", "package-source": "owner/catalog/pkg",
-          unrelated: "not part of the summary",
-        },
-      }],
-      total: 300, running: 4, revision: 7,
-    }),
-  });
-  try {
-    const response = await fetch(`${server.url}/__cli_commands`);
-    assert.deepEqual(await response.json(), {
-      commands: [{
-        id: "command-1", actionId: "compile", status: "completed",
-        repository: "octo/repo", campaign: "maintenance", "package-source": "owner/catalog/pkg",
-      }],
-      total: 300, running: 4, revision: 7,
-    });
-  } finally { await server.close(); }
-});
-
-test("retry revalidates the current declaration and approval before creating another entry", async () => {
-  let retries = 0;
-  const server = await fixture({
-    detail: () => ({ status: "failed", actionId: "compile", command: "gh aw compile --old", arguments: {}, values: {} }),
-    retry: () => { retries++; },
-  });
-  try {
-    const response = await fetch(`${server.url}/__cli_commands/command-1/retry`, {
-      method: "POST", headers, body: "{}",
-    });
-    assert.equal(response.status, 409);
-    assert.equal(retries, 0);
-  } finally { await server.close(); }
-});
-
-test("retry re-resolves host context and requires the same approved command", async () => {
-  const document = { dashboard: { "cli-actions": [{
-    id: "update", command: "gh aw update --pr-message '{{cao-url}}'",
-  }] } };
-  let url = "https://ops.example.com/central/";
-  let retries = 0;
-  const server = await fixture({
-    detail: () => ({
-      status: "failed", actionId: "update",
-      command: "gh aw update --pr-message 'https://ops.example.com/central/'", arguments: {}, values: {},
-    }),
-    retry: (id) => { retries++; return { id: "new-command", status: "queued", retryOf: id }; },
-  }, async () => true, {
-    getDashboard: () => document, getTemplateContext: () => ({ "cao-url": url }),
-  });
-  try {
-    const retry = () => fetch(`${server.url}/__cli_commands/command-1/retry`, {
-      method: "POST", headers, body: "{}",
-    });
-    assert.equal((await retry()).status, 202);
-    url = "https://other.example.com/central/";
-    assert.equal((await retry()).status, 409);
-    assert.equal(retries, 1);
-  } finally { await server.close(); }
-});
-
-test("manual retries create entries only for failed or timed-out commands", async () => {
-  let status = "failed";
-  const retries = [];
-  const server = await fixture({
-    detail: () => ({
-      status, actionId: "compile", command: "gh aw compile --strict", arguments: {}, values: {},
-    }),
-    retry: (id, key) => { retries.push({ id, key }); return { id: "new-command", status: "queued", retryOf: id }; },
-  });
-  try {
-    for (status of ["queued", "running", "completed", "canceled", "failed", "timed-out"]) {
-      const response = await fetch(`${server.url}/__cli_commands/command-1/retry`, {
-        method: "POST", headers, body: JSON.stringify({ idempotencyKey: `retry-${status}` }),
-      });
-      assert.equal(response.status, status === "failed" || status === "timed-out" ? 202 : 409);
-    }
-    assert.deepEqual(retries, [
-      { id: "command-1", key: "retry-failed" },
-      { id: "command-1", key: "retry-timed-out" },
-    ]);
-  } finally { await server.close(); }
-});
-
-test("online queue endpoints are no-ops", async () => {
-  const server = await fixture(undefined);
-  try {
-    assert.equal((await fetch(`${server.url}/__cli_commands`)).status, 404);
-    assert.equal((await fetch(`${server.url}/__cli_action`, { method: "POST", headers, body: "{}" })).status, 404);
-  } finally { await server.close(); }
-});
-
-test("retry cannot reuse an enqueue idempotency key to return its failed original", async () => {
-  const original = {
-    id: "command-1", status: "failed", actionId: "compile",
-    command: "gh aw compile --strict", arguments: {}, values: {}, retryOf: null,
-  };
-  const server = await fixture({ detail: () => original, retry: () => original });
-  try {
-    const response = await fetch(`${server.url}/__cli_commands/command-1/retry`, {
-      method: "POST", headers, body: JSON.stringify({ idempotencyKey: "original-enqueue-key" }),
-    });
-    assert.equal(response.status, 409);
-    assert.match((await response.json()).error, /idempotency key conflicts/);
-  } finally { await server.close(); }
-});
-
-test("unknown command IDs do not open a stream or permit lifecycle operations", async () => {
-  const server = await fixture({ detail: () => null });
-  try {
-    for (const suffix of ["", "/output"]) {
-      const response = await fetch(`${server.url}/__cli_commands/missing${suffix}`);
-      assert.equal(response.status, 404);
-      assert.match((await response.json()).error, /not found/);
-    }
-    const response = await fetch(`${server.url}/__cli_commands/missing/cancel`, {
-      method: "POST", headers, body: "{}",
-    });
-    assert.equal(response.status, 404);
-  } finally { await server.close(); }
-});
-
-test("detaching an output stream unsubscribes without canceling execution", async () => {
-  let cancelCount = 0;
-  let unsubscribeCount = 0;
-  const server = await fixture({
-    detail: () => ({ id: "command-1", status: "running", exitCode: null }),
-    output: () => [{ sequence: 1, stream: "stdout", data: "running\n" }],
-    subscribe: () => () => { unsubscribeCount++; },
-    cancel: () => { cancelCount++; },
-  });
-  try {
-    const controller = new AbortController();
-    const response = await fetch(`${server.url}/__cli_commands/command-1/output`, { signal: controller.signal });
-    const reader = response.body.getReader();
-    assert.match(new TextDecoder().decode((await reader.read()).value), /running/);
-    controller.abort();
-    for (let attempt = 0; attempt < 30 && !unsubscribeCount; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    }
-    assert.equal(unsubscribeCount, 1);
-    assert.equal(cancelCount, 0);
-  } finally { await server.close(); }
+    jobs.push(await response.json());
+  }
+  await until(async () => (await (await server.request("/__cli_commands")).json()).running === 4);
+  assert.ok(server.commands.runs <= 4);
+  const canceled = await server.request(`/__cli_commands/${jobs[5].id}/cancel`, "POST", {});
+  assert.equal((await canceled.json()).status, "canceled");
+  const filtered = await (await server.request("/__cli_commands?status=queued,canceled&limit=1&offset=0")).json();
+  assert.equal(filtered.total, 2);
+  assert.equal(filtered.commands[0].id, jobs[5].id);
+  const detached = await server.request(`/__cli_commands/${jobs[0].id}/output`);
+  await detached.body.cancel();
+  assert.equal((await (await server.request(`/__cli_commands/${jobs[0].id}`)).json()).status, "running");
+  assert.equal((await (await server.request(`/__cli_commands/${jobs[0].id}/cancel`, "POST", {})).json()).status, "canceled");
+  server.commands.finish();
+  for (const job of jobs.slice(1, 5)) assert.equal((await complete(server, job.id)).at(-1).result.ok, true);
+  assert.equal((await (await server.request(`/__cli_commands/${jobs[0].id}`)).json()).status, "canceled");
+  await server.restart();
+  assert.equal((await (await server.request(`/__cli_commands/${jobs[5].id}`)).json()).status, "canceled");
 });

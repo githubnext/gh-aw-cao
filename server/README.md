@@ -1,4 +1,4 @@
-# Go dashboard server with Postgres and operational storage
+# Go dashboard server with SQLite and Postgres
 
 The [TypeSpec HTTP contract](spec/README.md) is the source for generated
 OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
@@ -30,6 +30,40 @@ the focused contracts.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
+## Local SQLite preview
+
+```bash
+gh cao dashboard serve --repo OWNER/REPOSITORY
+gh cao dashboard serve --admin
+gh cao dashboard serve --data .cao/downloaded-dashboard
+```
+
+Local previews use the same Go server, with native SQLite reads and the shared
+Go Dashboard Language evaluator instead of PostgreSQL. They require the native
+`gh-cao` extension and authenticated GitHub CLI, but no Node.js, npm, external database, hosted OAuth configuration,
+or site build. SQLite is the default; `--data-backend indexeddb` preserves
+browser-ingestion previews through the Go listener.
+
+`gh cao dashboard serve` prepares verified artifacts, composes and watches
+declarative documents, and runs the same Go HTTP implementation in-process.
+It directly reads the artifact's checksummed canonical SQLite snapshot;
+it does not invoke a JavaScript preparation or query worker.
+The Go process owns request validation, the random
+capability prefix, same-origin JSON mutations, static assets and gzip,
+native SQLite queries and pagination, diagnostics, revision SSE, repository
+memory, live-reload WebSockets, authoring endpoints, and persistent command
+output streams. Existing trusted canvas approval and explicit loopback-only
+`--admin` execution remain unchanged. Commands run independently of browser
+connections in their separate durable `.cao/cli-actions.sqlite` queue.
+Stopping a preview joins its native background work before removing disposable
+preview data. Startup and runtime failures are explicit.
+
+The canvas extension only launches the installed native `gh cao` command and
+forwards trusted approval over private process pipes. Operator preparation,
+queries, SDK authoring, and command execution are implemented in Go. The
+JavaScript runtime remains for Actions and browser UI, not local server
+operations. See [local preview usage](../dashboard/README.md#local-preview).
+
 ## Single-process memory operational storage
 
 PostgreSQL remains the default. To select memory in reviewed
@@ -60,7 +94,7 @@ the requested backend must match the resolved policy and cannot override it.
 It preserves the ordinary hosted authentication and transport requirements.
 Direct TLS uses the actual TLS connection without requiring forwarded headers
 unless `CAO_TRUSTED_PROXY_CIDRS` explicitly configures a proxy.
-Omitting the selector keeps the separate browser-only preview unchanged.
+Omitting the selector selects the local SQLite preview, not a hosted deployment.
 
 Use `serve-hosted` with the ordinary mandatory OAuth, HTTPS/proxy, organization
 or team, administrator, and webhook-secret configuration. Keep admission,

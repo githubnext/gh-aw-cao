@@ -5,6 +5,9 @@ on:
     paths:
       - .github/workflows/cgo.yml
       - server/**
+      - dashboard/queryengine/**
+      - go.mod
+      - go.sum
       - "!server/**/*.md"
   push:
     branches: [main]
@@ -12,6 +15,9 @@ on:
       - .github/workflows/cgo.yml
       - dashboard/site/**
       - server/**
+      - dashboard/queryengine/**
+      - go.mod
+      - go.sum
       - scripts/test-dashboard-backfill.sh
       - package.json
       - package-lock.json

@@ -2,7 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+import { startDashboardServer, publishNativeFixture } from '../../../../tests/helpers/native-dashboard.mjs';
+import { nativeCommandFixture } from '../../../../tests/helpers/native-command-fixture.mjs';
 
 for (const { width, height = 900, empty = false, crowded = false } of [
   { width: 1440 }, { width: 390 }, { width: 489 }, { width: 320 }, { width: 1440, empty: true },
@@ -18,31 +19,23 @@ for (const { width, height = 900, empty = false, crowded = false } of [
     const executions = [];
     /** @type {(() => void) | undefined} */
     let finishSearch;
+    const commandFixture = await nativeCommandFixture(testInfo.outputPath('external-cli'), {
+      hold: false, crowded, holdSearch: crowded, description: 'Selected repository',
+      onSearch: (request) => calls.push(request),
+      onCommand: (command) => executions.push(command),
+      completionOutput: [{ stream: 'stdout', data: 'Repository staged in review mode.\n' }]
+    });
+    finishSearch = commandFixture.finishSearch;
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', canvas: true, port: 0,
-      cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
-      cliQueueAdmission: async () => ({ concurrency: 1 }),
+      commandFixture,
+      fixtureActions: { 'add-repository': 'gh workflow run add-repository.yml --repo {{repository}}' },
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-      lookupSelector: async (/** @type {{ id: string, selector: { query: { limit: number } } }} */ action, /** @type {string} */ text) => {
-        calls.push({ id: action.id, text });
-        const selected = { value: 'octo/example', label: 'octo/example', description: 'Selected repository' };
-        if (!crowded) return [selected];
-        await new Promise((resolve) => { finishSearch = () => resolve(undefined); });
-        return Array.from({ length: 500 }, (_, index) => index === action.selector.query.limit - 1 ? selected : {
-          value: `octo/repository-${index}`, label: `octo/repository-${index}`,
-          description: 'Repository description that wraps across multiple lines on a narrow display.'
-        }).slice(0, action.selector.query.limit);
-      },
       approveCliAction: async (/** @type {{ command: string }} */ { command }) => { approvals.push(command); return true; },
-      executeCliAction: async (/** @type {{ command: string, onOutput: (event: { stream: string, data: string }) => void }} */ { command, onOutput }) => {
-        executions.push(command);
-        onOutput({ stream: 'stdout', data: 'Repository staged in review mode.\n' });
-        return { ok: true };
-      },
-      downloadData: async (/** @type {string} */ destination) => {
+      downloadData: publishNativeFixture(async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
           campaigns: {
             metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
             rows: empty ? [] : [{
@@ -61,7 +54,7 @@ for (const { width, height = 900, empty = false, crowded = false } of [
               'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.91.5' }]
           }
         }));
-      }
+      })
     });
     try {
       await page.addInitScript(() => {
@@ -211,7 +204,7 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       await option.focus();
       await page.keyboard.press('Enter');
       await expect(option).toHaveAttribute('aria-pressed', 'true');
-      await expect(dialog.locator('.cli-action-command')).toHaveText('gh cao repos add octo/example');
+      await expect(dialog.locator('.cli-action-command')).toHaveText('gh workflow run add-repository.yml --repo octo/example');
       if (crowded) {
         expect(await results.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
         const bounds = await dialog.boundingBox();
@@ -228,7 +221,7 @@ for (const { width, height = 900, empty = false, crowded = false } of [
       const consoleView = page.getByRole('region', { name: 'Command console log', exact: true });
       await expect(consoleView).toBeVisible();
       await expect(consoleView.getByRole('status')).toContainText('completed');
-      expect(approvals).toEqual(['gh cao repos add octo/example']);
+      expect(approvals).toEqual(['gh workflow run add-repository.yml --repo octo/example']);
       expect(executions).toEqual(approvals);
       await page.getByRole('button', { name: 'Back to Commands', exact: true }).click();
       await page.goto(`${preview.url}/#page-maintenance`);

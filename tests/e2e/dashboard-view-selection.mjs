@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
 import { loadDashboardSourceSync } from "../../dashboard/report/bundle-dashboards.mjs";
@@ -74,7 +73,9 @@ function readDashboard(path, ref) {
     const document = JSON.parse(content);
     if (!Array.isArray(document.fragments)) return document;
 
-    const temporaryRoot = mkdtempSync(join(tmpdir(), "cao-dashboard-ref-"));
+    const scratch = join(repositoryRoot, ".tmp");
+    mkdirSync(scratch, { recursive: true });
+    const temporaryRoot = mkdtempSync(join(scratch, "cao-dashboard-ref-"));
     try {
       const sourcePath = join(temporaryRoot, basename(path));
       writeFileSync(sourcePath, content);
@@ -290,7 +291,20 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       || path === "package-lock.json"
       || path === "dashboard/site/package.json"
       || path === "dashboard/site/package-lock.json"
-      || path === "dashboard/local-server.mjs"
+      || path === "go.mod"
+      || path === "go.sum"
+      || path === "server/go.mod"
+      || path === "server/go.sum"
+      || path === "dashboard/catalog.go"
+      || path.startsWith("cmd/gh-cao/")
+      || path.startsWith("internal/cli/dashboard")
+      || path.startsWith("dashboard/localpreview/")
+      || path.startsWith("dashboard/queryengine/")
+      || path.startsWith("server/preview/")
+      || path.startsWith("server/internal/sqlitex/")
+      || path.startsWith("server/internal/localops/")
+      || path.startsWith("server/internal/server/local")
+      || path.startsWith("tests/helpers/native-")
       || path === "dashboard/report/compose-dashboard-documents.mjs"
       || path === "dashboard/report/bundle-dashboards.mjs"
       || path === "dashboard/site/index.html"

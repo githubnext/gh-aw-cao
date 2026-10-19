@@ -11,7 +11,7 @@
  */
 import { createServer } from "node:net";
 import { chromium } from "playwright";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardServer } from "../helpers/native-dashboard.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
 const sourceUrl = process.env.DASHBOARD_DATA_URL
@@ -79,6 +79,7 @@ function cdpClient(endpoint) {
 
 const preview = await startDashboardServer({
   downloadData: (destination) => downloadDeployedDashboardData(destination, sourceUrl),
+  dataBackend: "indexeddb",
   host: "127.0.0.1",
   port: 0,
 });

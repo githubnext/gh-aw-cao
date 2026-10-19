@@ -30,8 +30,15 @@ FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900
 ARG VERSION=dev
 ARG REVISION=unknown
 WORKDIR /workspace/server
+COPY go.mod go.sum ../
 COPY server/go.mod server/go.sum ./
 RUN go mod download
+COPY operator_assets.go ../
+COPY docs/dashboard-language-specification.md ../docs/dashboard-language-specification.md
+COPY .github/skills/generate-dashboard-ir/ ../.github/skills/generate-dashboard-ir/
+COPY .github/skills/author-dashboard-intent/ ../.github/skills/author-dashboard-intent/
+COPY .github/skills/dashboard-authoring/ ../.github/skills/dashboard-authoring/
+COPY dashboard/ ../dashboard/
 COPY server/ ./
 RUN CGO_ENABLED=0 go build \
     -trimpath \

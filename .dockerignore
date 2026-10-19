@@ -2,6 +2,8 @@
 .github/aw
 .cao-dashboard-traces
 .tmp
+**/.tmp
+**/.cao-dashboard-preview-*
 **/.DS_Store
 **/node_modules
 **/dist
@@ -10,4 +12,5 @@
 **/*.lock.yml
 !.github/workflows/*.lock.yml
 docs
+!docs/dashboard-language-specification.md
 research

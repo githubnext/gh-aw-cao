@@ -106,18 +106,22 @@ test("producer artifact binds its production inventory to an immutable revision"
     "jsonl_helpers.cjs", "json_schema_validation.cjs", "mcp_scripts_validation.cjs",
     "memory_schema_contract.cjs", "LICENSE", "source.json",
   ]) assert.ok(metadata.files[`activity/vendor/gh-aw/${file}`]);
-  assert.ok(metadata.files["dashboard/local-github-service.mjs"]);
+  assert.equal(metadata.files["dashboard/local-github-service.mjs"], undefined);
   for (const file of [
+    "dashboard/cli-action-api.mjs",
+    "dashboard/local-server.mjs",
+    "dashboard/preview.mjs",
+    "dashboard/local-release-metadata.mjs",
     "dashboard/cli-terminal-process.mjs",
     "dashboard/cli-terminal-child.mjs",
     "dashboard/site/scripts/prepare-terminal.mjs",
-  ]) assert.ok(metadata.files[file], `missing terminal runtime file: ${file}`);
+  ]) assert.equal(metadata.files[file], undefined, `operator runtime leaked into Actions package: ${file}`);
   const dashboardManifest = JSON.parse(readFileSync(path.join(root, "dashboard/site/package.json"), "utf8"));
   const dashboardLock = JSON.parse(readFileSync(path.join(root, "dashboard/site/package-lock.json"), "utf8"));
-  assert.ok(dashboardManifest.dependencies["node-pty"]);
-  assert.equal(dashboardManifest.scripts.postinstall, "node scripts/prepare-terminal.mjs");
+  assert.equal(dashboardManifest.dependencies["node-pty"], undefined);
+  assert.equal(dashboardManifest.scripts.postinstall, undefined);
   assert.equal(dashboardLock.packages[""].dependencies["node-pty"], dashboardManifest.dependencies["node-pty"]);
-  assert.ok(dashboardLock.packages["node_modules/node-pty"].hasInstallScript);
+  assert.equal(dashboardLock.packages["node_modules/node-pty"], undefined);
   const prompt = readFileSync(path.join(root, "activity/setup-prompt.mjs"), "utf8");
   const rootManifest = JSON.parse(readFileSync(path.join(catalog, "package.json"), "utf8"));
   assert.equal(rootManifest.devDependencies?.["@clack/prompts"], undefined);
