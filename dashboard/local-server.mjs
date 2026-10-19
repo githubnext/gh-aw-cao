@@ -1425,8 +1425,8 @@ export async function startDashboardServer({
         }).then((result) => result.outputFiles[0].text);
         content = await environmentDefaultsBundle;
       } else content = browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath));
-      if (cliQueue && extension === ".html") {
-        const capabilityScript = "<script>globalThis.__CLI_QUEUE__ = true; globalThis.__LOCAL_CLI_QUEUE__ = true;</script>";
+      if ((cliQueue || admin) && extension === ".html") {
+        const capabilityScript = `<script>${cliQueue ? "globalThis.__CLI_QUEUE__ = true; globalThis.__LOCAL_CLI_QUEUE__ = true;" : ""}${admin ? "globalThis.__DASHBOARD_ADMIN__ = true;" : ""}</script>`;
         content = /<head(\s[^>]*)?>/i.test(String(content))
           ? String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n${capabilityScript}`)
           : `${capabilityScript}\n${content}`;

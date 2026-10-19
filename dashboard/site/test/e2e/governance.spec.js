@@ -8,16 +8,13 @@ for (const width of [1440, 390]) {
   test(`Governance loads, previews and approves scoped defaults at ${width}px`, async ({ page }, testInfo) => {
     /** @type {Array<{ command: string, input?: string }>} */
     const executions = [];
-    /** @type {Array<{ command: string, input?: string }>} */
-    const approvals = [];
     const current = 'default_max_turns: "20"\ndefault_model_copilot: null\ndefault_timeout_minutes: "15"\n';
     const edited = current.replace('"20"', '"30"');
     const preview = await startDashboardServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
-      repository: 'acme/control', canvas: true, port: 0,
+      repository: 'acme/control', admin: true, port: 0,
       cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'), cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-      approveCliAction: async (/** @type {{ command: string, input?: string }} */ invocation) => { approvals.push(invocation); return true; },
       executeCliAction: async (/** @type {{ command: string, input?: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }} */ { command, input, onOutput }) => {
         executions.push({ command, input });
         if (command.includes('env get')) {
@@ -76,12 +73,40 @@ for (const width of [1440, 390]) {
       expect(executions[2]).toEqual({
         command: 'gh aw env update cao-governance.yml --scope org --org acme --visibility all --yes', input: edited
       });
-      expect(approvals.map(({ command, input }) => ({ command, input }))).toEqual(executions);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
       expect(overflow).toBe(false);
       await editor.getByRole('combobox', { name: 'Variable scope' }).selectOption('ent');
       await expect(yaml).toHaveValue('');
       await expect(apply).toBeDisabled();
+    } finally {
+      await preview.close();
+    }
+  });
+}
+
+for (const canvas of [false, true]) {
+  test(`Governance is hidden without --admin${canvas ? ' in canvas mode' : ''}`, async ({ page }, testInfo) => {
+    const preview = await startDashboardServer({
+      workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
+      repository: 'acme/control', canvas, port: 0, dataBackend: 'indexeddb',
+      cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
+      cliQueueAdmission: async () => ({ concurrency: 1 }),
+      output: () => {}, requestOutput: () => {}, traceOutput: () => {},
+      approveCliAction: async () => false,
+      executeCliAction: async () => { throw new Error('Hidden Governance must not execute commands.'); },
+      downloadData: async (/** @type {string} */ destination) => {
+        await mkdir(destination, { recursive: true });
+        await writeFile(join(destination, 'sources.json'), '{}');
+      }
+    });
+    try {
+      await page.goto(`${preview.url}/#page-governance`);
+      await expect(page.locator('#page-title')).toHaveText('Overview');
+      await expect(page.locator('a[href="#page-governance"]')).toHaveCount(0);
+      await expect(page.getByRole('region', { name: 'Compiler defaults editor' })).toHaveCount(0);
+      await page.goto(`${preview.url}/?local-preview=admin#page-governance`);
+      await expect(page.locator('#page-title')).toHaveText('Overview');
+      await expect(page.locator('a[href="#page-governance"]')).toHaveCount(0);
     } finally {
       await preview.close();
     }

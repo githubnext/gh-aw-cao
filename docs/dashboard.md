@@ -146,8 +146,11 @@ its reviewed workflows and policy.
 
 ### Configure compiler defaults
 
-Open **Maintenance → Governance** in the local Copilot canvas, or start an
-authorized loopback admin dashboard:
+**Maintenance → Governance** is visible only in local server `--admin` mode or
+to an authorized hosted administrator with a current, assured session. It is
+hidden in published dashboards, ordinary local previews, and Copilot canvas
+mode, including through direct links. To edit defaults, start an authorized
+loopback admin dashboard:
 
 ```sh
 npm run dashboard:local -- --repo OWNER/REPOSITORY --admin
@@ -171,7 +174,7 @@ default. Visibility controls access for newly created variables only.
 This page manages **non-secret GitHub Actions variables**, not secrets, rollout
 policy, or live authority. Never enter credentials in the YAML. The chosen scope
 requires administrative access; hosted repository installation tokens cannot
-perform these operations, so the hosted and published pages keep editing disabled.
+perform these operations, so editing remains disabled for hosted administrators.
 
 ## Continue reading
 

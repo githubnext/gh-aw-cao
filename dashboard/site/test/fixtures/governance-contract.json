@@ -1,5 +1,6 @@
 {
   "page": "governance",
+  "requires": { "capability": "admin" },
   "element": "environment-defaults",
   "sources": [],
   "actions": {

@@ -21,7 +21,7 @@ These are the default product destinations. They are custom pages composed from 
 | --- | --- | --- | --- |
 | `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes campaign health, repository coverage, weekly rhythm, and campaign shortcuts. |
 | `configuration` | Settings | `configuration-policy` | Presents checked-in control policy and its editable settings surface. |
-| `governance` | Governance | `environment-defaults` | Loads, previews, and explicitly approves gh-aw compiler default variables at repository, organization, or enterprise scope through authorized local CLI actions. |
+| `governance` | Governance | `environment-defaults` | Visible only in local `--admin` mode or to authorized hosted administrators; loads, previews, and explicitly approves gh-aw compiler default variables through authorized local CLI actions. |
 
 ## Built-in pages
 

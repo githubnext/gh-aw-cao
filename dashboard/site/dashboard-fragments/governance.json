@@ -64,6 +64,7 @@
         "kind": "custom",
         "title": "Governance",
         "icon": "shield",
+        "requires": { "capability": "admin" },
         "intent": "Configure gh-aw compiler defaults at an explicitly selected repository, organization, or enterprise scope.",
         "subject": "Non-secret GitHub Actions compiler default variables and their inherited repository reach.",
         "objective": "Review the complete defaults document before approving scoped changes.",

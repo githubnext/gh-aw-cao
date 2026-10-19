@@ -22,7 +22,7 @@ export function renderEnvironmentDefaults(context) {
   const previewed = state('');
   const output = state('');
   const status = state(available ? 'Select a scope and target, then load its current defaults.'
-    : 'Configuration requires an authorized local admin or Copilot canvas dashboard. Hosted repository installation tokens cannot administer organization or enterprise variables.');
+    : 'Editing compiler defaults requires a local server started with --admin. Hosted repository installation tokens cannot administer organization or enterprise variables.');
   const snapshot = () => JSON.stringify([scope.get(), target.get(), visibility.get(), draft.get()]);
   const validTarget = () => (scope.get() === 'repo'
     ? /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/

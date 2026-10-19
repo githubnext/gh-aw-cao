@@ -346,7 +346,9 @@ test("admin actions stream incrementally, reject untrusted requests, and survive
   try {
     const page = await fetch(`${preview.url}/`);
     assert.equal(new URL(page.url).searchParams.get("local-preview"), "admin");
-    assert.match(await page.text(), /globalThis\.__CLI_QUEUE__ = true/);
+    const html = await page.text();
+    assert.match(html, /globalThis\.__CLI_QUEUE__ = true/);
+    assert.match(html, /globalThis\.__DASHBOARD_ADMIN__ = true/);
     const url = `${preview.url}/__cli_action`;
     const headers = { "Content-Type": "application/json", Origin: new URL(url).origin };
     const request = (body, customHeaders = headers) => fetch(url, {

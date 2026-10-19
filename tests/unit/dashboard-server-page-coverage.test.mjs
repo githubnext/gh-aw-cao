@@ -40,6 +40,16 @@ test("ordinary and parameterized pages remain covered regardless of their names 
   }
 });
 
+test("server coverage excludes Governance only while it declares the admin capability", () => {
+  const { pages: [page] } = JSON.parse(readFileSync(
+    new URL("../../dashboard/site/dashboard-fragments/governance.json", import.meta.url), "utf8",
+  ));
+  assert.match(serverDashboardPageExclusionReason(page), /authorized hosted administrator/);
+  const ungated = { ...page };
+  delete ungated.requires;
+  assert.equal(serverDashboardPageExclusionReason(ungated), undefined);
+});
+
 test("new or malformed capability requirements fail closed instead of silently skipping coverage", () => {
   for (const requires of [null, {}, [], "cli-queue", { capability: "future-feature" }]) {
     assert.throws(

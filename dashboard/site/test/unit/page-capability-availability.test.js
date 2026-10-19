@@ -8,6 +8,7 @@ import { pageCapabilityAvailable } from '../../src/view-availability.js';
 import { validateDashboardDocument } from '../../src/validator.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/commands-view-contract.json' with { type: 'json' };
+import governanceContract from '../fixtures/governance-contract.json' with { type: 'json' };
 
 /** @type {HTMLElement[]} */
 const roots = [];
@@ -22,9 +23,10 @@ const documentInput = {
   dashboard: {
     ...authoritativeDashboard.dashboard,
     pages: [fallback, ...authoritativeDashboard.dashboard.pages.filter(
-      (/** @type {{ id: string }} */ page) => ['commands', 'command'].includes(page.id)
+      (/** @type {{ id: string }} */ page) => ['commands', 'command', governanceContract.page].includes(page.id)
     )],
-    navigation: [{ pages: ['home'] }, { label: 'Local', pages: ['commands'] }],
+    navigation: [{ pages: ['home'] }, { label: 'Local', pages: ['commands'] },
+      { label: 'Maintenance', pages: [governanceContract.page] }],
     callouts: undefined
   }
 };
@@ -40,6 +42,49 @@ afterEach(() => {
 });
 
 describe('page capability prerequisites', () => {
+  it.each([
+    ['published', undefined, false],
+    ['local preview', undefined, false],
+    ['canvas', undefined, true],
+    ['hosted reader', undefined, true],
+    ['local admin', true, true],
+    ['hosted admin', true, false]
+  ])('gates Governance navigation, routes and lazy loading for %s', async (_mode, admin, queue) => {
+    vi.stubGlobal('__DASHBOARD_ADMIN__', admin);
+    vi.stubGlobal('__CLI_QUEUE__', queue);
+    vi.stubGlobal('__LOCAL_CLI_QUEUE__', queue);
+    const { core } = splitDashboardDocument(documentInput);
+    expect(core.dashboard.pages.find((page) => page.id === governanceContract.page)?.requires)
+      .toEqual(governanceContract.requires);
+    for (const input of [documentInput, resolveDashboardDocument(core, [])]) {
+      const loader = Object.assign(vi.fn(async (_pageId) => ({})), {
+        prepare: vi.fn(async (_pageId) => {}),
+        subscribeViewSources: vi.fn(async () => ({}))
+      });
+      window.history.replaceState(null, '', '/?local-preview=admin#page-governance');
+      const root = renderDashboard({ document: input, sources: {}, loadPageSources: loader });
+      roots.push(root);
+      document.body.append(root);
+      await vi.waitFor(() => expect(root.querySelector('#page-title')?.textContent)
+        .toBe(admin ? 'Governance' : 'Home'));
+      expect(root.querySelectorAll('a[href="#page-governance"]')).toHaveLength(admin ? 2 : 0);
+      expect(root.querySelector('[data-page-id="governance"]') !== null).toBe(admin === true);
+      if (!admin) {
+        expect(root.querySelector('.org-sidebar')?.textContent).not.toContain('Maintenance');
+        expect(loader.mock.calls.every(([id]) => id === 'home')).toBe(true);
+        expect(loader.prepare.mock.calls.every(([id]) => id === 'home')).toBe(true);
+      }
+      disposeDashboard(root);
+      root.remove();
+    }
+  });
+
+  it.each([false, 'true', 1, undefined])('requires an explicit boolean admin capability, not %j', (value) => {
+    vi.stubGlobal('__DASHBOARD_ADMIN__', value);
+    vi.stubGlobal('__CLI_QUEUE__', true);
+    expect(pageCapabilityAvailable({ requires: governanceContract.requires })).toBe(false);
+  });
+
   it('preserves requirements and all query indexes when splitting without a local capability', () => {
     const { core, pageChunks } = splitDashboardDocument(documentInput);
     const stub = core.dashboard.pages.find((page) => page.id === 'commands');

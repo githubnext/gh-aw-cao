@@ -168,9 +168,9 @@ export function validatePage(page, pageNode, path, pageIds, errors) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'page requires must be a mapping.', requiresPath));
     } else {
       validateObjectKeys(getValueNodeByKey(pageNode, 'requires'), ['capability'], requiresPath, errors);
-      if (page.requires.capability !== 'cli-queue') {
+      if (page.requires.capability !== 'cli-queue' && page.requires.capability !== 'admin') {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'page requires capability must be cli-queue.', `${requiresPath}.capability`));
+          'page requires capability must be cli-queue or admin.', `${requiresPath}.capability`));
       }
     }
   }

@@ -67,6 +67,7 @@ describe('Governance contract', () => {
   it('declares source-free configuration and explicit matching commands under Maintenance', () => {
     const dashboard = authoritativeDashboard.dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.page);
+    expect(page.requires).toEqual(contract.requires);
     expect(dashboard.navigation.find((/** @type {{ label: string }} */ section) => section.label === 'Maintenance').pages)
       .toContain(contract.page);
     expect(page.views[0]).toMatchObject({
@@ -191,7 +192,7 @@ describe('compiler defaults editor', () => {
       document.head.append(meta);
     } else vi.stubGlobal('__CLI_QUEUE__', false);
     const root = mount();
-    expect(root.textContent).toContain('Configuration requires an authorized local admin');
+    expect(root.textContent).toContain('Editing compiler defaults requires a local server started with --admin.');
     expect([...root.querySelectorAll('input, select, textarea, button')]
       .filter((control) => control.getAttribute('aria-label') !== null)
       .every((control) => Reflect.get(control, 'disabled'))).toBe(true);

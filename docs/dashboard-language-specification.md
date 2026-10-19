@@ -105,8 +105,11 @@ preview output, and explicit write approval cannot be expressed by evidence
 marks. It never queries activity data or infers configuration from dashboard
 rows. The Governance page under Maintenance uses this element.
 
-Governance requires an authorized local admin or Copilot canvas dashboard and
-the GitHub CLI identity's administrative access to the selected repository,
+Governance is visible only on a local server started with `--admin` or to an
+authorized hosted administrator with a current, assured session. Published
+dashboards, ordinary local previews, and Copilot canvas mode do not expose it,
+including through direct links. Editing defaults still requires the local
+GitHub CLI identity's administrative access to the selected repository,
 organization, or enterprise. Hosted repository installation credentials do not
 authorize organization or enterprise administration. Load the current scope,
 edit its complete `default_` YAML mapping (quoted strings or `null`), and run
@@ -1259,16 +1262,20 @@ An enabled view sharing a source still loads its own dependencies. A satisfied
 hosted prerequisite does not grant permissions: unauthorized or unavailable
 runtime sources retain their normal explicit failure states.
 
-Any page may declare `requires: { capability: cli-queue }`. The mapping accepts
-only the required `capability` key, whose supported value is `cli-queue`.
-This prerequisite uses the same explicit transport capability as CLI actions,
-not the data backend type or credential reach. Without it, the presenter omits
+Any page may declare `requires: { capability: cli-queue }` or
+`requires: { capability: admin }`. The mapping accepts only the required
+`capability` key. `cli-queue` uses the same explicit transport capability as CLI
+actions; `admin` requires the server-issued administrator capability from local
+`--admin` mode or an authorized hosted administrator session with current
+step-up assurance. Neither is inferred from URL parameters, the data backend
+type, or credential reach. Without the capability, the presenter omits
 the page from desktop and mobile navigation and route activation, and source
 selection excludes its queries and pagination. A direct link falls back to
 the default available page without loading the unsupported page. Requirements
-remain in lazy page stubs. Commands and command-output pages require this
-capability; published static dashboards and hosted backends without the local
-queue do not expose them. This presentation gate grants no execution authority.
+remain in lazy page stubs. Commands and command-output pages require `cli-queue`;
+published static dashboards and hosted backends without the local
+queue do not expose them. Governance requires `admin`, independently of CLI queue
+availability. These presentation gates grant no execution authority.
 
 A table or list encoding may declare row `actions`. A `copy-prompt` action materializes an intent as an icon-and-label button and may reference a row-placed `gh agent-task create --from-file -` CLI action by `action` ID. In canvas CLI-action mode the prompt preview then starts an agent task after explicit approval; in other modes it retains the clipboard control. A `cli-action` action references a dashboard CLI action by `action` ID and is rendered only in canvas CLI-action mode; its `context` fields provide validated scalar values for `{{field}}` tokens in the declared command. Each action declares `level: explore | propose | operate` independently of presentation, and may declare a concrete `verb` and canonical Octicon `icon`; omitted icons resolve from the semantic level and verb. Existing actions without a level migrate as `propose` for prompts and `operate` for CLI commands. The dashboard's `cli-actions` declarations use the same `level` and optional `verb` keys; an explicit row action may override the referenced command's level. An `explore` CLI command must be a supported read-only operation without optional boolean arguments; this is a safety validation, not a rule for inferring level. The `label` may be omitted to use `Investigate` or `Propose fix`; operational actions must supply a concrete label. Each action has a non-empty `presentation` and a non-empty `context` sequence of unique source fields. An action may use `when` with a source field and scalar `equals` value to limit the action to rows whose field has the same scalar type and value. Activating a prompt action opens a modal preview containing the complete prompt; opening the preview does not write to the clipboard or start a task. Activating a CLI action opens the same per-run command approval used by dashboard-level CLI actions. The prompt contains the intent followed by only the available scalar values selected by `context`, serialized as an ordered JSON object and explicitly identified as untrusted data. Link objects contribute only their HTTPS `href`. Authors do not interpolate row values into prompt intents, and undeclared row fields are not copied.
 

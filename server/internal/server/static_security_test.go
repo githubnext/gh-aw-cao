@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestStaticFilesStayInsideSiteRoot(t *testing.T) {
@@ -90,7 +92,7 @@ func TestServeIndexRejectsEscapingSymlink(t *testing.T) {
 	}
 	app := &App{config: Config{SiteDirectory: site}}
 	response := httptest.NewRecorder()
-	app.serveIndex(response, "")
+	app.serveIndex(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), "")
 	if response.Code != http.StatusNotFound || strings.Contains(response.Body.String(), "private-file-content") {
 		t.Fatal("index handler followed a symlink outside the site root")
 	}
@@ -110,7 +112,7 @@ func TestServeIndexEscapesAccessTokenInJavaScriptContext(t *testing.T) {
 		"quote\"backslash\\newline\nseparator\u2028\u2029",
 	} {
 		response := httptest.NewRecorder()
-		app.serveIndex(response, token)
+		app.serveIndex(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), token)
 		if response.Code != http.StatusOK {
 			t.Fatal("index bootstrap failed")
 		}
@@ -130,5 +132,52 @@ func TestServeIndexEscapesAccessTokenInJavaScriptContext(t *testing.T) {
 		if decoded != token {
 			t.Fatal("access token did not round-trip through the bootstrap")
 		}
+	}
+}
+
+func TestStaticAdminCapabilityRequiresAuthorizedHostedSession(t *testing.T) {
+	site := t.TempDir()
+	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte("<head></head>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stale := assuredSession("operator")
+	stale.AuthenticatedAt = time.Now().UTC().Add(-24 * time.Hour)
+	for _, test := range []struct {
+		name    string
+		hosted  bool
+		session oauthSession
+		admin   bool
+	}{
+		{name: "local bearer is not admin", session: assuredSession("operator")},
+		{name: "hosted without session", hosted: true},
+		{name: "hosted reader", hosted: true, session: assuredSession("reader")},
+		{name: "hosted stale admin", hosted: true, session: stale},
+		{name: "hosted unassured admin", hosted: true, session: oauthSession{Login: "operator"}},
+		{name: "hosted admin", hosted: true, session: assuredSession("operator"), admin: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			app := &App{config: Config{SiteDirectory: site, AdminUsers: []string{"operator"}}}
+			if test.hosted {
+				app.oauth = &githubOAuth{}
+			}
+			request := httptest.NewRequestWithContext(
+				context.WithValue(t.Context(), oauthSessionContextKey{}, test.session),
+				http.MethodGet, "/?local-preview=admin", nil,
+			)
+			for _, path := range []string{"/", "/index.html", "/missing-route"} {
+				request.URL.Path = path
+				response := httptest.NewRecorder()
+				app.static(response, request)
+				if response.Code != http.StatusOK {
+					t.Fatalf("index returned %d", response.Code)
+				}
+				if present := strings.Contains(response.Body.String(), "globalThis.__DASHBOARD_ADMIN__ = true"); present != test.admin {
+					t.Fatalf("admin capability = %t, want %t", present, test.admin)
+				}
+				if response.Header().Get("Cache-Control") != "no-store" {
+					t.Fatal("session-specific index must not be cached")
+				}
+			}
+		})
 	}
 }

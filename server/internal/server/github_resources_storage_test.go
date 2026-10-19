@@ -72,7 +72,7 @@ func TestGitHubResourceBrowserCookieIsHttpOnlyAndReadOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	response := httptest.NewRecorder()
-	app.serveIndex(response, app.accessToken)
+	app.serveIndex(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil), app.accessToken)
 	result := response.Result()
 	defer func() { _ = result.Body.Close() }()
 	cookies := result.Cookies()

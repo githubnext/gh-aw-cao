@@ -555,10 +555,21 @@ func TestHostedCLIIndexAdvertisesQueueOnlyWhenEnabled(t *testing.T) {
 	if !strings.Contains(response.Body.String(), "__CLI_QUEUE__ = true") {
 		t.Fatalf("enabled index does not advertise the queue: %d %s", response.Code, response.Body.String())
 	}
+	if !strings.Contains(response.Body.String(), "__DASHBOARD_ADMIN__ = true") {
+		t.Fatal("authorized administrator index does not advertise admin access")
+	}
 	fixture.app.hostedCLI = nil
 	response = fixture.do(t, http.MethodGet, "/", "", false)
 	if strings.Contains(response.Body.String(), "__CLI_QUEUE__") {
 		t.Fatal("disabled index advertised the queue")
+	}
+	if !strings.Contains(response.Body.String(), "__DASHBOARD_ADMIN__ = true") {
+		t.Fatal("administrator visibility must not depend on queue availability")
+	}
+	fixture.app.config.AdminUsers = nil
+	response = fixture.do(t, http.MethodGet, "/", "", false)
+	if strings.Contains(response.Body.String(), "__DASHBOARD_ADMIN__") {
+		t.Fatal("non-administrator index advertised admin access")
 	}
 }
 

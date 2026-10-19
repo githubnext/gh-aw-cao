@@ -795,7 +795,7 @@ func (a *App) requireAccess(next http.Handler) http.Handler {
 			if (request.Method == http.MethodGet || request.Method == http.MethodHead) &&
 				constantTimeTokenEqual(request.URL.Query().Get("access_token"), a.accessToken) {
 				a.logAuthBranch("access.local_capability_accepted")
-				a.serveIndex(response, a.accessToken)
+				a.serveIndex(response, request, a.accessToken)
 				return
 			}
 			a.logAuthBranch("access.local_static_allowed")
@@ -1693,7 +1693,7 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 	file, err := root.Open(clean)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			a.serveIndex(response, "")
+			a.serveIndex(response, request, "")
 		} else {
 			http.NotFound(response, request)
 		}
@@ -1706,13 +1706,13 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	if info.IsDir() || filepath.Base(clean) == "index.html" {
-		a.serveIndex(response, "")
+		a.serveIndex(response, request, "")
 		return
 	}
 	http.ServeContent(response, request, info.Name(), info.ModTime(), file)
 }
 
-func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
+func (a *App) serveIndex(response http.ResponseWriter, request *http.Request, accessToken string) {
 	root, err := os.OpenRoot(a.config.SiteDirectory)
 	if err != nil {
 		http.Error(response, "not found", http.StatusNotFound)
@@ -1732,6 +1732,9 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	injections := `<meta name="dashboard-data-backend" content="server-http"><meta name="dashboard-storage-backend" content="` + storageBackend + `">`
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
+		if a.adminAuthorized(request) {
+			injections += `<script>globalThis.__DASHBOARD_ADMIN__ = true;</script>`
+		}
 		if a.hostedCLI != nil {
 			injections += `<script>globalThis.__CLI_QUEUE__ = true;</script>`
 		}
