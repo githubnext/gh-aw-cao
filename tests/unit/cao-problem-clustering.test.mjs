@@ -45,13 +45,13 @@ test('package clustering scripts replace only their validated problem rows', asy
         id: 'stale-workflow',
         title: 'Workflow has stale evidence',
         severity: 'high',
-        repository: 'githubnext/gh-aw-cao',
+        repository: 'githubnext/gh-cao',
         workflow: 'example',
         fixPrompt: 'Update the workflow evidence and verify the next run is current.',
         evidence: {
           source: 'test',
-          runUrl: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
-          workflowUrl: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/sample.yml',
+          runUrl: 'https://github.com/githubnext/gh-cao/actions/runs/42',
+          workflowUrl: 'https://github.com/githubnext/gh-cao/actions/workflows/sample.yml',
           failureMessage: 'Agent process exited with code 1.',
           failureLog: '##[error]Agent process exited with code 1.'
         }
@@ -89,8 +89,8 @@ test('package clustering scripts replace only their validated problem rows', asy
       assert.equal(row.fix_prompt, 'Update the workflow evidence and verify the next run is current.');
       assert.deepEqual(JSON.parse(row.evidence), {
         source: 'test',
-        runUrl: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
-        workflowUrl: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/sample.yml',
+        runUrl: 'https://github.com/githubnext/gh-cao/actions/runs/42',
+        workflowUrl: 'https://github.com/githubnext/gh-cao/actions/workflows/sample.yml',
         failureMessage: 'Agent process exited with code 1.',
         failureLog: '##[error]Agent process exited with code 1.'
       });

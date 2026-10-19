@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/model"
 )
 
 // gitHubQuotaUsageSourceName is the admin-authorized runtime source that

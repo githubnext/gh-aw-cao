@@ -12,7 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
+	"github.com/githubnext/gh-cao/internal/dashboardquery"
 )
 
 func nativeTimestamp(value any) float64 {

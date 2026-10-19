@@ -401,10 +401,10 @@ describe('Configuration dashboard view', () => {
       .toEqual(maintenanceNavigationContract['repository-upgrade-action'].when);
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
-      .command).toMatch(/^gh aw update https:\/\/github\.com\/githubnext\/gh-aw-cao\/\{\{campaign\}\} --repo \{\{cao-repository\}\} --pr-message '/);
+      .command).toMatch(/^gh aw update https:\/\/github\.com\/githubnext\/gh-cao\/\{\{campaign\}\} --repo \{\{cao-repository\}\} --pr-message '/);
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-repository')
-      .command).toMatch(/^gh aw update https:\/\/github\.com\/githubnext\/gh-aw-cao\/\{\{campaign\}\} --repo \{\{cao-repository\}\} --pr-message '/);
+      .command).toMatch(/^gh aw update https:\/\/github\.com\/githubnext\/gh-cao\/\{\{campaign\}\} --repo \{\{cao-repository\}\} --pr-message '/);
     expect(dashboard['cli-actions']
       .find((/** @type {{ id: string }} */ action) => action.id === 'update-campaign')
       .label).toBe('Update');

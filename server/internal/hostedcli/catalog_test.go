@@ -91,7 +91,7 @@ func TestResolveDeclaredCampaignUpdateUsesNativeGhAwCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.Contains(invocation.Command, "cao.sh") ||
-		!strings.HasPrefix(invocation.Command, "gh aw update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao") {
+		!strings.HasPrefix(invocation.Command, "gh aw update https://github.com/githubnext/gh-cao/security --repo octo/cao") {
 		t.Fatalf("campaign update must use the native gh-aw command: %s", invocation.Command)
 	}
 	plan, err := PlanCommand(invocation.Command, "octo/cao")
@@ -132,14 +132,14 @@ func TestResolveNativeCaoActionsPreservesTheHostedExecutionBoundary(t *testing.T
 }
 
 func TestPlanCommandAllowlist(t *testing.T) {
-	update, err := PlanCommand("gh aw update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao --pr-message 'msg' --create-pull-request --auto-merge", "octo/cao")
+	update, err := PlanCommand("gh aw update https://github.com/githubnext/gh-cao/security --repo octo/cao --pr-message 'msg' --create-pull-request --auto-merge", "octo/cao")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if update.Kind != KindGhAwUpdate || update.Program != "gh-aw" || update.Repository != "octo/cao" {
 		t.Fatalf("unexpected update plan %+v", update)
 	}
-	if strings.Join(update.Args, " ") != "update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao --pr-message msg --create-pull-request --auto-merge" {
+	if strings.Join(update.Args, " ") != "update https://github.com/githubnext/gh-cao/security --repo octo/cao --pr-message msg --create-pull-request --auto-merge" {
 		t.Fatalf("unexpected update args %v", update.Args)
 	}
 	run, err := PlanCommand("gh workflow run cao-evolution.lock.yml -f mode=review", "octo/cao")
@@ -157,7 +157,7 @@ func TestPlanCommandAllowlist(t *testing.T) {
 		"./cao.sh update --campaign security",
 		"./cao.sh mode live security",
 		"gh aw update https://github.com/attacker/repo/security --repo octo/cao --create-pull-request",
-		"gh aw update https://github.com/githubnext/gh-aw-cao/security --repo octo/other --create-pull-request",
+		"gh aw update https://github.com/githubnext/gh-cao/security --repo octo/other --create-pull-request",
 		"gh agent-task create --from-file -",
 		"gh aw upgrade --repo octo/app",
 		"gh aw upgrade --repo octo/app --auto-merge",
@@ -173,7 +173,7 @@ func TestPlanCommandAllowlist(t *testing.T) {
 	if _, err := PlanCommand("gh api /user", "octo/cao"); !errors.Is(err, ErrNotHosted) {
 		t.Fatalf("want ErrNotHosted, got %v", err)
 	}
-	if _, err := PlanCommand("gh aw update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao --create-pull-request", ""); err == nil {
+	if _, err := PlanCommand("gh aw update https://github.com/githubnext/gh-cao/security --repo octo/cao --create-pull-request", ""); err == nil {
 		t.Fatal("gh-aw updates require a configured control repository")
 	}
 }

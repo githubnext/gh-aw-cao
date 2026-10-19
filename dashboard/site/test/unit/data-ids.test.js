@@ -18,27 +18,27 @@ describe('canonical data identities', () => {
   });
 
   it('keys runs by repository and GitHub run ID', () => {
-    expect(runId('GitHubNext', 'GH-AW-CAO', 123456789)).toBe(
-      'github:run:githubnext/gh-aw-cao:123456789'
+    expect(runId('GitHubNext', 'GH-CAO', 123456789)).toBe(
+      'github:run:githubnext/gh-cao:123456789'
     );
     expect(runId('githubnext', 'other', 123456789))
-      .not.toBe(runId('githubnext', 'gh-aw-cao', 123456789));
+      .not.toBe(runId('githubnext', 'gh-cao', 123456789));
   });
 
   it('keys issues and pull requests by repository and number', () => {
-    expect(issueId('GitHubNext', 'GH-AW-CAO', 42)).toBe(
-      'github:issue:githubnext/gh-aw-cao:42'
+    expect(issueId('GitHubNext', 'GH-CAO', 42)).toBe(
+      'github:issue:githubnext/gh-cao:42'
     );
-    expect(issueCoordinates('https://github.com/GitHubNext/GH-AW-CAO/pull/42/files')).toEqual({
+    expect(issueCoordinates('https://github.com/GitHubNext/GH-CAO/pull/42/files')).toEqual({
       owner: 'GitHubNext',
-      repository: 'GH-AW-CAO',
+      repository: 'GH-CAO',
       number: 42
     });
   });
 
   it('normalizes repository coordinates independently of their source', () => {
-    expect(repositoryCoordinateId('GitHubNext', 'GH-AW-CAO')).toBe(
-      'repository:githubnext%2Fgh-aw-cao'
+    expect(repositoryCoordinateId('GitHubNext', 'GH-CAO')).toBe(
+      'repository:githubnext%2Fgh-cao'
     );
   });
 
@@ -46,8 +46,8 @@ describe('canonical data identities', () => {
     expect(workflowSourcePath('.github/workflows/Example.lock.yml')).toBe(
       '.github/workflows/example.md'
     );
-    expect(workflowCoordinateId('GitHubNext', 'GH-AW-CAO', '.github/workflows/example.lock.yml')).toBe(
-      workflowCoordinateId('githubnext', 'gh-aw-cao', '.github/workflows/example.md')
+    expect(workflowCoordinateId('GitHubNext', 'GH-CAO', '.github/workflows/example.lock.yml')).toBe(
+      workflowCoordinateId('githubnext', 'gh-cao', '.github/workflows/example.md')
     );
   });
 

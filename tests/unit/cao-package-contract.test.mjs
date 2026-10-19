@@ -43,7 +43,7 @@ test("CAO server package workflow publishes immutable Compose-ready images", asy
   assert.equal(workflow.jobs.publish.permissions["id-token"], "write");
   assert.equal(
     workflow.jobs.publish.uses,
-    "githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main",
+    "githubnext/gh-cao/.github/workflows/cao-package-publish.yml@main",
   );
   assert.deepEqual(workflow.jobs.publish.needs, ["source", "lint", "test", "build"]);
   assert.equal(publisher.on.workflow_call.inputs.revision.required, true);

@@ -14,10 +14,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
+	"github.com/githubnext/gh-cao/server/internal/ingest"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/testutil"
 )
 
 func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
@@ -131,7 +131,7 @@ func TestCanonicalAPIQueriesMatchPostgresIngestion(t *testing.T) {
 	if rows := response.Sources["outcomes"].Rows; len(rows) == 1 {
 		outcome := rows[0]
 		if link, ok := outcome["issue-link"].(map[string]any); !ok ||
-			link["href"] != "https://github.com/githubnext/gh-aw-cao/issues/42" || outcome["pull-request-link"] != nil {
+			link["href"] != "https://github.com/githubnext/gh-cao/issues/42" || outcome["pull-request-link"] != nil {
 			t.Fatalf("outcome issue link was not preserved: %#v", outcome)
 		}
 	}

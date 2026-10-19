@@ -22,7 +22,7 @@ function batch(events) {
       source: 'fixture',
       sourceId: 'repository-1',
       observedAt: '2026-09-09T05:00:00Z',
-      data: { id: 'repository:1', owner: 'githubnext', name: 'gh-aw-cao' }
+      data: { id: 'repository:1', owner: 'githubnext', name: 'gh-cao' }
     },
     {
       kind: 'workflow',
@@ -39,7 +39,7 @@ function batch(events) {
       data: {
         githubRunId: 1,
         owner: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         repositoryId: 'repository:1',
         workflowId: 'workflow:1',
         startedAt: '2026-09-09T04:00:00Z'
@@ -52,7 +52,7 @@ function batch(events) {
       observedAt: event.timestamp,
       data: {
         id: event.eventId,
-        runId: event.runId ?? 'github:run:githubnext/gh-aw-cao:1',
+        runId: event.runId ?? 'github:run:githubnext/gh-cao:1',
         timestamp: event.timestamp,
         source: 'agent',
         type: 'user.message'
@@ -121,7 +121,7 @@ describe('canonical retention merge', () => {
       retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
     });
 
-    expect(merged.runs.map((run) => run.id)).toEqual(['github:run:githubnext/gh-aw-cao:1']);
+    expect(merged.runs.map((run) => run.id)).toEqual(['github:run:githubnext/gh-cao:1']);
     expect(merged.audits).toEqual([]);
     expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
@@ -250,7 +250,7 @@ describe('canonical retention merge', () => {
 
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
     expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
-    expect(merged.runs.map((run) => run.id)).toEqual(['github:run:githubnext/gh-aw-cao:1']);
+    expect(merged.runs.map((run) => run.id)).toEqual(['github:run:githubnext/gh-cao:1']);
     expect(merged.audits.map((event) => event.id)).toEqual(['event:1']);
   });
 
@@ -259,7 +259,7 @@ describe('canonical retention merge', () => {
     previous.operationalValues.push({
       id: 'operational-value:dependabot',
       repositoryId: 'repository:1',
-      repository: 'githubnext/gh-aw-cao',
+      repository: 'githubnext/gh-cao',
       campaign: 'dependabot',
       valueId: 'dependabot-vulnerability-alerts',
       value: 3,

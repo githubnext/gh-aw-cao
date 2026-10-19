@@ -263,8 +263,8 @@ test('Runs renders a last-week stacked area graph above its responsive table and
               'run-status': 'completed',
               'run-conclusion': 'failure',
               organization: 'githubnext',
-              repository: 'gh-aw-cao',
-              'repository-coordinate': 'githubnext/gh-aw-cao',
+              repository: 'gh-cao',
+              'repository-coordinate': 'githubnext/gh-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -272,17 +272,17 @@ test('Runs renders a last-week stacked area graph above its responsive table and
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T12:00:00Z',
-              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao', label: 'Open githubnext/gh-aw-cao' },
-              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
-              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' }
+              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-cao', label: 'Open githubnext/gh-cao' },
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/2', label: 'Run 2' }
             },
             {
               run: '1',
               'run-status': 'completed',
               'run-conclusion': 'success',
               organization: 'githubnext',
-              repository: 'gh-aw-cao',
-              'repository-coordinate': 'githubnext/gh-aw-cao',
+              repository: 'gh-cao',
+              'repository-coordinate': 'githubnext/gh-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -290,9 +290,9 @@ test('Runs renders a last-week stacked area graph above its responsive table and
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T11:00:00Z',
-              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao', label: 'Open githubnext/gh-aw-cao' },
-              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
-              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1', label: 'Run 1' }
+              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-cao', label: 'Open githubnext/gh-cao' },
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/1', label: 'Run 1' }
             }
           ]
         }
@@ -304,7 +304,7 @@ test('Runs renders a last-week stacked area graph above its responsive table and
           run: String(run),
           'run-link': {
             relation: 'run',
-            href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/' + run,
+            href: 'https://github.com/githubnext/gh-cao/actions/runs/' + run,
             label: 'Run ' + run
           }
         });
@@ -588,7 +588,7 @@ test('Runs renders the worker-projected table', async ({ page }) => {
               'run-status': 'completed',
               'run-conclusion': 'failure',
               organization: 'githubnext',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -596,7 +596,7 @@ test('Runs renders the worker-projected table', async ({ page }) => {
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T12:00:00Z',
-              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' }
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/2', label: 'Run 2' }
             }
           ]
         }

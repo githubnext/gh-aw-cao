@@ -3,7 +3,7 @@
 set -euo pipefail
 export LC_ALL=C
 
-REPOSITORY="githubnext/gh-aw-cao"
+REPOSITORY="githubnext/gh-cao"
 LEDGER_PATH="eu-cra-compliance/implementation-status.md"
 MATURATION_SECONDS=2592000
 
@@ -15,7 +15,7 @@ definition() {
 {
   "schemaVersion": 4,
   "grader": "operational-value",
-  "repository": "githubnext/gh-aw-cao",
+  "repository": "githubnext/gh-cao",
   "workflowName": "EU CRA / Maintenance",
   "sourcePath": ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
   "adoption": {
@@ -27,7 +27,7 @@ definition() {
     "opportunity": "Each PARTIAL, MISSING, or INCOMPLETE requirement ID in the implementation ledger at the campaign-maintainer run's source commit.",
     "assignment": "Freeze the source ledger blob and its eligible requirement IDs; key cra-ledger:<repository>:<startingLedgerBlob>. Duplicate runs over the same ledger share the opportunity.",
     "accepted": "An assigned requirement ID no longer has a PARTIAL, MISSING, or INCOMPLETE status in the latest ledger at the evidence cutoff, and the ledger change arrived through a pull request approved by a non-bot human.",
-    "repositories": ["githubnext/gh-aw-cao"],
+    "repositories": ["githubnext/gh-cao"],
     "collection": "Read the immutable source ledger blob, the latest ledger commit at the capped cutoff, its associated pull request, and submitted reviews.",
     "maturation": "Thirty days after the campaign-maintainer run starts.",
     "zeroRule": "Complete evidence with no human-reviewed resolution of any assigned requirement ID scores 0.",

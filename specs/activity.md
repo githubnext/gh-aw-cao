@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.2.0
 **Status:** Working Draft
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/activity.md
+**Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/activity.md
 **Editors:** GitHub Next
 
 ## Abstract

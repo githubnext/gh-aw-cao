@@ -245,7 +245,7 @@ func TestNativeManagementExactUpdatePreservesAuthority(t *testing.T) {
 	writeTestFile(t, policyPath, nativeManagementPolicy)
 	revision := strings.Repeat("b", 40)
 	recordPath := ".github/aw/packages/one.json"
-	record := `{"package":"githubnext/gh-aw-cao/one","source":"githubnext/gh-aw-cao/one@main","resolvedCommit":"` + strings.Repeat("a", 40) + `"}`
+	record := `{"package":"githubnext/gh-cao/one","source":"githubnext/gh-cao/one@main","resolvedCommit":"` + strings.Repeat("a", 40) + `"}`
 	writeTestFile(t, recordPath, record)
 	archive := campaignArchive(t, map[string]string{
 		"repository/one/cao.json":     `{"campaign":"one","orchestrator":"one","workers":{"worker":"one-worker","new-worker":"one-new-worker"}}`,
@@ -286,7 +286,7 @@ func TestNativeManagementExactUpdatePreservesAuthority(t *testing.T) {
 	if !reflect.DeepEqual(control["scope"], map[string]any{"allowed-owners": []any{"owner"}, "allowed-repositories": []any{"owner/repo"}}) {
 		t.Fatal("update widened scope")
 	}
-	if !reflect.DeepEqual(calls[2], []string{"aw", "add", "githubnext/gh-aw-cao/one@" + revision, "--force"}) || !strings.Contains(output.String(), `"resolvedCommit": "`+revision+`"`) {
+	if !reflect.DeepEqual(calls[2], []string{"aw", "add", "githubnext/gh-cao/one@" + revision, "--force"}) || !strings.Contains(output.String(), `"resolvedCommit": "`+revision+`"`) {
 		t.Fatalf("update call/output mismatch: %q\n%s", calls, output)
 	}
 }
@@ -294,7 +294,7 @@ func TestNativeManagementExactUpdatePreservesAuthority(t *testing.T) {
 func TestNativeManagementUpdateRejectsWrongRecordedRevision(t *testing.T) {
 	nativeManagementDirectory(t)
 	writeTestFile(t, policyPath, nativeManagementPolicy)
-	writeTestFile(t, ".github/aw/packages/one.json", `{"package":"githubnext/gh-aw-cao/one","resolvedCommit":"`+strings.Repeat("a", 40)+`"}`)
+	writeTestFile(t, ".github/aw/packages/one.json", `{"package":"githubnext/gh-cao/one","resolvedCommit":"`+strings.Repeat("a", 40)+`"}`)
 	cmd, output := nativeManagementCommand()
 	gh := func(_ context.Context, args ...string) (string, string, error) {
 		if args[0] == "aw" {
@@ -321,9 +321,9 @@ func TestNativeManagementPreparedReleaseRollback(t *testing.T) {
 	revision := strings.Repeat("a", 40)
 	recordPath := ".github/aw/packages/one.json"
 	workflow := ".github/workflows/one.md"
-	original := "source: githubnext/gh-aw-cao/one@" + revision + "\r\n# original\r\n"
+	original := "source: githubnext/gh-cao/one@" + revision + "\r\n# original\r\n"
 	writeTestFile(t, workflow, original)
-	source := `{"package":"githubnext/gh-aw-cao/one","source":"githubnext/gh-aw-cao/one@` + revision + `","resolvedCommit":"` + revision + `","files":[{"destination":"` + workflow + `","sha256":"old"}]}`
+	source := `{"package":"githubnext/gh-cao/one","source":"githubnext/gh-cao/one@` + revision + `","resolvedCommit":"` + revision + `","files":[{"destination":"` + workflow + `","sha256":"old"}]}`
 	writeTestFile(t, recordPath, source)
 	records, err := nativeInstalledPackages()
 	if err != nil {
@@ -335,7 +335,7 @@ func TestNativeManagementPreparedReleaseRollback(t *testing.T) {
 		t.Fatal(err)
 	}
 	content, _ := os.ReadFile(workflow)
-	if string(content) != "source: githubnext/gh-aw-cao/one@v1.2.3\r\n# original\r\n" {
+	if string(content) != "source: githubnext/gh-cao/one@v1.2.3\r\n# original\r\n" {
 		t.Fatalf("prepared workflow = %q", content)
 	}
 	var document map[string]any

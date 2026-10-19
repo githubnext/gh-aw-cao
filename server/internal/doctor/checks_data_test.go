@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/query"
 )
 
 func TestClassifyActiveDataFailsWhenNotReady(t *testing.T) {

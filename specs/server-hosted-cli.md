@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0
 **Status:** Working Draft
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md
+**Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/server-hosted-cli.md
 **Editors:** GitHub Next
 
 ## Abstract

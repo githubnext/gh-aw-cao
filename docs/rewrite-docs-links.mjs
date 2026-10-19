@@ -24,7 +24,7 @@ export default function rewriteDocsLinks({ base }) {
           const route = docsTarget === "README" ? "" : `${docsTarget}/`;
           node.url = `${base}/${route}${match[2] || ""}`;
         } else if (!target.startsWith("../")) {
-          node.url = `https://github.com/githubnext/gh-aw-cao/blob/main/${target}${match[2] || ""}`;
+          node.url = `https://github.com/githubnext/gh-cao/blob/main/${target}${match[2] || ""}`;
         }
         return;
       }

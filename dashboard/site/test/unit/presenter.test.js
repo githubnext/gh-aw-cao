@@ -1473,7 +1473,7 @@ describe('dashboard DOM provenance', () => {
       loadPageSources: async () => ({
         'repository-activity': {
           source: 'repository-activity',
-          rows: [{ repository: 'githubnext/gh-aw-cao' }],
+          rows: [{ repository: 'githubnext/gh-cao' }],
           metadata: {
             'source-id': 'repository-activity',
             'source-kind': 'fixture',
@@ -1489,7 +1489,7 @@ describe('dashboard DOM provenance', () => {
     document.body.append(rendered);
     await activatePage(rendered, 'repositories');
     await vi.waitFor(() => {
-      expect(rendered.querySelector('[data-page-id="repositories"] td[data-field="repository"]')?.textContent).toBe('githubnext/gh-aw-cao');
+      expect(rendered.querySelector('[data-page-id="repositories"] td[data-field="repository"]')?.textContent).toBe('githubnext/gh-cao');
     });
     expect(rendered.querySelector('[data-page-id="repositories"] .dashboard-view-skeleton')).toBeNull();
     rendered.remove();
@@ -1726,9 +1726,9 @@ describe('presenter built-in and custom pages', () => {
         runs: {
           source: 'runs',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', 'run-conclusion': 'success', engine: 'copilot', 'engine-version': '0.87.6', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', 'run-link': { relation: 'run', href: 'https://github.com/github/gh-aw-cao/actions/runs/1001', label: 'View run 1001' } },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', run: '1002', 'run-conclusion': 'failure', engine: 'copilot', 'engine-version': '0.87.9', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', 'run-link': { relation: 'run', href: 'https://github.com/github/gh-aw-cao/actions/runs/1002', label: 'View run 1002' } },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.yml', run: '1003', 'run-conclusion': 'success', engine: 'pi', 'engine-version': '1.2.0', 'requested-model': 'claude-sonnet-5', 'resolved-model': 'claude-sonnet-5', 'run-link': { relation: 'run', href: 'https://github.com/github/gh-aw-cao/actions/runs/1003', label: 'View run 1003' } }
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/daily.yml', run: '1001', 'run-conclusion': 'success', engine: 'copilot', 'engine-version': '0.87.6', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', 'run-link': { relation: 'run', href: 'https://github.com/github/gh-cao/actions/runs/1001', label: 'View run 1001' } },
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/review.yml', run: '1002', 'run-conclusion': 'failure', engine: 'copilot', 'engine-version': '0.87.9', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', 'run-link': { relation: 'run', href: 'https://github.com/github/gh-cao/actions/runs/1002', label: 'View run 1002' } },
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/audit.yml', run: '1003', 'run-conclusion': 'success', engine: 'pi', 'engine-version': '1.2.0', 'requested-model': 'claude-sonnet-5', 'resolved-model': 'claude-sonnet-5', 'run-link': { relation: 'run', href: 'https://github.com/github/gh-cao/actions/runs/1003', label: 'View run 1003' } }
           ],
           metadata
         },
@@ -1808,8 +1808,8 @@ describe('presenter built-in and custom pages', () => {
       availability: /** @type {'available'} */ ('available')
     };
     const workflowLink = {
-      'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Freview.md',
-      'dashboard-label': 'View githubnext/gh-aw-cao:.github/workflows/review.md workflow dashboard'
+      'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-cao%3A.github%2Fworkflows%2Freview.md',
+      'dashboard-label': 'View githubnext/gh-cao:.github/workflows/review.md workflow dashboard'
     };
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
@@ -1822,7 +1822,7 @@ describe('presenter built-in and custom pages', () => {
         'skill-invocations-by-workflow': {
           source: 'skill-invocations-by-workflow',
           rows: [{
-            'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/review.md',
+            'workflow-coordinate': 'githubnext/gh-cao:.github/workflows/review.md',
             'workflow-link': workflowLink,
             invocations: 3
           }],
@@ -1833,7 +1833,7 @@ describe('presenter built-in and custom pages', () => {
           rows: [{
             skill: 'reactive-ui',
             workflow: '.github/workflows/review.md',
-            'repository-coordinate': 'githubnext/gh-aw-cao',
+            'repository-coordinate': 'githubnext/gh-cao',
             'workflow-link': workflowLink,
             invocations: 3
           }],
@@ -2026,8 +2026,8 @@ describe('presenter built-in and custom pages', () => {
         runs: {
           source: 'runs',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dependabot.yml', run: '1', 'aic-total': 12 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dependabot.yml', run: '2', 'aic-total': 18 },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dependabot.yml', run: '1', 'aic-total': 12 },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dependabot.yml', run: '2', 'aic-total': 18 },
             { organization: 'github', repository: 'target-service', workflow: '.github/workflows/ci.yml', run: '3', 'aic-total': 5 }
           ],
           metadata: {
@@ -2043,8 +2043,8 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'review' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot-update-planner.yml', 'workflow-name': 'Dependabot / Update Planner', 'workflow-role': 'worker', 'workflow-active': 'true', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot-update-planner.yml', 'workflow-name': 'Dependabot / Update Planner', 'workflow-role': 'worker', 'workflow-active': 'true', 'rollout-mode': 'review' },
             { organization: 'github', repository: 'target-service', workflow: '.github/workflows/ci.yml', 'workflow-name': 'CI', 'workflow-role': 'standalone', 'workflow-active': 'true', 'rollout-mode': 'live' }
           ],
           metadata: {
@@ -2060,8 +2060,8 @@ describe('presenter built-in and custom pages', () => {
         usage: {
           source: 'usage',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dependabot.yml', aic: 12 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dependabot.yml', aic: 18 },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dependabot.yml', aic: 12 },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dependabot.yml', aic: 18 },
             { organization: 'github', repository: 'target-service', workflow: '.github/workflows/ci.yml', aic: 5 }
           ],
           metadata: {
@@ -2100,7 +2100,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
     expect(page?.querySelector('[data-chart-widget="horizontal-bar"]')).not.toBeNull();
     expect([...(page?.querySelectorAll('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-label') ?? [])].map((value) => value.textContent))
-      .toEqual(['dependabot.yml (githubnext/gh-aw-cao)', 'ci.yml (github/target-service)']);
+      .toEqual(['dependabot.yml (githubnext/gh-cao)', 'ci.yml (github/target-service)']);
     expect([...(page?.querySelectorAll('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-value') ?? [])].map((value) => value.textContent))
       .toEqual(['15', '5']);
     expect(page?.querySelector('[data-view-id="workflows-by-aic-per-run"] .horizontal-bar-chart-label a')?.getAttribute('href'))
@@ -2174,7 +2174,7 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'live' },
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'live' },
             { organization: 'github', repository: 'target-service', workflow: '.github/workflows/ci.yml', 'workflow-name': 'CI', 'workflow-role': 'standalone', 'workflow-active': 'true', 'rollout-mode': 'unknown' }
           ],
           metadata: {
@@ -3033,7 +3033,7 @@ describe('presenter built-in and custom pages', () => {
       sources: {
         repositories: {
           source: 'repositories',
-          rows: [{ 'repository-coordinate': 'githubnext/gh-aw-cao', organization: 'githubnext' }],
+          rows: [{ 'repository-coordinate': 'githubnext/gh-cao', organization: 'githubnext' }],
           metadata: {
             'source-id': 'repositories-fixture',
             'source-kind': 'fixture',
@@ -3051,7 +3051,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-page-id="repositories"]')?.getAttribute('data-view-mode')).toBe('table');
     expect(modeButtons.map((button) => button.textContent)).toEqual(['Cards', 'Table']);
     expect(modeButtons[1]?.getAttribute('aria-pressed')).toBe('true');
-    expect(rendered.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('githubnext/gh-aw-cao');
+    expect(rendered.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('githubnext/gh-cao');
   });
 
 
@@ -3105,7 +3105,7 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/#page-cost');
     let currentIndex = 1;
     const entries = [
-      { index: 0, url: 'https://github.com/githubnext/gh-aw-cao' },
+      { index: 0, url: 'https://github.com/githubnext/gh-cao' },
       { index: 1, url: window.location.href },
       { index: 2, url: `${window.location.origin}/#page-security` }
     ];
@@ -3513,18 +3513,18 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'campaign-aic-allowance': 250, 'campaign-inventory-warnings': 2 },
-            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'campaign-aic-allowance': 250, 'campaign-inventory-warnings': 2 },
-            { organization: 'github', repository: 'gh-aw-cao', campaign: 'empty-ops', 'campaign-name': 'Empty Ops', workflow: '.github/workflows/empty.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'live', 'max-ai-credits': 80, 'inventory-ready': true }
+            { organization: 'github', repository: 'gh-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'campaign-aic-allowance': 250, 'campaign-inventory-warnings': 2 },
+            { organization: 'github', repository: 'gh-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'campaign-aic-allowance': 250, 'campaign-inventory-warnings': 2 },
+            { organization: 'github', repository: 'gh-cao', campaign: 'empty-ops', 'campaign-name': 'Empty Ops', workflow: '.github/workflows/empty.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'live', 'max-ai-credits': 80, 'inventory-ready': true }
           ],
           metadata
         },
         runs: {
           source: 'runs',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review', 'aic-total': 10 },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily-worker.md', run: '2', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'live', 'aic-total': 30 },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/unmanaged.md', run: '3', 'started-at': '2026-08-29T11:00:00Z', 'run-conclusion': 'cancelled', 'rollout-mode': 'review' }
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/daily.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review', 'aic-total': 10 },
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/daily-worker.md', run: '2', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'live', 'aic-total': 30 },
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/unmanaged.md', run: '3', 'started-at': '2026-08-29T11:00:00Z', 'run-conclusion': 'cancelled', 'rollout-mode': 'review' }
           ],
           metadata
         },
@@ -3683,7 +3683,7 @@ describe('presenter built-in and custom pages', () => {
           rows: [
             {
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/daily.yml',
               run: '1001',
               'run-status': 'completed',
@@ -3774,7 +3774,7 @@ describe('presenter built-in and custom pages', () => {
               'finding-severity': 'critical',
               'finding-status': 'open',
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/daily.yml',
               'observed-at': '2026-08-29T12:00:00Z',
               'issue-link': {
@@ -3850,7 +3850,7 @@ describe('presenter built-in and custom pages', () => {
                 data: {
                   source: 'findings',
                   scope: {
-                    repositories: ['gh-aw-cao']
+                    repositories: ['gh-cao']
                   },
                   time: {
                     start: '2026-08-29T00:00:00Z',
@@ -3942,8 +3942,8 @@ describe('presenter built-in and custom pages', () => {
         usage: {
           source: 'usage',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', engine: 'actions', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'live', aic: 2, 'observed-at': '2026-08-29T10:00:00Z' },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1002', engine: 'actions', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'review', aic: 3, 'observed-at': '2026-08-29T11:00:00Z' }
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/daily.yml', run: '1001', engine: 'actions', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'live', aic: 2, 'observed-at': '2026-08-29T10:00:00Z' },
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/daily.yml', run: '1002', engine: 'actions', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'review', aic: 3, 'observed-at': '2026-08-29T11:00:00Z' }
           ],
           metadata: {
             'source-id': 'usage-fixture',
@@ -3961,7 +3961,7 @@ describe('presenter built-in and custom pages', () => {
             {
               code: 'finding-1',
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               'observed-at': '2026-08-29T12:00:00Z',
               'finding-summary': 'Unsafe dependency',
               'finding-severity': 'high',
@@ -3989,7 +3989,7 @@ describe('presenter built-in and custom pages', () => {
             {
               code: 'finding-3',
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               'observed-at': '2026-08-30T01:00:00Z',
               'finding-summary': 'Out of range finding',
               'finding-severity': 'low',
@@ -4127,7 +4127,7 @@ describe('presenter built-in and custom pages', () => {
           rows: [
             {
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/daily.yml',
               run: '1001',
               'run-status': 'completed',

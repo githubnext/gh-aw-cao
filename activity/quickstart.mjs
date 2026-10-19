@@ -8,7 +8,7 @@ import { commandFailureMessage, writeJsonAtomically } from './cli/files.mjs';
 import { configureDashboardPages } from './setup.mjs';
 import { installedCaoRevision } from '../.github/workflows/shared/materialize-cao.mjs';
 
-const DEFAULT_CAMPAIGN = 'githubnext/gh-aw-cao/repo-assist';
+const DEFAULT_CAMPAIGN = 'githubnext/gh-cao/repo-assist';
 const REPO_ASSIST_WORKFLOW = 'repo-assist.lock.yml';
 const REPO_ASSIST_WORKER = 'repo-assist-maintenance.lock.yml';
 const ACTIVITY_WORKFLOW = 'cao-activity.yml';
@@ -305,7 +305,7 @@ async function executeCaoQuickstart({
   await addCampaign(selectedCampaign, [], { policyPath, execute });
   run(execute, 'gh', [
     'aw', 'compile', '--strict', '--no-check-update',
-    '--schedule-seed', 'githubnext/gh-aw-cao',
+    '--schedule-seed', 'githubnext/gh-cao',
   ]);
   const policy = JSON.parse(await readFile(path.resolve(policyPath), 'utf8'));
   const campaign = policy['control-plane']?.campaigns?.['repo-assist'];

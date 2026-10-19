@@ -69,8 +69,8 @@ For more information, see [Configure authentication](authentication.md).
    release automatically.
 
    ```bash
-   gh aw add githubnext/gh-aw-cao/activity
-   gh aw add githubnext/gh-aw-cao/dashboard
+   gh aw add githubnext/gh-cao/activity
+   gh aw add githubnext/gh-cao/dashboard
    ```
 
 1. Review, commit, and push the installed files. These include `.github/workflows/cao-activity.yml`, `.github/workflows/cao-dashboard.yml`, and the `activity/` and `dashboard/` directories.

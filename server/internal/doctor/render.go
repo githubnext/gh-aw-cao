@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var renderLog = logger.New("cao:doctor:render")

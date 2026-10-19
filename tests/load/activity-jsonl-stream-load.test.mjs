@@ -19,7 +19,7 @@ test("cao reads and ingests one million cached JSONL rows within a 32 MB JavaScr
       run_id: 1,
       run_attempt: 1,
       organization: "githubnext",
-      repository: "gh-aw-cao",
+      repository: "gh-cao",
       workflow_name: "Stress",
       workflow_path: ".github/workflows/stress.md",
       status: "completed",

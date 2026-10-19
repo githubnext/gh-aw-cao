@@ -1,6 +1,6 @@
 package server
 
-import "github.com/githubnext/gh-aw-cao/server/internal/operational"
+import "github.com/githubnext/gh-cao/server/internal/operational"
 
 type repositoryMemoryServices struct {
 	operational.Cache

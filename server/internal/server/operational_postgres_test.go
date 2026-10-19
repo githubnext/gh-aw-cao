@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
+	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
 )
 
 func TestPostgresHostedOAuthSurvivesRestartWithoutRedis(t *testing.T) {

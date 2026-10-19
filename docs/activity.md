@@ -15,8 +15,8 @@ this collector.
 
 Read this page when changing Activity collection, cache publication, or workflow
 registry enrichment. Continue to the
-[Activity specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/activity.md),
-then the [dashboard data specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md)
+[Activity specification](https://github.com/githubnext/gh-cao/blob/main/specs/activity.md),
+then the [dashboard data specification](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md)
 and the implementation under `activity/`.
 
 ## How Activity works

@@ -12,11 +12,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/audit"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
-	"github.com/githubnext/gh-aw-cao/server/internal/hostedcli"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/sqlite"
+	"github.com/githubnext/gh-cao/server/internal/audit"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/hostedcli"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational/sqlite"
 )
 
 // HostedCLIConfigFromEnv builds the admission configuration enabled by

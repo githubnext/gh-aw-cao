@@ -29,7 +29,7 @@ it('uses worker transport even in hosted mode, passes backend auth, and cleans u
   const notify = vi.fn();
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);
-  const stop = subscribeGitHubResource({ owner: 'githubnext', repo: 'gh-aw-cao' }, notify, { signal: controller.signal });
+  const stop = subscribeGitHubResource({ owner: 'githubnext', repo: 'gh-cao' }, notify, { signal: controller.signal });
   const worker = ResourceWorker.current;
   const message = worker?.postMessage.mock.calls.find(([message]) => message.operation === 'subscribe-github-resource')?.[0];
   expect(worker?.postMessage).toHaveBeenCalledWith(expect.objectContaining({
@@ -41,7 +41,7 @@ it('uses worker transport even in hosted mode, passes backend auth, and cleans u
   });
   expect(JSON.stringify(message)).not.toContain('dashboard-test-token');
   expect(message.configuration).not.toHaveProperty('token');
-  const snapshot = { data: { full_name: 'githubnext/gh-aw-cao' }, status: 'available', source: 'cache', error: null, retryAt: null };
+  const snapshot = { data: { full_name: 'githubnext/gh-cao' }, status: 'available', source: 'cache', error: null, retryAt: null };
   worker?.listeners.get('message')?.({ data: { type: 'github-resource', subscriptionId: message.subscriptionId, snapshot } });
   expect(notify).toHaveBeenCalledWith(snapshot);
   controller.abort();
@@ -112,7 +112,7 @@ it('routes GitHub-only declarative page queries and subscriptions through the wo
   const queryRemote = vi.spyOn(remote, 'queryRemoteDashboard');
   const { loadCanonicalDashboardPage, subscribeCanonicalDashboardView } = await import('../../src/data-processor.js');
   const context = {
-    pages: [], dashboardRepository: 'githubnext/gh-aw-cao',
+    pages: [], dashboardRepository: 'githubnext/gh-cao',
     queries: [{ name: 'stars', from: 'github-repository', select: [{ field: 'stargazers_count' }] }]
   };
   const loaded = loadCanonicalDashboardPage(['stars'], context);
@@ -141,14 +141,14 @@ it('forwards only raw hosted inputs to the worker for mixed declarative queries 
   vi.stubGlobal('Worker', ResourceWorker);
   document.head.innerHTML = '<meta name="dashboard-data-backend" content="server-http">';
   const remote = await import('../../src/remote-data-backend.js');
-  const sources = { repositories: { rows: [{ repository: 'githubnext/gh-aw-cao' }] } };
+  const sources = { repositories: { rows: [{ repository: 'githubnext/gh-cao' }] } };
   const queryRemote = vi.spyOn(remote, 'queryRemoteDashboard').mockResolvedValue({ sources, revision: 1, healthRevision: 1 });
   const stopRevision = vi.fn();
   vi.spyOn(remote, 'subscribeRemoteRevision').mockReturnValue(stopRevision);
   const { subscribeCanonicalDashboardView } = await import('../../src/data-processor.js');
   const controller = new AbortController();
   const context = {
-    pages: [], dashboardRepository: 'githubnext/gh-aw-cao',
+    pages: [], dashboardRepository: 'githubnext/gh-cao',
     queries: [{
       name: 'joined', from: 'repositories',
       joins: [{ source: 'github-repository', on: [{ left: 'repository', right: 'full_name' }], fields: [{ field: 'stargazers_count', as: 'stars' }] }]

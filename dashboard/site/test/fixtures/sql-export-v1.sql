@@ -63,7 +63,7 @@ VALUES
 INSERT INTO cao_dashboard_export_rows_v1
   (entity_kind, source_id, observed_at, github_repository_id, repository_owner, repository_name, repository_visibility)
 VALUES
-  ('repository', 'repository-101', '2026-09-09T05:00:00Z', '101', 'githubnext', 'gh-aw-cao', 'public');
+  ('repository', 'repository-101', '2026-09-09T05:00:00Z', '101', 'githubnext', 'gh-cao', 'public');
 
 INSERT INTO cao_dashboard_export_rows_v1
   (entity_kind, source_id, observed_at, github_repository_id, github_workflow_id, workflow_name, workflow_path, workflow_state)

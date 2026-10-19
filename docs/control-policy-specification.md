@@ -10,7 +10,7 @@ worker admission. `.github/workflows/cao.json` is the sole persistent non-secret
 CAO policy authority: CAO governs rollout and target authority, while gh-aw
 governs engine limits, generated job topology, authentication, and safe-output
 execution. Next read the
-[Central Agentic Ops Control Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md),
+[Central Agentic Ops Control Architecture Specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md),
 then inspect `.github/workflows/shared/control.md` and its dependencies.
 
 The optional `control-plane.web.host` section composes an app server target module

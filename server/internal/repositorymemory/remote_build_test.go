@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
 )
 
 func TestBuildRemoteCampaignAdmitsValidBlobs(t *testing.T) {

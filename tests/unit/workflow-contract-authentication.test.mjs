@@ -369,7 +369,7 @@ test("CAO Activity workflow token rejects broader collection instead of silently
 
 test("CAO Activity workflow token honors an explicit control-repository collection subset", () => {
   assert.deepEqual(activityCollectionPlan({
-    allowed_repositories: ["acme/control", "githubnext/gh-aw-cao"],
+    allowed_repositories: ["acme/control", "githubnext/gh-cao"],
     allowed_owners: ["acme", "githubnext"],
     activity_repositories: ["ACME/CONTROL"],
   }, {
@@ -383,7 +383,7 @@ test("CAO Activity workflow token honors an explicit control-repository collecti
   }]);
 
   assert.throws(() => activityCollectionPlan({
-    activity_repositories: ["githubnext/gh-aw-cao"],
+    activity_repositories: ["githubnext/gh-cao"],
   }, {
     authMode: "workflow-token",
     controlRepository: "acme/control",

@@ -62,13 +62,13 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     repositories: {
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': '2026-09-09T05:00:00Z' }],
+      rows: [{ organization: 'githubnext', repository: 'gh-cao', 'observed-at': '2026-09-09T05:00:00Z' }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     workflows: {
       rows: [{
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow: '.github/workflows/dashboard.md',
         campaign: 'dashboard',
         'campaign-name': 'CAO Dashboard',
@@ -82,7 +82,7 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
     runs: {
       rows: [{
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow: '.github/workflows/dashboard.md',
         run,
         'run-attempt': 2,
@@ -97,22 +97,22 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
         'requested-model': 'model-a',
         'resolved-model': 'model-b',
         'aic-total': 17,
-        'repository-link': { href: 'https://github.com/githubnext/gh-aw-cao' },
-        'run-link': { href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}` }
+        'repository-link': { href: 'https://github.com/githubnext/gh-cao' },
+        'run-link': { href: `https://github.com/githubnext/gh-cao/actions/runs/${run}` }
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     audits: {
       rows: [
         {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `event-${run}`,
           'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'agent',
           'event-type': 'user.message', 'event-summary': 'Processed the dashboard request',
           'observed-at': '2026-09-09T05:00:00Z'
         },
         {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, session: `session-${run}`, event: `github-api-${run}`,
           'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'github-api',
           'event-type': 'github-api.response', 'event-summary': 'GET /rate_limit',
@@ -125,13 +125,13 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
     domains: {
       rows: [
         {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `firewall-allowed-${run}`, 'event-source': 'firewall',
           'event-type': 'firewall.request.allowed', domain: 'api.github.com', decision: 'allowed', 'request-count': 4,
           'event-timestamp': '2026-09-09T04:02:00Z', 'observed-at': '2026-09-09T05:00:00Z'
         },
         {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `firewall-blocked-${run}`, 'event-source': 'firewall',
           'event-type': 'firewall.request.blocked', domain: 'api.github.com', decision: 'denied', 'request-count': 2,
           'event-timestamp': '2026-09-09T04:02:01Z', 'observed-at': '2026-09-09T05:00:00Z'
@@ -142,14 +142,14 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
     tools: {
       rows: [
         {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `tool-call-${run}`,
           'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'mcp',
           'event-type': 'mcp.tool_call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
         },
         {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, session: `session-${run}`, event: `tool-result-${run}`,
           'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
           'event-type': 'tool.execution_complete', 'event-status': 'success', 'correlation-id': `call-${run}`,
@@ -160,11 +160,11 @@ function databaseTables(generation = 'browser-generation', run = '12345') {
     },
     issues: {
       rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+        organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md', run,
         'run-attempt': 2, event: `report-${run}`, 'event-source': 'safe-output',
         'event-type': 'safe_output.created', 'event-status': 'created',
         'safe-output-type': 'create_issue', 'is-pull-request': false,
-        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/7',
+        'correlation-id': 'https://github.com/githubnext/gh-cao/issues/7',
         'event-timestamp': '2026-09-09T04:03:00Z', 'observed-at': '2026-09-09T05:00:00Z'
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -179,7 +179,7 @@ function canonicalWarningSources() {
   issueRows.push(
     {
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       run: '12345',
       'run-attempt': 2,
@@ -190,7 +190,7 @@ function canonicalWarningSources() {
       'event-type': 'safe_output.result',
       'event-summary': 'Created issue',
       'event-status': 'created',
-      'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/7',
+      'correlation-id': 'https://github.com/githubnext/gh-cao/issues/7',
       'safe-output-type': 'create_issue',
       'github-entity-type': 'issue',
       'is-pull-request': false,
@@ -200,7 +200,7 @@ function canonicalWarningSources() {
   const auditRows = /** @type {Array<Record<string, unknown>>} */ (sources.audits.rows);
   auditRows.push({
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       run: '12345',
       'run-attempt': 2,
@@ -273,14 +273,14 @@ test.beforeEach(async ({ context, page }) => {
           run_id: 12345,
           run_attempt: 1,
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow_name: 'Dashboard',
           workflow_path: '.github/workflows/dashboard.md',
           status: 'completed',
           conclusion: 'success',
           created_at: '2026-09-09T04:00:00Z',
           updated_at: '2026-09-09T04:05:00Z',
-          url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/12345',
+          url: 'https://github.com/githubnext/gh-cao/actions/runs/12345',
           audit: {
             mcp_tool_usage: {
               tool_calls: [
@@ -376,7 +376,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
   expect(first.result).toMatchObject({ updated: true });
   expect(first.repositories).toHaveLength(1);
   expect(first.workflows).toHaveLength(1);
-  expect(first.runs[0].id).toBe('github:run:githubnext/gh-aw-cao:12345');
+  expect(first.runs[0].id).toBe('github:run:githubnext/gh-cao:12345');
 
   await page.reload();
   const retained = await page.evaluate(async () => {
@@ -386,7 +386,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     return queries.runs.recentFailures();
   });
 
-  expect(retained).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:12345' })]);
+  expect(retained).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-cao:12345' })]);
 
   const viewSources = await page.evaluate(async (sourceDocument) => {
     const databaseUrl = `${location.origin}/src/data/queries/database.js`;
@@ -404,7 +404,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     source: 'failed-runs',
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       run: '12345',
       'run-attempt': 2,
       'run-conclusion': 'failure'
@@ -418,7 +418,7 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     source: 'runs',
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       run: '12345',
       'run-attempt': 2,
       'run-conclusion': 'failure'
@@ -525,7 +525,7 @@ test('data worker returns only the canonical payload requested by a view', async
     expect(Object.keys(payload)).toEqual(['failed-runs']);
     expect(payload['failed-runs']).toMatchObject({
       source: 'failed-runs',
-      rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
+      rows: [{ repository: 'gh-cao', run: '12345', 'run-conclusion': 'failure' }],
       metadata: { 'source-kind': 'derived' }
     });
   }
@@ -563,7 +563,7 @@ test('complete repository inventory subscriptions omit the redundant identity pr
     }
   });
   expect(result).toHaveLength(1);
-  expect(result[0]).toMatchObject({ repository: 'githubnext/gh-aw-cao', runs: 1, pending: undefined });
+  expect(result[0]).toMatchObject({ repository: 'githubnext/gh-cao', runs: 1, pending: undefined });
 });
 
 test('workflow route queries return bounded records and subscribed aggregates through the real worker', async ({ page, context }) => {
@@ -588,7 +588,7 @@ test('workflow route queries return bounded records and subscribed aggregates th
     const viewId = 'workflow-runtime-route';
     const view = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === pageId)
       .views.find((/** @type {{ id: string }} */ view) => view.id === viewId);
-    const options = { pageId, viewId, routeParameters: { workflow: 'githubnext/gh-aw-cao:.github/workflows/dashboard.md' } };
+    const options = { pageId, viewId, routeParameters: { workflow: 'githubnext/gh-cao:.github/workflows/dashboard.md' } };
     const initial = await processor.loadCanonicalDashboardSources(
       `${location.origin}/element-sources.json`, view.data.sources, dashboard, undefined, options
     );
@@ -622,7 +622,7 @@ test('workflow route queries return bounded records and subscribed aggregates th
     expect(sources.every((source) => source.rows.length === 1)).toBe(true);
     expect(sources.every((source) => source.metadata.availability === 'available')).toBe(true);
     expect(sources.flatMap((source) => source.rows)).toEqual(expect.arrayContaining([
-      expect.objectContaining({ repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md' }),
+      expect.objectContaining({ repository: 'gh-cao', workflow: '.github/workflows/dashboard.md' }),
       expect.objectContaining({ total: 1, failed: 1 }),
       expect.objectContaining({ aic: 17, 'telemetry-count': 1 })
     ]));
@@ -688,7 +688,7 @@ test('data worker avoids unavailable legacy boundaries on initial and navigated 
     expect(payload.outcomes.rows).toHaveLength(1);
     expect(payload.outcomes.rows[0]).toMatchObject({
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       run: '12345',
       'outcome-category': 'issue'
     });
@@ -735,7 +735,7 @@ test('data worker reports an already ingested payload as unchanged', async ({ pa
 
   expect(refreshes.map((refresh) => refresh.changed)).toEqual([true, false]);
   expect(refreshes[0].sources['failed-runs'].rows).toMatchObject([
-    { repository: 'gh-aw-cao', run: '12345' }
+    { repository: 'gh-cao', run: '12345' }
   ]);
 });
 
@@ -795,7 +795,7 @@ test('data worker queries retained canonical data before downloading sources', a
   });
 
   expect(result.retained['failed-runs']).toMatchObject({
-    rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
+    rows: [{ repository: 'gh-cao', run: '12345', 'run-conclusion': 'failure' }],
     metadata: { 'source-kind': 'derived' }
   });
   expect(result.retained['cached-run-totals']).toMatchObject({
@@ -1091,7 +1091,7 @@ test('data worker returns skill invocation rankings on initial and navigated req
   });
   expect(result.initial['skill-invocations-by-workflow']).toMatchObject({
     rows: [{
-      'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
+      'workflow-coordinate': 'githubnext/gh-cao:.github/workflows/dashboard.md',
       invocations: 1
     }],
     metadata: { availability: 'available' }
@@ -1106,7 +1106,7 @@ test('data worker returns skill invocation rankings on initial and navigated req
   });
   expect(result.navigated['view:skills:skills-by-workflow:skill-invocations-by-workflow']).toMatchObject({
     rows: [{
-      'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
+      'workflow-coordinate': 'githubnext/gh-cao:.github/workflows/dashboard.md',
       invocations: 1
     }],
     metadata: { availability: 'available' }
@@ -1222,7 +1222,7 @@ test('data worker computes repository and campaign pages with request-scoped das
   expect(Object.keys(result.initial)).toEqual(['repository-activity']);
   expect(result.initial['repository-activity']).toMatchObject({
     rows: [{
-      repository: 'githubnext/gh-aw-cao',
+      repository: 'githubnext/gh-cao',
       workflows: 1,
       reports: 1,
       runs: 1,
@@ -1236,7 +1236,7 @@ test('data worker computes repository and campaign pages with request-scoped das
   expect(Object.keys(result.horizon)).not.toContain('repository-activity');
   expect(horizonSource).toMatchObject({
     rows: [{
-      repository: 'githubnext/gh-aw-cao',
+      repository: 'githubnext/gh-cao',
       workflows: 1,
       reports: null,
       runs: 0,
@@ -1324,7 +1324,7 @@ test('campaign Reports retains producing-worker attribution after Activity inges
       campaign: 'dashboard',
       workflow: '.github/workflows/dashboard.md',
       run: '12345',
-      'issue-link': { href: 'https://github.com/githubnext/gh-aw-cao/issues/7' }
+      'issue-link': { href: 'https://github.com/githubnext/gh-cao/issues/7' }
     }]
   });
   expect(result['campaign-issue-tab-counts'].rows).toEqual([{ campaign: 'dashboard', items: 1 }]);
@@ -1341,7 +1341,7 @@ test('data worker derives work items and refuses retired report sources', async 
 
   expect(Object.keys(result)).toEqual(['work-items', 'security-findings']);
   expect(result['work-items']).toMatchObject({
-    rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }]
+    rows: [{ 'work-item-id': 'githubnext/gh-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }]
   });
   expect(result['security-findings']).toMatchObject({
     rows: [],
@@ -1371,7 +1371,7 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async 
   }, ghAwLogInput());
 
   expect(result.ingestion).toMatchObject({ updated: true });
-  expect(result.runs[0].id).toBe('github:run:githubnext/gh-aw-cao:303');
+  expect(result.runs[0].id).toBe('github:run:githubnext/gh-cao:303');
   expect(result.domains.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
     [0, 'firewall', 'firewall.http_access']
   ]);
@@ -1463,12 +1463,12 @@ test('deletion rebuilds derived state and fresh data is directly upserted', asyn
   expect(result.replaced).toMatchObject({ updated: true });
   expect(result.repositories).toEqual([
     expect.objectContaining({
-      id: 'repository:githubnext%2Fgh-aw-cao'
+      id: 'repository:githubnext%2Fgh-cao'
     })
   ]);
   expect(result.runs.map((/** @type {Record<string, unknown>} */ run) => run.id)).toEqual([
-    'github:run:githubnext/gh-aw-cao:101',
-    'github:run:githubnext/gh-aw-cao:202'
+    'github:run:githubnext/gh-cao:101',
+    'github:run:githubnext/gh-cao:202'
   ]);
 });
 

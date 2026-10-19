@@ -17,13 +17,13 @@ const pageDefinitions = [
 ];
 const inventory = {
   repositories: {
-    rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+    rows: [{ organization: 'githubnext', repository: 'gh-cao' }],
     metadata: { 'as-of': asOf }
   },
   workflows: {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       'workflow-name': 'Dashboard'
     }],
@@ -153,7 +153,7 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
             run_id: 1000 + (run - 1) * runsPerShard + index + 1,
             run_attempt: 1,
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow_name: 'Dashboard',
             workflow_path: '.github/workflows/dashboard.md',
             display_title: `Ingested run ${run}-${index + 1}`,

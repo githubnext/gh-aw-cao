@@ -70,7 +70,7 @@ function evidence() {
   canonical.workflows.push({ id: 'workflow:1', repositoryId: 'repository:1' });
   canonical.runs.push(...['42', '99'].map((githubRunId) => ({
     id: `run:${githubRunId}`, githubRunId, owner: 'githubnext',
-    repository: 'gh-aw-cao', workflowPath: 'activity.md', attempt: 1,
+    repository: 'gh-cao', workflowPath: 'activity.md', attempt: 1,
     repositoryId: 'repository:1', workflowId: 'workflow:1'
   })));
   for (const store of /** @type {const} */ (['tools', 'audits'])) {

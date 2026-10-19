@@ -176,13 +176,13 @@ describe("named query parameters", () => {
   it("maps declared parameters onto their query fields", () => {
     expect(
       resolveNamedQueryParameters(document, "usage-by-workflow", {
-        repository: "githubnext/gh-aw-cao",
+        repository: "githubnext/gh-cao",
       }),
     ).toEqual([
       {
         name: "repository",
         field: "repository",
-        value: "githubnext/gh-aw-cao",
+        value: "githubnext/gh-cao",
       },
     ]);
   });

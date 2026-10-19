@@ -22,7 +22,7 @@ gh repo create "$CONTROL_REPO" --private --clone
 cd "${CONTROL_REPO##*/}"
 
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
   bash
 ```
 

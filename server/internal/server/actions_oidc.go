@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var actionsOIDCLog = logger.New("cao:server:actions-oidc")
@@ -112,7 +112,7 @@ func actionsRepositoryMetadataForToken(
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("Authorization", "Bearer "+token)
 	request.Header.Set("X-GitHub-Api-Version", actionsGitHubAPIVersion)
-	request.Header.Set("User-Agent", "gh-aw-cao-mcp")
+	request.Header.Set("User-Agent", "gh-cao-mcp")
 	response, err := client.Do(request)
 	if err != nil {
 		return actionsRepositoryMetadata{}, errors.New("GitHub Actions repository identity check failed")

@@ -9,7 +9,7 @@ import { queryDatabaseSources, queryIndexedDatabaseSources } from '../../src/dat
 import { DASHBOARD_QUERY_LIMITS, executeDashboardQueries } from '../../src/data/queries/declarative.js';
 
 const metadata = { 'as-of': '2026-10-02T20:00:00Z', 'artifact-generation': 'record-selection' };
-const identity = { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'activity.md', run: '42' };
+const identity = { organization: 'githubnext', repository: 'gh-cao', workflow: 'activity.md', run: '42' };
 const sources = {
   repositories: { rows: [identity], metadata },
   workflows: { rows: [identity], metadata },

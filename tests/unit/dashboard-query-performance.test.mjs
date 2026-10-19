@@ -175,7 +175,7 @@ test("deployed integration main push trigger only watches query benchmark inputs
 });
 
 test("deployed proxy targets remain under the trusted dashboard URL", () => {
-  const base = "https://githubnext.github.io/gh-aw-cao/cao/";
+  const base = "https://githubnext.github.io/gh-cao/cao/";
   assert.equal(
     deployedProxyTarget("/gh-aw-logs-runs/shard.jsonl", base)?.href,
     `${base}gh-aw-logs-runs/shard.jsonl`,
@@ -188,7 +188,7 @@ test("deployed proxy targets remain under the trusted dashboard URL", () => {
 });
 
 test("deployed shard snapshots pin bytes and filter missing manifest entries", async () => {
-  const base = "https://githubnext.github.io/gh-aw-cao/cao/";
+  const base = "https://githubnext.github.io/gh-cao/cao/";
   const requests = [];
   const entries = [
     {
@@ -228,7 +228,7 @@ test("deployed shard snapshots pin bytes and filter missing manifest entries", a
 
 test("deployed shard snapshots report upstream and network failures", async () => {
   const entry = { name: "gh-aw-logs-runs/shard.jsonl", sourceName: "gh-aw-logs-runs/shard.jsonl", hash: "a".repeat(64) };
-  const options = { baseUrl: "https://githubnext.github.io/gh-aw-cao/cao/" };
+  const options = { baseUrl: "https://githubnext.github.io/gh-cao/cao/" };
   await assert.rejects(snapshotDeployedActivityShards([entry], {
     ...options, fetchImpl: async () => new Response(null, { status: 503 }),
   }), /Unable to snapshot deployed activity shard .*: 503/);

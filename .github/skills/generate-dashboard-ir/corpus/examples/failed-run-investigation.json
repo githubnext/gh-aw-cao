@@ -43,7 +43,7 @@
       "rows": [
         {
           "organization": "githubnext",
-          "repository": "gh-aw-cao",
+          "repository": "gh-cao",
           "workflow": ".github/workflows/dashboard.md",
           "run": "9101",
           "started-at": "2026-09-01T01:00:00Z",
@@ -53,7 +53,7 @@
           "failure-message": "Dashboard document did not validate",
           "run-link": {
             "relation": "run",
-            "href": "https://github.com/githubnext/gh-aw-cao/actions/runs/9101",
+            "href": "https://github.com/githubnext/gh-cao/actions/runs/9101",
             "label": "Run 9101"
           }
         }

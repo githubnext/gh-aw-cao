@@ -145,7 +145,7 @@ test("verified older inventories may include a retired launcher without making i
   writeFileSync(metadataPath, JSON.stringify(metadata));
   validateCaoRuntimeArtifact(root, revision);
   const [plan] = planCaoMaterialization([{
-    name: "githubnext/gh-aw-cao", record: { resolvedCommit: revision },
+    name: "githubnext/gh-cao", record: { resolvedCommit: revision },
   }], "root");
   assert.equal(plan.resources.includes("cao.sh"), false);
   writeFileSync(filename, "tampered");
@@ -189,7 +189,7 @@ for (const [description, ref, downloadCommand] of [
   test(`${description} acquisition verifies the archive, workflow and both exact source digests`, (t) => {
     const { root, commands } = fakeGithub(t);
     const archive = downloadCaoRuntimeArtifact({
-      source: `githubnext/gh-aw-cao@${ref}`, resolvedCommit: revision,
+      source: `githubnext/gh-cao@${ref}`, resolvedCommit: revision,
     }, path.join(root, "download"));
     assert.deepEqual(readFileSync(archive), readFileSync(artifact.archive));
     const calls = commands();
@@ -197,9 +197,9 @@ for (const [description, ref, downloadCommand] of [
     if (downloadCommand === "run") assert.equal(calls.find((args) => args[0] === "run")[2], "9");
     const verification = calls.find((args) => args[0] === "attestation");
     for (const [flag, value] of [
-      ["--repo", "githubnext/gh-aw-cao"],
+      ["--repo", "githubnext/gh-cao"],
       ["--hostname", "github.com"],
-      ["--signer-workflow", "githubnext/gh-aw-cao/.github/workflows/cao-runtime.yml"],
+      ["--signer-workflow", "githubnext/gh-cao/.github/workflows/cao-runtime.yml"],
       ["--source-digest", revision], ["--signer-digest", revision],
     ]) assert.equal(verification[verification.indexOf(flag) + 1], value);
     assert.ok(verification.includes("--deny-self-hosted-runners"));
@@ -210,7 +210,7 @@ test("main/SHA acquisition waits for the active exact runtime build", (t) => {
   const { root, commands } = fakeGithub(t, { pendingBeforeSuccess: 2 });
   const waits = [];
   const archive = downloadCaoRuntimeArtifact({
-    source: `githubnext/gh-aw-cao@${revision}`, resolvedCommit: revision,
+    source: `githubnext/gh-cao@${revision}`, resolvedCommit: revision,
   }, path.join(root, "download"), {
     attempts: 2,
     intervalMs: 5_000,
@@ -231,7 +231,7 @@ for (const [description, options] of [
     const consumer = path.join(root, "consumer");
     mkdirSync(path.join(consumer, ".github/aw/packages"), { recursive: true });
     writeFileSync(path.join(consumer, ".github/aw/packages/cao.json"), JSON.stringify({
-      package: "githubnext/gh-aw-cao", source: `githubnext/gh-aw-cao@${revision}`, resolvedCommit: revision,
+      package: "githubnext/gh-cao", source: `githubnext/gh-cao@${revision}`, resolvedCommit: revision,
     }));
     mkdirSync(path.join(consumer, "activity"));
     const existing = path.join(consumer, "activity/existing.mjs");
@@ -251,7 +251,7 @@ test("a missing focused revision leaves an already validated root runtime untouc
   mkdirSync(records, { recursive: true });
   for (const [name, sha] of [["root", revision], ["activity", "3".repeat(40)]]) {
     writeFileSync(path.join(records, `${name}.json`), JSON.stringify({
-      package: `githubnext/gh-aw-cao${name === "root" ? "" : `/${name}`}`, resolvedCommit: sha,
+      package: `githubnext/gh-cao${name === "root" ? "" : `/${name}`}`, resolvedCommit: sha,
     }));
   }
   mkdirSync(path.join(consumer, "activity"));
@@ -269,7 +269,7 @@ test("remote materialization consumes the prebuilt package and does not invoke n
   const consumer = path.join(root, "consumer");
   mkdirSync(path.join(consumer, ".github/aw/packages"), { recursive: true });
   writeFileSync(path.join(consumer, ".github/aw/packages/cao.json"), JSON.stringify({
-    package: "githubnext/gh-aw-cao", resolvedCommit: revision,
+    package: "githubnext/gh-cao", resolvedCommit: revision,
   }));
   const npm = path.join(root, "npm");
   writeFileSync(npm, "#!/bin/sh\nexit 99\n");
@@ -299,7 +299,7 @@ test("the trusted runtime pipeline separates building and attestation from draft
   assert.equal(setupNode.with["package-manager-cache"], false);
   assert.equal(workflow.jobs.attest.permissions["id-token"], "write");
   assert.equal(workflow.jobs.publish, undefined);
-  assert.match(source, /github\.repository == 'githubnext\/gh-aw-cao'/);
+  assert.match(source, /github\.repository == 'githubnext\/gh-cao'/);
   assert.match(source, /retention-days: 90/);
   assert.doesNotMatch(source, /gh release upload|--clobber|npm publish/);
   const attest = workflow.jobs.attest;

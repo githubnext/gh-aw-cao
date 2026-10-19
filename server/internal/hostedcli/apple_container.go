@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 // AppleContainerLifecycle is a local-development adapter for Apple's container

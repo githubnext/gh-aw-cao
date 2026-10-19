@@ -11,13 +11,13 @@ const entry = catalogEntries.find(({ slug }) => slug === Astro.params.slug);
 if (!entry) throw new Error(`Unknown campaign: ${Astro.params.slug}`);
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const repositoryBase = "https://github.com/githubnext/gh-aw-cao";
+const repositoryBase = "https://github.com/githubnext/gh-cao";
 const campaignUrl = `${repositoryBase}/tree/main/${entry.slug}`;
 const manifestUrl = `${repositoryBase}/blob/main/${entry.manifestPath}`;
 const editUrl = entry.readmePath
   ? `${repositoryBase}/edit/main/${entry.readmePath}`
   : `${repositoryBase}/edit/main/${entry.manifestPath}`;
-const installCommand = `gh aw add githubnext/gh-aw-cao/${entry.slug}`;
+const installCommand = `gh aw add githubnext/gh-cao/${entry.slug}`;
 const ReadmeContent = entry.ReadmeContent;
 ---
 

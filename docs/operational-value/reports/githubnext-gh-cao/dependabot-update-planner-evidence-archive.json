@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "repository": "githubnext/gh-aw-cao",
+  "repository": "githubnext/gh-cao",
   "workflowSlug": "dependabot-update-planner",
   "functions": {
     "78540498a35c483cea4a7727ca961c3b2e0e94ca2c9604ff4b648064ad87ea34": {

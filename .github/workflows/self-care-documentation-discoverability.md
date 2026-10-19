@@ -127,7 +127,7 @@ safe-outputs:
 
 pre-agent-steps:
   - name: Fetch public agent documentation entry points
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       AUDIT_DIR: /tmp/gh-aw/agent/documentation-discoverability
     run: |
@@ -135,16 +135,16 @@ pre-agent-steps:
       mkdir -p "$AUDIT_DIR"
       STATUS=available
       if ! curl --fail --silent --show-error --location --max-time 30 \
-        https://githubnext.github.io/gh-aw-cao/llms.txt \
+        https://githubnext.github.io/gh-cao/llms.txt \
         --output "$AUDIT_DIR/llms.txt"; then
         STATUS=unavailable
       fi
       if [ "$STATUS" = available ]; then
         curl --fail --silent --show-error --location --max-time 30 \
-          https://githubnext.github.io/gh-aw-cao/llms-small.txt \
+          https://githubnext.github.io/gh-cao/llms-small.txt \
           --output "$AUDIT_DIR/llms-small.txt" || true
         if ! curl --fail --silent --show-error --location --max-time 30 \
-          https://githubnext.github.io/gh-aw-cao/agent/resources.json \
+          https://githubnext.github.io/gh-cao/agent/resources.json \
           --output "$AUDIT_DIR/resources.json"; then
           STATUS=unavailable
         fi
@@ -163,8 +163,8 @@ pre-agent-steps:
         timeout 10m npm ci --ignore-scripts
         timeout 10m npm run docs:build
         cp dist/llms.txt dist/llms-small.txt dist/agent/resources.json "$AUDIT_DIR/"
-        RESOURCE_PATH="$(jq -er '[.resources[] | select((.interfaces // []) | index("web-mcp"))][0].agent | sub("^https://githubnext.github.io/gh-aw-cao/"; "dist/")' "$AUDIT_DIR/resources.json")"
-        CATALOG_RESOURCE_PATH="$(jq -er '[.resources[] | select(.type == "agent-interface")][0].agent | sub("^https://githubnext.github.io/gh-aw-cao/"; "dist/")' "$AUDIT_DIR/resources.json")"
+        RESOURCE_PATH="$(jq -er '[.resources[] | select((.interfaces // []) | index("web-mcp"))][0].agent | sub("^https://githubnext.github.io/gh-cao/"; "dist/")' "$AUDIT_DIR/resources.json")"
+        CATALOG_RESOURCE_PATH="$(jq -er '[.resources[] | select(.type == "agent-interface")][0].agent | sub("^https://githubnext.github.io/gh-cao/"; "dist/")' "$AUDIT_DIR/resources.json")"
         cp "$RESOURCE_PATH" "$AUDIT_DIR/resource.json"
         cp "$CATALOG_RESOURCE_PATH" "$AUDIT_DIR/catalog-resource.json"
       fi
@@ -191,7 +191,7 @@ pre-agent-steps:
       ' "$AUDIT_DIR/catalog-resource.json" >/dev/null
       {
         printf 'public_status=%s\n' "$STATUS"
-        printf 'public_url=https://githubnext.github.io/gh-aw-cao/llms.txt\n'
+        printf 'public_url=https://githubnext.github.io/gh-cao/llms.txt\n'
         printf 'llms_sha256='
         sha256sum "$AUDIT_DIR/llms.txt" | cut -d' ' -f1
         printf 'resources_sha256='
@@ -206,7 +206,7 @@ pre-agent-steps:
 # SelfCare Documentation Discoverability Auditor
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized
-only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its
+only when its precomputed `target_repo` is exactly `githubnext/gh-cao` and its
 precomputed `safe_output_mode` is `live`. If either condition is false, call
 `noop` once with the denied scope and stop without auditing or publishing.
 

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 var testNow = time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)

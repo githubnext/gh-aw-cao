@@ -17,7 +17,7 @@ repository. Add trusted agentic operations when you are ready.
 From a clean control-repository checkout on its default branch:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
 ```
 
 Connect one repository and configure authentication:
@@ -50,7 +50,7 @@ creating a separate control repository, authentication, dashboard visibility,
 and your first look at the data. Prefer a private control repository for
 non-public evidence; a private repository does not guarantee a private dashboard.
 
-**Optional, later:** browse the [campaign catalog](https://githubnext.github.io/gh-aw-cao/catalog/)
+**Optional, later:** browse the [campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
 or try the separate [Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
 You can also read [real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)
 without starting a workflow or spending AI credits.
@@ -79,7 +79,7 @@ Central Agentic Ops extends
 reusable campaigns and a central control plane for explicit repository fleets.
 It does not replace repository permissions, branch protections, or human review.
 
-See the [open issues](https://github.com/githubnext/gh-aw-cao/issues) for current
+See the [open issues](https://github.com/githubnext/gh-cao/issues) for current
 work and planned improvements.
 
 ### GitHub CLI extension
@@ -119,14 +119,14 @@ for local installation, project layout, and checks.
 
 ## Documentation
 
-Ready to explore? [See the docs](https://githubnext.github.io/gh-aw-cao/).
+Ready to explore? [See the docs](https://githubnext.github.io/gh-cao/).
 
 For coding agents, use
-[`llms.txt`](https://githubnext.github.io/gh-aw-cao/llms.txt) for navigation and
+[`llms.txt`](https://githubnext.github.io/gh-cao/llms.txt) for navigation and
 high-value routes,
-[`llms-small.txt`](https://githubnext.github.io/gh-aw-cao/llms-small.txt) for
+[`llms-small.txt`](https://githubnext.github.io/gh-cao/llms-small.txt) for
 compact context, or
-[`llms-full.txt`](https://githubnext.github.io/gh-aw-cao/llms-full.txt) for the
+[`llms-full.txt`](https://githubnext.github.io/gh-cao/llms-full.txt) for the
 broad documentation corpus.
 
 ## Agent plugin and Requirements

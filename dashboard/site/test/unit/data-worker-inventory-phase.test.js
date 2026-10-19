@@ -44,7 +44,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
       run_id: 404,
       run_attempt: 1,
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow_name: 'Dashboard',
       workflow_path: '.github/workflows/dashboard.md',
       status: 'completed',
@@ -77,17 +77,17 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   const inventory = {
     'marketplace-packages': {
       rows: [{
-        id: 'marketplace:package:githubnext/gh-aw-cao:self-care',
-        'registry-id': 'githubnext/gh-aw-cao',
+        id: 'marketplace:package:githubnext/gh-cao:self-care',
+        'registry-id': 'githubnext/gh-cao',
         'registry-name': 'Central Agentic Ops',
         'registry-precedence': 1,
         name: 'Self Care',
-        repository: 'githubnext/gh-aw-cao',
+        repository: 'githubnext/gh-cao',
         path: 'self-care',
         ref: 'main',
         'resolved-commit': 'e'.repeat(40),
-        source: 'githubnext/gh-aw-cao/self-care@main',
-        'add-command': 'gh aw add githubnext/gh-aw-cao/self-care',
+        source: 'githubnext/gh-cao/self-care@main',
+        'add-command': 'gh aw add githubnext/gh-cao/self-care',
         'observed-at': '2026-09-09T05:00:00Z'
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z' }
@@ -168,7 +168,7 @@ it('publishes inventory-only sources before historical shards finish ingesting',
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'marketplace')).toMatchObject({
     data: {
       'marketplace-package-summary': {
-        rows: [{ id: 'githubnext/gh-aw-cao/self-care', 'package-name': 'Self Care' }]
+        rows: [{ id: 'githubnext/gh-cao/self-care', 'package-name': 'Self Care' }]
       }
     }
   });

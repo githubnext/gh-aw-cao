@@ -19,6 +19,6 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/githubnext/gh-aw-cao
+        - github.com/githubnext/gh-cao
   exclusions:
     generated: strict

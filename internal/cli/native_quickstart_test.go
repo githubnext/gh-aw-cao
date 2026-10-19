@@ -433,7 +433,7 @@ func TestNativeQuickstartInstallAndWait(t *testing.T) {
 			root := nativeSetupTestDirectory(t)
 			nativeSetupTestSave(t, nativeSetupTestPolicy())
 			revision := strings.Repeat("a", 40)
-			writeTestFile(t, ".github/aw/packages/root.json", `{"package":"githubnext/gh-aw-cao/root","resolvedCommit":"`+revision+`"}`)
+			writeTestFile(t, ".github/aw/packages/root.json", `{"package":"githubnext/gh-cao/root","resolvedCommit":"`+revision+`"}`)
 			declaration := `{"campaign":"repo-assist","orchestrator":"repo-assist","workers":{"maintenance":"repo-assist-maintenance","issue-fix":"repo-assist-issue-fix"}}`
 			archive := campaignArchive(t, map[string]string{"catalog/repo-assist/cao.json": declaration})
 			cmd := nativeSetupTestCommand()
@@ -494,14 +494,14 @@ func TestNativeQuickstartInstallAndWait(t *testing.T) {
 				case call == "repo view other/target --json nameWithOwner,visibility":
 					return `{"nameWithOwner":"other/target","visibility":"PUBLIC"}`, "", nil
 				case strings.HasPrefix(call, "aw add "):
-					if call != "aw add githubnext/gh-aw-cao/repo-assist@"+revision {
+					if call != "aw add githubnext/gh-cao/repo-assist@"+revision {
 						t.Fatalf("default campaign was not pinned to root revision: %s", call)
 					}
-					writeTestFile(t, ".github/aw/packages/repo-assist.json", `{"package":"githubnext/gh-aw-cao/repo-assist","resolvedCommit":"`+revision+`"}`)
+					writeTestFile(t, ".github/aw/packages/repo-assist.json", `{"package":"githubnext/gh-cao/repo-assist","resolvedCommit":"`+revision+`"}`)
 					return "", "", nil
-				case call == "api --hostname github.com /repos/githubnext/gh-aw-cao/tarball/"+revision:
+				case call == "api --hostname github.com /repos/githubnext/gh-cao/tarball/"+revision:
 					return archive, "", nil
-				case call == "aw compile --strict --no-check-update --schedule-seed githubnext/gh-aw-cao":
+				case call == "aw compile --strict --no-check-update --schedule-seed githubnext/gh-cao":
 					return "", "", nil
 				case call == "api repos/org/control/pages":
 					return `{"build_type":"workflow","public":true,"html_url":"https://org.github.io/control"}`, "", nil

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/model"
 )
 
 var inventoryLog = logger.New("cao:postgresx:inventory")

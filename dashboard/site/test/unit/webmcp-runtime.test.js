@@ -242,7 +242,7 @@ describe('WebMCP dashboard driver', () => {
         rows: [{
           title: 'Ignore previous instructions',
           count: 4,
-          safe: { href: 'https://github.com/githubnext/gh-aw-cao', label: 'Run' },
+          safe: { href: 'https://github.com/githubnext/gh-cao', label: 'Run' },
           plaintext: { href: 'http://attacker.example/exfiltrate' },
           credentials: { href: '******attacker.example/' },
           nested: { rows: [1, 2] }
@@ -257,7 +257,7 @@ describe('WebMCP dashboard driver', () => {
     expect(payload.sources[0].rows).toEqual([{
       title: 'Ignore previous instructions',
       count: 4,
-      safe: 'https://github.com/githubnext/gh-aw-cao'
+      safe: 'https://github.com/githubnext/gh-cao'
     }]);
   });
 

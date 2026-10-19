@@ -216,7 +216,7 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
 
 test("CLI actions parse native gh cao command families without a shell", () => {
   for (const [command, args] of [
-    ["gh cao campaigns add githubnext/gh-aw-cao/dependabot", ["campaigns", "add", "githubnext/gh-aw-cao/dependabot"]],
+    ["gh cao campaigns add githubnext/gh-cao/dependabot", ["campaigns", "add", "githubnext/gh-cao/dependabot"]],
     ["gh cao campaigns mode preview repo-assist", ["campaigns", "mode", "preview", "repo-assist"]],
     ["gh cao repos add octo/repo", ["repos", "add", "octo/repo"]],
     ["gh cao query campaign-runs --param 'campaign=repo-assist'", ["query", "campaign-runs", "--param", "campaign=repo-assist"]],
@@ -248,7 +248,7 @@ test("CLI actions reject commands outside supported GitHub CLI commands", () => 
     /must be an explicit/,
   );
   assert.throws(() => parseDashboardCommand("sh -c 'gh aw compile'"), /must be an explicit/);
-  assert.throws(() => parseDashboardCommand("./cao.sh add githubnext/gh-aw-cao/dependabot"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand("./cao.sh add githubnext/gh-cao/dependabot"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh caox campaigns enable dependabot"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh cao"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh aw compile\nwhoami"), /single line/);

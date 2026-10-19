@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/cliegress"
+	"github.com/githubnext/gh-cao/server/internal/cliegress"
 )
 
 func TestWorkloadEnvReplacesProxySettings(t *testing.T) {

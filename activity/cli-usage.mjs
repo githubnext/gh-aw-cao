@@ -25,7 +25,7 @@ export const ENTITY_COLLECTIONS = [
 ];
 export const NORMALIZED_COLLECTIONS = ['campaigns', ...ENTITY_COLLECTIONS];
 export const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
-export const DEFAULT_DEPLOYED_DATA_URL = 'https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json';
+export const DEFAULT_DEPLOYED_DATA_URL = 'https://githubnext.github.io/gh-cao/cao/payload-hashes.json';
 export const DEFAULT_OUTPUT_DIRECTORY = '.cao';
 export const DEFAULT_SHARDS_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs-shards`;
 export const DEFAULT_DATABASE_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.sqlite`;
@@ -101,9 +101,9 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao computation runtime-health --campaign dependabot --diagnose
   cao operational-value --output .cao/gh-aw-logs-shards/operational-values.jsonl --retention-days 30 --history-campaign optimization --max-github-api-rate-limit -2000
   cao cluster-problems
-  cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
-  cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
-  cao gh prs -R githubnext/gh-aw-cao -w cao-activity -L 10
+  cao gh runs -R githubnext/gh-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
+  cao gh issues -R githubnext/gh-cao --since 2026-09-01
+  cao gh prs -R githubnext/gh-cao -w cao-activity -L 10
 
 Update CAO:
   cao update                         Latest compatible published release
@@ -143,7 +143,7 @@ Agent analysis:
   Every discovery command emits JSON with --json; diagnostics stay on stderr.
   Named queries are the reviewed Dashboard Language queries of the deployed
   dashboard, so the CLI, the browser, and MCP return the same evidence.
-  Bootstrap guide: https://githubnext.github.io/gh-aw-cao/agent-analysis/
+  Bootstrap guide: https://githubnext.github.io/gh-cao/agent-analysis/
 
 Resources:
   runs    Workflow runs executed in --repo

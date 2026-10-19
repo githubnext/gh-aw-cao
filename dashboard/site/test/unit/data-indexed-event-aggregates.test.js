@@ -14,7 +14,7 @@ const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ 
   'as-of': '2026-10-02T20:00:00Z', 'artifact-generation': 'indexed-events',
   availability: 'available', completeness: 'complete', freshness: 'fresh'
 });
-const identity = { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/activity.md' };
+const identity = { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/activity.md' };
 const sources = {
   campaigns: { rows: [{ campaign: 'activity', 'campaign-enabled': true }], metadata },
   repositories: { rows: [identity], metadata },

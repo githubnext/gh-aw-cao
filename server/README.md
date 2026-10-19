@@ -1313,7 +1313,7 @@ Server-side collection and standalone collection roles are rejected. Policy
 validation requires `target.replicas: 1`, and operators must set the hosting
 platform itself to the same replica count. Do not configure the Upstash REST URL
 or REST token. For the operator procedure, see [Deploying the dashboard with Upstash
-Redis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-upstash.md).
+Redis](https://github.com/githubnext/gh-cao/blob/main/docs/deployment-upstash.md).
 
 ### Container image
 
@@ -1334,7 +1334,7 @@ docker build -f server/Dockerfile \
 ```
 
 The official `.github/workflows/cao-package.yml` workflow publishes the same
-image as `ghcr.io/githubnext/gh-aw-cao/cao-server`. Pushes to `main` receive an
+image as `ghcr.io/githubnext/gh-cao/cao-server`. Pushes to `main` receive an
 immutable `sha-<full-commit>` identity; published releases receive their exact
 Docker-safe semantic version tag. Use the resulting digest in downstream
 Compose files. Multiple services can share that digest and select

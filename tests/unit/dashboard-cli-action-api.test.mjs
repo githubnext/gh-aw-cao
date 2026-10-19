@@ -41,7 +41,7 @@ test("built-in update and upgrade actions carry CAO attribution as one PR messag
       const tokens = parseDashboardCommand(invocation.command);
       assert.deepEqual(tokens, [
         ...(update
-          ? ["gh", "aw", "update", "https://github.com/githubnext/gh-aw-cao/activity", "--repo", "acme/control"]
+          ? ["gh", "aw", "update", "https://github.com/githubnext/gh-cao/activity", "--repo", "acme/control"]
           : ["gh", "aw", "upgrade", "--repo", "octo/example"]),
         "--pr-message", message, ...(createPr ? ["--create-pull-request"] : []),
       ]);

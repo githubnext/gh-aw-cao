@@ -51,7 +51,7 @@ LABEL org.opencontainers.image.title="Central Agentic Ops dashboard server" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.created="${CREATED}" \
-      org.opencontainers.image.source="https://github.com/githubnext/gh-aw-cao"
+      org.opencontainers.image.source="https://github.com/githubnext/gh-cao"
 
 # Keep Alpine packages and CA roots current on rebuilds.
 # hadolint ignore=DL3018
@@ -95,7 +95,7 @@ LABEL org.opencontainers.image.title="Central Agentic Ops collector" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.created="${CREATED}" \
-      org.opencontainers.image.source="https://github.com/githubnext/gh-aw-cao"
+      org.opencontainers.image.source="https://github.com/githubnext/gh-cao"
 
 # Keep Alpine packages, CA roots, and the GitHub CLI current on rebuilds.
 # hadolint ignore=DL3018
@@ -151,7 +151,7 @@ RUN printf '%s' "${REVISION}" | grep -Eq '^[0-9a-f]{40}$' \
     -trimpath -buildvcs=false -ldflags="-s -w" \
     -o /out/cao-cli-relay ./cmd/cao-cli-relay \
     && sha256sum cao-cli-relay > cao-cli-relay.sha256 \
-    && printf '{"source":"https://github.com/githubnext/gh-aw-cao","revision":"%s","platform":"linux/%s","sha256":"%s"}\n' \
+    && printf '{"source":"https://github.com/githubnext/gh-cao","revision":"%s","platform":"linux/%s","sha256":"%s"}\n' \
       "${REVISION}" "${TARGETARCH}" "$(cut -d ' ' -f1 cao-cli-relay.sha256)" > cao-cli-relay.json
 
 FROM scratch AS hosted-cli-relay-artifact

@@ -88,7 +88,7 @@ func installCampaign(ctx context.Context, gh ghExecutor, spec string, options []
 	if err != nil {
 		return nil, err
 	}
-	if campaign == "gh-aw-cao" {
+	if campaign == "gh-cao" {
 		return nil, fmt.Errorf("add cannot install the CAO root package; use install.sh")
 	}
 	var sourceRoot string

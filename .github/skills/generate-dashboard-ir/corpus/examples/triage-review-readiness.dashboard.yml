@@ -5,7 +5,7 @@ dashboard:
   defaults:
     scope:
       repositories:
-        - githubnext/gh-aw-cao
+        - githubnext/gh-cao
       workflows:
         - .github/workflows/issue-triage-review.yml
     time:

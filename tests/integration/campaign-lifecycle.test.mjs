@@ -14,8 +14,8 @@ import test from "node:test";
 import { retryTransientCampaignInstall } from "../helpers/campaign-install-retry.mjs";
 
 const campaignSource = process.env.CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE
-  || "githubnext/gh-aw-cao@main";
-const campaignUpdateSource = "https://github.com/githubnext/gh-aw-cao";
+  || "githubnext/gh-cao@main";
+const campaignUpdateSource = "https://github.com/githubnext/gh-cao";
 // Public read-only identity for the disposable consumer's `origin`. It must
 // differ from the catalog because gh aw refuses to add workflows into their
 // own source repository; the consumer is never pushed.
@@ -219,7 +219,7 @@ function runUpdate(args, cwd) {
 
 async function installCampaign(source) {
   const packageName = source.slice(0, source.lastIndexOf("@"));
-  const campaign = packageName === "githubnext/gh-aw-cao"
+  const campaign = packageName === "githubnext/gh-cao"
     ? "root"
     : packageName.split("/").at(-1);
   return retryTransientCampaignInstall(() => {
@@ -305,7 +305,7 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
         registries: [{
           id: "official",
           name: "Official CAO catalog",
-          repository: "githubnext/gh-aw-cao",
+          repository: "githubnext/gh-cao",
           ref: "main",
           auth: { type: "none" },
         }, {

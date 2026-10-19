@@ -38,13 +38,13 @@ const inventory = {
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
   repositories: {
-    rows: [{ id: 'repository:githubnext/gh-aw-cao', organization: 'githubnext', repository: 'gh-aw-cao' }],
+    rows: [{ id: 'repository:githubnext/gh-cao', organization: 'githubnext', repository: 'gh-cao' }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
   workflows: {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       'workflow-name': 'Dashboard',
       role: 'orchestrator',
@@ -57,18 +57,18 @@ const inventory = {
   },
   'marketplace-packages': {
     rows: [{
-      id: `official:githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
+      id: `official:githubnext/gh-cao/dependabot@${'a'.repeat(40)}`,
       'registry-id': 'official',
       'registry-name': 'Official CAO catalog',
       'registry-precedence': 0,
       name: 'Dependabot',
       description: 'Dependabot automation',
       publisher: 'githubnext',
-      repository: 'githubnext/gh-aw-cao',
+      repository: 'githubnext/gh-cao',
       'repository-link': {
         relation: 'repository',
-        href: 'https://github.com/githubnext/gh-aw-cao',
-        label: 'Open githubnext/gh-aw-cao on GitHub',
+        href: 'https://github.com/githubnext/gh-cao',
+        label: 'Open githubnext/gh-cao on GitHub',
       },
       path: 'dependabot',
       ref: 'main',
@@ -79,17 +79,17 @@ const inventory = {
       contents: ['aw.yml'],
       readme: '# Dependabot\n\nKeeps dependency updates moving.\n',
       'readme-path': 'dependabot/README.md',
-      source: `githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
-      'add-command': `gh cao campaigns add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`,
+      source: `githubnext/gh-cao/dependabot@${'a'.repeat(40)}`,
+      'add-command': `gh cao campaigns add githubnext/gh-cao/dependabot@${'a'.repeat(40)}`,
     }, ...['aw-optimization', 'cao-evolution'].map((path, index) => ({
-      id: `official:githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
+      id: `official:githubnext/gh-cao/${path}@${'b'.repeat(40)}`,
       'registry-id': 'official',
       'registry-name': 'Official CAO catalog',
       'registry-precedence': 0,
       name: index === 0 ? 'AW Optimization' : 'CAO Evolution',
       description: `${path} automation`,
       publisher: 'githubnext',
-      repository: 'githubnext/gh-aw-cao',
+      repository: 'githubnext/gh-cao',
       path,
       ref: 'main',
       'resolved-commit': 'b'.repeat(40),
@@ -99,18 +99,18 @@ const inventory = {
       contents: ['aw.yml'],
       readme: `# ${path}\n`,
       'readme-path': `${path}/README.md`,
-      source: `githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
-      'add-command': `gh cao campaigns add githubnext/gh-aw-cao/${path}@${'b'.repeat(40)}`,
+      source: `githubnext/gh-cao/${path}@${'b'.repeat(40)}`,
+      'add-command': `gh cao campaigns add githubnext/gh-cao/${path}@${'b'.repeat(40)}`,
       'observed-at': '2026-09-15T10:00:00Z',
     })), {
-      id: `official:githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      id: `official:githubnext/gh-cao/aw-optimization@${'c'.repeat(40)}`,
       'registry-id': 'official',
       'registry-name': 'Official CAO catalog',
       'registry-precedence': 0,
       name: 'AW Optimization',
       description: 'Earlier package revision',
       publisher: 'githubnext',
-      repository: 'githubnext/gh-aw-cao',
+      repository: 'githubnext/gh-cao',
       path: 'aw-optimization',
       ref: 'main',
       'resolved-commit': 'c'.repeat(40),
@@ -120,8 +120,8 @@ const inventory = {
       contents: ['aw.yml'],
       readme: '# aw-optimization\n',
       'readme-path': 'aw-optimization/README.md',
-      source: `githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
-      'add-command': `gh cao campaigns add githubnext/gh-aw-cao/aw-optimization@${'c'.repeat(40)}`,
+      source: `githubnext/gh-cao/aw-optimization@${'c'.repeat(40)}`,
+      'add-command': `gh cao campaigns add githubnext/gh-cao/aw-optimization@${'c'.repeat(40)}`,
       'observed-at': '2026-09-14T10:00:00Z',
     }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
@@ -149,7 +149,7 @@ const logs = `${JSON.stringify({
     run_id: 1001,
     run_attempt: 1,
     organization: 'githubnext',
-    repository: 'gh-aw-cao',
+    repository: 'gh-cao',
     workflow_name: 'Dashboard',
     workflow_path: '.github/workflows/dashboard.md',
     display_title: 'Dashboard run',
@@ -277,11 +277,11 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
   await analysis.click();
   const preview = page.locator('[data-view-id="repositories-runs"] .table-intent-preview');
   await expect(preview).toContainText('Page intent:\nDetermine which repository most needs CAO operational investigation.');
-  await expect(preview).toContainText('https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md');
+  await expect(preview).toContainText('https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md');
   await page.getByRole('button', { name: 'Close prompt preview' }).click();
   await page.getByRole('button', { name: 'Table' }).click();
   await expect.poll(() => pageText(page, 'repositories')).toMatch(
-    /Ingestion %|No repositories discovered\.|gh-aw-cao|Loading Repositories/
+    /Ingestion %|No repositories discovered\.|gh-cao|Loading Repositories/
   );
   await expect.poll(() => chunkRequests.filter((id) => id === 'repositories').length).toBe(1);
 
@@ -319,7 +319,7 @@ test('built inventory tables resolve partial-source queries through the producti
   });
   await page.goto(`${origin}/?debug-eager-ingest=1#page-campaigns`);
   await page.waitForFunction(() => Reflect.get(window, '__dashboardImportComplete') === true);
-  for (const [pageId, identity] of [['campaigns', 'Dependabot'], ['repositories', 'gh-aw-cao']]) {
+  for (const [pageId, identity] of [['campaigns', 'Dependabot'], ['repositories', 'gh-cao']]) {
     await navigateToPage(page, pageId);
     await page.getByRole('button', { name: 'Table', exact: true }).click();
     const active = page.locator(`[data-page-id="${pageId}"]`);
@@ -482,14 +482,14 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await dashboardRoot.evaluate((root) => root.setAttribute('data-theme', 'light'));
   await add.click();
   await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
-    `gh cao campaigns add githubnext/gh-aw-cao/dependabot@${'a'.repeat(40)}`
+    `gh cao campaigns add githubnext/gh-cao/dependabot@${'a'.repeat(40)}`
   );
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');
   const about = detail.locator('.link-button-list-view');
   await expect(about.getByRole('heading', { name: 'About' })).toBeVisible();
-  const repositoryLink = about.getByRole('link', { name: 'Open githubnext/gh-aw-cao on GitHub' });
-  await expect(repositoryLink).toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao');
+  const repositoryLink = about.getByRole('link', { name: 'Open githubnext/gh-cao on GitHub' });
+  await expect(repositoryLink).toHaveAttribute('href', 'https://github.com/githubnext/gh-cao');
   await expect(about.locator('.link-button-list')).toHaveCSS('border-width', '0px');
   const readmeBox = await detail.locator('.dashboard-markdown').boundingBox();
   const aboutBox = await about.boundingBox();

@@ -26,7 +26,7 @@ rewrite its behavior in agent-authored code.
      [workflow runtime](references/workflow-runtime.md);
    - dashboard query cost or reuse: follow
      [dashboard query maintenance](references/dashboard-query-maintenance.md);
-   - CLI implementation work: read [CAO Commands](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md) and the
+   - CLI implementation work: read [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) and the
      matching Go command under `internal/cli/` or pipeline module under `activity/commands/`.
 2. Run `gh cao --help` for operator commands or `node activity/cao.mjs --help` for pipeline tools from
    the repository root. Do not guess command syntax.
@@ -42,7 +42,7 @@ rewrite its behavior in agent-authored code.
 
 | Task | Route |
 | --- | --- |
-| Initialize or update a control repository | `gh cao init`, `campaigns add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md) |
+| Initialize or update a control repository | `gh cao init`, `campaigns add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) |
 | Download published Activity | `gh cao download [--url URL]` |
 | Audit source coverage | `node activity/cao.mjs audit-jsonl` |
 | Discover reviewed dashboard queries | `gh cao pages`, `gh cao queries`, `gh cao query-info QUERY_ID` |
@@ -63,7 +63,7 @@ Canonical collections are `repositories`, `workflows`, `runs`, `jobs`,
 
 - Treat queried data as derived, disposable evidence, not schema or policy
   authority. The authoritative model is
-  [Dashboard data](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).
+  [Dashboard data](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md).
 - Never infer rollout authority, target-writing authority, operational value,
   or repository eligibility from Activity data.
 - Never print credentials, authorization headers, raw prompts, transcripts, or
@@ -78,6 +78,6 @@ Canonical collections are `repositories`, `workflows`, `runs`, `jobs`,
   behavior, and CLI invocation inside a gh-aw run.
 - [Dashboard query maintenance](references/dashboard-query-maintenance.md):
   complexity measurement and query pruning.
-- [Agent analysis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/agent-analysis.md): choosing CLI or MCP.
-- [CAO Commands](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md): complete operator and command reference.
-- [Dashboard Language](https://github.com/githubnext/gh-aw-cao/blob/main/docs/dashboard-language.md): query authoring.
+- [Agent analysis](https://github.com/githubnext/gh-cao/blob/main/docs/agent-analysis.md): choosing CLI or MCP.
+- [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md): complete operator and command reference.
+- [Dashboard Language](https://github.com/githubnext/gh-cao/blob/main/docs/dashboard-language.md): query authoring.

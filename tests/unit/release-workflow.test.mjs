@@ -210,7 +210,7 @@ if (args[0] === "api") {
   } else if (endpoint.includes("/git/ref/tags/")) console.log("commit\\t" + REVISION);
   else throw new Error("Unexpected API request: " + endpoint);
 } else if (args[0] === "release" && args[1] === "upload") {
-  if (args[2] !== RELEASE_TAG || args[3] !== "--repo" || args[4] !== "acme/gh-aw-cao") throw new Error("Unexpected upload");
+  if (args[2] !== RELEASE_TAG || args[3] !== "--repo" || args[4] !== "acme/gh-cao") throw new Error("Unexpected upload");
   writeFileSync(TEST_UPLOADS, JSON.stringify(args.slice(5)));
 } else if (!(args[0] === "run" && args[1] === "download") && !(args[0] === "attestation" && args[1] === "verify")) {
   throw new Error("Unexpected gh command: " + args.join(" "));
@@ -224,7 +224,7 @@ if (args[0] === "api") {
           ...process.env,
           PATH: `${bin}${delimiter}${process.env.PATH}`,
           GH_TOKEN: "",
-          GITHUB_REPOSITORY: "acme/gh-aw-cao",
+          GITHUB_REPOSITORY: "acme/gh-cao",
           GITHUB_OUTPUT: join(directory, "outputs"),
           GITHUB_STEP_SUMMARY: join(directory, "summary"),
           RUNNER_TEMP: directory,
@@ -273,7 +273,7 @@ test("publication refuses incomplete or unusable extension release assets", asyn
       const published = { ...release, draft: false, prerelease: true, immutable: true };
       const execute = () => runInNewContext(`(async () => { ${step.with.script} })()`, {
         process: { env: { RELEASE_ID: "123", RELEASE_TAG: "v1.2.3", RUNTIME_ARCHIVE: archive, REVISION: revision } },
-        context: { repo: { owner: "acme", repo: "gh-aw-cao" } },
+        context: { repo: { owner: "acme", repo: "gh-cao" } },
         github: {
           paginate: async () => assets,
           rest: {

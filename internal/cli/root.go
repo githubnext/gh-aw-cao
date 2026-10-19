@@ -7,7 +7,7 @@ import (
 	"github.com/github/gh-aw/pkg/logger"
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/internal/ghcli"
+	"github.com/githubnext/gh-cao/internal/ghcli"
 )
 
 var log = logger.New("cao:cli")

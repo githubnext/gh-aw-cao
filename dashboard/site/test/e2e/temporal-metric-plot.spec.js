@@ -15,7 +15,7 @@ for (const { width, history } of [1200, 390].flatMap((width) =>
   }));
   test(`operational-value ${history} tooltip opens the observed run report at ${width}px`, async ({ page, context }) => {
     await page.setViewportSize({ width, height: 844 });
-    await context.route('https://github.com/githubnext/gh-aw-cao/actions/runs/101', (route) => route.fulfill({
+    await context.route('https://github.com/githubnext/gh-cao/actions/runs/101', (route) => route.fulfill({
       contentType: 'text/html', body: '<h1>Run report 101</h1>'
     }));
     await page.setContent(`
@@ -88,7 +88,7 @@ for (const { width, history } of [1200, 390].flatMap((width) =>
     const popup = page.waitForEvent('popup');
     await page.keyboard.press('Enter');
     const report = await popup;
-    await expect(report).toHaveURL('https://github.com/githubnext/gh-aw-cao/actions/runs/101');
+    await expect(report).toHaveURL('https://github.com/githubnext/gh-cao/actions/runs/101');
     await expect(report.getByRole('heading', { name: 'Run report 101' })).toBeVisible();
   });
 }

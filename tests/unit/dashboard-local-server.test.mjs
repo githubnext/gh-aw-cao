@@ -149,7 +149,7 @@ test("local GitHub routes enforce read-only same-origin access and advertise the
   try {
     const html = await (await fetch(`${preview.url}/`)).text();
     assert.match(html, /<meta name="dashboard-github-api-base" content="[^"]*\/">/);
-    const resource = `${preview.url}/api/v1/github/repos/githubnext/gh-aw-cao`;
+    const resource = `${preview.url}/api/v1/github/repos/githubnext/gh-cao`;
     for (const endpoint of [resource, `${resource}/releases/latest`]) {
       for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]) {
         const rejected = await fetch(endpoint, { method });

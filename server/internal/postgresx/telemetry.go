@@ -16,7 +16,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 const (
@@ -54,7 +54,7 @@ func instrumentConfig(config *pgx.ConnConfig) (*pgx.ConnConfig, error) {
 }
 
 func newQueryTracer() (*queryTracer, error) {
-	meter := otel.Meter("github.com/githubnext/gh-aw-cao/server")
+	meter := otel.Meter("github.com/githubnext/gh-cao/server")
 	count, err := meter.Int64Counter(postgresQueryCount,
 		metric.WithUnit("{query}"),
 		metric.WithDescription("Postgres statements by fixed operation and outcome"))

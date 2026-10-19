@@ -20,7 +20,7 @@ Workers are independently dispatchable and handle exactly one authorized target 
 Install the campaign into a Central Agentic Ops control repository:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/optimization
+gh aw add githubnext/gh-cao/optimization
 ```
 
 The campaign is runnable after credentials, when needed, and checked-in policy are configured.

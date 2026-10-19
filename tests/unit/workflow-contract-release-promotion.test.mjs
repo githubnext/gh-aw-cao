@@ -238,5 +238,5 @@ test("only promotion is approval-gated; automated prerelease publication and PR 
     assert.equal(ci.jobs.gate, undefined);
   }
   assert.equal(parse(read(".github/github-app.yml")).scripts[0].command,
-    "node scripts/verify-release-environment.mjs githubnext/gh-aw-cao");
+    "node scripts/verify-release-environment.mjs githubnext/gh-cao");
 });

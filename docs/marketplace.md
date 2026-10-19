@@ -62,7 +62,7 @@ registry wins.
         {
           "id": "official",
           "name": "Official CAO catalog",
-          "repository": "githubnext/gh-aw-cao",
+          "repository": "githubnext/gh-cao",
           "ref": "main",
           "auth": { "type": "none" }
         },

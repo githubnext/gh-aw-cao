@@ -12,8 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/auditdelivery"
-	"github.com/githubnext/gh-aw-cao/server/internal/server"
+	"github.com/githubnext/gh-cao/server/internal/auditdelivery"
+	"github.com/githubnext/gh-cao/server/internal/server"
 )
 
 func newAuditDeliverCommand() *cobra.Command {

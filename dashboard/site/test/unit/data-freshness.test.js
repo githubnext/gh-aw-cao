@@ -45,7 +45,7 @@ async function ingest(timestamp) {
   return ingestCachedGhAwJsonl(indexedDB, JSON.stringify({
     schema_version: 2, kind: 'run',
     run: {
-      run_id: 1234, run_attempt: 1, organization: 'githubnext', repository: 'gh-aw-cao',
+      run_id: 1234, run_attempt: 1, organization: 'githubnext', repository: 'gh-cao',
       workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', conclusion: 'success', created_at: timestamp, updated_at: timestamp
     }

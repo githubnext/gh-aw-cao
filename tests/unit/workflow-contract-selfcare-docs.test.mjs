@@ -130,7 +130,7 @@ test("SelfCare documentation discoverability audits the public agent entry point
   assert.match(source, /^name: "SelfCare \/ Documentation Discoverability"$/m);
   assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: documentation-discoverability/);
   assert.match(source, /safe_output_mode` is `live`/);
-  assert.match(source, /githubnext\.github\.io\/gh-aw-cao\/llms\.txt/);
+  assert.match(source, /githubnext\.github\.io\/gh-cao\/llms\.txt/);
   assert.match(source, /llms-small\.txt/);
   assert.match(source, /agent\/resources\.json/);
   assert.match(source, /resource\.json/);
@@ -154,7 +154,7 @@ test("SelfCare documentation discoverability audits the public agent entry point
 test("SelfCare accessibility checker audits the served docs site with axe-core evidence", () => {
   const source = workflow("self-care-accessibility-checker.md");
   const compiled = workflow("self-care-accessibility-checker.lock.yml");
-  const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
+  const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
 
   assert.match(source, /^name: "SelfCare \/ Accessibility"$/m);
   assert.match(source, /workflow_dispatch:/);
@@ -286,7 +286,7 @@ test("SelfCare docs build-time investigator rotates evidenced recommendations", 
   assert.match(source, /at most the latest 20 completed `docs\.yml` runs from the last 14 days/);
   assert.match(source, /median and p90 durations/);
   assert.match(source, /repo-memory:\n\s+branch-name: memory\/self-care-docs-build-time/);
-  assert.match(source, /githubnext__gh-aw-cao__docs-build-time-suggestions\.json/);
+  assert.match(source, /githubnext__gh-cao__docs-build-time-suggestions\.json/);
   assert.match(source, /Advance `next_category` after every complete evaluation/);
   assert.match(source, /noop cap is two only to tolerate one accidental placeholder call/);
   assert.match(source, /Call `create_issue` exactly once/);

@@ -198,14 +198,14 @@ test("App setup verifies every selected repository and fails closed on unreadabl
 
 test("existing App dry run supports enterprise scope without credentials or new manifests", () => {
   const result = spawnSync(script, [
-    "--repo", "githubnext/gh-aw-cao", "--read-client-id", "Iv1.read", "--write-client-id", "Iv1.write", "--dry-run",
+    "--repo", "githubnext/gh-cao", "--read-client-id", "Iv1.read", "--write-client-id", "Iv1.write", "--dry-run",
   ], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.deepEqual(output.apps.map(({ clientId }) => clientId), ["Iv1.read", "Iv1.write"]);
   assert.ok(output.apps.every((app) => !Object.hasOwn(app, "manifest")));
   assert.ok(output.installationTargets.read.some(({ owner }) => owner === "github"));
-  assert.deepEqual(output.installationTargets.write, [{ owner: "githubnext", repositories: ["gh-aw-cao"] }]);
+  assert.deepEqual(output.installationTargets.write, [{ owner: "githubnext", repositories: ["gh-cao"] }]);
   assert.doesNotMatch(result.stdout, /pem|PRIVATE KEY/);
 });
 
@@ -384,12 +384,12 @@ test("organization dry run emits private manifests without requiring GitHub acce
     version: 1,
     "gh-aw-version": "v0.89.21",
     "control-plane": {
-      scope: { "allowed-repositories": ["githubnext/gh-aw-cao"] },
+      scope: { "allowed-repositories": ["githubnext/gh-cao"] },
       campaigns: {},
     },
   }));
   const result = spawnSync(script, [
-    "--repo", "githubnext/gh-aw-cao",
+    "--repo", "githubnext/gh-cao",
     "--policy", policy,
     "--dry-run",
   ], {
@@ -426,14 +426,14 @@ test("organization dry run emits private manifests without requiring GitHub acce
 
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.repo, "githubnext/gh-aw-cao");
+  assert.equal(output.repo, "githubnext/gh-cao");
   assert.deepEqual(output.installationTargets.write, [
-    { owner: "githubnext", repositories: ["gh-aw-cao"] },
+    { owner: "githubnext", repositories: ["gh-cao"] },
   ]);
   assert.ok(output.apps.every((app) => app.manifest.public === false));
   assert.deepEqual(output.apps.map((app) => app.manifest.name), [
-    "cao-githubnext-gh-aw-cao-read",
-    "cao-githubnext-gh-aw-cao-write",
+    "cao-githubnext-gh-cao-read",
+    "cao-githubnext-gh-cao-write",
   ]);
   assert.deepEqual(output.apps.map((app) => app.manifest.redirect_url), [
     "http://127.0.0.1:0/callback",
@@ -442,7 +442,7 @@ test("organization dry run emits private manifests without requiring GitHub acce
 });
 
 test("organization App setup rejects cross-organization policy scope", () => {
-  const result = spawnSync(script, ["--repo", "githubnext/gh-aw-cao", "--dry-run"], {
+  const result = spawnSync(script, ["--repo", "githubnext/gh-cao", "--dry-run"], {
     encoding: "utf8",
   });
 
@@ -467,7 +467,7 @@ test("cao-setup is exposed as an executable Node CLI", (t) => {
 test("App setup validates callback codes and bounded generated names", () => {
   assert.equal(isManifestCode("abc_DEF-123"), true);
   assert.equal(isManifestCode("../bad"), false);
-  assert.equal(deriveAppName("githubnext/gh-aw-cao", "read"), "cao-githubnext-gh-aw-cao-read");
+  assert.equal(deriveAppName("githubnext/gh-cao", "read"), "cao-githubnext-gh-cao-read");
   assert.equal(
     deriveAppName("octodemo/zava-social-cao-ops-20260929111840", "read"),
     "cao-octodemo-zava-social-cao-read",

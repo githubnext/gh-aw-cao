@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const nativeDefaultDataURL = "https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json"
+const nativeDefaultDataURL = "https://githubnext.github.io/gh-cao/cao/payload-hashes.json"
 
 var nativeDigestPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 

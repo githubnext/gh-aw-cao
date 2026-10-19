@@ -298,7 +298,7 @@ func nativeSetup(cmd *cobra.Command, gh ghExecutor) error {
 	if result["cancelled"] == true {
 		return nil
 	}
-	_, err = fmt.Fprint(cmd.OutOrStdout(), "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nAdd your first campaign separately with gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN.\n")
+	_, err = fmt.Fprint(cmd.OutOrStdout(), "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nAdd your first campaign separately with gh cao campaigns add githubnext/gh-cao/CAMPAIGN.\n")
 	return err
 }
 

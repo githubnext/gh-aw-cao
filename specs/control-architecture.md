@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md  
+**Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md
 **Editors:** GitHub Next
 
 ## Abstract
@@ -235,7 +235,7 @@ The orchestrator is the rollout decision point. Each worker is an independent en
 
 **CAO-CFG-006:** A control repository MUST declare `gh-aw-version` as a `v`-prefixed semantic version. Infrastructure that installs the gh-aw CLI MUST use this value as its compiler-version source of truth. The field does not grant execution capability or rollout authority.
 
-The `$schema` property SHOULD identify `https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json`.
+The `$schema` property SHOULD identify `https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json`.
 
 ### 5.2 Document Roles
 
@@ -482,7 +482,7 @@ The effective record SHOULD contain only identifiers and provenance required for
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
+  "$schema": "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
   "control-plane": {
     "scope": {

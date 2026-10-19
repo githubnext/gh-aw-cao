@@ -99,7 +99,7 @@ safe-outputs:
     max: 50
   threat-detection: false
 
-source: githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
+source: githubnext/gh-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
 ---
 
 # Dependabot

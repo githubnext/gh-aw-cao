@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/collect"
+	"github.com/githubnext/gh-cao/server/internal/collect"
 )
 
 // fakeLookPath and fakeStat are the injected probes for missingTooling. A

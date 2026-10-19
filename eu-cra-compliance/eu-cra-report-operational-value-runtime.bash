@@ -20,7 +20,7 @@ definition() {
       {
         schemaVersion: 4,
         grader: "operational-value",
-        repository: "githubnext/gh-aw-cao",
+        repository: "githubnext/gh-cao",
         workflowName: $workflowName,
         sourcePath: $sourcePath,
         adoption: {
@@ -32,7 +32,7 @@ definition() {
           opportunity: $opportunity,
           assignment: "Bind targetRepo and evidenceRepo from workflow_dispatch inputs, then freeze the matching report issue and its machine-readable target commit; key cra:<domain>:<targetRepo>:<targetSha>. Duplicate runs for the same target snapshot share the opportunity.",
           accepted: $accepted,
-          repositories: ["githubnext/gh-aw-cao"],
+          repositories: ["githubnext/gh-cao"],
           collection: "Read the report marker once to freeze the target commit, then read issue reactions through the capped evidence cutoff. Count only a thumbs-up reaction from a non-bot GitHub user.",
           maturation: "Thirty days after the worker run starts, matching the report issue expiry.",
           zeroRule: "Complete evidence for a matching report with no non-bot human acceptance reaction scores 0.",

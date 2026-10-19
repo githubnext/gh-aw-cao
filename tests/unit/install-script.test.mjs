@@ -56,7 +56,7 @@ const addedFiles = [
 ];
 
 const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "cao-install-fixture-"));
-const archive = path.join(fixtureRoot, "gh-aw-cao.tar.gz");
+const archive = path.join(fixtureRoot, "gh-cao.tar.gz");
 const archiveName = path.basename(archive);
 const runtimeArchive = buildCaoRuntime(catalog, fixtureRoot, revision).archive;
 const mockFetch = path.join(fixtureRoot, "mock-fetch.mjs");
@@ -102,7 +102,7 @@ if (process.env.FAKE_GH_SCRIPT && [process.execPath, process.argv0].some((execut
  process.exit(result.status ?? 1);
 }
 
-const expected = "https://codeload.github.com/githubnext/gh-aw-cao/tar.gz/${revision}";
+const expected = "https://codeload.github.com/githubnext/gh-cao/tar.gz/${revision}";
 const responses = process.env.FAKE_GITHUB_RESPONSES ? JSON.parse(process.env.FAKE_GITHUB_RESPONSES) : {};
 globalThis.fetch = async (input) => {
   const url = typeof input === "string" ? input : input.url ?? String(input);
@@ -140,7 +140,7 @@ if [[ "$*" == "auth status" ]]; then
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
   exit 0
 fi
-if [[ "$*" == "api --hostname github.com --paginate repos/githubnext/gh-aw-cao/releases?per_page=100 --jq .[] | [.draft, .prerelease, .tag_name] | @tsv" ]]; then
+if [[ "$*" == "api --hostname github.com --paginate repos/githubnext/gh-cao/releases?per_page=100 --jq .[] | [.draft, .prerelease, .tag_name] | @tsv" ]]; then
   [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 1; }
   printf '%b\\n' "\${FAKE_CAO_RELEASE_LIST:-false\\\\tfalse\\\\t\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}}"
   exit 0
@@ -227,8 +227,8 @@ if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")" >&2
   exit 0
 fi
-if [[ "\${1:-} \${2:-}" == "aw add" && "\${3:-}" == githubnext/gh-aw-cao* ]]; then
-  [[ "\${3:-}" == githubnext/gh-aw-cao || "\${3:-}" == githubnext/gh-aw-cao@* ]] || { echo "unexpected CAO package: \${3:-}" >&2; exit 2; }
+if [[ "\${1:-} \${2:-}" == "aw add" && "\${3:-}" == githubnext/gh-cao* ]]; then
+  [[ "\${3:-}" == githubnext/gh-cao || "\${3:-}" == githubnext/gh-cao@* ]] || { echo "unexpected CAO package: \${3:-}" >&2; exit 2; }
   [[ -z "\${FAKE_EXPECT_CAO_SOURCE:-}" || "\${3:-}" == "$FAKE_EXPECT_CAO_SOURCE" ]] ||
     { echo "expected CAO package $FAKE_EXPECT_CAO_SOURCE, got \${3:-}" >&2; exit 2; }
   stdin_bytes="$(wc -c | tr -d ' ')"
@@ -248,8 +248,8 @@ if [[ "\${1:-} \${2:-}" == "aw add" && "\${3:-}" == githubnext/gh-aw-cao* ]]; th
 ${addedFiles.map(({ source, destination }) => `  mkdir -p "$(dirname '${destination}')"
   cp "$FAKE_CATALOG/${source}" '${destination}'`).join("\n")}
   mkdir -p .github/aw/packages
-  cat > .github/aw/packages/githubnext-gh-aw-cao-c6b3479204cc.json <<'EOF'
-{"package":"githubnext/gh-aw-cao","source":"githubnext/gh-aw-cao@${revision}","resolvedCommit":"${revision}"}
+  cat > .github/aw/packages/githubnext-gh-cao-c6b3479204cc.json <<'EOF'
+{"package":"githubnext/gh-cao","source":"githubnext/gh-cao@${revision}","resolvedCommit":"${revision}"}
 EOF
   exit 0
 fi
@@ -268,7 +268,7 @@ while [[ $# -gt 0 ]]; do
     *) shift ;;
   esac
 done
-if [[ "$url" == https://github.com/githubnext/gh-aw-cao/releases/download/* ]]; then
+if [[ "$url" == https://github.com/githubnext/gh-cao/releases/download/* ]]; then
   echo "$url" >> "$FAKE_CAO_DOWNLOADS"
   [[ -z "\${FAKE_CAO_BINARY_FAILURE:-}" ]] || { echo "binary download failed" >&2; exit 22; }
   asset="\${url##*/}"
@@ -425,7 +425,7 @@ async function assertCompleteInstall(consumer, env, ghAwVersion, repository, { a
       registries: [{
         id: "official",
         name: "Official CAO catalog",
-        repository: "githubnext/gh-aw-cao",
+        repository: "githubnext/gh-cao",
         ref: "main",
         auth: { type: "none" },
       }, {
@@ -760,7 +760,7 @@ test("install.sh reruns restore missing policy without replacing consumer policy
   assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
   assert.equal(await exists(path.join(consumer, "cao.sh")), false);
 
-  await runFile(consumer, withoutLookup, ["githubnext/gh-aw-cao@v1.2.3"]);
+  await runFile(consumer, withoutLookup, ["githubnext/gh-cao@v1.2.3"]);
   assert.equal(await log(), "add\nadd-force\n");
   assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
 
@@ -770,7 +770,7 @@ test("install.sh reruns restore missing policy without replacing consumer policy
     "control-plane": { scope: { "allowed-owners": ["alpha-org"] }, campaigns: {} },
   })}\n`;
   await writeFile(path.join(consumer, policyPath), ownerPolicy);
-  await streamInstaller(consumer, withoutLookup, ["githubnext/gh-aw-cao@v1.2.3"]);
+  await streamInstaller(consumer, withoutLookup, ["githubnext/gh-cao@v1.2.3"]);
   assert.equal(await log(), "add\nadd-force\nadd-force\n");
   assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), ownerPolicy);
   await executeFile(process.execPath, [path.join(".github", "workflows", "shared", "control.mjs"), "validate-policy", policyPath], {
@@ -1243,7 +1243,7 @@ test("implicit quickstart pins the latest stable CAO release", async (t) => {
     ...env,
     CI: "1",
     FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@v1.2.3",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.3",
   }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
@@ -1257,7 +1257,7 @@ test("quickstart skips malformed tags, drafts, and prereleases when selecting a 
     ...env,
     CI: "1",
     FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@v1.2.3",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.3",
     FAKE_CAO_RELEASE_LIST: [
       "false\tfalse\tuntagged-a58de5448231a0eed5d3",
       "true\tfalse\tv1.3.0",
@@ -1310,7 +1310,7 @@ test("implicit quickstart refreshes an existing control plane to the stable rele
     ...env,
     CI: "1",
     FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@v1.2.3",
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.3",
   }, ["--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
@@ -1324,8 +1324,8 @@ test("quickstart preserves an explicit main source", async (t) => {
     ...env,
     CI: "1",
     FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-aw-cao@main",
-  }, ["githubnext/gh-aw-cao@main", "--quickstart", "--target", "alpha-org/project"]);
+    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@main",
+  }, ["githubnext/gh-cao@main", "--quickstart", "--target", "alpha-org/project"]);
 
   assert.notEqual(result.code, 0);
   assert.doesNotMatch(result.stdout + result.stderr, /Unable to resolve the latest stable CAO release/);
@@ -1350,7 +1350,7 @@ test("quickstart fails closed when no stable CAO release can be resolved", async
 
 test("an explicit release downloads the matching Go binary without a latest-release lookup", async (t) => {
   const { consumer, env } = await createConsumer(t, supportedGhAw);
-  await streamInstaller(consumer, { ...env, FAKE_LATEST_CAO_RELEASE_FAILURE: "1" }, ["githubnext/gh-aw-cao@v2.3.4"]);
+  await streamInstaller(consumer, { ...env, FAKE_LATEST_CAO_RELEASE_FAILURE: "1" }, ["githubnext/gh-cao@v2.3.4"]);
   const downloads = await readFile(env.FAKE_CAO_DOWNLOADS, "utf8");
   assert.match(downloads, /\/v2\.3\.4\/gh-cao-(?:darwin|linux|windows)-(?:amd64|arm64)(?:\.exe)?\n/);
   assert.match(downloads, /\/v2\.3\.4\/checksums\.txt\n/);
@@ -1432,8 +1432,8 @@ for (const [system, machine, asset] of [
     await runExtensionInstaller(consumer, installEnv);
     const downloads = (await readFile(env.FAKE_CAO_DOWNLOADS, "utf8")).trim().split("\n");
     assert.deepEqual(downloads, [
-      `https://github.com/githubnext/gh-aw-cao/releases/download/v1.2.3/gh-cao-${asset}`,
-      "https://github.com/githubnext/gh-aw-cao/releases/download/v1.2.3/checksums.txt",
+      `https://github.com/githubnext/gh-cao/releases/download/v1.2.3/gh-cao-${asset}`,
+      "https://github.com/githubnext/gh-cao/releases/download/v1.2.3/checksums.txt",
     ]);
     const extensionRoot = useLocalAppData
       ? path.join(installEnv.LOCALAPPDATA, "GitHub CLI")

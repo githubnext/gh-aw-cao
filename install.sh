@@ -393,7 +393,7 @@ resolve_latest_cao_release() {
   local prerelease
   local release
   if releases="$(gh api --hostname github.com --paginate \
-    'repos/githubnext/gh-aw-cao/releases?per_page=100' \
+    'repos/githubnext/gh-cao/releases?per_page=100' \
     --jq '.[] | [.draft, .prerelease, .tag_name] | @tsv')"; then
     while IFS=$'\t' read -r draft prerelease release; do
       if [[ "$draft" == false && "$prerelease" == false &&
@@ -405,7 +405,7 @@ resolve_latest_cao_release() {
   fi
   printf '%s\n' \
     'Unable to resolve the latest stable CAO release with a vX.Y.Z tag.' \
-    'Retry after GitHub release access is restored, or pass an explicit published tag such as githubnext/gh-aw-cao@vX.Y.Z.' \
+    'Retry after GitHub release access is restored, or pass an explicit published tag such as githubnext/gh-cao@vX.Y.Z.' \
     'No CAO files were written.' >&2
   return 1
 }
@@ -449,7 +449,7 @@ install_cao_extension() (
   trap 'exit 143' TERM
   asset="gh-cao-$os-$arch$suffix"
   info "Downloading gh cao $release for $os-$arch..."
-  local base_url="https://github.com/githubnext/gh-aw-cao/releases/download/$release"
+  local base_url="https://github.com/githubnext/gh-cao/releases/download/$release"
   curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 120 \
     "$base_url/$asset" -o "$binary"
   curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 60 \
@@ -515,7 +515,7 @@ main() {
   local runtime_action=".github/actions/setup-cao-runtime/action.yml"
   local required_gh="v2.68.0"
   local required_gh_aw="v0.92.5"
-  local catalog_source="githubnext/gh-aw-cao"
+  local catalog_source="githubnext/gh-cao"
   local package_source
   local explicit_source=false
   local setup=false
@@ -705,12 +705,12 @@ main() {
     if ! quickstart_release="$(resolve_latest_cao_release)"; then
       return 1
     fi
-    catalog_source="githubnext/gh-aw-cao@$quickstart_release"
+    catalog_source="githubnext/gh-cao@$quickstart_release"
     explicit_source=true
     note "Quickstart selected stable CAO release $quickstart_release."
   fi
 
-  if [[ "$catalog_source" =~ ^githubnext/gh-aw-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+  if [[ "$catalog_source" =~ ^githubnext/gh-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
     extension_release="${BASH_REMATCH[1]}"
   elif ! extension_release="$(resolve_latest_cao_release)"; then
     return 1
@@ -724,7 +724,7 @@ main() {
   else
     package_source="$catalog_source"
   fi
-  if [[ "$catalog_source" == "githubnext/gh-aw-cao" && -f aw.yml ]]; then
+  if [[ "$catalog_source" == "githubnext/gh-cao" && -f aw.yml ]]; then
     manifest_required_gh_aw="$(awk '$1 == "min-version:" { print $2; exit }' aw.yml)"
     if [[ -n "$manifest_required_gh_aw" ]]; then
       required_gh_aw="$manifest_required_gh_aw"

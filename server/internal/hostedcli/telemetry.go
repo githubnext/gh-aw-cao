@@ -13,7 +13,7 @@ import (
 )
 
 // instrumentationName is the scope shared with the rest of the CAO server.
-const instrumentationName = "github.com/githubnext/gh-aw-cao/server"
+const instrumentationName = "github.com/githubnext/gh-cao/server"
 
 // Span and metric names are stable. Metric attributes are low-cardinality
 // fixed values; repositories and command IDs appear only on spans. Actors

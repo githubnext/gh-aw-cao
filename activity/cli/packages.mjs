@@ -75,8 +75,8 @@ export async function installedCampaignRecords(root = process.cwd(), { caoOnly =
             ? record.source.split('@')[0].trim()
             : '';
       if (!campaignName || (caoOnly
-        && campaignName !== 'githubnext/gh-aw-cao'
-        && !campaignName.startsWith('githubnext/gh-aw-cao/'))) {
+        && campaignName !== 'githubnext/gh-cao'
+        && !campaignName.startsWith('githubnext/gh-cao/'))) {
         continue;
       }
       records.set(campaignName, {
@@ -130,7 +130,7 @@ export async function prepareInstalledPackageReleaseSource(
     const tags = execute('gh', [
       'api',
       '--paginate',
-      '/repos/githubnext/gh-aw-cao/tags',
+      '/repos/githubnext/gh-cao/tags',
       '--jq',
       `.[] | select(.commit.sha == "${record.resolvedCommit}") | .name`
     ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
@@ -143,7 +143,7 @@ export async function prepareInstalledPackageReleaseSource(
       const prereleaseFilter = includePrereleases ? 'true' : '.prerelease == false';
       const release = execute('gh', [
         'api',
-        `/repos/githubnext/gh-aw-cao/releases/tags/${encodeURIComponent(candidate)}`,
+        `/repos/githubnext/gh-cao/releases/tags/${encodeURIComponent(candidate)}`,
         '--jq',
         `select(.draft == false and ${prereleaseFilter}) | .tag_name`
       ], { encoding: 'utf8' });
@@ -161,7 +161,7 @@ export async function prepareInstalledPackageReleaseSource(
     const releases = execute('gh', [
       'api',
       '--paginate',
-      '/repos/githubnext/gh-aw-cao/releases?per_page=100',
+      '/repos/githubnext/gh-cao/releases?per_page=100',
       '--jq',
       '.[] | select(.draft == false) | .tag_name'
     ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });

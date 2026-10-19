@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The CAO dashboard previously organized navigation around a different set of views, including legacy and investigative navigation groups. This pull request (githubnext/gh-aw-cao#4609, `improve-roadmap-views` → `main`, authored by mnkiefer) redesigns the dashboard around five primary destinations: "Home", "Work", "Agents", "Insights", and "Settings":
+The CAO dashboard previously organized navigation around a different set of views, including legacy and investigative navigation groups. This pull request (githubnext/gh-cao#4609, `improve-roadmap-views` → `main`, authored by mnkiefer) redesigns the dashboard around five primary destinations: "Home", "Work", "Agents", "Insights", and "Settings":
 
 - "Home" is described as an attention-first catch-up experience grounded in retained evidence.
 - "Work" provides GitHub Projects-style Board, Tasks, and Roadmap views, with the Roadmap supporting Day, Week, Month, Quarter, and Year zoom levels, and shows safe-output primitives, actor roles, and a current-date marker.

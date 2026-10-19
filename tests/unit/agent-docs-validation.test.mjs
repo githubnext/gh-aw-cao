@@ -10,7 +10,7 @@ import {
 } from "../../scripts/validate-agent-docs.mjs";
 
 const roots = [];
-const pagesBase = "https://githubnext.github.io/gh-aw-cao";
+const pagesBase = "https://githubnext.github.io/gh-cao";
 const taskRoutes = [
   ["Set up a CAO control plane", "setup-cao"],
   ["Debug a CAO failure", "debug-cao"],
@@ -50,7 +50,7 @@ async function createFixture() {
     await mkdir(directory, { recursive: true });
     await writeFile(
       path.join(directory, "index.html"),
-      `<head><link rel="describedby" href="/gh-aw-cao/agent/llms.txt"><link rel="index" type="application/json" href="/gh-aw-cao/agent/resources.json"><link rel="alternate" type="application/json" href="/gh-aw-cao/${route}/index.json"></head>`,
+      `<head><link rel="describedby" href="/gh-cao/agent/llms.txt"><link rel="index" type="application/json" href="/gh-cao/agent/resources.json"><link rel="alternate" type="application/json" href="/gh-cao/${route}/index.json"></head>`,
     );
     const sourceContent = `# ${route}\n`;
     const sourcePath = `docs/${route}.md`;
@@ -79,12 +79,12 @@ async function createFixture() {
       title: route,
       url: `${pagesBase}/${route}/`,
       source: {
-        repository: "githubnext/gh-aw-cao",
+        repository: "githubnext/gh-cao",
         path: sourcePath,
-        url: `https://github.com/githubnext/gh-aw-cao/blob/main/${sourcePath}`,
+        url: `https://github.com/githubnext/gh-cao/blob/main/${sourcePath}`,
       },
       links: [{ rel: "canonical", href: `${pagesBase}/${route}/` }],
-      provenance: { repository: "githubnext/gh-aw-cao", generator: "test", generatorVersion: "1" },
+      provenance: { repository: "githubnext/gh-cao", generator: "test", generatorVersion: "1" },
       freshness: { generatedAt: "2026-09-27T23:00:00.000Z" },
       integrity: {
         algorithm: "sha256",
@@ -110,7 +110,7 @@ async function createFixture() {
   await writeFile(path.join(docs, "README.md"), indexSource);
   await writeFile(
     path.join(dist, "index.html"),
-    '<head><link rel="describedby" href="/gh-aw-cao/agent/llms.txt"><link rel="index" type="application/json" href="/gh-aw-cao/agent/resources.json"><link rel="alternate" type="application/json" href="/gh-aw-cao/index.json"></head>',
+    '<head><link rel="describedby" href="/gh-cao/agent/llms.txt"><link rel="index" type="application/json" href="/gh-cao/agent/resources.json"><link rel="alternate" type="application/json" href="/gh-cao/index.json"></head>',
   );
   await writeFile(path.join(dist, "index.json"), JSON.stringify({
     schemaVersion: "1",
@@ -119,12 +119,12 @@ async function createFixture() {
     title: "Central Agentic Ops",
     url: `${pagesBase}/`,
     source: {
-      repository: "githubnext/gh-aw-cao",
+      repository: "githubnext/gh-cao",
       path: "docs/README.md",
-      url: "https://github.com/githubnext/gh-aw-cao/blob/main/docs/README.md",
+      url: "https://github.com/githubnext/gh-cao/blob/main/docs/README.md",
     },
     links: [{ rel: "canonical", href: `${pagesBase}/` }],
-    provenance: { repository: "githubnext/gh-aw-cao", generator: "test", generatorVersion: "1" },
+    provenance: { repository: "githubnext/gh-cao", generator: "test", generatorVersion: "1" },
     freshness: { generatedAt: "2026-09-27T23:00:00.000Z" },
     integrity: {
       algorithm: "sha256",
@@ -139,7 +139,7 @@ async function createFixture() {
   });
   const skillLinks = taskRoutes.map(
     ([task, skill]) =>
-      `- [${task}](https://github.com/githubnext/gh-aw-cao/blob/main/skills/${skill}/SKILL.md)`,
+      `- [${task}](https://github.com/githubnext/gh-cao/blob/main/skills/${skill}/SKILL.md)`,
   );
   for (const [, skill] of taskRoutes) {
     await mkdir(path.join(skills, skill), { recursive: true });
@@ -204,7 +204,7 @@ test("rejects a missing required route", async () => {
   const indexPath = path.join(root, "dist", "llms.txt");
   const index = await import("node:fs/promises").then(({ readFile }) => readFile(indexPath, "utf8"));
   await writeFile(indexPath, index.replace(
-    "- [Analyze CAO activity](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md)\n",
+    "- [Analyze CAO activity](https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md)\n",
     "",
   ));
   assert.ok((await validateAgentDocs({ root })).some((error) => error.includes("Analyze CAO activity")));
@@ -216,7 +216,7 @@ test("rejects an ambiguous one-hop task route", async () => {
   const index = await readFile(indexPath, "utf8");
   await writeFile(indexPath, index.replace(
     "skills/analyze-cao/SKILL.md)",
-    "skills/analyze-cao/SKILL.md) [debug](https://github.com/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md)",
+    "skills/analyze-cao/SKILL.md) [debug](https://github.com/githubnext/gh-cao/blob/main/skills/debug-cao/SKILL.md)",
   ));
   assert.ok((await validateAgentDocs({ root })).some((error) => error.includes("only the analyze-cao skill")));
 });

@@ -57,12 +57,12 @@ control repository or selecting a non-public target.
 ## Preferred human flow
 
 For a separate control repository, prefer interactive setup.
-For a new repository, use the review-before-apply [setup quickstart](https://github.com/githubnext/gh-aw-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
+For a new repository, use the review-before-apply [setup quickstart](https://github.com/githubnext/gh-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
 The installer's `--setup` flag enters `gh cao setup` directly.
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
   bash -s -- --create-repo --setup
 ```
 

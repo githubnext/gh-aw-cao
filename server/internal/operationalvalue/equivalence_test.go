@@ -23,7 +23,7 @@ console.log(JSON.stringify({
   adoptedAt: "2026-09-15T23:30:36Z",
   evaluationMode: "baseline-comparable",
   cadenceDays: 1,
-  repositories: ["githubnext/gh-aw-cao"],
+  repositories: ["githubnext/gh-cao"],
   valueIds: ["example-worker.current"]
 }));
 console.log(JSON.stringify({
@@ -86,7 +86,7 @@ appendFileSync(new URL("./calls.jsonl", import.meta.url), JSON.stringify(request
 	nodeOutput := filepath.Join(temporary, "node.jsonl")
 	for _, output := range []string{goOutput, nodeOutput} {
 		retained := testEnvelope("example-worker.current", 99)
-		retained.OperationalValue.Repository = "githubnext/gh-aw-cao"
+		retained.OperationalValue.Repository = "githubnext/gh-cao"
 		retained.OperationalValue.Timestamp = "2026-09-12T10:00:00.000Z"
 		if err := writeEnvelopes(output, []envelope{retained}); err != nil {
 			t.Fatal(err)
@@ -95,7 +95,7 @@ appendFileSync(new URL("./calls.jsonl", import.meta.url), JSON.stringify(request
 	config := Config{
 		Root: temporary, Database: filepath.Join(temporary, "archive.sqlite"),
 		Output: goOutput, ObservedAt: now,
-		Repositories: []string{"githubnext/gh-aw-cao"}, HistoryCampaign: "example",
+		Repositories: []string{"githubnext/gh-cao"}, HistoryCampaign: "example",
 		Retention: 30 * day, Environment: testEnvironment(),
 	}
 	result, err := Collect(t.Context(), config)
@@ -173,7 +173,7 @@ func compareActivityCollector(t *testing.T, script string) {
 		"--root", packages,
 		"--output", nodeOutput,
 		"--timestamp", observedAt.Format(time.RFC3339),
-		"--repository", "githubnext/gh-aw-cao",
+		"--repository", "githubnext/gh-cao",
 		"--retention-days", "30",
 		"--history-campaign", "example",
 	)
@@ -186,7 +186,7 @@ func compareActivityCollector(t *testing.T, script string) {
 	result, err := Collect(context.Background(), Config{
 		Root: packages, Database: filepath.Join(temporary, "activity.sqlite"),
 		Output: goOutput, ObservedAt: observedAt,
-		Repositories:    []string{"githubnext/gh-aw-cao"},
+		Repositories:    []string{"githubnext/gh-cao"},
 		HistoryCampaign: "example", Retention: 30 * day,
 		NodeBinary: "node", Environment: testEnvironment(),
 	})
@@ -208,7 +208,7 @@ func compareActivityCollector(t *testing.T, script string) {
 	repeated, err := Collect(context.Background(), Config{
 		Root: packages, Database: filepath.Join(temporary, "activity.sqlite"),
 		Output: goOutput, ObservedAt: observedAt,
-		Repositories:    []string{"githubnext/gh-aw-cao"},
+		Repositories:    []string{"githubnext/gh-cao"},
 		HistoryCampaign: "example", Retention: 30 * day,
 		NodeBinary: "node", Environment: testEnvironment(),
 	})
@@ -243,7 +243,7 @@ for (const slug of ["first-worker", "second-worker"]) {
     adoptedAt: "2026-09-15T23:30:36Z",
     evaluationMode: "baseline-comparable",
     cadenceDays: 1,
-    repositories: ["githubnext/gh-aw-cao"],
+    repositories: ["githubnext/gh-cao"],
     valueIds: [slug + ".current"]
   }));
   console.log(JSON.stringify({
@@ -271,7 +271,7 @@ for (const slug of ["first-worker", "second-worker"]) {
 		"--root", packages,
 		"--output", nodeOutput,
 		"--timestamp", observedAt.Format(time.RFC3339),
-		"--repository", "githubnext/gh-aw-cao",
+		"--repository", "githubnext/gh-cao",
 		"--retention-days", "30",
 		"--history-campaign", "example",
 	)
@@ -283,7 +283,7 @@ for (const slug of ["first-worker", "second-worker"]) {
 	result, err := Collect(context.Background(), Config{
 		Root: packages, Database: filepath.Join(temporary, "activity.sqlite"),
 		Output: goOutput, ObservedAt: observedAt,
-		Repositories:    []string{"githubnext/gh-aw-cao"},
+		Repositories:    []string{"githubnext/gh-cao"},
 		HistoryCampaign: "example", Retention: 30 * day,
 		NodeBinary: "node", Environment: testEnvironment(),
 	})
@@ -303,8 +303,8 @@ for (const slug of ["first-worker", "second-worker"]) {
 
 func writeRetainedFixture(t *testing.T, path string) {
 	t.Helper()
-	content := `{"schema_version":2,"kind":"operational_value","operational_value":{"timestamp":"2026-09-21T10:00:00.000Z","repository":"githubnext/gh-aw-cao","campaign":"example","campaign_id":"campaign:example","value_id":"example-worker.retired","value":1,"metric_role":"primary","metric_name":"retired","metric_direction":"increase","maturity_status":"matured"}}
-{"schema_version":2,"kind":"operational_value","operational_value":{"timestamp":"2026-09-21T10:00:00.000Z","repository":"githubnext/gh-aw-cao","campaign":"unrelated","campaign_id":"campaign:unrelated","value_id":"preserved","value":4,"metric_role":"primary","metric_name":"preserved","metric_direction":"increase","maturity_status":"matured"}}
+	content := `{"schema_version":2,"kind":"operational_value","operational_value":{"timestamp":"2026-09-21T10:00:00.000Z","repository":"githubnext/gh-cao","campaign":"example","campaign_id":"campaign:example","value_id":"example-worker.retired","value":1,"metric_role":"primary","metric_name":"retired","metric_direction":"increase","maturity_status":"matured"}}
+{"schema_version":2,"kind":"operational_value","operational_value":{"timestamp":"2026-09-21T10:00:00.000Z","repository":"githubnext/gh-cao","campaign":"unrelated","campaign_id":"campaign:unrelated","value_id":"preserved","value":4,"metric_role":"primary","metric_name":"preserved","metric_direction":"increase","maturity_status":"matured"}}
 `
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)

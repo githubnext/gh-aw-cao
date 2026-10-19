@@ -18,7 +18,7 @@ import { controlSettings, parsePolicy } from "../../.github/workflows/shared/pol
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const campaigns = controlSettings(
   parsePolicy(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8")),
-  "githubnext/gh-aw-cao",
+  "githubnext/gh-cao",
 ).campaigns;
 
 const event = {

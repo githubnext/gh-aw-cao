@@ -55,7 +55,7 @@ describe('canonical dashboard worker ingestion order', () => {
         run_id: 303,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow_name: 'Dashboard',
         workflow_path: '.github/workflows/dashboard.md',
         status: 'completed',
@@ -84,7 +84,7 @@ describe('canonical dashboard worker ingestion order', () => {
       `gh-aw-logs-runs/logs-${'a'.repeat(64)}-${index.toString(16).padStart(16, '0')}.jsonl`);
     const inventory = {
       repositories: {
-        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+        rows: [{ organization: 'githubnext', repository: 'gh-cao' }],
         metadata: { 'as-of': '2026-09-09T05:00:00Z' }
       }
     };
@@ -148,7 +148,7 @@ describe('canonical dashboard worker ingestion order', () => {
       expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }),
       expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) })
     ]);
-    expect(storedRunIds).toEqual(['github:run:githubnext/gh-aw-cao:303']);
+    expect(storedRunIds).toEqual(['github:run:githubnext/gh-cao:303']);
     const updates = posted.filter((message) => message.type === 'loading-progress'
       && /** @type {{ phase?: string }} */ (message.state)?.phase === 'update')
       .map((message) => /** @type {{ completed: number, total: number, stage: string }} */ (message.state));

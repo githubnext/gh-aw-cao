@@ -11,8 +11,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 var queryCacheLog = logger.New("cao:server:query-cache")
@@ -36,7 +36,7 @@ func (a *App) cacheTelemetry() (*queryCacheTelemetry, error) {
 }
 
 func newQueryCacheTelemetry() (*queryCacheTelemetry, error) {
-	meter := otel.Meter("github.com/githubnext/gh-aw-cao/server")
+	meter := otel.Meter("github.com/githubnext/gh-cao/server")
 	instruments := &queryCacheTelemetry{}
 	var err error
 	instruments.operations, err = meter.Int64Counter(queryCacheMetricPrefix+"operations",

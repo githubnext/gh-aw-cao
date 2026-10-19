@@ -384,7 +384,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--where', 'conclusion=success'
     ], { encoding: 'utf8' }));
     expect(runs).toEqual([
-      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-cao:303' })
     ]);
 
     const diagnosis = JSON.parse(execFileSync(process.execPath, [
@@ -516,7 +516,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     const input = (databaseId, timestamp) => JSON.stringify({
       schema_version: 2,
       kind: 'workflow_runs',
-      request: { repository: 'githubnext/gh-aw-cao' },
+      request: { repository: 'githubnext/gh-cao' },
       payload: [{
         databaseId,
         attempt: 1,
@@ -551,8 +551,8 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--collection', 'runs'
     ], { encoding: 'utf8' }));
     expect(/** @type {{ id: string }[]} */ (runs).map((run) => run.id)).toEqual([
-      'github:run:githubnext/gh-aw-cao:100',
-      'github:run:githubnext/gh-aw-cao:200'
+      'github:run:githubnext/gh-cao:100',
+      'github:run:githubnext/gh-cao:200'
     ]);
 
     const diagnosis = JSON.parse(execFileSync(process.execPath, [

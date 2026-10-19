@@ -10,13 +10,13 @@ func TestParseActionsRepository(t *testing.T) {
 		wantName   string
 		wantErr    bool
 	}{
-		{"valid", "githubnext/gh-aw-cao", "githubnext", "gh-aw-cao", false},
-		{"trims whitespace", "  githubnext/gh-aw-cao  ", "githubnext", "gh-aw-cao", false},
+		{"valid", "githubnext/gh-cao", "githubnext", "gh-cao", false},
+		{"trims whitespace", "  githubnext/gh-cao  ", "githubnext", "gh-cao", false},
 		{"empty", "", "", "", true},
 		{"missing slash", "githubnext", "", "", true},
-		{"missing owner", "/gh-aw-cao", "", "", true},
+		{"missing owner", "/gh-cao", "", "", true},
 		{"missing name", "githubnext/", "", "", true},
-		{"extra segment", "githubnext/gh-aw-cao/extra", "", "", true},
+		{"extra segment", "githubnext/gh-cao/extra", "", "", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			owner, name, err := parseActionsRepository(test.repository)

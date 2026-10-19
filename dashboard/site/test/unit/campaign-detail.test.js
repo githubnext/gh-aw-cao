@@ -18,7 +18,7 @@ const workflows = [
     campaign: 'ambient-context',
     'campaign-name': 'Ambient Context',
     organization: 'githubnext',
-    repository: 'gh-aw-cao',
+    repository: 'gh-cao',
     workflow: '.github/workflows/ambient-context.md',
     'workflow-name': 'Ambient Context',
     'workflow-role': 'orchestrator',
@@ -28,14 +28,14 @@ const workflows = [
     'campaign-readme': '# Ambient Context\n\nKeeps shared guidance current. See the [guide](docs/guide.md).\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
     'repository-link': {
       relation: 'repository',
-      href: 'https://ghe.example/githubnext/gh-aw-cao',
-      label: 'View githubnext/gh-aw-cao'
+      href: 'https://ghe.example/githubnext/gh-cao',
+      label: 'View githubnext/gh-cao'
     },
     'workflow-link': {
       relation: 'workflow',
-      href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
+      href: 'https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/ambient-context.md',
       label: 'View Ambient Context',
-      'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
+      'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fambient-context.md',
       'dashboard-label': 'View Ambient Context workflow dashboard'
     }
   },
@@ -43,7 +43,7 @@ const workflows = [
     campaign: 'ambient-context',
     'campaign-name': 'Ambient Context',
     organization: 'githubnext',
-    repository: 'gh-aw-cao',
+    repository: 'gh-cao',
     workflow: '.github/workflows/ambient-context-agents-md-curator.md',
     'workflow-name': 'Ambient Context / AGENTS.md',
     'workflow-role': 'worker',
@@ -122,8 +122,8 @@ function context() {
           'evaluation-mode': 'baseline-comparable',
           'workflow-name': 'Ambient Context',
           points: [
-            { x: '2026-08-01T18:00:00Z', y: 0.25, color: 'gh-aw-cao', key: 'value:0' },
-            { x: '2026-08-31T18:00:00Z', y: 0.75, color: 'gh-aw-cao', key: 'value:1' }
+            { x: '2026-08-01T18:00:00Z', y: 0.25, color: 'gh-cao', key: 'value:0' },
+            { x: '2026-08-31T18:00:00Z', y: 0.75, color: 'gh-cao', key: 'value:1' }
           ]
         }]
       },
@@ -233,7 +233,7 @@ describe('campaign detail route', () => {
       title: 'Ambient Context',
       description: 'Operational activity for the Ambient Context campaign.',
       titleLink: {
-        href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+        href: 'https://ghe.example/githubnext/gh-cao/tree/HEAD/ambient-context',
         label: 'Open Ambient Context campaign source on GitHub'
       },
       navigationPage: 'campaigns'
@@ -391,7 +391,7 @@ describe('campaign detail route', () => {
         title: 'Ambient Context',
         description: 'Operational activity for the Ambient Context campaign.',
         titleLink: {
-          href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+          href: 'https://ghe.example/githubnext/gh-cao/tree/HEAD/ambient-context',
           label: 'Open Ambient Context campaign source on GitHub'
         },
         navigationPage: 'campaigns'
@@ -401,7 +401,7 @@ describe('campaign detail route', () => {
     it('keeps rollout mode out of shared campaign identity chrome', () => {
       const host = document.createElement('div');
       const targetModeWorkflows = workflows.map((workflow) => workflow.campaign === 'ambient-context'
-        ? { ...workflow, 'campaign-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }] }
+        ? { ...workflow, 'campaign-targets': [{ repository: 'githubnext/gh-cao', mode: 'live' }] }
         : workflow);
       const rendered = renderCampaignRouteVariant({
         ...context(),
@@ -438,7 +438,7 @@ describe('campaign detail route', () => {
       title: 'Ambient Context',
       description: 'Operational activity for the Ambient Context campaign.',
       titleLink: {
-        href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+        href: 'https://ghe.example/githubnext/gh-cao/tree/HEAD/ambient-context',
         label: 'Open Ambient Context campaign source on GitHub'
       },
       navigationPage: 'campaigns'
@@ -472,7 +472,7 @@ describe('campaign detail route', () => {
         title: 'Ambient Context',
         description: 'Operational activity for the Ambient Context campaign.',
         titleLink: {
-          href: 'https://ghe.example/githubnext/gh-aw-cao/tree/HEAD/ambient-context',
+          href: 'https://ghe.example/githubnext/gh-cao/tree/HEAD/ambient-context',
           label: 'Open Ambient Context campaign source on GitHub'
         },
         navigationPage: 'campaigns'

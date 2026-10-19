@@ -32,7 +32,7 @@ test("operational-value runs locally and contains an injected GitHub permission 
       kind: "operational_value",
       operational_value: {
         timestamp: "2026-09-20T10:00:00.000Z",
-        repository: "githubnext/gh-aw-cao",
+        repository: "githubnext/gh-cao",
         campaign: "dependabot",
         campaign_id: "campaign:dependabot",
         value_id: "dependabot-update-planner.open-security-alert-count",
@@ -59,7 +59,7 @@ fi
       "--output", output,
       "--timestamp", timestamp,
       "--repository", "github/gh-aw",
-      "--repository", "githubnext/gh-aw-cao",
+      "--repository", "githubnext/gh-cao",
       "--retention-days", "30",
     ], {
       cwd: root,

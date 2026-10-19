@@ -15,7 +15,7 @@ This minimal policy enables the installed Dependabot campaign and its workers in
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
+  "$schema": "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
   "gh-aw-version": "v0.92.5",
   "control-plane": {
@@ -120,7 +120,7 @@ Imports resolve relative to the importing file and must remain within the
 extension's directory after symlink resolution. Cycles, more than eight
 imports, duplicate keys, expressions, non-host overrides, and invalid
 composed policy fail closed. See the
-[control architecture specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md#531-deployment-specific-host-extensions)
+[control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md#531-deployment-specific-host-extensions)
 and [managed Redis guide](deployment-managed-redis.md) for host-module options.
 
 For example, this policy keeps Dependabot in review across its scope while promoting one exact target to live:
@@ -180,7 +180,7 @@ entry to disable it or add public, private, or GitHub Enterprise registries.
         {
           "id": "official",
           "name": "Official CAO catalog",
-          "repository": "githubnext/gh-aw-cao",
+          "repository": "githubnext/gh-cao",
           "ref": "main",
           "auth": { "type": "none" }
         },

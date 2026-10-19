@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 func (s *Store) TryLock(ctx context.Context, name, owner string, ttl time.Duration) (bool, error) {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 func observation(clock *testClock, remaining int64) operational.GitHubQuotaObservation {

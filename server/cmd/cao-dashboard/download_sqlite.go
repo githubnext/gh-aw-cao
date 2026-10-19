@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/sqlitex"
+	"github.com/githubnext/gh-cao/server/internal/sqlitex"
 )
 
-const defaultSQLiteDataURL = "https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json"
+const defaultSQLiteDataURL = "https://githubnext.github.io/gh-cao/cao/payload-hashes.json"
 const defaultSQLitePath = "../.cao/gh-aw-logs.sqlite"
 const maxSQLiteManifestBytes int64 = 8 << 20
 const maxSQLiteDownloadBytes int64 = 2 << 30

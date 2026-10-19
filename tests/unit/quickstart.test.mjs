@@ -335,7 +335,7 @@ test('quickstart with explicit target installs and pauses without dispatching or
   for (const detail of [
     'acme/cao (private), default branch: main',
     'explicit --target selection',
-    `githubnext/gh-aw-cao/repo-assist@${'a'.repeat(40)}`,
+    `githubnext/gh-cao/repo-assist@${'a'.repeat(40)}`,
     'cao-validate.yml', 'cao-activity.yml', 'cao-dashboard.yml',
     'repo-assist-maintenance.lock.yml', 'Issue triage, issue fix, and PR upkeep',
     'maximum repositories: 1; rollout: 100% of this exact target only',
@@ -647,7 +647,7 @@ test('quickstart refuses to commit or dispatch when deterministic compilation fa
     addCampaign: async () => {},
     progress: {},
     resolveRootRevision: () => 'a'.repeat(40),
-  }), /gh aw compile .*--schedule-seed githubnext\/gh-aw-cao failed: Invalid workflow source/);
+  }), /gh aw compile .*--schedule-seed githubnext\/gh-cao failed: Invalid workflow source/);
   assert.ok(!fixture.calls.some((call) => call[0] === 'git' && call.includes('commit')));
   assert.ok(!fixture.calls.some((call) => call[0] === 'gh' && call[1] === 'workflow'));
 });
@@ -704,7 +704,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
     resolveRootRevision: () => 'a'.repeat(40),
   });
 
-  assert.equal(installedCampaign, `githubnext/gh-aw-cao/repo-assist@${'a'.repeat(40)}`);
+  assert.equal(installedCampaign, `githubnext/gh-cao/repo-assist@${'a'.repeat(40)}`);
   assert.equal(result.dashboard.url, 'https://acme.github.io/cao/');
   assert.equal(result.activity.uniqueRuns, 4);
   assert.equal(result.mode, 'review');
@@ -735,7 +735,7 @@ test('quickstart configures, commits, runs, collects, and reports first dashboar
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('workflow run cao-activity.yml')));
   assert.ok(fixture.calls.some((call) => call.join(' ') === 'git add -- .github activity dashboard repo-assist .gitattributes .vscode/settings.json'));
   assert.ok(fixture.calls.some((call) => call.join(' ').includes('git -c user.name=octocat -c user.email=1+octocat@users.noreply.github.com commit --no-gpg-sign')));
-  const compileIndex = fixture.calls.findIndex((call) => call.join(' ') === 'gh aw compile --strict --no-check-update --schedule-seed githubnext/gh-aw-cao');
+  const compileIndex = fixture.calls.findIndex((call) => call.join(' ') === 'gh aw compile --strict --no-check-update --schedule-seed githubnext/gh-cao');
   const stageIndex = fixture.calls.findIndex((call) => call[0] === 'git' && call[1] === 'add');
   assert.ok(compileIndex >= 0 && stageIndex > compileIndex);
   const dispatchIndex = fixture.calls.findIndex((call) => call.join(' ').includes('workflow run repo-assist.lock.yml'));

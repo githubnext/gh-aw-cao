@@ -185,7 +185,7 @@ test('phone navigation keeps all views in the full-label menu without horizontal
           dashboard: {
             id: 'phone-navigation-dashboard',
             title: 'Phone Navigation',
-            repository: 'githubnext/gh-aw-cao',
+            repository: 'githubnext/gh-cao',
             pages: [
               { id: 'overview', kind: 'custom', title: 'Overview', icon: 'home', views: [] },
               { id: 'runs', kind: 'custom', title: 'Runs', icon: 'play', views: [] },
@@ -209,7 +209,7 @@ test('phone navigation keeps all views in the full-label menu without horizontal
   await expect(historyBack).toBeHidden();
   const mobileBrandName = page.locator('.mobile-page-header .mobile-brand-name');
   await expect(mobileBrandName).toBeVisible();
-  await expect(mobileBrandName).toHaveText('gh-aw-cao');
+  await expect(mobileBrandName).toHaveText('gh-cao');
   expect(await page.evaluate(() => {
     const title = document.querySelector('.mobile-page-header #page-title');
     const brand = document.querySelector('.mobile-page-header .mobile-brand-name');
@@ -230,7 +230,7 @@ test('phone navigation keeps all views in the full-label menu without horizontal
   const menuActions = page.locator('.mobile-nav-menu-actions');
   await expect(menuActions.locator('[data-theme-value]')).toHaveCount(0);
   await expect(menuActions.locator('.repository-link .action-label')).toBeVisible();
-  await expect(menuActions.locator('.repository-link .action-label')).toHaveText('githubnext/gh-aw-cao');
+  await expect(menuActions.locator('.repository-link .action-label')).toHaveText('githubnext/gh-cao');
   await expect(menuActions.locator('.account-menu')).toHaveCount(0);
   await expect(menu.locator('.octicon-goal')).toBeVisible();
   await expect(menu.getByText('Cost & efficiency', { exact: true })).toBeVisible();
@@ -358,10 +358,10 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
           source: 'workflow-aic-per-run',
           rows: [{
             'campaign-name': 'Maintenance',
-            repository: 'githubnext/gh-aw-cao',
+            repository: 'githubnext/gh-cao',
             workflow: '.github/workflows/aw-maintenance.md',
             'workflow-name': 'AW Maintenance',
-            'workflow-label': 'githubnext/gh-aw-cao:.github/workflows/aw-maintenance.md',
+            'workflow-label': 'githubnext/gh-cao:.github/workflows/aw-maintenance.md',
             'workflow-role': 'orchestrator',
             'rollout-mode': 'review',
             'workflow-active': 'active',
@@ -370,7 +370,7 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
             'aic-per-run': 3,
             ingestion: '100%',
             'workflow-link': { relation: 'workflow', href: '#page-workflow-runtime', label: 'View AW Maintenance' },
-            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-aw-cao' }
+            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-cao' }
           }],
           metadata: {
             availability: 'available',
@@ -382,17 +382,17 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
           source: 'workflow-list',
           rows: [{
             'campaign-name': 'Maintenance',
-            repository: 'githubnext/gh-aw-cao',
+            repository: 'githubnext/gh-cao',
             workflow: '.github/workflows/aw-maintenance.md',
             'workflow-name': 'AW Maintenance',
-            'workflow-label': 'githubnext/gh-aw-cao:.github/workflows/aw-maintenance.md',
+            'workflow-label': 'githubnext/gh-cao:.github/workflows/aw-maintenance.md',
             'workflow-role': 'orchestrator',
             'rollout-mode': 'review',
             'workflow-active': 'active',
             'latest-run-status': 'success',
             'latest-run-at': '2026-10-07T12:00:00Z',
             'workflow-link': { relation: 'workflow', href: '#page-workflow-runtime', label: 'View AW Maintenance' },
-            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-aw-cao' }
+            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-cao' }
           }],
           metadata: {
             availability: 'available',
@@ -513,7 +513,7 @@ test('phone full-view lazy tables switch between table and card-list modes', asy
           repositories: {
             source: 'repositories',
             rows: [{
-              'repository-coordinate': 'githubnext/gh-aw-cao',
+              'repository-coordinate': 'githubnext/gh-cao',
               organization: 'githubnext'
             }],
             metadata: {
@@ -537,7 +537,7 @@ test('phone full-view lazy tables switch between table and card-list modes', asy
   await page.getByRole('button', { name: 'Switch to Cards view' }).click();
   await expect(table).toBeHidden();
   await expect(cards).toBeVisible();
-  await expect(cards.locator('.entity-card-list-card')).toContainText('githubnext/gh-aw-cao');
+  await expect(cards.locator('.entity-card-list-card')).toContainText('githubnext/gh-cao');
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Repositories', level: 3 })).toBeHidden();
   await page.getByRole('button', { name: 'Switch to Table view' }).click();

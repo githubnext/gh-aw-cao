@@ -85,4 +85,4 @@ For collection boundaries, retention, and browser processing, see [Data ingestio
 - [Monitor and recover](operations.md), including [Publishing Pages reports](operations.md#publishing-pages-reports) and [Incident response](operations.md#incident-response)
 - [Optional observability](configuration.md#optional-observability) for the agentic workflows
 - [Glossary](glossary.md)
-- [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md) and [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md), the detailed references for the Go server
+- [`server/README.md`](https://github.com/githubnext/gh-cao/blob/main/server/README.md) and [`server/SECURITY.md`](https://github.com/githubnext/gh-cao/blob/main/server/SECURITY.md), the detailed references for the Go server

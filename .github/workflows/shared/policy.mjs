@@ -3,7 +3,7 @@ import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 export class PolicyError extends Error {}
 
-const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
+const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
 const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "publishing", "marketplace"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];

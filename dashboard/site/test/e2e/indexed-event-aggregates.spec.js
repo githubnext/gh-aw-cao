@@ -68,11 +68,11 @@ test('production worker counts event sources beyond input thresholds using nativ
     });
     const inventory = database.transaction(['campaigns', 'repositories', 'workflows', 'runs'], 'readwrite');
     inventory.objectStore('campaigns').put({ id: 'campaign:activity', slug: 'activity' });
-    inventory.objectStore('repositories').put({ id: 'repo', owner: 'githubnext', name: 'gh-aw-cao' });
+    inventory.objectStore('repositories').put({ id: 'repo', owner: 'githubnext', name: 'gh-cao' });
     inventory.objectStore('workflows').put({ id: 'workflow', repositoryId: 'repo', path: 'activity.md', campaignId: 'campaign:activity' });
     for (const attempt of [1, 2]) {
       inventory.objectStore('runs').put({
-        id: `attempt-${attempt}`, owner: 'githubnext', repository: 'gh-aw-cao',
+        id: `attempt-${attempt}`, owner: 'githubnext', repository: 'gh-cao',
         workflowPath: 'activity.md', githubRunId: '42', attempt
       });
     }

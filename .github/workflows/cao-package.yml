@@ -630,7 +630,7 @@ jobs:
       contents: read
       id-token: write
       packages: write
-    uses: githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main # zizmor: ignore[unpinned-uses] protected default-branch publisher
+    uses: githubnext/gh-cao/.github/workflows/cao-package-publish.yml@main # zizmor: ignore[unpinned-uses] protected default-branch publisher
     with:
       artifact_name: cao-server-${{ github.run_id }}-${{ github.run_attempt }}
       event_name: ${{ github.event_name }}

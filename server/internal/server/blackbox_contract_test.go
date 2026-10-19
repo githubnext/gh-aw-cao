@@ -16,7 +16,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 type blackboxFixtures struct {
@@ -183,8 +183,8 @@ func TestServerAgentGuide(t *testing.T) {
 		}
 		for _, expected := range []string{
 			"Server commit SHA: " + sha,
-			"https://githubnext.github.io/gh-aw-cao/agent/llms.txt",
-			"https://githubnext.github.io/gh-aw-cao/cao/llms.txt",
+			"https://githubnext.github.io/gh-cao/agent/llms.txt",
+			"https://githubnext.github.io/gh-cao/cao/llms.txt",
 			"POST /mcp", "X-GitHub-OIDC-Token", "cao_catalog", "cao_query",
 		} {
 			if !strings.Contains(response.Body.String(), expected) {

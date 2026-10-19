@@ -286,7 +286,7 @@ describe('declarative treemap contract', () => {
 describe('treemap accessible rendering', () => {
   it('renders one leaf, labels, grouping and safe keyboard-operable links', () => {
     const chart = renderChartWidget('treemap', [
-      { ...point(6, 'Doctor'), section: 'alpha', link: { href: 'https://github.com/githubnext/gh-aw-cao', label: 'Doctor' } },
+      { ...point(6, 'Doctor'), section: 'alpha', link: { href: 'https://github.com/githubnext/gh-cao', label: 'Doctor' } },
       { ...point(3, 'Audit'), section: 'alpha', color: 'failure' },
       { ...point(1, 'Activity'), section: 'beta' }
     ], [], null, 'Runs');

@@ -24,13 +24,13 @@ metadata:
    compiled capability.
 5. Add or update the campaign `aw.yml`, `cao.json`, README, root `aw.yml`, and
    package-completeness tests as required by
-   [Build Your First Campaign](https://github.com/githubnext/gh-aw-cao/blob/main/docs/author-your-first-operation.md).
+   [Build Your First Campaign](https://github.com/githubnext/gh-cao/blob/main/docs/author-your-first-operation.md).
 6. For each stable worker, use the repository's operational-value skill to
    decide whether a deterministic evaluator is meaningful. Add a measurable
    worker and evaluator together, or record that the outcome is not measurable.
 7. Add package problem clustering only when the campaign has a deterministic,
    bounded problem definition not covered by built-in computations; follow
-   [Computations](https://github.com/githubnext/gh-aw-cao/blob/main/specs/computations.md).
+   [Computations](https://github.com/githubnext/gh-cao/blob/main/specs/computations.md).
 8. Compile editable workflow sources with `npm run compile`; inspect CAO validation
    in Actions after publication. Never edit generated `.lock.yml` files directly. Run
    focused tests, package-completeness tests, and clean-room lifecycle tests
@@ -72,15 +72,15 @@ metadata:
   human-first report formatting.
 - [Package extensions](references/package-extensions.md): operational-value,
   problem-clustering, optimization, and the dashboard add-on exception.
-- [Build Your First Campaign](https://github.com/githubnext/gh-aw-cao/blob/main/docs/author-your-first-operation.md):
+- [Build Your First Campaign](https://github.com/githubnext/gh-cao/blob/main/docs/author-your-first-operation.md):
   authoring sequence and package shape.
-- [Orchestrators and Workers](https://github.com/githubnext/gh-aw-cao/blob/main/docs/orchestrators-and-workers.md):
+- [Orchestrators and Workers](https://github.com/githubnext/gh-cao/blob/main/docs/orchestrators-and-workers.md):
   execution roles.
-- [Control policy](https://github.com/githubnext/gh-aw-cao/blob/main/docs/control-policy-specification.md): rollout authority.
-- [Control architecture](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md): normative
+- [Control policy](https://github.com/githubnext/gh-cao/blob/main/docs/control-policy-specification.md): rollout authority.
+- [Control architecture](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md): normative
   dispatch and enforcement.
-- [Operational value](https://github.com/githubnext/gh-aw-cao/blob/main/docs/operational-value.md): evaluator contract.
-- [Computations](https://github.com/githubnext/gh-aw-cao/blob/main/specs/computations.md): deterministic package
+- [Operational value](https://github.com/githubnext/gh-cao/blob/main/docs/operational-value.md): evaluator contract.
+- [Computations](https://github.com/githubnext/gh-cao/blob/main/specs/computations.md): deterministic package
   computations.
 
 The top-level deterministic `dashboard/` package is the sole add-on exception:

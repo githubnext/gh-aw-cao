@@ -14,7 +14,7 @@ describe('dashboard source ingestion queries', () => {
       runs: {
         rows: [{
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: '.github/workflows/dashboard.md',
           run: '12345',
           'run-status': 'completed',
@@ -47,16 +47,16 @@ describe('dashboard source ingestion queries', () => {
       },
       repositories: {
         rows: [{
-          organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': '2026-09-09T04:00:00Z',
+          organization: 'githubnext', repository: 'gh-cao', 'observed-at': '2026-09-09T04:00:00Z',
           'organization-link': { relation: 'organization', href: 'https://github.com/githubnext' },
-          'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao' }
+          'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-cao' }
         }],
         metadata
       },
       workflows: {
         rows: [{
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: '.github/workflows/dashboard.md',
           campaign: 'dashboard',
           'campaign-name': 'CAO Dashboard',
@@ -70,7 +70,7 @@ describe('dashboard source ingestion queries', () => {
           'gh-aw-version': '0.88.8',
           'gh-aw-current-version': '0.88.9',
           'gh-aw-update-state': 'update-available',
-          'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/actions' },
+          'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-cao/actions' },
           'observed-at': '2026-09-09T04:30:00Z'
         }],
         metadata
@@ -78,7 +78,7 @@ describe('dashboard source ingestion queries', () => {
       runs: {
         rows: [{
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: '.github/workflows/dashboard.md',
           run: '12345',
           'run-attempt': 2,
@@ -111,7 +111,7 @@ describe('dashboard source ingestion queries', () => {
       'job-performance': {
         rows: [{
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: '.github/workflows/dashboard.md',
           run: '12345',
           'run-attempt': 2,
@@ -132,9 +132,9 @@ describe('dashboard source ingestion queries', () => {
     const batch = normalize(adapted.observations);
 
     expect(batch.repositories[0]).toMatchObject({
-      id: 'repository:githubnext%2Fgh-aw-cao',
-      owner: 'githubnext', name: 'gh-aw-cao',
-      repositoryLink: { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao' }
+      id: 'repository:githubnext%2Fgh-cao',
+      owner: 'githubnext', name: 'gh-cao',
+      repositoryLink: { relation: 'repository', href: 'https://github.com/githubnext/gh-cao' }
     });
     expect(batch.campaigns[0]).toMatchObject({
       id: 'campaign:dashboard-sources:dashboard',
@@ -147,9 +147,9 @@ describe('dashboard source ingestion queries', () => {
       experimental: true
     });
     expect(batch.workflows[0]).toMatchObject({
-      id: 'workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdashboard.md',
+      id: 'workflow:githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fdashboard.md',
       githubId: '501',
-      repositoryId: 'repository:githubnext%2Fgh-aw-cao',
+      repositoryId: 'repository:githubnext%2Fgh-cao',
       state: 'active',
       registryState: 'active',
       createdAt: '2026-09-01T00:00:00Z',
@@ -160,7 +160,7 @@ describe('dashboard source ingestion queries', () => {
       role: 'worker'
     });
     expect(batch.runs[0]).toMatchObject({
-      id: 'github:run:githubnext/gh-aw-cao:12345',
+      id: 'github:run:githubnext/gh-cao:12345',
       workflowId: batch.workflows[0].id,
       repositoryId: batch.repositories[0].id,
       status: 'completed',
@@ -240,13 +240,13 @@ describe('dashboard source ingestion queries', () => {
         metadata
       },
       repositories: {
-        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+        rows: [{ organization: 'githubnext', repository: 'gh-cao' }],
         metadata
       },
       workflows: {
         rows: [{
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: '.github/workflows/optimization-token-optimizer.md',
           package: 'optimization',
           'package-name': 'Optimization',
@@ -304,16 +304,16 @@ describe('dashboard source ingestion queries', () => {
   it('joins published transaction logs directly to canonical runs', () => {
     const sources = {
       repositories: {
-        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+        rows: [{ organization: 'githubnext', repository: 'gh-cao' }],
         metadata
       },
       workflows: {
-        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md' }],
+        rows: [{ organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md' }],
         metadata
       },
       runs: {
         rows: [{
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md',
           run: '303', 'run-attempt': 1, 'started-at': '2026-09-09T04:00:00Z',
           'agent-id': ' ', 'model-id': ''
         }],
@@ -321,7 +321,7 @@ describe('dashboard source ingestion queries', () => {
       },
       'job-performance': {
         rows: [{
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md',
           run: '303', 'run-attempt': 1, 'job-id': '404', job: 'agent', 'started-at': '2026-09-09T04:00:00Z'
         }],
         metadata
@@ -350,8 +350,8 @@ describe('dashboard source ingestion queries', () => {
           'lifecycle-observation-id': 'token-lifecycle:1',
           'intervention-state': 'running',
           'recommendation-disposition': 'applied',
-          'safe-output-id': 'github:issue:githubnext/gh-aw-cao:11861',
-          'safe-output-url': 'https://github.com/githubnext/gh-aw-cao/issues/11861',
+          'safe-output-id': 'github:issue:githubnext/gh-cao:11861',
+          'safe-output-url': 'https://github.com/githubnext/gh-cao/issues/11861',
           'implementation-change-id': 'github:pull-request:octo/example:42',
           'implementation-pull-request-url': 'https://github.com/octo/example/pull/42',
           'implementation-run-ids': ['7001'],
@@ -370,7 +370,7 @@ describe('dashboard source ingestion queries', () => {
       agentId: 'copilot', modelId: 'auto'
     })]);
     expect(batch.audits).toEqual([expect.objectContaining({
-      runId: 'github:run:githubnext/gh-aw-cao:303',
+      runId: 'github:run:githubnext/gh-cao:303',
       sequence: 0,
       source: 'token-intervention-lifecycle',
       type: 'token_efficiency.intervention',
@@ -391,8 +391,8 @@ describe('dashboard source ingestion queries', () => {
       lifecycleObservationId: 'token-lifecycle:1',
       interventionState: 'running',
       recommendationDisposition: 'applied',
-      safeOutputId: 'github:issue:githubnext/gh-aw-cao:11861',
-      safeOutputUrl: 'https://github.com/githubnext/gh-aw-cao/issues/11861',
+      safeOutputId: 'github:issue:githubnext/gh-cao:11861',
+      safeOutputUrl: 'https://github.com/githubnext/gh-cao/issues/11861',
       implementationChangeId: 'github:pull-request:octo/example:42',
       implementationPullRequestUrl: 'https://github.com/octo/example/pull/42',
       implementationRunIds: ['7001'],
@@ -403,16 +403,16 @@ describe('dashboard source ingestion queries', () => {
   it('reconciles retained transaction logs with the published run horizon', () => {
     const sources = {
       repositories: {
-        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+        rows: [{ organization: 'githubnext', repository: 'gh-cao' }],
         metadata
       },
       workflows: {
-        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md' }],
+        rows: [{ organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md' }],
         metadata
       },
       runs: {
         rows: [{
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md',
           run: '303', 'run-attempt': 1, 'started-at': '2026-09-09T04:00:00Z'
         }],
         metadata
@@ -438,7 +438,7 @@ describe('dashboard source ingestion queries', () => {
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch.audits).toEqual([expect.objectContaining({
-      id: 'current-event', runId: 'github:run:githubnext/gh-aw-cao:303'
+      id: 'current-event', runId: 'github:run:githubnext/gh-cao:303'
     })]);
   });
 
@@ -448,7 +448,7 @@ describe('dashboard source ingestion queries', () => {
       runs: {
         rows: [{
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: '.github/workflows/dashboard.md',
           run: '303',
           'started-at': '2026-09-09T04:00:00Z'
@@ -468,6 +468,6 @@ describe('dashboard source ingestion queries', () => {
     });
 
     expect(adapted.observations.filter(({ kind }) => kind === 'audit')).toHaveLength(count);
-    expect(adapted.observations.at(-1)?.data.runId).toBe('github:run:githubnext/gh-aw-cao:303');
+    expect(adapted.observations.at(-1)?.data.runId).toBe('github:run:githubnext/gh-cao:303');
   }, 15_000);
 });

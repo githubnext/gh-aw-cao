@@ -1,6 +1,6 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
-description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
+description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-cao dashboard.
 version: 1.8.3
 status: Working Draft
 editors:
@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.8.3
 **Status:** Working Draft
-**Repository:** `githubnext/gh-aw-cao`
+**Repository:** `githubnext/gh-cao`
 **Target implementation:** Dashboard data subsystem
 **Date:** 2026-10-11
 
@@ -1396,8 +1396,8 @@ Example:
   githubId: 123456,
 
   owner: "githubnext",
-  name: "gh-aw-cao",
-  fullName: "githubnext/gh-aw-cao",
+  name: "gh-cao",
+  fullName: "githubnext/gh-cao",
 
   visibility: "public",
 
@@ -1457,7 +1457,7 @@ Example:
 
 ```js
 {
-  id: "github:run:githubnext/gh-aw-cao:123456789",
+  id: "github:run:githubnext/gh-cao:123456789",
 
   repositoryId: "...",
   targetRepositoryId: "...",
@@ -1826,7 +1826,7 @@ Example:
 {
   id: "domain:01J...",
 
-  runId: "github:run:githubnext/gh-aw-cao:123456789",
+  runId: "github:run:githubnext/gh-cao:123456789",
 
   sequence: 17,
   timestamp: "...",

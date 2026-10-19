@@ -209,7 +209,7 @@
   "variables": {
     "collectionEnabled": "[not(empty(parameters('collectorImage')))]",
     "tags": {
-      "workload": "gh-aw-cao-dashboard",
+      "workload": "gh-cao-dashboard",
       "hostingMode": "azure-functions"
     },
     "githubRedirectUri": "[format('https://{0}.azurewebsites.net/auth/callback', parameters('functionAppName'))]"

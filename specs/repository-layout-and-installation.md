@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/repository-layout-and-installation.md  
+**Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/repository-layout-and-installation.md
 **Editors:** GitHub Next
 
 ## Abstract
@@ -222,7 +222,7 @@ amd64 or arm64). It MUST verify exactly one matching SHA-256 entry and the
 embedded version before atomically replacing the binary in GitHub CLI's
 `gh-cao` extension data directory. It MUST honor `XDG_DATA_HOME` and Windows
 `LOCALAPPDATA`, refuse linked/source installations, and preserve an existing
-binary on verification failure. An explicit `githubnext/gh-aw-cao@vX.Y.Z`
+binary on verification failure. An explicit `githubnext/gh-cao@vX.Y.Z`
 source MUST select that extension release; other sources MUST use the latest
 stable extension. Runtime revision selection remains independent.
 The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
@@ -367,7 +367,7 @@ The quickstart MUST:
   on policy and access, not tests, CI, instructions, or recommendation adoption;
 - disclose normal budgets including the default configurable output-check
   budget without claiming measured tokens or expected cost;
-- compile installed workflows with `--schedule-seed githubnext/gh-aw-cao`
+- compile installed workflows with `--schedule-seed githubnext/gh-cao`
   before committing, matching the deterministic lock-file validator;
 - use existing validated policy for later stages without broadening authority;
   the run stage MUST reject ambiguous targets or non-review worker settings;

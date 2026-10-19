@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
-	"github.com/githubnext/gh-aw-cao/server/internal/sqlitex"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-cao/server/internal/sqlitex"
 )
 
 // NewLocalSQLiteApp owns a read-only snapshot and bounded process-local request

@@ -8,8 +8,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/server"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/server"
 )
 
 var hostingLog = logger.New("cao:hosting")

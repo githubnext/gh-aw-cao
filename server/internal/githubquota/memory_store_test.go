@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 // memoryStore is an in-memory Store mirroring the redisx quota scripts so the

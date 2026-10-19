@@ -40,7 +40,7 @@ This page explains the operational-value timeline in plain language. It defines 
 
 ## Evidence rules
 
-- **Repository:** `githubnext/gh-aw-cao`
+- **Repository:** `githubnext/gh-cao`
 - **Evidence population:** A Dependabot security alert in an authorized target repository that was open at the immutable observation cutoff.
 - **Collection:** Fetch Dependabot alert lifecycle records and Dependabot-authored pull-request lifecycle records once per supported repository, then reconstruct every requested cutoff locally from their authoritative timestamps.
 - **Observation window:** 7 days, sampled every 7 days

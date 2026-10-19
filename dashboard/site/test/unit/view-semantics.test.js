@@ -54,8 +54,8 @@ describe('semantic view prompts', () => {
     for (const path of [
       'skills/analyze-cao/SKILL.md', 'docs/agent-analysis.md', 'specs/dashboard-data.md',
       'docs/dashboard-language-specification.md', 'dashboard/site/dashboard.json', 'CODEBASE.yml'
-    ]) expect(prompt).toContain(`https://github.com/githubnext/gh-aw-cao/blob/main/${path}`);
-    expect(prompt).toContain('https://github.com/githubnext/gh-aw-cao/tree/main/dashboard/site/dashboard-fragments');
+    ]) expect(prompt).toContain(`https://github.com/githubnext/gh-cao/blob/main/${path}`);
+    expect(prompt).toContain('https://github.com/githubnext/gh-cao/tree/main/dashboard/site/dashboard-fragments');
     expect(prompt).toContain('https://github.com/example/control/blob/HEAD/.github/workflows/cao.json');
     expect(prompt).toContain('https://github.com/example/control/tree/HEAD/.github/workflows');
     expect(prompt).toContain('not snapshot-version proof');

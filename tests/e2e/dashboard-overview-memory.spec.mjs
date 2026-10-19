@@ -8,7 +8,7 @@ import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 import { WorkerHeapProbe, remoteDebuggingPort } from "./dashboard-worker-memory.mjs";
 
 const sourceUrl = process.env.DASHBOARD_DATA_URL
-  ?? "https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json";
+  ?? "https://githubnext.github.io/gh-cao/cao/payload-hashes.json";
 const sampleIntervalMs = numberSetting("DASHBOARD_OVERVIEW_MEMORY_SAMPLE_INTERVAL_MS", 50);
 // Budgets are set from measured peaks against the deployed dataset plus
 // headroom. The ingestion budget is deliberately far larger than the Overview

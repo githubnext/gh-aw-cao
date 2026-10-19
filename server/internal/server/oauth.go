@@ -26,8 +26,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 //go:embed oauth_failure.html
@@ -296,7 +296,7 @@ func recordOAuthDecision(ctx context.Context, operation, outcome string) {
 		attribute.String("cao_dashboard.auth.outcome", outcome),
 	}
 	trace.SpanFromContext(ctx).AddEvent("cao_dashboard.auth.decision", trace.WithAttributes(attrs...))
-	counter, err := otel.Meter("github.com/githubnext/gh-aw-cao/server").Int64Counter(
+	counter, err := otel.Meter("github.com/githubnext/gh-cao/server").Int64Counter(
 		"cao_dashboard.auth.decision.count",
 		metric.WithUnit("{decision}"),
 		metric.WithDescription("OAuth authorization and credential cleanup decisions by fixed operation and outcome"),
@@ -426,7 +426,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 			attrs = append(attrs, attribute.String("error.type", errorType))
 		}
 		span.SetAttributes(attrs...)
-		counter, err := otel.Meter("github.com/githubnext/gh-aw-cao/server").Int64Counter(
+		counter, err := otel.Meter("github.com/githubnext/gh-cao/server").Int64Counter(
 			"cao_dashboard.auth.callback.count",
 			metric.WithUnit("{callback}"),
 			metric.WithDescription("Completed GitHub OAuth callbacks by outcome and fixed error type"),

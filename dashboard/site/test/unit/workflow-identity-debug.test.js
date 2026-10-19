@@ -32,7 +32,7 @@ const workflow = {
 const workflowWithLink = {
   ...workflow,
   'workflow-link': {
-    href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/ambient-context.md',
+    href: 'https://github.com/githubnext/gh-cao/blob/main/.github/workflows/ambient-context.md',
     label: 'Source'
   }
 };

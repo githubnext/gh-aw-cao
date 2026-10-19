@@ -13,14 +13,14 @@ const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'gene
 function collection(generation, toolRows) {
   const collected = { ...metadata, 'artifact-generation': generation };
   return {
-    repositories: { rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }], metadata: collected },
+    repositories: { rows: [{ organization: 'githubnext', repository: 'gh-cao' }], metadata: collected },
     workflows: {
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md' }],
+      rows: [{ organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md' }],
       metadata: collected
     },
     runs: {
       rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+        organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/dashboard.md',
         run: '42', 'run-attempt': 1, 'run-status': 'completed', 'run-conclusion': 'success',
         'started-at': '2026-09-09T04:00:00Z'
       }],

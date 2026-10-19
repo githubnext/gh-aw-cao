@@ -982,7 +982,7 @@ npm run test:e2e:dashboard-server
 ## Reporting a vulnerability
 
 Report suspected vulnerabilities privately through a GitHub Security Advisory
-for `githubnext/gh-aw-cao`. Do not include credentials, access tokens, private
+for `githubnext/gh-cao`. Do not include credentials, access tokens, private
 dashboard data, or exploit details in a public issue.
 
 Include the affected commit, deployment topology, reproduction steps, impact,

@@ -52,13 +52,13 @@ const dashboard = {
 
 const inventory = {
   repositories: {
-    rows: [{ organization: "githubnext", repository: "gh-aw-cao" }],
+    rows: [{ organization: "githubnext", repository: "gh-cao" }],
     metadata,
   },
   workflows: {
     rows: [{
       organization: "githubnext",
-      repository: "gh-aw-cao",
+      repository: "gh-cao",
       workflow: ".github/workflows/dashboard.md",
       "workflow-name": "Dashboard",
     }],
@@ -71,7 +71,7 @@ const cachedSources = {
   runs: {
     rows: [{
       organization: "githubnext",
-      repository: "gh-aw-cao",
+      repository: "gh-cao",
       workflow: ".github/workflows/dashboard.md",
       run: "100",
       "run-title": "Cached dashboard run",
@@ -134,7 +134,7 @@ test("cached view is populated before background ingestion updates it", async ({
             run_id: 101,
             run_attempt: 1,
             organization: "githubnext",
-            repository: "gh-aw-cao",
+            repository: "gh-cao",
             workflow_name: "Dashboard",
             workflow_path: ".github/workflows/dashboard.md",
             display_title: "Fresh dashboard run",
@@ -157,7 +157,7 @@ test("cached view is populated before background ingestion updates it", async ({
             run_id: 102,
             run_attempt: 1,
             organization: "githubnext",
-            repository: "gh-aw-cao",
+            repository: "gh-cao",
             workflow_name: "Dashboard",
             workflow_path: ".github/workflows/dashboard.md",
             display_title: "Run ingested after reload",
@@ -202,10 +202,10 @@ test("cached view is populated before background ingestion updates it", async ({
   await expect(page.locator("#dashboard-current-status-tooltip"))
     .toContainText("Showing the last complete snapshot from");
   await expect(page.locator(".dashboard-view-skeleton")).toHaveCount(0);
-  await expect(page.getByRole("cell", { name: "gh-aw-cao" })).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: "gh-cao" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Repositories" }).click();
-  await expect(page.getByRole("cell", { name: "gh-aw-cao" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "gh-cao" })).toBeVisible();
 
   await page.getByRole("link", { name: "Runs" }).click();
   await expect.poll(() => freshDataRequested).toBe(true);
@@ -232,8 +232,8 @@ test("cached view is populated before background ingestion updates it", async ({
     return (await readCollection(indexedDB, "runs"))
       .map((/** @type {{ id: string }} */ run) => run.id).sort();
   }, `${origin}/src/data/storage/indexeddb.js`)).toEqual([
-    "github:run:githubnext/gh-aw-cao:100",
-    "github:run:githubnext/gh-aw-cao:101",
-    "github:run:githubnext/gh-aw-cao:102",
+    "github:run:githubnext/gh-cao:100",
+    "github:run:githubnext/gh-cao:101",
+    "github:run:githubnext/gh-cao:102",
   ]);
 });

@@ -349,18 +349,18 @@ it('binds every named drill argument to a worker query predicate and fails close
     }]
   };
   const bound = compileDashboardViewPayloadQueries(page, 'issue-events', {
-    routeParameters: { repository: 'gh-aw-cao', 'issue-id': '42' }
+    routeParameters: { repository: 'gh-cao', 'issue-id': '42' }
   });
   const missing = compileDashboardViewPayloadQueries(page, 'issue-events', {
-    routeParameters: { repository: 'gh-aw-cao' }
+    routeParameters: { repository: 'gh-cao' }
   });
 
   expect(/** @type {any} */ (bound.queries[0]).filter.predicates).toEqual([
-    { field: 'repository', equals: 'gh-aw-cao' },
+    { field: 'repository', equals: 'gh-cao' },
     { field: 'correlation-id', equals: '42' }
   ]);
   expect(/** @type {any} */ (missing.queries[0]).filter.predicates).toEqual([
-    { field: 'repository', equals: 'gh-aw-cao' },
+    { field: 'repository', equals: 'gh-cao' },
     { field: 'correlation-id', equals: '' }
   ]);
 });

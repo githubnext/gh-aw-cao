@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/cliegress"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/cliegress"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 func egressFixture(t *testing.T) (string, string, string) {

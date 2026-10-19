@@ -8,14 +8,14 @@ import {
 const opportunityId =
   "token-opportunity:octo%2Fexample:.github%2Fworkflows%2Freview.md:2026-09-01T00:00:00Z:2026-09-08T00:00:00Z:1185999:review-context-v1";
 const interventionId = `token-intervention:${opportunityId}:review-context-v1`;
-const safeOutputUrl = "https://github.com/githubnext/gh-aw-cao/issues/11861";
+const safeOutputUrl = "https://github.com/githubnext/gh-cao/issues/11861";
 const implementationUrl = "https://github.com/octo/example/pull/42";
 
 function claim(overrides = {}) {
   return {
     schemaVersion: 1,
     claimedAt: "2026-09-16T00:00:00Z",
-    controlRepository: "githubnext/gh-aw-cao",
+    controlRepository: "githubnext/gh-cao",
     claimRunId: "1189001",
     claimRunAttempt: 1,
     actor: "maintainer",
@@ -38,7 +38,7 @@ function envelopes(extra = []) {
         run_id: 1186001,
         run_attempt: 1,
         organization: "githubnext",
-        repository: "githubnext/gh-aw-cao",
+        repository: "githubnext/gh-cao",
         workflow_name: "Optimization / Token Optimizer",
         workflow_path: ".github/workflows/optimization-token-optimizer.md",
         created_at: "2026-09-15T03:00:00Z",
@@ -52,7 +52,7 @@ function envelopes(extra = []) {
         schemaVersion: 1,
         optimizerRunId: "1186001",
         runAttempt: 1,
-        controlRepository: "githubnext/gh-aw-cao",
+        controlRepository: "githubnext/gh-cao",
         targetRepo: "octo/example",
         workflowPath: ".github/workflows/review.md",
         opportunityId,
@@ -75,7 +75,7 @@ function envelopes(extra = []) {
 
 function githubFixture({ pullRequest, files, runs = {} } = {}) {
   return (endpoint) => {
-    if (endpoint === "repos/githubnext/gh-aw-cao/issues/11861") {
+    if (endpoint === "repos/githubnext/gh-cao/issues/11861") {
       return { number: 11861, html_url: safeOutputUrl };
     }
     if (endpoint === "repos/octo/example/pulls/42") {
@@ -99,7 +99,7 @@ test("an explicit claim records acceptance without treating issue state as imple
   assert.equal(observation.previousInterventionState, "proposed");
   assert.equal(observation.interventionState, "accepted");
   assert.equal(observation.recommendationDisposition, "unapplied");
-  assert.equal(observation.safeOutputId, "github:issue:githubnext/gh-aw-cao:11861");
+  assert.equal(observation.safeOutputId, "github:issue:githubnext/gh-cao:11861");
   assert.equal(observation.acceptedAt, "2026-09-16T00:00:00Z");
   assert.equal(observation.implementationChangeId, undefined);
 });

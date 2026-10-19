@@ -108,10 +108,10 @@ test("CAO introduction presents operating capabilities and leads to setup", asyn
   await expect(content).not.toContainText(/\boptional\b/i);
   await expect(content.getByRole("heading", { name: /campaign/i })).toHaveCount(0);
   const campaignLink = content.getByRole("link", { name: "browse campaigns", exact: true });
-  await expect(campaignLink).toHaveAttribute("href", "/gh-aw-cao/catalog/");
+  await expect(campaignLink).toHaveAttribute("href", "/gh-cao/catalog/");
   await expect(campaignLink).toHaveCount(1);
   await expect(content.getByRole("link", { name: "workflow operating patterns and ownership", exact: true }))
-    .toHaveAttribute("href", "/gh-aw-cao/deployment-and-governance/");
+    .toHaveAttribute("href", "/gh-cao/deployment-and-governance/");
   const image = content.getByAltText(/^CAO Repositories chart view/);
   await image.scrollIntoViewIfNeeded();
   await expect(image).toBeVisible();
@@ -120,7 +120,7 @@ test("CAO introduction presents operating capabilities and leads to setup", asyn
   await expect(content.locator("figure figcaption")).toContainText("Ranked bars compare distinct retained runs");
   await expect(content.locator("figure figcaption")).toContainText("output counts alone do not prove successful outcomes");
   await expect(content.getByRole("link", { name: "Explore the public Repositories view", exact: true }))
-    .toHaveAttribute("href", "https://githubnext.github.io/gh-aw-cao/cao/#page-repositories");
+    .toHaveAttribute("href", "https://githubnext.github.io/gh-cao/cao/#page-repositories");
   const diagram = content.locator(".mermaid svg");
   await expect(diagram).toBeVisible();
   await expect(diagram).toContainText("Existing AWs");
@@ -131,15 +131,15 @@ test("CAO introduction presents operating capabilities and leads to setup", asyn
   const setupLinks = content.getByRole("link", { name: "Set up CAO and monitor your workflows", exact: true });
   await expect(setupLinks).toHaveCount(2);
   expect(await setupLinks.last().evaluate((element) =>
-    Boolean(element.compareDocumentPosition(document.querySelector('main a[href="/gh-aw-cao/catalog/"]')) & Node.DOCUMENT_POSITION_FOLLOWING),
+    Boolean(element.compareDocumentPosition(document.querySelector('main a[href="/gh-cao/catalog/"]')) & Node.DOCUMENT_POSITION_FOLLOWING),
   )).toBe(true);
-  await expect(setupLinks.first()).toHaveAttribute("href", "/gh-aw-cao/setup-quickstarts/");
+  await expect(setupLinks.first()).toHaveAttribute("href", "/gh-cao/setup-quickstarts/");
   expect(await setupLinks.first().evaluate((element) =>
     Boolean(element.compareDocumentPosition(document.querySelector("main h2")) & Node.DOCUMENT_POSITION_FOLLOWING),
   )).toBe(true);
   const next = page.locator(".pagination-links a[rel=next]");
   await expect(next).toContainText("Set up CAO and monitor your workflows");
-  await expect(next).toHaveAttribute("href", "/gh-aw-cao/setup-quickstarts/");
+  await expect(next).toHaveAttribute("href", "/gh-cao/setup-quickstarts/");
 
   for (const [name, viewport] of [
     ["desktop", { width: 1280, height: 900 }],
@@ -166,7 +166,7 @@ test("CAO introduction presents operating capabilities and leads to setup", asyn
     await testInfo.attach(`CAO introduction (${name})`, { path: screenshot, contentType: "image/png" });
   }
 
-  for (const link of await content.locator('a[href^="/gh-aw-cao/"]').all()) {
+  for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
     const response = await page.request.get(await link.getAttribute("href"));
     expect(response.ok(), response.url()).toBe(true);
   }
@@ -209,7 +209,7 @@ for (const width of [320, 390, 768, 1024]) {
     await expect(menu.getByRole("navigation", { name: "Global links menu" })).toBeVisible();
     await expect(menu.getByRole("link")).toHaveText(["Docs", "Blog"]);
     await expect(menu.getByRole("link", { name: "Docs", exact: true }))
-      .toHaveAttribute("href", "/gh-aw-cao/architecture-at-a-glance/");
+      .toHaveAttribute("href", "/gh-cao/architecture-at-a-glance/");
     expect(await page.locator("html").evaluate((element) => element.scrollWidth))
       .toBeLessThanOrEqual(width);
   });

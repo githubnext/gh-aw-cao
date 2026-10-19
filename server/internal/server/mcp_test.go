@@ -14,7 +14,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 const (
@@ -181,7 +181,7 @@ func TestGitHubActionsMCPRequiresAllReadPermissions(t *testing.T) {
 			}))
 			defer api.Close()
 			err := verifyGitHubActionsPermissions(t.Context(), Config{
-				ActionsRepository: "githubnext/gh-aw-cao",
+				ActionsRepository: "githubnext/gh-cao",
 				GitHubAPIURL:      api.URL,
 				ActionsHTTPClient: api.Client(),
 			}, testActionsToken)
@@ -467,7 +467,7 @@ func newMCPTestAppConfig(
 		DashboardQueries: definitions, AgentCatalogPath: testAgentCatalog,
 		MCPContractPath: testMCPContract, MCPEnabled: enabled,
 		GitHubActionsToken: actionsToken, GitHubActionsActor: actionsActor,
-		ActionsRepository: "githubnext/gh-aw-cao",
+		ActionsRepository: "githubnext/gh-cao",
 		GitHubAPIURL:      apiURL, ActionsHTTPClient: httpClient,
 	})
 	if err != nil {

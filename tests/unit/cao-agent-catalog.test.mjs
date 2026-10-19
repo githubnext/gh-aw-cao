@@ -101,9 +101,9 @@ test("Node parity prompt renders a named query using the dashboard prompt templa
     assert.doesNotMatch(stdout, /Subject:\nReuse shared query stages/);
     assert.match(stdout, /Named CAO query IDs: .*cost-by-campaign/);
     assert.match(stdout, /\/analyze-cao/);
-    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-aw-cao\/blob\/main\/skills\/analyze-cao\/SKILL.md/);
-    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-aw-cao\/blob\/main\/specs\/dashboard-data.md/);
-    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-aw-cao\/blob\/HEAD\/.github\/workflows\/cao.json/);
+    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-cao\/blob\/main\/skills\/analyze-cao\/SKILL.md/);
+    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-cao\/blob\/main\/specs\/dashboard-data.md/);
+    assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-cao\/blob\/HEAD\/.github\/workflows\/cao.json/);
     assert.match(stdout, /No data preview was supplied/);
     assert.match(stdout, /"evidence": \{\}/);
     assert.doesNotMatch(stdout, /Page: undefined|View: undefined/);

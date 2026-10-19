@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 
-const repository = 'githubnext/gh-aw-cao';
+const repository = 'githubnext/gh-cao';
 const rootPackageNames = [`${repository}/control-plane`, repository];
 const runtimeWaitArray = new Int32Array(new SharedArrayBuffer(4));
 const rootResources = [

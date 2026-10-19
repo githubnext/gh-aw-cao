@@ -2,7 +2,7 @@
 title: What Is Central Agentic Ops?
 description: Observe, evaluate, and operate agentic work across repositories, with shared visibility and controlled rollout.
 next:
-  link: /gh-aw-cao/setup-quickstarts/
+  link: /gh-cao/setup-quickstarts/
   label: Set up CAO and monitor your workflows
 ---
 
@@ -62,7 +62,7 @@ outcome evidence is not proof of zero cost or success.
 </figcaption>
 </figure>
 
-[Explore the public Repositories view](https://githubnext.github.io/gh-aw-cao/cao/#page-repositories).
+[Explore the public Repositories view](https://githubnext.github.io/gh-cao/cao/#page-repositories).
 Wait for import to finish before reading the charts.
 See the [dashboard guide](dashboard.md) for more.
 

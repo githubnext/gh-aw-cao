@@ -3,7 +3,7 @@ package sqlitex
 import (
 	"sort"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/query"
 )
 
 type snapshotFields struct {

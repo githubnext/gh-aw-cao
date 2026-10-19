@@ -43,7 +43,7 @@
   "repositories": [
     {
       "project": "Central Agentic Ops",
-      "repository": "githubnext/gh-aw-cao",
+      "repository": "githubnext/gh-cao",
       "revision": null,
       "revisionRecorded": false
     },

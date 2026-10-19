@@ -39,7 +39,7 @@ const jobs = [
     timing: "job-2",
     operation: "Dependabot update planner",
     workflow: "Dependabot / Update Planner",
-    repository: "githubnext/gh-aw-cao",
+    repository: "githubnext/gh-cao",
     mode: "review",
     duration: "3m 41s",
     targetRow: 2,
@@ -107,7 +107,7 @@ const campaigns = [
 ];
 
 const successfulJobs = jobs.filter((job) => !job.failed);
-const controlRepository = successfulJobs.find((job) => job.repository === "githubnext/gh-aw-cao");
+const controlRepository = successfulJobs.find((job) => job.repository === "githubnext/gh-cao");
 const targetJobs = [...successfulJobs].sort((left, right) => left.targetRow - right.targetRow);
 
 const organizationNodes = [

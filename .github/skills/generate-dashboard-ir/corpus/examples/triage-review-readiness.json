@@ -3,11 +3,11 @@
   "id": "triage-review-readiness",
   "task": {
     "actor": "Repository operator",
-    "subject": "An issue-triage review workflow for the githubnext/gh-aw-cao repository",
+    "subject": "An issue-triage review workflow for the githubnext/gh-cao repository",
     "intent": "Assess whether the issue-triage review workflow is activating on newly opened issues, producing bounded review outputs, and attaining its intended value of surfacing ready-to-triage issues with accepted evidence.",
     "activationConditions": [
-      "A repository operator enables a standalone issue-triage review workflow on githubnext/gh-aw-cao.",
-      "A newly opened issue in githubnext/gh-aw-cao creates one stable triage opportunity for the workflow.",
+      "A repository operator enables a standalone issue-triage review workflow on githubnext/gh-cao.",
+      "A newly opened issue in githubnext/gh-cao creates one stable triage opportunity for the workflow.",
       "A workflow run associated with that issue is observed in the dashboard horizon."
     ],
     "requiredEffects": [
@@ -47,7 +47,7 @@
       "rows": [
         {
           "organization": "githubnext",
-          "repository": "gh-aw-cao",
+          "repository": "gh-cao",
           "workflow": ".github/workflows/issue-triage-review.yml",
           "workflow-name": "Issue triage review",
           "workflow-role": "standalone",
@@ -56,12 +56,12 @@
           "observed-at": "2026-09-01T00:00:00Z",
           "repository-link": {
             "relation": "repository",
-            "href": "https://github.com/githubnext/gh-aw-cao",
-            "label": "githubnext/gh-aw-cao"
+            "href": "https://github.com/githubnext/gh-cao",
+            "label": "githubnext/gh-cao"
           },
           "workflow-link": {
             "relation": "workflow",
-            "href": "https://github.com/githubnext/gh-aw-cao/actions/workflows/issue-triage-review.yml",
+            "href": "https://github.com/githubnext/gh-cao/actions/workflows/issue-triage-review.yml",
             "label": "Issue triage review"
           }
         }

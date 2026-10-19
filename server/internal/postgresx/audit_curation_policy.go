@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/model"
 )
 
 const auditSummaryLimit = 1024

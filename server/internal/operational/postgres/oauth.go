@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 func sessionInput(id, value string, ttl time.Duration) error {

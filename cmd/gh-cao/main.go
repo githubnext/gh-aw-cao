@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/githubnext/gh-aw-cao/internal/cli"
+	"github.com/githubnext/gh-cao/internal/cli"
 )
 
 var version = "dev"

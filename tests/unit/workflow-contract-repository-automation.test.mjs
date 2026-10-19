@@ -165,6 +165,6 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
   assert.match(campaignLifecycle, /npm run test:campaign-lifecycle/);
   assert.match(campaignLifecycle, /grep -Fq "API rate limit exceeded for installation"/);
   assert.match(campaignLifecycle, /exit "\$status"/);
-  assert.match(campaignLifecycleTest, /const campaignUpdateSource = "https:\/\/github\.com\/githubnext\/gh-aw-cao"/);
+  assert.match(campaignLifecycleTest, /const campaignUpdateSource = "https:\/\/github\.com\/githubnext\/gh-cao"/);
   assert.match(campaignLifecycleTest, /"update",\n\s+campaignUpdateSource,/);
 });

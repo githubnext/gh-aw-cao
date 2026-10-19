@@ -1,7 +1,7 @@
 {
   "run": {
     "organization": "githubnext",
-    "repository": "gh-aw-cao",
+    "repository": "gh-cao",
     "workflow": ".github/workflows/optimization-skills-curator.md",
     "run": "37050176308",
     "run-attempt": "1"

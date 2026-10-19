@@ -245,11 +245,11 @@ test("allows only the reviewed protected-main publisher exception", async () => 
     await writeFile(path.join(root, ".github", "workflows", "package.yml"), [
       "jobs:",
       "  publish:",
-      "    uses: githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main # zizmor: ignore[unpinned-uses] protected default-branch publisher",
+      "    uses: githubnext/gh-cao/.github/workflows/cao-package-publish.yml@main # zizmor: ignore[unpinned-uses] protected default-branch publisher",
       "  unreviewed:",
-      "    uses: githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main",
+      "    uses: githubnext/gh-cao/.github/workflows/cao-package-publish.yml@main",
       "  other:",
-      "    uses: githubnext/gh-aw-cao/.github/workflows/other.yml@main",
+      "    uses: githubnext/gh-cao/.github/workflows/other.yml@main",
       "  external:",
       "    steps:",
       "      - uses: someone/action@main",
@@ -257,8 +257,8 @@ test("allows only the reviewed protected-main publisher exception", async () => 
     ].join("\n"));
     const findings = await validateSecurity(root, "{}");
     assert.deepEqual(findings.map(({ observed }) => observed), [
-      "githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main",
-      "githubnext/gh-aw-cao/.github/workflows/other.yml@main",
+      "githubnext/gh-cao/.github/workflows/cao-package-publish.yml@main",
+      "githubnext/gh-cao/.github/workflows/other.yml@main",
       "someone/action@main",
     ]);
   } finally {

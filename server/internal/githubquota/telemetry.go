@@ -12,13 +12,13 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 // instrumentationName is the OpenTelemetry scope shared with the rest of the
 // CAO server so quota telemetry exports alongside server spans and metrics.
-const instrumentationName = "github.com/githubnext/gh-aw-cao/server"
+const instrumentationName = "github.com/githubnext/gh-cao/server"
 
 var quotaTelemetryLog = logger.New("cao:githubquota:telemetry")
 

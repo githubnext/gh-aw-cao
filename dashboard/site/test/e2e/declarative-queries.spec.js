@@ -34,8 +34,8 @@ const workflowRun = (workflow, run, conclusion, startedAt, event = 'schedule') =
   'started-at': startedAt
 });
 
-const dashboardWorkflow = { repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md' };
-const doctorWorkflow = { repository: 'gh-aw-cao', workflow: '.github/workflows/doctor.md' };
+const dashboardWorkflow = { repository: 'gh-cao', workflow: '.github/workflows/dashboard.md' };
+const doctorWorkflow = { repository: 'gh-cao', workflow: '.github/workflows/doctor.md' };
 const auditWorkflow = { repository: 'control-plane', workflow: '.github/workflows/audit.md' };
 const idleWorkflow = { repository: 'control-plane', workflow: '.github/workflows/idle.md' };
 
@@ -59,7 +59,7 @@ function queryScenarioSources() {
     },
     repositories: {
       rows: [
-        { organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': asOf },
+        { organization: 'githubnext', repository: 'gh-cao', 'observed-at': asOf },
         { organization: 'githubnext', repository: 'control-plane', 'observed-at': asOf }
       ],
       metadata
@@ -90,7 +90,7 @@ function queryScenarioSources() {
       rows: [
         {
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: dashboardWorkflow.workflow,
           run: '1001',
           'run-attempt': 1,
@@ -108,7 +108,7 @@ function queryScenarioSources() {
         },
         {
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: dashboardWorkflow.workflow,
           run: '1002',
           'run-attempt': 1,
@@ -131,7 +131,7 @@ function queryScenarioSources() {
       rows: [
         {
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: dashboardWorkflow.workflow,
           run: '1002',
           'run-attempt': 1, event: 'threat-detection:1002', 'event-source': 'audit',
@@ -142,7 +142,7 @@ function queryScenarioSources() {
         },
         {
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow: dashboardWorkflow.workflow,
           run: '1003',
           'run-attempt': 1, event: 'threat-detection:1003', 'event-source': 'audit',
@@ -375,7 +375,7 @@ test('scenario 2: filters with the declarative predicate vocabulary', async ({ p
     filter: {
       predicates: [
         { field: 'run-conclusion', equals: 'failure' },
-        { field: 'repository', in: ['gh-aw-cao'] },
+        { field: 'repository', in: ['gh-cao'] },
         { field: 'workflow', includes: 'dashboard' }
       ]
     },
@@ -391,7 +391,7 @@ test('scenario 3: aggregates with grouped, deterministic reducers', async ({ pag
 
   expect(payload['run-totals'].rows).toEqual(expect.arrayContaining([
     expect.objectContaining({
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       runs: 3,
       'latest-run': 1003
@@ -409,14 +409,14 @@ test('the authored basic table queries return the populated canonical database r
   const payload = await loadThroughWorker(page, dashboard.dashboard.queries, requested);
 
   expect(payload['repository-activity'].rows.map((row) => row.repository)).toEqual([
-    'githubnext/gh-aw-cao',
+    'githubnext/gh-cao',
     'githubnext/control-plane'
   ]);
   expect(payload['workflow-inventory'].rows.map((row) => [row.repository, row.workflow])).toEqual([
     ['githubnext/control-plane', '.github/workflows/audit.md'],
     ['githubnext/control-plane', '.github/workflows/idle.md'],
-    ['githubnext/gh-aw-cao', '.github/workflows/dashboard.md'],
-    ['githubnext/gh-aw-cao', '.github/workflows/doctor.md']
+    ['githubnext/gh-cao', '.github/workflows/dashboard.md'],
+    ['githubnext/gh-cao', '.github/workflows/doctor.md']
   ]);
   expect(payload['workflow-inventory'].rows.map((row) => row['workflow-label'])).toEqual(
     payload['workflow-inventory'].rows.map((row) => `${row.repository}:${row.workflow}`)
@@ -435,7 +435,7 @@ test('the authored friction page reads only its canonical worker projections', a
   expect(Object.keys(payload).sort()).toEqual([...requested].sort());
   expect(payload['friction-by-workflow'].rows).toEqual([
     expect.objectContaining({
-      'repository-coordinate': 'githubnext/gh-aw-cao',
+      'repository-coordinate': 'githubnext/gh-cao',
       workflow: dashboardWorkflow.workflow,
       'friction-aic': 1.5,
       runs: 2
@@ -522,13 +522,13 @@ test('scenario 6: computes allowlisted fields with null and divide-by-zero handl
       workflow: '.github/workflows/dashboard.md',
       'total-runs': 3,
       'failure-rate': 2 / 3,
-      label: 'gh-aw-cao/.github/workflows/dashboard.md'
+      label: 'gh-cao/.github/workflows/dashboard.md'
     },
     {
       workflow: '.github/workflows/doctor.md',
       'total-runs': 1,
       'failure-rate': 0,
-      label: 'gh-aw-cao/.github/workflows/doctor.md'
+      label: 'gh-cao/.github/workflows/doctor.md'
     },
     {
       workflow: '.github/workflows/idle.md',
@@ -560,7 +560,7 @@ test('scenario 7: a derived source composes another derived source', async ({ pa
 
   expect(payload['repository-run-totals'].rows).toEqual([
     { repository: 'control-plane', runs: 1, workflows: 2 },
-    { repository: 'gh-aw-cao', runs: 4, workflows: 2 }
+    { repository: 'gh-cao', runs: 4, workflows: 2 }
   ]);
 });
 

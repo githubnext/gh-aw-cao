@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
 )
 
 func TestBackfillWaitsForConcurrentEnrollmentMutation(t *testing.T) {

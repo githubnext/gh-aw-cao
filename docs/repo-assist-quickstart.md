@@ -5,7 +5,7 @@ description: Optional campaign walkthrough to propose one maintenance improvemen
 
 This optional walkthrough installs and runs a campaign. To monitor existing
 Agentic Workflows without adding a campaign, start with [Set Up CAO](setup-quickstarts.md).
-If you already completed that setup, use the [campaign catalog](https://githubnext.github.io/gh-aw-cao/catalog/)
+If you already completed that setup, use the [campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
 to add a campaign to your existing control plane instead of reinstalling it.
 
 This guide introduces Central Agentic Ops (CAO) one component at a time.
@@ -74,7 +74,7 @@ Run this outside a Git checkout to create a new private control repository:
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
   bash -s -- --quickstart \
     --create-repo CONTROL_OWNER/CONTROL_REPOSITORY \
     --target TARGET_OWNER/TARGET_REPOSITORY
@@ -95,7 +95,7 @@ With no catalog source, `--quickstart` resolves the latest stable CAO `vX.Y.Z`
 release and pins the control plane, Repo Assist campaign, and verified
 release runtime to its immutable commit. It fails closed if a stable release
 cannot be resolved; it never silently falls back to `main`. Maintainers can opt
-into the development build by passing `githubnext/gh-aw-cao@main` before
+into the development build by passing `githubnext/gh-cao@main` before
 `--quickstart`.
 
 The command teaches these choices in five numbered sections **before each
@@ -261,7 +261,7 @@ policy, workflow runs, dashboard data, and review outputs are also public.
 ## See more without running more
 
 Quickstart intentionally runs only Maintenance. Explore
-[real Repo Assist examples](https://github.com/githubnext/gh-aw-cao/blob/main/repo-assist/README.md#see-repo-assist-in-action)
+[real Repo Assist examples](https://github.com/githubnext/gh-cao/blob/main/repo-assist/README.md#see-repo-assist-in-action)
 from our own control plane to see issue triage, issue-fix proposals, maintenance,
 and a PR-upkeep blocker review. Each example links its report and originating
 run and states the observed outcome, including the failed, no-patch upkeep run.
@@ -330,7 +330,7 @@ scope, App or PAT credentials, or review before changes:
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
   bash -s -- --setup
 ```
 
@@ -340,7 +340,7 @@ pushes. Bare installation also stops without a prompt and prints
 and shows each profile's prerequisites before applying it.
 
 For an optional first look, start with **Repo Assist** after guided setup:
-`gh cao campaigns add githubnext/gh-aw-cao/repo-assist`.
+`gh cao campaigns add githubnext/gh-cao/repo-assist`.
 
 See [Control Plane Authentication Profiles](control-plane-authentication.md)
 for advanced authentication choices.

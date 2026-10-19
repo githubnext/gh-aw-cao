@@ -51,8 +51,8 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 	}
 	claims := actionsOIDCClaims{
 		Issuer: actionsOIDCIssuer, Audience: json.RawMessage(`"https://cao.githubnext.com"`),
-		Repository: "githubnext/gh-aw-cao", RepositoryID: "1302952722", RepositoryOwnerID: "89615882",
-		Subject: "repo:githubnext@89615882/gh-aw-cao@1302952722:ref:refs/heads/main",
+		Repository: "githubnext/gh-cao", RepositoryID: "1302952722", RepositoryOwnerID: "89615882",
+		Subject: "repo:githubnext@89615882/gh-cao@1302952722:ref:refs/heads/main",
 		Ref:     "refs/heads/main",
 		Actor:   "OctoCat", IssuedAt: time.Now().Add(-time.Minute).Unix(),
 		ExpiresAt: time.Now().Add(4 * time.Minute).Unix(),
@@ -83,19 +83,19 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		if request.URL.Path == "/repos/githubnext/gh-aw-cao" {
+		if request.URL.Path == "/repos/githubnext/gh-cao" {
 			if request.Header.Get("Authorization") != "Bearer "+testActionsToken || denyDefaultBranch {
 				response.WriteHeader(http.StatusForbidden)
 				return
 			}
 			_ = json.NewEncoder(response).Encode(map[string]any{
-				"id": 1302952722, "full_name": "githubnext/gh-aw-cao",
+				"id": 1302952722, "full_name": "githubnext/gh-cao",
 				"owner": map[string]any{"id": 89615882}, "default_branch": defaultBranch,
 			})
 			return
 		}
 		probes++
-		if !strings.HasPrefix(request.URL.Path, "/repos/githubnext/gh-aw-cao/") {
+		if !strings.HasPrefix(request.URL.Path, "/repos/githubnext/gh-cao/") {
 			t.Errorf("invalid permission probe: %s", request.URL)
 			response.WriteHeader(http.StatusForbidden)
 			return
@@ -114,7 +114,7 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 		return api.Client().Do(request)
 	})}
 	config := Config{
-		ActionsRepository: "githubnext/gh-aw-cao", GitHubAPIURL: api.URL, ActionsHTTPClient: client,
+		ActionsRepository: "githubnext/gh-cao", GitHubAPIURL: api.URL, ActionsHTTPClient: client,
 	}
 	makeRequest := func(provenance, bearer string) *http.Request {
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "https://cao.githubnext.com/mcp", nil)
@@ -131,7 +131,7 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 	}{
 		{"valid immutable subject", nil, testActionsToken, "", true},
 		{"valid legacy subject", func(c *actionsOIDCClaims) {
-			c.Subject = "repo:githubnext/gh-aw-cao:ref:refs/heads/main"
+			c.Subject = "repo:githubnext/gh-cao:ref:refs/heads/main"
 		}, testActionsToken, "", true},
 		{"wrong audience", func(c *actionsOIDCClaims) { c.Audience = json.RawMessage(`"https://other.example"`) }, testActionsToken, "", false},
 		{"multiple audiences", func(c *actionsOIDCClaims) {
@@ -142,9 +142,9 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 		{"wrong repository id", func(c *actionsOIDCClaims) { c.RepositoryID = "1" }, testActionsToken, "", false},
 		{"wrong repository owner id", func(c *actionsOIDCClaims) { c.RepositoryOwnerID = "1" }, testActionsToken, "", false},
 		{"wrong subject", func(c *actionsOIDCClaims) { c.Subject = "repo:attacker/repo:ref:refs/heads/main" }, testActionsToken, "", false},
-		{"pull request subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:pull_request" }, testActionsToken, "", false},
-		{"environment subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:environment:production" }, testActionsToken, "", false},
-		{"branch subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-aw-cao:ref:refs/heads/feature" }, testActionsToken, "", false},
+		{"pull request subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-cao:pull_request" }, testActionsToken, "", false},
+		{"environment subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-cao:environment:production" }, testActionsToken, "", false},
+		{"branch subject", func(c *actionsOIDCClaims) { c.Subject = "repo:githubnext/gh-cao:ref:refs/heads/feature" }, testActionsToken, "", false},
 		{"branch ref", func(c *actionsOIDCClaims) { c.Ref = "refs/heads/feature" }, testActionsToken, "", false},
 		{"missing ref", func(c *actionsOIDCClaims) { c.Ref = "" }, testActionsToken, "", false},
 		{"expired", func(c *actionsOIDCClaims) { c.ExpiresAt = time.Now().Add(-time.Minute).Unix() }, testActionsToken, "", false},
@@ -198,7 +198,7 @@ func TestHostedActionsMCPAuthentication(t *testing.T) {
 	}{
 		{"non-main default branch", "trunk", false, func(c *actionsOIDCClaims) {
 			c.Ref = "refs/heads/trunk"
-			c.Subject = "repo:githubnext@89615882/gh-aw-cao@1302952722:ref:refs/heads/trunk"
+			c.Subject = "repo:githubnext@89615882/gh-cao@1302952722:ref:refs/heads/trunk"
 		}, true},
 		{"missing default branch", "", false, nil, false},
 		{"mismatched signed ref", "trunk", false, nil, false},

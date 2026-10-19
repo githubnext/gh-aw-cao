@@ -24,7 +24,7 @@ repository. A high-priority Decision is evidence for human review, not
 permission to execute.
 
 For the normative contract, see the
-[Intelligence Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/intelligence.md).
+[Intelligence Specification](https://github.com/githubnext/gh-cao/blob/main/specs/intelligence.md).
 
 ## Data flow
 

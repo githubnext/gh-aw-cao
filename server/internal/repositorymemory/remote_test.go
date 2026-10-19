@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
 )
 
 const testOID = "0123456789012345678901234567890123456789"

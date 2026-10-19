@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
+	"github.com/githubnext/gh-cao/server/internal/sqlbuilder"
 )
 
 // OutputStatement returns typed values and presence flags for bounded wire

@@ -57,7 +57,7 @@ test('the footer shows an app download before offering the user a reload', async
         evaluatedAt: '2026-09-30T00:00:00Z',
         commitSha: '0123456789abcdef0123456789abcdef01234567',
         githubUrlBase: 'https://github.com',
-        dashboardRepository: 'githubnext/gh-aw-cao'
+        dashboardRepository: 'githubnext/gh-cao'
       }));
       const { startDashboardAppUpdates } = await import(moduleUrl);
       startDashboardAppUpdates();

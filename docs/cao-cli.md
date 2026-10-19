@@ -11,9 +11,9 @@ downloads the compiled Go extension as `gh cao` and installs the Node.js runtime
 for Activity and Dashboard Actions. Invoke it explicitly as
 `node activity/cao.mjs <command>`; there is no shell launcher. Agents
 using the CLI should follow the
-[`cao-cli` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md);
+[`cao-cli` skill](https://github.com/githubnext/gh-cao/blob/main/skills/cao-cli/SKILL.md);
 agents querying activity data should use
-[`analyze-cao`](https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md).
+[`analyze-cao`](https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md).
 The Go extension exposes the operator-facing command surface as `gh cao`.
 Internal Node implementations remain for Actions and parity tests, not as an
 alternative operator surface. Run policy commands from the control repository root:
@@ -31,7 +31,7 @@ reference. Request command-specific help with `gh cao COMMAND --help`.
 Install or refresh the extension together with the control-plane runtime:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
 gh cao --version
 ```
 
@@ -45,7 +45,7 @@ Linked/source installations are not overwritten. Release binaries use the
 macOS, and Windows on amd64 and arm64. `checksums.txt` contains their SHA-256
 digests. Downloads fail closed unless the asset's exact checksum and embedded
 version match. Verification finishes before replacing an existing binary.
-An explicit catalog source `githubnext/gh-aw-cao@vX.Y.Z` selects the same
+An explicit catalog source `githubnext/gh-cao@vX.Y.Z` selects the same
 extension tag, including a published prerelease with that tag; otherwise the
 installer selects the latest stable CAO release. Main/SHA and local catalog
 sources still select their own runtime revision independently.
@@ -53,7 +53,7 @@ Node.js 24+ remains required for installing the repository's pipeline runtime,
 but not for running the Go operator commands afterward.
 
 For local development, build with `make build` and use `./gh-cao` directly, or follow the
-[local extension installation guide](https://github.com/githubnext/gh-aw-cao/blob/main/CONTRIBUTING.md#go-extension-development)
+[local extension installation guide](https://github.com/githubnext/gh-cao/blob/main/CONTRIBUTING.md#go-extension-development)
 to invoke it as `gh cao`.
 
 | Surface | Commands | Execution |
@@ -88,7 +88,7 @@ gh cao setup
 gh cao setup auth github-app --help
 gh cao setup auth enterprise-app --help
 gh cao setup auth token --help
-gh cao campaigns add githubnext/gh-aw-cao/dependabot
+gh cao campaigns add githubnext/gh-cao/dependabot
 gh cao repos add acme/example-service
 gh cao campaigns mode preview dependabot
 gh cao campaigns enable dependabot
@@ -165,7 +165,7 @@ CAO and gh-aw have separate jobs:
 
 ```bash
 # Add a campaign and merge its workers into CAO policy.
-gh cao campaigns add githubnext/gh-aw-cao/dependabot
+gh cao campaigns add githubnext/gh-cao/dependabot
 
 # Keep the campaign review-only and enable its workflows.
 gh cao campaigns mode preview dependabot
@@ -211,7 +211,7 @@ gh aw run dependabot --ref main \
 Omit `--campaign` to update all installed CAO packages. Selection also works with
 refs and update options, for example `gh cao update main --campaign dependabot`.
 The slug is the last component of the installed package name (`root` for
-`githubnext/gh-aw-cao`). Unknown, ambiguous, empty, unsafe, or repeated selections
+`githubnext/gh-cao`). Unknown, ambiguous, empty, unsafe, or repeated selections
 fail before updates or gh-aw upgrades. Campaign selection does not narrow a
 required gh-aw compiler upgrade, which may refresh shared workflow files.
 

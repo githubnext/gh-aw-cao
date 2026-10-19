@@ -9,7 +9,7 @@ const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'gene
 function runRows(count) {
   return Array.from({ length: count }, (unused, index) => ({
     organization: 'githubnext',
-    repository: 'gh-aw-cao',
+    repository: 'gh-cao',
     workflow: '.github/workflows/dashboard.md',
     run: String(index + 1),
     'run-attempt': 1,
@@ -122,7 +122,7 @@ describe('database query debug logging', () => {
         expect(typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean').toBe(true);
       }
       expect(JSON.stringify(payload)).not.toContain('githubnext');
-      expect(JSON.stringify(payload)).not.toContain('gh-aw-cao');
+      expect(JSON.stringify(payload)).not.toContain('gh-cao');
     }
   });
 });

@@ -253,7 +253,7 @@ test("cao init writes the minimal control-plane policy scoped to the current rep
     });
     const policy = JSON.parse(await readFile(policyPath, "utf8"));
     assert.deepEqual(policy, {
-      $schema: "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
+      $schema: "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json",
       version: 1,
       "gh-aw-version": "v0.89.17",
       "control-plane": {
@@ -262,7 +262,7 @@ test("cao init writes the minimal control-plane policy scoped to the current rep
           registries: [{
             id: "official",
             name: "Official CAO catalog",
-            repository: "githubnext/gh-aw-cao",
+            repository: "githubnext/gh-cao",
             ref: "main",
             auth: { type: "none" },
           }, {
@@ -833,21 +833,21 @@ test("fine-grained token setup formats a concise completion summary", () => {
       { owner: "github", role: "read", secret: "GH_AW_GITHUB_READ_PAT_GITHUB" },
       { owner: "githubnext", role: "write", secret: "GH_AW_GITHUB_WRITE_PAT_GITHUBNEXT" },
     ],
-    repo: "githubnext/gh-aw-cao",
+    repo: "githubnext/gh-cao",
     repositories: {
       read: {
-        "githubnext/gh-aw-cao": "GH_AW_GITHUB_READ_PAT_GITHUBNEXT",
+        "githubnext/gh-cao": "GH_AW_GITHUB_READ_PAT_GITHUBNEXT",
         "github/gh-aw": "GH_AW_GITHUB_READ_PAT_GITHUB",
       },
       write: {
-        "githubnext/gh-aw-cao": "GH_AW_GITHUB_WRITE_PAT_GITHUBNEXT",
+        "githubnext/gh-cao": "GH_AW_GITHUB_WRITE_PAT_GITHUBNEXT",
       },
     },
   });
 
-  assert.match(summary, /^✓ Fine-grained PAT authentication configured for githubnext\/gh-aw-cao\./);
+  assert.match(summary, /^✓ Fine-grained PAT authentication configured for githubnext\/gh-cao\./);
   assert.match(summary, /Read scope: 2 repositories across githubnext, github/);
-  assert.match(summary, /Write scope: githubnext\/gh-aw-cao/);
+  assert.match(summary, /Write scope: githubnext\/gh-cao/);
   assert.match(summary, /Authentication mode: pat/);
   assert.match(summary, /publish policy changes, then run gh workflow run cao-validate\.yml/);
   assert.doesNotMatch(summary, /^\{/);
@@ -1453,7 +1453,7 @@ test("cao add installs a campaign and merges its declaration safely", async () =
     }, null, 2)}\n`);
     process.chdir(root);
     const result = await addCaoCampaign(
-      "githubnext/gh-aw-cao/dependabot@feature/config",
+      "githubnext/gh-cao/dependabot@feature/config",
       ["--force", "--no-security-scanner"],
       {
         policyPath,
@@ -1467,7 +1467,7 @@ test("cao add installs a campaign and merges its declaration safely", async () =
     assert.deepEqual(calls, [
       [
         "gh",
-        ["aw", "add", "githubnext/gh-aw-cao/dependabot@feature/config", "--force", "--no-security-scanner"],
+        ["aw", "add", "githubnext/gh-cao/dependabot@feature/config", "--force", "--no-security-scanner"],
       ],
       [
         process.execPath,
@@ -1560,7 +1560,7 @@ test("cao add without a policy initializes it for the current repository before 
       workers: { "release-train-updater": "dependabot-release-train-updater" },
     }));
     process.chdir(root);
-    await addCaoCampaign("githubnext/gh-aw-cao/dependabot@v1", [], {
+    await addCaoCampaign("githubnext/gh-cao/dependabot@v1", [], {
       policyPath,
       execute(command, arguments_) {
         calls.push([command, arguments_]);
@@ -1584,7 +1584,7 @@ test("cao add without a policy initializes it for the current repository before 
         registries: [{
           id: "official",
           name: "Official CAO catalog",
-          repository: "githubnext/gh-aw-cao",
+          repository: "githubnext/gh-cao",
           ref: "main",
           auth: { type: "none" },
         }, {
@@ -1613,7 +1613,7 @@ test("cao add leaves policy untouched when gh aw add fails", async () => {
   await writeFile(policyPath, '{"version":1}\n');
   try {
     await assert.rejects(
-      addCaoCampaign("githubnext/gh-aw-cao/dependabot@v1", [], {
+      addCaoCampaign("githubnext/gh-cao/dependabot@v1", [], {
         policyPath,
         execute: () => ({ status: 1, stdout: "", stderr: "installation failed" }),
       }),
@@ -1628,7 +1628,7 @@ test("cao add leaves policy untouched when gh aw add fails", async () => {
 test("cao add rejects the root package before modifying gh-aw records", async () => {
   const calls = [];
   await assert.rejects(
-    addCaoCampaign("githubnext/gh-aw-cao@v1", [], {
+    addCaoCampaign("githubnext/gh-cao@v1", [], {
       execute(command, arguments_) {
         calls.push([command, arguments_]);
         return versionResult;
@@ -1651,15 +1651,15 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
     await mkdir(campaignRecords, { recursive: true });
     await writeFile(path.join(campaignRecords, "root.json"), JSON.stringify({
       schemaVersion: 1,
-      package: "githubnext/gh-aw-cao",
-      source: "githubnext/gh-aw-cao@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      package: "githubnext/gh-cao",
+      source: "githubnext/gh-cao@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       resolvedCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       files: [],
     }));
     await writeFile(path.join(campaignRecords, "dependabot.json"), JSON.stringify({
       schemaVersion: 1,
-      package: "githubnext/gh-aw-cao/dependabot",
-      source: "githubnext/gh-aw-cao/dependabot@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      package: "githubnext/gh-cao/dependabot",
+      source: "githubnext/gh-cao/dependabot@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       resolvedCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       files: [
         { destination: ".github/workflows/cao-activity.yml", sha256: "old" },
@@ -1677,7 +1677,7 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
     }
     await writeFile(
       path.join(root, ".github", "workflows", "dependabot.md"),
-      "---\nsource: githubnext/gh-aw-cao/dependabot@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n---\n\n# Dependabot\n",
+      "---\nsource: githubnext/gh-cao/dependabot@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n---\n\n# Dependabot\n",
     );
     await writeFile(path.join(declarationDirectory, "cao.json"), JSON.stringify({
       campaign: "dependabot",
@@ -1721,20 +1721,20 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
           };
         }
         if (command === "gh" && arguments_[0] === "api") {
-          if (arguments_[1] === "/repos/githubnext/gh-aw-cao/commits/v0.0.2") {
+          if (arguments_[1] === "/repos/githubnext/gh-cao/commits/v0.0.2") {
             return { status: 0, stdout: "1234567890abcdef1234567890abcdef12345678\n", stderr: "" };
           }
-          if (arguments_[1] === "/repos/githubnext/gh-aw-cao/releases/tags/v0.0.1") {
+          if (arguments_[1] === "/repos/githubnext/gh-cao/releases/tags/v0.0.1") {
             return { status: 0, stdout: "v0.0.1\n", stderr: "" };
           }
           return { status: 0, stdout: "v0.0.1\n", stderr: "" };
         }
         if (command === "gh" && arguments_[0] === "aw" && arguments_[1] === "update"
-          && arguments_[2] === "https://github.com/githubnext/gh-aw-cao") {
+          && arguments_[2] === "https://github.com/githubnext/gh-cao") {
           writeFileSync(path.join(campaignRecords, "root.json"), JSON.stringify({
             schemaVersion: 1,
-            package: "githubnext/gh-aw-cao",
-            source: "githubnext/gh-aw-cao@v0.0.2",
+            package: "githubnext/gh-cao",
+            source: "githubnext/gh-cao@v0.0.2",
             resolvedCommit: "1234567890abcdef1234567890abcdef12345678",
             files: [
               { destination: ".github/workflows/cao-activity.yml", sha256: "old" },
@@ -1750,22 +1750,22 @@ test("cao update upgrades gh-aw, updates installed campaigns, and merges declara
       ["gh", ["aw", "version"]],
       ["bash", ["-c", "curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$1\"", "cao-gh-aw-install", "v0.89.17"]],
       ["gh", ["aw", "version"]],
-      ["gh", ["api", "--paginate", "/repos/githubnext/gh-aw-cao/tags", "--jq", ".[] | select(.commit.sha == \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\") | .name"]],
-      ["gh", ["api", "/repos/githubnext/gh-aw-cao/releases/tags/v0.0.1", "--jq", "select(.draft == false and .prerelease == false) | .tag_name"]],
-      ["gh", ["aw", "update", "https://github.com/githubnext/gh-aw-cao", "--force"]],
+      ["gh", ["api", "--paginate", "/repos/githubnext/gh-cao/tags", "--jq", ".[] | select(.commit.sha == \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\") | .name"]],
+      ["gh", ["api", "/repos/githubnext/gh-cao/releases/tags/v0.0.1", "--jq", "select(.draft == false and .prerelease == false) | .tag_name"]],
+      ["gh", ["aw", "update", "https://github.com/githubnext/gh-cao", "--force"]],
       [process.execPath, [path.join(".github", "workflows", "shared", "materialize-cao.mjs"), "materialize", "root"]],
-      ["gh", ["aw", "update", "https://github.com/githubnext/gh-aw-cao/dependabot", "--force"]],
+      ["gh", ["aw", "update", "https://github.com/githubnext/gh-cao/dependabot", "--force"]],
       [process.execPath, [path.join(".github", "workflows", "shared", "materialize-cao.mjs"), "materialize", "dependabot"]],
     ]);
     assert.deepEqual(result.campaigns, [
-      "githubnext/gh-aw-cao",
-      "githubnext/gh-aw-cao/dependabot",
+      "githubnext/gh-cao",
+      "githubnext/gh-cao/dependabot",
     ]);
     assert.deepEqual(result.declarations, ["dependabot"]);
     assert.equal(result["gh-aw"].updated, true);
     assert.match(
       await readFile(path.join(root, ".github", "workflows", "dependabot.md"), "utf8"),
-      /source: githubnext\/gh-aw-cao\/dependabot@v0\.0\.1/,
+      /source: githubnext\/gh-cao\/dependabot@v0\.0\.1/,
     );
     assert.deepEqual(policy["control-plane"].campaigns.dependabot, {
       mode: "live",
@@ -1795,8 +1795,8 @@ test("cao update uses current package records and validates the release commit",
     await mkdir(packageRecords, { recursive: true });
     await writeFile(path.join(packageRecords, "root.json"), JSON.stringify({
       schemaVersion: 1,
-      package: "githubnext/gh-aw-cao",
-      source: "githubnext/gh-aw-cao@v1",
+      package: "githubnext/gh-cao",
+      source: "githubnext/gh-cao@v1",
       resolvedCommit: "not-a-commit",
       files: [],
     }));
@@ -1826,8 +1826,8 @@ test("cao update rejects legacy campaign records without immutable provenance", 
   try {
     await mkdir(campaignRecords, { recursive: true });
     await writeFile(path.join(campaignRecords, "root.json"), JSON.stringify({
-      campaign: "githubnext/gh-aw-cao",
-      source: `githubnext/gh-aw-cao@${installedCommit}`,
+      campaign: "githubnext/gh-cao",
+      source: `githubnext/gh-cao@${installedCommit}`,
       files: [],
     }));
     await mkdir(path.dirname(policyPath), { recursive: true });
@@ -1857,8 +1857,8 @@ test("cao update advances a prerelease without forwarding its CAO flag", async (
     await mkdir(packageRecords, { recursive: true });
     await writeFile(path.join(packageRecords, "root.json"), JSON.stringify({
       schemaVersion: 1,
-      package: "githubnext/gh-aw-cao",
-      source: "githubnext/gh-aw-cao@v0.0.2-rc.1",
+      package: "githubnext/gh-cao",
+      source: "githubnext/gh-cao@v0.0.2-rc.1",
       resolvedCommit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       files: [],
     }));
@@ -1872,13 +1872,13 @@ test("cao update advances a prerelease without forwarding its CAO flag", async (
       execute(command, arguments_) {
         calls.push([command, arguments_]);
         if (arguments_[0] === "aw" && arguments_[1] === "version") return versionResult;
-        if (arguments_[2] === "/repos/githubnext/gh-aw-cao/releases?per_page=100") {
+        if (arguments_[2] === "/repos/githubnext/gh-cao/releases?per_page=100") {
           return { status: 0, stdout: "v0.0.2-rc.1\nv0.0.2-rc.2\nv1.0.0-rc.1\n", stderr: "" };
         }
         if (arguments_[0] === "aw" && arguments_[1] === "update") {
           preparedSource = JSON.parse(readFileSync(path.join(packageRecords, "root.json"), "utf8")).source;
         }
-        if (arguments_[1] === "/repos/githubnext/gh-aw-cao/commits/v0.0.2-rc.1") {
+        if (arguments_[1] === "/repos/githubnext/gh-cao/commits/v0.0.2-rc.1") {
           return { status: 0, stdout: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n", stderr: "" };
         }
         return { status: 0, stdout: "", stderr: "" };
@@ -1887,9 +1887,9 @@ test("cao update advances a prerelease without forwarding its CAO flag", async (
 
     assert.deepEqual(calls.find(([, arguments_]) => arguments_[0] === "aw" && arguments_[1] === "update"), [
       "gh",
-      ["aw", "update", "https://github.com/githubnext/gh-aw-cao", "--force"],
+      ["aw", "update", "https://github.com/githubnext/gh-cao", "--force"],
     ]);
-    assert.equal(preparedSource, "githubnext/gh-aw-cao@v0.0.2-rc.2");
+    assert.equal(preparedSource, "githubnext/gh-cao@v0.0.2-rc.2");
   } finally {
     process.chdir(previousDirectory);
     await rm(root, { recursive: true, force: true });

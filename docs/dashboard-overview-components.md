@@ -15,8 +15,8 @@ Dashboard Language owns filtering, joins, and operational calculations. This
 keeps the interface consistent without hiding business logic in page code.
 
 <div class="docs-theme-diagram">
-	<img class="docs-theme-diagram-light" alt="Color-coded map of the Overview page component boundaries" src="/gh-aw-cao/assets/dashboard-overview-desktop-light.svg">
-	<img class="docs-theme-diagram-dark" alt="Color-coded map of the Overview page component boundaries" src="/gh-aw-cao/assets/dashboard-overview-desktop-dark.svg">
+	<img class="docs-theme-diagram-light" alt="Color-coded map of the Overview page component boundaries" src="/gh-cao/assets/dashboard-overview-desktop-light.svg">
+	<img class="docs-theme-diagram-dark" alt="Color-coded map of the Overview page component boundaries" src="/gh-cao/assets/dashboard-overview-desktop-dark.svg">
 </div>
 
 ## Declarative composition

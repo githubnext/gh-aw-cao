@@ -14,7 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/dashboard"
+	"github.com/githubnext/gh-cao/dashboard"
 )
 
 type nativeCatalog struct {

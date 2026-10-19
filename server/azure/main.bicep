@@ -120,7 +120,7 @@ param collectorLakeStorageSku string = 'Premium_LRS'
 var collectionEnabled = !empty(collectorImage)
 
 var tags = {
-  workload: 'gh-aw-cao-dashboard'
+  workload: 'gh-cao-dashboard'
   hostingMode: 'azure-functions'
 }
 var githubRedirectUri = 'https://${functionAppName}.azurewebsites.net/auth/callback'

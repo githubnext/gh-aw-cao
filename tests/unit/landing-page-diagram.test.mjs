@@ -19,9 +19,9 @@ const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
 const astroConfig = readFileSync("astro.config.mjs", "utf8");
 
 test("landing page presents the product through real operational surfaces", () => {
-  assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-aw-cao\/architecture-at-a-glance\//);
-  assert.match(landingPage, /text: Get started[\s\S]*?link: \/gh-aw-cao\/setup-quickstarts\//);
-  assert.match(landingPage, /text: Sample Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao/);
+  assert.match(landingPage, /text: Explore CAO[\s\S]*?link: \/gh-cao\/architecture-at-a-glance\//);
+  assert.match(landingPage, /text: Get started[\s\S]*?link: \/gh-cao\/setup-quickstarts\//);
+  assert.match(landingPage, /text: Sample Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-cao\/cao/);
   assert.doesNotMatch(headerLinks, /label: "Dashboard"/);
   assert.match(landingPage, /title: Central Agentic Ops \(CAO\)/);
   assert.match(landingPage, /Monitor and control GitHub Agentic Workflows at scale\./);
@@ -44,13 +44,13 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Reuse what works\./);
   assert.match(hero, /Reuse the definition; decide separately where it may run/);
-  assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
+  assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.match(terminalText, /gh cao setup/);
   assert.match(terminalText, /gh cao doctor/);
   assert.match(terminalText, /no campaign added/);
   assert.match(terminalText, /no agentic work started/);
   assert.match(terminalText, /Next: publish and open your dashboard/);
-  assert.match(terminal, /href="\/gh-aw-cao\/setup-quickstarts\/#3-publish-your-configuration"/);
+  assert.match(terminal, /href="\/gh-cao\/setup-quickstarts\/#3-publish-your-configuration"/);
   assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field/);
   assert.match(hero, /Monitor what runs\./);
   assert.match(hero, /Roll out safely\./);
@@ -141,7 +141,7 @@ test("landing page explains and illustrates governed cross-repository dispatch",
   assert.doesNotMatch(illustration, /class="control-repository-card"/);
   assert.match(illustration, /<small>CAO control plane<\/small>/);
   assert.doesNotMatch(illustration, /review output · CAO control repository|<small>live rollout/);
-  assert.match(illustration, /targetRow: 2,[\s\S]*?repository: "githubnext\/gh-aw-cao"|repository: "githubnext\/gh-aw-cao"[\s\S]*?targetRow: 2/);
+  assert.match(illustration, /targetRow: 2,[\s\S]*?repository: "githubnext\/gh-cao"|repository: "githubnext\/gh-cao"[\s\S]*?targetRow: 2/);
   assert.match(illustration, /\{jobs\.map\(\(job\) => \(/);
   assert.match(illustration, /\{targetJobs\.map\(\(job\) => \(/);
   assert.match(illustration, /class={`repository-card \$\{job\.timing\} \$\{job\.mode\}`}/);
@@ -214,7 +214,7 @@ test("landing page explains and illustrates governed cross-repository dispatch",
   assert.match(illustration, /stroke-dasharray: 22 18/);
   assert.match(illustration, /M8 0a8 8 0 1 1 0 16/);
   assert.match(illustration, /repository: "github\/gh-aw-firewall"/);
-  assert.match(illustration, /repository: "githubnext\/gh-aw-cao"/);
+  assert.match(illustration, /repository: "githubnext\/gh-cao"/);
   assert.match(illustration, /repository: "githubnext\/agentics"/);
   assert.match(illustration, /failed: true/);
   assert.match(illustration, /repository: "githubnext\/gh-aw"/);
@@ -247,11 +247,11 @@ test("landing page explains and illustrates governed cross-repository dispatch",
 });
 
 test("the home navigation no longer links to the setup wizard", () => {
-  assert.doesNotMatch(headerLinks, /\{ label: "Setup", href: "\/gh-aw-cao\/setup\/" \}/);
+  assert.doesNotMatch(headerLinks, /\{ label: "Setup", href: "\/gh-cao\/setup\/" \}/);
 });
 
 test("the removed setup route redirects to the command quickstart", () => {
-  assert.match(astroConfig, /"\/setup": "\/gh-aw-cao\/setup-quickstarts\/"/);
+  assert.match(astroConfig, /"\/setup": "\/gh-cao\/setup-quickstarts\/"/);
 });
 
 test("wizard page, UI, styles, and policy helpers are removed", () => {

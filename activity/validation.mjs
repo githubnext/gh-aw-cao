@@ -102,7 +102,7 @@ export async function compileAndCompare(root, execute, expectedVersion) {
     }
     const result = run(execute, "gh", [
       "aw", "compile", "--strict", "--validate", "--show-all", "--no-check-update",
-      "--schedule-seed", "githubnext/gh-aw-cao", "--dir", WORKFLOW_DIRECTORY,
+      "--schedule-seed", "githubnext/gh-cao", "--dir", WORKFLOW_DIRECTORY,
     ], temporaryRoot);
     if (result.error || result.status !== 0) {
       findings.push(compilerFinding(commandOutput(result) || result.error?.message));
@@ -361,7 +361,7 @@ export async function validateSecurity(root, policySource, installed = []) {
       }));
     }
     for (const match of source.matchAll(/^\s*(?:-\s*)?uses:\s*([^/\s]+\/[^@\s]+)@([^\s#]+)([^\r\n]*)/gm)) {
-      if (match[1] === "githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml"
+      if (match[1] === "githubnext/gh-cao/.github/workflows/cao-package-publish.yml"
         && match[2] === "main"
         && match[3].trim() === "# zizmor: ignore[unpinned-uses] protected default-branch publisher") {
         continue;

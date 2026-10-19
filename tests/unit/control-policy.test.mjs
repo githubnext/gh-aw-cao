@@ -478,7 +478,7 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
     "github/gh-aw-mcpg",
     "github/gh-aw-actions",
     "github/gh-aw-threat-detection",
-    "githubnext/gh-aw-cao",
+    "githubnext/gh-cao",
   ];
 
   assert.deepEqual(policy["control-plane"].scope["allowed-repositories"], repositories);
@@ -498,7 +498,7 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
   const dependabotGhAw = effectivePolicy(policy, {
     campaignName: "dependabot",
     role: "orchestrator",
-    controlRepository: "githubnext/gh-aw-cao",
+    controlRepository: "githubnext/gh-cao",
     targetRepository: "github/gh-aw",
   });
   assert.equal(dependabotGhAw.safe_output_mode, "live");
@@ -508,7 +508,7 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
     const effective = effectivePolicy(policy, {
       campaignName: "dependabot",
       role: "orchestrator",
-      controlRepository: "githubnext/gh-aw-cao",
+      controlRepository: "githubnext/gh-cao",
       targetRepository,
     });
     assert.equal(effective.safe_output_mode, "review");
@@ -518,8 +518,8 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
   const selfCare = effectivePolicy(policy, {
     campaignName: "self-care",
     role: "orchestrator",
-    controlRepository: "githubnext/gh-aw-cao",
-    targetRepository: "githubnext/gh-aw-cao",
+    controlRepository: "githubnext/gh-cao",
+    targetRepository: "githubnext/gh-cao",
   });
   assert.equal(selfCare.safe_output_mode, "live");
   assert.equal(selfCare.max_repositories, 1);
@@ -556,7 +556,7 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
     policy["control-plane"].campaigns["self-care"].workers["server-go-logging"].workflow,
     "self-care-server-go-logging",
   );
-  assert.equal(policy["target-authority"].campaigns["self-care"].authority, "githubnext/gh-aw-cao");
+  assert.equal(policy["target-authority"].campaigns["self-care"].authority, "githubnext/gh-cao");
 });
 
 test("control policy applies schema defaults and campaign values", () => {

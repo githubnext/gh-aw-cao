@@ -42,7 +42,7 @@ policy mutation.
 ## Discover the Catalog
 
 1. Verify GitHub authentication with `gh auth status`.
-2. Resolve the `githubnext/gh-aw-cao` default-branch commit once and use it for
+2. Resolve the `githubnext/gh-cao` default-branch commit once and use it for
    every inspected file to prevent mixed-revision recommendations.
 3. Enumerate top-level directories at that commit. A candidate operational campaign must contain both `aw.yml` and `cao.json` in the same directory.
 4. Parse each candidate's `aw.yml` as YAML and `cao.json` as JSON. Do not infer metadata with regular expressions. Exclude campaigns with `private: true`; label campaigns with `experimental: true` clearly.
@@ -86,7 +86,7 @@ Treat missing declarations, invalid metadata, inaccessible sources, unresolved p
 After explicit approval, run the repository-local CLI from the control repository:
 
 ```bash
-gh cao campaigns add githubnext/gh-aw-cao/<campaign-slug>@<catalog-commit>
+gh cao campaigns add githubnext/gh-cao/<campaign-slug>@<catalog-commit>
 ```
 
 Forward additional campaign-installer options only when the user requested them and they do not weaken the reviewed boundary. Do not pass secrets in command arguments.

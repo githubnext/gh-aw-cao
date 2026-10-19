@@ -5,7 +5,7 @@ import { deleteCanonicalDatabase } from '../../src/data/storage/indexeddb.js';
 import { QUERY_SOURCE_FIELDS } from '../../src/specification.js';
 
 const context = {
-  pages: [], dashboardRepository: 'githubnext/gh-aw-cao',
+  pages: [], dashboardRepository: 'githubnext/gh-cao',
   queries: [{
     name: 'repository-summary', from: 'github-repository',
     select: [
@@ -34,12 +34,12 @@ afterEach(() => {
 it('registers GitHub source schemas and executes projection through the production canonical worker query boundary', async () => {
   expect(QUERY_SOURCE_FIELDS['github-repository']).toContain('stargazers_count');
   expect(QUERY_SOURCE_FIELDS['github-latest-release']).toContain('tag_name');
-  const fetch = vi.fn(async () => Response.json({ full_name: 'githubnext/gh-aw-cao', stargazers_count: 42 }));
+  const fetch = vi.fn(async () => Response.json({ full_name: 'githubnext/gh-cao', stargazers_count: 42 }));
   vi.stubGlobal('fetch', fetch);
   const result = await queryWorker({
     operation: 'query-canonical-dashboard', sourceNames: ['repository-summary'], context, githubConfiguration
   });
-  expect(result['repository-summary'].rows).toEqual([{ repository: 'githubnext/gh-aw-cao', stars: 42 }]);
+  expect(result['repository-summary'].rows).toEqual([{ repository: 'githubnext/gh-cao', stars: 42 }]);
   expect(fetch).toHaveBeenCalledOnce();
   const cached = await queryWorker({
     operation: 'query-canonical-dashboard', sourceNames: ['repository-summary'], context, githubConfiguration
@@ -66,7 +66,7 @@ it('fails closed without a configured backend or repository instead of synthesiz
 });
 
 it('joins hosted canonical inputs with the resource in the worker declarative engine, not JavaScript business code', async () => {
-  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ full_name: 'githubnext/gh-aw-cao', stargazers_count: 42 })));
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ full_name: 'githubnext/gh-cao', stargazers_count: 42 })));
   const result = await queryWorker({
     operation: 'query-canonical-dashboard', sourceNames: ['joined'], githubConfiguration,
     context: {
@@ -82,7 +82,7 @@ it('joins hosted canonical inputs with the resource in the worker declarative en
     },
     hostedSources: {
       repositories: {
-        source: 'repositories', rows: [{ repository: 'githubnext/gh-aw-cao' }],
+        source: 'repositories', rows: [{ repository: 'githubnext/gh-cao' }],
         metadata: {
           'source-id': 'repositories', 'source-kind': 'database', 'as-of': '', 'retrieved-at': '',
           availability: 'available', completeness: 'complete', freshness: 'fresh'
@@ -90,7 +90,7 @@ it('joins hosted canonical inputs with the resource in the worker declarative en
       }
     }
   });
-  expect(result.joined.rows).toEqual([{ repository: 'githubnext/gh-aw-cao', stars: 42 }]);
+  expect(result.joined.rows).toEqual([{ repository: 'githubnext/gh-cao', stars: 42 }]);
 });
 
 it('keeps declared view subscriptions reactive to network refresh and aborts resource ownership on unsubscribe', async () => {
@@ -115,11 +115,11 @@ it('keeps declared view subscriptions reactive to network refresh and aborts res
     sourceNames: ['repository-summary'], context, githubConfiguration, hostedSources: {}
   } });
   await vi.waitFor(() => expect(requestSignal).toBeDefined());
-  complete(Response.json({ full_name: 'githubnext/gh-aw-cao', stargazers_count: 42 }));
+  complete(Response.json({ full_name: 'githubnext/gh-cao', stargazers_count: 42 }));
   await vi.waitFor(() => expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
     subscriptionId: 'github-view',
     data: expect.objectContaining({
-      'repository-summary': expect.objectContaining({ rows: [{ repository: 'githubnext/gh-aw-cao', stars: 42 }] })
+      'repository-summary': expect.objectContaining({ rows: [{ repository: 'githubnext/gh-cao', stars: 42 }] })
     })
   })));
   onMessage?.({ data: { operation: 'unsubscribe-canonical-dashboard', subscriptionId: 'github-view' } });

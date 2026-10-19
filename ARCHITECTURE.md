@@ -810,7 +810,7 @@ source snapshot, starter input, or separate assessment contract. Normal source
 checkout, duplicate checks, implementation, focused validation, and review
 bundles are preserved. The worker records its actual base SHA.
 Installed quickstart workflows are recompiled with the catalog schedule seed
-`githubnext/gh-aw-cao` before committing, matching lock-file validation.
+`githubnext/gh-cao` before committing, matching lock-file validation.
 The existing budgets are 250 AI credits for orchestration and 600 for
 maintenance, plus the model-based output check, whose default is 400 credits
 and may be configured differently in gh-aw. Quickstart discloses the 1,250-credit
@@ -1007,7 +1007,7 @@ all public; that does not authorize non-public targets or other campaigns.
   together, runs as a non-root user, and mounts the authoritative artifact
   read-only from an externally populated named volume whose complete payload is
   hash-verified and atomically installed. Its workflow publishes
-  `ghcr.io/githubnext/gh-aw-cao/cao-server` on pushes to `main` and published
+  `ghcr.io/githubnext/gh-cao/cao-server` on pushes to `main` and published
   releases after protected-main ancestry validation, source tests, Dockerfile
   and workflow security linting, independent Trivy and Grype high/critical CVE
   gates, a Dockle hardening check, and Syft SPDX SBOM generation. Lint, test,

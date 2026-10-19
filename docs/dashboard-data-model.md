@@ -13,9 +13,9 @@ Views query this source-neutral model instead of interpreting upstream formats
 directly.
 
 When changing canonical entities or storage, continue to the
-[Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md),
+[Dashboard Data Architecture Specification](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md),
 then `dashboard/site/src/data/`. See
-[Data ingestion](/gh-aw-cao/dashboard-data-ingestion/) for collection, JSONL
+[Data ingestion](/gh-cao/dashboard-data-ingestion/) for collection, JSONL
 publication, retention, browser updates, and SQLite projections.
 
 ## Entity map
@@ -112,7 +112,7 @@ Observations can arrive at different times and enrich an existing entity. Explic
 
 The activity shard manifest is the dashboard's published operational input. Normalized run-information and record shards are JSONL streams: a metadata envelope is followed by one canonical record envelope per line. The worker imports every run-information stream before downloading the larger record streams and writes bounded batches as response bytes arrive; it never parses a normalized shard as one JSON object. Run records include immutable agent, model, duration, firewall, MCP, operational-grader, and audit-priority aggregates; every Domain, Tool, Audit, and Issue includes its owning `runId`. Run queries may refresh between phases, but that intermediate state is not a complete snapshot and record-dependent queries remain stale until record ingestion succeeds. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Audits only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
-The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
+The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
 The canonical model is version 32. The browser database is
 `gh-aw-cao-dashboard-data`, IndexedDB version 42. Its canonical stores are
@@ -194,4 +194,4 @@ identity, and run-detail retention does not remove the campaign.
 See [Data ingestion](dashboard-data-ingestion.md#use-local-sqlite) for download,
 ingestion, query, and repair commands.
 
-For normative requirements, failure behavior, and implementation phases, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).
+For normative requirements, failure behavior, and implementation phases, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md).

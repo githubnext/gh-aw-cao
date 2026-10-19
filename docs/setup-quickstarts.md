@@ -29,7 +29,7 @@ later if you choose.
 From a clean checkout of your chosen control repository, on its default branch:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
 ```
 
 **Ready:** the CAO runtime, Activity collector, and dashboard workflows are
@@ -42,7 +42,7 @@ Run this outside a Git checkout, replacing `OWNER/CONTROL_REPOSITORY` with the
 exact repository you want to create:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
   bash -s -- --create-repo OWNER/CONTROL_REPOSITORY
 ```
 
@@ -125,17 +125,17 @@ missing evidence is not proof of zero cost or success.
 **No Agentic Workflow history yet?** An empty dashboard is expected. CAO monitors
 GitHub Agentic Workflows, not every ordinary Actions job. You can finish setup
 without generating a run. Preview the
-[sample dashboard](https://githubnext.github.io/gh-aw-cao/cao/) to see populated
+[sample dashboard](https://githubnext.github.io/gh-cao/cao/) to see populated
 views, or return after your existing workflows have run and Activity has refreshed.
 
 ## Optional: add automation later
 
 Monitoring is enough to get started. When you have a task you want CAO to perform,
-browse the [campaign catalog](https://githubnext.github.io/gh-aw-cao/catalog/).
+browse the [campaign catalog](https://githubnext.github.io/gh-cao/catalog/).
 Install a chosen campaign with:
 
 ```bash
-gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN
+gh cao campaigns add githubnext/gh-cao/CAMPAIGN
 ```
 
 Installation is not execution. Review and commit its workflows and policy

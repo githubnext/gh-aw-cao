@@ -15,7 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
+	"github.com/githubnext/gh-cao/internal/dashboardquery"
 )
 
 func nativeQuery(cmd *cobra.Command, args []string) (err error) {

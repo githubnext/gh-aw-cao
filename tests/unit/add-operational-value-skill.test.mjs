@@ -59,7 +59,7 @@ export const scoreMetric = original.scoreMetric;
     const input = path.join(temporary, "observations.json");
     const output = path.join(temporary, "timeline.json");
     writeFileSync(input, JSON.stringify({
-      repository: "githubnext/gh-aw-cao", evaluationMode: mode,
+      repository: "githubnext/gh-cao", evaluationMode: mode,
       adoptionAt: "2026-09-15T23:30:36Z", workflowName: "Optimization",
       window: { startAt: "2026-09-01T00:00:00Z", endAt: endpoint },
       evidenceCoverage: {}, snapshots, runs: []
@@ -230,7 +230,7 @@ export const definition = {
   workflowName: "Example Workflow",
   evidence: {
     ...original.definition.evidence,
-    repositories: ["github/gh-aw", "githubnext/gh-aw-cao"]
+    repositories: ["github/gh-aw", "githubnext/gh-cao"]
   },
   metrics: original.definition.metrics.map(({rollup, ...metric}) => metric)
 };
@@ -250,7 +250,7 @@ console.log(JSON.stringify({
   adoptedAt: "2026-09-15T23:30:36Z",
   evaluationMode: "baseline-comparable",
   cadenceDays: 1,
-  repositories: ["github/gh-aw", "githubnext/gh-aw-cao"],
+  repositories: ["github/gh-aw", "githubnext/gh-cao"],
   valueIds: [
     "example-workflow.aic-per-successful-run",
     "example-workflow.failure-rate-percent",
@@ -383,13 +383,13 @@ export const scoreMetric = original.scoreMetric;
       "--output-dir",
       reports,
       "--no-runs",
-      "githubnext/gh-aw-cao",
+      "githubnext/gh-cao",
       "maturation-test",
     ],
     { cwd: root, stdio: "pipe" },
   );
   const timeline = JSON.parse(readFileSync(
-    path.join(reports, "githubnext-gh-aw-cao/maturation-test-timeline.json"),
+    path.join(reports, "githubnext-gh-cao/maturation-test-timeline.json"),
     "utf8",
   ));
   assert.equal(

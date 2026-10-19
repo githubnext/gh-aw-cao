@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/audit"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/audit"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 type fakeMinter struct {
@@ -472,7 +472,7 @@ func TestExecutorRunsNativeGhAwUpdate(t *testing.T) {
 	queue, minter := newFakeQueue(), newFakeMinter()
 	runner := &fakeRunner{}
 	startExecutor(t, queue, minter, fakeGitHub{permission: "admin"}, runner)
-	id := enqueue(t, queue, "gh aw update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao --create-pull-request", "octo/cao", "mona")
+	id := enqueue(t, queue, "gh aw update https://github.com/githubnext/gh-cao/security --repo octo/cao --create-pull-request", "octo/cao", "mona")
 	command := queue.waitSettled(t, id)
 	if command.Status != operational.CLICommandCompleted {
 		t.Fatalf("unexpected result %+v", command)
@@ -482,7 +482,7 @@ func TestExecutorRunsNativeGhAwUpdate(t *testing.T) {
 	}
 	update := runner.processes[0]
 	if update.Program != "gh-aw" ||
-		strings.Join(update.Args, " ") != "update https://github.com/githubnext/gh-aw-cao/security --repo octo/cao --create-pull-request" {
+		strings.Join(update.Args, " ") != "update https://github.com/githubnext/gh-cao/security --repo octo/cao --create-pull-request" {
 		t.Fatalf("unexpected update process %+v", update)
 	}
 	if update.Workspace == "" || update.Dir != filepath.Join(update.Workspace, "work") {

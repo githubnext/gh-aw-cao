@@ -19,14 +19,14 @@ function subscribe(service) {
   const controller = new AbortController();
   controllers.push(controller);
   const listener = vi.fn();
-  service.subscribe({ owner: 'githubnext', repo: 'gh-aw-cao' }, {
+  service.subscribe({ owner: 'githubnext', repo: 'gh-cao' }, {
     baseUrl: 'https://dashboard.example/api/v1/github/',
     cacheIdentity: 'test-principal:cache-policy-session'
   }, listener, { signal: controller.signal });
   return { controller, listener };
 }
 
-const data = { full_name: 'githubnext/gh-aw-cao', stargazers_count: 42 };
+const data = { full_name: 'githubnext/gh-cao', stargazers_count: 42 };
 
 it('subtracts backend Age instead of granting a fresh cache-hit lifetime', async () => {
   const now = Date.now();

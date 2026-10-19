@@ -13,14 +13,14 @@ hero:
   tagline: Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy.
   actions:
     - text: Explore CAO
-      link: /gh-aw-cao/architecture-at-a-glance/
+      link: /gh-cao/architecture-at-a-glance/
       icon: right-arrow
     - text: Get started
-      link: /gh-aw-cao/setup-quickstarts/
+      link: /gh-cao/setup-quickstarts/
       variant: secondary
       icon: right-arrow
     - text: Sample Dashboard
-      link: https://githubnext.github.io/gh-aw-cao/cao
+      link: https://githubnext.github.io/gh-cao/cao
       variant: secondary
       icon: right-arrow
 ---

@@ -5,7 +5,7 @@ import { REPOSITORY_COORDINATE } from '../operational-value.mjs';
 import { isMapping, commandFailureMessage, writeJsonAtomically } from './files.mjs';
 import { parseGhAwVersion } from './gh-aw.mjs';
 
-const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
+const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json';
 
 export const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 
@@ -62,7 +62,7 @@ export function minimalPolicy(version, repository) {
         'allowed-repositories': [repository]
       },
       marketplace: { registries: [
-        { id: 'official', name: 'Official CAO catalog', repository: 'githubnext/gh-aw-cao', ref: 'main', auth: { type: 'none' } },
+        { id: 'official', name: 'Official CAO catalog', repository: 'githubnext/gh-cao', ref: 'main', auth: { type: 'none' } },
         { id: 'agentics', name: 'Agentics workflows', repository: 'githubnext/agentics', path: 'workflows', format: 'workflows', ref: 'main', auth: { type: 'none' } },
       ] }, campaigns: {}
     }

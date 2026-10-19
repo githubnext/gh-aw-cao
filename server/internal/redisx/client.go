@@ -17,8 +17,8 @@ import (
 
 	"go.opentelemetry.io/otel/metric"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 var redisLog = logger.New("cao:redis")

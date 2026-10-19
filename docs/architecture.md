@@ -9,7 +9,7 @@ agent:
 Read this overview when evaluating the control plane or changing how campaigns
 are authorized and dispatched. For authorization changes, continue to
 [Control Policy](control-policy-specification.md), then the
-[control architecture specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md)
+[control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md)
 and `.github/workflows/shared/control.md`. For installation steps, begin with
 [Set Up CAO](setup-quickstarts.md).
 
@@ -27,9 +27,9 @@ The control plane is designed to:
 ## Mental Model
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/gh-aw-cao/assets/control-plane-mental-model-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="/gh-aw-cao/assets/control-plane-mental-model-light.svg">
-  <img alt="A catalog release enters a governed control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode." src="/gh-aw-cao/assets/control-plane-mental-model-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="/gh-cao/assets/control-plane-mental-model-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="/gh-cao/assets/control-plane-mental-model-light.svg">
+  <img alt="A catalog release enters a governed control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode." src="/gh-cao/assets/control-plane-mental-model-light.svg">
 </picture>
 
 :::note[Three records, three jobs]

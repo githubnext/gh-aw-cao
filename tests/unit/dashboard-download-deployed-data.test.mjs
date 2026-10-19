@@ -60,7 +60,7 @@ test("queries canonical data with the gh-like surface", async () => {
     {
       schema_version: 2,
       kind: "workflow_runs",
-      request: { host: "github.com", repository: "githubnext/gh-aw-cao", args: ["run", "list"] },
+      request: { host: "github.com", repository: "githubnext/gh-cao", args: ["run", "list"] },
       payload: [{
         databaseId: 404,
         attempt: 1,
@@ -81,7 +81,7 @@ test("queries canonical data with the gh-like surface", async () => {
         run_id: 404,
         run_attempt: "1",
         organization: "githubnext",
-        repository: "githubnext/gh-aw-cao",
+        repository: "githubnext/gh-cao",
         workflow_name: "CAO Activity",
         workflow_path: ".github/workflows/cao-activity.md",
         status: "completed",
@@ -131,7 +131,7 @@ test("queries canonical data with the gh-like surface", async () => {
     const { stdout: runsOutput } = await executeFile(cao, [
       "gh", "runs",
       "--database", database,
-      "-R", "githubnext/gh-aw-cao",
+      "-R", "githubnext/gh-cao",
       "-w", "cao-activity",
       "-s", "success",
       "--since", "2026-09-10",
@@ -417,7 +417,7 @@ test("downloads the deployed compacted activity shards and SQLite file without r
       ], { cwd: root });
       const runs = JSON.parse(runsStdout);
       assert.equal(runs.length, 1);
-      assert.equal(runs[0].id, "github:run:githubnext/gh-aw-cao:303");
+      assert.equal(runs[0].id, "github:run:githubnext/gh-cao:303");
 
       const { stdout: stdinStdout } = await executeFileWithInput(cao, [
         "query",

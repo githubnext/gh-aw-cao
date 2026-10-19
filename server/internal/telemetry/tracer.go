@@ -13,7 +13,7 @@ import (
 // tracerName is the standardized instrumentation scope name for spans the
 // dashboard server starts directly (as opposed to spans created by
 // otelhttp's automatic HTTP server instrumentation).
-const tracerName = "github.com/githubnext/gh-aw-cao/server"
+const tracerName = "github.com/githubnext/gh-cao/server"
 
 // Span names are centralized so every application-created span has a stable,
 // low-cardinality name. HTTP request attributes and metrics are supplied by

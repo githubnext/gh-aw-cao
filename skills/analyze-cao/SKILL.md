@@ -49,9 +49,9 @@ Do you have shell access?
 
 Without a shell, the workflow has already installed CAO, downloaded the snapshot,
 and started the read-only MCP server; call `cao_catalog` and `cao_query` instead of
-running commands. See [Agent analysis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/agent-analysis.md).
+running commands. See [Agent analysis](https://github.com/githubnext/gh-cao/blob/main/docs/agent-analysis.md).
 
-1. Verify `gh cao --version`. Use the [CAO installer](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md#github-cli-extension) if the extension is unavailable. The retained `node activity/cao.mjs` audit and snapshot-repair tools additionally need the installed Node.js runtime.
+1. Verify `gh cao --version`. Use the [CAO installer](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md#github-cli-extension) if the extension is unavailable. The retained `node activity/cao.mjs` audit and snapshot-repair tools additionally need the installed Node.js runtime.
 2. Download the current published activity snapshot:
 
    ```bash

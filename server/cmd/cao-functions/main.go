@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/server"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/server"
 )
 
 var startupLog = logger.New("cao:functions:startup")

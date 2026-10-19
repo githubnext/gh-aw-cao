@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Dashboard pages previously rendered every custom view eagerly, including views outside the viewport. This pull request (githubnext/gh-aw-cao#4786, "Lazily hydrate offscreen dashboard views") changes this by deferring the rendering of offscreen views while preserving layout stability and navigation behavior.
+Dashboard pages previously rendered every custom view eagerly, including views outside the viewport. This pull request (githubnext/gh-cao#4786, "Lazily hydrate offscreen dashboard views") changes this by deferring the rendering of offscreen views while preserving layout stability and navigation behavior.
 
 The change includes `dashboard/aw.yml`, `dashboard/site/index.html`, the new `dashboard/site/src/components/lazy-view.js` component, `dashboard/site/src/presenter.js`, `dashboard/site/src/styles.js`, and updated dashboard tests.
 

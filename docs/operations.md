@@ -9,7 +9,7 @@ agent:
 Use this page after installation to answer the urgent operator questions: Is the control plane healthy? How do I stop it? What evidence should I collect? How do I recover safely?
 
 For a failed deployment or runtime, follow the
-[`debug-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md)
+[`debug-cao` skill](https://github.com/githubnext/gh-cao/blob/main/skills/debug-cao/SKILL.md)
 before changing or rerunning anything, then use the deployment-specific guide
 linked from [deployment options](deployment.md).
 
@@ -167,8 +167,8 @@ This section covers the GitHub Actions only dashboard. For a step-by-step proced
 The root Central Agentic Ops campaign installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic campaigns. Unpinned package coordinates resolve the latest release automatically:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/activity
-gh aw add githubnext/gh-aw-cao/dashboard
+gh aw add githubnext/gh-cao/activity
+gh aw add githubnext/gh-cao/dashboard
 ```
 
 Both installation paths add an independently dispatchable dashboard builder, a manual standalone Pages publisher, and their deterministic report modules. There is no additional dashboard enable variable, and installation does not deploy or enable Pages.
@@ -545,7 +545,7 @@ never a stable release that quickstart or update can select.
 Promotion to latest makes those compiled binaries available to the root
 installer's default selection. The installer downloads the platform binary and
 checksums, verifies the embedded version, and registers it directly as `gh cao`.
-An explicit `githubnext/gh-aw-cao@vX.Y.Z` catalog source selects that same
+An explicit `githubnext/gh-cao@vX.Y.Z` catalog source selects that same
 extension tag. See [the CLI reference](cao-cli.md#github-cli-extension).
 
 ## Update CAO

@@ -56,7 +56,7 @@ export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
 } = {}) {
   if (!campaignSpec || campaignSpec.startsWith('-')) throw new UsageError('cao add requires a campaign');
   const expectedCampaign = campaignSlugFromSpec(campaignSpec);
-  if (expectedCampaign === 'gh-aw-cao') {
+  if (expectedCampaign === 'gh-cao') {
     throw new UsageError('cao add cannot install the CAO root package; use install.sh');
   }
   let localSourceRoot;
@@ -112,7 +112,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
   const { ref, campaign: selectedCampaign, includePrereleases, updateOptions } = parseUpdateArguments(ghAwOptions, UsageError);
   const policy = await readCaoPolicy(policyPath);
   let campaigns = await installedCampaignRecords();
-  const campaignSlug = (record) => record.campaign === 'githubnext/gh-aw-cao'
+  const campaignSlug = (record) => record.campaign === 'githubnext/gh-cao'
     ? 'root'
     : record.campaign.split('/').at(-1);
   if (selectedCampaign !== undefined) {
@@ -144,7 +144,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
     // must be reapplied through add, which also writes the ownership record.
     // Match install.sh: root resources contain an intentional App setup form
     // that gh-aw's Markdown scanner rejects.
-    const addOptions = record.campaign === 'githubnext/gh-aw-cao' && !updateOptions.includes('--no-security-scanner')
+    const addOptions = record.campaign === 'githubnext/gh-cao' && !updateOptions.includes('--no-security-scanner')
       ? ['--no-security-scanner', ...updateOptions]
       : updateOptions;
     const updateArguments = resolvedCommit

@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var collectLog = logger.New("cao:operationalvalue")

@@ -1,5 +1,5 @@
 {
-  "repository": "githubnext/gh-aw-cao",
+  "repository": "githubnext/gh-cao",
   "workflowName": "Dependabot / Update Planner",
   "adoptionAt": "2026-09-17T08:48:00Z",
   "evaluationMode": "baseline-comparable",
@@ -18,895 +18,895 @@
       "runId": 35202086513,
       "createdAt": "2026-09-17T08:52:59Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35202086513"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35202086513"
     },
     {
       "runId": 35208143663,
       "createdAt": "2026-09-17T10:00:05Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35208143663"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35208143663"
     },
     {
       "runId": 35210682542,
       "createdAt": "2026-09-17T10:28:38Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35210682542"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35210682542"
     },
     {
       "runId": 35215697836,
       "createdAt": "2026-09-17T11:26:33Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35215697836"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35215697836"
     },
     {
       "runId": 35222287357,
       "createdAt": "2026-09-17T12:38:43Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35222287357"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35222287357"
     },
     {
       "runId": 35227156266,
       "createdAt": "2026-09-17T13:27:11Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35227156266"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35227156266"
     },
     {
       "runId": 35315978109,
       "createdAt": "2026-09-18T06:41:30Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35315978109"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35315978109"
     },
     {
       "runId": 35319769608,
       "createdAt": "2026-09-18T07:30:44Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35319769608"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35319769608"
     },
     {
       "runId": 35324932298,
       "createdAt": "2026-09-18T08:32:58Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35324932298"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35324932298"
     },
     {
       "runId": 35329901568,
       "createdAt": "2026-09-18T09:30:38Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35329901568"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35329901568"
     },
     {
       "runId": 35334743497,
       "createdAt": "2026-09-18T10:26:57Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35334743497"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35334743497"
     },
     {
       "runId": 35368485506,
       "createdAt": "2026-09-18T16:26:29Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35368485506"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35368485506"
     },
     {
       "runId": 35374133640,
       "createdAt": "2026-09-18T17:24:19Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35374133640"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35374133640"
     },
     {
       "runId": 35380538058,
       "createdAt": "2026-09-18T18:30:06Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35380538058"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35380538058"
     },
     {
       "runId": 35385749920,
       "createdAt": "2026-09-18T19:24:24Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35385749920"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35385749920"
     },
     {
       "runId": 35391416443,
       "createdAt": "2026-09-18T20:25:57Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35391416443"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35391416443"
     },
     {
       "runId": 35396560390,
       "createdAt": "2026-09-18T21:23:57Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35396560390"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35396560390"
     },
     {
       "runId": 35401417347,
       "createdAt": "2026-09-18T22:24:40Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35401417347"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35401417347"
     },
     {
       "runId": 35405685034,
       "createdAt": "2026-09-18T23:26:17Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35405685034"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35405685034"
     },
     {
       "runId": 35411146842,
       "createdAt": "2026-09-19T00:58:40Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35411146842"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35411146842"
     },
     {
       "runId": 35413033602,
       "createdAt": "2026-09-19T01:33:42Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35413033602"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35413033602"
     },
     {
       "runId": 35415995088,
       "createdAt": "2026-09-19T02:33:16Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35415995088"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35415995088"
     },
     {
       "runId": 35418679840,
       "createdAt": "2026-09-19T03:29:24Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35418679840"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35418679840"
     },
     {
       "runId": 35421392713,
       "createdAt": "2026-09-19T04:28:48Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35421392713"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35421392713"
     },
     {
       "runId": 35423972354,
       "createdAt": "2026-09-19T05:26:52Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35423972354"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35423972354"
     },
     {
       "runId": 35427120658,
       "createdAt": "2026-09-19T06:37:46Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35427120658"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35427120658"
     },
     {
       "runId": 35429335020,
       "createdAt": "2026-09-19T07:26:36Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35429335020"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35429335020"
     },
     {
       "runId": 35432190701,
       "createdAt": "2026-09-19T08:30:39Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35432190701"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35432190701"
     },
     {
       "runId": 35434634995,
       "createdAt": "2026-09-19T09:25:05Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35434634995"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35434634995"
     },
     {
       "runId": 35437275759,
       "createdAt": "2026-09-19T10:23:38Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35437275759"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35437275759"
     },
     {
       "runId": 35439928991,
       "createdAt": "2026-09-19T11:22:22Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35439928991"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35439928991"
     },
     {
       "runId": 35443142926,
       "createdAt": "2026-09-19T12:32:15Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35443142926"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35443142926"
     },
     {
       "runId": 35445616660,
       "createdAt": "2026-09-19T13:23:27Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35445616660"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35445616660"
     },
     {
       "runId": 35448653093,
       "createdAt": "2026-09-19T14:24:46Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35448653093"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35448653093"
     },
     {
       "runId": 35451621510,
       "createdAt": "2026-09-19T15:22:38Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35451621510"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35451621510"
     },
     {
       "runId": 35454880237,
       "createdAt": "2026-09-19T16:25:01Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35454880237"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35454880237"
     },
     {
       "runId": 35457819240,
       "createdAt": "2026-09-19T17:21:07Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35457819240"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35457819240"
     },
     {
       "runId": 35461283372,
       "createdAt": "2026-09-19T18:28:06Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35461283372"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35461283372"
     },
     {
       "runId": 35464016336,
       "createdAt": "2026-09-19T19:20:00Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35464016336"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35464016336"
     },
     {
       "runId": 35470191390,
       "createdAt": "2026-09-19T21:21:58Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35470191390"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35470191390"
     },
     {
       "runId": 35473336585,
       "createdAt": "2026-09-19T22:26:27Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35473336585"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35473336585"
     },
     {
       "runId": 35475897725,
       "createdAt": "2026-09-19T23:21:25Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35475897725"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35475897725"
     },
     {
       "runId": 35480496197,
       "createdAt": "2026-09-20T01:05:51Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35480496197"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35480496197"
     },
     {
       "runId": 35481910092,
       "createdAt": "2026-09-20T01:38:22Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35481910092"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35481910092"
     },
     {
       "runId": 35484397822,
       "createdAt": "2026-09-20T02:35:48Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35484397822"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35484397822"
     },
     {
       "runId": 35486763505,
       "createdAt": "2026-09-20T03:30:44Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35486763505"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35486763505"
     },
     {
       "runId": 35489250226,
       "createdAt": "2026-09-20T04:29:02Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35489250226"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35489250226"
     },
     {
       "runId": 35491642169,
       "createdAt": "2026-09-20T05:25:34Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35491642169"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35491642169"
     },
     {
       "runId": 35494691158,
       "createdAt": "2026-09-20T06:37:00Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35494691158"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35494691158"
     },
     {
       "runId": 35496868836,
       "createdAt": "2026-09-20T07:26:23Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35496868836"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35496868836"
     },
     {
       "runId": 35499768025,
       "createdAt": "2026-09-20T08:30:57Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35499768025"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35499768025"
     },
     {
       "runId": 35502270226,
       "createdAt": "2026-09-20T09:25:30Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35502270226"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35502270226"
     },
     {
       "runId": 35504957871,
       "createdAt": "2026-09-20T10:23:58Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35504957871"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35504957871"
     },
     {
       "runId": 35507630118,
       "createdAt": "2026-09-20T11:22:00Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35507630118"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35507630118"
     },
     {
       "runId": 35510937375,
       "createdAt": "2026-09-20T12:33:00Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35510937375"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35510937375"
     },
     {
       "runId": 35513356233,
       "createdAt": "2026-09-20T13:23:25Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35513356233"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35513356233"
     },
     {
       "runId": 35516317455,
       "createdAt": "2026-09-20T14:23:05Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35516317455"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35516317455"
     },
     {
       "runId": 35519427409,
       "createdAt": "2026-09-20T15:23:32Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35519427409"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35519427409"
     },
     {
       "runId": 35522723541,
       "createdAt": "2026-09-20T16:26:36Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35522723541"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35522723541"
     },
     {
       "runId": 35525631167,
       "createdAt": "2026-09-20T17:21:57Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35525631167"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35525631167"
     },
     {
       "runId": 35529154130,
       "createdAt": "2026-09-20T18:28:14Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35529154130"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35529154130"
     },
     {
       "runId": 35531948172,
       "createdAt": "2026-09-20T19:19:55Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35531948172"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35531948172"
     },
     {
       "runId": 35535421094,
       "createdAt": "2026-09-20T20:24:01Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35535421094"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35535421094"
     },
     {
       "runId": 35538498344,
       "createdAt": "2026-09-20T21:22:26Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35538498344"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35538498344"
     },
     {
       "runId": 35541507760,
       "createdAt": "2026-09-20T22:22:55Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35541507760"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35541507760"
     },
     {
       "runId": 35544450745,
       "createdAt": "2026-09-20T23:22:23Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35544450745"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35544450745"
     },
     {
       "runId": 35549735245,
       "createdAt": "2026-09-21T01:05:12Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35549735245"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35549735245"
     },
     {
       "runId": 35551716638,
       "createdAt": "2026-09-21T01:41:32Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35551716638"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35551716638"
     },
     {
       "runId": 35554919716,
       "createdAt": "2026-09-21T02:39:53Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35554919716"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35554919716"
     },
     {
       "runId": 35557857120,
       "createdAt": "2026-09-21T03:32:29Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35557857120"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35557857120"
     },
     {
       "runId": 35561349180,
       "createdAt": "2026-09-21T04:31:58Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35561349180"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35561349180"
     },
     {
       "runId": 35564680414,
       "createdAt": "2026-09-21T05:28:55Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35564680414"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35564680414"
     },
     {
       "runId": 35570354219,
       "createdAt": "2026-09-21T06:52:43Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35570354219"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35570354219"
     },
     {
       "runId": 35573869523,
       "createdAt": "2026-09-21T07:37:53Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35573869523"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35573869523"
     },
     {
       "runId": 35578928451,
       "createdAt": "2026-09-21T08:38:09Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35578928451"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35578928451"
     },
     {
       "runId": 35584220074,
       "createdAt": "2026-09-21T09:36:11Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35584220074"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35584220074"
     },
     {
       "runId": 35588895550,
       "createdAt": "2026-09-21T10:28:04Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35588895550"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35588895550"
     },
     {
       "runId": 35593934471,
       "createdAt": "2026-09-21T11:25:03Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35593934471"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35593934471"
     },
     {
       "runId": 35600468466,
       "createdAt": "2026-09-21T12:36:00Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35600468466"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35600468466"
     },
     {
       "runId": 35605818227,
       "createdAt": "2026-09-21T13:28:15Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35605818227"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35605818227"
     },
     {
       "runId": 35612498148,
       "createdAt": "2026-09-21T14:29:25Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35612498148"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35612498148"
     },
     {
       "runId": 35618885021,
       "createdAt": "2026-09-21T15:25:54Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35618885021"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35618885021"
     },
     {
       "runId": 35626088534,
       "createdAt": "2026-09-21T16:30:56Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35626088534"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35626088534"
     },
     {
       "runId": 35631682312,
       "createdAt": "2026-09-21T17:23:18Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35631682312"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35631682312"
     },
     {
       "runId": 35638990087,
       "createdAt": "2026-09-21T18:32:03Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35638990087"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35638990087"
     },
     {
       "runId": 35644850975,
       "createdAt": "2026-09-21T19:26:44Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35644850975"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35644850975"
     },
     {
       "runId": 35651161216,
       "createdAt": "2026-09-21T20:27:19Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35651161216"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35651161216"
     },
     {
       "runId": 35657027629,
       "createdAt": "2026-09-21T21:24:56Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35657027629"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35657027629"
     },
     {
       "runId": 35662665412,
       "createdAt": "2026-09-21T22:26:20Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35662665412"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35662665412"
     },
     {
       "runId": 35667498441,
       "createdAt": "2026-09-21T23:25:33Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35667498441"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35667498441"
     },
     {
       "runId": 35674188876,
       "createdAt": "2026-09-22T01:00:53Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35674188876"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35674188876"
     },
     {
       "runId": 35676360221,
       "createdAt": "2026-09-22T01:36:04Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35676360221"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35676360221"
     },
     {
       "runId": 35680021804,
       "createdAt": "2026-09-22T02:35:25Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35680021804"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35680021804"
     },
     {
       "runId": 35683440772,
       "createdAt": "2026-09-22T03:30:59Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35683440772"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35683440772"
     },
     {
       "runId": 35687158670,
       "createdAt": "2026-09-22T04:30:42Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35687158670"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35687158670"
     },
     {
       "runId": 35690759736,
       "createdAt": "2026-09-22T05:27:14Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35690759736"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35690759736"
     },
     {
       "runId": 35696025296,
       "createdAt": "2026-09-22T06:42:04Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35696025296"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35696025296"
     },
     {
       "runId": 35700058479,
       "createdAt": "2026-09-22T07:31:49Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35700058479"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35700058479"
     },
     {
       "runId": 35705579246,
       "createdAt": "2026-09-22T08:34:49Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35705579246"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35705579246"
     },
     {
       "runId": 35710553914,
       "createdAt": "2026-09-22T09:28:12Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35710553914"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35710553914"
     },
     {
       "runId": 35716119990,
       "createdAt": "2026-09-22T10:27:56Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35716119990"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35716119990"
     },
     {
       "runId": 35721333480,
       "createdAt": "2026-09-22T11:25:07Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35721333480"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35721333480"
     },
     {
       "runId": 35728410563,
       "createdAt": "2026-09-22T12:38:31Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35728410563"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35728410563"
     },
     {
       "runId": 35733764180,
       "createdAt": "2026-09-22T13:29:09Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35733764180"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35733764180"
     },
     {
       "runId": 35740702678,
       "createdAt": "2026-09-22T14:29:46Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35740702678"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35740702678"
     },
     {
       "runId": 35747383538,
       "createdAt": "2026-09-22T15:26:41Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35747383538"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35747383538"
     },
     {
       "runId": 35754799033,
       "createdAt": "2026-09-22T16:32:35Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35754799033"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35754799033"
     },
     {
       "runId": 35760515316,
       "createdAt": "2026-09-22T17:24:48Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35760515316"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35760515316"
     },
     {
       "runId": 35768013435,
       "createdAt": "2026-09-22T18:34:04Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35768013435"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35768013435"
     },
     {
       "runId": 35773474351,
       "createdAt": "2026-09-22T19:23:26Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35773474351"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35773474351"
     },
     {
       "runId": 35780270070,
       "createdAt": "2026-09-22T20:26:10Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35780270070"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35780270070"
     },
     {
       "runId": 35786494147,
       "createdAt": "2026-09-22T21:24:52Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35786494147"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35786494147"
     },
     {
       "runId": 35797174474,
       "createdAt": "2026-09-22T23:23:25Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35797174474"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35797174474"
     },
     {
       "runId": 35804414589,
       "createdAt": "2026-09-23T00:59:33Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35804414589"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35804414589"
     },
     {
       "runId": 35806900179,
       "createdAt": "2026-09-23T01:35:15Z",
       "conclusion": "success",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35806900179"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35806900179"
     },
     {
       "runId": 35810976721,
       "createdAt": "2026-09-23T02:35:37Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35810976721"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35810976721"
     },
     {
       "runId": 35814651119,
       "createdAt": "2026-09-23T03:31:16Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35814651119"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35814651119"
     },
     {
       "runId": 35818772349,
       "createdAt": "2026-09-23T04:32:50Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35818772349"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35818772349"
     },
     {
       "runId": 35822496192,
       "createdAt": "2026-09-23T05:27:41Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35822496192"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35822496192"
     },
     {
       "runId": 35828060443,
       "createdAt": "2026-09-23T06:43:01Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35828060443"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35828060443"
     },
     {
       "runId": 35832208102,
       "createdAt": "2026-09-23T07:32:02Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35832208102"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35832208102"
     },
     {
       "runId": 35837865861,
       "createdAt": "2026-09-23T08:34:12Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35837865861"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35837865861"
     },
     {
       "runId": 35843233153,
       "createdAt": "2026-09-23T09:29:23Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35843233153"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35843233153"
     },
     {
       "runId": 35849032770,
       "createdAt": "2026-09-23T10:28:53Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35849032770"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35849032770"
     },
     {
       "runId": 35854458606,
       "createdAt": "2026-09-23T11:25:35Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35854458606"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35854458606"
     },
     {
       "runId": 35861680951,
       "createdAt": "2026-09-23T12:37:45Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35861680951"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35861680951"
     },
     {
       "runId": 35867145049,
       "createdAt": "2026-09-23T13:27:04Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35867145049"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35867145049"
     },
     {
       "runId": 35874495830,
       "createdAt": "2026-09-23T14:29:02Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35874495830"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35874495830"
     },
     {
       "runId": 35881732755,
       "createdAt": "2026-09-23T15:27:48Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35881732755"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35881732755"
     },
     {
       "runId": 35889213311,
       "createdAt": "2026-09-23T16:30:23Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35889213311"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35889213311"
     },
     {
       "runId": 35895505240,
       "createdAt": "2026-09-23T17:25:34Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35895505240"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35895505240"
     },
     {
       "runId": 35903112535,
       "createdAt": "2026-09-23T18:31:54Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35903112535"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35903112535"
     },
     {
       "runId": 35908982327,
       "createdAt": "2026-09-23T19:23:22Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35908982327"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35908982327"
     },
     {
       "runId": 35916056765,
       "createdAt": "2026-09-23T20:27:21Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35916056765"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35916056765"
     },
     {
       "runId": 35922236808,
       "createdAt": "2026-09-23T21:24:28Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35922236808"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35922236808"
     },
     {
       "runId": 35928254826,
       "createdAt": "2026-09-23T22:25:24Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35928254826"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35928254826"
     },
     {
       "runId": 35933188397,
       "createdAt": "2026-09-23T23:21:31Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35933188397"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35933188397"
     },
     {
       "runId": 35940858692,
       "createdAt": "2026-09-24T00:58:44Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35940858692"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35940858692"
     },
     {
       "runId": 35943566289,
       "createdAt": "2026-09-24T01:35:04Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35943566289"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35943566289"
     },
     {
       "runId": 35947912055,
       "createdAt": "2026-09-24T02:35:40Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35947912055"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35947912055"
     },
     {
       "runId": 35951730950,
       "createdAt": "2026-09-24T03:30:29Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35951730950"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35951730950"
     },
     {
       "runId": 35955908515,
       "createdAt": "2026-09-24T04:30:07Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35955908515"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35955908515"
     },
     {
       "runId": 35959960240,
       "createdAt": "2026-09-24T05:26:37Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35959960240"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35959960240"
     },
     {
       "runId": 35965700654,
       "createdAt": "2026-09-24T06:41:17Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35965700654"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35965700654"
     },
     {
       "runId": 35970166495,
       "createdAt": "2026-09-24T07:32:28Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35970166495"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35970166495"
     },
     {
       "runId": 35976146199,
       "createdAt": "2026-09-24T08:35:34Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35976146199"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35976146199"
     },
     {
       "runId": 35981596932,
       "createdAt": "2026-09-24T09:29:59Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35981596932"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35981596932"
     },
     {
       "runId": 35987281466,
       "createdAt": "2026-09-24T10:27:02Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35987281466"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35987281466"
     },
     {
       "runId": 35993027696,
       "createdAt": "2026-09-24T11:26:30Z",
       "conclusion": "failure",
-      "url": "https://github.com/githubnext/gh-aw-cao/actions/runs/35993027696"
+      "url": "https://github.com/githubnext/gh-cao/actions/runs/35993027696"
     }
   ],
   "caveat": "The evidence is observational and does not establish that workflow adoption caused an outcome change.",
@@ -921,7 +921,7 @@
     "definition": {
       "schemaVersion": 3,
       "slug": "dependabot-update-planner",
-      "repository": "githubnext/gh-aw-cao",
+      "repository": "githubnext/gh-cao",
       "workflowName": "Dependabot / Update Planner",
       "sourcePath": ".github/workflows/dependabot-update-planner.md",
       "adoption": {

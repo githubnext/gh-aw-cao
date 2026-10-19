@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.1.0  
 **Status:** Working Draft  
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/operational-value-history.md  
+**Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/operational-value-history.md
 **Editors:** GitHub Next
 
 ## Abstract
@@ -144,7 +144,7 @@ to the adapter's standard input:
 {
   "schemaVersion": 1,
   "timestamp": "2026-09-24T10:00:00.000Z",
-  "repositories": ["githubnext/gh-aw-cao"],
+  "repositories": ["githubnext/gh-cao"],
   "database": "/absolute/path/activity.sqlite"
 }
 ```
@@ -217,7 +217,7 @@ A definition record has this shape:
   "adoptedAt": "2026-09-15T23:30:36.000Z",
   "evaluationMode": "baseline-comparable",
   "cadenceDays": 1,
-  "repositories": ["githubnext/gh-aw-cao"],
+  "repositories": ["githubnext/gh-cao"],
   "valueIds": ["example-worker.attainment"]
 }
 ```
@@ -556,7 +556,7 @@ Each accepted value MUST be published as:
   "kind": "operational_value",
   "operational_value": {
     "timestamp": "2026-09-23T23:30:36.000Z",
-    "repository": "githubnext/gh-aw-cao",
+    "repository": "githubnext/gh-cao",
     "campaign": "example",
     "campaign_id": "campaign:example",
     "value_id": "example-worker.attainment",

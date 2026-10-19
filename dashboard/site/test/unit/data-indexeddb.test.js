@@ -31,7 +31,7 @@ function batch() {
       source: 'fixture',
       sourceId: 'repo-1',
       observedAt: '2026-09-09T05:00:00Z',
-      data: { id: 'repository:1', fullName: 'githubnext/gh-aw-cao' }
+      data: { id: 'repository:1', fullName: 'githubnext/gh-cao' }
     }
   ]);
 }
@@ -397,8 +397,8 @@ describe('canonical IndexedDB', () => {
       request.onupgradeneeded = () => {
         const repositories = request.result.createObjectStore('repositories', { keyPath: 'id' });
         repositories.put({
-          id: 'repository:dashboard-sources:githubnext%2Fgh-aw-cao',
-          fullName: 'githubnext/gh-aw-cao'
+          id: 'repository:dashboard-sources:githubnext%2Fgh-cao',
+          fullName: 'githubnext/gh-cao'
         });
       };
       request.onsuccess = () => resolve(request.result);
@@ -507,10 +507,10 @@ describe('canonical IndexedDB', () => {
     await upsertCanonicalBatch(indexedDB, batch());
 
     expect(await readCollection(indexedDB, 'repositories')).toEqual([
-      expect.objectContaining({ id: 'repository:1', owner: 'githubnext', name: 'gh-aw-cao' })
+      expect.objectContaining({ id: 'repository:1', owner: 'githubnext', name: 'gh-cao' })
     ]);
     expect(await readRecord(indexedDB, 'repositories', 'repository:1')).toMatchObject({
-      owner: 'githubnext', name: 'gh-aw-cao'
+      owner: 'githubnext', name: 'gh-cao'
     });
   });
 

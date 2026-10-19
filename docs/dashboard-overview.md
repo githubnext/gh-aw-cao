@@ -20,8 +20,8 @@ not stages in a conversion funnel.
 ## What Overview shows
 
 <div class="docs-theme-diagram">
-	<img class="docs-theme-diagram-light" alt="Overview page composition with a status header, weekly rhythm, and two operational stations" src="/gh-aw-cao/assets/dashboard-overview-desktop-light.svg">
-	<img class="docs-theme-diagram-dark" alt="Overview page composition with a status header, weekly rhythm, and two operational stations" src="/gh-aw-cao/assets/dashboard-overview-desktop-dark.svg">
+	<img class="docs-theme-diagram-light" alt="Overview page composition with a status header, weekly rhythm, and two operational stations" src="/gh-cao/assets/dashboard-overview-desktop-light.svg">
+	<img class="docs-theme-diagram-dark" alt="Overview page composition with a status header, weekly rhythm, and two operational stations" src="/gh-cao/assets/dashboard-overview-desktop-dark.svg">
 </div>
 
 | Dashboard area | What it tells you | Where it leads |
@@ -70,7 +70,7 @@ time without presenting cached data as a successful refresh.
 ## Where the data comes from
 
 Overview uses the shared snapshot published by [CAO Activity](activity.md). The
-[Activity Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/activity.md)
+[Activity Specification](https://github.com/githubnext/gh-cao/blob/main/specs/activity.md)
 defines the snapshot and its requirements.
 
 | Source | How Overview uses it |

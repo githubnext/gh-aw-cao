@@ -15,7 +15,7 @@ const completeMetadata = {
 
 const workflow = {
   organization: 'githubnext',
-  repository: 'gh-aw-cao',
+  repository: 'gh-cao',
   workflow: '.github/workflows/multi-device-docs-tester.md',
   'workflow-name': 'Multi-Device Docs Tester',
   'workflow-role': 'standalone',

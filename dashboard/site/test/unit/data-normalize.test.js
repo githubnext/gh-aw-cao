@@ -97,7 +97,7 @@ describe('canonical normalization', () => {
       }),
       observation('repository', 'repo-new', '2026-09-09T00:00:00Z', {
         githubId: 123,
-        name: 'gh-aw-cao'
+        name: 'gh-cao'
       })
     ];
 
@@ -107,7 +107,7 @@ describe('canonical normalization', () => {
     expect(batch.repositories[0]).toMatchObject({
       id: 'github:repository:123',
       owner: 'githubnext',
-      name: 'gh-aw-cao'
+      name: 'gh-cao'
     });
   });
 
@@ -116,7 +116,7 @@ describe('canonical normalization', () => {
       githubRunId: 456,
       attempt: 1,
       owner: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflowId: 'github:workflow:9',
       repositoryId: 'github:repository:123',
       status: 'completed'
@@ -130,20 +130,20 @@ describe('canonical normalization', () => {
 
     expect(batch.runs).toHaveLength(1);
     expect(batch.runs[0]).toMatchObject({
-      id: 'github:run:githubnext/gh-aw-cao:456',
+      id: 'github:run:githubnext/gh-cao:456',
       attempt: 2
     });
   });
 
   it('collapses repeated safe outputs under the repository issue key', () => {
     const first = observation('issue', 'run-1:issue', '2026-09-09T01:00:00Z', {
-      runId: 'github:run:githubnext/gh-aw-cao:456',
-      url: 'https://github.com/GitHubNext/GH-AW-CAO/issues/42',
+      runId: 'github:run:githubnext/gh-cao:456',
+      url: 'https://github.com/GitHubNext/GH-CAO/issues/42',
       status: 'created'
     });
     const repeated = observation('issue', 'run-2:issue', '2026-09-09T02:00:00Z', {
-      runId: 'github:run:githubnext/gh-aw-cao:789',
-      url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
+      runId: 'github:run:githubnext/gh-cao:789',
+      url: 'https://github.com/githubnext/gh-cao/issues/42',
       status: 'updated'
     });
 
@@ -151,14 +151,14 @@ describe('canonical normalization', () => {
 
     expect(batch.issues).toHaveLength(1);
     expect(batch.issues[0]).toMatchObject({
-      id: 'github:issue:githubnext/gh-aw-cao:42',
+      id: 'github:issue:githubnext/gh-cao:42',
       status: 'updated'
     });
   });
 
   it('keeps operational values from different campaigns under separate identities', () => {
     const common = {
-      repository: 'githubnext/gh-aw-cao',
+      repository: 'githubnext/gh-cao',
       valueId: 'primary',
       timestamp: '2026-09-24T10:00:00Z'
     };
@@ -235,14 +235,14 @@ describe('canonical normalization', () => {
       githubRunId: 99,
       attempt: 1,
       owner: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       status: 'in_progress'
     });
     const authoritative = observation('run', 'run-github', '2026-09-09T03:00:00Z', {
       githubRunId: 99,
       attempt: 1,
       owner: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       status: 'completed',
       conclusion: 'success'
     }, 'github');

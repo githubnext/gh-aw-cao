@@ -17,10 +17,10 @@ afterEach(async () => {
   services.clear();
 });
 
-const path = "/api/v1/github/repos/githubnext/gh-aw-cao";
+const path = "/api/v1/github/repos/githubnext/gh-cao";
 const repository = {
-  full_name: "githubnext/gh-aw-cao", description: null,
-  html_url: "https://github.com/githubnext/gh-aw-cao", default_branch: "main",
+  full_name: "githubnext/gh-cao", description: null,
+  html_url: "https://github.com/githubnext/gh-cao", default_branch: "main",
   stargazers_count: 1, forks_count: 2, open_issues_count: 3, archived: false, visibility: "public",
 };
 const credential = () => "test-credential";
@@ -33,7 +33,7 @@ test("local GitHub reads are allowlisted, cached, and conditionally returned", a
     fetchImpl: async (url, options) => {
       requests++;
       assert.ok(url instanceof URL);
-      assert.equal(url.href, "https://api.github.com/repos/githubnext/gh-aw-cao");
+      assert.equal(url.href, "https://api.github.com/repos/githubnext/gh-cao");
       assert.equal(options.method, "GET");
       assert.equal(options.headers["X-GitHub-Api-Version"], "2026-03-10");
       assert.equal(options.body, undefined);
@@ -141,7 +141,7 @@ test("workflow contents expose only parsed compiler evidence through the read-on
     token: credential,
     fetchImpl: async (url) => {
       calls++;
-      assert.equal(url.href, `https://api.github.com/repos/githubnext/gh-aw-cao/contents/${workflow}`);
+      assert.equal(url.href, `https://api.github.com/repos/githubnext/gh-cao/contents/${workflow}`);
       return reply({
         type: "file", path: workflow, sha, encoding: "base64",
         content: Buffer.from('# gh-aw-metadata: {"compiler_version":"v0.92.0"}\nprivate workflow content').toString("base64"),

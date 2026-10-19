@@ -20,7 +20,7 @@ The shared `explore`, `propose`, or `operate` classification applied to every da
 
 ## Administrator step-up
 
-A hosted-server requirement that every administrator operation comes from a fresh, assured interactive GitHub OAuth authentication. Fresh means within `CAO_ADMIN_REAUTH_MAX_AGE`, which defaults to 15 minutes. Assured means GitHub explicitly reported two-factor authentication, or the user's membership was confirmed in an operator-attested SAML SSO organization. Token refresh never extends step-up. See the [hosted CLI actions specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md).
+A hosted-server requirement that every administrator operation comes from a fresh, assured interactive GitHub OAuth authentication. Fresh means within `CAO_ADMIN_REAUTH_MAX_AGE`, which defaults to 15 minutes. Assured means GitHub explicitly reported two-factor authentication, or the user's membership was confirmed in an operator-attested SAML SSO organization. Token refresh never extends step-up. See the [hosted CLI actions specification](https://github.com/githubnext/gh-cao/blob/main/specs/server-hosted-cli.md).
 
 ## Agent catalog
 
@@ -44,7 +44,7 @@ Continuous centralized agentic work that pursues your goals for your enterprise 
 
 ## Bug Bash
 
-The recommended getting-started campaign for a new control repository: it selects at most one target repository, runs one bounded defect investigation, verifies the result adversarially, and hands a maintainer either one reviewable finding or an honest `no-finding`. Nothing is written to the investigated repository; the campaign's `bug-bash` orchestrator and `bug-bash-investigation` worker publish review evidence only to the control repository. See [Bug Bash](https://github.com/githubnext/gh-aw-cao/blob/main/bug-bash/README.md).
+The recommended getting-started campaign for a new control repository: it selects at most one target repository, runs one bounded defect investigation, verifies the result adversarially, and hands a maintainer either one reviewable finding or an honest `no-finding`. Nothing is written to the investigated repository; the campaign's `bug-bash` orchestrator and `bug-bash-investigation` worker publish review evidence only to the control repository. See [Bug Bash](https://github.com/githubnext/gh-cao/blob/main/bug-bash/README.md).
 
 ## Canonical data
 
@@ -52,7 +52,7 @@ The consistent entities, identities, and relationships produced by applying the 
 
 ## CAO runtime
 
-The curated production bundle of canonical Activity and Dashboard code that a control repository installs and executes. It is packaged from `runtime/package.json` by `npm run runtime:pack -- DESTINATION REVISION` (see `scripts/build-cao-runtime.mjs`) and built and attested by `.github/workflows/cao-runtime.yml` as a verified exact-SHA artifact. The Release workflow verifies that artifact and attaches it to the draft before immutable publication, providing stable release assets for stable version references; successful Actions artifacts retained for 90 days serve main/SHA references. The trusted materializer verifies GitHub signed build provenance for the catalog, signer workflow, and source and signer SHAs on a GitHub-hosted runner before replacing an installed repository's bounded canonical destinations, failing closed without source or npm fallback when an artifact is missing or unverifiable. Normal installation needs Node.js and authenticated GitHub CLI artifact/attestation access, not npm; explicit local source materialization remains a developer path using npm. See [Repository Layout and Installation](https://github.com/githubnext/gh-aw-cao/blob/main/specs/repository-layout-and-installation.md).
+The curated production bundle of canonical Activity and Dashboard code that a control repository installs and executes. It is packaged from `runtime/package.json` by `npm run runtime:pack -- DESTINATION REVISION` (see `scripts/build-cao-runtime.mjs`) and built and attested by `.github/workflows/cao-runtime.yml` as a verified exact-SHA artifact. The Release workflow verifies that artifact and attaches it to the draft before immutable publication, providing stable release assets for stable version references; successful Actions artifacts retained for 90 days serve main/SHA references. The trusted materializer verifies GitHub signed build provenance for the catalog, signer workflow, and source and signer SHAs on a GitHub-hosted runner before replacing an installed repository's bounded canonical destinations, failing closed without source or npm fallback when an artifact is missing or unverifiable. Normal installation needs Node.js and authenticated GitHub CLI artifact/attestation access, not npm; explicit local source materialization remains a developer path using npm. See [Repository Layout and Installation](https://github.com/githubnext/gh-cao/blob/main/specs/repository-layout-and-installation.md).
 
 ## CAO validation
 
@@ -60,7 +60,7 @@ The Actions-only `cao-validate.yml` workflow, implemented in the shipped JavaScr
 
 ## CLI command queue
 
-A durable first-in-first-out queue of declared `cao` actions, separate from the collection task queue. Local admin and trusted canvas sessions share one queue per checkout in `.cao/cli-actions.sqlite`, and the PostgreSQL operational store can provide a deployment-scoped queue. Queued commands survive restart, interrupted executions are recorded as failed and never retried automatically, and the online dashboard and read-only previews do not initialize it. See the [dashboard README](https://github.com/githubnext/gh-aw-cao/blob/main/dashboard/README.md#cli-command-queue) and the [operational storage specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-operational-storage.md).
+A durable first-in-first-out queue of declared `cao` actions, separate from the collection task queue. Local admin and trusted canvas sessions share one queue per checkout in `.cao/cli-actions.sqlite`, and the PostgreSQL operational store can provide a deployment-scoped queue. Queued commands survive restart, interrupted executions are recorded as failed and never retried automatically, and the online dashboard and read-only previews do not initialize it. See the [dashboard README](https://github.com/githubnext/gh-cao/blob/main/dashboard/README.md#cli-command-queue) and the [operational storage specification](https://github.com/githubnext/gh-cao/blob/main/specs/server-operational-storage.md).
 
 ## Collection health
 
@@ -84,7 +84,7 @@ The declarative YAML vocabulary used to define dashboard queries, pages, views, 
 
 ## Dashboard fragment
 
-An authoring-time partial `dashboard` JSON document, listed in a root document's top-level `fragments` array, whose array fields (such as `queries`, `views`, and `pages`) are appended in declaration order to keep a coherent feature slice together. Fragments cannot include other fragments and are fully composed into the single deployed `dashboard.json` and `dashboard-pages/*.json` runtime format before validation and page chunking; a fragment is an authoring convenience, not a distinct runtime artifact. See the [dashboard README](https://github.com/githubnext/gh-aw-cao/blob/main/dashboard/site/README.md).
+An authoring-time partial `dashboard` JSON document, listed in a root document's top-level `fragments` array, whose array fields (such as `queries`, `views`, and `pages`) are appended in declaration order to keep a coherent feature slice together. Fragments cannot include other fragments and are fully composed into the single deployed `dashboard.json` and `dashboard-pages/*.json` runtime format before validation and page chunking; a fragment is an authoring convenience, not a distinct runtime artifact. See the [dashboard README](https://github.com/githubnext/gh-cao/blob/main/dashboard/site/README.md).
 
 ## Debug mode
 
@@ -116,11 +116,11 @@ The CAO-side authority in `server/internal/githubquota` that coordinates GitHub 
 
 ## History campaign
 
-The single campaign selected for historical operational-value reconstruction in one collector invocation, as defined by the operational-value history protocol. Its adapter supplies historical evaluations at earlier scheduled cadence instants in addition to the current observation every campaign adapter provides; the reconstruction orchestrator schedules, validates, retains, deduplicates, retires, and publishes these observations without reinterpreting or recomputing a supplied metric value. See [Operational-Value History Reconstruction Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/operational-value-history.md).
+The single campaign selected for historical operational-value reconstruction in one collector invocation, as defined by the operational-value history protocol. Its adapter supplies historical evaluations at earlier scheduled cadence instants in addition to the current observation every campaign adapter provides; the reconstruction orchestrator schedules, validates, retains, deduplicates, retires, and publishes these observations without reinterpreting or recomputing a supplied metric value. See [Operational-Value History Reconstruction Specification](https://github.com/githubnext/gh-cao/blob/main/specs/operational-value-history.md).
 
 ## Hosted CLI actions
 
-An experimental hosted-server mode, enabled with `serve-hosted --experimental --hosted-cli-actions`, in which step-up administrators queue declared `cao` actions. A separate `execute-cli` process runs each queued action with a single-use, repository-scoped GitHub App installation token that is revoked when the command finishes. Executor replicas coordinate through a durable, fenced PostgreSQL queue lease. See the [hosted CLI actions specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-hosted-cli.md).
+An experimental hosted-server mode, enabled with `serve-hosted --experimental --hosted-cli-actions`, in which step-up administrators queue declared `cao` actions. A separate `execute-cli` process runs each queued action with a single-use, repository-scoped GitHub App installation token that is revoked when the command finishes. Executor replicas coordinate through a durable, fenced PostgreSQL queue lease. See the [hosted CLI actions specification](https://github.com/githubnext/gh-cao/blob/main/specs/server-hosted-cli.md).
 
 ## Live authority
 
@@ -152,7 +152,7 @@ The run-scoped result produced by gh-aw's upstream `operational-value` grader pr
 
 ## Operational store
 
-The provider-neutral storage contract in `server/internal/operational/` that exposes immutable per-feature cache, request-limit, OAuth, quota, collection, coordination, and diagnostic capabilities. PostgreSQL is the default adapter for a selector-free reviewed host, using only its own `cao_operational_*` tables and never the canonical dashboard entity/query schema; explicit Redis configuration remains supported, and an explicit, acknowledged single-process in-memory adapter is a bounded, volatile alternative that loses all operational state on restart. See [Server operational storage](https://github.com/githubnext/gh-aw-cao/blob/main/specs/server-operational-storage.md).
+The provider-neutral storage contract in `server/internal/operational/` that exposes immutable per-feature cache, request-limit, OAuth, quota, collection, coordination, and diagnostic capabilities. PostgreSQL is the default adapter for a selector-free reviewed host, using only its own `cao_operational_*` tables and never the canonical dashboard entity/query schema; explicit Redis configuration remains supported, and an explicit, acknowledged single-process in-memory adapter is a bounded, volatile alternative that loses all operational state on restart. See [Server operational storage](https://github.com/githubnext/gh-cao/blob/main/specs/server-operational-storage.md).
 
 ## Public control repository
 
@@ -160,7 +160,7 @@ A control repository whose own visibility is public, so its policy, workflow run
 
 ## Quickstart
 
-The explicit staged guide run by `gh cao quickstart`, distinct from ordinary install or `gh cao setup`. Installation requires an explicit public `--target OWNER/REPO` and a selected control repository; no owner or repository is suggested. It configures Repo Assist maintenance in review mode, commits and pushes bounded CAO paths, and stops with the orchestrator paused. Separate `--step run`, `--step collect`, and read-only `--step dashboard` commands reuse committed policy to introduce campaign execution, Activity evidence, and verified public dashboard publication without a long terminal wait. The campaign never modifies the target. Explicit `--wait` retains the end-to-end flow for unattended use immediately after bare installation, not for resuming stages. This optional campaign walkthrough is not required for monitoring. See [Try a Repo Assist review](repo-assist-quickstart.md), [Set Up CAO](setup-quickstarts.md), and [Repository Layout and Installation §4.3-4.4](https://github.com/githubnext/gh-aw-cao/blob/main/specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
+The explicit staged guide run by `gh cao quickstart`, distinct from ordinary install or `gh cao setup`. Installation requires an explicit public `--target OWNER/REPO` and a selected control repository; no owner or repository is suggested. It configures Repo Assist maintenance in review mode, commits and pushes bounded CAO paths, and stops with the orchestrator paused. Separate `--step run`, `--step collect`, and read-only `--step dashboard` commands reuse committed policy to introduce campaign execution, Activity evidence, and verified public dashboard publication without a long terminal wait. The campaign never modifies the target. Explicit `--wait` retains the end-to-end flow for unattended use immediately after bare installation, not for resuming stages. This optional campaign walkthrough is not required for monitoring. See [Try a Repo Assist review](repo-assist-quickstart.md), [Set Up CAO](setup-quickstarts.md), and [Repository Layout and Installation §4.3-4.4](https://github.com/githubnext/gh-cao/blob/main/specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
 
 ## Repo memory
 
@@ -188,7 +188,7 @@ A repository enrolled for a campaign. A target can provide data and receive decl
 
 ## Unified session
 
-gh-aw's version-1 `usage/aw_session.jsonl` evidence for a run. CAO collection validates it against the run's execution identity and stores only a safe projection of allowlisted event metadata, never message bodies, prompts, or tool inputs and outputs. An available unified session replaces legacy MCP, firewall, and skill event projections for that run; when none exists, the legacy parsers remain in use. See the [gh-aw JSONL mapping specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md).
+gh-aw's version-1 `usage/aw_session.jsonl` evidence for a run. CAO collection validates it against the run's execution identity and stores only a safe projection of allowlisted event metadata, never message bodies, prompts, or tool inputs and outputs. An available unified session replaces legacy MCP, firewall, and skill event projections for that run; when none exists, the legacy parsers remain in use. See the [gh-aw JSONL mapping specification](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md).
 
 ## WebMCP
 

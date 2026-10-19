@@ -12,7 +12,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.ok(optional > 0);
   const monitoring = gettingStarted.slice(0, optional);
   const commands = [
-    "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash",
+    "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
     "gh cao setup",
     "gh cao doctor",
     'git commit -m "Set up CAO monitoring"',
@@ -109,7 +109,7 @@ test("CAO command guide explains the workflow execution boundary", () => {
 
 test("campaign guides use supported native operator commands", () => {
   for (const [filename, commands] of [
-    ["bug-bash/README.md", ["gh cao campaigns add githubnext/gh-aw-cao/bug-bash"]],
+    ["bug-bash/README.md", ["gh cao campaigns add githubnext/gh-cao/bug-bash"]],
     ["repo-assist/README.md", [
       "gh cao quickstart --step run",
       "gh cao quickstart --step collect",
@@ -123,7 +123,7 @@ test("campaign guides use supported native operator commands", () => {
 });
 
 test("quickstart documents separate component stages and explicit checkpoints", () => {
-  const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh");
+  const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh");
   const command = quickstart.indexOf("bash -s -- --quickstart");
   const campaign = quickstart.indexOf("gh cao quickstart --step run");
   const activity = quickstart.indexOf("gh cao quickstart --step collect");
@@ -159,7 +159,7 @@ test("quickstart documents separate component stages and explicit checkpoints", 
   assert.match(quickstart, /public GitHub Pages dashboard/);
   assert.match(quickstart, /resolves the latest stable CAO `vX\.Y\.Z`\s+release/);
   assert.match(quickstart, /never silently falls back to `main`/);
-  assert.match(quickstart, /githubnext\/gh-aw-cao@main/);
+  assert.match(quickstart, /githubnext\/gh-cao@main/);
   assert.match(quickstart, /In a public control repository[\s\S]*review outputs are\s+also public/);
   assert.match(quickstart, /selected target is never modified/);
   assert.match(quickstart, /require at least one collected run/);
@@ -206,7 +206,7 @@ test("quickstart separates the first run from verified historical Repo Assist ex
   assert.match(campaign, /Issue triage, issue fix, and PR upkeep remain disabled/);
   assert.match(quickstart, /No demo repository is created, and useful findings are not guaranteed/);
   assert.match(quickstart, /## See more without running more/);
-  assert.match(quickstart, /github\.com\/githubnext\/gh-aw-cao\/blob\/main\/repo-assist\/README\.md#see-repo-assist-in-action/);
+  assert.match(quickstart, /github\.com\/githubnext\/gh-cao\/blob\/main\/repo-assist\/README\.md#see-repo-assist-in-action/);
   assert.match(readme, /repo-assist\/README\.md#see-repo-assist-in-action/);
   for (const [issue, run] of [
     [17740, 38399472881],
@@ -214,8 +214,8 @@ test("quickstart separates the first run from verified historical Repo Assist ex
     [17378, 38119485916],
     [14060, 36227760220],
   ]) {
-    assert.ok(showcase.includes(`https://github.com/githubnext/gh-aw-cao/issues/${issue}`));
-    assert.ok(showcase.includes(`https://github.com/githubnext/gh-aw-cao/actions/runs/${run}`));
+    assert.ok(showcase.includes(`https://github.com/githubnext/gh-cao/issues/${issue}`));
+    assert.ok(showcase.includes(`https://github.com/githubnext/gh-cao/actions/runs/${run}`));
   }
   assert.match(showcase, /Reading these reports does not start a workflow or spend AI credits/);
   assert.match(showcase, /No new patch was made[\s\S]*originating run failed[\s\S]*not a successful repair example/);

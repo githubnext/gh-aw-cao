@@ -60,7 +60,7 @@ const populatedViews = [
     heading: "Repositories",
     view: "repositories-activity",
     field: "repository",
-    value: "gh-aw-cao",
+    value: "gh-cao",
   },
 ];
 
@@ -96,7 +96,7 @@ test("deployed shards populate server-backed dashboard views", async ({ context,
   expect(queryPayload.sources.runs.rows).toEqual([
     expect.objectContaining({
       run: "424242",
-      repository: "gh-aw-cao",
+      repository: "gh-cao",
       workflow: ".github/workflows/dashboard.md",
     }),
   ]);

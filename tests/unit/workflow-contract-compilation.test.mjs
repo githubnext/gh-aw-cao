@@ -75,7 +75,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "compile",
       "--no-check-update",
       "--schedule-seed",
-      "githubnext/gh-aw-cao",
+      "githubnext/gh-cao",
     ], { cwd: temporaryRoot, stdio: "pipe" });
 
     const lockNames = readdirSync(generatedDirectory)

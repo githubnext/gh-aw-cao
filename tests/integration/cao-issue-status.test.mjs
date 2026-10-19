@@ -25,7 +25,7 @@ async function fixture() {
         run_id: 303,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'githubnext/gh-aw-cao',
+        repository: 'githubnext/gh-cao',
         workflow_name: 'Dashboard',
         workflow_path: '.github/workflows/dashboard.lock.yml',
         status: 'completed',
@@ -43,7 +43,7 @@ async function fixture() {
         timestamp: '2026-09-09T04:00:30Z',
         type: 'create_issue',
         provider: 'github',
-        url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+        url: 'https://github.com/githubnext/gh-cao/issues/42'
       }
     },
     {
@@ -54,7 +54,7 @@ async function fixture() {
         timestamp: '2026-09-09T04:00:31Z',
         type: 'create_issue',
         provider: 'github',
-        url: 'https://github.com/githubnext/gh-aw-cao/issues/43'
+        url: 'https://github.com/githubnext/gh-cao/issues/43'
       }
     }
   ];
@@ -84,7 +84,7 @@ if (queryArgument.includes('repository(')) {
       state: 'CLOSED',
       stateReason: 'COMPLETED',
       closedAt: '2026-09-20T12:00:00Z',
-      url: 'https://github.com/githubnext/gh-aw-cao/issues/' + number
+      url: 'https://github.com/githubnext/gh-cao/issues/' + number
     } },
     rateLimit: { cost: 1, remaining: 998, resetAt: '2026-09-20T13:00:00Z' }
   } }));
@@ -197,7 +197,7 @@ process.stdout.write(JSON.stringify(query.includes('repository(') ? {
         state: 'OPEN',
         stateReason: null,
         closedAt: null,
-        url: 'https://github.com/githubnext/gh-aw-cao/issues/43'
+        url: 'https://github.com/githubnext/gh-cao/issues/43'
       }
     },
     rateLimit: { cost: 1, remaining: 998, resetAt: '2026-09-20T13:00:00Z' }
@@ -298,7 +298,7 @@ if (args[0] === 'api' && args[1] === 'rate_limit') {
   } }));
   process.exit(0);
 }
-if (args[0] === 'api' && args[1] === 'repos/githubnext/gh-aw-cao/actions/workflows?per_page=100') {
+if (args[0] === 'api' && args[1] === 'repos/githubnext/gh-cao/actions/workflows?per_page=100') {
   process.stdout.write(JSON.stringify([{ workflows: [{ path: '.github/workflows/dashboard.lock.yml' }] }]));
   process.exit(0);
 }
@@ -314,7 +314,7 @@ if (args[0] === 'aw' && args[1] === 'logs') {
         run_id: 303,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'githubnext/gh-aw-cao',
+        repository: 'githubnext/gh-cao',
         workflow_name: 'Dashboard',
         workflow_path: '.github/workflows/dashboard.lock.yml',
         status: 'completed',
@@ -332,7 +332,7 @@ if (args[0] === 'aw' && args[1] === 'logs') {
         timestamp: '2026-09-09T04:00:30Z',
         type: 'create_issue',
         provider: 'github',
-        url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+        url: 'https://github.com/githubnext/gh-cao/issues/42'
       }
     }))}
   ].join('\\n') + '\\n');
@@ -348,7 +348,7 @@ if (args[0] === 'api' && args[1] === 'graphql') {
         state: 'CLOSED',
         stateReason: 'COMPLETED',
         closedAt: '2026-09-20T12:00:00Z',
-        url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+        url: 'https://github.com/githubnext/gh-cao/issues/42'
       } },
       rateLimit: { cost: 1, remaining: 998, resetAt: '2026-09-20T13:00:00Z' }
     } }));
@@ -365,7 +365,7 @@ process.exit(1);
     const env = {
       ...process.env,
       PATH: `${item.bin}:${process.env.PATH}`,
-      GITHUB_REPOSITORY: 'githubnext/gh-aw-cao',
+      GITHUB_REPOSITORY: 'githubnext/gh-cao',
       REPORT_AIC_CACHE: path.join(item.root, 'logs'),
       REPORT_ACTIVITY_DATABASE: item.databasePath,
       REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, 'collection-exit-code'),
@@ -424,7 +424,7 @@ process.exit(1);
     const issueQuery = graphqlCalls.find((arguments_) => arguments_.some((argument) => argument.includes('issueOrPullRequest(number: 42)')));
     assert.ok(issueQuery);
     assert.ok(issueQuery.some((argument) => argument.includes('owner=githubnext')));
-    assert.ok(issueQuery.some((argument) => argument.includes('name=gh-aw-cao')));
+    assert.ok(issueQuery.some((argument) => argument.includes('name=gh-cao')));
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }

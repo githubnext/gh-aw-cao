@@ -30,20 +30,20 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/audit"
-	"github.com/githubnext/gh-aw-cao/server/internal/dashboardstore"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
-	"github.com/githubnext/gh-aw-cao/server/internal/sqlitex"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/audit"
+	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/ingest"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/marketplace"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/repositorymemory"
+	"github.com/githubnext/gh-cao/server/internal/sqlitex"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 var serverLog = logger.New("cao:server")
@@ -1182,9 +1182,9 @@ Server commit SHA: %s
 
 ## Agent documentation
 
-- CAO agent resources: https://githubnext.github.io/gh-aw-cao/agent/llms.txt
-- Published dashboard agent guide: https://githubnext.github.io/gh-aw-cao/cao/llms.txt
-- Agent analysis and MCP setup: https://githubnext.github.io/gh-aw-cao/agent-analysis/
+- CAO agent resources: https://githubnext.github.io/gh-cao/agent/llms.txt
+- Published dashboard agent guide: https://githubnext.github.io/gh-cao/cao/llms.txt
+- Agent analysis and MCP setup: https://githubnext.github.io/gh-cao/agent-analysis/
 
 ## Configure MCP
 
@@ -1197,7 +1197,7 @@ Other hosted clients must run in GitHub Actions on the authorized repository's d
 send a repository-scoped GITHUB_TOKEN as a bearer token and an Actions OIDC token
 in X-GitHub-OIDC-Token (audience https://cao.githubnext.com).
 See the agent analysis guide and server setup documentation:
-https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#local-mcp-endpoint
+https://github.com/githubnext/gh-cao/blob/main/server/README.md#local-mcp-endpoint
 Never put credentials in a URL or in source control.
 `, revision)
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 func (e *Executor) recover(ctx context.Context, lease operational.CLICommandLease) error {

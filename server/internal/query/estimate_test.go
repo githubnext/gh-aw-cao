@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/model"
 )
 
 func TestSnapshotByteEstimationRejectsExcessiveDepth(t *testing.T) {

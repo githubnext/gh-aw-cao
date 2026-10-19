@@ -24,7 +24,7 @@ var (
 	workflowInput    = regexp.MustCompile(`(?s)^[A-Za-z_][A-Za-z0-9_-]*=.*$`)
 	workflowName     = regexp.MustCompile(`^[A-Za-z0-9_.][A-Za-z0-9_./-]*$`)
 	gitRef           = regexp.MustCompile(`^[A-Za-z0-9_.][A-Za-z0-9_./-]*$`)
-	campaignPackage  = regexp.MustCompile(`^https://github\.com/githubnext/gh-aw-cao/[a-z0-9]+(?:-[a-z0-9]+)*$`)
+	campaignPackage  = regexp.MustCompile(`^https://github\.com/githubnext/gh-cao/[a-z0-9]+(?:-[a-z0-9]+)*$`)
 )
 
 // Plan is a validated hosted execution: the argv to run, the single

@@ -119,7 +119,7 @@ two tools.
    ```json
    {
      "id": "usage-by-workflow",
-     "parameters": { "repository": "githubnext/gh-aw-cao" }
+     "parameters": { "repository": "githubnext/gh-cao" }
    }
    ```
 
@@ -132,7 +132,7 @@ The Go dashboard server additionally exposes `cao_logs` when
 protected `/api/admin/logs` snapshot for administrators and validated GitHub
 Actions callers, not canonical dashboard rows. Hosted administrators use their
 GitHub OAuth session and `X-CSRF-Token`; Actions callers retain the existing
-token and OIDC requirements. See [server MCP setup](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#local-mcp-endpoint).
+token and OIDC requirements. See [server MCP setup](https://github.com/githubnext/gh-cao/blob/main/server/README.md#local-mcp-endpoint).
 
 ## Read the result honestly
 
@@ -220,7 +220,7 @@ steps:
         --tmpfs /tmp \
         -v "$PWD/.cao:/data:ro" \
         -p 127.0.0.1:8765:8765 \
-        ghcr.io/githubnext/gh-aw-cao-mcp:${CAO_VERSION}
+        ghcr.io/githubnext/gh-cao-mcp:${CAO_VERSION}
 ```
 
 Point the workflow's MCP server configuration at `http://127.0.0.1:8765/mcp`.

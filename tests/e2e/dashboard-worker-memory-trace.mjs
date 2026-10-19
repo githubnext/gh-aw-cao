@@ -15,7 +15,7 @@ import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
 const sourceUrl = process.env.DASHBOARD_DATA_URL
-  ?? "https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json";
+  ?? "https://githubnext.github.io/gh-cao/cao/payload-hashes.json";
 const eager = process.argv.includes("--eager");
 const debugPattern = process.argv.find((value) => value.startsWith("--debug="))?.slice(8) ?? "data:*";
 const heapMb = Number(process.env.TRACE_HEAP_MB ?? 2048);

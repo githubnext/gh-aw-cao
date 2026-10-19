@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 type containerCommandRunner struct {
@@ -55,7 +55,7 @@ func containerTest(t *testing.T) (*ContainerRunner, *containerCommandRunner, Pro
 	}
 	process := Process{
 		CommandID: 1, Workspace: workspace, Dir: work, Program: "gh-aw",
-		Args: []string{"update", "https://github.com/githubnext/gh-aw-cao/security", "--repo", "octo/cao", "--create-pull-request"},
+		Args: []string{"update", "https://github.com/githubnext/gh-cao/security", "--repo", "octo/cao", "--create-pull-request"},
 		Env:  []string{"GH_TOKEN=scoped-value", "HOME=/workspace/home"},
 		RegisterContainer: func(_ context.Context, execution operational.CLICommandExecution) error {
 			return execution.Validate()

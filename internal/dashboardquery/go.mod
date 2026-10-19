@@ -1,4 +1,4 @@
-module github.com/githubnext/gh-aw-cao/internal/dashboardquery
+module github.com/githubnext/gh-cao/internal/dashboardquery
 
 go 1.26.9
 

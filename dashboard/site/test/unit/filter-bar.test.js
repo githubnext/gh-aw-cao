@@ -198,13 +198,13 @@ describe('time-window filter bar', () => {
       select.value = '6h';
       select.dispatchEvent(new Event('change'));
       const filterInput = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Current filters"]'));
-      filterInput.value = 'repository:gh-aw-cao';
+      filterInput.value = 'repository:gh-cao';
       filterInput.dispatchEvent(new Event('input'));
 
       await vi.waitFor(() => {
         expect(onChange).toHaveBeenLastCalledWith(
           new Map([
-            ['repository', ['gh-aw-cao']],
+            ['repository', ['gh-cao']],
             ['mode', ['review', 'live', 'unknown']]
           ]),
           {
@@ -252,7 +252,7 @@ describe('time-window filter bar', () => {
     expect(badge?.getAttribute('aria-label')).toBe('3 filters');
 
     const filterInput = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Current filters"]'));
-    filterInput.value = 'repository:gh-aw-cao';
+    filterInput.value = 'repository:gh-cao';
     filterInput.dispatchEvent(new Event('input'));
     await Promise.resolve();
 
@@ -395,7 +395,7 @@ describe('time-window filter bar', () => {
     select.value = '6h';
     select.dispatchEvent(new Event('change'));
     const filterInput = /** @type {HTMLInputElement} */ (first.querySelector('[aria-label="Current filters"]'));
-    filterInput.value = 'repository:gh-aw-cao';
+    filterInput.value = 'repository:gh-cao';
     filterInput.dispatchEvent(new Event('input'));
 
     const secondChange = vi.fn();
@@ -411,13 +411,13 @@ describe('time-window filter bar', () => {
     )?.value).toBe('6h');
     expect(/** @type {HTMLInputElement | null} */ (
       second.querySelector('[aria-label="Current filters"]')
-    )?.value).toBe('repository:gh-aw-cao');
+    )?.value).toBe('repository:gh-cao');
     expect([...second.querySelectorAll('.mode-filter-control input')].map(
       (input) => /** @type {HTMLInputElement} */ (input).checked
     )).toEqual([true, false, true]);
     expect(secondChange).toHaveBeenLastCalledWith(
       new Map([
-        ['repository', ['gh-aw-cao']],
+        ['repository', ['gh-cao']],
         ['mode', ['review', 'unknown']]
       ]),
       {
@@ -432,7 +432,7 @@ describe('time-window filter bar', () => {
       if (checkbox.checked) checkbox.click();
     }
     expect(secondChange.mock.calls.at(-1)?.[0]).toEqual(new Map([
-      ['repository', ['gh-aw-cao']],
+      ['repository', ['gh-cao']],
       ['mode', []]
     ]));
     expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}').modes).toEqual([]);

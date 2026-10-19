@@ -15,7 +15,7 @@ definition() {
 {
   "schemaVersion": 4,
   "grader": "operational-value",
-  "repository": "githubnext/gh-aw-cao",
+  "repository": "githubnext/gh-cao",
   "workflowName": "CAO Evolution / AW Failures",
   "sourcePath": ".github/workflows/cao-evolution-failures-investigator.md",
   "adoption": {
@@ -27,7 +27,7 @@ definition() {
     "opportunity": "Each distinct agentic workflow (a compiled .lock.yml workflow) with at least one failed, timed-out, or startup-failed run in the dispatched target repository during the 24 hours before the investigator run started.",
     "assignment": "Bind targetRepo from workflow_dispatch inputs and freeze the failing workflow ids observed at run creation time; key failure-clusters:<targetRepo>:<runId>. Replays retain this case.",
     "accepted": "An assigned failing workflow completes at least one run after the investigator run started and at or before the evidence cutoff, that window contains at least one successful run, and it contains no failed, timed-out, or startup-failed run.",
-    "repositories": ["githubnext/gh-aw-cao"],
+    "repositories": ["githubnext/gh-cao"],
     "collection": "List completed target Actions runs once to freeze the assignment, then list completed runs per assigned workflow through the capped evidence cutoff.",
     "maturation": "Fourteen days after the investigator run starts.",
     "zeroRule": "Complete evidence for assigned failing workflows with no recovered workflow scores 0.",
