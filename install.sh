@@ -410,6 +410,30 @@ resolve_latest_cao_release() {
   return 1
 }
 
+verify_cao_extension_release() {
+  local release="$1"
+  local assets asset count
+  if ! assets="$(gh api --hostname github.com \
+    "repos/githubnext/gh-cao/releases/tags/$release" \
+    --jq 'select(.draft == false) | .assets[] | select(.state == "uploaded" and .size > 0) | .name')"; then
+    printf 'Unable to inspect CAO extension release %s. No CAO files were written.\n' "$release" >&2
+    return 1
+  fi
+  for asset in gh-cao-darwin-amd64 gh-cao-darwin-arm64 \
+    gh-cao-linux-amd64 gh-cao-linux-arm64 \
+    gh-cao-windows-amd64.exe gh-cao-windows-arm64.exe checksums.txt; do
+    count="$(awk -v asset="$asset" '$0 == asset { count++ } END { print count + 0 }' <<< "$assets")"
+    if [[ "$count" != 1 ]]; then
+      printf '%s\n' \
+        "CAO release $release is not installable: expected exactly one uploaded, nonempty $asset asset." \
+        "A runtime archive alone or legacy unprefixed binaries do not satisfy the gh cao release contract." \
+        "Maintainers must publish a corrected release with scripts/build-release.sh assets and promote it to latest through the reviewed release workflow." \
+        "Published immutable releases cannot be repaired in place. No CAO files were written." >&2
+      return 1
+    fi
+  done
+}
+
 install_cao_extension() (
   set -euo pipefail
   local release="$1"
@@ -715,6 +739,7 @@ main() {
   elif ! extension_release="$(resolve_latest_cao_release)"; then
     return 1
   fi
+  verify_cao_extension_release "$extension_release"
 
   if [[ -d "$catalog_source" ]]; then
     catalog_source="$(cd "$catalog_source" && pwd)"

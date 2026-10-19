@@ -145,6 +145,16 @@ if [[ "$*" == "api --hostname github.com --paginate repos/githubnext/gh-cao/rele
   printf '%b\\n' "\${FAKE_CAO_RELEASE_LIST:-false\\\\tfalse\\\\t\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}}"
   exit 0
 fi
+if [[ "\${1:-} \${2:-}" == "api --hostname" && "\${4:-}" == repos/githubnext/gh-cao/releases/tags/* ]]; then
+  echo "$4" >> "$FAKE_CAO_RELEASE_REQUESTS"
+  [[ -z "\${FAKE_CAO_ASSET_LOOKUP_FAILURE:-}" ]] || { echo "release asset lookup failed" >&2; exit 1; }
+  if [[ -n "\${FAKE_CAO_RELEASE_ASSETS+set}" ]]; then
+    printf '%b\\n' "$FAKE_CAO_RELEASE_ASSETS"
+  else
+    printf '%s\\n' gh-cao-darwin-amd64 gh-cao-darwin-arm64 gh-cao-linux-amd64 gh-cao-linux-arm64 gh-cao-windows-amd64.exe gh-cao-windows-arm64.exe checksums.txt
+  fi
+  exit 0
+fi
 if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
   [[ "$*" == *"viewerCanCreateRepositories"* ]] || exit 2
   [[ -z "\${FAKE_OWNER_DISCOVERY_FAILURE:-}" ]] || { echo "owner lookup failed" >&2; exit 1; }
@@ -357,6 +367,7 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     FAKE_CONTROL_REPOSITORY: repository,
     XDG_DATA_HOME: path.join(root, "data"),
     FAKE_CAO_DOWNLOADS: path.join(root, "cao-downloads.log"),
+    FAKE_CAO_RELEASE_REQUESTS: path.join(root, "cao-release-requests.log"),
   };
   return {
     root,
@@ -1356,6 +1367,58 @@ test("an explicit release downloads the matching Go binary without a latest-rele
   assert.match(downloads, /\/v2\.3\.4\/checksums\.txt\n/);
   const version = await executeFile("gh", ["cao", "--version"], { cwd: consumer, env });
   assert.equal(version.stdout.trim(), "gh cao version v2.3.4");
+  assert.equal(await readFile(env.FAKE_CAO_RELEASE_REQUESTS, "utf8"), "repos/githubnext/gh-cao/releases/tags/v2.3.4\n");
+});
+
+const publishedExtensionAssets = [
+  "gh-cao-darwin-amd64", "gh-cao-darwin-arm64", "gh-cao-linux-amd64", "gh-cao-linux-arm64",
+  "gh-cao-windows-amd64.exe", "gh-cao-windows-arm64.exe", "checksums.txt",
+];
+for (const [name, assets, missing] of [
+  ["runtime-only stable release", ["cao-runtime-sha.tgz", "cao-runtime-sha.tgz.sha256"], "gh-cao-darwin-amd64"],
+  ["legacy binary names", publishedExtensionAssets.map((asset) => asset.replace(/^gh-cao-/, "")), "gh-cao-darwin-amd64"],
+  ["missing Windows binary", publishedExtensionAssets.filter((asset) => asset !== "gh-cao-windows-arm64.exe"), "gh-cao-windows-arm64.exe"],
+  ["missing checksums", publishedExtensionAssets.filter((asset) => asset !== "checksums.txt"), "checksums.txt"],
+  ["duplicate binary", [...publishedExtensionAssets, "gh-cao-linux-amd64"], "gh-cao-linux-amd64"],
+]) {
+  test(`installer rejects a ${name} before installing or replacing tools`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t);
+    const directory = path.join(env.XDG_DATA_HOME, "gh", "extensions", "gh-cao");
+    const binary = path.join(directory, process.platform === "win32" ? "gh-cao.exe" : "gh-cao");
+    await mkdir(directory, { recursive: true });
+    await writeFile(binary, "previous verified executable");
+    const result = await runStreamed(consumer, {
+      ...env,
+      FAKE_CAO_RELEASE_ASSETS: assets.join("\n"),
+    });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /CAO release v1\.2\.3 is not installable/);
+    assert.ok(result.stderr.includes(`expected exactly one uploaded, nonempty ${missing} asset`), result.stderr);
+    assert.match(result.stderr, /publish a corrected release/);
+    assert.match(result.stderr, /No CAO files were written/);
+    assert.equal(await log(), "", "gh-aw must not be installed before release preflight");
+    assert.equal(await exists(env.FAKE_CAO_DOWNLOADS), false);
+    assert.equal(await readFile(binary, "utf8"), "previous verified executable");
+    assert.deepEqual(await fs.promises.readdir(directory), [path.basename(binary)]);
+    assert.equal(await readFile(env.FAKE_CAO_RELEASE_REQUESTS, "utf8"), "repos/githubnext/gh-cao/releases/tags/v1.2.3\n");
+    await assertNothingInstalled(consumer);
+  });
+}
+
+test("explicit release asset lookup failures stop before installing tools or CAO files", async (t) => {
+  const { consumer, env, log } = await createConsumer(t);
+  const result = await runStreamed(consumer, {
+    ...env,
+    FAKE_LATEST_CAO_RELEASE_FAILURE: "1",
+    FAKE_CAO_ASSET_LOOKUP_FAILURE: "1",
+  }, ["githubnext/gh-cao@v2.3.4"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /release asset lookup failed/);
+  assert.match(result.stderr, /Unable to inspect CAO extension release v2\.3\.4/);
+  assert.equal(await log(), "");
+  assert.equal(await exists(env.FAKE_CAO_DOWNLOADS), false);
+  assert.equal(await exists(env.XDG_DATA_HOME), false);
+  await assertNothingInstalled(consumer);
 });
 
 for (const [name, override, message] of [

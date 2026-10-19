@@ -225,6 +225,14 @@ embedded version before atomically replacing the binary in GitHub CLI's
 binary on verification failure. An explicit `githubnext/gh-cao@vX.Y.Z`
 source MUST select that extension release; other sources MUST use the latest
 stable extension. Runtime revision selection remains independent.
+Before installing or upgrading tools or writing CAO files, the installer MUST
+verify that the selected published release contains exactly one uploaded,
+nonempty asset for each of the six supported platform binaries and
+`checksums.txt`. Runtime-only releases and legacy unprefixed binary names MUST
+fail with an actionable release-contract error, without selecting a prerelease
+or substituting another release. Maintainers MUST publish and promote a
+correctly packaged release before deploying an installer that requires its
+binaries; an immutable published release cannot be repaired in place.
 The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
 removed shell equivalents. No shell launcher is installed. Actions and Node-only
 tools MUST invoke `node activity/cao.mjs <command>` or another explicit Node
