@@ -116,17 +116,10 @@
       "subject": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
       "objective": "Choose an active campaign workflow whose observed execution warrants inspection.",
       "acceptance": "Listed workflows match active declared orchestrator or worker inventory entries; runs and AI Credits agree with the selected-horizon inventory, and absence is not evidence of disabled authority or no executions. Rollout mode is context, not permission to change policy.",
-      "description": "Campaign workflows projected from lean canonical inventory, with display names and drill-down links computed only for the active list.",
+      "description": "Campaign workflows projected from lean canonical inventory, with shared declaration names and active-only workflow drill-down links.",
       "from": "campaign-workflow-inventory",
       "filter": {
         "predicates": [
-          {
-            "field": "workflow-role",
-            "in": [
-              "orchestrator",
-              "worker"
-            ]
-          },
           {
             "field": "workflow-active",
             "equals": "true"
@@ -134,44 +127,6 @@
         ]
       },
       "compute": [
-        {
-          "as": "campaign-title",
-          "function": "title-case",
-          "args": [{ "field": "campaign" }]
-        },
-        {
-          "as": "campaign-display-name",
-          "function": "coalesce",
-          "args": [{ "field": "campaign-name" }, { "field": "campaign-title" }, { "value": "Repository-owned" }]
-        },
-        {
-          "as": "workflow-display-name",
-          "function": "coalesce",
-          "args": [{ "field": "workflow-name" }, { "field": "workflow" }]
-        },
-        {
-          "as": "encoded-repository",
-          "function": "url-encode",
-          "args": [{ "field": "repository" }]
-        },
-        {
-          "as": "repository-dashboard-href",
-          "function": "concat",
-          "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
-        },
-        {
-          "as": "repository-dashboard-label",
-          "function": "concat",
-          "args": [{ "value": "View " }, { "field": "repository" }, { "value": " repository dashboard" }]
-        },
-        {
-          "as": "repository-dashboard-link",
-          "function": "dashboard-link",
-          "args": [
-            { "field": "repository-link" }, { "field": "repository-dashboard-href" },
-            { "field": "repository-dashboard-label" }, { "field": "repository" }
-          ]
-        },
         {
           "as": "workflow-identity",
           "function": "concat",
@@ -267,63 +222,12 @@
       "objective": "Inspect campaign repository topology without computing unused run totals or import coverage.",
       "acceptance": "Preserve active orchestrator and worker identities, display names, rollout context, links, and ordering. Declaration counts are not target enrollment, dispatch coverage, or execution totals. Empty inventory and unavailable workflow evidence remain distinct.",
       "description": "Declaration-only repository topology. Run totals and import-evidence quality belong to execution views, not this inventory.",
-      "from": "workflows",
+      "from": "campaign-workflow-declarations",
       "filter": {
         "predicates": [
-          { "field": "workflow-role", "in": ["orchestrator", "worker"] },
           { "field": "workflow-active", "equals": "true" }
         ]
       },
-      "compute": [
-        {
-          "as": "repository-slug",
-          "function": "concat",
-          "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
-        },
-        {
-          "as": "campaign-title",
-          "function": "title-case",
-          "args": [{ "field": "campaign" }]
-        },
-        {
-          "as": "campaign-display-name",
-          "function": "coalesce",
-          "args": [{ "field": "campaign-name" }, { "field": "campaign-title" }, { "value": "Repository-owned" }]
-        },
-        {
-          "as": "workflow-display-name",
-          "function": "coalesce",
-          "args": [{ "field": "workflow-name" }, { "field": "workflow" }]
-        },
-        {
-          "as": "declared-mode",
-          "function": "coalesce",
-          "args": [{ "field": "rollout-mode" }, { "value": "unknown" }]
-        },
-        {
-          "as": "encoded-repository",
-          "function": "url-encode",
-          "args": [{ "field": "repository-slug" }]
-        },
-        {
-          "as": "repository-dashboard-href",
-          "function": "concat",
-          "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
-        },
-        {
-          "as": "repository-dashboard-label",
-          "function": "concat",
-          "args": [{ "value": "View " }, { "field": "repository-slug" }, { "value": " repository dashboard" }]
-        },
-        {
-          "as": "repository-dashboard-link",
-          "function": "dashboard-link",
-          "args": [
-            { "field": "repository-link" }, { "field": "repository-dashboard-href" },
-            { "field": "repository-dashboard-label" }, { "field": "repository-slug" }
-          ]
-        }
-      ],
       "select": [
         { "field": "campaign" },
         { "field": "campaign-display-name", "as": "campaign-name" },

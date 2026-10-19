@@ -1945,15 +1945,34 @@
       }
     },
     {
+      "id": "campaign-workflow-declarations",
+      "subject": "Project reusable campaign workflow declarations without execution evidence.",
+      "objective": "Share declaration display fields between structural topology and execution inventory without joining runs or import evidence.",
+      "acceptance": "Preserve raw organization, repository, workflow and declaration fields for joins. Select orchestrator and worker roles once, retaining inactive and unknown declarations; only list consumers select active entries. Display defaults and repository links do not establish execution, enrollment or authority.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "campaign-workflow-inventory",
       "subject": "Project declared campaign workflows with lean execution and configuration evidence.",
-      "objective": "Provide campaign totals and lists without unused ingestion, failure, or dashboard-link computations.",
+      "objective": "Provide campaign totals and lists from shared declarations with separate execution and import-quality evidence.",
       "acceptance": "Keep all declared orchestrators and workers, including inactive and unobserved entries; preserve inventory ordering, configuration defaults, execution totals, and import-evidence quality.",
       "description": "Lean campaign inventory with execution totals that retain the public workflow inventory's evidence-quality dependencies.",
       "parameters": [],
       "sources": [
-        "campaign-workflow-execution-totals",
-        "workflows"
+        "campaign-workflow-declarations",
+        "campaign-workflow-execution-totals"
       ],
       "used-by-pages": [],
       "execution": {
@@ -3236,7 +3255,7 @@
       "subject": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
       "objective": "Choose an active campaign workflow whose observed execution warrants inspection.",
       "acceptance": "Listed workflows match active declared orchestrator or worker inventory entries; runs and AI Credits agree with the selected-horizon inventory, and absence is not evidence of disabled authority or no executions. Rollout mode is context, not permission to change policy.",
-      "description": "Campaign workflows projected from lean canonical inventory, with display names and drill-down links computed only for the active list.",
+      "description": "Campaign workflows projected from lean canonical inventory, with shared declaration names and active-only workflow drill-down links.",
       "parameters": [
         {
           "name": "campaign",
@@ -3270,7 +3289,7 @@
       "description": "Declaration-only repository topology. Run totals and import-evidence quality belong to execution views, not this inventory.",
       "parameters": [],
       "sources": [
-        "workflows"
+        "campaign-workflow-declarations"
       ],
       "used-by-pages": [],
       "execution": {

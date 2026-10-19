@@ -20,6 +20,18 @@ const baselinePage = {
     contract.views.includes(view.id) ? { ...view, data: { ...view.data, source: 'campaign-workflows' } } : view
   ))
 };
+const baselineQueries = queries.map((query) => query.name === 'campaign-workflows' ? {
+  ...query,
+  from: 'workflow-inventory',
+  filter: {
+    predicates: [
+      { field: 'workflow-role', in: ['orchestrator', 'worker'] },
+      { field: 'workflow-active', equals: 'true' }
+    ]
+  },
+  compute: undefined,
+  select: [...contract.fields, 'runs', 'aic', 'workflow-link'].map((field) => ({ field }))
+} : query);
 
 /** @param {string} name @param {Record<string, unknown>[]} rows @param {Partial<Metadata>} [quality] @returns {Source} */
 function source(name, rows, quality = {}) {
@@ -75,11 +87,12 @@ async function canonicalSources() {
 
 /** @param {Record<string, Source>} sources @param {boolean} baseline @param {string} campaign @param {string} viewId @param {import('../../src/data/queries/view-payload-compiler.js').GlobalQueryContext} [queryContext] */
 function viewResult(sources, baseline, campaign, viewId, queryContext) {
+  const definitions = baseline ? baselineQueries : queries;
   const compiled = compileDashboardViewPayloadQueries(baseline ? baselinePage : page, contract.page, {
-    queries, viewId, routeParameters: { campaign }, queryContext
+    queries: definitions, viewId, routeParameters: { campaign }, queryContext
   });
   const result = /** @type {Record<string, Source>} */ (processDataRequest({
-    operation: 'execute-dashboard-queries', queries: [...queries, ...compiled.queries],
+    operation: 'execute-dashboard-queries', queries: [...definitions, ...compiled.queries],
     sourceNames: compiled.aliases, sources
   }));
   return result[compiled.aliases[0]];
@@ -102,6 +115,34 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('campaign repository declaration-only inventory', () => {
+  it('shares raw campaign declaration identities and role selection without dropping inactive or unknown entries', async () => {
+    const sources = await canonicalSources();
+    const results = /** @type {Record<string, Source>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries', queries,
+      sourceNames: [contract.declarations], sources: { workflows: sources.workflows }
+    }));
+    const rows = results[contract.declarations].rows;
+    expect(rows).toHaveLength(7);
+    expect(rows.map((row) => [row.organization, row.repository, row.workflow]))
+      .toEqual(sources.workflows.rows.filter((row) => row['workflow-role'] !== 'standalone')
+        .map((row) => [row.organization, row.repository, row.workflow]));
+    for (const workflow of ['disabled', 'unknown']) {
+      expect(rows.some((row) => row.workflow === workflow)).toBe(true);
+    }
+    expect(rows.find((row) => row.workflow === 'unnamed')).toMatchObject({
+      repository: 'other', 'repository-slug': 'example/other',
+      'workflow-name': '', 'workflow-display-name': 'unnamed', 'declared-mode': 'unknown'
+    });
+    expect(queries.find((query) => query.name === 'campaign-workflow-inventory')?.from).toBe(contract.declarations);
+    expect(queries.find((query) => query.name === 'campaign-repository-declarations')?.from).toBe(contract.declarations);
+    for (const name of ['campaign-workflows', 'campaign-repository-declarations']) {
+      expect(queries.find((query) => query.name === name)?.filter?.predicates)
+        .toEqual([{ field: 'workflow-active', equals: 'true' }]);
+    }
+    expect(resolveDashboardQuerySources(queries, [contract.declarations])
+      .filter((name) => Object.hasOwn(TABLE_FIELDS, name))).toEqual(contract.dependencies);
+  });
+
   it('keeps both topology views on workflow declarations and retains all navigation count sources', () => {
     for (const id of contract.views) {
       const view = page.views.find((/** @type {{ id: string }} */ candidate) => candidate.id === id);

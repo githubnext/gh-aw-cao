@@ -379,27 +379,11 @@
       ]
     },
     {
-      "name": "campaign-workflow-inventory",
-      "subject": "Project declared campaign workflows with lean execution and configuration evidence.",
-      "objective": "Provide campaign totals and lists without unused ingestion, failure, or dashboard-link computations.",
-      "acceptance": "Keep all declared orchestrators and workers, including inactive and unobserved entries; preserve inventory ordering, configuration defaults, execution totals, and import-evidence quality.",
-      "description": "Lean campaign inventory with execution totals that retain the public workflow inventory's evidence-quality dependencies.",
+      "name": "campaign-workflow-declarations",
+      "subject": "Project reusable campaign workflow declarations without execution evidence.",
+      "objective": "Share declaration display fields between structural topology and execution inventory without joining runs or import evidence.",
+      "acceptance": "Preserve raw organization, repository, workflow and declaration fields for joins. Select orchestrator and worker roles once, retaining inactive and unknown declarations; only list consumers select active entries. Display defaults and repository links do not establish execution, enrollment or authority.",
       "from": "workflows",
-      "joins": [
-        {
-          "source": "campaign-workflow-execution-totals",
-          "type": "left",
-          "on": [
-            { "left": "organization", "right": "organization" },
-            { "left": "repository", "right": "repository" },
-            { "left": "workflow", "right": "workflow" }
-          ],
-          "fields": [
-            { "field": "runs", "as": "observed-runs" },
-            { "field": "aic", "as": "observed-aic" }
-          ]
-        }
-      ],
       "filter": {
         "predicates": [
           { "field": "workflow-role", "in": ["orchestrator", "worker"] }
@@ -421,6 +405,88 @@
           "function": "coalesce",
           "args": [{ "field": "workflow-active" }, { "value": "unknown" }]
         },
+        {
+          "as": "campaign-title",
+          "function": "title-case",
+          "args": [{ "field": "campaign" }]
+        },
+        {
+          "as": "campaign-display-name",
+          "function": "coalesce",
+          "args": [{ "field": "campaign-name" }, { "field": "campaign-title" }, { "value": "Repository-owned" }]
+        },
+        {
+          "as": "workflow-display-name",
+          "function": "coalesce",
+          "args": [{ "field": "workflow-name" }, { "field": "workflow" }]
+        },
+        {
+          "as": "encoded-repository",
+          "function": "url-encode",
+          "args": [{ "field": "repository-slug" }]
+        },
+        {
+          "as": "repository-dashboard-href",
+          "function": "concat",
+          "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
+        },
+        {
+          "as": "repository-dashboard-label",
+          "function": "concat",
+          "args": [{ "value": "View " }, { "field": "repository-slug" }, { "value": " repository dashboard" }]
+        },
+        {
+          "as": "repository-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            { "field": "repository-link" }, { "field": "repository-dashboard-href" },
+            { "field": "repository-dashboard-label" }, { "field": "repository-slug" }
+          ]
+        }
+      ],
+      "select": [
+        { "field": "organization" },
+        { "field": "repository" },
+        { "field": "workflow" },
+        { "field": "campaign" },
+        { "field": "campaign-name" },
+        { "field": "workflow-name" },
+        { "field": "workflow-role" },
+        { "field": "rollout-mode" },
+        { "field": "workflow-active" },
+        { "field": "repository-link" },
+        { "field": "workflow-link" },
+        { "field": "repository-slug" },
+        { "field": "declared-mode" },
+        { "field": "declared-registration" },
+        { "field": "campaign-display-name" },
+        { "field": "workflow-display-name" },
+        { "field": "repository-dashboard-link" }
+      ]
+    },
+    {
+      "name": "campaign-workflow-inventory",
+      "subject": "Project declared campaign workflows with lean execution and configuration evidence.",
+      "objective": "Provide campaign totals and lists from shared declarations with separate execution and import-quality evidence.",
+      "acceptance": "Keep all declared orchestrators and workers, including inactive and unobserved entries; preserve inventory ordering, configuration defaults, execution totals, and import-evidence quality.",
+      "description": "Lean campaign inventory with execution totals that retain the public workflow inventory's evidence-quality dependencies.",
+      "from": "campaign-workflow-declarations",
+      "joins": [
+        {
+          "source": "campaign-workflow-execution-totals",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" }
+          ],
+          "fields": [
+            { "field": "runs", "as": "observed-runs" },
+            { "field": "aic", "as": "observed-aic" }
+          ]
+        }
+      ],
+      "compute": [
         {
           "as": "total-runs",
           "function": "coalesce",
@@ -445,7 +511,10 @@
         { "field": "total-runs", "as": "runs" },
         { "field": "total-aic", "as": "aic" },
         { "field": "repository-link" },
-        { "field": "workflow-link" }
+        { "field": "workflow-link" },
+        { "field": "campaign-display-name" },
+        { "field": "workflow-display-name" },
+        { "field": "repository-dashboard-link" }
       ],
       "order-by": [
         { "field": "repository", "direction": "asc" },

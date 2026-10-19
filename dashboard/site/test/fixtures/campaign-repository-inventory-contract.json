@@ -1,6 +1,7 @@
 {
   "page": "campaign-repositories",
   "source": "campaign-repository-inventory",
+  "declarations": "campaign-workflow-declarations",
   "views": ["campaign-repository-workflows", "campaign-repository-table"],
   "fields": [
     "campaign", "campaign-name", "organization", "repository", "workflow",
