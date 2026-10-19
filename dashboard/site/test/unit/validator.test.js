@@ -283,6 +283,26 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('validates explicit custom-page query binding without accepting coerced values', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find(
+      (/** @type {{ id?: string }} */ candidate) => candidate.id === 'repository-detail'
+    );
+    for (const binding of ['page', 'view', undefined]) {
+      page['query-binding'] = binding;
+      expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    }
+    for (const binding of ['all', true, ['page'], null]) {
+      page['query-binding'] = binding;
+      expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+        ok: false,
+        errors: expect.arrayContaining([expect.objectContaining({
+          message: 'query-binding must be "view" or "page" when present.'
+        })])
+      });
+    }
+  });
+
   it('validates the optional page mode-indicator flag', () => {
     const accepted = JSON.parse(authoritativeDashboardSource);
     const overview = accepted.dashboard.pages.find(

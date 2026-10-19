@@ -83,7 +83,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, ['retain-on-navigation']?: boolean, form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['availability-view']?: string, ['availability-message']?: string, ['partial-message']?: string, ['title-format']?: 'title-case', breadcrumbs?: import('./components/dashboard-header.js').RouteBreadcrumb[] }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, ['navigation-indicator']?: Record<string, unknown>, description?: string, icon?: string, ['class-name']?: string, experimental?: boolean, ['filter-bar']?: boolean, ['view-mode-control']?: boolean, ['pull-refresh']?: boolean, ['mode-indicator']?: boolean, ['retain-on-navigation']?: boolean, ['query-binding']?: 'view'|'page', form?: Record<string, unknown>, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string, ['availability-view']?: string, ['availability-message']?: string, ['partial-message']?: string, ['title-format']?: 'title-case', breadcrumbs?: import('./components/dashboard-header.js').RouteBreadcrumb[] }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -349,7 +349,7 @@ export function renderDashboard(input) {
             });
           };
           const rendered = render(sources);
-          if (input.loadPageSources.subscribeViewSources) {
+          if (input.loadPageSources.subscribeViewSources && pagePayload['query-binding'] !== 'page') {
             const payload = getBuiltInPagePayload(resolvedPage(), reusableViews);
             const bindings = (payload.views ?? []).flatMap((view, index) => {
               if (!isPlainObject(view) || !viewBackendAvailable(view, dashboardDataBackend())
@@ -412,12 +412,20 @@ export function renderDashboard(input) {
               if (!input.loading) loading.set(false);
             });
           } else {
-            options.onUpdate = (pageSources) => publish(pageSources, true);
+            options.onUpdate = (pageSources) => batch(() => {
+              failures.set({});
+              publish(pageSources, true);
+            });
             void input.loadPageSources(pageId, options).then(options.onUpdate).catch((error) => {
               if (options.signal.aborted) return;
+              const message = error instanceof Error ? error.message : String(error);
+              failures.set(Object.fromEntries((pagePayload.views ?? []).flatMap((view) => (
+                isPlainObject(view) && typeof view.id === 'string' && getViewSources(view).length
+                  ? [[view.id, message]] : []
+              ))));
               debugRender('page source binding failed', {
                 pageId,
-                message: error instanceof Error ? error.message : String(error)
+                message
               });
             }).finally(() => {
               if (!options.signal.aborted && !input.loading) loading.set(false);

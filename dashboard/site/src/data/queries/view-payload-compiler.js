@@ -87,6 +87,8 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   /** @type {Array<Record<string, unknown>>} */
   const queries = [];
   const replacedSources = new Set();
+  /** @type {Map<string, { replacesSource: boolean, dependencies: Array<Record<string, unknown>>, query: Record<string, unknown> }>} */
+  const scopedGraphs = new Map();
 
   views.forEach((view, viewIndex) => {
     if (options.backend && !viewBackendAvailable(view, options.backend)) return;
@@ -131,7 +133,14 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
       if (usesNativeSource(view, sourceName, predicates, useQueryContext ? options.queryContext : undefined, resolvedQueries)) return;
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
-      const compiled = compileAliasedQuery(querySource, alias, predicates, useQueryContext && !isOptions ? options.queryContext?.search : undefined, useQueryContext && !isOptions ? options.queryContext?.orderBy : undefined, options.evaluatedAt, resolvedQueries, isOptions);
+      const search = useQueryContext && !isOptions ? options.queryContext?.search : undefined;
+      const orderBy = useQueryContext && !isOptions ? options.queryContext?.orderBy : undefined;
+      const graphKey = JSON.stringify([querySource, predicates, search, orderBy, isOptions]);
+      const shared = scopedGraphs.get(graphKey);
+      const compiled = shared
+        ? { ...shared, dependencies: [], query: { ...shared.query, name: alias } }
+        : compileAliasedQuery(querySource, alias, predicates, search, orderBy, options.evaluatedAt, resolvedQueries, isOptions);
+      if (!shared) scopedGraphs.set(graphKey, { ...compiled, query: { ...compiled.query } });
       /** @type {Record<string, unknown>} */
       const query = compiled.query;
       if (isPlainObject(view) && view.mark === 'element' && Number.isSafeInteger(viewData?.limit)) {

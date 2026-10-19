@@ -801,6 +801,78 @@ describe('dashboard DOM provenance', () => {
     rendered.remove();
   });
 
+  it('keeps an opted-in page on one abort-scoped subscription and publishes refreshes to all its views', async () => {
+    const metadata = /** @type {const} */ ({
+      'source-id': 'shared', 'source-kind': 'fixture',
+      'as-of': '2026-10-19T00:00:00Z', 'retrieved-at': '2026-10-19T00:00:00Z',
+      availability: 'available', completeness: 'complete', freshness: 'fresh'
+    });
+    /** @param {number} value */
+    const snapshot = (value) => ({
+      shared: { source: 'shared', metadata, rows: [{ value }] }
+    });
+    /** @type {import('../../src/presenter.js').PageSourceLoadOptions | undefined} */
+    let owner;
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn((_id, options) => {
+      owner = options;
+      return Promise.resolve(snapshot(1));
+    }));
+    loadPageSources.subscribeViewSources = vi.fn(() => {
+      throw new Error('Page-bound views must not subscribe independently.');
+    });
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'shared-bindings', title: 'Shared bindings',
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview', 'query-binding': 'page',
+            views: ['first', 'second'].map(id => ({
+              id, title: id, mark: 'metric', data: { source: 'shared' },
+              encoding: { value: { field: 'value', aggregate: 'max' } }
+            }))
+          }]
+        }
+      },
+      sources: {}, loadPageSources
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(rendered.querySelectorAll('[data-metric-value="value"]')).toHaveLength(2));
+    expect(loadPageSources).toHaveBeenCalledTimes(1);
+    expect(loadPageSources.subscribeViewSources).not.toHaveBeenCalled();
+    expect(owner?.signal.aborted).toBe(false);
+    owner?.onUpdate(snapshot(2));
+    expect([...rendered.querySelectorAll('[data-metric-value="value"]')].map(node => node.textContent)).toEqual(['2', '2']);
+    disposeDashboard(rendered);
+    expect(owner?.signal.aborted).toBe(true);
+    owner?.onUpdate(snapshot(3));
+    expect([...rendered.querySelectorAll('[data-metric-value="value"]')].map(node => node.textContent)).toEqual(['2', '2']);
+    rendered.remove();
+  });
+
+  it('shows page-bound query failures instead of leaving loading skeletons', async () => {
+    const loadPageSources = /** @type {import('../../src/presenter.js').PageSourceLoader} */ (vi.fn(() => Promise.reject(new Error('Query unavailable.'))));
+    const rendered = renderDashboardView({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'failed-bindings', title: 'Failed bindings',
+          pages: [{
+            id: 'overview', kind: 'custom', title: 'Overview', 'query-binding': 'page',
+            views: [{ id: 'summary', title: 'Summary', mark: 'metric', data: { source: 'shared' },
+              encoding: { value: { field: 'value', aggregate: 'max' } } }]
+          }]
+        }
+      },
+      sources: {}, loadPageSources
+    });
+    document.body.append(rendered);
+    await vi.waitFor(() => expect(rendered.querySelector('[data-view-id="summary"]')?.textContent).toContain('Query unavailable.'));
+    expect(rendered.querySelector('.dashboard-view-skeleton')).toBeNull();
+    disposeDashboard(rendered);
+    rendered.remove();
+  });
+
   it('keeps the campaign shell live when an independent tab count times out', async () => {
     resetSourceStore();
     window.history.replaceState({}, '', '#page-campaign-insights?campaign=ambient-context');

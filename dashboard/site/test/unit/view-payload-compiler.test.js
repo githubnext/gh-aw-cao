@@ -133,6 +133,29 @@ it('compiles distinct aliases when two views filter the same source differently'
   expect(results[dashboardViewAliasName('operations', page.views[1], 1, 'runs')].rows).toEqual([sources.runs.rows[1]]);
 });
 
+it('shares equivalent scoped graphs but keeps view-specific limits and contexts separate', () => {
+  const queries = [
+    { name: 'base', from: 'runs', select: [{ field: 'run' }, { field: 'run-conclusion' }] },
+    { name: 'selected', from: 'base' }
+  ];
+  const page = { views: [
+    { id: 'short', mark: 'element', data: { source: 'selected', limit: 1 } },
+    { id: 'long', mark: 'element', data: { source: 'selected', limit: 2 } },
+    { id: 'failures', mark: 'element', data: { source: 'selected', filters: { 'run-conclusion': 'failure' } } }
+  ] };
+  const compiled = compileDashboardViewPayloadQueries(page, 'shared', { queries });
+  const result = executeDashboardQueries(compiled.queries, {
+    runs: { source: 'runs', metadata, rows: [
+      { run: '1', 'run-conclusion': 'success' },
+      { run: '2', 'run-conclusion': 'failure' }
+    ] }
+  }, compiled.aliases);
+  expect(result[compiled.aliases[0]].rows.map(row => row.run)).toEqual(['1']);
+  expect(result[compiled.aliases[1]].rows.map(row => row.run)).toEqual(['1', '2']);
+  expect(result[compiled.aliases[2]].rows.map(row => row.run)).toEqual(['2']);
+  expect(compiled.queries.filter(query => String(query.name).endsWith(':dependency:base'))).toHaveLength(2);
+});
+
 it('compiles the generated identifier for an unnamed bound view regardless of page mode', () => {
   const page = {
     views: [{ mark: 'table', data: { source: 'runs', filters: { 'run-conclusion': 'success' } } }]
