@@ -3,12 +3,12 @@ title: Set Up CAO
 description: Set up CAO, monitor one repository, and explore your dashboard before adding automation.
 ---
 
-**Start with visibility, not automation.** Connect one repository and see its
-existing GitHub Agentic Workflow runs, costs, and outcomes in your dashboard.
-You do not need to install or run a campaign.
+This guide walks you through installing CAO in a control repository, connecting
+one repository to monitor, and publishing a dashboard of its existing GitHub
+Agentic Workflow runs, costs, and outcomes.
 
-Your first milestone: **one repository in scope, a published dashboard, and no
-new agentic work running.**
+Setup collects activity from existing workflows without starting new agentic
+work. You do not need to install or run a campaign.
 
 ## Prerequisites
 
