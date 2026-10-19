@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "networkDenied": true,
+  "allWorktreesAndSessionStateDenied": true,
+  "noGitOrNodeModules": true,
+  "testsPassed": 10,
+  "comparison": "Whole timeline identical except generatedAt",
+  "results": [
+    {
+      "slug": "smoke-claude",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 54,
+      "knownNative": [
+        {
+          "capabilities": 2,
+          "expandedReadback": 2,
+          "literalReadback": 0,
+          "writeReadback": 2,
+          "build": null,
+          "fullAcceptance": null
+        }
+      ]
+    },
+    {
+      "slug": "smoke-cursor",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 11,
+      "knownNative": [
+        {
+          "capabilities": 2,
+          "expandedReadback": 1,
+          "literalReadback": 0,
+          "writeReadback": 1,
+          "build": 1,
+          "fullAcceptance": null
+        }
+      ]
+    },
+    {
+      "slug": "smoke-opencode",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 54,
+      "knownNative": [
+        {
+          "capabilities": 1,
+          "expandedReadback": 0,
+          "literalReadback": 1,
+          "writeReadback": null,
+          "build": 0,
+          "fullAcceptance": 0
+        }
+      ]
+    },
+    {
+      "slug": "smoke-gemini",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 35,
+      "knownNative": []
+    },
+    {
+      "slug": "smoke-kiro",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 11,
+      "knownNative": []
+    },
+    {
+      "slug": "smoke-crush",
+      "collectorPassed": true,
+      "identicalRefreshes": 2,
+      "periods": 27,
+      "knownNative": []
+    }
+  ]
+}

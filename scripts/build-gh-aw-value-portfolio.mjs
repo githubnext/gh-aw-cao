@@ -43,6 +43,13 @@ import { collectBatch as collectLinterMining, scoreMetric as scoreLinterMining }
 import { collectBatch as collectDependencyBundles, scoreMetric as scoreDependencyBundles } from "../docs/operational-value/proof/functions/dependabot-burner.mjs";
 import { collectBatch as collectGoDependencyTargets, scoreMetric as scoreGoDependencyTargets } from "../docs/operational-value/proof/functions/dependabot-go-checker.mjs";
 import { collectBatch as collectGoAssertionMigrations, scoreMetric as scoreGoAssertionMigrations } from "../docs/operational-value/proof/functions/go-fan.mjs";
+import { collectBatch as collectRawMcpTransport, scoreMetric as scoreRawMcpTransport } from "../docs/operational-value/proof/functions/github-remote-mcp-auth-test.mjs";
+import { collectBatch as collectClaudeCapabilities, scoreMetric as scoreClaudeCapabilities } from "../docs/operational-value/proof/functions/smoke-claude.mjs";
+import { collectBatch as collectCursorCapabilities, scoreMetric as scoreCursorCapabilities } from "../docs/operational-value/proof/functions/smoke-cursor.mjs";
+import { collectBatch as collectOpenCodeCapabilities, scoreMetric as scoreOpenCodeCapabilities } from "../docs/operational-value/proof/functions/smoke-opencode.mjs";
+import { collectBatch as collectGeminiCapabilities, scoreMetric as scoreGeminiCapabilities } from "../docs/operational-value/proof/functions/smoke-gemini.mjs";
+import { collectBatch as collectKiroCapabilities, scoreMetric as scoreKiroCapabilities } from "../docs/operational-value/proof/functions/smoke-kiro.mjs";
+import { collectBatch as collectCrushCapabilities, scoreMetric as scoreCrushCapabilities } from "../docs/operational-value/proof/functions/smoke-crush.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -746,6 +753,55 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "github-remote-mcp-auth-test", sourceGitBlob: "52e724d9ee1508917f2a3173975f30a379d3b0d5",
+      functionSha256: "c01b6913eceb53b5f123fb440d66f9e39c0942a7f18829c5769c3277836ade1c",
+      timelineDigest: "e6ff14f6d6e95a37be71d94baf2f48f04981bcdbbeabe48786538d99d49da067",
+      reports: "docs/operational-value/proof/mcp-auth-native/reports/github-gh-aw",
+      collector: collectRawMcpTransport, scorer: scoreRawMcpTransport, partialMetricId: "native-transport",
+      stage: "three protected raw MCP transport checks verified; agent and issue-readback acceptance unknown",
+      detail: "Three fixed original attempts bind exact-head editable and compiled raw-canary scripts to independently captured ordered protocol, initialized-notification, ping, nonempty catalog and non-error list_issues witnesses. Each catalog independently lists 23 tools. These are repeated sampled compatibility checks, not three repairs or a complete run census. The canary does not verify returned issue schema/bytes, agent usability or credential class; configured secret-token fallbacks prevent claiming Actions-token-specific acceptance. Forty other weekly periods remain unknown. Original source-defined acceptance is preserved, with retrospective presentation and no keep bar, workflow contribution or cost." },
+    { workflowId: "smoke-claude", sourceGitBlob: "ad264cf01299864715d2387eb1d557158579c09d",
+      functionSha256: "b91dfa3d223c0137dbb2565d5b506239f17687b558c68e99d8ab28b7bdfd77d3",
+      timelineDigest: "36eebf250cc4193a95516a96f3b9a633f5b2a9bf2646160cb646f05eb4f070b9",
+      reports: "docs/operational-value/proof/native-smoke-capabilities/reports/github-gh-aw",
+      collector: collectClaudeCapabilities, scorer: scoreClaudeCapabilities, partialMetricId: "capabilities",
+      stage: "two expanded-date native write/readback attempts verified; build acceptance unknown",
+      detail: "Two original native sessions bind exact invocation identities, dated writes and independently returned file bytes to the protected attempt and immutable source. This establishes two sampled write/readback capabilities, not two repository improvements, full workflow acceptance or a complete execution population. Fifty-three other periods, native build completion, costs and keep policy remain unknown." },
+    { workflowId: "smoke-cursor", sourceGitBlob: "8917a3a1e428316a3601f9de7f9116899c454945",
+      functionSha256: "22bb12d6d3709c7de1a257cb5b10819747caa4183eb0f0614ef833f10dd747fc",
+      timelineDigest: "8de9f309fef2f9a22d09b46074b5d16a1527b7d0d8ea09a3ee1cf0e732787251",
+      reports: "docs/operational-value/proof/native-smoke-capabilities/reports/github-gh-aw",
+      collector: collectCursorCapabilities, scorer: scoreCursorCapabilities, partialMetricId: "capabilities",
+      stage: "dated native write/readback and independently joined asynchronous build verified",
+      detail: "One expanded-date native write/readback facet and one native build completion are independently captured. Async acceptance joins original start, task, session and exact command, rather than treating timeout-shaped exit zero as successful completion. The two distinct capability facets are not complete goal acceptance or repository improvements. Ten other periods, full acceptance, costs and any keep threshold remain unknown." },
+    { workflowId: "smoke-opencode", sourceGitBlob: "f0808f3849640630a8bc4794a8872191fe633668",
+      functionSha256: "1514d04d769c66b764bf76d240801a1e321ee5539501e68db6c7fa7b2a974fdd",
+      timelineDigest: "b345d1a25c3a9daa1fc049b4b6e88c67a981781b4e05de604ee533c815cf86b8",
+      reports: "docs/operational-value/proof/native-smoke-capabilities/reports/github-gh-aw",
+      collector: collectOpenCodeCapabilities, scorer: scoreOpenCodeCapabilities, partialMetricId: "capabilities",
+      stage: "literal-template native readback verified; expanded date and native build fail acceptance",
+      detail: "One independently captured literal-template file readback qualifies only the explicitly outcome-informed v2 partial; the stricter frozen expanded-date predicate remains rejected. Overlapping write/read event intervals do not prove write-before-read. An independently captured build failure is retained as zero native build acceptance, not erased by the narrower partial. Fifty-three other periods remain unknown; no full success, workflow improvement, keep bar or measured cost is claimed." },
+    { workflowId: "smoke-gemini", sourceGitBlob: "dee7e74b5b711a0ad6be9271234a349cd2c543d4",
+      functionSha256: "9a77e7dc97eaf6e8f622f91416a62a43b8443751abd14eaf31827275bb9f9af5",
+      timelineDigest: "b2723991eed1e1e554fe8fe2eee2fa7c0b2173db3a6a4cd64b2e6a0dbc0b35d7",
+      reports: "docs/operational-value/proof/native-smoke-capabilities/reports/github-gh-aw",
+      collector: collectGeminiCapabilities, scorer: scoreGeminiCapabilities, blocked: true,
+      stage: "seven chronological retained attempts fail before native operations; outcomes unknown",
+      detail: "Original recent sessions retain setup/auth failures but no qualifying native file or build effects. All 35 periods remain unknown. A functioning instrument and explicit gap report do not constitute completed native evaluation, accepted capability, zero delivery or measured value." },
+    { workflowId: "smoke-kiro", sourceGitBlob: "a0bfea05cd407f8c9ef8d95749dfadf75c6ac836",
+      functionSha256: "29c0dad070281e87f858e2ebed3748ffa3527fe8e4600ba0f6bc26d0243ef649",
+      timelineDigest: "971bd3954d07c31c3e5e2bf3bcb99c2439b87c466449274e70824f941e0f65b2",
+      reports: "docs/operational-value/proof/native-smoke-capabilities/reports/github-gh-aw",
+      collector: collectKiroCapabilities, scorer: scoreKiroCapabilities, blocked: true,
+      stage: "native command capture omits returned bytes and call correlation; outcome gap retained",
+      detail: "Seven chronological retained attempts include commands/completion status without the native returned bytes and shared call identity needed by the frozen write/readback predicate. Assistant claims and Discussion prose cannot substitute. All eleven periods remain unknown and add no completed native coverage." },
+    { workflowId: "smoke-crush", sourceGitBlob: "1ef27a9db57f5ea8c1b50234d63431b5de2e8cff",
+      functionSha256: "747127a2e186dd29f70aba272ca02fd8f166c59cd2ddf9dd02d1280528c79951",
+      timelineDigest: "4985508c1dfb49fb02de02992f8f1c4950b8e516f8c8db9a8b0249caf031b45c",
+      reports: "docs/operational-value/proof/native-smoke-capabilities/reports/github-gh-aw",
+      collector: collectCrushCapabilities, scorer: scoreCrushCapabilities, blocked: true,
+      stage: "retained native capture omits tool effects; all outcome periods unknown",
+      detail: "Seven chronological retained attempts lack the independent native tool effects required to verify filesystem/build outcomes; one skipped attempt has no protected agent log. All 27 periods remain unknown. Preserved originals and replayable rejection reports are not completed native evaluation or zero value." },
     { workflowId: "dependabot-burner", sourceGitBlob: "2791a0150095979908154abe3e6d5df5cd2a226b",
       functionSha256: "e3e23530b8d322b4d69fb27be27d3fb7a3749b2cbc8c2b7792ee8c3c3df022ba",
       timelineDigest: "e5570367c5fd7aaf9a2aec84af5472a39aef8283316a4fba609e3fe6284c7db5",

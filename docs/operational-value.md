@@ -449,15 +449,15 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-66 of 344 is 19.2%, with 278 workflows still unevaluated.
+70 of 344 is 20.3%, with 274 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
 groups are compiled from the retained portfolio; browser controls only display
 those precomputed rows. This portable file report does not query the CAO dashboard.
 
-This is **not a completed value evaluation of all 344 workflows**. Fifty-six native
-evaluations are linked: File Diet's lifetime structural contributions, the
+This is **not a completed value evaluation of all 344 workflows**. Linked native
+evaluations include File Diet's lifetime structural contributions, the
 rendering verifier's repository conformance, Go Test Parallelizer's unchanged-body
 parallel activations, and six engine-conformance workflows' independently proven
 behavioral cases, plus nine source- or issue-condition partial evaluations
@@ -471,7 +471,7 @@ Instructions Janitor's native size-audit facet and CI Cleaner's model-catalog
 formatting facet, plus independently replayed partial native container-tool
 checks, temporary-ID reference/graph resolution, lockfile statistical accuracy,
 Purelock executed coverage and native multi-PR branch-payload delivery.
-Seventeen more workflows have functions and explicit unknown evaluations without
+Other workflows have functions and explicit unknown evaluations without
 measured native outcomes. The newly integrated cross-repository creation/update
 and PR-checkout investigations retain native evidence-gap reports, not measured
 delivery. The Elixir Credo audit exhaustively replays 1,932 source states and
@@ -736,6 +736,29 @@ corroborate shared delivery, not authoritative creation receipts or sole causati
 No-case periods, unassessed implementations, HTTP410 issue originals, full
 acceptance, safeguards and costs remain unknown.
 Assignments, edit counts and merged candidates do not increase native coverage.
+
+Three additional native smoke reports verify bounded capabilities, not repository
+improvements. Claude has two actual expanded-date write/readback attempts.
+Cursor has one dated write/readback facet and one asynchronous native build
+completion joined by exact start/task/session/command identity. OpenCode has one
+literal-template native readback, **not** expanded-date acceptance; its native
+build fails, and overlapping write/read intervals do not establish write-before-read.
+The literal facet is an explicitly outcome-informed versioned partial, preserving
+the stricter frozen acceptance. Gemini, Kiro and Crush retain separate replayable
+gap reports: setup/auth failures, missing returned bytes/call correlation, or
+missing native tool effects prevent outcome verification. They do not increase
+native coverage. All six preserve unassessed periods and unknown costs/keep bars.
+
+The remote MCP authentication report independently verifies three sampled
+protected raw-canary transport checks. Exact-head editable and compiled scripts
+match the frozen predicate; original runtime witnesses establish initialize,
+initialized notification, ping, a concrete 23-tool catalog including `list_issues`,
+and a non-error call. This is repeated sampled compatibility, not three repairs.
+The canary does **not** verify returned issue schema/bytes or agent usability.
+Its secret-token fallbacks also mean masked logs cannot establish Actions-token
+credential identity. Full-goal acceptance, workflow contribution, costs and the
+other forty weekly periods remain unknown. Seven-day grouping is an explicit
+retrospective reporting choice, not an exhaustive historical test census.
 
 The work-queue observer investigation retains all 12 initial executions:
 seven belong to an incompatible historical finish-staging goal, and five are

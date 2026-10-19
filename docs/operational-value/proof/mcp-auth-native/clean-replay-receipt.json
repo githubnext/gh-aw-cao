@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "workflow": "github-remote-mcp-auth-test",
+  "runtime": "v25.0.0",
+  "networkDenied": true,
+  "originalWorktreeAndCacheDenied": true,
+  "freshNoGitOrNodeModules": true,
+  "collectorPassed": true,
+  "testsPassed": 8,
+  "identicalRefreshes": 2,
+  "comparison": "Whole timeline identical except generatedAt",
+  "periods": 41,
+  "observedPeriods": 1,
+  "verifiedTransportChecks": 3,
+  "fullGoal": null,
+  "costs": null,
+  "helperTamperingRejected": true,
+  "timelineWithoutGeneratedAtSha256": "a83722c6af3d6cd919b9b86a996d07eca472b6c584f2ffb939daeed320eaf87a"
+}

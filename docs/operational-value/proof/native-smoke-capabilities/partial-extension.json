@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "version": "native-smoke-capabilities-v2",
+  "predecessor": "acceptance.json native-smoke-capabilities-v1 retained unchanged",
+  "authoring": "Outcome-informed retrospective: native and candidate prose was exposed while diagnosing unavailable native capture. This extension does not revise the predecessor's expanded-date or full acceptance predicates.",
+  "newPartial": {
+    "id": "literalReadback",
+    "acceptance": "Actual completed native cat of the exact source/run-specific path independently returns exactly the source literal Smoke test passed for ENGINE at $(date), with optional one trailing newline. Captured write content must agree and precede read when write attribution is asserted.",
+    "meaning": "Source-template filesystem write/read capability only; does not prove shell date expansion, runtime configuration, provider identity, build or native MCP acceptance."
+  },
+  "boundedAcquisitionExpansion": "For Gemini, Kiro and Crush, inspect exactly the seven latest distinct original-run identities in the complete frozen discovery, in creation order, regardless of prose or Actions success. No broad repository re-discovery.",
+  "sourceEra": "Accept the source-required engine/path/prefix and native effect at the actual historical head. Export every accepted immutable source/import profile identity. Current-runtime certification remains unknown.",
+  "execution": "Frozen deterministic parsers only after this version; never execute candidate shell commands or target code."
+}

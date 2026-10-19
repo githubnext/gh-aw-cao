@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "github-remote-mcp-auth-test",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "assessment": "Explicit retrospective source-defined native transport facet. Latest three pre-cutoff run identities and job names were inspected before freezing this contract; no original job log result has yet been inspected.",
+  "goal": "Verify authenticated GitHub remote MCP compatibility independently of agent claims.",
+  "nativeFacet": "A protected raw-canary step, bound to its immutable executed workflow, completes initialize, initialized notification, ping, nonempty tool discovery including list_issues and a non-error list_issues JSON-RPC response.",
+  "unit": "verified raw MCP transport checks",
+  "selection": {
+    "runIds": [39100761580, 39006501944, 38856240142],
+    "runAttempt": 1,
+    "jobName": "raw_mcp_canary",
+    "stepName": "Verify raw GitHub remote MCP handshake"
+  },
+  "acceptance": [
+    "Original GitHub run, attempt jobs, exact-head editable and compiled workflow and protected raw-job log must be present and digest-verified.",
+    "The executed editable raw-canary script must exactly match the frozen revision's script, including official fixed endpoint, read-only header and repository-scoped list_issues payload.",
+    "The compiled workflow must contain that same script in the separate raw_mcp_canary job.",
+    "The uniquely matched completed raw step must contain actual runtime output in order, excluding printed shell source, ANSI-colored command echoes and unrelated job sections.",
+    "Initialize, initialized notification, ping, nonempty tool catalog including list_issues, list_issues non-error response and terminal handshake success must all be witnessed.",
+    "Reported protocol and tool count must be concrete; conflicting or malformed witnesses do not qualify."
+  ],
+  "limitations": [
+    "This proves the source-defined raw transport check, not agent-usable MCP, exact returned issue content, a complete JSON-RPC conformance matrix or full workflow goal.",
+    "The source canary does not validate returned issue schema or exact issue bytes. Its success cannot be promoted to independent issue-content readback.",
+    "Sampled executions are repeated capability availability checks, not fresh defect repairs or a lifetime exhaustive test population.",
+    "Missing originals and all unassessed periods remain null, not zero or failed authentication.",
+    "No keep threshold, cost, exclusive causation or workflow contribution is inferred."
+  ],
+  "version": "raw-transport-v1"
+}

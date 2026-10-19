@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 66);
-  assert.equal(model.totals.workflows - model.totals.measured, 278);
+  assert.equal(model.totals.measured, 70);
+  assert.equal(model.totals.workflows - model.totals.measured, 274);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -343,6 +343,37 @@ test("Go native targets and assertion migrations retain exact disjoint subtotals
       }
     }
     assert.equal(progress.find(row => row.workflowId === id).partial, true);
+  }
+});
+
+test("native smoke and MCP transport partials preserve strict rejections and three unresolved capability gaps", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [id, metric, expected, periods] of [
+    ["github-remote-mcp-auth-test", "native-transport", 3, 41],
+    ["smoke-claude", "capabilities", 2, 54],
+    ["smoke-cursor", "capabilities", 2, 11],
+    ["smoke-opencode", "capabilities", 1, 54],
+  ]) {
+    const timeline = measurements.find(row => row.workflowId === id)?.input;
+    assert.ok(timeline, `${id} requires an actually replayed native report`);
+    assert.equal(timeline.snapshots.length, periods);
+    assert.deepEqual(timeline.snapshots.map(row => row.metrics[metric]).filter(value => value !== null), [expected]);
+    assert.equal(progress.find(row => row.workflowId === id).partial, true);
+    assert.equal(timeline.snapshots.at(-1).evidence.costs,
+      id === "github-remote-mcp-auth-test" ? null : "not measured");
+  }
+  const openCode = measurements.find(row => row.workflowId === "smoke-opencode").input.snapshots.at(-1);
+  assert.equal(openCode.metrics.expandedReadback, 0);
+  assert.equal(openCode.metrics.literalReadback, 1);
+  assert.equal(openCode.metrics.writeReadback, null);
+  assert.equal(openCode.metrics.build, 0);
+  assert.equal(openCode.metrics.fullAcceptance, 0);
+  for (const id of ["smoke-gemini", "smoke-kiro", "smoke-crush"]) {
+    assert.equal(measurements.some(row => row.workflowId === id), false);
+    const row = progress.find(row => row.workflowId === id);
+    assert.equal(row.blocked, true);
+    assert.equal(row.reportAvailable, true);
+    assert.equal(row.evaluationReady, false);
   }
 });
 

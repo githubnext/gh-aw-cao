@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "version": "native-smoke-capabilities-v1",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "workflows": ["smoke-claude", "smoke-gemini", "smoke-kiro", "smoke-opencode", "smoke-cursor", "smoke-crush"],
+  "authoring": "Source-derived retrospective instrument. Candidate identity metadata inspected before freezing; any subsequent source-era expansion must be explicitly outcome-informed. No candidate PASS prose used to accept observations.",
+  "goal": "Demonstrate source-required native engine capabilities at their actual historical source revision.",
+  "partialFacets": {
+    "fileReadback": "An independently captured successful native shell read of the source-specified run-specific smoke file returns the exact engine-specific required content prefix and a nonempty date suffix. A write invocation, output existence, agent prose or echoed expected content without a real read is insufficient.",
+    "fileWriteReadback": "A successful native write to that same source-specified path precedes the independent read and agrees byte-for-byte with its captured content; unknown write custody does not erase a demonstrated readback.",
+    "build": "Actual source-required make build invocation completes successfully with native output showing compilation/build work. An agent statement, success job or wrapper exit alone does not suffice."
+  },
+  "nativeQuantity": "Distinct independently verified source-defined capability facets per original run attempt, deduplicated within the attempt and assigned to disjoint seven-day periods by actual completion time.",
+  "sourceBinding": "Preserve immutable exact-head Markdown, compiled workflow, imports, Git commit/tree/blob identities and original run/job/artifact receipts. Reject incompatible sources and deterministic command overrides that bypass the requested operation.",
+  "captureAuthority": "Provider-native tool invocation/completion or protected host shell capture with arguments, actual returned bytes and completion identity. Console tool-shaped prose alone is not authority. Validate source/run/job/session custody and time ordering.",
+  "fullAcceptance": "Preserve all original requirements, including exact native MCP operation, permitted tool identity, imports, source-specific build/runtime checks and safe outputs. Partial facets never establish full acceptance.",
+  "attribution": "Native effects bound to the original workflow run establish attempt-level contribution only; not exclusive causation, repository improvement, current runtime certification or exhaustive historical coverage.",
+  "missing": "Unknown is null, not zero. Inventory excludes Discussions/comments and cannot establish their absence. Failed/setup-only/expired observations retain explicit gaps and rejections.",
+  "decision": "Not rated: no agreed native keep bar or matched cost evidence.",
+  "execution": "Read-only bounded acquisition followed by deterministic offline collector/scorer/replay; no model calls, workflow dispatch, repository execution or mutation."
+}
