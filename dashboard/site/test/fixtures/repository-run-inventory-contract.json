@@ -4,6 +4,7 @@
   "source": "repository-run-inventory",
   "chart": "horizontal-bar",
   "limit": 100,
+  "canonicalSources": ["repositories", "runs"],
   "rows": [
     { "repository": "org/alpha", "runs": 6 },
     { "repository": "org/approval", "runs": 1 },

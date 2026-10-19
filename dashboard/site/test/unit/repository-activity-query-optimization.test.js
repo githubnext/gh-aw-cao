@@ -30,6 +30,9 @@ const contexts = [
   { timeWindow: { start: '2026-09-20T00:00:00Z', end: '2026-09-24T00:00:00Z' } },
   { filters: { organization: ['other'] } },
   { filters: { 'rollout-mode': ['review'], organization: ['org'] } },
+  { filters: { repository: ['alpha'] } },
+  { filters: { repository: ['org/alpha'] } },
+  { filters: { workflow: ['.github/workflows/worker.md'] } },
   { search: { fields: ['repository'], query: 'alpha' } }
 ];
 
@@ -53,6 +56,7 @@ const originalRunTotals = {
     ]
   }
 };
+/** @type {Query[]} */
 const baseline = queries.map((query) => {
   if (query.name === originalRunTotals.name) return originalRunTotals;
   if (query.name !== 'repository-activity') return query;
@@ -61,6 +65,10 @@ const baseline = queries.map((query) => {
     joins: query.joins?.map((join) => ({ ...join, source: 'repository-aic-totals' }))
   };
 });
+/** @type {Query[]} */
+const chartBaseline = baseline.map((query) => query.name === runInventoryContract.source
+  ? { ...query, from: 'repository-activity', joins: undefined, compute: undefined }
+  : query);
 
 /** @param {string} name @param {Record<string, unknown>[]} rows */
 function source(name, rows) {
@@ -158,6 +166,64 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('repository activity query optimization', () => {
+  it('keeps the run chart independent of workflow, outcome, cost, and imported event queries', async () => {
+    const compiled = compileDashboardViewPayloadQueries(
+      dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === runInventoryContract.page).definition,
+      runInventoryContract.page,
+      { queries, viewId: runInventoryContract.view }
+    );
+    for (const { definitions, names } of [
+      { definitions: queries, names: [runInventoryContract.source] },
+      { definitions: compiled.queries, names: compiled.aliases }
+    ]) {
+      expect(resolveDashboardQuerySources(definitions, names).filter((name) => canonicalNames.includes(name)).toSorted())
+        .toEqual(runInventoryContract.canonicalSources);
+    }
+    const inputs = fixture();
+    const sources = await canonicalSources(inputs);
+    const expected = workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source];
+    for (const name of canonicalNames.filter((name) => !runInventoryContract.canonicalSources.includes(name))) {
+      sources[name] = {
+        ...sources[name], rows: [],
+        metadata: { ...sources[name].metadata, availability: 'unavailable', completeness: 'unknown' }
+      };
+    }
+    expect(workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source]).toEqual(expected);
+  });
+
+  it.each(contexts)('preserves run chart rows while eliminating unrelated evidence for %j', async (queryContext) => {
+    const sources = await canonicalSources();
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === runInventoryContract.page);
+    /** @param {Query[]} definitions */
+    const scoped = (definitions) => {
+      const compiled = compileDashboardViewPayloadQueries(page.definition, runInventoryContract.page, {
+        queries: definitions, viewId: runInventoryContract.view,
+        queryContext, evaluatedAt: '2026-09-24T00:00:00Z'
+      });
+      return workerQuery(compiled.queries, sources, compiled.aliases)[compiled.aliases[0]].rows;
+    };
+    expect(scoped(queries)).toEqual(scoped(chartBaseline));
+  });
+
+  it('reduces chart row work by at least two thirds and only reads repositories and runs through the worker', async () => {
+    const sources = await canonicalSources();
+    /** @param {Query[]} definitions */
+    const measure = (definitions) => {
+      const budget = createDashboardQueryBudget();
+      const result = executeDashboardQueries(definitions, sources, [runInventoryContract.source], { budget })[runInventoryContract.source];
+      return { rows: result.rows, operations: budget.operations };
+    };
+    const original = measure(chartBaseline);
+    const optimized = measure(queries);
+    expect(optimized.rows).toEqual(original.rows);
+    expect(optimized.operations).toBeLessThan(original.operations / 3);
+    const result = /** @type {Record<string, Source>} */ (await processDataRequest({
+      operation: 'load-dashboard-query-sources', sources: {},
+      queries, sourceNames: [runInventoryContract.source]
+    }));
+    expect(result[runInventoryContract.source].rows).toEqual(optimized.rows);
+  });
+
   it('lists repository run counts and drill links through the production worker boundary', async () => {
     const sources = await canonicalSources();
     const query = queries.find((candidate) => candidate.name === runInventoryContract.source);
