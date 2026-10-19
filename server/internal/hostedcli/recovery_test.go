@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/githubnext/gh-cao/server/internal/operational"
@@ -26,7 +27,9 @@ func TestExecutorRequiresDurableExecutionStorage(t *testing.T) {
 
 func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
 	for _, scenario := range []string{"create", "start", "output-error", "output-zero", "cancel", "timeout", "crash"} {
-		t.Run(scenario, func(t *testing.T) {
+		// Advance deadlines only while blocked, not during SQLite or workspace I/O.
+		// execute is called directly here, without the drain loop's lease renewal.
+		run := func(t *testing.T) {
 			ctx := t.Context()
 			path := filepath.Join(t.TempDir(), "queue.sqlite")
 			store, err := sqlite.Open(ctx, path)
@@ -127,6 +130,9 @@ func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
 			if err != nil || (scenario != "crash" && !detail.Status.Terminal()) || !detail.ExecutionClaimed || detail.ExitCode != nil {
 				t.Fatalf("uncertain workload was settled: %+v %v", detail, err)
 			}
+			if scenario == "timeout" && detail.Status != operational.CLICommandTimedOut {
+				t.Fatalf("command did not reach its execution deadline: %+v", detail)
+			}
 			if minter.liveCount() != 0 {
 				t.Fatal("uncertain workload token was not revoked")
 			}
@@ -154,7 +160,7 @@ func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			time.Sleep(time.Until(lease.ExpiresAt) + 5*time.Millisecond)
+			time.Sleep(time.Until(lease.ExpiresAt))
 			replacement, err := queue.Acquire(ctx, "replacement-executor", time.Minute)
 			if err != nil {
 				t.Fatal(err)
@@ -182,7 +188,8 @@ func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
 			if err != nil || next == nil || next.ID != second.ID {
 				t.Fatalf("confirmed recovery did not release capacity: %+v %v", next, err)
 			}
-		})
+		}
+		t.Run(scenario, func(t *testing.T) { synctest.Test(t, run) })
 	}
 }
 
