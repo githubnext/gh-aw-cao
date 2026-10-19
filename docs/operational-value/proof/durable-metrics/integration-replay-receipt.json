@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-durable-metrics-replay",
+  "networkDeniedAndProbed": true,
+  "originalWorkspaceDeniedAndProbed": true,
+  "sessionCachesDeniedByOS": true,
+  "gitAndNodeModulesAbsent": true,
+  "tests": 8,
+  "actualCollectorChecks": 1,
+  "standardRefreshes": 2,
+  "completeTimelinesEqualExceptGeneratedAt": true,
+  "helperMutationRejected": true,
+  "selectedRecords": 9,
+  "qualifiedNativeWorkflows": 0,
+  "nativeValue": null,
+  "fullAcceptance": null,
+  "costs": null,
+  "targetCodeExecuted": false
+}

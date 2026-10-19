@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "workflow": "metrics-collector",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": "Source-informed contract frozen before opening metrics backing-branch snapshots or outcome records.",
+  "goal": "Persist accurate workflow performance facts for repeatable ecosystem trend and health decisions.",
+  "adoption": {
+    "commit": "8e8b7f8b7617cd91ed007744cbaa3e3d4081eda3",
+    "adoptedAt": "2025-12-24T23:01:13Z",
+    "parent": "0a13c525dac9f987c0222605846468e37408fdfe"
+  },
+  "storage": {
+    "branch": "memory/meta-orchestrators",
+    "dailyPath": "metrics/daily",
+    "latestPath": "metrics/latest.json",
+    "authority": "Immutable retained backing-branch blobs are observations, not proof of original publication time or successful creator attribution."
+  },
+  "selection": {
+    "snapshots": "The latest three valid date-named daily JSON paths no later than 2026-10-18 on the acquired backing-branch revision. Preserve out-of-cutoff, missing-window and malformed dispositions without replacement.",
+    "workflows": ["smoke-copilot", "smoke-claude", "smoke-opencode"],
+    "bounds": "At most three snapshots and three workflow records per snapshot; at most ten 100-row run pages per workflow/window. A reached page ceiling is incomplete, not a zero."
+  },
+  "nativePartial": {
+    "id": "verified-run-statistic-records",
+    "unit": "independently corroborated workflow/window run-classification records",
+    "formula": "Count selected persisted records whose total, successful, failed, skipped, action_required and executed integer counts all exactly match a complete independently acquired original Actions run population for the identical workflow and explicit half-open collection window.",
+    "direction": "increase",
+    "classification": {
+      "successful": ["success"],
+      "failed": ["failure", "cancelled", "timed_out"],
+      "skipped": ["skipped"],
+      "action_required": ["action_required"],
+      "executed": "successful + failed"
+    },
+    "requirements": [
+      "Establish immutable public repository, snapshot Git blob, actual collection window and unambiguous workflow identity.",
+      "Exhaust original run pagination for the exact window, reject duplicate run identities and conflicting repository/workflow metadata, and filter by host-created timestamps into [start,end).",
+      "Do not infer missing collection windows, backdate mutable conclusions to snapshot time, or count conclusions changed by later reruns without an independently established contemporaneous state.",
+      "Count one complete six-field record, not six arbitrary units; preserve incorrect and unknown selected records.",
+      "A verified all-zero record requires the complete independently established empty population; an unverified zero stub is unknown."
+    ],
+    "allocation": "Once by selected snapshot timestamp in disjoint weekly delivery periods. Repeated reads or latest.json copies are not new measurements."
+  },
+  "fullAcceptance": "All source-required workflow populations, run statistics, safe-output and outcome breakdowns, engagement, quality and resource facts, storage freshness/completeness, retention and downstream decision usefulness independently accepted.",
+  "separateUnknowns": [
+    "Full-goal acceptance and all unselected workflow/snapshot records",
+    "Original publication-time accuracy and creation receipts",
+    "Safe-output attribution and accepted native repository improvements",
+    "Token, credit, dollar and duration accuracy",
+    "Receipt-verified workflow contribution and causal attribution",
+    "Keep/change decision without an agreed native bar"
+  ],
+  "execution": "Read-only public acquisition and deterministic local verification; no target execution, dispatch, branch writes or activation."
+}

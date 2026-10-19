@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-82 of 344 is 23.8%, with 262 workflows still unevaluated.
+83 of 344 is 24.1%, with 261 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -499,6 +499,23 @@ sole causation. This does not prove underlying child-task quality, exhaustive
 cleanup or full acceptance. Stale-PR and draft-PR cleanup retain genuine
 all-unknown gap reports: a failed warning and an active-draft no-op are not
 eligible applied cleanup, and historical pre-action state is never synthesized.
+
+The Testify quality partial proves two conditional nil flag-field
+failure-containment sites, not two observed historical crashes or simple
+assertion replacement counts. Actual-parent AST transitions, pinned
+Cobra/pflag/Testify source semantics and an independently authored Go witness
+establish fatal prerequisites before unchanged dependent field access; target
+code is never executed. The dated recommendation graph corroborates shared
+contribution, not receipt-backed attribution. The logger's checked
+computation-guard subtotal of zero is not zero whole-workflow value; its broader
+usefulness and the pattern detector's historical finding remain unqualified.
+
+Durable storage is separately observable, not evidence that stored metrics are
+correct. Three immutable repo-memory snapshots preserve 344 records each, but
+none of nine selected workflow/window records passes independent full-window
+run-statistic reconciliation. Missing classifications and declared unavailable
+zero placeholders remain unknown, even when an independent host population is
+empty. The standard report is inspectable without increasing qualified coverage.
 
 Other linked native
 evaluations include File Diet's lifetime structural contributions, the

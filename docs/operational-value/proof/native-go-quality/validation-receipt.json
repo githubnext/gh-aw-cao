@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "instrument": "fe36d1d0b1d72641c1fcda227dcb01c54505580274547e91cb25f61802a0b0a9",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "checks": {
+    "actualCollectorVerification": {
+      "command": "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector MODULE",
+      "passed": ["go-logger", "go-pattern-detector", "daily-testify-uber-super-expert"]
+    },
+    "standardEvaluation": {
+      "command": "node .github/skills/add-operational-value/scripts/evaluate.mjs --root CHECKOUT --end 2026-10-18T15:00:12Z --output-dir docs/operational-value/proof/native-go-quality/reports --function MODULE --refresh github/gh-aw SLUG",
+      "refreshPassesPerWorkflow": 2,
+      "periods": { "go-logger": 52, "go-pattern-detector": 54, "daily-testify-uber-super-expert": 40 },
+      "passed": true
+    },
+    "focusedTests": {
+      "command": "node --test tests/unit/native-go-quality.test.mjs",
+      "passed": 11,
+      "failed": 0,
+      "coverage": ["positive", "negative", "missing", "malformed", "deduplication", "disjoint intervals", "source custody", "real quantities", "standard report shape", "native JSON semantics", "independent Go failure-containment witness"]
+    },
+    "lint": { "command": "npx --no-install eslint scripts/*native-go-quality*.mjs docs/operational-value/proof/native-go-quality/*.mjs docs/operational-value/proof/functions/{go-logger,go-pattern-detector,daily-testify-uber-super-expert}.mjs", "passed": true },
+    "typecheck": { "commands": ["npm run typecheck:cao", "npm run typecheck:copilot"], "passed": true },
+    "goVet": { "command": "GOTOOLCHAIN=local GOPROXY=off go vet docs/operational-value/proof/native-go-quality/oracle.go", "passed": true },
+    "workflowCompilation": { "command": "npm run compile", "passed": true, "workflows": 72, "unrelatedActionVersionWarnings": 2 },
+    "documentation": { "command": "npm run docs:build", "passed": true },
+    "isolatedReplay": {
+      "receipt": "clean-replay-receipt.json",
+      "independentPythonExactRegularMemberVerification": true,
+      "appleDouble": false,
+      "freshGoBuildCache": true,
+      "originalWorkspaceReadDenied": true,
+      "sharedGitCacheReadDenied": true,
+      "networkIncludingLoopbackDenied": true,
+      "gitDirectory": false,
+      "nodeModules": false,
+      "targetCodeExecution": false,
+      "focusedTestsPassed": 11
+    }
+  },
+  "candidateReconciliation": {
+    "goLoggerMarkedOutputs": 149,
+    "goLoggerMergedCandidates": 81,
+    "goLoggerEligibleNativeImplementations": 80,
+    "goLoggerExcludedNoChangedEligibleGoSource": { "pullRequest": 67098, "commit": "0b6616079548e6210c5164aaeea90b2513096ef5" },
+    "testifyMarkedIssues": 159,
+    "testifyExplicitUnavailableIssue": 27624,
+    "testifyNativeImplementations": 83,
+    "patternMarkedOutputs": 0,
+    "patternAdditionalTitleSearchFinding": 4145,
+    "patternActualDownstreamImplementation": 4146
+  },
+  "completionQualification": {
+    "finiteUsefulMeasuredWorkflows": 1,
+    "testifyNativeQuantity": 2,
+    "goLoggerUsefulOutcome": null,
+    "goPatternDetectorUsefulOutcome": null,
+    "allThreeAreCompletedNativeMeasurements": false,
+    "fullGoalAcceptance": null,
+    "safeguards": null,
+    "receiptBackedAttribution": null,
+    "actualCosts": null,
+    "keepDecision": "not rated"
+  }
+}

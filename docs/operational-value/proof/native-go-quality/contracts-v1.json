@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "version": "native-go-quality-v1",
+  "authoring": "Frozen before reading candidate issue/PR titles, bodies, or implementation results. Source and adoption history only have been inspected.",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "period": { "durationDays": 7, "cadenceDays": 7, "maturationDays": 0 },
+  "contracts": [
+    {
+      "slug": "go-logger",
+      "goal": "Improve debugging and observability with meaningful, side-effect-free debug logging in non-test pkg Go files, following project logger conventions.",
+      "strictAcceptance": "Independent evidence of useful debugging/observability improvement, correct names and bounded scope, no duplicate/noisy logs or side-effectful arguments, and successful build/format validation under the applicable executor.",
+      "partialAcceptance": "An immutable actual-parent transition prevents evaluation of a pre-existing nontrivial logging argument while debug logging is disabled, by placing the otherwise preserved logger call behind that same logger's Enabled condition. Count guarded computation sites, not added logs. AST verification must bind imported logger identity, call, enclosing function and unchanged computation. Logger runtime source must independently establish disabled logging discards calls. Broader behavior and usefulness remain unknown.",
+      "unit": "disabled-debug computation sites avoided"
+    },
+    {
+      "slug": "go-pattern-detector",
+      "goal": "Detect genuinely problematic json dash tags in Go structs, avoid flagging intentional exclusions, and provide precise actionable findings.",
+      "strictAcceptance": "A specific source-bound reported occurrence independently verified to violate its intended JSON serialization/unmarshaling contract; false positives and valid intentional exclusions are not accepted.",
+      "partialAcceptance": "A source-bound downstream actual-parent transition restores an explicitly required JSON field previously excluded by a dash tag. Require independent expected serialized bytes or consumer field requirement in retained source, and native standard-library encoding/json evaluation of a locally authored bounded fixture representing the exact field/tag/type. Tag removal alone is not improvement.",
+      "unit": "required JSON fields restored"
+    },
+    {
+      "slug": "daily-testify-uber-super-expert",
+      "goal": "Improve one Go test file through high-value missing tests, correct testify assertions, isolation, edge-case coverage and clear organization, with concrete code-level recommendations.",
+      "strictAcceptance": "Independent evidence that recommendations improve defect-detection or test reliability, with preserved test semantics and successful make test-unit validation; assertion renames and substitutions alone are not acceptance.",
+      "partialAcceptance": "An immutable actual-parent transition makes an existing nonfatal prerequisite assertion fatal before a subsequent dereference/index/type assertion that depends on that exact prerequisite. AST must bind real testify imports, same test/function, same expression and following dependent operation, reject shadowed aliases and already guarded paths. Count independently established failure-containment sites, not all assert-to-require substitutions. Runtime behavior, whole-suite acceptance and broader recommendation quality remain unknown.",
+      "unit": "unsafe test continuations prevented"
+    }
+  ],
+  "sharedRules": [
+    "Actual source and compiled executor introduction must be verified against the real parent, never a shallow boundary.",
+    "Historical source/policy eras are retained; current reference does not silently claim historical executor continuity.",
+    "Deduplicate by actual implementation revision, path, function and native site, and assign each delivery to one start-inclusive/end-exclusive interval.",
+    "Complete issue/PR discovery, editable markers, related references and merges are candidates only, never native acceptance or creation receipts.",
+    "Unknown is null; periods with no evaluated cases are not zero, no complete-history or whole-population claim.",
+    "Shared corroborated contribution, receipt-backed creation, safeguards, full acceptance and actual costs are separate; no invented keep bar or sole causation."
+  ]
+}

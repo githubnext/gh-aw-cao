@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 82);
-  assert.equal(model.totals.workflows - model.totals.measured, 262);
+  assert.equal(model.totals.measured, 83);
+  assert.equal(model.totals.workflows - model.totals.measured, 261);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -426,6 +426,23 @@ test("GPL facts and native parent cleanup preserve useful partials and exclude P
   assert.equal(firewall.functionReady, false);
   assert.equal(firewall.evaluationReady, false);
   assert.match(firewall.detail, /not a finished native value function/);
+});
+
+test("Go failure containment qualifies once while logger, pattern and durable metrics retain bounded gaps", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const testify = measurements.find(row => row.workflowId === "daily-testify-uber-super-expert")?.input;
+  assert.ok(testify);
+  assert.equal(testify.snapshots.length, 40);
+  assert.deepEqual(testify.snapshots.map(row => row.metrics["native-partial"]).filter(value => value > 0), [2]);
+  assert.equal(testify.snapshots.filter(row => row.metrics["corroborated-partial"] > 0).length, 1);
+  assert.match(progress.find(row => row.workflowId === "daily-testify-uber-super-expert").detail, /not two observed historical crashes/);
+  for (const id of ["go-logger", "go-pattern-detector", "metrics-collector"]) {
+    assert.equal(measurements.some(row => row.workflowId === id), false);
+    const gap = progress.find(row => row.workflowId === id);
+    assert.equal(gap.blocked, true);
+    assert.equal(gap.reportAvailable, true);
+    assert.equal(gap.evaluationReady, false);
+  }
 });
 
 test("mathematically correct worked examples remain distinct from complete educational acceptance", async () => {

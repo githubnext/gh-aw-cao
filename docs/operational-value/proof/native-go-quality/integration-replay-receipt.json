@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-go-quality-integration-replay",
+  "networkDeniedAndProbed": true,
+  "workspaceAndSharedCacheDeniedAndProbed": true,
+  "freshHomeAndGoCaches": true,
+  "gitAndNodeModulesAbsent": true,
+  "actualCollectorChecks": 3,
+  "standardRefreshes": 6,
+  "focusedTests": 11,
+  "completeAssessmentMatches": true,
+  "completeTimelinesEqualExceptGeneratedAt": true,
+  "timelineHashes": {
+    "go-logger": "8fe6ec2894be7ebc506f2863eb842c171e410fde72c563039f3104656558cd87",
+    "go-pattern-detector": "e45ecf78fa114ab76fa8d59ef7750b19fc9198c891f4addbc11b442033669c7f",
+    "daily-testify-uber-super-expert": "5924c64c55a9bc13c03df9b215371f367c162029158676e73483ca0c844a1b60"
+  },
+  "qualifiedWorkflows": [
+    "daily-testify-uber-super-expert"
+  ],
+  "nativeConditionalFailureContainmentSites": 2,
+  "loggerAndPatternRemainUnqualified": true,
+  "historicalCrashesObserved": null,
+  "fullAcceptance": null,
+  "costs": null,
+  "targetCodeExecuted": false
+}

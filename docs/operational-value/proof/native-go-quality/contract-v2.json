@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "version": "native-go-quality-v2",
+  "authoring": "Explicit outcome-informed retrospective refinement after the frozen v1 contract and first native AST pass. Not ex ante, prospective or historical executor certification.",
+  "predecessor": {
+    "file": "contracts-v1.json",
+    "sha256": "99ed29450f8332342d088bbbf520138ebb63e389470ca74171ec9050a7a2f381"
+  },
+  "unchangedStrictAcceptance": true,
+  "firstPass": {
+    "testifyPotentialSites": 3,
+    "rejected": [
+      {
+        "path": "pkg/cli/health_command_test.go",
+        "function": "TestHealthCommand",
+        "site": "cmd.Name()",
+        "reason": "A method call on a nil pointer is not automatically an unsafe field dereference; no general credit for assert-to-require substitution."
+      }
+    ],
+    "acceptedAfterIndependentLibraryProof": 2
+  },
+  "refinements": [
+    "Testify acceptance is narrowed to actual nil-prone *pflag.Flag DefValue accesses after the exact unchanged Flags().Lookup prerequisite in the retained health-command transition.",
+    "Independently pin both endpoint go.mod files, constructor return type, Cobra/pflag pointer and field declarations, and Testify fatal versus nonfatal assertion source.",
+    "Only real *testing.T prerequisites, unchanged initializer and immediate unconditional dependent access are considered; alias shadowing and method-call-only cases are rejected.",
+    "Go Logger's existing-computation guard facet is unchanged. Added logging by itself never qualifies.",
+    "Detector issue 4145 and its real downstream implementation are retained; apparently dead display fields do not prove the frozen required-JSON-field restoration goal. No acceptance relaxation or invented improvement."
+  ],
+  "nativeToolchain": {
+    "language": "Go",
+    "version": "1.25.3",
+    "dependencies": "standard library only for the locally authored oracle; target/library source is parsed, never imported, built, tested or executed"
+  },
+  "limits": {
+    "fullGoalAcceptance": null,
+    "safeguards": null,
+    "costs": null,
+    "receiptBackedAttribution": null,
+    "historicalExecutorContinuity": null,
+    "keepDecision": "not rated"
+  }
+}

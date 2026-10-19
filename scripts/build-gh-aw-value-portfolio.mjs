@@ -66,6 +66,10 @@ import { collectBatch as collectParentClosures, scoreMetric as scoreParentClosur
 import { collectBatch as collectStalePrCleanup, scoreMetric as scoreStalePrCleanup } from "../docs/operational-value/proof/functions/stale-pr-cleanup.mjs";
 import { collectBatch as collectDraftPrCleanup, scoreMetric as scoreDraftPrCleanup } from "../docs/operational-value/proof/functions/draft-pr-cleanup.mjs";
 import { assessRetainedEvidence as assessFirewallEvidence } from "./collect-firewall-observability.mjs";
+import { collectBatch as collectDurableMetrics, scoreMetric as scoreDurableMetrics } from "../docs/operational-value/proof/functions/metrics-collector.mjs";
+import { collectBatch as collectLoggerQuality, scoreMetric as scoreLoggerQuality } from "../docs/operational-value/proof/functions/go-logger.mjs";
+import { collectBatch as collectPatternQuality, scoreMetric as scorePatternQuality } from "../docs/operational-value/proof/functions/go-pattern-detector.mjs";
+import { collectBatch as collectTestifyQuality, scoreMetric as scoreTestifyQuality } from "../docs/operational-value/proof/functions/daily-testify-uber-super-expert.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -774,6 +778,34 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "daily-testify-uber-super-expert", sourceGitBlob: "056fcfb013431372bc7b0e2f1f235a3379ef6366",
+      functionSha256: "5c77c823eaaca860e005a49346098be9d44edf4c9fec1bc31703e25756157d7f",
+      timelineDigest: "50d5baef068177a858a2839e12208c2725e6e19cac4ec5d48341f356285b885b",
+      reports: "docs/operational-value/proof/native-go-quality/reports/github-gh-aw",
+      collector: collectTestifyQuality, scorer: scoreTestifyQuality, partialMetricId: "native-partial",
+      stage: "two conditional nil flag-field failure-containment sites independently verified",
+      detail: "Actual-parent transition c5f36dd7a6c6309dead5ba037920324d08419ca5 in PR28622 introduces two fatal nil prerequisites before the same immediate daysFlag/thresholdFlag field access. Native AST, exact before/after dependency pins, independently parsed Cobra/pflag/Testify source and a locally authored Go witness prove conditional panic avoidance without executing target code. These are not two observed historical crashes or mere assertion substitutions. Original issue28585 and its dated graph corroborate shared contribution, not receipt-backed attribution or sole causation. Preserved strict v1 and outcome-informed retrospective v2 remain separate; full acceptance, safeguards and costs are unknown." },
+    { workflowId: "go-logger", sourceGitBlob: "02f28839380a7db3b75e4aefbddc8dad614996d0",
+      functionSha256: "80a3a4df806339d9b6ec95006f9afa7f8adb400bad9d4954cc9863b10eaf9a7b",
+      timelineDigest: "5441bcb35307d377d9e38ecb6e514cbd954396183a584a489dff9daa7d638c3a",
+      reports: "docs/operational-value/proof/native-go-quality/reports/github-gh-aw",
+      collector: collectLoggerQuality, scorer: scoreLoggerQuality, blocked: true,
+      stage: "selected computation-guard facet establishes no useful native outcome; broader value remains unknown",
+      detail: "149 marked outputs and 81 merged candidates yield 80 eligible actual-parent Go implementations checked against the frozen pre-existing-computation Enabled-guard facet. Its checked subtotal is zero, not zero whole-workflow value or a completed useful measurement. Logging additions and merged PRs are not substituted as demonstrated operational improvement. PR67098 has no eligible changed Go source. Other logging usefulness, full acceptance, receipt-backed contribution and costs remain unmeasured." },
+    { workflowId: "go-pattern-detector", sourceGitBlob: "8bc19c5c4a729c20e966a492a41dfdbb04136a80",
+      functionSha256: "ca69daa199d412c2d7b4ee9a52f196c28c5b8c6a7f3fef12119c977b9eabe7fe",
+      timelineDigest: "4635a6b23d9182b791f60827a71a29ab3f3b466bb750f861abe5522b3b099e47",
+      reports: "docs/operational-value/proof/native-go-quality/reports/github-gh-aw",
+      collector: collectPatternQuality, scorer: scorePatternQuality, blocked: true,
+      stage: "historical unmarked finding retained; frozen JSON-restoration facet remains unqualified",
+      detail: "No marked output was found. Additional bounded public title discovery retains historical issue4145 and actual downstream PR4146 at d89c7e0caa25d407ba7aa40c64a97facc2adfa24. Apparently dead JSON-excluded display fields are not independently required JSON-field restoration. The original graph and source transition are preserved, but their broader correctness/usefulness is outside the frozen facet and is not accepted through prose or merge status." },
+    { workflowId: "metrics-collector", sourceGitBlob: "ba9cc2785e7d043be3959ca0eec6883a7023265c",
+      functionSha256: "13b769ee29dee22c42ea4075ccc88b7b3d09e465fa72d2eeb86fc30a5b919564",
+      timelineDigest: "bdc8b720811a8b07dc91f108f2c3a053d9062741cd2da517e4f6b7f992933b5f",
+      reports: "docs/operational-value/proof/durable-metrics/reports/github-gh-aw",
+      collector: collectDurableMetrics, scorer: scoreDurableMetrics, blocked: true,
+      stage: "durable observations recovered; nine selected full-window records remain unqualified",
+      detail: "Three immutable dated backing-branch snapshots retain 344 workflow records each. Exact independently exhausted public Actions populations for three fixed smoke workflows per snapshot expose incomplete full-window counts/classifications and explicit unavailable zero stubs; none of the nine selected records passes the frozen six-field factual check. Two genuinely empty host populations do not turn declared unavailable placeholder zeros into useful collector output. No matching subset is inferred from aggregate counts. Persistence proves retrievable observation bytes, not accurate metrics, complete reporting, contribution, resource accuracy or value." },
     { workflowId: "gpclean", sourceGitBlob: "2acc22f87c0532fee60b1296c70aa42876a851b9",
       functionSha256: "e15737c95aaa34f7f3fb0dd4c715fe86b46393c908b5d84b8dc7f6630f1be0b8",
       timelineDigest: "c57f7e114c6a63706d0fbd8fa2ffc85490a03b1f9d833a2e21cf60a0ff862de3",

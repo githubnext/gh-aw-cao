@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "destination": "/Users/mnkiefer/.copilot/session-state/99b7d8a4-0d46-4c98-873a-05af220f8685/files/native-go-quality-isolation-final",
+  "manifestFile": "/Users/mnkiefer/.copilot/session-state/99b7d8a4-0d46-4c98-873a-05af220f8685/files/native-go-quality-isolation-final/native-go-quality.manifest.json",
+  "manifestSha256": "f9a1f5f797db9a4810b2ee81128dd6a12a9111a6576d67d17cbe146d48974a72",
+  "verifiedBy": "independent Python tarfile",
+  "regularMembers": 1032,
+  "archiveSha256": "2778cead78a39a0d6edde513038b7cce7f386068c54b16cdcbc4f7537dd90197",
+  "exactMemberSet": true,
+  "appleDouble": false,
+  "extraction": "/Users/mnkiefer/.copilot/session-state/99b7d8a4-0d46-4c98-873a-05af220f8685/files/native-go-quality-isolation-final/clean-extraction-iq9KAj",
+  "isolation": {
+    "networkDenied": true,
+    "originalWorkspaceDenied": true,
+    "sharedGitCacheDenied": true,
+    "gitDirectory": false,
+    "nodeModules": false
+  },
+  "sandboxProfile": "(version 1)(allow default)(deny network*)(deny file-read* (subpath \"/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-cuddly-barnacle\") (subpath \"/Users/mnkiefer/.copilot/session-state/8c4bd83e-6e85-44bb-b6cd-5addf8a4ac38/files/native-go-git-cache\") (subpath \"/Users/mnkiefer/.copilot/session-state/99b7d8a4-0d46-4c98-873a-05af220f8685/files/go-quality-build-cache\"))",
+  "sourceBytesVerifiedBeforeExtraction": true,
+  "network": "Denied at OS sandbox boundary including loopback; explicit EPERM/EACCES probe passed.",
+  "toolchain": "Go 1.25.3, fresh isolated GOCACHE/GOPATH/HOME; system toolchain/stdlib only",
+  "replayMatchesOriginal": true,
+  "focusedTestsPassed": true,
+  "nativeAssessmentSha256": "0fca355e60c586bef6b37dc3332f7c5a8a99d86688f0fde4660e107b78d50309",
+  "finiteUsefulMeasuredWorkflowCount": 1,
+  "nativeQuantities": {
+    "go-logger": null,
+    "go-pattern-detector": null,
+    "daily-testify-uber-super-expert": 2
+  },
+  "targetCodeExecution": false,
+  "unchangedBaselineRuntimeDependencies": false
+}

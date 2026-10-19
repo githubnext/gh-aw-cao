@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "contract": "Outcome-informed retrospective v2; original stricter v1 preserved",
+  "instrument": "fe36d1d0b1d72641c1fcda227dcb01c54505580274547e91cb25f61802a0b0a9",
+  "retainedFiles": 1004,
+  "discovery": {
+    "partitions": 346,
+    "entities": 58048,
+    "currentMarkersAreNotReceipts": true
+  },
+  "adoptions": [
+    {
+      "slug": "go-logger",
+      "commit": "a571ba74944da66aa48b844e6f5098c4b7c95c97",
+      "parent": "88892f2deb63b0405d7825be147acb4f48217965",
+      "adoptedAt": "2025-10-21T13:17:09Z",
+      "sourceRevisionsRetained": 63,
+      "executor": "Claude agent, bounded logging PR; later deterministic preflight retained",
+      "historicalExecutorContinuity": null
+    },
+    {
+      "slug": "go-pattern-detector",
+      "commit": "742dca538b56dc24942e25d5546de2abf91904ba",
+      "parent": "4b6aaa5461714f1afa4c8e83f6ffc243e354ff3e",
+      "adoptedAt": "2025-10-07T13:01:17Z",
+      "sourceRevisionsRetained": 38,
+      "executor": "Claude agent, ast-grep finding issue; later deterministic ast-grep gate retained",
+      "historicalExecutorContinuity": null
+    },
+    {
+      "slug": "daily-testify-uber-super-expert",
+      "commit": "f05b4b3ec8c84d975ed148fd0866ad7e13d44389",
+      "parent": "3693ea1e937021d238f55612f8d9647801c79d38",
+      "adoptedAt": "2026-01-14T00:46:17Z",
+      "sourceRevisionsRetained": 43,
+      "executor": "Copilot agent, issue output; later SDK era retained",
+      "historicalExecutorContinuity": null
+    }
+  ],
+  "parsedNativeFiles": 1034,
+  "invalidNativeFiles": [],
+  "dependencySemanticsIndependentlyVerified": true,
+  "patternGap": {
+    "number": 4145,
+    "reason": "Unmarked historical detector issue recommends removing apparently dead excluded display fields, not restoring a required JSON field. Its prose is not independent native acceptance; the frozen JSON-restoration facet does not measure dead-field correctness.",
+    "status": "unmeasured-outside-frozen-facet",
+    "strictFullGoalAcceptance": null
+  },
+  "independentLocalGoWitness": {
+    "fatalContinuationAvoidsPanic": true,
+    "nonfatalContinuationPanics": true
+  },
+  "nativeClaimQualification": "Two source-proven sites conditionally prevent nil flag-field dereference after a failed prerequisite. This is not evidence of two observed historical panics, improved full-suite behavior, or target test execution.",
+  "quantities": {
+    "go-logger": {
+      "selectedImplementations": 80,
+      "evaluatedNativeCases": 80,
+      "independentlyVerifiedUsefulOutcomeObservations": 0,
+      "nativeQuantity": null,
+      "checkedSelectedFacetQuantity": 0,
+      "measurementStatus": "no-useful-outcome-established-not-completed-measurement",
+      "fullGoalAcceptance": null,
+      "safeguards": null,
+      "receiptBackedAttribution": null,
+      "actualCosts": null,
+      "period": {
+        "startInclusive": "2025-10-21T13:17:09Z",
+        "endExclusive": "2026-10-18T15:00:12Z",
+        "cadenceDays": 7,
+        "noCasePeriods": "null"
+      },
+      "positiveCases": []
+    },
+    "go-pattern-detector": {
+      "selectedImplementations": 1,
+      "evaluatedNativeCases": 0,
+      "independentlyVerifiedUsefulOutcomeObservations": 0,
+      "nativeQuantity": null,
+      "checkedSelectedFacetQuantity": null,
+      "measurementStatus": "no-useful-outcome-established-not-completed-measurement",
+      "fullGoalAcceptance": null,
+      "safeguards": null,
+      "receiptBackedAttribution": null,
+      "actualCosts": null,
+      "period": {
+        "startInclusive": "2025-10-07T13:01:17Z",
+        "endExclusive": "2026-10-18T15:00:12Z",
+        "cadenceDays": 7,
+        "noCasePeriods": "null"
+      },
+      "positiveCases": []
+    },
+    "daily-testify-uber-super-expert": {
+      "selectedImplementations": 83,
+      "evaluatedNativeCases": 83,
+      "independentlyVerifiedUsefulOutcomeObservations": 1,
+      "nativeQuantity": 2,
+      "checkedSelectedFacetQuantity": 2,
+      "measurementStatus": "finite-useful-partial-observation",
+      "fullGoalAcceptance": null,
+      "safeguards": null,
+      "receiptBackedAttribution": null,
+      "actualCosts": null,
+      "period": {
+        "startInclusive": "2026-01-14T00:46:17Z",
+        "endExclusive": "2026-10-18T15:00:12Z",
+        "cadenceDays": 7,
+        "noCasePeriods": "null"
+      },
+      "positiveCases": [
+        {
+          "id": "daily-testify-uber-super-expert:c5f36dd7a6c6309dead5ba037920324d08419ca5",
+          "slug": "daily-testify-uber-super-expert",
+          "number": 28622,
+          "commit": "c5f36dd7a6c6309dead5ba037920324d08419ca5",
+          "parent": "3714aaab292ca2e97d3353600d5be9a7d044855d",
+          "at": "2026-04-26T20:47:59Z",
+          "issues": [
+            28585
+          ],
+          "value": 2,
+          "sites": [
+            {
+              "function": "TestHealthCommand",
+              "key": "NotNil(t,daysFlag,\"Should have --days flag\")|assert.Equal(t, \"7\", daysFlag.DefValue, \"Default days should be 7\")",
+              "argument": "daysFlag",
+              "kind": "test-prerequisite",
+              "line": 120,
+              "guarded": false,
+              "fatal": true,
+              "initializer": "cmd.Flags().Lookup(\"days\")",
+              "field": "DefValue",
+              "identity": "c5f36dd7a6c6309dead5ba037920324d08419ca5:pkg/cli/health_command_test.go:TestHealthCommand|NotNil(t,daysFlag,\"Should have --days flag\")|assert.Equal(t, \"7\", daysFlag.DefValue, \"Default days should be 7\")",
+              "beforeLine": 74,
+              "file": "pkg/cli/health_command_test.go"
+            },
+            {
+              "function": "TestHealthCommand",
+              "key": "NotNil(t,thresholdFlag,\"Should have --threshold flag\")|assert.Equal(t, \"80\", thresholdFlag.DefValue, \"Default threshold should be 80\")",
+              "argument": "thresholdFlag",
+              "kind": "test-prerequisite",
+              "line": 124,
+              "guarded": false,
+              "fatal": true,
+              "initializer": "cmd.Flags().Lookup(\"threshold\")",
+              "field": "DefValue",
+              "identity": "c5f36dd7a6c6309dead5ba037920324d08419ca5:pkg/cli/health_command_test.go:TestHealthCommand|NotNil(t,thresholdFlag,\"Should have --threshold flag\")|assert.Equal(t, \"80\", thresholdFlag.DefValue, \"Default threshold should be 80\")",
+              "beforeLine": 78,
+              "file": "pkg/cli/health_command_test.go"
+            }
+          ],
+          "files": [
+            {
+              "file": "pkg/cli/health_command_test.go",
+              "before": "c8760bf0158254b7b70f03f19016125233ee8209",
+              "after": "3a3cbb975c6addff1262e194db90dd12463694f2",
+              "candidateTransitions": 2
+            }
+          ],
+          "missing": [],
+          "corroborated": true,
+          "receiptBacked": null,
+          "corroboration": {
+            "issue": 28585,
+            "pullRequest": 28622,
+            "graphEventAt": "2026-04-26T18:27:42Z",
+            "bodySha256": "782f5e4d9b3942115442dccbca8b7579abf12d382e2ebec1194848168e521767",
+            "bodyObservedAt": "2026-10-18T15:26:53.358Z",
+            "qualification": "Dated GitHub graph and unchanged discovery/current body corroborate shared contribution; neither is a creation receipt or proof of historical body contents."
+          }
+        }
+      ]
+    }
+  },
+  "finiteUsefulMeasuredWorkflowCount": 1,
+  "notThreeCompletedNativeMeasurements": true,
+  "keepDecision": "not rated",
+  "limits": "Selected cases, not whole-history totals. No historical target tests/code/workflows executed. Issue/PR bodies are observed current content, not creation receipts. No monetary values or sole causation."
+}
