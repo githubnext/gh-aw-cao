@@ -40,24 +40,25 @@ outcome evidence is not proof of zero cost or success.
 <figure aria-labelledby="intro-dashboard-caption">
 <div class="cao-intro-screenshot">
 
-![CAO Runs view with repository and workflow navigation on the left, a chart of successful, failed, and cancelled runs over the last week, and a last-updated timestamp at the bottom.](assets/product/cao-dashboard-run-history-light.png)
+<img src="https://github.com/user-attachments/assets/1c408552-1a2d-45cc-967e-b46d8811798d" alt="CAO Repositories chart view: selected sidebar entry, ranked retained runs by repository, and retained issue outputs across public repositories." width="1200" height="766" loading="lazy" decoding="async">
 
 <span class="cao-intro-marker cao-intro-marker-navigation" aria-hidden="true">1</span>
-<span class="cao-intro-marker cao-intro-marker-chart" aria-hidden="true">2</span>
-<span class="cao-intro-marker cao-intro-marker-freshness" aria-hidden="true">3</span>
+<span class="cao-intro-marker cao-intro-marker-activity" aria-hidden="true">2</span>
+<span class="cao-intro-marker cao-intro-marker-outputs" aria-hidden="true">3</span>
 </div>
 <figcaption id="intro-dashboard-caption">
-<p>Existing public product capture of the Runs view, not live counters.</p>
+<p>Public sample, 19 October 2026, after import completed. Not a live feed. <a href="https://github.com/user-attachments/assets/1c408552-1a2d-45cc-967e-b46d8811798d">Open full-size capture</a>.</p>
 <ol>
-<li><strong>Choose a question.</strong> The left navigation includes repositories, workflows, runs, cost, and operational value.</li>
-<li><strong>Spot activity changes.</strong> This chart shows run conclusions over time, not whether the work achieved its intended outcome.</li>
-<li><strong>Check freshness.</strong> The footer tells you when the snapshot was last updated. Collected evidence is not a live feed.</li>
+<li><strong>Start with your repositories.</strong> See configured projects in one place.</li>
+<li><strong>Read activity.</strong> Ranked bars compare distinct retained runs. Zero means no retained runs, not confirmed inactivity.</li>
+<li><strong>Follow outputs.</strong> Inspect retained issue outputs; output counts alone do not prove successful outcomes.</li>
 </ol>
 </figcaption>
 </figure>
 
-[Explore the public sample dashboard](https://githubnext.github.io/gh-aw-cao/cao/)
-or read the [dashboard guide](dashboard.md).
+[Explore the public Repositories view](https://githubnext.github.io/gh-aw-cao/cao/#page-repositories).
+Wait for import to finish before reading the charts.
+See the [dashboard guide](dashboard.md) for more.
 
 ## Observe first, add campaigns when ready
 

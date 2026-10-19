@@ -42,18 +42,18 @@
 }
 
 .cao-intro-marker-navigation {
-  top: 33%;
-  left: 12%;
+  top: 25%;
+  left: 15%;
 }
 
-.cao-intro-marker-chart {
-  top: 26%;
-  left: 75%;
+.cao-intro-marker-activity {
+  top: 19%;
+  left: 40%;
 }
 
-.cao-intro-marker-freshness {
-  top: calc(100% - 0.75rem);
-  left: 44%;
+.cao-intro-marker-outputs {
+  top: 65%;
+  left: 47%;
 }
 
 :root:not([data-has-hero]) {

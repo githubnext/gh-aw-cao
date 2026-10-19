@@ -104,10 +104,15 @@ test("CAO introduction shows the product and leads to monitoring before optional
     await expect(details).toHaveAttribute("open", "");
     await details.locator("summary").click();
   }
-  const image = content.getByAltText(/^CAO Runs view/);
+  const image = content.getByAltText(/^CAO Repositories chart view/);
+  await image.scrollIntoViewIfNeeded();
   await expect(image).toBeVisible();
-  expect(await image.evaluate((element) => element.complete && element.naturalWidth > 0)).toBe(true);
+  await expect.poll(() => image.evaluate((element) => element.complete && element.naturalWidth > 0)).toBe(true);
   await expect(content.locator("figure figcaption li")).toHaveCount(3);
+  await expect(content.locator("figure figcaption")).toContainText("Ranked bars compare distinct retained runs");
+  await expect(content.locator("figure figcaption")).toContainText("output counts alone do not prove successful outcomes");
+  await expect(content.getByRole("link", { name: "Explore the public Repositories view", exact: true }))
+    .toHaveAttribute("href", "https://githubnext.github.io/gh-aw-cao/cao/#page-repositories");
   const diagram = content.locator(".mermaid svg");
   await expect(diagram).toBeVisible();
   await expect(diagram).toContainText("Observe existing workflows");
