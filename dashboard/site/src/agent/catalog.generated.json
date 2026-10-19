@@ -543,7 +543,7 @@
         "campaign-insight-tab-counts",
         "campaign-issue-tab-counts",
         "campaign-problem-tab-counts",
-        "campaign-workflows"
+        "campaign-repository-inventory"
       ]
     },
     {
@@ -3247,7 +3247,6 @@
         "campaign-workflow-inventory"
       ],
       "used-by-pages": [
-        "campaign-repositories",
         "campaign-workflows"
       ],
       "execution": {
@@ -3259,6 +3258,51 @@
           "issues",
           "runs",
           "tools",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-repository-declarations",
+      "subject": "List active declared campaign workflows and their owning repositories without execution evidence.",
+      "objective": "Inspect campaign repository topology without computing unused run totals or import coverage.",
+      "acceptance": "Preserve active orchestrator and worker identities, display names, rollout context, links, and ordering. Declaration counts are not target enrollment, dispatch coverage, or execution totals. Empty inventory and unavailable workflow evidence remain distinct.",
+      "description": "Declaration-only repository topology. Run totals and import-evidence quality belong to execution views, not this inventory.",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "campaign-repository-inventory",
+      "subject": "Present declared campaign repository topology in workflow display order.",
+      "objective": "Filter and search projected repository coordinates and workflow names without time-filtering structural declarations.",
+      "acceptance": "Preserve the campaign workflow list's stable ordering and declaration-only evidence quality; runtime horizons must not remove declared workflows.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "campaign",
+          "field": "campaign"
+        }
+      ],
+      "sources": [
+        "campaign-repository-declarations"
+      ],
+      "used-by-pages": [
+        "campaign-repositories"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
           "workflows"
         ]
       }

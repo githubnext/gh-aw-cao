@@ -1,0 +1,13 @@
+{
+  "page": "campaign-repositories",
+  "source": "campaign-repository-inventory",
+  "views": ["campaign-repository-workflows", "campaign-repository-table"],
+  "fields": [
+    "campaign", "campaign-name", "organization", "repository", "workflow",
+    "workflow-name", "workflow-role", "rollout-mode", "workflow-active", "repository-link"
+  ],
+  "dependencies": ["workflows"],
+  "navigationSources": [
+    "workflows", "campaign-insight-tab-counts", "campaign-problem-tab-counts", "campaign-issue-tab-counts"
+  ]
+}
