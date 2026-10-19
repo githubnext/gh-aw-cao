@@ -327,6 +327,11 @@ func (s *Store) WithReadTransaction(ctx context.Context, fn func(context.Context
 	if _, err := tx.ExecContext(ctx, "SET LOCAL jit = off"); err != nil {
 		return err
 	}
+	// PostgreSQL 16 can estimate window-filtered CTEs as one row and choose
+	// quadratic rescans. Compiled joins are equijoins; prefer hash/merge plans.
+	if _, err := tx.ExecContext(ctx, "SET LOCAL enable_nestloop = off"); err != nil {
+		return err
+	}
 	if err := fn(ctx, &readTransaction{store: s, tx: tx}); err != nil {
 		return err
 	}
