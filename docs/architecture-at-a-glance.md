@@ -1,16 +1,16 @@
 ---
 title: What Is Central Agentic Ops?
-description: See your GitHub Agentic Workflows in one place and understand collected activity, costs, and outcome evidence.
+description: Understand and operate agentic work across repositories, from observing existing workflows to running optional shared automation.
 next:
   link: /gh-aw-cao/setup-quickstarts/
   label: Set up CAO and monitor your workflows
 ---
 
 You have workflows triaging issues in one repository and investigating failures
-in another. Instead of checking each repository separately, **Central Agentic
-Ops (CAO)** gives you one place to see their activity and available cost and
-outcome evidence. You can start by monitoring existing workflows, without adding
-new agentic work.
+in another. **Central Agentic Ops (CAO)** helps you understand and operate this
+work across repositories: see existing activity, assess available cost and
+outcome evidence, and run optional shared automation from one place. You can
+start by monitoring existing workflows, without adding new agentic work.
 
 **GitHub Agentic Workflows (AWs)** are AI-powered workflows that run in GitHub
 Actions. You describe a task in Markdown, and an agent carries it out with
@@ -19,15 +19,19 @@ or be requested on demand. CAO monitors these workflows, not every ordinary
 Actions job. [Learn about GitHub Agentic Workflows](https://github.github.com/gh-aw/).
 
 **[Set up CAO and monitor your workflows](setup-quickstarts.md)**.
-Start with one repository and inspect the evidence you already have.
+Start with one repository's existing workflows; add shared automation when you
+need it.
 
 ## What you can do today
 
 | Capability | What it gives you |
 | --- | --- |
-| **See repository activity** | Bring collected runs across the repositories you configure into a shared dashboard. Compare retained activity without checking each project separately. |
-| **Inspect workflow runs** | Find recorded runs, inspect their status, and follow links to the original workflow and run on GitHub. |
-| **Follow available evidence** | Inspect costs, outputs, and outcomes where evidence is available. Use them to investigate what the work produced, not just whether it ran. |
+| **Observe existing workflows** | See collected activity across configured repositories, inspect recorded runs, and follow them back to GitHub. |
+| **Assess available evidence** | Inspect costs, outputs, and outcomes where evidence is available. Use them to investigate what the work produced, not just whether it ran. |
+| **Run shared automation (optional)** | Apply reusable tasks across explicitly allowed repositories. Start in `review` mode: proposals go to a review destination, and target repositories stay unchanged until live output is explicitly authorized. |
+
+Execution controls apply to participating campaigns, not automatically to the
+workflows you monitor.
 
 For example, after an issue-triage workflow runs, you can inspect its run and
 follow the collected evidence to see what it produced. The dashboard helps you
@@ -65,7 +69,8 @@ See the [dashboard guide](dashboard.md) for more.
 <span id="operating-workflows-across-repositories"></span>
 
 A **control repository** is an ordinary GitHub repository that stores your CAO
-configuration, holds credentials in Actions secrets, and runs collection.
+configuration, holds credentials in Actions secrets, and runs collection and any
+shared automation you choose to add.
 
 CAO Activity collects read-only evidence from the repositories you configure
 and publishes a snapshot for the dashboard:
