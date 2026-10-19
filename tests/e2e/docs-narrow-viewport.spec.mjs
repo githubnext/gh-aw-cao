@@ -20,6 +20,30 @@ const paths = [
   "operational-observability-visualization-specification/",
 ];
 
+for (const width of [390, 799, 800, 1920]) {
+  test(`documentation uses responsive content width at ${width}px without changing the hero page`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    expect((await page.goto("setup-quickstarts/"))?.ok()).toBe(true);
+    await expect(page.locator("html")).not.toHaveAttribute("data-has-hero");
+    expect(await page.locator("html").evaluate(
+      (element) => getComputedStyle(element).getPropertyValue("--sl-content-width").trim(),
+    )).toBe(width < 800 ? "100%" : "52rem");
+    const content = page.locator(".sl-markdown-content");
+    const bounds = await content.boundingBox();
+    expect(bounds.width).toBeGreaterThan(0);
+    expect(bounds.width).toBeLessThanOrEqual(Math.min(width, 832));
+    if (width === 1920) expect(bounds.width).toBeCloseTo(832, 0);
+    expect(await page.locator("html").evaluate((element) => element.scrollWidth))
+      .toBeLessThanOrEqual(width);
+
+    expect((await page.goto("./"))?.ok()).toBe(true);
+    await expect(page.locator("html")).toHaveAttribute("data-has-hero", "");
+    expect(await page.locator("html").evaluate(
+      (element) => getComputedStyle(element).getPropertyValue("--sl-content-width").trim(),
+    )).toBe("67.5rem");
+  });
+}
+
 test("Get started navigation follows the user journey without duplicate authentication pages", async ({ page }) => {
   expect((await page.goto("getting-started/"))?.ok()).toBe(true);
 

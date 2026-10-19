@@ -10,6 +10,16 @@
   --sl-content-width: 60rem;
 }
 
+:root:not([data-has-hero]) {
+  --sl-content-width: 100%;
+}
+
+@media (min-width: 50rem) {
+  :root:not([data-has-hero]) {
+    --sl-content-width: 52rem;
+  }
+}
+
 .sl-skip-link:focus-visible {
   clip: unset;
   z-index: var(--sl-z-index-skiplink);
