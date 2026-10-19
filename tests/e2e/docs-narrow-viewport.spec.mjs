@@ -91,7 +91,7 @@ test("getting started leads from monitoring to a separate optional campaign guid
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Try a Repo Assist review");
 });
 
-test("CAO introduction shows the product and leads to monitoring before optional campaigns", async ({ page }, testInfo) => {
+test("CAO introduction presents operating capabilities and leads to setup", async ({ page }, testInfo) => {
   expect((await page.goto("architecture-at-a-glance/"))?.ok()).toBe(true);
   const content = page.locator(".sl-markdown-content");
   await expect(content).toContainText("GitHub Agentic Workflows (AWs) are AI-powered workflows");
@@ -99,14 +99,19 @@ test("CAO introduction shows the product and leads to monitoring before optional
   await expect(content).toContainText("A successful run is not automatically a successful outcome.");
   await expect(content.locator("table tbody tr")).toHaveCount(3);
   await expect(content.locator("details")).toHaveCount(0);
-  await expect(content.locator("table")).not.toContainText(/campaign/i);
-  await expect(content.locator("table")).toContainText("Run shared automation (optional)");
+  await expect(content.locator("table")).toContainText("Observe activity");
+  await expect(content.locator("table")).toContainText("Evaluate results");
+  await expect(content.locator("table")).toContainText("Scale and roll out shared work");
   await expect(content.locator("table")).toContainText("target repositories stay unchanged until live output is explicitly authorized");
-  await expect(content).toContainText("Execution controls apply to participating campaigns, not automatically to the workflows you monitor.");
+  await expect(content).toContainText("Campaigns are one opinionated way to package, scale, and roll out shared work, not the only operating pattern.");
+  await expect(content).toContainText("apply to participating campaigns, not automatically to every observed workflow.");
+  await expect(content).not.toContainText(/\boptional\b/i);
   await expect(content.getByRole("heading", { name: /campaign/i })).toHaveCount(0);
-  const campaignLink = content.getByRole("link", { name: "explore optional campaigns", exact: true });
+  const campaignLink = content.getByRole("link", { name: "browse campaigns", exact: true });
   await expect(campaignLink).toHaveAttribute("href", "/gh-aw-cao/catalog/");
   await expect(campaignLink).toHaveCount(1);
+  await expect(content.getByRole("link", { name: "workflow operating patterns and ownership", exact: true }))
+    .toHaveAttribute("href", "/gh-aw-cao/deployment-and-governance/");
   const image = content.getByAltText(/^CAO Repositories chart view/);
   await image.scrollIntoViewIfNeeded();
   await expect(image).toBeVisible();

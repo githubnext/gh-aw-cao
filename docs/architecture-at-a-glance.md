@@ -1,6 +1,6 @@
 ---
 title: What Is Central Agentic Ops?
-description: Understand and operate agentic work across repositories, from observing existing workflows to running optional shared automation.
+description: Observe, evaluate, and operate agentic work across repositories, with shared visibility and controlled rollout.
 next:
   link: /gh-aw-cao/setup-quickstarts/
   label: Set up CAO and monitor your workflows
@@ -8,9 +8,10 @@ next:
 
 You have workflows triaging issues in one repository and investigating failures
 in another. **Central Agentic Ops (CAO)** helps you understand and operate this
-work across repositories: see existing activity, assess available cost and
-outcome evidence, and run optional shared automation from one place. You can
-start by monitoring existing workflows, without adding new agentic work.
+work across repositories: observe activity, evaluate available cost and outcome
+evidence, and coordinate the execution and rollout of shared workflows.
+Existing workflows stay with their owners; shared work does not require moving
+every workflow into one central repository.
 
 **GitHub Agentic Workflows (AWs)** are AI-powered workflows that run in GitHub
 Actions. You describe a task in Markdown, and an agent carries it out with
@@ -19,19 +20,20 @@ or be requested on demand. CAO monitors these workflows, not every ordinary
 Actions job. [Learn about GitHub Agentic Workflows](https://github.github.com/gh-aw/).
 
 **[Set up CAO and monitor your workflows](setup-quickstarts.md)**.
-Start with one repository's existing workflows; add shared automation when you
-need it.
+Connect one repository to get started.
 
 ## What you can do today
 
 | Capability | What it gives you |
 | --- | --- |
-| **Observe existing workflows** | See collected activity across configured repositories, inspect recorded runs, and follow them back to GitHub. |
-| **Assess available evidence** | Inspect costs, outputs, and outcomes where evidence is available. Use them to investigate what the work produced, not just whether it ran. |
-| **Run shared automation (optional)** | Apply reusable tasks across explicitly allowed repositories. Start in `review` mode: proposals go to a review destination, and target repositories stay unchanged until live output is explicitly authorized. |
+| **Observe activity** | See collected activity across configured repositories, inspect recorded runs, and follow them back to GitHub. |
+| **Evaluate results** | Inspect costs, outputs, and outcomes where evidence is available. Use them to investigate what the work produced, not just whether it ran. |
+| **Scale and roll out shared work** | Participating campaigns coordinate reusable tasks across explicitly allowed repositories. In `review` mode, proposals go to a review destination; target repositories stay unchanged until live output is explicitly authorized. |
 
-Execution controls apply to participating campaigns, not automatically to the
-workflows you monitor.
+Workflows can stay repository-local, be shared across projects, or run centrally.
+**Campaigns are one opinionated way to package, scale, and roll out shared work,
+not the only operating pattern.** Today's integrated review and rollout controls
+apply to participating campaigns, not automatically to every observed workflow.
 
 For example, after an issue-triage workflow runs, you can inspect its run and
 follow the collected evidence to see what it produced. The dashboard helps you
@@ -64,13 +66,13 @@ outcome evidence is not proof of zero cost or success.
 Wait for import to finish before reading the charts.
 See the [dashboard guide](dashboard.md) for more.
 
-## How monitoring works
+## How evidence reaches the dashboard
 
 <span id="operating-workflows-across-repositories"></span>
 
 A **control repository** is an ordinary GitHub repository that stores your CAO
-configuration, holds credentials in Actions secrets, and runs collection and any
-shared automation you choose to add.
+configuration, holds credentials in Actions secrets, and runs collection and
+participating shared workflows.
 
 CAO Activity collects read-only evidence from the repositories you configure
 and publishes a snapshot for the dashboard:
@@ -95,14 +97,14 @@ See [CAO Activity](activity.md) for collection and data-quality details.
   with their owners. A shared dashboard does not transfer credentials or
   authority.
 - **Public means public-safe.** Use a public control repository only when its
-  configuration, run metadata, dashboard data, and collected evidence can be
-  public. A private repository does not by itself guarantee private Pages;
+  configuration, run metadata, dashboard data, evidence, and review outputs can
+  be public. A private repository does not by itself guarantee private Pages;
   [setup](setup-quickstarts.md) checks publication visibility.
 
 ## Get started
 
 **[Set up CAO and monitor your workflows](setup-quickstarts.md)**.
-Connect one repository and explore its existing evidence first.
+Connect a repository to see its existing evidence.
 
-When you are ready to add new shared automation,
-[explore optional campaigns](catalog.md).
+Explore [workflow operating patterns and ownership](deployment-and-governance.md)
+or [browse campaigns](catalog.md) for shared tasks and rollout.

@@ -83,7 +83,7 @@ execution capabilities and safe outputs.
 
 | Read | When you need to understand |
 | --- | --- |
-| [What Is Central Agentic Ops?](architecture-at-a-glance.md) | How to monitor existing Agentic Workflows and understand their collected evidence |
+| [What Is Central Agentic Ops?](architecture-at-a-glance.md) | CAO's purpose, available capabilities, and workflow operating patterns |
 | [Deployment and Governance](deployment-and-governance.md) | Organization and enterprise topologies, ownership, target enrollment, provenance, reporting identity, and the broader governance boundary |
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
 | [Orchestrators and Workers](orchestrators-and-workers.md) | Campaign-specific authority, worker enforcement, eligibility, and worker ceilings |
