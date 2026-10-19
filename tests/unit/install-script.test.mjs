@@ -26,7 +26,9 @@ const olderGhAw = patch > 0 ? `v${major}.${minor}.${patch - 1}` : `${supportedGh
 const newerGhAw = `v${major}.${minor + 1}.0`;
 const manifestGhAw = `v${major}.${minor}.${patch + 1}`;
 const revision = "1".repeat(40);
-const timeout = 30_000;
+// Windows runtime extraction/copying can exceed a minute on hosted runners.
+// Keep a finite subprocess deadline without imposing that budget on other hosts.
+const timeout = process.platform === "win32" ? 120_000 : 30_000;
 const policyPath = path.join(".github", "workflows", "cao.json");
 const materializer = path.join(".github", "workflows", "shared", "materialize-cao.mjs");
 const curlCommand = "curl --fail --show-error --location";
