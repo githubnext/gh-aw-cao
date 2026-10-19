@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-cache-strategy-analyzer",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceBlob": "1279b79278925a7e39e3c871ffda7ff8177db9fd",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": {
+    "basis": "Source-informed acceptance, frozen before candidate descriptions, graph results or implementation outcomes are acquired.",
+    "sourcesRead": [
+      "Current workflow source",
+      "Current meta-analysis-base import",
+      "Current aw-logs-24h-fetch-setup import",
+      "Actual source and compiled-workflow addition metadata"
+    ],
+    "limitations": "The original source and both compiled workflow blobs are not in the read-only cache. They must be acquired and verified before assessing source-era applicability. Any outcome-informed revision must preserve this predecessor."
+  },
+  "adoption": {
+    "commit": "d2cbe62b12c10fc9cd60ab8b00a50a87c6b9a062",
+    "parent": "d57a99d1bd2d3c0950d6e8898eab1caedc7bf2fa",
+    "adoptedAt": "2026-04-25T11:37:21Z",
+    "baselineAt": "2026-04-25T11:35:45Z",
+    "sourcePath": ".github/workflows/daily-cache-strategy-analyzer.md",
+    "initialSourceBlob": "1fc84a571abff85930b7eec9626149c472e6a8a3",
+    "initialCompiledBlob": "e291d5a1293227c61ca4089bb531fb16f8142029"
+  },
+  "goal": "For workflows declaring cache-memory, independently demonstrate useful corrections to avoidable cache misses or misconfigured cache restoration over time.",
+  "partialAcceptance": {
+    "id": "cross-run-fallbacks-restored",
+    "unit": "cache restoration configurations",
+    "meaning": "An independently verified compiled cache-memory restoration gains a fallback that no longer depends on the current run ID. This establishes a source-defined structural configuration repair, not an observed cache hit, work avoided, or time or credit saving.",
+    "before": [
+      "An immutable source declares cache-memory and its immutable compiled workflow contains an unambiguously identified cache restore action over the cache-memory directory.",
+      "The primary key contains one direct github.run_id expression and a nonempty stable prefix.",
+      "The restoration has no restore-keys fallback."
+    ],
+    "after": [
+      "The actual first parent is the before endpoint, and the independently dated delivered commit is the after endpoint.",
+      "The same source still declares cache-memory and the same compiled job, restore step identity, paths, primary key and execution constraints survive.",
+      "The restore-keys field gains the literal symbolic prefix preceding github.run_id in the unchanged primary key; that prefix has no run ID, run number, timestamp or mutable step-output dependency.",
+      "The frozen action implementation independently supports this fallback operation. Unsupported action versions, ambiguous syntax or missing source are unavailable, not accepted."
+    ],
+    "deduplication": "Count a distinct repository, delivered commit, workflow path, job and restore-step repair once in its half-open delivery period. Multiple issue references or report snapshots do not multiply the repair.",
+    "scope": "This narrow facet does not assess stable-key replacements, stale-data correctness, cache writes, hit-rate trends, all caching modes or full analyzer acceptance."
+  },
+  "fullAcceptance": {
+    "status": "separate and unmeasured until independent evidence exists",
+    "requirements": [
+      "Applicable workflow and runtime history",
+      "Original cache read/write and restoration observations",
+      "Correct independent eligible-run population and cache-hit/miss interpretation",
+      "Useful repeated-work reduction without stale-data or correctness regressions"
+    ]
+  },
+  "contribution": "A current editable marker and dated downstream graph can corroborate shared contribution, not original issue publication or exclusive causation. Stronger numeric attribution requires original run/source/application receipts.",
+  "unknown": "Missing originals, unsupported scope and incomplete empty populations remain null. A checked facet with no accepted repair is not zero whole-workflow value.",
+  "window": {
+    "durationDays": 7,
+    "cadenceDays": 7,
+    "maturationDays": 0,
+    "measurementKind": "interval"
+  },
+  "acquisition": {
+    "requestBudget": 350,
+    "candidateBudget": 120,
+    "roots": "All surviving pre-cutoff issue/PR identities marked daily-cache-strategy-analyzer in the shared frozen history; freeze their ordered identity digest before reading descriptions.",
+    "relationships": "Bounded original same-repository connected/cross-referenced PR events, retaining pagination completeness and event times. Incomplete graph traversal must remain explicit.",
+    "authority": "Verify repository ID and public visibility before source or outcome reads. Read-only GitHub acquisition only; no dispatch, target execution, shared-cache writes, policy changes or publication.",
+    "persistence": "Retain digest-checked original response bytes and independently verified Git source bytes. Reuse completed exact-scope requests on resume."
+  },
+  "decision": "Not rated; no approved native keep bar.",
+  "costs": "Not measured."
+}

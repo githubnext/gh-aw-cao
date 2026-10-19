@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-86 of 344 is 25.0%, with 258 workflows still unevaluated.
+87 of 344 is 25.3%, with 257 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -538,6 +538,16 @@ coverage. The outcome-informed v2 separates fuzz-mode configuration coverage
 from existing seed execution, measured CI time savings and full test integrity.
 The known selector failure remains visible rather than being erased by the
 useful partial.
+
+The cache-strategy partial establishes one conditional compiler dependency-gate
+repair, delivered once in 26 disjoint periods; the other 25 remain unknown.
+Native Go AST and an actual compiled workflow show that removing an output-content
+gate admits one formerly blocked cache-persistence context while preserving the
+consumer's success and nonempty-cache guards. This explicitly outcome-informed
+v2 is not an observed detection success, cache save, restoration, hit or saving.
+The source-informed v1 remains preserved: the original workflow already had a
+valid restore-prefix fallback, and a false exact-match `cache-hit` flag does not
+prove restoration failed. Full acceptance and numeric contribution remain unknown.
 
 Durable storage is separately observable, not evidence that stored metrics are
 correct. Three immutable repo-memory snapshots preserve 344 records each, but

@@ -74,6 +74,7 @@ import { collectBatch as collectCliMigration, scoreMetric as scoreCliMigration }
 import { collectBatch as collectSimplification, scoreMetric as scoreSimplification } from "../docs/operational-value/proof/functions/code-simplifier.mjs";
 import { collectBatch as collectDebtRemediation, scoreMetric as scoreDebtRemediation } from "../docs/operational-value/proof/functions/daily-code-debt-aider.mjs";
 import { collectBatch as collectCiCoverage, scoreMetric as scoreCiCoverage } from "../docs/operational-value/proof/functions/ci-coach.mjs";
+import { collectBatch as collectCacheDependency, scoreMetric as scoreCacheDependency } from "../docs/operational-value/proof/functions/daily-cache-strategy-analyzer.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -782,6 +783,13 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "daily-cache-strategy-analyzer", sourceGitBlob: "1279b79278925a7e39e3c871ffda7ff8177db9fd",
+      functionSha256: "64cbc878276f1518d1577e74e3ed486703bb1154d4e7bb4b3fe904b0fc95e91d",
+      timelineDigest: "28e2e7d2ac8ee35f304bef3bc46a3fcb3f0a79ee94d5e783096c8494d3ff06df",
+      reports: "docs/operational-value/proof/native-cache-strategy/reports/github-gh-aw",
+      collector: collectCacheDependency, scorer: scoreCacheDependency, partialMetricId: "cache-dependency-gates-repaired",
+      stage: "one conditional cache-persistence dependency-gate repair; observed cache effects unknown",
+      detail: "All139 marked roots and24 downstream candidates retain complete bounded graph queries and changed-file pagination. Actual-parent transition af58d8c1ad2c970d1266170414eb180d919b46dd to c4d2540431ba7f54a6b8c10e0f9cf9058892a47b in PR40882 removes only the detection job's content gate and its three local declarations; native Go AST verifies the otherwise unchanged compiler function. The real chaos-pr-bundle-fuzzer source and cache consumer are unchanged, while its compiled detection condition admits one formerly blocked successful-agent/empty-output/no-patch context. Twelve independently evaluated contexts preserve agent-success, detection-success and nonempty-cache safeguards. Count one conditional compiler repair, not regenerated workflows, repeated snapshots or two noop/boop labels. V1's source-informed restore-prefix facet is preserved; the original workflow already had a valid fallback, and cache-hit=false can indicate successful prefix restoration. Outcome-informed v2 has one delivery period with1 and25 unknown periods, not observed cache saves, restores, hits, avoided work or savings. Current marker and relationship evidence corroborate a link, not original creation/application receipts. Full acceptance, numeric workflow contribution, comprehensive safeguards, causal effect, costs and keep decision remain unknown." },
     { workflowId: "ci-coach", sourceGitBlob: "8eca15ac07bba381129cf48c03fd07335a317ae2",
       functionSha256: "979bff8f8c476daac1e82d342582f22d65aef122d8270253fc892cdd35ea287b",
       timelineDigest: "0fa78d5ba5c88aee5c345723e535c4c43292aab15aa0c7746308aee024e64861",

@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 86);
-  assert.equal(model.totals.workflows - model.totals.measured, 258);
+  assert.equal(model.totals.measured, 87);
+  assert.equal(model.totals.workflows - model.totals.measured, 257);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -465,6 +465,23 @@ test("native migration and consolidation qualify as bounded partials while Aider
   assert.equal(gap.evaluationReady, false);
   assert.equal(progress.filter(row => row.workflowId === "code-simplifier").length, 1);
   assert.equal(progress.filter(row => row.workflowId === "daily-code-debt-aider").length, 1);
+});
+
+test("cache coverage counts one conditional compiler repair without inventing observed cache effects", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const timeline = measurements.find(row => row.workflowId === "daily-cache-strategy-analyzer")?.input;
+  assert.ok(timeline);
+  assert.equal(timeline.snapshots.length, 26);
+  assert.deepEqual(timeline.snapshots.map(row => row.metrics["cache-dependency-gates-repaired"])
+    .filter(value => value !== null), [1]);
+  assert.equal(timeline.snapshots.filter(row => row.metrics["cache-dependency-gates-repaired"] === null).length, 25);
+  assert.equal(timeline.snapshots.at(-1).metrics["cache-dependency-gates-repaired"], null);
+  const row = progress.find(row => row.workflowId === "daily-cache-strategy-analyzer");
+  assert.equal(row.partial, true);
+  assert.match(row.detail, /not observed cache saves, restores, hits, avoided work or savings/);
+  assert.match(row.detail, /numeric workflow contribution.*remain unknown/);
+  assert.match(row.detail, /one delivery period with1 and25 unknown periods/);
+  assert.match(row.detail, /original workflow already had a valid fallback/);
 });
 
 test("CI coverage counts nine conditional selections and preserves the ambiguous-selector failure", async () => {

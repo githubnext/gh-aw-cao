@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "actualFilesystemDenialVerified": true,
+  "actualNetworkDenialVerified": true,
+  "originalWorkspaceOrSharedCacheReads": false,
+  "targetCodeExecuted": false,
+  "freshHomeAndGoCaches": true,
+  "sharedNodeModules": false,
+  "pinnedLocalYamlDependency": "2.9.0",
+  "focusedTests": 15,
+  "actualCollectorVerified": true,
+  "standardEvaluations": 3,
+  "wholeTimelineParityExceptRootGeneratedAt": true,
+  "completeNativeAssessmentParity": true,
+  "nativeSubtotal": 1,
+  "fullAcceptance": null,
+  "workflowContribution": null,
+  "timelineFactsSha256": "105705b3c6aeb03953db420a5cabdb93ded4abb5699db0e40a8d072af817dd57"
+}

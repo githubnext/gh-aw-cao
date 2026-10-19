@@ -171,6 +171,11 @@ fixtures before collecting real outcomes. Field names are not semantics:
 CSpell's `isFlagged: false` still describes an ordinary unknown-word diagnostic,
 and jq's `//` defaults false as well as null. Execute a source-language filter
 with its native interpreter rather than assuming JavaScript semantics.
+An Actions cache `cache-hit: false` can accompany successful prefix restoration;
+verify the pinned interface and consumer before treating a status as failure.
+For dependency-graph repairs, verify producer/consumer conditions and unchanged
+guards. Count a conditional capability repair separately from observed execution,
+persistence, restoration and savings.
 For document or manifest goals, distinguish actual consumer readability from
 explicit-format conformance and semantic accuracy. Preserve consumer quirks,
 including permissive cases; do not silently replace them with a stricter ideal.

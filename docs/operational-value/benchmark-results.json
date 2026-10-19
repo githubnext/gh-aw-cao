@@ -6,9 +6,9 @@
   },
   "evidence": "synthetic; not repository outcome observations",
   "generativeTranslationEvaluated": false,
-  "corpusFingerprint": "f51230940922cdeace39e93181707cbf21471ac04a63cd4f155605ac7c57ba88",
+  "corpusFingerprint": "307224310ec1d2b7e6d950db746e55002ea5459f89d21ac3806b20807e40f56c",
   "sourceFingerprints": {
-    ".github/skills/add-operational-value/references/module-contract.md": "f056d71db792816061f67d4eaa6dc6bfe11a0395042ba5ecd61fd55266ea2c2e",
+    ".github/skills/add-operational-value/references/module-contract.md": "d1aeef5db6333e3134a807635620fb83b29f254b6f3b6f69ba3ae3a5c8fa89f2",
     ".github/skills/add-operational-value/scripts/build-timeline.mjs": "79caf49ff72d5fbd2266a8a6d461415f9844dcc54ad2f2f3d72fac5a770f6edf",
     ".github/skills/add-operational-value/scripts/collect-output-history.mjs": "52ed43049cff5a15209397bee042bbb950aa5fe0628c3c2a6e03c41a5c9e5eea",
     ".github/skills/add-operational-value/scripts/common.mjs": "c865f10a46d4ad3e6f20ea2afba98f280910f8e3c7049e2e303e9daf3605a836",

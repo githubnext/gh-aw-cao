@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "focusedTests": 15,
+  "actualCollectorVerified": true,
+  "initialStandardEvaluation": true,
+  "completeRefreshes": 2,
+  "exactTimelineParityIgnoringOnlyGeneratedAt": true,
+  "timelineFactsSha256": "105705b3c6aeb03953db420a5cabdb93ded4abb5699db0e40a8d072af817dd57",
+  "nativeSubtotal": 1,
+  "qualification": "One conditional cache-persistence dependency-gate repair; not a measured cache hit or saving.",
+  "targetCodeExecuted": false,
+  "fullAcceptance": null,
+  "workflowContribution": null
+}

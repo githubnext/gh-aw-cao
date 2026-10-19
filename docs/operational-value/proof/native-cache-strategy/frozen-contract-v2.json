@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "version": 2,
+  "authoring": "Explicitly outcome-informed retrospective, after reviewing the retained downstream candidate descriptions, actual-parent patches and complete selected native sources. The source-informed v1 contract and fallback checker remain unchanged.",
+  "predecessor": "frozen-contract-v1.json",
+  "workflow": "daily-cache-strategy-analyzer",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "metric": {
+    "id": "cache-dependency-gates-repaired",
+    "unit": "compiler control-flow repairs",
+    "acceptance": [
+      "Original Git commit/tree/blob custody binds the actual first-parent before/after source transition.",
+      "A native Go AST proves that buildDetectionJob changes only by deleting its three content-gating temporaries and replacing BuildAnd(BuildAnd(alwaysFunc, agentNotSkipped), hasContent) with BuildAnd(alwaysFunc, agentNotSkipped). The remaining function body and signature are identical.",
+      "An unchanged real production workflow declares cache-memory. Its before/after compiled detection jobs differ only in the corresponding condition; the update_cache_memory job is byte-for-structure unchanged.",
+      "The original update_cache_memory job requires detection success and agent success. Under an agent-success, empty-output-types, no-patch case, the old detection condition necessarily skips that dependency. The replacement admits the dependency while preserving the downstream success requirements and cache-content guard.",
+      "Count the one compiler algorithm repair once, not every regenerated workflow, noop/boop label, test case or later report snapshot."
+    ],
+    "interpretation": "A conditional compiled dependency-gate repair. Not observed detection success, cache publication, cache restoration, a cache-hit rate, avoided recomputation, cost saving or full workflow acceptance."
+  },
+  "selectedTransition": {
+    "pull": 40882,
+    "before": "af58d8c1ad2c970d1266170414eb180d919b46dd",
+    "after": "c4d2540431ba7f54a6b8c10e0f9cf9058892a47b",
+    "deliveredAt": "2026-06-23T04:45:23Z",
+    "nativeSource": "pkg/workflow/threat_detection.go",
+    "productionWitness": ".github/workflows/chaos-pr-bundle-fuzzer.md",
+    "compiledWitness": ".github/workflows/chaos-pr-bundle-fuzzer.lock.yml"
+  },
+  "sourceCorrections": [
+    "The adoption prompt incorrectly treats a run-ID key alone as a cold-start defect; the initial compiled workflow already has a valid fallback. This is not a measured cache repair.",
+    "Native actions/cache documentation says cache-hit reports an exact primary-key match; a successful prefix restoration can report false. No hit-rate estimate is inferred from that flag alone.",
+    "The native output classifier derives output_types from actual parsed items. Do not equate every noop/boop label with an empty output-types value.",
+    "The detection conclusion wrapper delegates to threat-detect; successful no-content completion is not assumed or counted. The metric is conditional dependency eligibility only."
+  ],
+  "v1Disposition": "No independently accepted v1 fallback repair has been established. Missing or unassessed v1 native scope remains null, not zero whole-workflow value.",
+  "contribution": "Related issue/PR graph and copied markers are discovery/corroboration only. Original publication, run and application receipts are not established; numeric workflow contribution stays null.",
+  "fullGoalAcceptance": null,
+  "safeguards": "The existing agent-success, detection-success and nonempty-cache requirements are preserved in the selected production witness. Full detection correctness, security and behavior remain unknown.",
+  "costs": "Not measured.",
+  "decision": "Not rated."
+}
