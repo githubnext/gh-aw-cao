@@ -3,6 +3,34 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-19T08:07:28Z",
+      "worker_run_id": 39219934492,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39220421851,
+        39218728260,
+        39217175415,
+        39216376603,
+        39215159384,
+        39212154708,
+        39211292531,
+        39207737281,
+        39206608576,
+        39205541697,
+        39204486013,
+        39204242603,
+        39202434177,
+        39201300766,
+        39199708423,
+        39197494565,
+        39196806359,
+        39195633530,
+        39194998061,
+        39194805734
+      ],
+      "outcome": "Incomplete evaluation for category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA e8ecbe91c191b9a7a3f5f8b7d2f13210bc57ff39. In the latest 20 completed docs.yml runs from 2026-10-19T03:27:52Z through 2026-10-19T08:06:33Z, 16 runs concluded success, 4 concluded skipped, 0 concluded failure, and 0 were cancelled. Trusted job metadata showed only 4 successful build-bearing docs runs in that bounded sample: schedule run 39218728260 on head SHA e8ecbe91c191b9a7a3f5f8b7d2f13210bc57ff39; push run 39216376603 on head SHA 2d7dacaf38df5a96f83f6f804429a1d520d3cd79; workflow_run run 39211292531 on head SHA e4ba8f5016862049b161502c6d47b378cefc75d1; schedule run 39201300766 on head SHA e4ba8f5016862049b161502c6d47b378cefc75d1. Because the mission requires at least 5 comparable successful runs before assessing scheduling, concurrency, and avoidable rebuilds or recommending a workflow change, no actionable improvement was evaluated in this run and next_category remains unchanged."
+    },
+    {
       "evaluated_at": "2026-10-19T07:44:18Z",
       "worker_run_id": 39217519475,
       "category": "scheduling, concurrency, and avoidable rebuilds",
