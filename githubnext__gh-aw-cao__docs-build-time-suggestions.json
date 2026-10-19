@@ -3,6 +3,34 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
+      "evaluated_at": "2026-10-19T04:31:36Z",
+      "worker_run_id": 39199642531,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39199708423,
+        39197494565,
+        39196806359,
+        39195633530,
+        39194998061,
+        39194805734,
+        39192763214,
+        39191636952,
+        39190093654,
+        39187773401,
+        39187004841,
+        39186011455,
+        39185876269,
+        39183200743,
+        39179104419,
+        39177896104,
+        39176849931,
+        39176029082,
+        39176008649,
+        39175838140
+      ],
+      "outcome": "Incomplete evaluation for category \"scheduling, concurrency, and avoidable rebuilds\" on source SHA 553fa58dd630481370bf764daab0bc42d99496fb. In the latest 20 completed docs.yml runs from 2026-10-18T23:16:46Z through 2026-10-19T04:29:31Z, 14 runs concluded success, 6 concluded skipped, 0 concluded failure, and 0 were cancelled. Trusted job metadata showed 0 successful build-bearing docs runs in that bounded sample: every successful schedule invocation completed only schedule-freshness while build and deploy were skipped, and every workflow_run callback was skipped. Because the mission requires at least 5 comparable successful build-bearing docs runs before assessing scheduling, concurrency, and avoidable rebuilds or recommending a workflow change, no actionable improvement was evaluated in this run and next_category remains unchanged."
+    },
+    {
       "evaluated_at": "2026-10-19T03:32:01Z",
       "worker_run_id": 39194833884,
       "category": "scheduling, concurrency, and avoidable rebuilds",
