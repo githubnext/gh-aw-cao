@@ -143,6 +143,18 @@ func parseExternalEvent(source ExternalSource, delivery string, payload []byte, 
 
 func subscriptionIdentity(s Subscription, event Event) (EventIdentity, error) {
 	identity := IdentityOf(event)
+	if s.Compiler != nil && commandFamily(s.Source.Event) {
+		root, err := boundedJSON(event.Payload, DefaultLimits().MaxEventBytes, DefaultLimits())
+		if err != nil {
+			return EventIdentity{}, err
+		}
+		semantic, _, matched := commandMatch(*s.Compiler, event.Name, root)
+		if !matched {
+			return EventIdentity{}, ErrInvalid
+		}
+		identity.Name, identity.CommandEvent = s.Source.Event, semantic
+		return identity, nil
+	}
 	if s.Source.External == nil {
 		return identity, nil
 	}

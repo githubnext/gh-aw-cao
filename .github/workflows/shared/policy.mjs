@@ -305,8 +305,27 @@ function validateWebhookGateway(gateway, scope) {
   if ("discovery" in gateway) {
     const d = gateway.discovery;
     assertMapping(d, `${path}.discovery`);
-    assertKeys(d, ["repositories", "intervalSeconds", "activateSecurity"], `${path}.discovery`);
+    assertKeys(d, ["repositories", "intervalSeconds", "activateSecurity", "activateCommands", "serverUrl"], `${path}.discovery`);
     assertBoolean(d.activateSecurity, `${path}.discovery.activateSecurity`);
+    if ("activateCommands" in d) assertBoolean(d.activateCommands, `${path}.discovery.activateCommands`);
+    if ("serverUrl" in d) {
+      assertString(d.serverUrl, `${path}.discovery.serverUrl`, /^https:\/\/[a-z0-9.-]+(?::[1-9][0-9]*)?(?:\/[a-zA-Z0-9._~%+-]+)*$/);
+      const port = /^https:\/\/[^/]+:(\d+)(?:\/|$)/.exec(d.serverUrl)?.[1];
+      if (port && (!Number.isSafeInteger(Number(port)) || Number(port) > 65535 || port === "443")) {
+        throw new PolicyError(`${path}.discovery.serverUrl requires a valid non-default port`);
+      }
+      const origin = new URL(d.serverUrl);
+      let canonicalPath;
+      try {
+        canonicalPath = encodeURI(decodeURI(origin.pathname));
+      } catch {
+        throw new PolicyError(`${path}.discovery.serverUrl has invalid path encoding`);
+      }
+      if (origin.origin + (origin.pathname === "/" ? "" : origin.pathname) !== d.serverUrl || origin.port === "443") {
+        throw new PolicyError(`${path}.discovery.serverUrl requires a canonical HTTPS server URL`);
+      }
+      if (canonicalPath !== origin.pathname) throw new PolicyError(`${path}.discovery.serverUrl has a noncanonical path`);
+    }
     if ("intervalSeconds" in d) assertInteger(d.intervalSeconds, `${path}.discovery.intervalSeconds`, 30, 3600);
     if (!Array.isArray(d.repositories) || d.repositories.length < 1 || d.repositories.length > 64) {
       throw new PolicyError(`${path}.discovery.repositories requires 1 to 64 explicit repositories`);
@@ -316,7 +335,11 @@ function validateWebhookGateway(gateway, scope) {
     const owners = (scope?.["allowed-owners"] ?? []).map(value => value.toLowerCase());
     for (const repository of d.repositories) {
       assertMapping(repository, `${path}.discovery.repositories`);
-      assertKeys(repository, ["repository", "repositoryId", "receivingInstallationId", "dispatchInstallationId"], `${path}.discovery.repositories`);
+      assertKeys(repository, ["repository", "repositoryId", "receivingInstallationId", "dispatchInstallationId", "allowLabelRemoval"], `${path}.discovery.repositories`);
+      if ("allowLabelRemoval" in repository) {
+        assertBoolean(repository.allowLabelRemoval, `${path}.discovery.repositories.allowLabelRemoval`);
+        if (repository.allowLabelRemoval && !d.activateCommands) throw new PolicyError(`${path}.discovery label removal requires explicit command activation`);
+      }
       assertString(repository.repository, `${path}.discovery.repositories.repository`, REPOSITORY_PATTERN);
       if ([".", ".."].includes(repository.repository.split("/")[1])) {
         throw new PolicyError(`${path}.discovery repository name is invalid`);

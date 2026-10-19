@@ -85,6 +85,14 @@ test("webhook discovery is explicitly scoped and projects bind one enrolled repo
   const parsed = parsePolicy(JSON.stringify(document));
   assert.equal(parsed["control-plane"]["webhook-gateway"].enabled, false);
   assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateSecurity, true);
+  assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateCommands, undefined);
+  const commands = structuredClone(document);
+  commands["control-plane"]["webhook-gateway"].discovery.activateCommands = true;
+  commands["control-plane"]["webhook-gateway"].discovery.serverUrl = "https://github.com";
+  commands["control-plane"]["webhook-gateway"].discovery.repositories[0].allowLabelRemoval = true;
+  assert.equal(parsePolicy(JSON.stringify(commands))["control-plane"]["webhook-gateway"].discovery.repositories[0].allowLabelRemoval, true);
+  commands["control-plane"]["webhook-gateway"].discovery.serverUrl = "https://github.example:8443/github/base";
+  assert.equal(parsePolicy(JSON.stringify(commands))["control-plane"]["webhook-gateway"].discovery.serverUrl, "https://github.example:8443/github/base");
   for (const mutate of [
     g => { delete g.discovery.activateSecurity; },
     g => { g.discovery.activateSecurity = null; },
@@ -98,6 +106,20 @@ test("webhook discovery is explicitly scoped and projects bind one enrolled repo
     g => { g.projectAssignments.push({ ...g.projectAssignments[0] }); },
     g => { g.projectAssignments[0].projectId = "PVT_bad!"; },
     g => { g.discovery.extraAuthority = true; },
+    g => { g.discovery.activateCommands = null; },
+    g => { g.discovery.activateCommands = "true"; },
+    g => { g.discovery.repositories[0].allowLabelRemoval = true; },
+    g => { g.discovery.repositories[0].allowLabelRemoval = null; },
+    g => { g.discovery.serverUrl = "https://github.com/"; },
+    g => { g.discovery.serverUrl = "https://github.com:443"; },
+    g => { g.discovery.serverUrl = "https://github.com:99999"; },
+    g => { g.discovery.serverUrl = "https://token@github.com"; },
+    g => { g.discovery.serverUrl = "http://github.com"; },
+    g => { g.discovery.serverUrl = "https://github.com?query"; },
+    g => { g.discovery.serverUrl = "https://github.example/a/../b"; },
+    g => { g.discovery.serverUrl = "https://github.example/a//b"; },
+    g => { g.discovery.serverUrl = "https://github.example/%61"; },
+    g => { g.discovery.serverUrl = "https://github.example/%"; },
   ]) {
     const invalid = structuredClone(document);
     mutate(invalid["control-plane"]["webhook-gateway"]);

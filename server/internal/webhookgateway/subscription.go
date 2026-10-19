@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"path"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -128,6 +129,9 @@ func ValidateSubscription(s Subscription, limits Limits) error {
 		return err
 	}
 	external := s.Source.External != nil
+	if commandFamily(s.Source.Event) && s.Compiler == nil || !commandFamily(s.Source.Event) && s.Source.ServerURL != "" {
+		return ErrInvalid
+	}
 	if s.SchemaVersion != "gh-aw.webhook-subscription/v1" ||
 		(!external && s.Provider != "github") || external && s.Provider != eventProvider(s.Source.Event) ||
 		!identifier(s.ID) || !identifier(s.TenantID) || s.AppID <= 0 ||
@@ -317,7 +321,11 @@ func MatchSubscription(s Subscription, event Event, limits Limits) (bool, error)
 		parsed.Action != event.Action {
 		return false, ErrInvalid
 	}
-	if s.Source.ID != event.SourceID || s.Source.Event != event.Name ||
+	selectedEvent := s.Source.Event == event.Name
+	if s.Compiler != nil && commandFamily(s.Source.Event) {
+		selectedEvent = slices.Contains(s.Compiler.NativeEvents, event.Name)
+	}
+	if s.Source.ID != event.SourceID || !selectedEvent ||
 		s.Source.InstallationID != event.InstallationID ||
 		s.Source.RepositoryID != event.RepositoryID ||
 		(s.Source.OrganizationID != 0 && s.Source.OrganizationID != event.OrganizationID) {
@@ -330,8 +338,14 @@ func MatchSubscription(s Subscription, event Event, limits Limits) (bool, error)
 			return false, nil
 		}
 	}
-	if s.Compiler != nil && !compilerTriggerMatches(*s.Compiler, root, event.Action) {
-		return false, nil
+	if s.Compiler != nil {
+		matched := compilerTriggerMatches(*s.Compiler, root, event.Action)
+		if commandFamily(s.Source.Event) {
+			_, _, matched = commandMatch(*s.Compiler, event.Name, root)
+		}
+		if !matched {
+			return false, nil
+		}
 	}
 	return s.Filter == nil || evaluate(*s.Filter, root, l) == True, nil
 }

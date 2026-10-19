@@ -32,6 +32,13 @@ func validEventIdentity(event EventIdentity, subscription Subscription) bool {
 	} else if len(event.Activities) != 0 {
 		return false
 	}
+	if commandFamily(source.Event) {
+		if subscription.Compiler == nil || !commandAction(*subscription.Compiler, event.CommandEvent, event.Action) {
+			return false
+		}
+	} else if event.CommandEvent != "" {
+		return false
+	}
 	return event.SourceID == source.ID && event.Name == source.Event &&
 		identifier(event.DeliveryID) && actionOK &&
 		event.InstallationID == source.InstallationID &&

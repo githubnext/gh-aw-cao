@@ -45,6 +45,7 @@ type EventIdentity struct {
 	RepositoryID   int64    `json:"repositoryId,omitempty"`
 	OrganizationID int64    `json:"organizationId,omitempty"`
 	Activities     []string `json:"activities,omitempty"`
+	CommandEvent   string   `json:"commandEvent,omitempty"`
 }
 
 // IdentityOf copies the non-payload portion of a verified event.
@@ -87,6 +88,7 @@ type Source struct {
 	IdentityConstraints []IdentityConstraint `json:"identityConstraints,omitempty"`
 	RequiredPermissions map[string]string    `json:"requiredPermissions,omitempty"`
 	External            *ExternalSource      `json:"external,omitempty"`
+	ServerURL           string               `json:"serverUrl,omitempty"`
 }
 
 // IdentityConstraint is compiler-declared scalar equality or allowed-value membership,

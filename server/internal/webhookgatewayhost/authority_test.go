@@ -47,6 +47,8 @@ type authorityAPI struct {
 	err          error
 }
 
+func (a authorityAPI) WebhookGatewayServerURL() string { return "https://github.com" }
+
 func (a authorityAPI) WebhookGatewayInstallation(context.Context, int64) (githubapp.GatewayInstallation, githubquota.ResponseQuota, error) {
 	return a.installation, githubquota.ResponseQuota{}, a.err
 }

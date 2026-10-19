@@ -57,6 +57,7 @@ type CompilerTrigger struct {
 	Provider              string                 `json:"provider,omitempty"`
 	NativeEvents          []string               `json:"native_events,omitempty"`
 	ActivityNormalization *ActivityNormalization `json:"activity_normalization,omitempty"`
+	CommandFilter         *CommandFilter         `json:"command_filter,omitempty"`
 	SchemaVersion         int                    `json:"schema_version"`
 	Event                 string                 `json:"event"`
 	Repos                 []string               `json:"repos,omitempty"`
@@ -171,6 +172,9 @@ func ParseWorkflowManifest(data []byte, workflow string, limits Limits) ([]Workf
 }
 
 func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) error {
+	if t.SchemaVersion != 2 && (t.CommandFilter != nil || commandFamily(t.Event)) {
+		return ErrInvalid
+	}
 	if validateCompilerRepos(t, l) != nil || validateCompilerOrgs(t, l) != nil ||
 		t.AnyOf != nil && len(t.AnyOf) == 0 {
 		return ErrInvalid
@@ -187,11 +191,14 @@ func validateCompilerTrigger(t CompilerTrigger, workflow, id string, l Limits) e
 			return ErrInvalid
 		}
 		switch t.Event {
-		case "dependabot_alert", "code_scanning_alert", "projects_v2_item", "jira_issue", "linear_issue", "azure_devops_issue", "webhook":
+		case "dependabot_alert", "code_scanning_alert", "projects_v2_item", "jira_issue", "linear_issue", "azure_devops_issue", "webhook", "slash_command", "label_command":
 		default:
 			return ErrInvalid
 		}
 		if err := validateProviderDeclaration(t); err != nil {
+			return err
+		}
+		if err := validateCommandDeclaration(t, l); err != nil {
 			return err
 		}
 	} else if d.Batch != nil || d.PayloadProjection != nil {
@@ -366,9 +373,21 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 	if event.Name == "webhook" {
 		key += ":" + event.Action
 	}
-	for _, route := range m.ByEvent[key] {
+	candidates := append([]WorkflowTrigger(nil), m.ByEvent[key]...)
+	for _, family := range []string{"slash_command", "label_command"} {
+		for _, route := range m.ByEvent[family] {
+			if slices.Contains(route.Declaration.NativeEvents, event.Name) {
+				candidates = append(candidates, route)
+			}
+		}
+	}
+	for _, route := range candidates {
 		t := route.Declaration
-		if !compilerTriggerMatches(t, root, event.Action) {
+		matched := compilerTriggerMatches(t, root, event.Action)
+		if commandFamily(t.Event) {
+			_, _, matched = commandMatch(t, event.Name, root)
+		}
+		if !matched {
 			continue
 		}
 		matches = append(matches, route)
@@ -377,6 +396,9 @@ func (m TriggerMapping) Match(event Event, limits Limits) ([]WorkflowTrigger, er
 }
 
 func compilerTriggerMatches(t CompilerTrigger, root any, action string) bool {
+	if commandFamily(t.Event) {
+		return false
+	}
 	selected := slices.Contains(t.Types, action)
 	if providerEvent(t.Event) {
 		selected = slices.Contains(t.NativeEvents, action) && len(selectedProviderActivities(t, root)) != 0

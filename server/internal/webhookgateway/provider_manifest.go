@@ -23,6 +23,9 @@ func providerNativeEvents(event string) []string {
 }
 
 func validateProviderDeclaration(t CompilerTrigger) error {
+	if commandFamily(t.Event) {
+		return nil
+	}
 	if !providerEvent(t.Event) {
 		if t.Provider != "" || t.ActivityNormalization != nil || t.NativeEvents != nil {
 			return ErrInvalid

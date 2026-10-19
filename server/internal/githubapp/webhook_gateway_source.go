@@ -13,6 +13,10 @@ import (
 func (d WebhookGatewayDispatcher) compilerSourcePreflight(ctx context.Context, subscription gateway.Subscription,
 	payload json.RawMessage, destination GatewayRepository,
 ) error {
+	if subscription.Compiler != nil && subscription.Compiler.CommandFilter != nil &&
+		(d.Receiving == nil || d.Receiving.WebhookGatewayServerURL() != subscription.Source.ServerURL) {
+		return gateway.ErrUnauthorized
+	}
 	if subscription.Source.External != nil {
 		if !time.Now().Before(subscription.Source.External.ExpiresAt) {
 			return gateway.ErrUnauthorized

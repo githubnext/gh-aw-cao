@@ -523,8 +523,9 @@ non-authoritative profile, its TLA+ model, and executable conformance traces.
 Receive and dispatch are separate processes and credential domains. Receive
 verifies bounded raw deliveries with source-specific HMAC secrets (or Azure
 service-hook HTTPS Basic credentials) and holds no App private keys.
-Dispatch holds independent receiving-App read and dispatch-App private keys, but
-no ingress credentials. It primes 30-second admission authorization proofs in the existing
+Dispatch holds independent receiving-App and dispatch-App private keys, but
+no ingress credentials. Receiving access is read-only except independently reviewed
+source label-consumption grants. It primes 30-second admission authorization proofs in the existing
 operational `StateStore`, even with an empty queue. One primer loop retains a
 rotating cursor across deadline-limited rounds so slow or failed subscriptions
 cannot always starve later routes. Egress independently rechecks
@@ -611,11 +612,12 @@ fallback. Original deliveries are authenticated, classified, and filtered before
 projection; GitHub `type` contains exactly the original action, bound to durable
 event identity. Optional `filters` contains only observed matching literals for
 every shared condition and one complete matching alternative, never unselected
-array elements, nested source objects, or cross-combined transition pairs. It is
+array elements, nested source objects, or cross-combined transition pairs.
 Azure selected lifecycle matches additionally carry exactly one matching
 `filters["closed-states"]` terminal name, not a source-path condition: entered for
 closed, departed for reopened. Otherwise that key is absent. Without predicates
-or a selected Azure lifecycle match, filters are omitted. Both old
+or a selected Azure lifecycle match, filters are omitted except for the explicit
+command event/token or label evidence described below. Both old
 `resource-url-types/v1` and `resource-url-types-filters/v1` policies are nonactivating.
 All additional data must be resolved inside the workflow through
 configured provider-authenticated readers; notification URLs never grant access.
@@ -647,11 +649,11 @@ mock GitHub tests, and separate bounded registry, source-selection and dispatch-
 demonstrate local contracts, not installed-compiler or live GitHub acceptance.
 Legacy compiler declaration v1 remains discovery-only. Declaration-v2 fixed
 context paths, same-event/delivery-ID batching, minimal URL/type/matching-filter policy,
-and optional source selectors match github/gh-aw#69772 commit 518516c. Gateway
+and optional source selectors match github/gh-aw#69772 commit 40c476c. Gateway
 `aw_context` contains only `webhook`, never supplied items, provenance, or resource
 details. Context resource identities are derived from canonical URLs. Discovery
-supports Projects, both security families, Jira, Linear, Azure DevOps, and generic
-`webhook` declarations. Projects remain discovery-only. Reviewed, expiring
+supports Projects, both security families, Jira, Linear, Azure DevOps, generic
+`webhook`, and synthetic slash/label-command declarations. Projects remain discovery-only. Reviewed, expiring
 `externalSources` independently binds each external route's family, canonical
 HTTPS resource prefix, provider scope/collection or literal generic identifiers
 and URL pointer, receive-only secret environment name, and explicitly enrolled
@@ -668,7 +670,7 @@ policy revision. A higher reviewed gateway policy revision atomically discards
 them, fences old ready/claimed work, and permits bounded rediscovery without
 reinterpreting old payloads or expanding authority.
 Upstream authoring places all declarations under `on.gateway-dispatch`, with
-shared `repos` selecting only code-scanning/Dependabot sources. The repository's
+shared `repos` selecting code-scanning/Dependabot and command sources. The repository's
 `.github/workflows/aw.json` opt-in remains independently required. These compilation
 gates never grant activation or dispatch authority; flat triggers, trigger-local
 `repos`, the former workflow `on.webhook-gateway` flag, obsolete `on.gateway`,
@@ -682,7 +684,8 @@ Optional compiler `orgs` is a lowercase/sorted/unique bounded list of GitHub
 organization names or `*` patterns. It intersects `repos`, project scopes and
 reviewed source enrollment, never widens scope or enumerates App inventory.
 Registry activation and live source preflight require authenticated Organization
-owner type/ID, not merely matching URL owner text; external families reject this
+owner type/ID, not merely matching URL owner text; commands also intersect these
+GitHub organization selectors, while external families reject this
 GitHub-only metadata and retain their mandatory native scopes.
 Jira/Linear HMAC and Azure HTTPS Basic authentication are source-specific; Linear
 also checks signed timestamps within one minute and acknowledges durable success
@@ -699,6 +702,35 @@ terminal name, never the nonterminal side or the entire configured set.
 Optional runtime interoperability executes that source's actual validator/
 normalizer, including exact/wildcard sources and whole-batch selector rejection,
 not a hosted workflow or an installed compiler.
+
+Native gateway slash/label commands follow the exact catalog and actual runtime
+at `github/gh-aw@40c476c070ecb53d9b31ae88c6cc9fab3c9e9045`. Independent reviewed
+`discovery.activateCommands` is absent/false by default. Shared source selectors,
+private source/destination inventories, immutable approved routes, fresh App
+authority, and the existing numeric-v2/projection-v2 fences still apply.
+The receiver alone splits issue versus PR comments, checks original actions and
+body paths, parses position-zero tokens with native exact/catch-all/trailing-star
+semantics, and matches exact labels. It forwards only the canonical original HTML
+item/comment URL, selected singleton action, and exact `filters.event` plus
+`filters.command` or `filters.label`; bodies and arguments never persist.
+Only the seven native comment/body sources qualify; reviews and bodyless actions
+do not. Comment anchors must match the selected source and positive original ID.
+The reviewed `discovery.serverUrl` (public GitHub by default), including a clean
+base path, must agree with the receiving API client and resource origin/path.
+URLs cannot register a server or confer access. Compiler prompt `gateway.events`
+is local normalized-delivery sugar, not an extra payload channel.
+
+Label consumption additionally requires the source's independently reviewed
+`allowLabelRemoval` grant and current receiving-App issues/pull_requests/discussions
+write permission, never just `remove_label` metadata. Only the dispatch role has
+this capability; receive and local simulation remain mutation-free. Each write
+rechecks source authority and occurs after atomic durable batch admission, under
+the existing fenced deadline and shared quota. A protected atomic attempt marker
+and expiring success receipt outlive the maximum job TTL. Confirmed receipts
+survive restart and suppress duplicate writes; unknown outcomes cannot be replayed
+against later reapplied labels. Unconfirmed consumption makes the batch terminal
+ambiguous without dispatch. Minimal REST issue/PR and GraphQL discussion reads
+and removal remain authenticated and never hydrate notification payloads.
 
 ## Source tree
 

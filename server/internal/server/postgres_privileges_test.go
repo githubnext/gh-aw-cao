@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -245,6 +246,19 @@ func testWebhookRuntime(t *testing.T, f postgresRoles) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var request map[string]any
+	if err := json.Unmarshal(job.Payload, &request); err != nil {
+		t.Fatal(err)
+	}
+	request["client_payload"].(map[string]any)["_gateway"] = map[string]any{
+		"version": "cao.webhook/v1", "sourceId": event.SourceID, "deliveryId": event.DeliveryID,
+		"subscriptionId": subscription.ID, "revision": policy.Revisions[subscription.ID],
+	}
+	job.Payload, err = json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	job.QueueRevision = policy.Revision
 	if _, err := queue.AdmitBatch(ctx, gateway.Admission{
 		Revision: policy.Revision, DeliveryID: event.DeliveryID, DeliveryDigest: gateway.MetadataDigest(payload),
 		Jobs: []gateway.Job{job},

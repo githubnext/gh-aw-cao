@@ -509,6 +509,8 @@
           "required": ["repositories", "activateSecurity"],
           "properties": {
             "activateSecurity": { "type": "boolean", "default": false },
+            "activateCommands": { "type": "boolean", "default": false },
+            "serverUrl": { "type": "string", "pattern": "^https://[a-z0-9.-]+(:[1-9][0-9]*)?(/[a-zA-Z0-9._~%+-]+)*$", "default": "https://github.com" },
             "intervalSeconds": { "type": "integer", "minimum": 30, "maximum": 3600, "default": 300 },
             "repositories": {
               "type": "array",
@@ -522,7 +524,8 @@
                   "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$" },
                   "repositoryId": { "type": "integer", "minimum": 1 },
                   "receivingInstallationId": { "type": "integer", "minimum": 1 },
-                  "dispatchInstallationId": { "type": "integer", "minimum": 1 }
+                  "dispatchInstallationId": { "type": "integer", "minimum": 1 },
+                  "allowLabelRemoval": { "type": "boolean", "default": false }
                 }
               }
             }

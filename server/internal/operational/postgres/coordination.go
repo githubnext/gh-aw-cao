@@ -102,6 +102,20 @@ func (s *Store) OperationalState(ctx context.Context, name string) ([]byte, erro
 	return value, err
 }
 
+// SetExpiringOperationalState retains a protected receipt without accumulating
+// permanent per-delivery state. Expiry never permits replay of an unexpired job.
+func (s *Store) SetExpiringOperationalState(ctx context.Context, name string, value []byte, ttl time.Duration) error {
+	if err := names(name); err != nil {
+		return err
+	}
+	if err := ttlValid(ttl); err != nil {
+		return err
+	}
+	return s.transact(ctx, func(t *transaction) error {
+		return t.put(key{"state", name, ""}, value, t.now.Add(ttl))
+	})
+}
+
 func (s *Store) RememberDelivery(ctx context.Context, id string, ttl time.Duration) (bool, error) {
 	if err := names(id); err != nil {
 		return false, err

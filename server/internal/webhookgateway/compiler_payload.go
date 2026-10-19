@@ -2,6 +2,7 @@ package webhookgateway
 
 import (
 	"encoding/json"
+	"maps"
 	"net/url"
 	"regexp"
 	"slices"
@@ -17,16 +18,24 @@ func validateCompilerSubscription(s Subscription, l Limits) error {
 		len(s.Destination.Fields) != 0 || len(s.Source.ProjectIDs) != 0 {
 		return ErrInvalid
 	}
-	if s.Source.External != nil {
+	switch {
+	case s.Source.External != nil:
 		if !externalDeclarationMatches(*s.Source.External, *t) ||
 			!slices.Contains(s.Source.External.DestinationRepositoryIDs, s.Destination.RepositoryID) {
 			return ErrInvalid
 		}
-	} else if s.Source.ID != CompilerSourceID || SecurityEventPermission(t.Event) == "" ||
+	case s.Source.ID != CompilerSourceID ||
 		t.Orgs != nil && s.Source.OrganizationID <= 0 ||
-		s.Source.RepositoryID <= 0 || t.Repos == nil && s.Source.RepositoryID != s.Destination.RepositoryID ||
+		s.Source.RepositoryID <= 0 || t.Repos == nil && s.Source.RepositoryID != s.Destination.RepositoryID:
+		return ErrInvalid
+	case commandFamily(t.Event):
+		if t.CommandFilter == nil || !validGitHubServerURL(s.Source.ServerURL) ||
+			!maps.Equal(s.Source.RequiredPermissions, commandPermissions(*t)) {
+			return ErrInvalid
+		}
+	case SecurityEventPermission(t.Event) == "" || s.Source.ServerURL != "" ||
 		s.Source.RequiredPermissions[SecurityEventPermission(t.Event)] != "read" ||
-		s.Source.RequiredPermissions["contents"] != "read" {
+		s.Source.RequiredPermissions["contents"] != "read":
 		return ErrInvalid
 	}
 	return validateCompilerTrigger(*t, t.Dispatch.Workflow, id, l)
@@ -81,6 +90,9 @@ func buildCompilerDispatchPayload(s Subscription, event Event, root any, l Limit
 	if s.Source.External != nil {
 		return buildExternalDispatchPayload(s, event, root, l)
 	}
+	if commandFamily(s.Source.Event) {
+		return buildCommandDispatchPayload(s, event, root, l)
+	}
 	payload, err := compilerProjection(root, event, l)
 	if err != nil {
 		return nil, err
@@ -134,6 +146,10 @@ func validateCompilerProperties(job Job, properties map[string]any, l Limits, bi
 	if !validCompilerNotification(s, root, job.Event.Action, bindIdentity) {
 		return ErrInvalid
 	}
+	if bindIdentity && commandFamily(s.Source.Event) &&
+		!validCommandNotification(s, root, job.Event.Action, job.Event.CommandEvent, true) {
+		return ErrInvalid
+	}
 	if bindIdentity && s.Source.External != nil {
 		activities, ok := notificationActivities(root)
 		if !ok || !slices.Equal(activities, job.Event.Activities) {
@@ -146,6 +162,9 @@ func validateCompilerProperties(job Job, properties map[string]any, l Limits, bi
 func validCompilerNotification(s Subscription, payload map[string]any, action string, bindIdentity bool) bool {
 	if s.Source.External != nil {
 		return validExternalNotification(s, payload)
+	}
+	if commandFamily(s.Source.Event) {
+		return validCommandNotification(s, payload, action, "", bindIdentity)
 	}
 	activities, ok := payload["type"].([]any)
 	if !validCompilerFilters(*s.Compiler, payload) || !validCompilerAlertURL(s.Source.Event, payload["url"]) ||
@@ -170,6 +189,10 @@ func compilerActivity(event, action string) bool {
 			event == "azure_devops_issue" && action == "restored"
 	case "webhook":
 		return genericWebhookType(action)
+	case "slash_command":
+		return slices.Contains([]string{"opened", "edited", "reopened", "created"}, action)
+	case "label_command":
+		return action == "labeled"
 	default:
 		return false
 	}

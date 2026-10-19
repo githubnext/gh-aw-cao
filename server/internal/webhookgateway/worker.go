@@ -22,6 +22,9 @@ type Worker struct {
 	FinishTimeout time.Duration
 	PollInterval  time.Duration
 	BatchWindow   time.Duration
+	LabelConsumer interface {
+		ConsumeLabels(context.Context, []Job) error
+	}
 }
 
 func (w *Worker) durations() (httpTimeout, lease, finish, poll time.Duration) {
@@ -140,6 +143,9 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 		outcome = "cancelled"
 		return true, errors.Join(ErrInvalid, w.cancelBatch(ctx, jobs))
 	}
+	if RequiresLabelRemoval(job.Subscription) && w.LabelConsumer == nil {
+		return true, ErrUnavailable
+	}
 	dispatch := w.Dispatcher.Dispatch
 	if job.Subscription.Compiler != nil {
 		compiler, ok := w.Dispatcher.(CompilerDispatcher)
@@ -229,6 +235,13 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 		return true, w.finishBatch(ctx, queue, jobs, Outcome{State: Ambiguous, Reason: "lease_insufficient"})
 	}
 	dispatchCtx, cancel := context.WithTimeout(ctx, httpTimeout)
+	if RequiresLabelRemoval(job.Subscription) {
+		if err := w.LabelConsumer.ConsumeLabels(dispatchCtx, jobs); err != nil {
+			cancel()
+			outcome = "ambiguous"
+			return true, errors.Join(err, w.finishBatch(ctx, queue, jobs, Outcome{State: Ambiguous, Reason: "label_consumption_unconfirmed"}))
+		}
+	}
 	dispatchCtx, dispatchEnd := gatewayStage(dispatchCtx, "dispatch", job.Subscription.Source.Event)
 	response := dispatch(dispatchCtx, job.Subscription, payload)
 	response.Kind = job.Subscription.Destination.Kind

@@ -134,7 +134,7 @@ enabled policy; BeginDispatch also checks the job and fresh authorization agree.
 The compiler MUST emit the versioned subscription declaration and a stable
 binding to the dispatchable workflow artifact and its source revision.
 [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
-`518516c8f3328cc781107497cf55380f9212adee`, defines a batch-v2 discovery interchange in
+`40c476c070ecb53d9b31ae88c6cc9fab3c9e9045`, defines a batch-v2 discovery interchange in
 the compiled lock-file header. That interchange is supported for
 discovery below; it is not the approved subscription schema in section 4.
 An installed compiler version MUST NOT be assumed to emit it merely because
@@ -213,17 +213,18 @@ alternative. It MUST NOT include unmatched array elements, sibling fields, neste
 source objects, or cross-combined transition pairs. Azure selected closed/reopened
 additionally requires exactly one matching configured terminal name under
 `filters["closed-states"]`, as defined in §6.2.2. Without predicates or a selected
-Azure lifecycle match, filters MUST be omitted. Both old `resource-url-types/v1`
+Azure lifecycle match, filters MUST be omitted except for command subscriptions'
+explicit event/token or label evidence in §6.2.3. Both old `resource-url-types/v1`
 and `resource-url-types-filters/v1` policies MUST remain nonactivating.
 GitHub notifications carry the single original action, not a state object.
 Missing or unknown policies, old `source_path`/`target_path` declarations,
 URL-only security payloads, and native Projects bodies MUST reject validation,
 never fall back to raw-body forwarding.
-The upstream [gateway specification](https://github.com/github/gh-aw/blob/518516c8f3328cc781107497cf55380f9212adee/docs/src/content/docs/specs/webhook-gateway-specification.md)
-defines seven event families, including provider-normalized activity arrays and
+The upstream [gateway specification](https://github.com/github/gh-aw/blob/40c476c070ecb53d9b31ae88c6cc9fab3c9e9045/docs/src/content/docs/specs/webhook-gateway-specification.md)
+defines seven resource families and two command families, including provider-normalized activity arrays and
 the generic `webhook` family.
-This bridge discovers all seven families and activates only explicitly delegated
-security routes or independently enrolled external routes. Projects remain
+This bridge discovers all nine families and activates only explicitly delegated
+security/command routes or independently enrolled external routes. Projects remain
 nonactivating. Unknown families MUST fail the entire artifact closed. No URL or projection
 policy supplies enrollment, permissions, or authority.
 Mixed versions, paths, modes, or unsupported projections MUST reject validation.
@@ -558,7 +559,7 @@ Conservatively treat external references as restricted/private, never as evidenc
 of actual provider visibility. Workflows MUST use authenticated provider readers
 for all additional resource data. URLs grant no access.
 
-Shared compiler `orgs` MAY select only Projects and the two security families,
+Shared compiler `orgs` MAY select Projects, the two security families and commands,
 with lowercase/sorted/unique organization names or `*` patterns (1–39 ASCII
 letters/digits/hyphens/stars, no leading/trailing hyphen). Patterns are ORed,
 case-insensitively, and intersect `repos`, project scope, conditions, and reviewed
@@ -566,6 +567,68 @@ source enrollment. Even `*` MUST NOT enroll sources. Registry activation and liv
 source preflight MUST verify actual authenticated Organization owner type/ID,
 not infer organization authority from URL owner text. External/generic
 declarations MUST NOT receive this GitHub-only metadata.
+
+### 6.2.3 Native command subscriptions and label consumption
+
+Command subscriptions MUST use synthetic family `slash_command` or
+`label_command`, unchanged numeric-v2 batching and `resource-url-types-filters/v2`.
+The normative compiler/runner contract is pinned to
+`github/gh-aw@40c476c070ecb53d9b31ae88c6cc9fab3c9e9045`, specifically
+`gateway_command_webhook.cjs`, `validate_webhook.cjs`, `webhook_resource.cjs` and
+`webhook_context.cjs`. Native slash parsing/matching uses
+`slash_command_matcher.cjs`. Compilation or this receiver implementation MUST
+NOT imply deployment or independently reviewed activation.
+
+`command_filter` MUST contain the corresponding `slash-command/v1` or
+`label-command/v1` policy, nonempty sorted/distinct `names` (slash at most 25,
+label at most 50), sorted/distinct semantic `events`, and native `strategy`.
+Slash supports `inline`/`centralized`; labels support `inline`/`decentralized`
+and require boolean `remove_label`. Slash MUST omit `remove_label`, including
+null. `native_events` MUST be the sorted/distinct native source union and
+`types` the exact action union. `conditions` MUST be empty; `any_of`, `provider`
+and `activity_normalization` MUST be absent. Shared repos/orgs intersect
+independent source enrollment; names/strategies do not grant authority.
+
+| Semantic source | Native delivery | Slash actions | Body | HTML path / required anchor |
+| --- | --- | --- | --- | --- |
+| `issues` | `issues` | opened, edited, reopened | issue.body | `/OWNER/REPO/issues/N`, none |
+| `issue_comment` | `issue_comment`, no issue.pull_request | created, edited | comment.body | `/OWNER/REPO/issues/N#issuecomment-C` |
+| `pull_request_comment` | `issue_comment`, with issue.pull_request | created, edited | comment.body | `/OWNER/REPO/pull/N#issuecomment-C` |
+| `pull_request` | `pull_request` | opened, edited, reopened | pull_request.body | `/OWNER/REPO/pull/N`, none |
+| `pull_request_review_comment` | `pull_request_review_comment` | created, edited | comment.body | `/OWNER/REPO/pull/N#discussion_rC` |
+| `discussion` | `discussion` | created, edited | discussion.body | `/OWNER/REPO/discussions/N`, none |
+| `discussion_comment` | `discussion_comment` | created, edited | comment.body | `/OWNER/REPO/discussions/N#discussioncomment-C` |
+
+Labels select only issues/pull_request/discussion `labeled` actions and exact
+original `label.name`, with unanchored item URLs. Slash commands MUST match an
+actual position-zero token using native exact/`*`/trailing-`*` semantics. Reviews,
+`submitted`, `ready_for_review`, `review_requested` and `#pullrequestreview-N`
+MUST NOT qualify. Numbers and required comment anchors MUST bind positive
+original IDs without leading zeroes. Resource URLs MUST bind the reviewed
+`discovery.serverUrl` origin and clean base path (default public GitHub), the
+actual receiving API configuration and current private source repository.
+Inbound URLs MUST NOT choose an API origin or confer source authority.
+
+Only canonical original HTML `url`, selected original singleton `type` and
+exactly `filters.event` plus `filters.command` or `filters.label` singleton
+actual matching literals may be persisted/forwarded. Bodies and arguments MUST
+NOT persist, including for invalid deliveries. Prompt `gateway.events` is
+compiler-local normalized `{delivery_id,payload}` access, not a wire field.
+
+Managed command activation MUST require separately reviewed
+`discovery.activateCommands:true` (default off), fresh private source/destination
+inventories, approved route and independent live grants. Consumption additionally
+requires the exact source's reviewed `allowLabelRemoval:true` and current
+receiving-App event-category write permission; `remove_label` metadata is not a
+write grant. Receive and local simulation MUST remain mutation-free.
+The dispatch consumer MUST run only after fenced atomic durable batch admission,
+within the existing deadline and shared quota, and recheck current source/write
+authority immediately before each REST issue/PR or GraphQL discussion mutation.
+Protected atomic attempt markers and expiring confirmed receipts MUST outlive
+the maximum job TTL. Confirmed receipts suppress repeated writes across restart;
+unknown outcomes MUST NOT replay against subsequently reapplied labels.
+Unconfirmed consumption MUST make the batch terminal ambiguous without workflow
+dispatch. Minimal authenticated ID/label reads MUST NOT hydrate notifications.
 
 ## 7. Event subscriptions and generic filters
 
@@ -1043,8 +1106,11 @@ Set `POSTGRES_URL` to a disposable local database to execute PostgreSQL cases;
 without it they skip. Package serialization avoids owner-bootstrap DDL contention
 on the shared test database. This suite is local conformance, not live acceptance.
 Set `WEBHOOK_COMPILER_RUNTIME_DIR` to `actions/setup/js/` from the inspected
-upstream commit to execute `TestCompilerBatchRuntimeInteroperability` and
-`TestCompilerSelectedSourceRuntimeInteroperability`; without it these optional
+upstream commit to execute `TestCompilerBatchRuntimeInteroperability`,
+`TestCompilerSelectedSourceRuntimeInteroperability` and
+`TestCommandPublishedRuntimeInteroperability`; the command test verifies SHA-256
+pins for the five actual command/validator/resource/context/matcher modules.
+Without the directory these optional
 tests skip. They pass production-built batches through the actual compiler
 validator/normalizer and check that two distinct deliveries yield one unique
 affected item, and that any out-of-selector URL rejects the complete batch.

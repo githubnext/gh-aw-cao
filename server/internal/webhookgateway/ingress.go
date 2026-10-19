@@ -56,7 +56,14 @@ func (h *Ingress) candidates(snapshot PolicySnapshot, event Event) []Subscriptio
 		h.index = make(map[ingressIndexKey][]Subscription)
 		for _, subscription := range snapshot.Subscriptions {
 			key := ingressIndexKey{subscription.Source.ID, subscription.Source.Event, indexedAction(subscription.Filter)}
-			h.index[key] = append(h.index[key], subscription)
+			if subscription.Compiler != nil && commandFamily(subscription.Source.Event) {
+				for _, native := range subscription.Compiler.NativeEvents {
+					key.event = native
+					h.index[key] = append(h.index[key], subscription)
+				}
+			} else {
+				h.index[key] = append(h.index[key], subscription)
+			}
 		}
 		h.revision = snapshot.Revision
 	}

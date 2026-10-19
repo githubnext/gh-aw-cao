@@ -601,7 +601,7 @@ on:
 The upstream compiler places all gateway declarations under `on.gateway-dispatch`;
 roles/bots and other native triggers remain outside that mapping under `on`.
 Shared `repos` belongs inside `gateway-dispatch`, not inside a trigger, and
-currently applies only to code-scanning/Dependabot subscriptions.
+applies to code-scanning/Dependabot and native command subscriptions.
 The repository still independently requires `"webhook-gateway": true` in
 `.github/workflows/aw.json`.
 These are compilation gates, not gateway activation or dispatch authority.
@@ -646,7 +646,7 @@ configured provider-authenticated readers; notification URLs do not grant access
 or justify attaching credentials to arbitrary origins.
 Legacy declaration v1 remains discoverable but cannot activate. The bridge
 matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
-`518516c8f3328cc781107497cf55380f9212adee`; optional interoperability tests
+`40c476c070ecb53d9b31ae88c6cc9fab3c9e9045`; optional interoperability tests
 execute that commit's actual runtime validator/normalizer, including exact and
 wildcard source selection, projected filter evidence, and rejection of any out-of-selector delivery. An installed
 compiler emitting v2 is still required. Secret-scanning triggers are not
@@ -659,7 +659,8 @@ match exist. Its flat keys are compiled condition names, plus the applicable Azu
 arrays containing only matching literals actually observed in that delivery.
 Include all shared conditions and one complete matching `any_of` group, never
 cross-combined transition pairs or unselected source-array elements. With no
-predicates or a selected Azure lifecycle match, omit `filters`. Both old
+predicates or a selected Azure lifecycle match, omit `filters` except for command
+subscriptions' explicit event/token or label evidence below. Both old
 `resource-url-types/v1` and `resource-url-types-filters/v1` inventories are
 nonactivating. Severity remains an ordinary compiled condition; only matching
 literals appear in `filters.severity`.
@@ -671,6 +672,47 @@ They intersect `repos`, reviewed enrollment and project scope; `*` grants nothin
 Activation and egress verify actual Organization owner type/ID through authenticated
 source binding, not merely a URL owner name. External triggers ignore this shared
 authoring option and do not receive `orgs` metadata.
+
+### Native slash and label commands
+
+The bridge consumes compiled `on.gateway-dispatch.slash-command` and
+`label-command` declarations from the pinned runtime above. It filters original,
+authenticated GitHub deliveries, including issue/PR comment splitting,
+position-zero slash tokens, exact/catch-all/trailing-star command matching, and
+exact label matching. Native command strategies are retained metadata, not
+authority to create listeners or routes. Shared `repos` and `orgs` intersect
+reviewed source enrollment and private inventories.
+
+Activation requires a separately reviewed `discovery.activateCommands:true`;
+omission remains off. Optional `discovery.serverUrl` defaults to
+`https://github.com` and binds the receiving API client's HTTPS origin and clean
+base path. Original HTML item links have no anchor; comment links require the
+catalog's exact original `#issuecomment-N`, `#discussion_rN`, or
+`#discussioncomment-N`. Reviews, submitted/ready-for-review/review-requested
+events, and arbitrary anchors never qualify. See RFC-033 §6.2.3 for the catalog.
+
+Wire payloads contain only `url`, selected singleton `type`, and
+`filters:{"event":["<semantic source>"],"command":["<actual token>"]}` or the
+equivalent exact `label` literal. No command body/arguments are stored or
+forwarded. `gateway.events` is compiler-local access to normalized deliveries,
+not another wire field or an authority channel.
+
+Compiled `remove_label:true` alone cannot write. The exact source row must also
+have independently reviewed `allowLabelRemoval:true`, and the receiving App
+must currently have the selected event category's write permission. This does
+not change checked-in rollout policy. Only the dispatch role receives the label
+consumer; receive and local simulation acquire no mutation capability.
+Consumption follows atomic durable batch admission and a fresh authority/quota
+check, using authenticated REST for issues/PRs or minimal GraphQL for discussions.
+Protected attempt markers and expiring confirmed receipts prevent repeated
+removal across retries/restarts. Ambiguous outcomes never retry a mutation or
+dispatch the workflow, protecting a subsequently reapplied label.
+
+`TestCommandPublishedRuntimeInteroperability` runs actual pinned validator and
+normalizer code for all seven slash sources and three label sources, including
+approved enterprise base paths and whole-batch rejection of unselected
+literals/extra fields/old policies. This is local conformance, not deployed or
+hosted interoperability.
 
 ### Enrolled Jira, Linear, Azure DevOps, and generic sources
 

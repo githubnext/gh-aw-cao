@@ -72,7 +72,8 @@ func currentSubscription(policy gateway.PolicySnapshot, job gateway.Job) (gatewa
 		if subscription.ID != job.Subscription.ID {
 			continue
 		}
-		if subscription.Source.External != nil && !gateway.ExternalSourceCurrent(policy, subscription, time.Now()) {
+		if !policy.CommandSourceAllowed(subscription) ||
+			subscription.Source.External != nil && !gateway.ExternalSourceCurrent(policy, subscription, time.Now()) {
 			return gateway.Subscription{}, gateway.Revision{}, gateway.ErrUnauthorized
 		}
 		revision := policy.Revisions[subscription.ID]
@@ -199,6 +200,12 @@ func authorityFailure(proof gateway.AuthorizationSnapshot, err error) (gateway.A
 func (a LiveAuthority) check(ctx context.Context, policy gateway.PolicySnapshot, subscription gateway.Subscription, proof gateway.AuthorizationSnapshot) (gateway.AuthorizationSnapshot, error) {
 	if subscription.Source.External != nil {
 		return a.checkExternal(ctx, policy, subscription, proof)
+	}
+	if subscription.Compiler != nil && subscription.Compiler.CommandFilter != nil {
+		origin, ok := a.Receiving.(interface{ WebhookGatewayServerURL() string })
+		if !ok || origin.WebhookGatewayServerURL() != subscription.Source.ServerURL {
+			return proof, gateway.ErrUnauthorized
+		}
 	}
 	receiver, _, err := a.Receiving.WebhookGatewayInstallation(ctx, subscription.Source.InstallationID)
 	if err != nil {

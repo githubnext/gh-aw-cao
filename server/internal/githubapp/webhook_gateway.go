@@ -49,6 +49,22 @@ type GatewayAPIError struct {
 	StatusCode int
 }
 
+func (c *Client) WebhookGatewayServerURL() string {
+	if c == nil {
+		return ""
+	}
+	if c.config.BaseURL == "" || strings.TrimSuffix(c.config.BaseURL, "/") == "https://api.github.com" {
+		return "https://github.com"
+	}
+	base, err := url.Parse(c.config.BaseURL)
+	if err != nil || base.Scheme != "https" || base.User != nil || base.Host == "" ||
+		base.RawQuery != "" || base.ForceQuery || base.Fragment != "" || base.RawPath != "" {
+		return ""
+	}
+	base.Path = strings.TrimSuffix(strings.TrimSuffix(base.Path, "/"), "/api/v3")
+	return base.String()
+}
+
 func (e *GatewayAPIError) Error() string {
 	return fmt.Sprintf("GitHub gateway authority unavailable (HTTP %d)", e.StatusCode)
 }

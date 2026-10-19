@@ -95,7 +95,11 @@ func validateCompilerBatch(s Subscription, payload json.RawMessage, l Limits) er
 		if err != nil || !ok || !validCompilerNotification(s, object, "", false) {
 			return ErrInvalid
 		}
-		if s.Source.External == nil {
+		if commandFamily(s.Source.Event) {
+			if !validCommandNotification(s, object, "", "", false) {
+				return ErrInvalid
+			}
+		} else if s.Source.External == nil {
 			parts := strings.Split(strings.TrimPrefix(object["url"].(string), "https://api.github.com/repos/"), "/")
 			if len(parts) != 5 || !CompilerRepositoryMatches(*s.Compiler, parts[0]+"/"+parts[1]) {
 				return ErrInvalid
@@ -123,8 +127,29 @@ func CompilerBatchRepository(s Subscription, payload json.RawMessage, repository
 		if json.Unmarshal(delivery.Payload, &projection) != nil {
 			return ErrInvalid
 		}
-		parts := strings.Split(strings.TrimPrefix(projection.URL, "https://api.github.com/repos/"), "/")
-		if len(parts) != 5 || !strings.EqualFold(parts[0]+"/"+parts[1], repository) {
+		var source string
+		if commandFamily(s.Source.Event) {
+			var notification struct {
+				Filters struct {
+					Event []string `json:"event"`
+				} `json:"filters"`
+			}
+			if json.Unmarshal(delivery.Payload, &notification) != nil || len(notification.Filters.Event) != 1 {
+				return ErrInvalid
+			}
+			var valid bool
+			source, _, valid = commandURLParts(s, projection.URL, notification.Filters.Event[0])
+			if !valid {
+				return ErrInvalid
+			}
+		} else {
+			parts := strings.Split(strings.TrimPrefix(projection.URL, "https://api.github.com/repos/"), "/")
+			if len(parts) != 5 {
+				return ErrInvalid
+			}
+			source = parts[0] + "/" + parts[1]
+		}
+		if !strings.EqualFold(source, repository) {
 			return ErrUnauthorized
 		}
 	}

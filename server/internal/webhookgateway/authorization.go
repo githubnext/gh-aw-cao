@@ -1,6 +1,9 @@
 package webhookgateway
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 func sameIDs(a, b []string) bool {
 	if len(a) != len(b) {
@@ -71,7 +74,11 @@ func authorize(now time.Time, s Subscription, expectedDigest string, event Event
 			return cancel("source-enrollment-expired")
 		}
 	}
-	if event.SourceID != src.ID || event.Name != src.Event ||
+	eventOK := event.Name == src.Event
+	if checkPayload && s.Compiler != nil && commandFamily(src.Event) {
+		eventOK = slices.Contains(s.Compiler.NativeEvents, event.Name)
+	}
+	if event.SourceID != src.ID || !eventOK ||
 		snapshot.ExternalSourceID != externalID || grant.ExternalSourceID != externalID ||
 		event.InstallationID != src.InstallationID ||
 		snapshot.SourceInstallationID != src.InstallationID ||

@@ -139,7 +139,9 @@ func RegistryPolicy(base PolicySnapshot, registry RegistrySnapshot, now time.Tim
 					}
 					continue
 				}
-				if !config.ActivateSecurity || trigger.SchemaVersion != 2 || SecurityEventPermission(trigger.Event) == "" {
+				command := commandFamily(trigger.Event)
+				if trigger.SchemaVersion != 2 || command && !config.ActivateCommands ||
+					!command && (!config.ActivateSecurity || SecurityEventPermission(trigger.Event) == "") {
 					continue
 				}
 				for _, source := range config.Repositories {
@@ -150,6 +152,9 @@ func RegistryPolicy(base PolicySnapshot, registry RegistrySnapshot, now time.Tim
 					sourceRecord, found := available[source.RepositoryID]
 					owner, _, _ := strings.Cut(source.Repository, "/")
 					if !found || !CompilerOrganizationMatches(trigger, owner, sourceRecord.OwnerID, sourceRecord.OwnerType) {
+						continue
+					}
+					if command && trigger.CommandFilter.RemoveLabel != nil && *trigger.CommandFilter.RemoveLabel && !source.AllowLabelRemoval {
 						continue
 					}
 					subscription, revision, grant, err := discoveredSecuritySubscription(base.Policy, source, sourceRecord, binding, record, workflow, trigger)
@@ -196,6 +201,10 @@ func discoveredSecuritySubscription(policy GatewayPolicy, source DiscoveryReposi
 			RepositoryID: binding.RepositoryID, EventType: trigger.Dispatch.EventType},
 		Delivery: DeliveryPolicy{TTLSeconds: ttl, LeaseSeconds: min(60, ttl), MaxAttempts: 5, RetryDelaySeconds: min(10, ttl)},
 		Compiler: &trigger,
+	}
+	if commandFamily(trigger.Event) {
+		s.Source.RequiredPermissions = commandPermissions(trigger)
+		s.Source.ServerURL = policy.Discovery.GitHubServerURL()
 	}
 	revision := Revision{RepositoryID: binding.RepositoryID, CommitSHA: record.CommitSHA,
 		MetadataPath: workflow.Path, Digest: workflow.SHA256, CompilerID: "gh-aw-manifest-v1"}

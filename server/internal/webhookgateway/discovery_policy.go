@@ -13,12 +13,15 @@ type DiscoveryRepository struct {
 	RepositoryID            int64  `json:"repositoryId"`
 	ReceivingInstallationID int64  `json:"receivingInstallationId"`
 	DispatchInstallationID  int64  `json:"dispatchInstallationId"`
+	AllowLabelRemoval       bool   `json:"allowLabelRemoval,omitempty"`
 }
 
 type DiscoveryPolicy struct {
 	Repositories     []DiscoveryRepository `json:"repositories"`
 	IntervalSeconds  int64                 `json:"intervalSeconds,omitempty"`
 	ActivateSecurity bool                  `json:"activateSecurity"`
+	ActivateCommands bool                  `json:"activateCommands,omitempty"`
+	ServerURL        string                `json:"serverUrl,omitempty"`
 }
 
 func (d *DiscoveryPolicy) UnmarshalJSON(data []byte) error {
@@ -37,8 +40,44 @@ func (d *DiscoveryPolicy) UnmarshalJSON(data []byte) error {
 	if _, explicit := fields["intervalSeconds"]; explicit && result.IntervalSeconds == 0 {
 		return ErrInvalid
 	}
+	for _, key := range []string{"activateCommands", "serverUrl"} {
+		if raw, exists := fields[key]; exists && bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			return ErrInvalid
+		}
+	}
+	if _, explicit := fields["serverUrl"]; explicit && !validGitHubServerURL(result.ServerURL) {
+		return ErrInvalid
+	}
 	*d = DiscoveryPolicy(result)
 	return nil
+}
+
+func (d DiscoveryPolicy) GitHubServerURL() string {
+	if d.ServerURL == "" {
+		return "https://github.com"
+	}
+	return d.ServerURL
+}
+
+// CommandSourceAllowed requires reviewed activation and a separate source-write
+// grant. Neither compiler metadata nor installation credential reach grants it.
+func (p PolicySnapshot) CommandSourceAllowed(s Subscription) bool {
+	if !commandFamily(s.Source.Event) {
+		return true
+	}
+	d := p.Policy.Discovery
+	if s.Compiler == nil || d == nil || !d.ActivateCommands || s.Compiler.CommandFilter == nil ||
+		s.Source.ServerURL != d.GitHubServerURL() {
+		return false
+	}
+	for _, source := range d.Repositories {
+		if source.RepositoryID == s.Source.RepositoryID && source.ReceivingInstallationID == s.Source.InstallationID &&
+			p.RepositoryAllowed(source.Repository) && CompilerRepositoryMatches(*s.Compiler, source.Repository) {
+			remove := s.Compiler.CommandFilter.RemoveLabel
+			return remove == nil || !*remove || source.AllowLabelRemoval
+		}
+	}
+	return false
 }
 
 // ProjectAssignment is control-repository authority, not a declaration supplied
@@ -81,9 +120,13 @@ func ValidateDiscoveryPolicy(p GatewayPolicy) error {
 		if len(d.Repositories) == 0 || len(d.Repositories) > 64 || d.Interval() < 30 || d.Interval() > 3600 {
 			return ErrInvalid
 		}
+		if !validGitHubServerURL(d.GitHubServerURL()) {
+			return ErrInvalid
+		}
 		for _, r := range d.Repositories {
 			if !RepositoryNameOK(r.Repository) || r.RepositoryID <= 0 || r.ReceivingInstallationID <= 0 ||
-				r.DispatchInstallationID <= 0 || repositories[r.RepositoryID] || names[strings.ToLower(r.Repository)] {
+				r.DispatchInstallationID <= 0 || repositories[r.RepositoryID] || names[strings.ToLower(r.Repository)] ||
+				r.AllowLabelRemoval && !d.ActivateCommands {
 				return ErrInvalid
 			}
 			repositories[r.RepositoryID], names[strings.ToLower(r.Repository)] = true, true
