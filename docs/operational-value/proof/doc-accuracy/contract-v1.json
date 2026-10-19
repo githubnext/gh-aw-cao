@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "version": "doc-accuracy-local-reference-v1",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "frozenRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "assessment": "Historical fixed-reference assessment authored before native outcome inspection; not ex-ante adoption measurement.",
+  "sources": {
+    "designer-drift-audit": {
+      "blob": "91261191d20f97e8c511ed9690db4dd283ea35b9",
+      "goal": "Keep the workflow designer synchronized with authoritative aw reference documents.",
+      "scope": [".github/aw/designer.md", ".github/agents/interactive-agent-designer.agent.md"],
+      "partial": "Distinct explicitly written repository-local documentation references repaired from a nonexistent file to an existing file in a native parent/child transition.",
+      "strict": "Every reported drift item independently resolved, all seven source audit categories accurate, no false positive drift assertions.",
+      "historicalApplicability": "Parent and child workflow source must both contain the designer synchronization goal and stale-reference audit.",
+      "rejectedPredicates": ["Issues created", "Closed drift issues", "Designer file changed", "Safe-output name mentioned anywhere", "Job succeeded"]
+    },
+    "daily-doc-healer": {
+      "blob": "424b398cdf60be1db7f87708e3d67012eafc81ac",
+      "goal": "Detect and fix confirmed documentation gaps missed by the updater and improve its rules.",
+      "scope": ["docs/src/content/docs/"],
+      "partial": "Distinct repository-local Markdown cross-reference targets repaired from a nonexistent file to an existing file in a native parent/child transition.",
+      "strict": "A recently closed documentation issue missed by the updater has a confirmed content gap completely repaired without violating rejection, experimental-engine or site-build exemptions; recurrence rules improved when warranted.",
+      "historicalApplicability": "Parent and child workflow source must both contain the healer mission to detect gaps missed by DDUw. A reference repair alone does not establish the healer opportunity prerequisites.",
+      "rejectedPredicates": ["Issues or PRs created", "Merge alone", "Words edited", "Issue closure", "Unverified artifact constant mentioned"]
+    },
+    "daily-doc-updater": {
+      "blob": "02aebaffb8fbe3201e5a5c8a0ee6acf2e9be24cb",
+      "goal": "Maintain accurate and complete user documentation as features and behavior change.",
+      "scope": ["docs/src/content/docs/"],
+      "excluded": ["docs/src/content/docs/index.mdx", "README.md"],
+      "partial": "Distinct repository-local Markdown cross-reference targets repaired from a nonexistent file to an existing file in a native parent/child transition.",
+      "strict": "Confirmed user-facing documentation gap fully repaired against the implementation, structurally valid examples, current terminology and documentation guidelines, no protected-file edits.",
+      "historicalApplicability": "Parent and child workflow source must both contain the mission to update documentation based on recent code changes.",
+      "rejectedPredicates": ["PR merged", "Successful workflow", "Text length increased", "Code symbol string present", "All relative links assumed correct"]
+    }
+  },
+  "partialRules": {
+    "unit": "repaired local reference targets",
+    "nativeCheck": "Parse only explicit Markdown inline links without titles or escaped/nested destinations, or backtick-quoted literal repository paths. Resolve relative paths against the containing document; repository-root literals against the tree. Require an explicit Markdown extension and a regular target blob. Reject external URLs, anchors, directories, variable templates and ambiguous syntax.",
+    "transition": "Within a changed scoped document, compare before-only unresolved destinations and after-only resolved destinations at the same reference site; accept only an unambiguous one-to-one substitution with otherwise identical line context, or an unchanged reference whose previously missing target is added. Require both whole trees and exact native parent/child objects. Never count deletion of a broken reference as repair.",
+    "deduplication": "Count each document plus old/new target transition once over retained history, not once per snapshot or repeated mention.",
+    "period": "Seven-day non-overlapping cutoff-aligned intervals; transition timestamp must lie in [start,end). At most two native changes per workflow in initial cohort.",
+    "unknown": "Missing objects, unassessed history, incompatible source eras, insufficient lineage and full semantic correctness remain null; zero only for an actually assessed scoped case.",
+    "attribution": "Repository movement is independent of actor. Discovery references are candidates only. No workflow contribution without corroborated original lineage; no receipt-verified credit without creation evidence.",
+    "safeguards": "A local file existing proves neither route validity, anchor correctness, prose correctness, rendered usability nor general documentation completeness.",
+    "cost": "Not measured; no weights, monetary conversion or keep threshold."
+  }
+}

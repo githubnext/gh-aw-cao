@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "instrumentVersion": "doc-consolidation-v1",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "designStatus": "Frozen before inspecting native candidate results; retrospective fixed-source assessment, not ex-ante historical acceptance.",
+  "selection": "At most two native changes per workflow; earliest and latest source-linked PR candidates by creation time where available. Claude discussions are not covered by issue/PR discovery: inspect at most two immutable core-document changes selected from history metadata.",
+  "sharedRules": {
+    "actorIndependent": true,
+    "missing": "Unknown facts score null, not zero. A bounded accepted case is partial coverage, not a complete repository-period population.",
+    "attribution": "Editable markers are corroborating discovery only. Missing protected creation receipts do not erase independently proven repository outcomes.",
+    "period": "Seven-day disjoint intervals aligned backward from cutoff, inclusive start and exclusive end; timestamp from immutable first-parent change, never mutable acquisition state.",
+    "fullGoal": "Semantic accuracy, usability, essential facts, examples, links and warnings must be independently established. Reduced size, merged state or generated reports alone never prove full completion.",
+    "decision": "Not rated: no source-defined keep bar or matching costs.",
+    "historicalApplicability": "Frozen-source fixed-reference predicates can assess historical native facts but cannot establish that later intent was applicable at their time."
+  },
+  "workflows": {
+    "unbloat-docs": {
+      "sourceBlob": "fd6994d6473be8d40b22805f406b20e0848da8ea",
+      "goal": "Reduce documentation verbosity while preserving clarity and completeness.",
+      "opportunity": "One changed eligible markdown document under docs/src/content/docs, excluding blog, generated frontmatter-full.md and protected files.",
+      "partialAcceptance": "Deletion-only removal of one or more exact repeated prose paragraphs within the same heading context, retaining at least one byte-identical occurrence and all distinct paragraphs in order. Do not treat code, links, headings, frontmatter, warnings or Mermaid as disposable paragraphs.",
+      "nativeUnit": "content-preserving duplicate occurrences removed",
+      "fullAcceptance": "Exactly one eligible file improved; source-defined at-least-20-percent bloat reduction plus preserved essential information, links, examples, metadata, diagrams and accurate usable technical content.",
+      "rejected": ["word-count reduction alone", "line-count reduction alone", "merge alone", "agent bloat score", "PR or run count"]
+    },
+    "developer-docs-consolidator": {
+      "sourceBlob": "56150ba5b670e7b088c45e7106ebafbe3946d75a",
+      "goal": "Consolidate developer documentation into a unified searchable instructions file while preserving important implementation details.",
+      "opportunity": "Changed specs/ or scratchpad/ markdown and scratchpad/dev.md.",
+      "partialAcceptance": "A byte-identical complete source prose paragraph that occurred in multiple source documents is retained in scratchpad/dev.md while a redundant source occurrence is removed; every distinct source paragraph remains in its source or the consolidated file. Code, warning, link and heading relocation need independent usability verification and are not accepted by this narrow oracle.",
+      "nativeUnit": "lossless redundant source occurrences consolidated",
+      "fullAcceptance": "Unified single source of truth, important details and useful examples preserved, accurate actionable guidance, consistent technical tone, valid markdown and diagrams and no broken links.",
+      "scopeAmbiguity": "Source names specs/, scratchpad/, developer.instructions.md and scratchpad/dev.md inconsistently. Native facet uses explicit target scratchpad/dev.md; broader scope resolution remains unknown.",
+      "rejected": ["files deleted alone", "lines reduced alone", "consolidated file exists", "discussion or PR created", "subjective clarity score"]
+    },
+    "claude-code-user-docs-review": {
+      "sourceBlob": "040ec6b88ae91baa0af077daf9b23401f90be806",
+      "goal": "Remove documentation barriers to understanding and adopting gh-aw using Claude Code without Copilot.",
+      "opportunity": "Immutable before/after change to README.md or the six core documentation paths enumerated by doc-reader.",
+      "partialAcceptance": "A source-defined concrete Copilot-free Claude setup/auth barrier is demonstrated in original before content and independently resolved in original after content with correctly specified Claude engine selection and required secret setup, verified against contemporaneous immutable implementation or standards. Merely mentioning Claude or increasing example counts is not a repair.",
+      "nativeUnit": "independently verified Claude onboarding barriers repaired",
+      "fullAcceptance": "Copilot-free onboarding is followable, engine and tool classification accurate, prerequisites and authentication complete, and cited severity-specific barriers resolved without incorrect instructions.",
+      "discoveryLimitation": "Workflow publishes Discussions. Issue/PR inventory does not establish Discussion discovery or zero workflow contributions.",
+      "rejected": ["Claude mention count", "engine example count", "reports or discussions written", "review success", "merge alone"]
+    }
+  },
+  "predecessors": [],
+  "rejections": ["Universal protected runtime receipt gate for independently observable content preservation", "Generic activity proxy substituted for missing native facts", "Backdating new instrumentation to true workflow introduction"]
+}

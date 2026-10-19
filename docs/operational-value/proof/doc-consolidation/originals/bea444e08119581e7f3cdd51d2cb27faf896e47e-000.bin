@@ -1,0 +1,42 @@
+tree 67cd01262f0bd7455659ca5780aa189cf4ff1474
+parent b4d797192ba7015cce621a4af9473a87dcc48553
+author github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com> 1769450199 +0000
+committer GitHub <noreply@github.com> 1769450199 +0000
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJpd6rXCRC1aQ7uu5UhlAAAKDAQAGDWsqiRNmZWCbgpPwtSmyn/
+ Zk3I1zpwVQep3+BnwFHTQhpCH+9p2n5qO02jGyy64vpuCOV37dbgHp3mXbQNr5qV
+ MJIsGQePbQX26r5Z4/HP894Pm+jpVI+TXsT1a329ydR5e+qwvPDA3bCyZMwQnXE7
+ mzCkvsJl3EmgLljnfhFxwHamfbejKmcJUveSD1d7bME7uS/vX+fiXdef8cJvBvMv
+ 1eZ/+9sJ0lNBWO4kWYqAN9+UNu04d9m5Fo/74B8u//FZxHKAByAX0iJ6AkahQgKi
+ jXbHtIoDENSCYCXu/PPOyWNRUbica7h7IjfSvqw7owxuachnwwkrFPs02+dXbW2t
+ R0C1PHzkZP++EXDMhk13Q23GkrSlgpJnXO0lbh8gRaJ4qtG1wiCx8aW40jiVaMJP
+ Xi2Mk2BJQHxlLKt2FAzsPQK39Xlkq+fDEqnGdRbDapsjmkKZyvLQJoMjavBDaRDG
+ DBLFaA8tysp2YsLlhpM1WuB9JpIxCwc5hU6dTn6tjWzvlVULo2PZGGZLwqmJP86P
+ Ic5L5guKDbaqjvA2WgB+W68TQkqzLUSCjJq+GlRYQM9w7L83/Ik9n7l9kQ2ThlX7
+ DMaceSQvs5+rIFlQuaGGwvA3h1pDVRqM1AubDuL/mJqdiDu//WmjPeoUPoMuc+/H
+ Yrc6+XOc8cHxn1Qhpy4k
+ =1d2s
+ -----END PGP SIGNATURE-----
+ 
+
+docs: unbloat How Agentic Workflows Work blog post (#11890)
+
+Reduced from 582 to 246 lines (57.7% reduction, 336 lines removed).
+
+Changes:
+- Condensed frontmatter configuration section from excessive bullet lists into concise prose
+- Shortened "Effective prompts" from 8 bullets to a single sentence
+- Streamlined compilation process details (schema validation, security, imports, job generation)
+- Consolidated agent execution environment from 3 separate lists into one paragraph
+- Reduced output types examples from 5 detailed code blocks to 2 representative examples
+- Compressed auditable artifacts from 4 detailed sections into one paragraph
+- Unified AI engine interface from 4 verbose sections into one concise paragraph with single code example
+- Simplified MCP server architecture from 3 sections to 1 paragraph
+- Condensed error handling and debugging from 4 sections to 1 paragraph
+- Reduced performance considerations from 3 sections with multiple bullets to 2 sentences
+
+All essential information preserved while significantly improving scannability and reducing cognitive load.
+
+Co-authored-by: pelikhan <pelikhan@github.com>
+Co-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>

@@ -1,0 +1,23 @@
+tree af6a0ff358586678f3d67d90225c63769eac7a79
+parent ad0b3cdb208bea16b03741c046adb12b7e59abcb
+author Copilot <198982749+Copilot@users.noreply.github.com> 1778713561 -0700
+committer GitHub <noreply@github.com> 1778713561 -0700
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqBQPZCRC1aQ7uu5UhlAAAXIgQAHFunXH+OtVrGF7uMnTUddbo
+ 2sgFhUxiajO0210LDEtWa2oZYaMhAZNjOONKy1BS6nPWDGnOeuCaAm/rf5ihTLA2
+ CjQYPGtUP//MqOGR2KR3jzLpuZy5rvpoqllEtGMlXZJruRnmCMgHrekbyQPHQMvS
+ NMuViUpH37RjbqDPWMEhcr9ZA6Ho2X0Cxvdl1tLQaiENsuHBzLlIL8PV6QBRkeJf
+ iNnlij5Rpd21h1jJiB+tw6uJO2GESJ/2qbQRj8t2znDgAbISneZBuc8VRb9Nctka
+ dCqb2rA/nDmvzdgUjE0vGM1G9Qrxe8T23R0kgtAo/9auIalHyCEDPqsoA/BkhNrX
+ zzKtawBZNM8MewuWRFergchDtjDmqFOTrvyUN+5jDZLuKabOs/0UcKmr4UU3YJ+u
+ 62TS8//mUT9FJcTubXrqTzPLa1JWnp5dGgfoPB31kf33qmHSk3y4JH3BXOblLgdi
+ ZQ3OUHVkrC2dAXIP921m/Dp2CWnK1NSVX3SmvodV8TncpPClCauZOQJ/WSnNW9M2
+ V9NGaRC4kpPAyQcYGtf0lA0yPY6oB3lykzOClcAMBgcWpNFq4/RcgeyTM0CPBV2e
+ BeJIWKNJcoC7Lz5CvTA2llFWyBhEOGckSgRPl2U+M4jMhJ1riTFMVLP+ce076htk
+ LXkvTqkygW67kSQUFVRn
+ =ftgg
+ -----END PGP SIGNATURE-----
+ 
+
+Improve Claude onboarding parity in Quick Start and neutralize engine-specific architecture labels (#32016)

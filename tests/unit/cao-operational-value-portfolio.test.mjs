@@ -196,8 +196,7 @@ test("the retained repository-wide proof replays coverage rather than promoting 
   for (const id of ["daily-model-resolution", "daily-model-inventory",
     "daily-credit-limit-test", "daily-aw-cross-repo-compile-check", "avenger",
     "step-name-alignment", "workflow-normalizer", "cli-consistency-checker", "daily-syntax-error-quality",
-    "artifacts-summary", "designer-drift-audit", "daily-doc-healer", "daily-doc-updater",
-    "unbloat-docs", "developer-docs-consolidator", "claude-code-user-docs-review",
+    "artifacts-summary",
     "dependabot-burner", "dependabot-go-checker", "go-fan", "eslint-miner", "eslint-refiner", "linter-miner"]) {
     const row = model.workflows.find(workflow => workflow.id === id);
     assert.equal(row.measurement.status, "evaluation-in-progress");
@@ -206,7 +205,14 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.ok(model.totals.measured >= 2);
+  assert.equal(model.totals.measured, 61);
+  assert.equal(model.totals.workflows - model.totals.measured, 283);
+  assert.deepEqual(archived.totals, model.totals);
+  const index = readFileSync(path.join(directory, "index.html"), "utf8");
+  const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
+  assert.ok(index.includes(`${percentage}% native evaluation coverage: ${model.totals.measured} / ${model.totals.workflows} workflows.`));
+  assert.ok(index.includes(`${model.totals.workflows - model.totals.measured} still lack a native evaluation.`));
+  assert.ok(index.includes(`<progress max="${model.totals.workflows}" value="${model.totals.measured}"`));
   assert.equal(model.totals.needsInstrumentation + model.totals.needsOutcomeContract
     + model.totals.needsIntentReview + model.totals.inProgress + model.totals.evidenceUnavailable + model.totals.measured, 344);
   assert.equal(archived.historyIndexSha256, censusDigest(acquired.index));
@@ -265,6 +271,38 @@ test("Pydantic native Python read does not satisfy strict read_file or full goal
   for (const key of ["evidenceReady", "evaluationReady", "plotReady"]) assert.equal(ci[key], false);
   assert.match(readFileSync("docs/operational-value/gh-aw-workflows/smoke-ci-pulse.html", "utf8"),
     /<!doctype html>/i);
+});
+
+test("documentation native partials preserve rejected predicates, historical gaps and scoped nonacceptance", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [workflowId, metric, expected, periods] of [
+    ["designer-drift-audit", "factualRepairs", [12, 0], 20],
+    ["daily-doc-healer", "factualRepairs", [2], 34],
+    ["daily-doc-updater", "factualRepairs", [0, 1], 53],
+    ["claude-code-user-docs-review", "native-improvements", [1], 39],
+    ["developer-docs-consolidator", "native-improvements", [0], 50],
+  ]) {
+    const timeline = measurements.find(row => row.workflowId === workflowId).input;
+    assert.equal(timeline.snapshots.length, periods);
+    assert.deepEqual(timeline.snapshots.map(snapshot => snapshot.metrics[metric]).filter(value => value !== null), expected);
+    const work = progress.find(row => row.workflowId === workflowId);
+    assert.equal(work.partial, true);
+    assert.equal(work.evaluationReady, true);
+    const accuracy = metric === "factualRepairs";
+    for (const snapshot of timeline.snapshots) {
+      assert.equal(snapshot.metrics[accuracy ? "semanticAccepted" : "full-goal"], null);
+      assert.equal(snapshot.metrics[accuracy ? "linkedRepairs" : "workflow-contribution"], null);
+      if (accuracy) assert.ok(snapshot.metrics.referenceRepairs === null || snapshot.metrics.referenceRepairs === 0);
+    }
+    if (accuracy) assert.match(timeline.valueFunction.definition.assessment, /Outcome-informed retrospective/);
+  }
+  const claude = measurements.find(row => row.workflowId === "claude-code-user-docs-review").input;
+  assert.equal(claude.snapshots.at(-1).metrics["native-improvements"], null);
+  assert.equal(measurements.some(row => row.workflowId === "unbloat-docs"), false);
+  const unbloat = progress.find(row => row.workflowId === "unbloat-docs");
+  assert.equal(unbloat.blocked, true);
+  assert.equal(unbloat.reportAvailable, true);
+  for (const key of ["evidenceReady", "evaluationReady", "plotReady"]) assert.equal(unbloat[key], false);
 });
 
 test("positive partial native evaluations retain unknown completion and open-history labels", async () => {

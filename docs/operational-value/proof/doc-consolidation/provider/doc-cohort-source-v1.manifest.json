@@ -1,0 +1,184 @@
+{
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "requests": [
+    [
+      "daily-doc-healer",
+      "ec7e4e9d0c5be669b47f98ddd41998f5365eb0b9"
+    ],
+    [
+      "daily-doc-updater",
+      "5410325a73b7fcbb9908472f5d2c6b78aca384f5"
+    ],
+    [
+      "unbloat-docs",
+      "e64f39b7974dfe78f59103fe1b217fc1aeb7bbc5"
+    ],
+    [
+      "developer-docs-consolidator",
+      "c7de75d22400bc2f8cedf469e36958cbb5b0a619"
+    ],
+    [
+      "claude-code-user-docs-review",
+      "db200672501b070730883c675e753e6401313273"
+    ],
+    [
+      "claude-code-user-docs-review",
+      "fbdd9a946dc41232c0d5bbbba65c4da1f7977a0f"
+    ]
+  ],
+  "receipts": [
+    {
+      "workflow": "daily-doc-healer",
+      "endpoint": "repos/github/gh-aw/git/blobs/ec7e4e9d0c5be669b47f98ddd41998f5365eb0b9",
+      "sha": "ec7e4e9d0c5be669b47f98ddd41998f5365eb0b9",
+      "method": "GET",
+      "startedAt": "2026-10-19T13:39:31.788Z",
+      "receivedAt": "2026-10-19T13:39:32.438Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 13:39:32 GMT",
+        "etag": "W/\"57e45d7e6df86004342f9201cc944845752db2c491cb6ef8ba5c8a9f9133de6f\"",
+        "x-github-request-id": "E8F0:2C1577:152EE9E:1E94F18:6AD61D94",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14229",
+        "x-ratelimit-reset": "1792418088",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 8844,
+      "bodySha256": "1e41ff1791366c6762b890976b1f4a7c754b61bb962facfc966db52a92269106",
+      "response": "ec7e4e9d0c5be669b47f98ddd41998f5365eb0b9.response.json",
+      "blobBytes": 6216,
+      "blobSha256": "98c2e50b925d49b4f9b9d52678f35ca4a9fac36c119037e87301dd405055aa43",
+      "blob": "ec7e4e9d0c5be669b47f98ddd41998f5365eb0b9.blob"
+    },
+    {
+      "workflow": "daily-doc-updater",
+      "endpoint": "repos/github/gh-aw/git/blobs/5410325a73b7fcbb9908472f5d2c6b78aca384f5",
+      "sha": "5410325a73b7fcbb9908472f5d2c6b78aca384f5",
+      "method": "GET",
+      "startedAt": "2026-10-19T13:39:34.076Z",
+      "receivedAt": "2026-10-19T13:39:34.526Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 13:39:34 GMT",
+        "etag": "W/\"95b0ba68523e4eda0bd9cfe682ec3dd965299b158d6e56cd7e490343a5e8543a\"",
+        "x-github-request-id": "F805:309620:151AB49:1E936F1:6AD61D96",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14227",
+        "x-ratelimit-reset": "1792418088",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 10236,
+      "bodySha256": "7a622f0400a80a4f7df82d681fe55d989e147a3a4539952f7dc8bde102b4e84a",
+      "response": "5410325a73b7fcbb9908472f5d2c6b78aca384f5.response.json",
+      "blobBytes": 7227,
+      "blobSha256": "04d53fb0354d51ac905381b0d3c2cbb7072f489777e3c60f9670ff3ba594b318",
+      "blob": "5410325a73b7fcbb9908472f5d2c6b78aca384f5.blob"
+    },
+    {
+      "workflow": "unbloat-docs",
+      "endpoint": "repos/github/gh-aw/git/blobs/e64f39b7974dfe78f59103fe1b217fc1aeb7bbc5",
+      "sha": "e64f39b7974dfe78f59103fe1b217fc1aeb7bbc5",
+      "method": "GET",
+      "startedAt": "2026-10-19T13:39:36.144Z",
+      "receivedAt": "2026-10-19T13:39:36.603Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 13:39:36 GMT",
+        "etag": "W/\"dbdb905b61c2b69e5e2a3d00695f1c2cedafa3074eb30741b114b503fec49a79\"",
+        "x-github-request-id": "EDCA:1D1C60:155464E:1ECC405:6AD61D98",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14226",
+        "x-ratelimit-reset": "1792418088",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 8592,
+      "bodySha256": "869d1b6f39fd08eea318be1867195febcdf060a7bf0c97b3e42da2b8c71594c2",
+      "response": "e64f39b7974dfe78f59103fe1b217fc1aeb7bbc5.response.json",
+      "blobBytes": 6031,
+      "blobSha256": "63b841afb3961b03cc9c31e9e764ffe590d85ef54ecbb44057af9f7aafafa0d7",
+      "blob": "e64f39b7974dfe78f59103fe1b217fc1aeb7bbc5.blob"
+    },
+    {
+      "workflow": "developer-docs-consolidator",
+      "endpoint": "repos/github/gh-aw/git/blobs/c7de75d22400bc2f8cedf469e36958cbb5b0a619",
+      "sha": "c7de75d22400bc2f8cedf469e36958cbb5b0a619",
+      "method": "GET",
+      "startedAt": "2026-10-19T13:39:38.226Z",
+      "receivedAt": "2026-10-19T13:39:38.688Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 13:39:38 GMT",
+        "etag": "W/\"763159c264dd63729cb636b90f646f97c3b79e0331f66a206e3a4399404f4cea\"",
+        "x-github-request-id": "F699:2C1577:15336FE:1E9B4EB:6AD61D9A",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14225",
+        "x-ratelimit-reset": "1792418088",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 20331,
+      "bodySha256": "178ac41670f923d010f08224fa0fd1fcd9584b43f8e3130af072e0a3ad491351",
+      "response": "c7de75d22400bc2f8cedf469e36958cbb5b0a619.response.json",
+      "blobBytes": 14552,
+      "blobSha256": "258e8a6b5f232d6f9b06e421ef61c5e775d39689a54ec848752ba7c30630de90",
+      "blob": "c7de75d22400bc2f8cedf469e36958cbb5b0a619.blob"
+    },
+    {
+      "workflow": "claude-code-user-docs-review",
+      "endpoint": "repos/github/gh-aw/git/blobs/db200672501b070730883c675e753e6401313273",
+      "sha": "db200672501b070730883c675e753e6401313273",
+      "method": "GET",
+      "startedAt": "2026-10-19T13:39:40.301Z",
+      "receivedAt": "2026-10-19T13:39:40.777Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 13:39:40 GMT",
+        "etag": "W/\"16c040265ab93fe0fb8406a0987e034a091607c9ea91b9056f502ed5f287dc69\"",
+        "x-github-request-id": "FC1D:131A17:15CB776:1F85E6D:6AD61D9C",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14223",
+        "x-ratelimit-reset": "1792418088",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 22165,
+      "bodySha256": "5d8d92a4932e782f02921d2fad6b6483f5bfbe266498c2cdefce595959725253",
+      "response": "db200672501b070730883c675e753e6401313273.response.json",
+      "blobBytes": 15883,
+      "blobSha256": "7455f5da4d1a776dae10b9cd15f36e28f3cb1e94ef2531c4f3bb67c02a182086",
+      "blob": "db200672501b070730883c675e753e6401313273.blob"
+    },
+    {
+      "workflow": "claude-code-user-docs-review",
+      "endpoint": "repos/github/gh-aw/git/blobs/fbdd9a946dc41232c0d5bbbba65c4da1f7977a0f",
+      "sha": "fbdd9a946dc41232c0d5bbbba65c4da1f7977a0f",
+      "method": "GET",
+      "startedAt": "2026-10-19T13:39:42.397Z",
+      "receivedAt": "2026-10-19T13:39:42.897Z",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 19 Oct 2026 13:39:42 GMT",
+        "etag": "W/\"ba2802feae0c07fedb205940fd6fa5fa3c8d054f61f61686401a3708a2985c67\"",
+        "x-github-request-id": "EDD5:5B367:15A90E4:1F545E4:6AD61D9E",
+        "x-ratelimit-limit": "15000",
+        "x-ratelimit-remaining": "14222",
+        "x-ratelimit-reset": "1792418088",
+        "x-ratelimit-resource": "core"
+      },
+      "bodyBytes": 105313,
+      "bodySha256": "15b306678e929565bdba88a4ede237b3916cfab5c6b636ccdacd5981c70b9b18",
+      "response": "fbdd9a946dc41232c0d5bbbba65c4da1f7977a0f.response.json",
+      "blobBytes": 76231,
+      "blobSha256": "3cfa07078a4b4421f9205050ae5c02ea9b7f623bb3d3a6bbb4bac2a81aa3a0f4",
+      "blob": "fbdd9a946dc41232c0d5bbbba65c4da1f7977a0f.blob"
+    }
+  ],
+  "complete": true,
+  "finishedAt": "2026-10-19T13:39:42.933Z"
+}

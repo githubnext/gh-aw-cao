@@ -1,0 +1,23 @@
+tree 580e720b59787b44a8e089a06d6fbf5799da2e49
+parent e1744e153f01e0d3d946bbdb1c35a24f66454da0
+author github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com> 1792245088 -0700
+committer GitHub <noreply@github.com> 1792245088 -0700
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJq031gCRC1aQ7uu5UhlAAA25wQAB2OPCj2bnbELV1ASU8FDB+0
+ dm/PfXRR31icpI8lvxzRMJl80QNsZkHetMNOuLYsqBtKjJO/nAVh7RXym3pFcAtW
+ k0YSUAeIjvWMveZkpRW5rW5cIf5l+pWgsksP8jscpxaHz1Ubly4TSYEvsxVIXn95
+ eFlAUS766/DkRDPkf7O59ntr2mIRJ+WV7W3GebPR3oilfWOrTliFU9CB2yzTropy
+ aMlvbfti3k3vKUi6w8pCP5E+r7MtuEgrFQVHK88M7paGEs4YNmQPdPW6mhvgCA8u
+ q6FZ9kGrIku+wQa5UzIW0OzPLJXhNSBv2Dw/pP99ty3niKlpjzVKUiM8A9eUjuLd
+ EnF314SwEolvU4uUOW9PQyxjtM4VWY9RPBQJpcfwBPHVQkmbRdEQ9Sl9F/fIHS3M
+ b/5NHp/XoEfiAuHz5H7oCp9XrDCrcIrt4izvlus73Q1fDTflkL0MVKwG0ZbQ9vlm
+ KsbK4W5QKuRHStmZ5s7LCwyKn0XrJz2MNqaSFw1YDRCkOFivZQzzfudgpgrG8aW0
+ hFeB8F13UOJuUqgWAmBaG+o2lkBYE6/Hg8NRfiZc09e/Js8O/CcgM4bRReBWIKDW
+ y994LZQDB1VJnynrPoNdIGfYinPlSrAnCS0g0JNzjYFPi+lYC28AzANZgZLn9stT
+ ipTA+wMl8C9NcqQju7xK
+ =0Daz
+ -----END PGP SIGNATURE-----
+ 
+
+test: enforce colorwriter console and constants specs (#69688)

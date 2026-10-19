@@ -1,0 +1,23 @@
+tree 653706cba02fdb8994bc5f6fc1ffd773def41fc5
+parent f5703c0a22f60910f06731535ed714452f88b39b
+author Copilot <198982749+Copilot@users.noreply.github.com> 1778713477 -0700
+committer GitHub <noreply@github.com> 1778713477 -0700
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqBQOFCRC1aQ7uu5UhlAAAPrUQAJ2+7ypKrgdTh4mNZedfI2yM
+ z+DC/zOs1NFyA3yvZWvfurOVOlbGIHqefI6od39yG01PovaMynx5d85JBPQLSGIM
+ qbaiIipBpzHxxpm76f5aN7wBTrmq6GWM7fu7xY4wlkIfn4oLFn/LoFYvSWx9zg2J
+ GUqJ1A8S3I4zJt9vTRbKBBlo5GmixLQRwb2bgW7tbWhBRBnvVrtZ6n5mR+9q6zl3
+ EQSquHgcidNb0zIRLIrWNE5+zvhWg+SRRNSziFk+V7kaLubqzI5zBSPtJA2GsHbY
+ Ga5GR1Rl9CPAtL5PWSSxsEXQNrEvoeIEbDhzc1xPrJOKUR6UGhMRrJhDzgBo3sEH
+ had7z7/uocRuqYv0dPFtGWxgoTktxbGxiwSim7slyDVQa63BmWw3GCQQ9F1FQqTi
+ KECNKiTKzQoZH4V2owikjQw6JBGtDlh04E3BQwpdlBHlIisKXHWT3YEW1Nhbt61y
+ GNEXmInPzLgvFeO9mT+X/oEVtiT0V88zYuTjRgnexplAUqv5oFBmIOOl6G5rIH1C
+ RPvaladyxGvowvJYICDPHzbHtEKsyOaP8uuq8l2y4zJVg8zHQnqB59i4y4h7J3Z7
+ PMu8yGedfL19swWZkIMWCu2OI0ul+3qE0ATwgaWIxTP56VJknwbD9XaOUlux0BL5
+ r4zmJR3jliGhQbyMI6LC
+ =J19S
+ -----END PGP SIGNATURE-----
+ 
+
+Normalize CLI help UX across mcp/logs/update and restore update flag parity (#32011)

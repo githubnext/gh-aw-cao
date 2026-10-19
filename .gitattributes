@@ -1,1 +1,3 @@
 .github/workflows/*.lock.yml linguist-generated=true
+docs/operational-value/proof/doc-consolidation/originals/*.bin binary
+docs/operational-value/proof/doc-consolidation/provider/*.blob binary

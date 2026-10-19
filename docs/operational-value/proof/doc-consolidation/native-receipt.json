@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "kind": "bounded-native-doc-consolidation",
+  "custodySha256": "1b7fd31161f82409acb990753fb71acbe1731ae9080b28163a06d73a5b31f701",
+  "contractSha256": "b1ebfa9950c758fd1e5f11d0c0d32fb2901296dfcebbac24fcb4121ee17d13e8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "discovery": {
+    "partitions": 346,
+    "entities": 58048,
+    "complete": true,
+    "limitation": "Issue/PR discovery excludes Discussions, comments, deleted/transferred objects and edited-away markers."
+  },
+  "cases": [
+    {
+      "id": "claude-quickstart-32016",
+      "slug": "claude-code-user-docs-review",
+      "commit": "411107730a62bcaf3a53e831e534c7fae02aaea9",
+      "parent": "ad0b3cdb208bea16b03741c046adb12b7e59abcb",
+      "timestamp": "2026-05-13T23:06:01Z",
+      "native": {
+        "status": "missing",
+        "repaired": null,
+        "reason": "No original core CLI before/after pair; changed labels and out-of-source-scope MDX are not a verified setup repair"
+      },
+      "originalPaths": [
+        {
+          "path": "docs/src/content/docs/introduction/architecture.mdx",
+          "before": "7a9ffb645acbd8f66ade41850e00d752aa291573",
+          "after": "1f4dda003d04f6ac896e9879b4defbd110b200b6"
+        },
+        {
+          "path": "docs/src/content/docs/setup/quick-start.md",
+          "before": "absent",
+          "after": "absent"
+        },
+        {
+          "path": "docs/src/content/docs/setup/quick-start.mdx",
+          "before": "d0433cc70b17a41005f132af8378fdf172897080",
+          "after": "bd04df255af5fff797d60375dbb7cb99e25b3b0c"
+        }
+      ],
+      "attribution": {
+        "status": "unknown",
+        "reason": "No protected source-linked creation receipt; editable markers remain discovery candidates."
+      },
+      "fullGoal": null,
+      "semanticAccuracy": null,
+      "usability": null
+    },
+    {
+      "id": "claude-wizard-auth-67624",
+      "slug": "claude-code-user-docs-review",
+      "commit": "e19bf2b96f816952561795eb81ecd9f5df227fd0",
+      "parent": "582fc63ed703a073b5714aa7d29f51bc221ca83c",
+      "timestamp": "2026-10-11T05:30:18Z",
+      "native": {
+        "status": "assessed",
+        "repaired": 1,
+        "removed": 1,
+        "fullGoal": null,
+        "facet": "Missing Claude add-wizard API-key setup instructions repaired",
+        "independentProof": [
+          "pkg/cli/add_wizard_command.go",
+          "pkg/cli/add_interactive_orchestrator.go",
+          "pkg/cli/add_interactive_engine.go",
+          "pkg/cli/add_interactive_secrets.go",
+          "pkg/cli/engine_secrets.go",
+          "pkg/constants/engine_constants.go"
+        ],
+        "semanticAccuracy": null,
+        "usability": null,
+        "limitations": [
+          "Source-pattern static verification, not CLI execution or human onboarding testing.",
+          "Added WIF guidance, whole-document correctness and complete non-Copilot adoption remain separate unverified safeguards."
+        ]
+      },
+      "originalPaths": [
+        {
+          "path": "docs/src/content/docs/setup/quick-start.md",
+          "before": "absent",
+          "after": "absent"
+        },
+        {
+          "path": "docs/src/content/docs/setup/quick-start.mdx",
+          "before": "c66704b704f7faf349d73094119fda70c294cd9d",
+          "after": "c66704b704f7faf349d73094119fda70c294cd9d"
+        },
+        {
+          "path": "docs/src/content/docs/setup/cli.md",
+          "before": "fbdd9a946dc41232c0d5bbbba65c4da1f7977a0f",
+          "after": "4183810cee835d693e1e8cb2b51ce53fd1fa4f40"
+        }
+      ],
+      "attribution": {
+        "status": "unknown",
+        "reason": "No protected source-linked creation receipt; editable markers remain discovery candidates."
+      },
+      "fullGoal": null,
+      "semanticAccuracy": null,
+      "usability": null
+    },
+    {
+      "id": "pr-11890",
+      "slug": "unbloat-docs",
+      "commit": "bea444e08119581e7f3cdd51d2cb27faf896e47e",
+      "parent": "b4d797192ba7015cce621a4af9473a87dcc48553",
+      "timestamp": "2026-01-26T17:56:39Z",
+      "native": {
+        "status": "ineligible",
+        "removed": null,
+        "reason": "Native change is outside frozen-source population; historical source-era target/exclusions differ and are not backdated."
+      },
+      "originalPaths": [
+        {
+          "path": "docs/src/content/docs/blog/2026-02-05-how-workflows-work.md",
+          "before": "missing",
+          "after": "missing"
+        }
+      ],
+      "attribution": {
+        "status": "unknown",
+        "reason": "No protected source-linked creation receipt; editable markers remain discovery candidates."
+      },
+      "fullGoal": null,
+      "semanticAccuracy": null,
+      "usability": null
+    },
+    {
+      "id": "pr-12233",
+      "slug": "developer-docs-consolidator",
+      "commit": "c709b0d2adfa30efa349c0b2b804d7a2eebb2674",
+      "parent": "83d14e39e312775d09002b98cb62d819af6d244f",
+      "timestamp": "2026-01-28T13:57:08Z",
+      "native": {
+        "status": "ineligible",
+        "removed": null,
+        "reason": "Native change is outside frozen-source population; historical source-era target/exclusions differ and are not backdated."
+      },
+      "originalPaths": [
+        {
+          "path": ".github/agents/developer.instructions.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/agents/hierarchical-agents-quickstart.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/agents/hierarchical-agents.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/gastown.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/go-type-patterns.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/labels.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/mdflow.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/mods/jsonschema-go.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/oh-my-code.md",
+          "before": "missing",
+          "after": "missing"
+        },
+        {
+          "path": "specs/testing.md",
+          "before": "missing",
+          "after": "missing"
+        }
+      ],
+      "attribution": {
+        "status": "unknown",
+        "reason": "No protected source-linked creation receipt; editable markers remain discovery candidates."
+      },
+      "fullGoal": null,
+      "semanticAccuracy": null,
+      "usability": null
+    },
+    {
+      "id": "pr-69710",
+      "slug": "developer-docs-consolidator",
+      "commit": "01ddffff5e3de2e8308cb9b58855ed29423d2cd9",
+      "parent": "d82addb8989c4fac92fe9def9d1579b0abc6d30c",
+      "timestamp": "2026-10-17T13:52:19Z",
+      "native": {
+        "status": "assessed",
+        "removed": 0,
+        "fullGoal": null,
+        "usability": null,
+        "semanticAccuracy": null,
+        "limitations": [
+          "Zero means no accepted lossless redundancy consolidation, not no developer-documentation improvement."
+        ]
+      },
+      "originalPaths": [
+        {
+          "path": "scratchpad/dev.md",
+          "before": "654cd71b47bf13c89f0580bd92fc533f970e04dc",
+          "after": "fc822b3e3b2675e11dc22e5c3ffc258b56eb5022"
+        }
+      ],
+      "attribution": {
+        "status": "unknown",
+        "reason": "No protected source-linked creation receipt; editable markers remain discovery candidates."
+      },
+      "fullGoal": null,
+      "semanticAccuracy": null,
+      "usability": null
+    }
+  ],
+  "conclusion": "Bounded native cases only; no complete repository-period or full-goal attainment is inferred."
+}

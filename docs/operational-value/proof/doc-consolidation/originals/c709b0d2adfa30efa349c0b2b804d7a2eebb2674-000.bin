@@ -1,0 +1,24 @@
+tree 979e0b6d99c262258b8ca05d424975cf48a2b7ae
+parent 83d14e39e312775d09002b98cb62d819af6d244f
+author github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com> 1769608628 -0800
+committer GitHub <noreply@github.com> 1769608628 -0800
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJpehW0CRC1aQ7uu5UhlAAAGsMQAHM1pG7kQ9xUan6Ir2S7zDAt
+ 1UnB4B5ub1s/ALEv1a0awPRHyIUifI3U0uJR7C9Tymg7CiszkHh7paqXG/1sPDXy
+ P/P6LGCFm0aL1slnqZ9buClJy914DN5Pi7Y44Nvo64P+UEV5oUEKyGroHKRmzvSE
+ kKs0865P/GAH6AeoEgn3xxColXp7NEshMT9TqdbOCFaNyrEqWXwo4BA/tvXu5yp4
+ HNw7hleIoeud7SVwoXLr7dtqG9u+7GDuNH1KakabZMWt5FPzy/Jvll3ji+uw0EZf
+ jKXUB5JBIgcU7smTaJpbwl/kdAddaQx53ekntIEEE++xDnJ2oCVkvAOsMFrZO7aq
+ +DZWVLz6sv5MOejyjdRiBz0cShqvYA71qapXTCRrbcCQ8VB011bIwYVsL7boG7wL
+ NfD2HU0GNJ9duGqgGJNFXLTQk+T/Mph1HLzyX0M0skypjdWrW5wx8k4+v64cL9HO
+ fenR2AaQGRTAR4LVW3LUifsken3znakPsUBQB6BjtfzOW8xeVzhJOAKh/2b6qTrn
+ Z/69XY5ZBrhRatjN/XhiFmt8g7SKMrJ0AKrA0Rcy2VWxXibcD7BHyc/N+HQiwOUY
+ NMNG+5yUIFb6orfLsETzBtQBuW2GdAbRFyW+2TxEF5SGvS5EcHSBEAuj9p+9I3Xt
+ DUFmPmZIwtsFRbSWdY7D
+ =be22
+ -----END PGP SIGNATURE-----
+ 
+
+Improve technical tone consistency across developer documentation (#12233)
+

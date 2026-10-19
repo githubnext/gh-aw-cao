@@ -1,0 +1,27 @@
+tree a6426b6b0e31f0529a4b79fc8c6328d24ad4f163
+parent 582fc63ed703a073b5714aa7d29f51bc221ca83c
+author Peli de Halleux <pelikhan@users.noreply.github.com> 1791696618 -0700
+committer GitHub <noreply@github.com> 1791696618 -0700
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqyx7qCRC1aQ7uu5UhlAAAnK0QAI1i3M+yKGIs47lbBuukDdZB
+ gpalFyiZOKxfM7XDEvzl1DaOI1FzjNq9zXlIQKdUy3iRhQFrgw+neohKSiA/CVon
+ lAcVvuB4Ssr3ozSLBE2VCLeLxlZsTpMDeLwhx5S6b3aO68d7h+mxentu4b8yW0oL
+ 7hC8yYdN0QxNt3MOWvj+3svjcsmcXmQN/Rbio5MAtt1YvJQZHc2obxDUonoir7je
+ xY/OomhUA/jF1WdRNwJiTxPRI1OONavnX1hC78BYbyafOvZYpJ+XRNpHYqcbL8Wf
+ 9faFjNPhEdUpBU5h//oDfXR/Uzp8eB6YO7A97kvz62OfdqcOCd+G0/BeX/6pxiVl
+ IYirhTnKQ0c4zOP0e5AyhyZTC6yc7mTK4BRtAq4GtUfuOXUdyXg5DsT5o65vBsv/
+ 2ly6s7uNWSscsG9t5KK+PxlduL13Z/jt10MLnscHJJ5tZ8WLaHwHQxwHDR2hQ/54
+ 2XqqzBvDkz5CcIlr6J0l6Enp0E5ie8nRz47Sl/t4zxeBTC/n+L3UtVoLzVcyQpOe
+ u4TLJ7MH7QASJ9AhmPbB36r2vtAA14zq0A0iAHUKzPaaga3AqO99Y0BVTNujuJKi
+ crkApP3SHKGPHUARHXX4vmTjdQyRReJTZ1DvgY9J1hx4IuYwLc3iNKWsZq2OQf3i
+ tCsNnHicGAv98zwANNJF
+ =3Uto
+ -----END PGP SIGNATURE-----
+ 
+
+docs: document Claude add-wizard authentication (#67624)
+
+Closes #67261
+
+Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>

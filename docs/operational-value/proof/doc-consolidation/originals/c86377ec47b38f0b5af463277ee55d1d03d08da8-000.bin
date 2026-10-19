@@ -1,0 +1,37 @@
+tree 8212137f398a6074147b34305f21a6ba7f41b814
+parent 64b168bfd0bc790a98d7bef51c49bf74ffc6fe21
+author Peli de Halleux <pelikhan@users.noreply.github.com> 1792305164 -0700
+committer GitHub <noreply@github.com> 1792305164 -0700
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJq1GgMCRC1aQ7uu5UhlAAA5X8QAB1/uyOvgGw9KI72Q6TQTiEh
+ 4JITiT3MgPzVNYnyTf+gxRjuFla3Ox3czno4jkzTtthZCL1vreNp513qFzRuX44N
+ WvkAPSmBvXqb2Coj3EYSC8Ntz+j9J48WcVqVBZvThOphKSsxo6sy18YtH6b4Mjeq
+ G78LfXxukNg/0aGLHsrSceLZU5d28MsybDhc6w4QUVzXAHJw8OOR44aNu2NgyDfY
+ EBMDFcfE9HGsU6HPq310tJQyLQlCBNHedFYggshVyKF8yGkZsLU5ZuUM9mw/P0OA
+ t9rkio3XWfoDYQ7fQDIf7i2wO1mAotH+7fSEhasWw+6sPr8fOelurIjr14ddmmSL
+ pWAggoscheMC6nBWHbKh7E0VeoB92LdxveH3JyjtzvHCCpocjujsOZkPwRBXdmDg
+ OuWYx6laTuHRcY6/GkcuXxcsAIAxqvdGpR2B8qCItg5U60vxhizLMLra7e6Zygdv
+ ukl5nITqBhJ9ra119bG4FipWxhpEEtOMC3KQbI2Dejl6rWDPTuEHPv0zhuSN7In1
+ Btyc9LPbd4E06UVfcoiCuhxwUyZy2/hAFLdIFNbAnQU1LKIVXnKdLvU1na4Yf9QA
+ kyMX9YyzuZ8gG0q7rkSF4rML8jtwzubd/DCZdk8nkFMJ9zo+8P1U+XeJ4OuujnEk
+ 5Mop7dQHxk5R7Kjz5P3f
+ =lctg
+ -----END PGP SIGNATURE-----
+ 
+
+fix: include Work and Claim references in safe-output footers (#69865)
+
+* fix: attribute safe-output footers to work queue claims
+
+Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>
+
+* fix: deploy report dependencies for claim footers
+
+Include the report renderer and its transitive runtime dependencies in the isolated safe-output bundle. Add a regression that deploys the real bundle and renders a Claim-scoped footer.
+
+Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>
+
+---------
+
+Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>

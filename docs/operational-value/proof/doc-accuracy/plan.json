@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "imports": [
+    ".github/workflows/shared/daily-audit-base.md",
+    ".github/workflows/shared/daily-audit-discussion.md",
+    ".github/workflows/shared/reporting.md",
+    ".github/workflows/shared/otlp.md",
+    ".github/workflows/shared/github-guard-policy.md",
+    ".github/workflows/shared/ai-coding-dictionary.md",
+    ".github/shared-instructions.md",
+    ".github/instructions/documentation.instructions.md"
+  ],
+  "additions": [
+    {
+      "slug": "designer-drift-audit",
+      "commit": "60ee90c0fd321d87591c7cdeb22a94b60968454d",
+      "parent": "709937436f02f713f4cc73e934b69668dbb16110"
+    },
+    {
+      "slug": "daily-doc-healer",
+      "commit": "bbb769d71c66f9f0bf5aa29483340063c9b60216",
+      "parent": "912ed2186d126c47dd7cb857756d8d4de1b2e7f7"
+    },
+    {
+      "slug": "daily-doc-updater",
+      "commit": "16ec75f8baa77859241f8eea0db7dbf535c92edd",
+      "parent": "3eb62819a27856d8b4e4dd2c368ffec398f58c0c"
+    }
+  ],
+  "changes": [
+    {
+      "commit": "cd85bff63f8535f58de6887345dec11fd0e70ec5",
+      "parent": "ee9d575034b90511ea7b7e9cecb863c44711be39",
+      "workflows": [
+        "designer-drift-audit"
+      ],
+      "candidateNumbers": [
+        50175,
+        50173
+      ],
+      "files": [
+        ".github/aw/designer.md"
+      ],
+      "supportFiles": [
+        ".github/aw/network.md"
+      ]
+    },
+    {
+      "commit": "c70a3ec89dfa755008bcc2d0fcb989844207b5b1",
+      "parent": "bf74326044575f187a41686a83993f381500f899",
+      "workflows": [
+        "designer-drift-audit"
+      ],
+      "candidateNumbers": [
+        51937,
+        51925
+      ],
+      "files": [
+        ".github/aw/designer-mappings.md"
+      ],
+      "supportFiles": [
+        "pkg/parser/schemas/main_workflow_schema.json",
+        "pkg/workflow/safe_outputs_validation_config.go"
+      ]
+    },
+    {
+      "commit": "251d3491a234826851e0a0134516c05c93212760",
+      "parent": "bc3991ee9b06be7532722548675955d8165ab6db",
+      "workflows": [
+        "daily-doc-healer"
+      ],
+      "candidateNumbers": [
+        66709,
+        65605
+      ],
+      "files": [
+        "docs/src/content/docs/reference/github-tools.md"
+      ],
+      "supportFiles": [
+        "pkg/workflow/data/github_toolsets_permissions.json",
+        "pkg/parser/schemas/main_workflow_schema.json"
+      ]
+    },
+    {
+      "commit": "dcd3641adfa184b3ae0c6e45d7ea639f63d396e3",
+      "parent": "e6b87a4f169c7d194aa5f862f9b6e983ad11d3ae",
+      "workflows": [
+        "daily-doc-healer"
+      ],
+      "candidateNumbers": [
+        67028,
+        66656
+      ],
+      "files": [
+        "docs/src/content/docs/setup/cli.md",
+        "docs/src/content/docs/setup/quick-start.mdx"
+      ],
+      "supportFiles": [
+        "pkg/cli/engine_secrets.go"
+      ]
+    },
+    {
+      "commit": "054c51810473eca1992f8c8513267422db262465",
+      "parent": "038af8b3c79dcca7b6ac93aeae245f18ad6ecb3a",
+      "workflows": [
+        "daily-doc-updater"
+      ],
+      "candidateNumbers": [
+        57915
+      ],
+      "files": [
+        "docs/src/content/docs/reference/custom-safe-outputs.md"
+      ],
+      "supportFiles": []
+    },
+    {
+      "commit": "462ed682857c4ab64d40f2c85e3738fa27834839",
+      "parent": "d6c3458b08d7586f0a086130e4f88ee9865e6e35",
+      "workflows": [
+        "daily-doc-updater"
+      ],
+      "candidateNumbers": [
+        68663,
+        68623
+      ],
+      "files": [
+        "docs/src/content/docs/reference/safe-outputs.md",
+        "docs/src/content/docs/setup/cli.md"
+      ],
+      "supportFiles": [
+        "cmd/gh-aw/main.go",
+        "pkg/cli/compile_development.go",
+        "pkg/parser/schemas/main_workflow_schema.json",
+        "actions/setup/js/link_sub_issue.cjs"
+      ]
+    }
+  ]
+}

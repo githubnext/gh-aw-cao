@@ -1,0 +1,253 @@
+---
+title: GitHub Agentic Workflows Quickstart
+description: Install GitHub Agentic Workflows (gh-aw), choose an AI engine, add a Markdown workflow, and run an AI agent through GitHub Actions.
+sidebar:
+  order: 1
+head:
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: |
+      {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "Set up GitHub Agentic Workflows in 10 minutes",
+        "description": "Install GitHub Agentic Workflows (gh-aw), choose an AI engine, add a Markdown workflow, and run an AI agent through GitHub Actions.",
+        "estimatedCost": { "@type": "MonetaryAmount", "currency": "USD", "value": "0" },
+        "totalTime": "PT10M",
+        "step": [
+          {
+            "@type": "HowToStep",
+            "name": "Install the gh-aw extension",
+            "text": "Run: gh extension install github/gh-aw",
+            "position": 1
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Add a sample workflow and select an AI engine",
+            "text": "Run: gh aw add-wizard githubnext/agentics/repo-status — then follow the interactive prompts to choose GitHub Copilot, Claude Code, OpenAI Codex, Google Gemini, or Pi and configure authentication.",
+            "position": 2
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Wait for the workflow to complete",
+            "text": "After the workflow runs (2-3 minutes), a Daily Repo Report issue appears in your repository Issues tab.",
+            "position": 3
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Customize your workflow (optional)",
+            "text": "Open .github/workflows/repo-status.md and edit the instructions. If you change YAML frontmatter, run gh aw compile to regenerate the lock file, then commit both files.",
+            "position": 4
+          }
+        ]
+      }
+---
+
+import Video from '../../../components/Video.astro';
+
+## Adding an Automated Daily Status Workflow to Your Repo
+
+GitHub Agentic Workflows lets developers define AI-powered repository automation in Markdown with YAML frontmatter (the configuration block between the `---` markers at the top of the file) and run AI agents through GitHub Actions. By the end of this guide, you will have a recurring agentic workflow running in your repository with GitHub Copilot, Claude Code, OpenAI Codex, Google Gemini, or Pi. This guide takes about 10 minutes and requires only the GitHub CLI.
+
+**⏱️ Estimated time: 10 minutes**
+
+In this guide you will add an existing workflow to a GitHub repository where you are a maintainer: the automated [**Daily Repo Status Report**](https://github.com/githubnext/agentics/blob/main/workflows/repo-status.md?plain=1), running in GitHub Actions.
+
+<Video
+  src="/gh-aw/videos/install-and-add-workflow-in-cli.mp4"
+  caption="Install the extension, add a workflow, and trigger a run from the CLI"
+  aspectRatio="16:9"
+  thumbnail="/gh-aw/videos/install-and-add-workflow-in-cli.png"
+/>
+
+The aim here is to become familiar with **automated AI**: to install something that will run **automatically**, **recurrently**, in the context of your repository.
+
+## Prerequisites
+
+Before installing, ensure you have:
+
+- **AI Account** - [GitHub Copilot](https://github.com/features/copilot), [Anthropic Claude](https://www.anthropic.com/), [OpenAI Codex](https://openai.com/api/), or [Google Gemini](https://ai.google.dev/gemini-api). [Pi](/gh-aw/engines/pi/) uses your Copilot, Anthropic, or OpenAI account, depending on the provider prefix in `model:`. If you already have GitHub Copilot, start there — it requires no extra account setup.
+- **GitHub Repository** - A repository where you have write access
+- **GitHub Actions** enabled - Check in [Settings → Actions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)
+- **GitHub CLI** (`gh`) v2.0.0+ - [Install here](https://cli.github.com). Check version: `gh --version`
+- **Logged in to GitHub CLI** - Verify with `gh auth status` and run `gh auth login --scopes repo,workflow` if needed
+- **Operating System**: Linux, macOS, or Windows with WSL
+
+## Step 1 - Install the extension
+
+Install the GitHub Agentic Workflows extension:
+
+```text wrap
+gh extension install github/gh-aw
+```
+
+> [!TIP]
+> If you are encountering authentication issues, use this script instead:
+>
+> ```text wrap
+> curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash
+> ```
+>
+> or login interactively:
+> ```text wrap
+> gh auth login
+> ```
+
+
+## Step 2 - Add the sample workflow and trigger a run
+
+From your repository root, run this command:
+
+```text wrap
+gh aw add-wizard githubnext/agentics/repo-status
+```
+
+`add-wizard` accepts workflow references in `<owner>/<repo>/<workflow-name>` format. In this guide, `githubnext/agentics` is the public [githubnext/agentics](https://github.com/githubnext/agentics) examples repository, and `repo-status` is one of the sample workflows it publishes.
+
+`repo-status` gathers recent repository activity (issues, PRs, discussions, releases, code changes) and opens a GitHub issue summarizing productivity insights, community highlights, and recommended next steps, as described in its frontmatter:
+
+```yaml
+description: |
+  This workflow creates daily repo status reports. It gathers recent repository
+  activity (issues, PRs, discussions, releases, code changes) and generates
+  engaging GitHub issues with productivity insights, community highlights,
+  and project recommendations.
+```
+
+See the full source at [`workflows/repo-status.md`](https://github.com/githubnext/agentics/blob/main/workflows/repo-status.md?plain=1).
+
+This will take you through an interactive process to:
+
+1. **Check prerequisites** - Verify repository permissions.
+2. **Select an AI engine** - Choose GitHub Copilot, Claude Code, OpenAI Codex, Google Gemini, or Pi.
+3. **Configure AI engine authentication** - Follow the instructions or see below.
+4. **Add the workflow** - Adds the workflow file (`.md`) and its generated GitHub Actions [lock file](/gh-aw/reference/workflow-structure/#lock-file-header) to `.github/workflows/`, either by direct push or a pull request.
+5. **Optionally add skills for agentic authoring and debugging** - Adds additional files for interactive authoring and debugging of agentic workflows.
+6. **Optionally trigger an initial run** - Starts the workflow immediately.
+
+### Configuring authentication
+
+**Copilot**
+
+**Use organization billing:**
+
+If organization billing is enabled in your organization, you can choose **Use copilot-requests** in the wizard. It adds `copilot-requests: write` to the workflow permissions and uses the per-run GitHub Actions token for inference. This path requires an organization Copilot subscription with centralized billing.
+
+**Use `COPILOT_GITHUB_TOKEN`:**
+
+1. [Create a fine-grained Personal Access Token (PAT)](https://github.com/settings/personal-access-tokens/new) under your user account.
+2. Under **Permissions → Account permissions**, set **Copilot Requests** to **Read**, then generate the token.
+3. Add it as a repository secret from your repository root with `gh secret set COPILOT_GITHUB_TOKEN < /path/to/token.txt`, or use the GitHub UI. See [Copilot authentication](/gh-aw/reference/auth/#copilot_github_token) for both paths.
+
+**Claude**
+
+**Setting up `ANTHROPIC_API_KEY`:**
+1. Create an API key in [Anthropic Console](https://console.anthropic.com/settings/keys).
+2. Add it as a repository secret from your repository root with `gh secret set ANTHROPIC_API_KEY < /path/to/key.txt`, or use the GitHub UI. See [Authentication](/gh-aw/reference/auth/#anthropic_api_key) for more detail.
+
+For keyless authentication, configure [Anthropic Workload Identity Federation](/gh-aw/reference/auth/#anthropic-workload-identity-federation-wif) with a federation rule in your Anthropic workspace and grant the workflow `id-token: write`. GitHub Actions exchanges a short-lived OIDC token for Anthropic credentials, so you don't need a repository secret.
+
+A Claude subscription token from `claude login` (`CLAUDE_CODE_OAUTH_TOKEN`) is not supported. The CLI detects it and fails with an error naming `CLAUDE_CODE_OAUTH_TOKEN` and pointing to `ANTHROPIC_API_KEY` or Anthropic WIF as the supported alternatives.
+
+Follow [Using Claude Code with GitHub Agentic Workflows](/gh-aw/engines/claude/) for the complete setup.
+
+**Codex**
+
+**Setting up `OPENAI_API_KEY`:**
+1. Create an API key in [OpenAI API keys](https://platform.openai.com/api-keys).
+2. Add it as a repository secret from your repository root with `gh secret set OPENAI_API_KEY < /path/to/key.txt`, or use the GitHub UI. See [Authentication](/gh-aw/reference/auth/#openai_api_key) for more detail.
+
+**Tip:** `CODEX_API_KEY` is also accepted and takes precedence over `OPENAI_API_KEY` — if you have already stored the key under that name, no action is needed. See [Authentication](/gh-aw/reference/auth/#openai_api_key) for details.
+
+**Gemini**
+
+**Setting up `GEMINI_API_KEY`:**
+1. Create an API key in [Google AI Studio](https://aistudio.google.com/api-keys).
+2. Add it as a repository secret from your repository root with `gh secret set GEMINI_API_KEY < /path/to/key.txt`, or use the GitHub UI. See [Authentication](/gh-aw/reference/auth/#gemini_api_key) for more detail.
+
+For keyless authentication, configure [Google Workload Identity Federation](/gh-aw/reference/auth/#google-workload-identity-federation-wif) with a Google Cloud Workload Identity Pool and Provider for GitHub Actions, and grant the service account Vertex AI User permissions. GitHub Actions exchanges a short-lived OIDC token for Google Cloud credentials, so you don't need a repository secret.
+
+**Pi**
+
+Pi chooses authentication from the provider prefix in `model:`. It uses Copilot authentication by default, `ANTHROPIC_API_KEY` for `anthropic/...`, and `CODEX_API_KEY` or `OPENAI_API_KEY` for `openai/...` and `codex/...`. For example, use `model: copilot/gpt-5.4`, `model: anthropic/claude-sonnet-5`, or `model: openai/gpt-5`.
+
+Pi also requires `tools.github.mode: gh-proxy` and `tools.cli-proxy: true`. Follow [Using Pi with GitHub Agentic Workflows](/gh-aw/engines/pi/) for the complete setup.
+
+## Step 3 - Wait for the workflow to complete
+
+An automated workflow run can take 2-3 minutes.
+
+To watch the run while it's in flight:
+
+- **From the browser**: open the **Actions** tab of your repository and select the most recent workflow run.
+- **From the CLI**: run `gh aw status` to list workflow state, or `gh run watch` to stream the latest run.
+
+When the run succeeds, a new issue titled with "Daily Repo Report" appears in the **Issues** tab of your repository. If the run fails, open the run from the **Actions** tab to view step logs and error output.
+
+Once your initial run is complete, a new issue will be created in your repository with a "Daily Repo Report". The report will be automatically generated and will analyze:
+
+- Recent repository activity (issues, PRs, discussions, releases, code changes)
+- Progress tracking, goal reminders and highlights
+- Project status and recommendations
+- Actionable next steps for maintainers
+
+The report will look something like this:
+
+import { Image } from 'astro:assets';
+import dailyRepoReportResult from '../../../assets/daily-repo-report-result.png';
+
+<Image src={dailyRepoReportResult} alt="Example of a Daily Repo Status Report issue created by the workflow" />
+
+## Step 4 - Customize your workflow (optional)
+
+With GitHub Agentic Workflows, you are in control! Your repository automation is fully customizable. You should shape your repo automation to match your priorities and your needs.
+
+To customize it now:
+
+1. Open the workflow markdown file located at `.github/workflows/repo-status.md` in your repository.
+
+2. Edit the section "What to include" to list things you are having trouble with regularly in your repository: your issue backlog, your CI setup, your testing, the performance of your software, your roadmap. Any or all of these, or anything else you want to improve. You can also customize the style and process sections to guide the coding agent's behavior.
+
+3. If you changed the frontmatter (the YAML configuration block between the `---` markers at the top of the file), regenerate the compiled workflow by running:
+
+   ```text
+   gh aw compile
+   ```
+
+4. Commit and push both files to your repository.
+
+5. Optionally trigger another run by running:
+
+   ```text
+   gh aw run repo-status
+   ```
+
+After waiting for the workflow to complete, check the new issue created with your updated report!
+
+> [!NOTE]
+> Commit **both** files — the `.md` source and the generated `.lock.yml`. The lock file is intentional and required by GitHub Actions to run your workflow; committing a generated file here is correct.
+
+## What's next?
+
+There are hundreds of other ways to use GitHub Agentic Workflows! Explore the [Agent Factory blog series](https://github.github.com/gh-aw/blog/2026-01-12-welcome-to-pelis-agent-factory/) — a 19-part tour of real-world agentic workflows authored by the gh-aw maintainers — for examples covering issue triage, releases, quality checks, and more.
+
+Continue learning with these resources:
+
+- [Create a New Workflow](/gh-aw/setup/creating-workflows/)
+- [How Agentic Workflows Work](/gh-aw/introduction/how-they-work/)
+- [AI Engines for GitHub Agentic Workflows](/gh-aw/reference/engines/)
+- [GitHub Agentic Workflows Gallery](/gh-aw/gallery/)
+- [Security Architecture](/gh-aw/introduction/architecture/)
+- [Frequently Asked Questions](/gh-aw/reference/faq/)
+
+For a structured, hands-on learning experience, see the [**gh-aw-workshop**](https://github.com/githubnext/gh-aw-workshop) — a self-contained workshop repository that walks you through building and customizing agentic workflows step by step. Fork it and follow along at your own pace.
+
+## Related guides
+
+These use-case guides show specific workflow patterns built on the same foundation you just set up:
+
+- [AI Issue Triage on GitHub](/gh-aw/gallery/ai-issue-triage/) — label, deduplicate, and ask clarifying questions on new issues automatically
+- [Automated AI Pull Request Review](/gh-aw/gallery/automated-pr-review/) — review diffs and post feedback comments when PRs are opened
+- [AI-Generated Release Notes and Reports](/gh-aw/gallery/ai-release-notes/) — generate release summaries and repo reports on a schedule
+- [Keeping Documentation Up to Date Automatically](/gh-aw/gallery/docs-automation/) — propose documentation updates as pull requests when code changes

@@ -1,0 +1,24 @@
+tree b5e0cff7b4cd5823c921b5462063a86034f421ae
+parent d7b8a4ef401f4f8a7b88180b2f3fbfc75dde4d9a
+author Copilot <198982749+Copilot@users.noreply.github.com> 1762450355 -0800
+committer GitHub <noreply@github.com> 1762450355 -0800
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJpDNuzCRC1aQ7uu5UhlAAAUngQACQPeszvcnW53dBhD6HQpAuj
+ 1KsP9XZYW1+Yj/WUK7ZESgZFdc4nXiT8wJW3MjU5yLYTsr55Nyv/NHDKu6+vmFVP
+ iqRrMmJ1lLnN7f7LK0bgoSKabsSc5qTVk20LJzhBaPTeeTKk6Ee/CWRSwP7dh6oF
+ bVfkzqcvrxoURhcrCJb2lBtnfo2zjOx6xqIFSWMe5wlOQz5CZ5r1SuMopUJgCsFK
+ OqJWAB50Bx2ifRLjnZQ3xWYNsYMegoHdrDegcLhotglf61xGfS9o62OLb/+fCKAq
+ 0Qdmdj/4pvOpsKpzgMNrnKkOenuOf/Llf4eOwbLVhq0Nv5Ky7ml0JXY+peks4mgt
+ lXoB2k/cBmPOYrbrf4duo5W24yFWgkQy9EELKx29J7XLWYIcTJU36F2akcZPyK1r
+ HEvrOG9ydHTAG8dvn4w3GWGQTtfDaSl9E0bCGSB9IHU2rK9Uu4GKhwf16HzOxWqc
+ mqM+evVxvx/iTkuGazCsMFutHizDN/wm3PaBGaI3r6cKnq07RUpaw5Ou3JBmg2PU
+ SvWC+IpTYrQX/uVLFBWiSjLQt8XOtLIT3BCuOABUYpaoJ7gKgdE55wDJ09HD6l8p
+ +GJhR20g7cMingk8YuqcZxYkozPPO6cCh761RM0q6DDp0ATBFlnQx7jQJn6whoyk
+ jZI0llgGHg2TH4Jc8xNI
+ =Hef+
+ -----END PGP SIGNATURE-----
+ 
+
+Add daily workflow for consolidating specs/ markdown into developer instructions (#3369)
+

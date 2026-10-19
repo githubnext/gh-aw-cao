@@ -1,0 +1,23 @@
+tree ab72475bd081cded3345efa35bbc496ae2e2b4c1
+parent d82addb8989c4fac92fe9def9d1579b0abc6d30c
+author github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com> 1792245139 -0700
+committer GitHub <noreply@github.com> 1792245139 -0700
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJq032TCRC1aQ7uu5UhlAAAuOkQAGh5VuWBZAnHIxeMEHSHdu3Q
+ iDVl9LZlvhOecfmsGQCHfT3lZ8exU+7+Gu7+XUFYv8iJfLjYwNA+xEQYRmV1lUtx
+ Or/CYu1diuLxpcFkzZJSOCLtJKZMOhF02fWh3jTJLXkf9v6Vx77It9r2sUk07d0A
+ CmiH3Rzz8dvtLbUXSQxAfvpwpCWD2BKkCjG2azAQwiuM0yw5niu2adlO0/m7XrZm
+ uqEEL08MZdiYXQukiry57WDymv+bF8kcCqbyYAycmTzxxm6E9EQ1k6QqivWfSa80
+ 4udklo5kDqSJVihgXm9Ir2Yj6IdadIW5CMTAAzSmtkkIyfqHpFUH4ZK2cPsBJkO6
+ AaN84a9PlZGnr9xNoPQr/WiMrW3lScqX9duQWaHmh+xdQM4s/FSaejFkB1O2jOL1
+ v16FBaYjO/lOFLmlrOT6pgPcIZIKJHxFIlgNhNLgiWVHqozH9H3E9ANRf6a29BdN
+ rvG2hhrV0qtC9WvvzMcTY5ioBAWp1RhHYBJpf+YaIl2IEEPzn75cI+8yK1dBtbQt
+ S+43QjQyrtjKVVeFfN7oqeKXywmkXMb6iteksblwfxgKjJYnU9kR8ZnMWjX2u/oz
+ YKybIsH8mlvVixi0OgfNhy+by/Hry8Qd9sCPdnmZ4bggB4cP3MnWuqPy9NYh4nG9
+ cNZwK7Rt67fmRv0N5ZMk
+ =Pxob
+ -----END PGP SIGNATURE-----
+ 
+
+docs: weekly maintenance scan confirms scratchpad/ tone is clean (v9.28) (#69710)

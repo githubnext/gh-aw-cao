@@ -1,0 +1,27 @@
+tree 7972217a2db86e70a36d209f00af22fdc3c674da
+parent ad2b9dcc84837bb82b28a0bb4b832237c6d02f1f
+author Don Syme <dsyme@users.noreply.github.com> 1760107887 +0100
+committer GitHub <noreply@github.com> 1760107887 +0100
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJo6R1vCRC1aQ7uu5UhlAAAGGkQAGfuRHAiwYeYGHHXbFFzd970
+ FNgySFnJFHVd96E4S9l1ZARXKA9r+kT2BkVMndZJSJXj/RdrY4Afkwr9q+tXXxQS
+ D2hnpodgRyWrz4PFW2MPMKGETx3tMWuIjSu9vXMl/Bg+bEcq75YfQrS9zl2MCu5p
+ kBNCQQGrEurUHw9YHks1Xo2o4apy6HYEST1Brq0QX1J1TncTJoBZK4x+F6ypJxBY
+ 3/78ofZlphrk+PsxZRa5+eBVTbvxmJY9xCtaqwtPoMoxx9HsSoPGbHquloIirbeS
+ ijnZnoLDrI7Wlx9yyUG7oeZyQdupHid+ieLJSAhv9/gzWajhB4DMSFvDyD6mQZZX
+ aHzizQdSUeUlJ+/3idWq9VI/CqB6OL7WyrKPz/M214w7U6msUASSbwZDPZh5VJm2
+ 1FjGf4B6UOLaQqGy2w1cenAlrw2jC3xu+LMTBgzi6PCexbWVSlKOPJLy5pSoSlj2
+ LHiDwdTt/Jp/4ortahI9Dhe8MuNGQlezq01ZCR/siFyx5GDLYFoFWaUFH09pF7Ze
+ BssvkNJctlDX78M35J2LU3B396L58XNHZ3y+gG3E43n3SkgQrRGefv0uWa4st+gL
+ ieo8ItPKLa3RE3ve9LCPM9OGV3LL1nSmJ2brQKfE2TXzGbH4YRRH0YJ9cfBnU0op
+ IZkzDp4MdWJScLcWFxQl
+ =xUjE
+ -----END PGP SIGNATURE-----
+ 
+
+🔧 Simplify trial command and refactor repo naming (#1434)
+
+* simplify trial command
+
+* fix lint

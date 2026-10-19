@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "integrationBaseline": "590529ea3a0a6e4dab9e57f933b4b01f69f0fb77",
+  "skillVersion": "0.18.2",
+  "contractSha256": "b1ebfa9950c758fd1e5f11d0c0d32fb2901296dfcebbac24fcb4121ee17d13e8",
+  "custodySha256": "1b7fd31161f82409acb990753fb71acbe1731ae9080b28163a06d73a5b31f701",
+  "interpretation": "Bounded retrospective fixed-source native assessment, not ex-ante acceptance, complete historical coverage or causal attribution.",
+  "sourceEras": {
+    "unbloat-docs": {
+      "actualIntroduction": "7b6d7fcc16990a949f9e9da168ff1e9faeda8bfd",
+      "introductionBlob": "e64f39b7974dfe78f59103fe1b217fc1aeb7bbc5",
+      "baselineFileAbsent": true,
+      "initialScope": "docs/**/*.md with focus on samples; no blog exclusion in introduction source",
+      "fixedReferenceScope": "Frozen source excludes blog, generated frontmatter-full.md and protected documentation.",
+      "outcome": "Unmeasured: earliest selected merged PR changes only a blog post, outside frozen-reference population; latest selected PR is unmerged. Neither proves eligible content-preserving duplicate removal.",
+      "coverageDisposition": "Replayable native gap; all-null instrument must not count as native-evaluated workflow coverage."
+    },
+    "developer-docs-consolidator": {
+      "actualIntroduction": "9dcc4553e5ffe49e1cdd4df108308a51936db82d",
+      "introductionBlob": "c7de75d22400bc2f8cedf469e36958cbb5b0a619",
+      "baselineFileAbsent": true,
+      "initialTarget": ".github/instructions/developer.instructions.md",
+      "fixedReferenceTarget": "scratchpad/dev.md",
+      "earlySelectedNativeTarget": ".github/agents/developer.instructions.md",
+      "historicalAcceptance": "Do not assign current target to older source eras. The early native target is neither the initial target nor the frozen current target; contemporaneous source applicability is not established.",
+      "outcome": "Merged PR 69710 changes only scratchpad/dev.md. Zero accepted redundant source-occurrence removals under frozen narrow facet; not zero semantic improvement. Essential content preservation, semantic quality, usability and full goal remain unknown.",
+      "coverageDisposition": "One real bounded nonacceptance observation; no positive delivered consolidation proven, no full historical coverage."
+    },
+    "claude-code-user-docs-review": {
+      "actualIntroduction": "e659513b214fcdb717abf778624037c221d2b724",
+      "introductionBlob": "db200672501b070730883c675e753e6401313273",
+      "baselineFileAbsent": true,
+      "sourceDefinedGoal": "Identify concrete non-Copilot adoption barriers, including missing Claude engine and API-key authentication setup.",
+      "outcome": "One missing Claude add-wizard API-key setup barrier repaired by e19bf2b96f816952561795eb81ecd9f5df227fd0, checked against six original contemporaneous native Go source files without executing them.",
+      "acceptedInterval": {
+        "windowStart": "2026-10-04T15:00:12Z",
+        "windowEnd": "2026-10-11T15:00:12Z",
+        "nativeUnits": 1
+      },
+      "latestInterval": {
+        "windowStart": "2026-10-11T15:00:12Z",
+        "windowEnd": "2026-10-18T15:00:12Z",
+        "nativeUnits": null,
+        "reason": "No acquired native case in latest interval; no older-success fallback."
+      },
+      "limitations": [
+        "The other selected change alters architecture labels and quick-start.mdx; the frozen doc-reader names quick-start.md, which is absent. No verified barrier repair is assigned to that case.",
+        "Static source-pattern verification is not successful CLI execution or human onboarding testing.",
+        "Added WIF instructions, full document accuracy and complete usable non-Copilot adoption are unverified safeguards.",
+        "Discussion discovery is absent; issue/PR discovery cannot establish zero Discussion contribution.",
+        "Attribution is unknown and must not cap the independently established repository improvement."
+      ],
+      "coverageDisposition": "One bounded original-evidence native partial outcome; broader workflow completion and historical coverage remain unmeasured."
+    }
+  },
+  "discovery": {
+    "reader": ".github/skills/add-operational-value/scripts/collect-output-history.mjs#readOutputHistory",
+    "partitions": 346,
+    "entities": 58048,
+    "completeIssuePrTraversal": true,
+    "discussionsComplete": false,
+    "absentReferencesPreserved": true,
+    "mutableAcquisition": "Original PR metadata and bodies were acquired on 2026-10-19, not at the analysis cutoff. Only immutable Git facts establish native before/after changes."
+  },
+  "missingObjects": "Twenty-two absent references for scope-ineligible early PR files remain recorded. They were not fetched because they cannot establish an outcome under the frozen current-source facet and are not blockers on the independent Claude repair.",
+  "decision": "not rated",
+  "costs": "not measured",
+  "predecessors": [],
+  "rejections": [
+    "Reduced lines/words or a merge as proof of semantic preservation",
+    "Later source targets backdated to earlier workflow eras",
+    "Discussion delivery inferred from issue/PR discovery",
+    "Missing protected creation receipts treated as a universal gate on independently proven repository improvement",
+    "Latest missing interval replaced by older accepted success",
+    "All-null definitions or fixtures counted as evaluated native outcomes"
+  ],
+  "validationCommands": [
+    "node --test tests/unit/operational-value-doc-consolidation.test.mjs",
+    "node .github/skills/add-operational-value/scripts/verify-value-function.mjs --collector docs/operational-value/proof/functions/WORKFLOW.mjs",
+    "node .github/skills/add-operational-value/scripts/evaluate.mjs --root . --end 2026-10-18T15:00:12Z --output-dir docs/operational-value/proof/doc-consolidation/evaluations --function docs/operational-value/proof/functions/WORKFLOW.mjs --refresh github/gh-aw WORKFLOW",
+    "node scripts/package-doc-consolidation.mjs PRIVATE_ARTIFACT_DIRECTORY",
+    "npm run compile"
+  ]
+}

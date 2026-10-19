@@ -1,0 +1,24 @@
+tree 1a8a324e0723f12d83bdcd6e5cf50c8e3898116f
+parent f13e3f3b4b805695caf2f36f7ea627d401b0af7e
+author Copilot <198982749+Copilot@users.noreply.github.com> 1769100488 -0800
+committer GitHub <noreply@github.com> 1769100488 -0800
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJpclTICRC1aQ7uu5UhlAAABBAQAD3xpAJxwA9JwtgIvi68Ixb7
+ 8/m+G6ALScOS5CdqIwA+58j38+RlpNwi0EKBXF6rfcR5dQaxQNB7bwWPfS4CQBfX
+ 6tiBlFJX5ouAEZzZszSuahwsP4QJ7sWREIGQt5phi+7RkW3Vgfkf8giBf0win4pG
+ ydrtRYKNpGqJJKE4uAtGdBb3gW3JOH+CigPTh7Srd0lunH7CzOhtojL2JpHk6QxK
+ +oYoU6HarUsqfLePhYDEQzPtYxwdw84IcethyiEAfGvPiq/ku9nXTimA+vPKmcuC
+ 6+lSNMpFrXWZPxWACZzlkO/G87RRDjy+T9kc1PkKfgMSN4AXt4Q8qVdLCXBo3gE/
+ TuWLT/Sy2TxCdzihUj2PZPYxQNl9CVXHQ4Gy7wTJYUOx75OZsUi5wk/XNEPqVokC
+ NO1GwUbj6gxjaoLFFMs7HPQ1Ma2ft1vJQ2R2zx0UwCh133gCOZxQ2CAMpOJjW1lm
+ JpL8+hslhWqOrrNGPZfrsurAAw/YvCJDrEfQ+3ccLykdaCbm4CUhSPdZ2azEJ1gi
+ lKNN/nnC5vmYnCklSs87Ks1lVZJnpI1gQZEEdU5Y9uO+uNJhilsKDN4x2j+K/ddP
+ KmARB2neLpgl0EYKEePe0XjCfzEkYMVukdzhBLW4gNbD6xmVw2wj4GdxIxAH2c8w
+ 0VMHorVfoec2JHfpiUqY
+ =ddNc
+ -----END PGP SIGNATURE-----
+ 
+
+Add daily workflow to audit documentation for Claude Code users (#11351)
+

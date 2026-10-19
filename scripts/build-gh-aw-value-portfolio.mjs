@@ -31,6 +31,12 @@ import { collectBatch as collectSmallModel, scoreMetric as scoreSmallModel } fro
 import { collectBatch as collectDriveMemory, scoreMetric as scoreDriveMemory } from "../docs/operational-value/proof/functions/smoke-drive.mjs";
 import { collectBatch as collectPydanticReads, scoreMetric as scorePydanticReads } from "../docs/operational-value/proof/functions/smoke-pydantic.mjs";
 import { collectBatch as collectCiReplay, scoreMetric as scoreCiReplay } from "../docs/operational-value/proof/functions/smoke-ci.mjs";
+import { collectBatch as collectDesignerDrift, scoreMetric as scoreDesignerDrift } from "../docs/operational-value/proof/functions/designer-drift-audit.mjs";
+import { collectBatch as collectDocHealing, scoreMetric as scoreDocHealing } from "../docs/operational-value/proof/functions/daily-doc-healer.mjs";
+import { collectBatch as collectDocUpdates, scoreMetric as scoreDocUpdates } from "../docs/operational-value/proof/functions/daily-doc-updater.mjs";
+import { collectBatch as collectUnbloat, scoreMetric as scoreUnbloat } from "../docs/operational-value/proof/functions/unbloat-docs.mjs";
+import { collectBatch as collectDocConsolidation, scoreMetric as scoreDocConsolidation } from "../docs/operational-value/proof/functions/developer-docs-consolidator.mjs";
+import { collectBatch as collectClaudeOnboarding, scoreMetric as scoreClaudeOnboarding } from "../docs/operational-value/proof/functions/claude-code-user-docs-review.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -734,6 +740,48 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "designer-drift-audit", sourceGitBlob: "91261191d20f97e8c511ed9690db4dd283ea35b9",
+      functionSha256: "70387e476fb7d57de8c767fbf859156a972af2fbe384cb3453abfee38828b198",
+      timelineDigest: "08db4d14dece151e64efbfe80f4c6737b2aa33102b27d2f596795e367822f93b",
+      reports: "docs/operational-value/proof/doc-accuracy/reports/github-gh-aw",
+      collector: collectDesignerDrift, scorer: scoreDesignerDrift, partialMetricId: "factualRepairs",
+      stage: "twelve native network-guidance repairs measured; full synchronization unknown",
+      detail: "Exact original before/after guidance and stable contemporaneous reference contracts establish twelve invalid-network-shorthand corrections. A later assessed mapping change has zero accepted repairs because its configuration name does not match the independent schema; this is not zero semantic work. Twenty disjoint periods retain the two bounded observations and eighteen unknown periods. The original local-reference contract remains unchanged. Version2 was authored after reading candidate PR prose and is explicitly outcome-informed retrospective assessment, not blind/ex-ante acceptance. Full designer synchronization, generated-workflow correctness, workflow contribution, complete history and costs remain unknown; decision not rated." },
+    { workflowId: "daily-doc-healer", sourceGitBlob: "424b398cdf60be1db7f87708e3d67012eafc81ac",
+      functionSha256: "191601f27906be0b21b4ef5dd8b69e72671f7b1a54fdfcfdf312cbd2b18bf8f8",
+      timelineDigest: "757588d0cb3c05b555011fa386bfb2bd5827c9276971dd25abfec3e5847923ae",
+      reports: "docs/operational-value/proof/doc-accuracy/reports/github-gh-aw",
+      collector: collectDocHealing, scorer: scoreDocHealing, partialMetricId: "factualRepairs",
+      stage: "two native authentication-warning repairs measured; broader accuracy unknown",
+      detail: "Two original documentation warnings are corrected to the named-token authentication error behavior independently verified in the contemporaneous unconditional implementation branch. The proposed toolset-removal facet remains rejected because search/experiments still occur in the authoritative schema enum. Thirty-four disjoint periods retain one bounded measured interval and thirty-three unknown intervals. Frozen v1 local-reference acceptance and rejected v2 predicates are preserved; v2 is explicitly outcome-informed retrospective authoring after candidate prose, not ex-ante acceptance. Full semantic gap resolution, maintainership prerequisites, workflow contribution, complete period populations, costs and keep decision remain unknown/not rated." },
+    { workflowId: "daily-doc-updater", sourceGitBlob: "02aebaffb8fbe3201e5a5c8a0ee6acf2e9be24cb",
+      functionSha256: "d20a2d1cdd9246c8b1a5633d55b3361ca4525d0f377024f1d645c59105fc4227",
+      timelineDigest: "3fd5e8f37fff7260e9f74955ab66fad0cc0ab5b6471d3d73ee5af47cff053669",
+      reports: "docs/operational-value/proof/doc-accuracy/reports/github-gh-aw",
+      collector: collectDocUpdates, scorer: scoreDocUpdates, partialMetricId: "factualRepairs",
+      stage: "one native safe-output option contract documented; full feature coverage unknown",
+      detail: "Original parent/child documentation plus stable native schema and handler establish one explicit link-sub-issue target=\"*\" parent-selection contract. A CLI flag appears in an options list/prose rather than the frozen exact-row predicate and remains rejected, not retuned into acceptance. Fifty-three disjoint periods retain one assessed zero, one accepted partial repair and fifty-one unknown periods. Original v1 and rejected predicates survive; v2 is outcome-informed retrospective assessment after candidate prose. Full feature accuracy, runtime execution, workflow contribution, complete history, costs and keep decision remain unknown/not rated." },
+    { workflowId: "claude-code-user-docs-review", sourceGitBlob: "040ec6b88ae91baa0af077daf9b23401f90be806",
+      functionSha256: "d6e3ca6568d14d89e93408512ec3074be515cfc68aa5cba4723e82cd6c2787e2",
+      timelineDigest: "388f57656fdad6143cf3bc483c7e1b14dc3b6324cc082d81111128d52033a58e",
+      reports: "docs/operational-value/proof/doc-consolidation/evaluations/github-gh-aw",
+      collector: collectClaudeOnboarding, scorer: scoreClaudeOnboarding, partialMetricId: "native-improvements",
+      stage: "one native Claude API-key onboarding barrier repaired; latest interval unknown",
+      detail: "An immutable core-document change repairs one missing add-wizard Claude API-key setup instruction, independently checked against six contemporaneous original Go implementation files without executing target code. The October4-11 interval has one accepted barrier repair; the latest interval is unknown, never an older-success fallback. Thirty-nine disjoint periods retain this one partial and thirty-eight unknown intervals. Actual introduction/real-parent absence are proven; the assessment is explicitly retrospective fixed-reference, not backdated acceptance. The other selected architecture/quick-start change is not accepted. Human usability, WIF correctness, full goal, Discussion discovery, workflow attribution and costs remain unknown/not rated." },
+    { workflowId: "developer-docs-consolidator", sourceGitBlob: "56150ba5b670e7b088c45e7106ebafbe3946d75a",
+      functionSha256: "6dfad272ca15acbfc7842962c45d26b595d2c062733ee4bb0dfe9af4a2983d4f",
+      timelineDigest: "396b6295eddcbabc31c029342567d1b6b0b613c8573912a879ea1bfa05701ca5",
+      reports: "docs/operational-value/proof/doc-consolidation/evaluations/github-gh-aw",
+      collector: collectDocConsolidation, scorer: scoreDocConsolidation, partialMetricId: "native-improvements",
+      stage: "bounded native nonacceptance measured; no lossless source consolidation proven",
+      detail: "The selected original merged change touches only scratchpad/dev.md and establishes zero accepted redundant source-occurrence removals under the unchanged narrow predicate. This is one assessed native nonacceptance, not zero semantic work or zero whole-period value; forty-nine other intervals remain unknown. The earlier candidate targets .github/agents/developer.instructions.md, outside the frozen current target, and is not backdated into eligibility. Actual introduction and real-parent absence proofs remain distinct from later source eras. Full content preservation, searchable usability, semantic quality, workflow contribution, complete history, matched costs and keep decision remain unknown/not rated." },
+    { workflowId: "unbloat-docs", sourceGitBlob: "fd6994d6473be8d40b22805f406b20e0848da8ea",
+      functionSha256: "6570d5cc017ebc3f722718fdf7e3b687c82aeaebb83c96b6dc0e2c22768b6e29",
+      timelineDigest: "8d06db0df9dba13c09e673b497105aa63d58e49e2e12c1403d47de22bfcc561c",
+      reports: "docs/operational-value/proof/doc-consolidation/evaluations/github-gh-aw",
+      collector: collectUnbloat, scorer: scoreUnbloat, blocked: true,
+      stage: "native scope mismatch and unmerged candidate retained; no accepted unbloating proof",
+      detail: "The earliest selected merged change edits an excluded blog document, while the latest selected PR is unmerged. Neither establishes eligible content-preserving duplicate removal. All fifty-four disjoint periods remain unknown; a source-era scope mismatch is not zero historical delivery. Exact original source introduction, real-parent absence, selected PR metadata/full file paths and immutable native custody are preserved. The deterministic function and all-null gap report are available, but add no native coverage. Reduced words, merges, line counts and agent bloat scores are not semantic preservation; full acceptance, workflow contribution and costs remain unknown/not rated." },
     { workflowId: "smoke-pydantic", sourceGitBlob: "39e64a09ad74877e7533d69f858e9a479f9ce318",
       functionSha256: "20bdc5ccbf59985d9ebab4ff7e05d454cbf153d45cfb9a8dd232f69a4f354faf",
       timelineDigest: "918eb5021dc3a7a088d47e993b8bc9cf328e92efd3a36c77a3d9ebd68620f55e",
@@ -864,20 +912,6 @@ export async function currentPortfolioInputs() {
     ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
       stage: "lint-rule cohort: useful diagnostics and precision under investigation",
       detail: "One isolated cohort derives independent source-specific rule usefulness and precision checks. Rules added, tests written and merged candidates are not independent acceptance. Native partial improvement, full correctness and false-positive safeguards remain distinct; source-only inputs and assignment add no measured coverage." })),
-    ...[
-      ["designer-drift-audit", "91261191d20f97e8c511ed9690db4dd283ea35b9"],
-      ["daily-doc-healer", "424b398cdf60be1db7f87708e3d67012eafc81ac"],
-      ["daily-doc-updater", "02aebaffb8fbe3201e5a5c8a0ee6acf2e9be24cb"],
-    ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
-      stage: "documentation accuracy cohort: source-grounded contract and native repairs under investigation",
-      detail: "One isolated cohort shares source custody and evidence acquisition while deriving separate native accuracy predicates for each workflow. Actual documented-contract or factual repairs must be independently verified; edit counts, claims and merged candidates are not accepted outcomes. No function or native evaluation is established by this assignment." })),
-    ...[
-      ["unbloat-docs", "fd6994d6473be8d40b22805f406b20e0848da8ea"],
-      ["developer-docs-consolidator", "56150ba5b670e7b088c45e7106ebafbe3946d75a"],
-      ["claude-code-user-docs-review", "040ec6b88ae91baa0af077daf9b23401f90be806"],
-    ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
-      stage: "documentation consolidation cohort: preserved facts and adoption barriers under investigation",
-      detail: "One isolated cohort derives independent per-workflow definitions while sharing content custody and mechanical checks. Fewer words, files or duplicated passages alone do not establish preserved essential facts or removed adoption barriers. Verified partial outcomes remain separate from semantic usability and full acceptance; assignment is not native coverage." })),
     { workflowId: "artifacts-summary", sourceGitBlob: "f692218fe9dfec7d6de9cea16e0d0098f5d69603",
       stage: "native inventory reconciler retained; original reports and page sequences missing",
       detail: "The owned native decoder, ten-source closure and 22-test reconciliation instrument are retained. All 11 issue candidates remain discovery; Discussions are outside the issue/PR inventory. Six artifact records totaling 111,598,804 bytes are not proof of report accuracy. Original report bodies and contemporaneous complete workflow/run/artifact pages are missing. The frozen evaluator rejection and separate all-null prospective report remain preserved, not admitted as native outcomes. Full native measurement and contribution remain unknown." },

@@ -1,0 +1,24 @@
+tree 65c82f553d788af02ad7f9e06f9c52e67a037187
+parent 9819f934a241d60811a406b79fd3d88519cc6817
+author Copilot <198982749+Copilot@users.noreply.github.com> 1769608472 -0800
+committer GitHub <noreply@github.com> 1769608472 -0800
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJpehUYCRC1aQ7uu5UhlAAAtUkQAEUCtYQHvjSxacY0jLaBX2D9
+ N42i0GeB2guyL9EPW4BRPlbYKjp++axF9zh/AM5NSmUK9MdoeRONiW3+zWiGiNjZ
+ 2tjfletZOa19mknWIr1BQRkgDif9OR3qKTb0nYsWtyXVnqozd3+49VzucG8TnBuH
+ GzP2ApPvLdSOpINW9b2h1TkGBfBUZBpi0MoBfeCYueHB3Dmfm292u8RHPfW33B/T
+ ldp96Z1PPKnisWf0N4zEwHyacZUo0IonS+IcqK9Sn9lYN0kOdbMnQrHlzhYQbdl/
+ VocIACCQaKD2FTrmuvVgyXJZgrx6I3/RyO1c5WOWmX/nvOCOPJy5JZsajpGdqUrK
+ b4nCAGjdCTqHpPRsfCbvvDR5oS1+KWhaIxt540ANSbX9UCc5DSSuCGPI606MgAkP
+ 66DzCtJYPnhoyEBhVWGKeaNvYjy4iS6p6AKcQZGE0nyLUg3VlXKcb6RHDn/4UUpo
+ YmPVbvMZg/sp//rIsuQANHWB4b6osCVNLqbqmnG3T2m03dUk+aboWCbk6soBL/SR
+ mOl+nexErMPvGnjJPIaRhZd1qhj5nSUoXfratdk4Pdq9VNR4MPf27SXpfgQq8kfx
+ DMhrWwn7hH9MM72n48DxdEB5AxZNZvW/lROVYBBuSnBmghF7DgrYU+K6x9zuN+mZ
+ BD79cc0ouQRAuE7teQf/
+ =i3WJ
+ -----END PGP SIGNATURE-----
+ 
+
+Clarify safe-outputs MCP tool invocation in workflow instructions (#12207)
+

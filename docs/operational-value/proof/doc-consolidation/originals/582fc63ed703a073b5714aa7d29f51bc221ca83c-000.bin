@@ -1,0 +1,23 @@
+tree 2b5b727954e1335709b21da53c5c9be21b878628
+parent a1376acf2ead4134d15c2abd777199c5ec48355b
+author Copilot <198982749+Copilot@users.noreply.github.com> 1791694138 -0700
+committer GitHub <noreply@github.com> 1791694138 -0700
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJqyxU6CRC1aQ7uu5UhlAAAWVgQAA/u0bQcmtRKywsCMn0iBq8e
+ Wv/kJVEuE1Tl2RalLLadT6UFQ3kjgI0NdRF8AzwRmTX1z3GMv/Q/KRhfZwUZpeNA
+ OjGVbxOYoCKGN8F1maN/2ZmhJqcDCvCrHDKb7TiqsIOYoR+d7Fa/K89RMWO9gMpO
+ XECUDAmFlJuQsCZfHsDJAek0fWSQaaF4V42slF5hC+KQ58tqaab35YPCraEJl1lI
+ GDsEui6yn7xP0ZRQ6+LIaEiuSrd8hTLlWIeYzhJnHEOksT+uAcYCfloFQh0q4glu
+ 8CMElGXyytryI+F9dtJANS0JVLbiULOhWNKGvUnj3m3mwACcv4xFOOidsUlgP5gJ
+ LSgFg1dBeMYUd8bsrMJWu/cNOlAnzMA2IVYj3WEYjDo3YV+QJKoBMPECdFcABSRH
+ ueJB+9ecmi4HHY8n8kOYG2znD0vMrFkL70eBpoEcfd8ExeLZxmVm09NWts/rlEbc
+ pTwshwebNca8O4nYUBNJDVp3zj2lQBythlA7PY/IPZkO3+zLxmeWA2wp6e3dwol/
+ NzkVWPXrkwluXT8Y5vx044pD0L/bLeLHcS1ndAO+KJlM8Yz7aYlkjoTJRzHv1Bjl
+ 95WN2WRCwA5FVWiDFbbt2pdMMIScIA9UpWBGHPMYi4r36TUfMRJgyLr5pBrYpXCi
+ kS+9xcsJhxsVMp0VAV3l
+ =7imW
+ -----END PGP SIGNATURE-----
+ 
+
+Select Copilot wire APIs from AWF metadata and surface model mismatches (#67487)

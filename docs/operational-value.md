@@ -430,7 +430,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-56 of 344 is 16.3%, with 288 workflows still unevaluated.
+61 of 344 is 17.7%, with 283 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -607,7 +607,7 @@ correctness, native Redis service-port operations and SDK file/read-back effects
 They follow the File Diet outcome-first path: inspect real downstream evidence,
 measure the smallest independently verified useful change, and separate broader
 acceptance and attribution. Assignment and fixture-only instruments are not
-native evaluations. The target remains all 344 workflows, with 288 still lacking
+native evaluations. The target remains all 344 workflows, with 283 still lacking
 native evaluations at this cutoff; refreshing this inventory does not complete it.
 
 Changeset now adds a real structural partial evaluation, not just an instrument:
@@ -675,15 +675,32 @@ remain unknown, with original predicates, compressed reports and failure receipt
 preserved. An LLM invocation is not required for deterministic useful effects,
 but an unused prompt and a successful replay do not establish those effects.
 
-Four parallel cohorts now own 12 further workflows: documentation accuracy
-(designer drift and documentation healing/updating), documentation consolidation
-(unbloating, developer-guide consolidation and Claude onboarding barriers),
-Go dependency improvement, and lint-rule usefulness/precision. They share
-acquisition and mechanical checks while keeping separate goals and frozen
-acceptance predicates. The latter two have portable source-only bootstrap
-packets with exact blob hashes and explicit missing imports/compiled evidence;
-these are not runtime or outcome proof. Assignments, edit counts and merged
-candidates do not increase native coverage.
+Two documentation cohorts now add five bounded native evaluations. Designer
+guidance has 12 independently verified network-shorthand corrections; healing
+has two authentication-warning repairs checked against implementation; updating
+has one supported safe-output parent-selection option documented. Their original
+local-reference predicates remain unchanged, rejected factual predicates remain
+rejected, and the added factual version is explicitly **outcome-informed
+retrospective authoring** after candidate PR prose, not ex-ante acceptance.
+
+Claude onboarding has one source-verified missing add-wizard API-key setup
+instruction repaired, checked against six contemporaneous implementation files.
+The latest interval remains unknown; the earlier success is not carried forward.
+Developer consolidation has one assessed native nonacceptance: zero lossless
+redundant source occurrences removed in the selected original target-only change,
+not zero semantic improvement or whole-period value. Older target paths are not
+backdated into current eligibility. Unbloating adds only an all-null gap report:
+the early candidate is an excluded blog change and the latest is unmerged.
+It does **not** increase native coverage. Full semantic acceptance, human
+usability, workflow contribution, complete history and matched costs remain
+unknown across these cases.
+
+Six further workflows covering Go dependency improvement and lint-rule
+usefulness/precision retain local cohort drafts, not admitted native evaluations.
+Their source-only bootstraps and later evidence receipts remain distinct from
+completed replay packages. Incomplete drafts do not establish replay readiness;
+cloud execution is not required.
+Assignments, edit counts and merged candidates do not increase native coverage.
 
 The work-queue observer investigation retains all 12 initial executions:
 seven belong to an incompatible historical finish-staging goal, and five are

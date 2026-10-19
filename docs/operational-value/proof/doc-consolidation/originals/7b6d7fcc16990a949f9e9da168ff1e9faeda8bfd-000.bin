@@ -1,0 +1,24 @@
+tree 58f160c0eac9f5eac429055ddd975177b8a48063
+parent 2fed93713af598c7501eef0fdedb55660898006d
+author Copilot <198982749+Copilot@users.noreply.github.com> 1760109922 -0700
+committer GitHub <noreply@github.com> 1760109922 -0700
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJo6SViCRC1aQ7uu5UhlAAAmx4QAHCfp39ReFGRsyERTI7SOi14
+ S6Scyso9yOfu6kJn2vk+JodjVbGmmUEI7louylfRHotBCdvHoD1Z4ckpGYYhPGvl
+ 01tBqaCOjJlMrdwEGNYBbZlhjDzS6lP3Gr1OmgqqTGVtw2GocDpqkiVOKZWoFBD+
+ oquGlNVPBVh6MbTn+FT5j//7P7TQinTjBzBh0FmxRRRjXgTKesa47Ka9BUHSLe38
+ YlbtntP6z0zbGyHfQzk02IBJTdIjC7qJfST6Fv1phzy+MuIhlMzlzJUlYw2mHlG9
+ yl/8tsfmwR0w57LagtF9v30Mmqr5pWE1a5dOptY1qWKOlx11kADV9Rv9AG+mxsTo
+ n4S67kZvZEk2kNqEYzHXBvg3Q80A8Ac1BLUBkp6RsP6Hu65DmHyL4aMS5QkFjThr
+ xZqdeg/nwQydzX30GGEoHhcJzYNlHfj5T5Jbm4+A6Z3+FXt/aKFsh9sW9LYgwj5p
+ zb2JotOP2nlwuHCgpnXftmPBI/tmdsim59CQQE4dVkG4mpqmbGmAbHJ9QA+QZVoA
+ v6unMq+s3rMCZNp0qTp1WAH5MRl6nR5vKANTuEpzBIERbVWqEq0Ii3APb+AR/4Ci
+ zg4k2HyeF/sopObIJZPoqFiLrAOkDqsjJWSVX9/OLN/yNr6kNw+g4tNolS1v7aXm
+ Q/cwX7s0YGBaqocIeN8C
+ =QEpR
+ -----END PGP SIGNATURE-----
+ 
+
+Add documentation unbloat workflow for automated cleanup (#1464)
+

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "version": "doc-accuracy-explicit-contract-v2",
+  "predecessor": "contract-v1.json",
+  "authoringSequence": "Outcome-informed retrospective authoring: frozen after source reading and bounded candidate PR prose describing repairs, before inspecting immutable native before/after contents or oracle results. Not blind, ex-ante, adopted at the historical workflow date, or backdated acceptance. Candidate prose is untrusted and does not establish native outcomes.",
+  "strictAcceptanceUnchanged": true,
+  "rejectedV1Preserved": true,
+  "facets": {
+    "designer-drift-audit": {
+      "goal": "Synchronize factual designer configuration guidance with supported reference contracts.",
+      "scope": [".github/aw/designer.md", ".github/agents/interactive-agent-designer.agent.md", ".github/aw/designer-mappings.md"],
+      "unit": "verified configuration guidance repairs",
+      "rule": "Count only explicit new invalid-shorthand-to-valid-ecosystem table mappings whose exact pair is independently specified in contemporaneous network reference documentation, or new safe-output mapping cells whose exact output name is both a workflow-schema property and a registered safe-output operation. Before source must lack that mapping. Require stable authoritative pair/key at both native parent and child. Mentioning a runtime operation absent from schema does not qualify.",
+      "nonClaims": "Does not establish all designer categories synchronized or correct generated workflows. Split mapping helper is in scope because frozen designer source explicitly loads it."
+    },
+    "daily-doc-healer": {
+      "goal": "Correct confirmed documentation statements contradicted by contemporaneous implementation.",
+      "scope": ["docs/src/content/docs/reference/github-tools.md", "docs/src/content/docs/setup/cli.md", "docs/src/content/docs/setup/quick-start.mdx"],
+      "unit": "verified factual documentation repairs",
+      "rule": "Count an explicit available-toolset assertion removed from its available-toolsets list only when that exact identifier is absent from both contemporaneous canonical toolset-permissions data and workflow-schema enum at parent and child. Alternatively count an obsolete explicit silent-authentication claim replaced in the same warning with the exact named-token error behavior independently established by an unconditional runtime error branch and its error literal, stable at parent and child. Require the before claim to be explicitly contradicted, not merely a missing phrase.",
+      "nonClaims": "Does not establish all missed-gap prerequisites, maintainer rejection handling, issue-history completeness, general semantic accuracy or future recurrence prevention."
+    },
+    "daily-doc-updater": {
+      "goal": "Document actual supported configuration contracts without inventing behavior.",
+      "scope": ["docs/src/content/docs/setup/cli.md", "docs/src/content/docs/reference/safe-outputs.md", "docs/src/content/docs/reference/custom-safe-outputs.md"],
+      "unit": "verified documented contract additions",
+      "rule": "Count a newly documented exact CLI flag option row only when the literal flag is registered on the claimed command and contemporaneous runtime code checks that option at both parent and child. Or count a new explicit safe-output option contract with its exact key/value only when both contemporaneous workflow schema and independent runtime handler support that exact value and behavior. A new cross-link counts only under unchanged v1 missing-target repair rules, not merely because a valid link was added.",
+      "nonClaims": "A registered flag is not proof all newly added prose about it is accurate. Correct explicit option contract is a named partial, not complete feature documentation or runtime execution."
+    }
+  },
+  "sharedRules": {
+    "originals": "Only hash-verified native parent/child commits, trees and exact source blobs; no execution of target code, model calls or network during replay.",
+    "sourceEra": "The workflow's broad goal must apply at both parent and child. Assess contemporaneous contracts, not current vocabulary silently projected backward.",
+    "count": "Deduplicate document plus explicit repaired contract identity across retained history. Group repeated same contract in one document once; independent documents remain distinct native cases.",
+    "period": "Preserve canonical cutoff-aligned disjoint intervals and unknown unassessed history.",
+    "attribution": "Discovery bodies and mutable workflow markers alone remain candidates, not workflow credit. Useful repository partials do not wait on unavailable full runtime custody.",
+    "exclusions": "No output counts, merges, removed text quantity, job successes, invented weights, keep bars, money or unsupported semantic generalization."
+  }
+}

@@ -1,0 +1,34 @@
+tree 60b2e1cf6b4fbd17122b14eabcdb9e277d4ef5d0
+parent 15569c99f86e433f40484d9006390d62ecb2ed6f
+author Copilot <198982749+Copilot@users.noreply.github.com> 1769449954 -0800
+committer GitHub <noreply@github.com> 1769449954 -0800
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAABCAAQBQJpd6niCRC1aQ7uu5UhlAAAgIkQAIX/jASRB/+/cMUSXmX0E3C1
+ r/BaVRshXwKCibqyroAuVuyQSG63ee7zlmw+NyWjkPEAeW8uzn/002/51skdxYVo
+ w61r/6EmbGp+HvHTj6mNlvtbCsilQnDA4G/OHpEIB3z9W1YD+Mh5SGvkOpSb7WET
+ iSlktR4SxAqS7aO8HPh0GxkQLgQJxhFDFi4ao/YWdx5fghtm2dZd/b8yBkKLDCuO
+ PcWDp58tByBVqS9Md/3l2sxvJgY31K1HGO6YMKa8heQ7Q8NymQRyE0fqGi/uzI2d
+ Ugs324Wjo1fsc9slstzMNy+Doo9KnlKUvUPbzaqKOOeNIt8UjJdbbNTVIzzKUosG
+ ouY772zdy4h6YxAe67aP+sQ0cJx0GkEhocWZInnah1a6iPYFUOGzaC8XOOWBHAZ1
+ E23fxlW3XRhji3r1yNSM2eSZ+xGDYrInCe7SN4JiLIQGybBDNyNl1FcMdaLt3nEz
+ LMcBWPzAmMpIywSe4glgU2Gk6Krh8tOzrF166Ad0EkrQu26Oypap5ulBFGnHdu//
+ aKzyeM/s1IW5YwoIjjK3MxExkWkb4pWmU5ob4484p0rNdRTujWxauYiHA1of1QuL
+ 5hF8ncXu6dleabz8yZWmMygPqWQJUs1AtdNkoF3xv4GzxPx4WD+yqipWjG/rap+e
+ FHy/O/pg2e1OTw37H9Zt
+ =wFO7
+ -----END PGP SIGNATURE-----
+ 
+
+Fix staticcheck S1009 lint error: remove redundant nil check on map (#11915)
+
+* Initial plan
+
+* Fix staticcheck S1009 lint error in mcp_inspect.go
+
+Co-authored-by: pelikhan <4175913+pelikhan@users.noreply.github.com>
+
+---------
+
+Co-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>
+Co-authored-by: pelikhan <4175913+pelikhan@users.noreply.github.com>

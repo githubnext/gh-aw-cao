@@ -1,0 +1,34 @@
+[
+  {
+    "id": "claude-quickstart-32016",
+    "slug": "claude-code-user-docs-review",
+    "commit": "411107730a62bcaf3a53e831e534c7fae02aaea9",
+    "paths": [
+      "docs/src/content/docs/introduction/architecture.mdx",
+      "docs/src/content/docs/setup/quick-start.md",
+      "docs/src/content/docs/setup/quick-start.mdx"
+    ],
+    "selectionBasis": "Frozen bounded native metadata selection; extension drift retained, not silently rewritten into source scope.",
+    "attribution": "unknown"
+  },
+  {
+    "id": "claude-wizard-auth-67624",
+    "slug": "claude-code-user-docs-review",
+    "commit": "e19bf2b96f816952561795eb81ecd9f5df227fd0",
+    "paths": [
+      "docs/src/content/docs/setup/quick-start.md",
+      "docs/src/content/docs/setup/quick-start.mdx",
+      "docs/src/content/docs/setup/cli.md"
+    ],
+    "selectionBasis": "Frozen bounded native metadata selection; implementation evidence required before accepting any auth repair.",
+    "attribution": "unknown",
+    "supportPaths": [
+      "pkg/cli/add_wizard_command.go",
+      "pkg/cli/add_interactive_orchestrator.go",
+      "pkg/cli/add_interactive_engine.go",
+      "pkg/cli/add_interactive_secrets.go",
+      "pkg/cli/engine_secrets.go",
+      "pkg/constants/engine_constants.go"
+    ]
+  }
+]

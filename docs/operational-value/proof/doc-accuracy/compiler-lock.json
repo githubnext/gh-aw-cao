@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "version": "doc-accuracy-explicit-contract-v2",
+  "files": [
+    {
+      "path": "checker.mjs",
+      "bytes": 2435,
+      "sha256": "c6878a87841d89ea52e7402eed556f4782703686afd0139e998314158fae72b2"
+    },
+    {
+      "path": "contract-v1.json",
+      "bytes": 5223,
+      "sha256": "62ff03557ba022d458810ff06c286b24fa085c27748eee48d1d4ea9a6196bd98"
+    },
+    {
+      "path": "contract-v2.json",
+      "bytes": 4828,
+      "sha256": "e4a3f54aeade64e1bc438f8a22f27fd089b7cca00062d895e01c79f0d658e944"
+    },
+    {
+      "path": "factual.mjs",
+      "bytes": 12238,
+      "sha256": "25154f91f69b8ddbcf542ebda66debfa39285ff5971b8438273b27c3bc433fef"
+    },
+    {
+      "path": "objects.mjs",
+      "bytes": 4713,
+      "sha256": "8a90215b5a2cf101f93b2971117c971c670a9e787ee4056d906c0d71055a30a0"
+    },
+    {
+      "path": "originals.json",
+      "bytes": 77429,
+      "sha256": "e567964a99020dd8d93f3b0a1beb9c73768094901412febb6c0aa89c951344c9"
+    },
+    {
+      "path": "plan.json",
+      "bytes": 3734,
+      "sha256": "a10308e5bac20dd9a71202f403d4ccd6f690d99f8a1ffa5ac8f64e97d1014d26"
+    },
+    {
+      "path": "public-custody.mjs",
+      "bytes": 2802,
+      "sha256": "3c6ad214af6c211e905db85a7902c4c95b1343b140ae8e7734c04595af1de4f8"
+    },
+    {
+      "path": "public/manifest.json",
+      "bytes": 43192,
+      "sha256": "9323964472dc341a799ad17e105ce5e7b033b3e9d9bf5c912a0aa9fa42cf0ce5"
+    },
+    {
+      "path": "render-clock.mjs",
+      "bytes": 337,
+      "sha256": "df88172b241ac0052a894506757e6f38f4f6bed8ddd665645b144dd5a4d4242e"
+    },
+    {
+      "path": "runtime.mjs",
+      "bytes": 10588,
+      "sha256": "b01a104f747fc2ac8d43546f3759fab58ae5744efc89f5a9c954d3f090ef660d"
+    }
+  ]
+}
