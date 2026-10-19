@@ -126,6 +126,18 @@ describe('time-window filter bar', () => {
     expect(onChange).toHaveBeenCalledOnce();
   });
 
+  it('clears custom-range validation state once a valid window is applied', () => {
+    const filterBar = renderFilterBar(vi.fn(), { maxDays: 30, defaultRange: '1w' });
+    setTimeWindowFilter('2026-09-01T00:00:00Z', '2026-10-02T00:00:00Z', filterBar);
+    const alert = /** @type {HTMLElement} */ (filterBar.querySelector('[role="alert"]'));
+    expect(alert.hidden).toBe(false);
+    setTimeWindowFilter('2026-09-01T00:00:00Z', '2026-10-01T00:00:00Z', filterBar);
+    expect(alert.hidden).toBe(true);
+    expect(alert.textContent).toBe('');
+    expect(filterBar.querySelector('[aria-invalid="true"]')).toBeNull();
+    expect(/** @type {HTMLElement} */ (filterBar.querySelector('.time-window-custom')).hidden).toBe(false);
+  });
+
   describe('view-mode control', () => {
     it('keeps mode labels ordered and supports consistent keyboard navigation', () => {
       const onChange = vi.fn();

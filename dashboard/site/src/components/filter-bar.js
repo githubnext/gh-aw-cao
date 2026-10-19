@@ -301,14 +301,11 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange, signal, maxD
     }
   };
   const validationMessage = h('span', { role: 'alert', hidden: true });
+  const customVisible = state(range === 'custom');
+  const invalidRange = state(false);
   const updateValidity = () => {
     const invalid = select.value === 'custom' && !value();
-    start.setAttribute('aria-invalid', String(invalid));
-    end.setAttribute('aria-invalid', String(invalid));
-    validationMessage.hidden = !invalid;
-    validationMessage.textContent = invalid
-      ? `Choose a start before the stop${maxDays ? `, no more than ${maxDays} days apart` : ''}.`
-      : '';
+    invalidRange.set(invalid);
     return !invalid;
   };
   const customControls = h(
@@ -319,8 +316,19 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange, signal, maxD
     applyCustomRange,
     validationMessage
   );
+  // Owns the custom-range visibility and validation presentation so handlers only write state.
+  effect(() => {
+    const invalid = invalidRange.get();
+    customControls.hidden = !customVisible.get();
+    start.setAttribute('aria-invalid', String(invalid));
+    end.setAttribute('aria-invalid', String(invalid));
+    validationMessage.hidden = !invalid;
+    validationMessage.textContent = invalid
+      ? `Choose a start before the stop${maxDays ? `, no more than ${maxDays} days apart` : ''}.`
+      : '';
+  }, { signal });
   select.addEventListener('change', () => {
-    customControls.hidden = select.value !== 'custom';
+    customVisible.set(select.value === 'custom');
     if (select.value !== 'custom' && select.value !== ALL_RECORDED) {
       const selected = relativeTimeWindow(select.value, referenceEnd);
       start.value = localDateTimeValue(selected.start);
@@ -334,13 +342,13 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange, signal, maxD
   for (const input of [start, end]) {
     input.addEventListener('change', () => {
       select.value = 'custom';
-      customControls.hidden = false;
+      customVisible.set(true);
       updateValidity();
     }, { signal });
   }
   applyCustomRange.addEventListener('click', () => {
     select.value = 'custom';
-    customControls.hidden = false;
+    customVisible.set(true);
     if (!updateValidity()) return;
     persist();
     onChange();
