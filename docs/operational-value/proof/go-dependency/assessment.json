@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "cohort": "go-dependency",
+  "scope": ["dependabot-burner", "dependabot-go-checker", "go-fan"],
+  "readiness": "Three native partial-outcome instruments evaluated on real immutable repository transitions; not fixture-only or all-null coverage. Complete semantic acceptance and exhaustive historical totals are not established.",
+  "checkpoint": "ce52f9bb36e7a1747f544a912978a87c925fa096",
+  "skill": {
+    "local": "0.18.2",
+    "coordinatorIntegrationAtResumption": "0.18.5",
+    "globalFilesModified": false,
+    "compatibility": "Coordinator independently replays on its integration skill; this handoff preserves the original checkpoint and portable module contract schemaVersion 3."
+  },
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "frozenRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "discovery": {
+    "reader": ".github/skills/add-operational-value/scripts/collect-output-history.mjs#readOutputHistory",
+    "partitionsVerified": 346,
+    "entitiesVerified": 58048,
+    "bounds": "Surviving issues/PRs; not comments, Discussions, deleted/transferred outputs or an immutable creation ledger.",
+    "selection": "Fixed bounded selected candidates; no exhaustive native result claim."
+  },
+  "observations": [
+    {
+      "workflow": "dependabot-burner",
+      "nativePartial": 7,
+      "unit": "bundled dependency targets implemented",
+      "corroboratedSharedContribution": 7,
+      "windows": [
+        { "start": "2026-02-08T15:00:12Z", "end": "2026-02-15T15:00:12Z", "quantity": 4 },
+        { "start": "2026-02-15T15:00:12Z", "end": "2026-02-22T15:00:12Z", "quantity": 3 }
+      ],
+      "totalIntervals": 38,
+      "unknownIntervals": 36,
+      "scope": "Two original Go runtime/root-go.mod bundles followed through actual first-parent implementations. Five other changed transitives in PR 14842 are not selected recommendations and do not inflate its four delivered targets. Explicitly selected indirect ANSI target in PR 16387 is eligible under the older bundler goal, not the later direct-only checker policy.",
+      "era": "Original 333-byte February source asks for bundle issues per runtime+manifest. Explicit retrospective v3 preserves this goal separately from frozen current generated-source v1. Do not apply current generated-source acceptance backward.",
+      "gaps": "Four selected implementations remain unassessed; original issues 14507 and 14508 returned HTTP 410 Gone, preserved as original failure receipts. No invented zero or inferred absence."
+    },
+    {
+      "workflow": "dependabot-go-checker",
+      "nativePartial": 4,
+      "unit": "recommended direct dependency targets implemented",
+      "corroboratedSharedContribution": 4,
+      "windows": [
+        { "start": "2026-07-19T15:00:12Z", "end": "2026-07-26T15:00:12Z", "quantity": 1 },
+        { "start": "2026-07-26T15:00:12Z", "end": "2026-08-02T15:00:12Z", "quantity": 2 },
+        { "start": "2026-08-16T15:00:12Z", "end": "2026-08-23T15:00:12Z", "quantity": 1 }
+      ],
+      "totalIntervals": 50,
+      "unknownIntervals": 47,
+      "scope": "Four exact original recommended old/new root go.mod targets, direct before and after, independently matched to real merge/first-parent bytes.",
+      "gaps": "Official release/changelog correctness, full A/B/C population, grouping/issue cleanup and independent compatibility checks unknown. Pseudo-version advancement is not proof that the source's single-step safe-patch category was met."
+    },
+    {
+      "workflow": "go-fan",
+      "nativePartial": 10,
+      "unit": "module-usage assertion sites structurally migrated",
+      "corroboratedSharedContribution": 10,
+      "windows": [
+        { "start": "2026-07-19T15:00:12Z", "end": "2026-07-26T15:00:12Z", "quantity": 10 }
+      ],
+      "totalIntervals": 47,
+      "unknownIntervals": 46,
+      "scope": "Three files in PR 47252: pkg/console/confirm_test.go=1, pkg/console/list_test.go=1, pkg/fileutil/fileutil_test.go=8. Direct testify module identity established from immutable go.mod. Native Go AST matches exact package imports, enclosing functions and normalized argument expressions; ignores strings/comments/shadowed aliases.",
+      "gaps": "Do not claim PR prose's 602 migrations or review's 593, complete review accuracy, actual nil-panic fixes, behavioral compatibility or performance. Several retained sites already had require.Error preconditions, so the measured claim is dedicated-API structural conformance, not prevention of ten demonstrated crashes. Four other selected implementation candidates and remaining changed files are unassessed."
+    }
+  ],
+  "strictFullGoalAcceptance": null,
+  "completeHistoricalSourceExecutorContinuity": null,
+  "authoritativeCreationReceiptCounts": null,
+  "exclusiveCausation": null,
+  "actualMatchingRunCosts": null,
+  "keepDecision": "not rated",
+  "keepDecisionReason": "No agreed native keep bar or number of complete periods. Different native units are not summed into one quality score.",
+  "attribution": "Original producer markers plus exact preserved recommendation text, stable issue identities and an implementation reference corroborate shared contribution. They are mutable observations, not authoritative creation receipts; other implementations/contributors retain their own attribution.",
+  "custody": {
+    "sourceBootstrapSha256": "05f2735a796ac6c833ef39bbab254bc23999fd22782e792f53c9232b416b0b8e",
+    "cacheArchiveSha256": "e498118a1f719ae1d1efde0cdbcf297280fc9f00d1011cc013128097e2dbbbb5",
+    "originalsArchiveSha256": "6b0041284a0bfd036721063a9653d68496bcf623113557c622363d1739f0fc0a",
+    "originalPaths": 82,
+    "originalEndpointReceipts": 60,
+    "failureReceipts": 2,
+    "retainedGitObjects": 81,
+    "commitTreePathProofs": 32,
+    "gitCacheRequiredAtReplay": false,
+    "networkRequiredAtReplay": false,
+    "targetCodeExecution": false,
+    "targetPackageInstallation": false
+  },
+  "validation": {
+    "focusedTests": "9 passing",
+    "collector": "Actual --collector passes for all three functions.",
+    "offlineRefresh": "Standard --refresh --no-runs at frozen cutoff repeated twice per function; identical snapshots and function definitions, disjoint period delivery IDs.",
+    "cleanReplay": "Passed from an explicit git archive of checkpoint ce52f9bb plus owned files, no private Git cache/node_modules/shared history. Independently generated snapshots match working-tree snapshot SHA256.",
+    "nativeOracle": "go1.25.3 standard parser only; go vet passed. Native go mod edit -json parses immutable manifest bytes with GOPROXY/GOSUMDB disabled, including tool directives and unrelated replacements. Replaced/excluded target pins stay unknown.",
+    "workflowCompile": "72/72 workflows compiled in strict no-emit mode with required schedule seed; two pre-existing action-version warnings.",
+    "lint": "Unavailable: no installed ESLint executable. No dependency installation.",
+    "typechecks": "Root npm run typecheck:cao could not run because TypeScript is not installed; no tsc executable for typecheck:copilot. No dependency installation. Coordinator integration must apply its available lint/typecheck gate.",
+    "committed": false
+  },
+  "reusableSkillLessons": [
+    "Share acquisition and immutable custody, never collapse distinct goals: runtime/manifest bundle implementation, direct-dependency advice implementation and module-usage API conformance need different acceptance predicates.",
+    "Read historical source before judging outputs: an advisory bundle-issue producer is neither a generated-manifest remediator nor a direct-dependency updater. Preserve predecessor contracts and explicitly name retrospective outcome-informed facets.",
+    "Native effects need native parsers, not patch/report counters: the exact three-file AST subtotal is ten even when prose claims hundreds. Preserve module replacements, excluded versions, direct eligibility and source-to-merge path identities.",
+    "Complete discovery is not complete native outcome coverage. Keep non-case periods and inaccessible original endpoints unknown while retaining independently established native subtotals.",
+    "Do not call a dedicated assertion API migration a verified crash fix when an earlier require.Error already guards the dereference. Structural progress, behavior safeguards, producer receipts and cost remain independent."
+  ],
+  "replayCommand": "node docs/operational-value/proof/go-dependency/replay.mjs",
+  "testsCommand": "node --test tests/unit/operational-value-go-dependency.test.mjs",
+  "handoff": "Owned-path-only archive parts plus external per-path size/SHA256 manifest. Do not overwrite global skill, docs, builder or portfolio reports."
+}

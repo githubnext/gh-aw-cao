@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "classification": "Retrospective selected-case evidence profiles; not prospective thresholds or exhaustive workflow history.",
+  "workflows": [
+    {
+      "slug": "dependabot-burner",
+      "name": "Dependabot Burner",
+      "goal": "Create runtime-and-manifest-specific dependency bundles that enable downstream remediation.",
+      "scope": "Seven explicitly recommended Go module targets across two retained February bundle implementations; other selected candidates remain unassessed, not zero.",
+      "unit": "bundled dependency targets implemented",
+      "nativeLabel": "Bundled dependency targets implemented",
+      "partialAcceptance": "Original bundle names the target and versions for one Go runtime/root manifest; independent actual-merge/first-parent go.mod pins advance to those exact versions. This is the older issue-bundler goal, not current generated-source remediation.",
+      "adoption": {
+        "commit": "25b31e7ac6b7a7f7391d08a635d8f22966473e8d",
+        "parent": "d00e09c1320692ba5b52efcc1dca6dcfe241806c",
+        "adoptedAt": "2026-01-29T13:40:30Z"
+      },
+      "cases": [
+        {
+          "pull": 14842, "issue": 14841,
+          "commit": "f4cd91c569f0aa84bc0880444254937c3be27c4f",
+          "parent": "89170286f206675f5608efd9f7d8d1dae9b9f41e",
+          "manifest": "go.mod",
+          "intentQuote": "This bundle issue tracks Dependabot PRs for Go module dependencies in `go.mod`.",
+          "targets": [
+            { "module": "golang.org/x/crypto", "from": "v0.47.0", "to": "v0.48.0", "quote": "**golang.org/x/crypto** 0.47.0 → 0.48.0" },
+            { "module": "github.com/modelcontextprotocol/go-sdk", "from": "v1.2.0", "to": "v1.3.0", "quote": "**github.com/modelcontextprotocol/go-sdk** 1.2.0 → 1.3.0" },
+            { "module": "golang.org/x/mod", "from": "v0.32.0", "to": "v0.33.0", "quote": "**golang.org/x/mod** 0.32.0 → 0.33.0" },
+            { "module": "golang.org/x/term", "from": "v0.39.0", "to": "v0.40.0", "quote": "**golang.org/x/term** 0.39.0 → 0.40.0" }
+          ]
+        },
+        {
+          "pull": 16387, "issue": 16385,
+          "commit": "b13f581fe0b73a26ed590484553b57c0e00b6706",
+          "parent": "d76d20fe5a8b50b2f7d3cf4b55a7b7feb1799b9e",
+          "manifest": "go.mod",
+          "intentQuote": "Bundle of open Dependabot PRs for **Go** runtime updating `go.mod`:",
+          "targets": [
+            { "module": "golang.org/x/tools/gopls", "from": "v0.21.0", "to": "v0.21.1", "quote": "Bump golang.org/x/tools/gopls from 0.21.0 to 0.21.1" },
+            { "module": "github.com/charmbracelet/bubbles", "from": "v0.21.1", "to": "v1.0.0", "quote": "Bump github.com/charmbracelet/bubbles from 0.21.1 to 1.0.0" },
+            { "module": "github.com/charmbracelet/x/ansi", "from": "v0.11.5", "to": "v0.11.6", "quote": "0.11.5 → 0.11.6 (ansi)" }
+          ]
+        }
+      ],
+      "unassessed": [
+        { "pull": 14511, "reason": "Original producer issue 14507 returned HTTP 410 Gone; native docs manifest transition not retained." },
+        { "pull": 14512, "reason": "Original producer issue 14508 returned HTTP 410 Gone; native npm manifest transition not retained." },
+        { "pull": 14853, "reason": "Original metadata retained but native npm manifest transition not retained." },
+        { "pull": 16379, "reason": "Original metadata retained but native docs manifest transition not retained." }
+      ]
+    },
+    {
+      "slug": "dependabot-go-checker",
+      "name": "Dependabot Dependency Checker",
+      "scope": "Four expressly recommended direct root-Go-module targets from four selected implementation PRs; native pin advancement only, not complete A/B/C compatibility assessment.",
+      "unit": "recommended direct dependency targets implemented",
+      "nativeLabel": "Recommended dependency targets implemented",
+      "partialAcceptance": "Exact recommended old/new versions occur in independent actual-merge/first-parent root go.mod, direct on both sides, not replaced/excluded; newer version and same semantic major. Pseudo-version advances are structural updates, not verified safe-patch classifications.",
+      "adoption": {
+        "commit": "f48714272a9fe7996be9f88a50fbd8ec357c1a62",
+        "parent": "9dcc4553e5ffe49e1cdd4df108308a51936db82d",
+        "adoptedAt": "2025-11-06T17:44:32Z"
+      },
+      "cases": [
+        {
+          "pull": 46800, "issue": 46796,
+          "commit": "d7c745213005e15a7a271e3cac6c0fbb733178bd",
+          "parent": "56aed554a92838aa9b735001cfcb208a4a2fd236",
+          "manifest": "go.mod",
+          "intentQuote": "A new pseudo-version commit is available for `github.com/charmbracelet/x/exp/golden`",
+          "targets": [
+            { "module": "github.com/charmbracelet/x/exp/golden", "from": "v0.0.0-20260622092256-25656177ba8e", "to": "v0.0.0-20260720091843-3eef36eaaa28", "quote": "advancing from `v0.0.0-20260622092256-25656177ba8e` to `v0.0.0-20260720091843-3eef36eaaa28`." }
+          ]
+        },
+        {
+          "pull": 48851, "issue": 48842,
+          "commit": "50db787500c805a8427cb716a809e406f4d42cf4",
+          "parent": "9f0e737824b56fad1bb63e68669602951435f859",
+          "manifest": "go.mod",
+          "intentQuote": "A minor version update is available for a direct Go dependency.",
+          "targets": [
+            { "module": "github.com/modelcontextprotocol/go-sdk", "from": "v1.6.1", "to": "v1.7.0", "quote": "- Current: v1.6.1\n- Proposed: v1.7.0" }
+          ]
+        },
+        {
+          "pull": 48852, "issue": 48840,
+          "commit": "2f87af67ecfdeb2fd8b8359f2a75e7ffca6670a1",
+          "parent": "024a5b1136935d3f82a7901ee5c2fccba6a246a8",
+          "manifest": "go.mod",
+          "intentQuote": "Dependabot-style scan of direct Go module dependencies in go.mod found 1 safe patch-level update.",
+          "targets": [
+            { "module": "github.com/charmbracelet/x/exp/golden", "from": "v0.0.0-20260720091843-3eef36eaaa28", "to": "v0.0.0-20260727090823-41c9e6be3365", "quote": "| github.com/charmbracelet/x/exp/golden | v0.0.0-20260720091843-3eef36eaaa28 | v0.0.0-20260727090823-41c9e6be3365 |" }
+          ]
+        },
+        {
+          "pull": 53970, "issue": 53952,
+          "commit": "3afdd51e9bce27cd602338c87330a915c18323d1",
+          "parent": "aeba1d8535320354cb4378cd135ae1e0518a1695",
+          "manifest": "go.mod",
+          "intentQuote": "Dependabot dependency check found **1 safe patch-level update** among direct Go module dependencies",
+          "targets": [
+            { "module": "github.com/charmbracelet/x/exp/golden", "from": "v0.0.0-20260813141921-f091cedeaf78", "to": "v0.0.0-20260816001655-68d539dca504", "quote": "| `github.com/charmbracelet/x/exp/golden` | `v0.0.0-20260813141921-f091cedeaf78` | `v0.0.0-20260816001655-68d539dca504` |" }
+          ]
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "slug": "go-fan",
+      "name": "Go Fan",
+      "scope": "Existing testify assertion calls in three explicitly retained files from selected PR 47252. Other files and selected implementation candidates are not extrapolated.",
+      "unit": "module-usage assertion sites structurally migrated",
+      "nativeLabel": "Module-usage assertion sites migrated",
+      "partialAcceptance": "Native Go AST establishes Contains(t, err.Error(), expected, ...) replaced by ErrorContains(t, err, expected, ...) in the same enclosing function with unchanged normalized argument expressions and exact testify imports; direct module eligibility independently proved.",
+      "adoption": {
+        "commit": "6c88dcebd6f034b5f08a8cdea593611dba812358",
+        "parent": "49a130d9f8b255fbff956a3efaa4b1b1572ea11a",
+        "adoptedAt": "2025-11-29T18:31:20Z"
+      },
+      "cases": [
+        {
+          "pull": 47252, "issue": 47248,
+          "commit": "dd0929deabfd59e9977572d67733e20b747988f1",
+          "parent": "aeb6e06c91a0b9bcc2f46f97c2c2bb18f4d4d43a",
+          "module": "github.com/stretchr/testify",
+          "intentQuote": "Run a codemod for the 593 `Contains(err.Error(), ...)` → `ErrorContains`",
+          "files": ["pkg/console/confirm_test.go", "pkg/console/list_test.go", "pkg/fileutil/fileutil_test.go"]
+        }
+      ],
+      "unassessed": [
+        { "pull": 15127, "reason": "Original review/implementation retained; native logger integration bytes and module-specific acceptance not assessed." },
+        { "pull": 47042, "reason": "Original review/implementation retained; actual progress-bar behavior and new-test adequacy not assessed." },
+        { "pull": 50842, "reason": "Original review/implementation retained; actual cache behavior and native source transition not assessed." },
+        { "pull": 68051, "reason": "Original review/implementation retained; protocol and responsiveness behavior not assessed." }
+      ]
+    }
+  ]
+}

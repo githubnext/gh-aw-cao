@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "toolchain": {
+    "bundledAcorn": {
+      "node": "v25.0.0",
+      "sha256": "fdb08546776ec6228b03e8d02b40d4ab3255bae5f401adba7ff5dad927ac5c9c"
+    }
+  },
+  "files": [
+    {"path":"docs/operational-value/proof/lint-rule/native.mjs","sha256":"f6d86f2773aa52a67d161e4bed5d5027b5b57519228222fa26df82b0422387cd"},
+    {"path":"docs/operational-value/proof/lint-rule/model.mjs","sha256":"90703d785d394a026910780d312ee2d6e895c61e5268cd9877fcdee4d221610f"},
+    {"path":"docs/operational-value/proof/lint-rule/oracle.go","sha256":"6b5e9419d061e820660e30b24f729720f3e8b88d9115cf6a9ac4a7b01dab9f6c"},
+    {"path":"docs/operational-value/proof/lint-rule/contract.json","sha256":"8cc66b7e7fb1f5dbb721fe608e26c1c98db4768e66e31ad85085c50f683e2f41"},
+    {"path":"docs/operational-value/proof/lint-rule/facets.json","sha256":"43857fbabd687291a5d114da5b74c68002dcfb3860448a7397c2755bf2d63aa3"},
+    {"path":"docs/operational-value/proof/functions/eslint-miner.mjs","sha256":"7eb49b35a2f448d9c36fa051dc78c01f51baeeba9bd85717435e5395169ff762"},
+    {"path":"docs/operational-value/proof/functions/eslint-refiner.mjs","sha256":"59c3c1ebedffd8c0db4f4d26574ce1cdc5a583d14e1a71f355450c185f6cb43a"},
+    {"path":"docs/operational-value/proof/functions/linter-miner.mjs","sha256":"3e503465e09a323d815bfcd277a7655dadfba36fe02fad3160c29227309ac8ff"}
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "version": "lint-rule-retrospective-partial-v1",
+  "status": "Retrospective source- and outcome-informed partial instruments. These do not replace or backdate the frozen source-first full acceptance predicates.",
+  "eslint-miner": {
+    "label": "Retained mkdirSync calls newly enclosed in local try/catch",
+    "acceptance": "On two explicitly selected existing non-test CommonJS files in repair 246fccc2e62edb9b0cef682f03be55234217ee99, match exact direct fs.mkdirSync expressions and opportunity counts before/after. Count before-minus-after raw unguarded calls only when these populations agree. Ignore waiver changes. This proves local structural exception containment, not correct error handling or factory execution.",
+    "targets": ["actions/setup/js/apply_samples.cjs", "actions/setup/js/build_checkout_manifest.cjs"],
+    "transition": "246fccc2e62edb9b0cef682f03be55234217ee99",
+    "ruleDelivery": "d797de6185403ecaa69801d96dc7202ae9d5e6a5",
+    "unit": "newly guarded retained mkdirSync calls",
+    "population": "Selected two-file native cohort, not all actions/setup/js or all miner outputs. Intervals without a selected known assessment are null."
+  },
+  "eslint-refiner": {
+    "label": "Native EventEmitter alias recognition correction",
+    "acceptance": "Compare the original isErrorListenerCall source before/after 105625bf3cecaa89a9a9dfc940e79fea25fe7634. Establish the exact added addListener alternative and independently verify Node EventEmitter.prototype.on === EventEmitter.prototype.addListener plus actual error delivery on own controls. This is one source-level standard-API compatibility correction, not a count of real false-positive diagnostics resolved; actual upstream rule execution, real-target prevalence and full rule precision remain null.",
+    "transition": "105625bf3cecaa89a9a9dfc940e79fea25fe7634",
+    "unit": "standard API alias recognition corrections",
+    "population": "One explicit source compatibility obligation; never substitute this for the original diagnostic-defect acceptance metric."
+  },
+  "linter-miner": {
+    "label": "Library process exits replaced by propagated exit-code returns",
+    "acceptance": "Parse the immutable existing pkg/cli/upgrade_command.go before/after afbc96f5a367761183eb0bfd7eaa4e29fcfbef8f with the native Go parser. Match removal of os-package Exit calls to added returns of ExitCodeError. Independently retain the error type and cmd entry-point propagation source. Raw exits are counted separately from suppression; context.Background replaced by context.TODO is not improvement.",
+    "transition": "afbc96f5a367761183eb0bfd7eaa4e29fcfbef8f",
+    "ruleDelivery": "66a6d5ae3fd3c4995675af74b59d5d7f5c76a5fc",
+    "unit": "library process-exit sites relocated to caller control",
+    "population": "One explicitly selected immutable library file; no full Go-codebase, analyzer-correctness or behavioral-preservation claim."
+  }
+}

@@ -37,6 +37,12 @@ import { collectBatch as collectDocUpdates, scoreMetric as scoreDocUpdates } fro
 import { collectBatch as collectUnbloat, scoreMetric as scoreUnbloat } from "../docs/operational-value/proof/functions/unbloat-docs.mjs";
 import { collectBatch as collectDocConsolidation, scoreMetric as scoreDocConsolidation } from "../docs/operational-value/proof/functions/developer-docs-consolidator.mjs";
 import { collectBatch as collectClaudeOnboarding, scoreMetric as scoreClaudeOnboarding } from "../docs/operational-value/proof/functions/claude-code-user-docs-review.mjs";
+import { collectBatch as collectEslintMining, scoreMetric as scoreEslintMining } from "../docs/operational-value/proof/functions/eslint-miner.mjs";
+import { collectBatch as collectEslintRefinement, scoreMetric as scoreEslintRefinement } from "../docs/operational-value/proof/functions/eslint-refiner.mjs";
+import { collectBatch as collectLinterMining, scoreMetric as scoreLinterMining } from "../docs/operational-value/proof/functions/linter-miner.mjs";
+import { collectBatch as collectDependencyBundles, scoreMetric as scoreDependencyBundles } from "../docs/operational-value/proof/functions/dependabot-burner.mjs";
+import { collectBatch as collectGoDependencyTargets, scoreMetric as scoreGoDependencyTargets } from "../docs/operational-value/proof/functions/dependabot-go-checker.mjs";
+import { collectBatch as collectGoAssertionMigrations, scoreMetric as scoreGoAssertionMigrations } from "../docs/operational-value/proof/functions/go-fan.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -740,6 +746,48 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "dependabot-burner", sourceGitBlob: "2791a0150095979908154abe3e6d5df5cd2a226b",
+      functionSha256: "e3e23530b8d322b4d69fb27be27d3fb7a3749b2cbc8c2b7792ee8c3c3df022ba",
+      timelineDigest: "e5570367c5fd7aaf9a2aec84af5472a39aef8283316a4fba609e3fe6284c7db5",
+      reports: "docs/operational-value/proof/go-dependency/reports/github-gh-aw",
+      collector: collectDependencyBundles, scorer: scoreDependencyBundles, partialMetricId: "native-partial",
+      stage: "seven native bundled dependency targets implemented; full update safety unknown",
+      detail: "Two original runtime/root-go.mod bundles match seven selected implemented targets against actual merge and first-parent manifests, split four and three across disjoint February periods. The original 333-byte source asks for bundled issue recommendations, not today's generated-source edits: retrospective Burner era v3 preserves that distinction alongside unchanged v1/v2. Five unselected transitives cannot inflate the subtotal. An explicitly selected indirect target is allowed by that historical bundle goal, not silently admitted to a direct-only checker. Corroborated editable issue-to-implementation links are shared contribution evidence, not protected creation receipts. Thirty-six other periods, four unassessed implementations, HTTP410 issue originals, full compatibility, safety and costs remain unknown; not rated." },
+    { workflowId: "dependabot-go-checker", sourceGitBlob: "a7ebbd07b7aed746ad7c69d61efe4cf211d1bf8c",
+      functionSha256: "a720fcfde83e6535cf9d314f5a02b755328247adbf4b273bdf3160aec1a455c7",
+      timelineDigest: "aebfb5539c54f46ed36fdc98b87c6c839709e711cdd0aaa5aa073a910b12ebe4",
+      reports: "docs/operational-value/proof/go-dependency/reports/github-gh-aw",
+      collector: collectGoDependencyTargets, scorer: scoreGoDependencyTargets, partialMetricId: "native-partial",
+      stage: "four recommended native direct dependency targets implemented; safety classification unknown",
+      detail: "Four exact recommended old/new targets match immutable root go.mod transitions and are direct before and after. Native quantities fall in three disjoint periods as one, two and one. Version advancement, including a pseudo-version, is not accepted as safe single-step patch classification or complete release correctness. Forty-seven other periods remain unknown. Editable original issue links corroborate shared delivery, not sole causation or authoritative receipts. Official changelogs, full recommendation population, grouping/cleanup, compatibility and matched costs remain unknown; not rated." },
+    { workflowId: "go-fan", sourceGitBlob: "17931a8fce9a077dcaed2b9fcbea54a7f91b60f5",
+      functionSha256: "8361924e66c84e40b3274c4a2f52ed7433dc3c7b3a90bfb7a5400ee5e2053666",
+      timelineDigest: "2109db31415968515d02bca28be576df0553ef5e56494bf0dc922789b483bab2",
+      reports: "docs/operational-value/proof/go-dependency/reports/github-gh-aw",
+      collector: collectGoAssertionMigrations, scorer: scoreGoAssertionMigrations, partialMetricId: "native-partial",
+      stage: "ten native assertion API sites migrated; not the claimed 602 or full behavioral acceptance",
+      detail: "Independent Go AST comparison matches exact imports, enclosing functions and normalized arguments in three original files: one console confirmation site, one console list site and eight fileutil sites. The subtotal is ten, not the candidate's claimed602. Root go.mod proves direct testify identity; comments, strings and shadowed aliases cannot earn credit. One selected interval and forty-six unknown intervals remain distinct. Editable issue links corroborate shared delivery, not protected creation receipts. Module currency, full repository migration, assertion failure behavior, safety and costs remain unknown; not rated." },
+    { workflowId: "eslint-miner", sourceGitBlob: "aff6103ce5105365ed2d9dd338164d06f871ba68",
+      functionSha256: "7eb49b35a2f448d9c36fa051dc78c01f51baeeba9bd85717435e5395169ff762",
+      timelineDigest: "d5639d4df3acc319be56d1a92238943e9989f3d4726b41f76b9baf981fa43d13",
+      reports: "docs/operational-value/proof/lint-rule/reports/github-gh-aw",
+      collector: collectEslintMining, scorer: scoreEslintMining, partialMetricId: "observed-partial",
+      stage: "one native mkdirSync call newly locally guarded; full error-handling unknown",
+      detail: "Exact two-file before/after originals establish one retained fs.mkdirSync expression newly enclosed in local try/catch. This is a narrow repository improvement, not successful execution, correct recovery or proof of useful diagnostic precision. The same call population and arguments are matched, so removals and unrelated aggregate changes cannot earn credit. One assessed interval and sixteen unknown intervals remain distinct. Source-first contract and outcome-informed retrospective facet versions are preserved. Full goal, workflow attribution, safety and costs remain unknown; not rated." },
+    { workflowId: "linter-miner", sourceGitBlob: "d75aa4cc4fd28219f0db9b616f5abc5680f3bccc",
+      functionSha256: "3e503465e09a323d815bfcd277a7655dadfba36fe02fad3160c29227309ac8ff",
+      timelineDigest: "fb9e34b29eeb2c4737da7f3d89faccfad46650fe2c34c6d5cd7720941b69552f",
+      reports: "docs/operational-value/proof/lint-rule/reports/github-gh-aw",
+      collector: collectLinterMining, scorer: scoreLinterMining, partialMetricId: "observed-partial",
+      stage: "two native library exits replaced by matched error returns; full propagation unknown",
+      detail: "Native Go AST comparison establishes two library os.Exit sites replaced by ExitCodeError returns in the same functions with the same exit codes; original caller propagation is retained. These are actual selected repository-site transitions, not rules declared or tests authored. context.TODO substitutions and lint waivers are not accepted context propagation or repairs. One assessed interval and twenty-two unknown intervals remain distinct. Full semantic acceptance, complete diagnostic precision, workflow contribution, safety and costs remain unknown; not rated." },
+    { workflowId: "eslint-refiner", sourceGitBlob: "104f17519e69a7c3a079ac4fa7e2428044627d6c",
+      functionSha256: "59c3c1ebedffd8c0db4f4d26574ce1cdc5a583d14e1a71f355450c185f6cb43a",
+      timelineDigest: "45d9895db3fcc519fceb66a33989d9dcae0d06d67626fe170997c5e0bcfcaf23",
+      reports: "docs/operational-value/proof/lint-rule/reports/github-gh-aw",
+      collector: collectEslintRefinement, scorer: scoreEslintRefinement, blocked: true,
+      stage: "source compatibility correction retained; real-target diagnostic outcome unavailable",
+      detail: "One standard Node EventEmitter alias compatibility correction is independently source-checked. Both selected original issues explicitly describe latent conditions with no live affected target. The source-only facet is available for inspection but is not real-target diagnostic coverage, delivered repository benefit or a completed native outcome evaluation. Seventeen periods retain one source-compatibility assessment and sixteen unknown intervals. Full acceptance, precision, workflow attribution, safety and costs remain unknown; not rated." },
     { workflowId: "designer-drift-audit", sourceGitBlob: "91261191d20f97e8c511ed9690db4dd283ea35b9",
       functionSha256: "70387e476fb7d57de8c767fbf859156a972af2fbe384cb3453abfee38828b198",
       timelineDigest: "08db4d14dece151e64efbfe80f4c6737b2aa33102b27d2f596795e367822f93b",
@@ -898,20 +946,6 @@ export async function currentPortfolioInputs() {
     if (entry.partialMetricId) measurements.push({ workflowId: entry.workflowId, input: timeline });
   }
   for (const assignment of [
-    ...[
-      ["dependabot-burner", "2791a0150095979908154abe3e6d5df5cd2a226b"],
-      ["dependabot-go-checker", "a7ebbd07b7aed746ad7c69d61efe4cf211d1bf8c"],
-      ["go-fan", "17931a8fce9a077dcaed2b9fcbea54a7f91b60f5"],
-    ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
-      stage: "dependency cohort: source-defined useful updates under investigation",
-      detail: "One isolated cohort shares immutable source inputs and acquisition while deriving separate dependency-update, risk and practical-improvement predicates. Dependency counts, opened PRs and passing jobs alone do not establish safe useful changes. Source-only inputs and assignment are not native evaluation or complete runtime custody." })),
-    ...[
-      ["eslint-miner", "aff6103ce5105365ed2d9dd338164d06f871ba68"],
-      ["eslint-refiner", "104f17519e69a7c3a079ac4fa7e2428044627d6c"],
-      ["linter-miner", "d75aa4cc4fd28219f0db9b616f5abc5680f3bccc"],
-    ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
-      stage: "lint-rule cohort: useful diagnostics and precision under investigation",
-      detail: "One isolated cohort derives independent source-specific rule usefulness and precision checks. Rules added, tests written and merged candidates are not independent acceptance. Native partial improvement, full correctness and false-positive safeguards remain distinct; source-only inputs and assignment add no measured coverage." })),
     { workflowId: "artifacts-summary", sourceGitBlob: "f692218fe9dfec7d6de9cea16e0d0098f5d69603",
       stage: "native inventory reconciler retained; original reports and page sequences missing",
       detail: "The owned native decoder, ten-source closure and 22-test reconciliation instrument are retained. All 11 issue candidates remain discovery; Discussions are outside the issue/PR inventory. Six artifact records totaling 111,598,804 bytes are not proof of report accuracy. Original report bodies and contemporaneous complete workflow/run/artifact pages are missing. The frozen evaluator rejection and separate all-null prospective report remain preserved, not admitted as native outcomes. Full native measurement and contribution remain unknown." },

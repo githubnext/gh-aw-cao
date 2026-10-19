@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "cohort": "go-dependency",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "frozenRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "integrationCheckpoint": "ce52f9bb36e7a1747f544a912978a87c925fa096",
+  "skillVersion": "0.18.2",
+  "runtime": "v25.0.0",
+  "nativeOracleToolchain": "go1.25.3",
+  "productionDiscovery": {
+    "partitions": 346,
+    "entities": 58048,
+    "complete": true
+  },
+  "costs": "not measured",
+  "decision": "not rated",
+  "results": [
+    {
+      "slug": "dependabot-burner",
+      "moduleSha256": "e3e23530b8d322b4d69fb27be27d3fb7a3749b2cbc8c2b7792ee8c3c3df022ba",
+      "periods": 38,
+      "observedPeriods": 2,
+      "unknownPeriods": 36,
+      "nativePartialSubtotal": 7,
+      "corroboratedPartialSubtotal": 7,
+      "observations": [
+        {
+          "window": {
+            "startAt": "2026-02-08T15:00:12Z",
+            "endAt": "2026-02-15T15:00:12Z"
+          },
+          "metrics": {
+            "native-partial": 4,
+            "corroborated-partial": 4
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-02-15T15:00:12Z",
+            "endAt": "2026-02-22T15:00:12Z"
+          },
+          "metrics": {
+            "native-partial": 3,
+            "corroborated-partial": 3
+          }
+        }
+      ],
+      "strictAcceptance": null,
+      "actualCosts": null,
+      "decision": "not rated",
+      "refreshedTwiceOffline": true,
+      "exactSnapshotReplay": true,
+      "disjointCoverage": true,
+      "snapshotSha256": "e5172ad135b719a2f930af3292d08317b49fff3aeff92d7f1b4876bb0c5b5ec6"
+    },
+    {
+      "slug": "dependabot-go-checker",
+      "moduleSha256": "a720fcfde83e6535cf9d314f5a02b755328247adbf4b273bdf3160aec1a455c7",
+      "periods": 50,
+      "observedPeriods": 3,
+      "unknownPeriods": 47,
+      "nativePartialSubtotal": 4,
+      "corroboratedPartialSubtotal": 4,
+      "observations": [
+        {
+          "window": {
+            "startAt": "2026-07-19T15:00:12Z",
+            "endAt": "2026-07-26T15:00:12Z"
+          },
+          "metrics": {
+            "native-partial": 1,
+            "corroborated-partial": 1
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-07-26T15:00:12Z",
+            "endAt": "2026-08-02T15:00:12Z"
+          },
+          "metrics": {
+            "native-partial": 2,
+            "corroborated-partial": 2
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-08-16T15:00:12Z",
+            "endAt": "2026-08-23T15:00:12Z"
+          },
+          "metrics": {
+            "native-partial": 1,
+            "corroborated-partial": 1
+          }
+        }
+      ],
+      "strictAcceptance": null,
+      "actualCosts": null,
+      "decision": "not rated",
+      "refreshedTwiceOffline": true,
+      "exactSnapshotReplay": true,
+      "disjointCoverage": true,
+      "snapshotSha256": "955b9af6fd258d29474929f1fbb7aba87b9aea92cbeb703289efdcb0720bf1e5"
+    },
+    {
+      "slug": "go-fan",
+      "moduleSha256": "8361924e66c84e40b3274c4a2f52ed7433dc3c7b3a90bfb7a5400ee5e2053666",
+      "periods": 47,
+      "observedPeriods": 1,
+      "unknownPeriods": 46,
+      "nativePartialSubtotal": 10,
+      "corroboratedPartialSubtotal": 10,
+      "observations": [
+        {
+          "window": {
+            "startAt": "2026-07-19T15:00:12Z",
+            "endAt": "2026-07-26T15:00:12Z"
+          },
+          "metrics": {
+            "native-partial": 10,
+            "corroborated-partial": 10
+          }
+        }
+      ],
+      "strictAcceptance": null,
+      "actualCosts": null,
+      "decision": "not rated",
+      "refreshedTwiceOffline": true,
+      "exactSnapshotReplay": true,
+      "disjointCoverage": true,
+      "snapshotSha256": "ceea4213626f28b260df54bcf1904a49dbd7344012a45313380ad068472461ec"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-burner-definitions.md",
+      "bytes": 7689,
+      "sha256": "2a3ac8ffa08e176dcdc18513138fbafbe032e87df893a60d4782deafe3f31ac3"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-burner-evidence-archive.json",
+      "bytes": 10450,
+      "sha256": "84bda3c38322698b6cde2543edcc149b6bded4fa59a145c9f34d0eef6e80497e"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-burner-pulse.html",
+      "bytes": 26534,
+      "sha256": "0610ee07f9b89a8c5dc646e2fc08c355c757242a1d43bbc92b5178ff0d27d11d"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-burner-pulse.json",
+      "bytes": 18318,
+      "sha256": "918b8d45d6882b5c59ac1a9bb32ee983634c73170aa225c493ca384a99be46dc"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-burner-timeline.json",
+      "bytes": 84806,
+      "sha256": "7bc8c41b795d57f4858de12cb1bb07d69aac5d6fa11d79fb14de893dbb561ee8"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-go-checker-definitions.md",
+      "bytes": 7735,
+      "sha256": "a697f859a926075924308eea0ce0135fa791b3aa06e3f380c84f248c99f3d25b"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-go-checker-evidence-archive.json",
+      "bytes": 8887,
+      "sha256": "6bb8636befe7d34fab47064045baea0f660597a43ebd8fb3f450e3a27cfeda2b"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-go-checker-pulse.html",
+      "bytes": 29347,
+      "sha256": "9430e790c935c14382ff0ff5842f9302f65cf3aa4bcd020521ccd699c1edbf12"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-go-checker-pulse.json",
+      "bytes": 22755,
+      "sha256": "ed515644c26b802d31227bb72a5641a21a20b21cc608f9822cd7a378e51c0096"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/dependabot-go-checker-timeline.json",
+      "bytes": 103119,
+      "sha256": "e79873e95863bdd6416970429d4651fa43daa80772eddf5ae7850f64fe2a7171"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/go-fan-definitions.md",
+      "bytes": 7818,
+      "sha256": "7179b84b3adcc88f8764ac5b6c93aa7d3c2cda880ba8553c767caa873cd57ef4"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/go-fan-evidence-archive.json",
+      "bytes": 6613,
+      "sha256": "f71c78e2a4268478be572f5596f6d79608398b5e5e4b7587f23cbb7146bcfbea"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/go-fan-pulse.html",
+      "bytes": 28618,
+      "sha256": "cbe16f443e5f9dce76ca3a6be464e60dddee53762df035f353975ed78f0847db"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/go-fan-pulse.json",
+      "bytes": 21653,
+      "sha256": "059cc27da59a80f5b1ae87ff53cc5a53e50d418b35e8292106611cf885da7521"
+    },
+    {
+      "path": "docs/operational-value/proof/go-dependency/reports/github-gh-aw/go-fan-timeline.json",
+      "bytes": 98228,
+      "sha256": "b97465aa3a34ca4be64c0f5b0ea6d7839eb87f6a42560e069edbd8d41751fb13"
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "integrationCheckpoint": "ce52f9bb36e7a1747f544a912978a87c925fa096",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceFirstContractSha256": "8cc66b7e7fb1f5dbb721fe608e26c1c98db4768e66e31ad85085c50f683e2f41",
+  "retrospectiveFacetsSha256": "43857fbabd687291a5d114da5b74c68002dcfb3860448a7397c2755bf2d63aa3",
+  "discovery": {
+    "originalPartitions": 346,
+    "originalEntities": 58048,
+    "direct": {
+      "eslint-miner": 68,
+      "eslint-refiner": 176,
+      "linter-miner": 115
+    },
+    "limitation": "Complete issue/PR discovery only; not exhaustive native outcomes, Discussions or comments"
+  },
+  "custody": {
+    "rawGitObjects": 115,
+    "unresolvedRequestedObjects": 0,
+    "coordinatedOriginalFiles": 49,
+    "selectedCorroboratedPRLinks": 5
+  },
+  "toolchain": {
+    "bundledAcorn": {
+      "node": "v25.0.0",
+      "sha256": "fdb08546776ec6228b03e8d02b40d4ab3255bae5f401adba7ff5dad927ac5c9c"
+    },
+    "go": "go version go1.25.3 darwin/arm64",
+    "oracleSha256": "6b5e9419d061e820660e30b24f729720f3e8b88d9115cf6a9ac4a7b01dab9f6c"
+  },
+  "workflows": {
+    "eslint-miner": {
+      "module": "docs/operational-value/proof/functions/eslint-miner.mjs",
+      "moduleSha256": "7eb49b35a2f448d9c36fa051dc78c01f51baeeba9bd85717435e5395169ff762",
+      "snapshots": 17,
+      "knownSelectedWindows": 1,
+      "unknownWindows": 16,
+      "nativeQuantity": 1,
+      "unit": "newly guarded retained mkdirSync calls",
+      "deliveredWindow": {
+        "startAt": "2026-07-12T15:00:12Z",
+        "endAt": "2026-07-19T15:00:12Z"
+      },
+      "nativeCoverageClassification": "Bounded independently checked native repository improvement; not exhaustive workflow acceptance",
+      "fullGoal": null,
+      "allOutputDelivery": null,
+      "workflowAttribution": null,
+      "safety": null,
+      "costs": null,
+      "keepDecision": "not rated",
+      "sourceProfiles": [
+        {
+          "commit": "35777da04c8f5230a9627bc0ad01f8a6b98dd72c",
+          "sourceSha256": "941cd9673dea688bebc72f02930d8eaf9498dca23aedbc30c69e741444551d13",
+          "compiledSha256": "e612992d7ad8d89676ad169ad4c0e73c96ff528e236f2784147c5ef89a98c197",
+          "assignmentRequired": false,
+          "sdkDeclared": true,
+          "compiledExecutionStepLabels": [
+            "- name: Execute GitHub Copilot CLI"
+          ],
+          "actualExecutionIdentity": null
+        },
+        {
+          "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+          "sourceSha256": "930ab4dd10daf4719a7c529d5e6ad0d5662947a057c393de149ddc46850af894",
+          "compiledSha256": "b55e607ce4329f1d7e71f444acafb062732d778f83c8860d45985ebfc210bd86",
+          "assignmentRequired": true,
+          "sdkDeclared": true,
+          "compiledExecutionStepLabels": [
+            "- name: Execute GitHub Copilot CLI"
+          ],
+          "actualExecutionIdentity": null
+        }
+      ]
+    },
+    "eslint-refiner": {
+      "module": "docs/operational-value/proof/functions/eslint-refiner.mjs",
+      "moduleSha256": "59c3c1ebedffd8c0db4f4d26574ce1cdc5a583d14e1a71f355450c185f6cb43a",
+      "snapshots": 17,
+      "knownSelectedWindows": 1,
+      "unknownWindows": 16,
+      "nativeQuantity": 1,
+      "unit": "standard API alias recognition corrections",
+      "deliveredWindow": {
+        "startAt": "2026-09-06T15:00:12Z",
+        "endAt": "2026-09-13T15:00:12Z"
+      },
+      "nativeCoverageClassification": "Source-level compatibility facet only; real-target diagnostic coverage remains not measured",
+      "fullGoal": null,
+      "allOutputDelivery": null,
+      "workflowAttribution": null,
+      "safety": null,
+      "costs": null,
+      "keepDecision": "not rated",
+      "sourceProfiles": [
+        {
+          "commit": "35777da04c8f5230a9627bc0ad01f8a6b98dd72c",
+          "sourceSha256": "548be0cec05da2f67927fa013a2b36a05a8e6e9fff082daa5066d69fa5f751a7",
+          "compiledSha256": "2732b732ee0839b788e2b99e02dcb41c8317a4fa6c33e6f9c7f8ebd561618ecc",
+          "assignmentRequired": false,
+          "sdkDeclared": false,
+          "compiledExecutionStepLabels": [
+            "- name: Execute Claude Code CLI"
+          ],
+          "actualExecutionIdentity": null
+        },
+        {
+          "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+          "sourceSha256": "59889a590c8d5a402e53fe5884a67c0ec4fbd9acd64fc02c97e75995aac909fd",
+          "compiledSha256": "84ad0a39498a7f0784bd9fdf0ee653c330fbcd2252838999829c5f22fd9f0de6",
+          "assignmentRequired": true,
+          "sdkDeclared": false,
+          "compiledExecutionStepLabels": [
+            "- name: Execute Claude Code CLI"
+          ],
+          "actualExecutionIdentity": null
+        }
+      ]
+    },
+    "linter-miner": {
+      "module": "docs/operational-value/proof/functions/linter-miner.mjs",
+      "moduleSha256": "3e503465e09a323d815bfcd277a7655dadfba36fe02fad3160c29227309ac8ff",
+      "snapshots": 23,
+      "knownSelectedWindows": 1,
+      "unknownWindows": 22,
+      "nativeQuantity": 2,
+      "unit": "library process-exit sites relocated to caller control",
+      "deliveredWindow": {
+        "startAt": "2026-05-17T15:00:12Z",
+        "endAt": "2026-05-24T15:00:12Z"
+      },
+      "nativeCoverageClassification": "Bounded independently checked native repository improvement; not exhaustive workflow acceptance",
+      "fullGoal": null,
+      "allOutputDelivery": null,
+      "workflowAttribution": null,
+      "safety": null,
+      "costs": null,
+      "keepDecision": "not rated",
+      "sourceProfiles": [
+        {
+          "commit": "8786ae0ab416a1fc75ba97eadaa437cf3c45d670",
+          "sourceSha256": "c2d8ba95f05359ee2c0af449786f128e0192014aa87a3b25b77698c06944b079",
+          "compiledSha256": "99ccf97595177138a8c15f525c0dcf30350fb4d28ec29be18e3362ce6432f19c",
+          "assignmentRequired": false,
+          "sdkDeclared": false,
+          "compiledExecutionStepLabels": [
+            "- name: Execute GitHub Copilot CLI"
+          ],
+          "actualExecutionIdentity": null
+        },
+        {
+          "commit": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+          "sourceSha256": "a7344f165af05e806362dbc58dc379aafa2ffbfe4754e08f2f35db561b1b0d3f",
+          "compiledSha256": "90d69af053a0d7ed9b6af64ada4ba950215edb5421eda4df16748f8d89910c3f",
+          "assignmentRequired": false,
+          "sdkDeclared": true,
+          "compiledExecutionStepLabels": [
+            "- name: Execute GitHub Copilot CLI"
+          ],
+          "actualExecutionIdentity": null
+        }
+      ]
+    }
+  },
+  "coverage": {
+    "boundedNativeRepositoryImprovementWorkflows": 2,
+    "sourceCompatibilityOnlyWorkflows": 1,
+    "fullyAcceptedWorkflows": null,
+    "interpretation": "Do not add three fully native workflows to portfolio coverage. The refiner's latent source compatibility correction is not a real-target diagnostic outcome."
+  },
+  "validation": {
+    "nativeTests": "passed",
+    "collectorChecks": 3,
+    "frozenCutoffRefreshes": 3,
+    "rootLint": "blocked: yaml and eslint are not installed; no installation performed",
+    "rootTypecheck": "blocked: TypeScript compiler is not installed; no installation performed",
+    "workflowCompile": "passed in authoring checkout; not required for offline evidence replay"
+  },
+  "reusableLessons": [
+    "Freeze predicates before candidate/result descriptions, not just before numeric scoring; preserve outcome-informed facets as retrospective.",
+    "Follow rule delivery to actual native repository conditions. Do not treat declarations, registration, tests authored or merge success as those conditions.",
+    "A latent standard-API compatibility correction can be retained separately, but neither its fixture nor its source allowlist proves real-target diagnostic defects resolved.",
+    "context.Background replaced with context.TODO is not demonstrated context propagation. A lint waiver is not repair.",
+    "Match retained native opportunities, exact arguments and function-local transitions; aggregate count coincidences alone are insufficient.",
+    "Verify complete shared acquisition once per process, with source-specific semantics and digest-checked lossless originals.",
+    "Pin source/executor eras and preserve unknown intermediate continuity; never backdate present queue policy or runtime identity."
+  ]
+}

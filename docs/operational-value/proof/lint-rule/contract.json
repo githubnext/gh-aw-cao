@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "version": "lint-rule-source-first-v1",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "freezeOrder": "Read and hash the three primary workflow sources; freeze these independent predicates before inspecting discovery candidates. Any subsequent narrower oracle is a retrospective, explicitly named partial facet, not a replacement for these predicates.",
+  "workflows": {
+    "eslint-miner": {
+      "goal": "Deliver new high-signal, actionable behavioral ESLint rules addressing observed JavaScript/TypeScript failure patterns in actions/setup/js.",
+      "acceptance": "Distinct new enabled rules whose diagnostics independently agree with a source-defined behavioral defect on at least one real eligible target, reject matched nondefective controls, and supply an actionable repair; false-positive and false-negative acceptance beyond observed controls remains separate.",
+      "partial": "Independently verified before/after removal of a named behavioral defect from an existing eligible target linked to a delivered rule; never count rule declarations, fixtures, PRs, or agent success as defect removal.",
+      "unit": "distinct independently verified behavioral defect removals",
+      "eligible": "Existing JavaScript/TypeScript source files beneath actions/setup/js; implementations beneath eslint-factory."
+    },
+    "eslint-refiner": {
+      "goal": "Improve existing ESLint factory rule precision, edge-case coverage, or actionable diagnostics using concrete diagnostic trends and feedback.",
+      "acceptance": "Distinct existing-rule refinements with independently demonstrated incorrect-before/correct-after diagnostic behavior on a real reported case plus a matched control; issue creation and tests authored are not correctness.",
+      "partial": "Independently verified resolution of a specific real false-positive, missed behavioral defect, or objectively incorrect diagnostic, followed through issue-to-implementation lineage. Native evidence must establish the claimed narrower improvement.",
+      "unit": "distinct independently verified diagnostic defects resolved",
+      "eligible": "Existing eslint-factory rules and their actions/setup/js targets; Go rule changes are excluded."
+    },
+    "linter-miner": {
+      "goal": "Deliver specific, actionable, high-signal new Go analysis linters for recurring error-prone patterns not already covered by the existing linter set.",
+      "acceptance": "Distinct new registered Go analyzers whose diagnostics independently agree with a behavioral defect on a real eligible Go target, reject matched nondefective controls, and identify an actionable repair.",
+      "partial": "Independently verified before/after removal of a named Go behavioral defect from an existing eligible target linked to a delivered analyzer; implementation and registration alone do not establish useful diagnostic behavior.",
+      "unit": "distinct independently verified Go behavioral defect removals",
+      "eligible": "Non-test Go source beneath pkg and cmd; analyzer implementations beneath pkg/linters and registration in cmd/linters/main.go."
+    }
+  },
+  "measurement": {
+    "kind": "interval",
+    "durationDays": 7,
+    "cadenceDays": 7,
+    "maturationDays": 0,
+    "delivery": "Assign a verified transition once to its immutable acceptance timestamp in start-inclusive, end-exclusive disjoint windows; a surviving snapshot is not new delivery.",
+    "unknowns": "Missing native originals, incomplete eligible cohorts, unsupported source/executor eras and unverified semantics are null. Zero requires an exhausted eligible native cohort.",
+    "attribution": "Repository outcome, corroborated output linkage, protected creation receipt and sole causal credit are separate. Editable markers are discovery only.",
+    "history": "Prove source/compiled addition against the actual parent before asserting adoption. Missing Git objects are not absence or history exhaustion.",
+    "costs": null,
+    "keepBar": null,
+    "decision": "not rated",
+    "safeguards": "Full rule correctness, precision/recall, regression safety and cost-effectiveness remain unmeasured unless separately demonstrated."
+  }
+}

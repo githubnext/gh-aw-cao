@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "version": "3.0.0-historical-bundle-facet",
+  "classification": "Explicit retrospective source-era contract extension after discovery metadata, before inspection of native Burner before/after candidates. Original v1 and v2 contracts are preserved.",
+  "workflow": "dependabot-burner",
+  "repository": "github/gh-aw",
+  "sourceRevision": "89170286f206675f5608efd9f7d8d1dae9b9f41e",
+  "sourceGitBlob": "f5e71d4ef6dd33307451df7640a5c4a9dd2abf56",
+  "sourceBytes": 333,
+  "sourceSha256": "d419217a224dceda76060322c62f3017164de21d851515632f219f05d99aa4ed",
+  "sourceGoal": "Find open Dependabot pull requests and create bundle issues, each for exactly one runtime and one manifest file.",
+  "nativePartial": "Count concrete dependency/version targets from a retained source-defined bundle recommendation that were actually delivered in the same manifest by a later immutable first-parent implementation transition. A target must have the recommended old pin before and recommended newer pin after; absent, removed, unchanged, downgraded, unrelated or merely proposed targets do not count.",
+  "unit": "bundled dependency targets implemented",
+  "eligibility": "Only targets expressly included in the original retained bundle recommendation for its single runtime and manifest. Direct and indirect targets are allowed when expressly selected; this is not the later direct-dependency checker goal.",
+  "strictAcceptance": "Original selected Dependabot identities and pre-bundle versions, complete runtime/manifest batch, actual downstream resolution and required compatibility/regression evidence. Unknown graph/runtime facts remain null.",
+  "separation": "This native facet does not satisfy current generated-workflow-source remediation rules. The issue is intent input, not proof of delivered work. Version advancement alone is not compatibility or security verification.",
+  "history": "The original source is pinned at the identified February revision. Its complete historical continuity, executor closure, shared imports and subsequent source changes are not reconstructed; no full-era trend is asserted.",
+  "attribution": "Corroborate the preserved bundle issue and actual implementation reference plus matching native transition. Editable text is not an authoritative creation receipt or exclusive causation.",
+  "period": "Same frozen-cutoff-aligned, non-overlapping seven-day intervals as v1; count once at implementation merge.",
+  "costs": null,
+  "keepDecision": "not rated"
+}

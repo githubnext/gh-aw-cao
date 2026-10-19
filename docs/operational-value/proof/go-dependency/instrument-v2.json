@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "version": "2.0.0-partial",
+  "predecessor": {
+    "file": "contracts-v1.json",
+    "sha256": "d245a28d713b2ab8d96444b492c4e4bdb52bbc9d85bf3dc394063029776621cc"
+  },
+  "classification": "Explicitly retrospective, outcome-informed evidence-interface extension; not a prospective goal and not a relaxation of original strict acceptance.",
+  "change": "Expose independently verified partial structural deliveries as an additional instrument. The original strict source-defined goal remains separately unmeasured when its defining evidence is absent. Do not claim v1 strict acceptance from v2 partial results.",
+  "primary": "Observed native partial-delivery subtotal in retained, independently evaluable cases, not the complete repository or workflow population.",
+  "missingness": "Periods without a fully evaluated eligible retained case remain null, not zero. Proven subtotals survive other missing cases, which remain explicit. Native zero is allowed only for an evaluated eligible case with no delivered target/site.",
+  "trend": "Selected-case historical coverage is not a comparable complete-population trend. No inferred rate, efficacy, persistence, net benefit, sole causation or keep threshold.",
+  "period": "Cutoff-aligned disjoint seven-day delivery intervals; the first interval is clipped to the verified source introduction. A transition is counted once at the implementation merge time.",
+  "go-fan": {
+    "facet": "Existing testify assertions changed from Contains(t, error.Error(), expected, ...) to ErrorContains(t, error, expected, ...), preserving the enclosing function and normalized argument expressions.",
+    "nativeOracle": "Go standard-library AST parser, exact github.com/stretchr/testify import identities, shadowed aliases rejected. Ignore comments and strings; match native calls rather than patch line counts.",
+    "unit": "module-usage assertion sites structurally migrated",
+    "doesNotProve": "Behavior preservation, correctness of all module-review statements, absence of other defects, performance, complete review coverage or historical source/executor continuity."
+  },
+  "dependabot-go-checker": {
+    "facet": "Exact original recommended old/new root go.mod pins for direct dependencies, delivered by the implementation's real first-parent transition. Reject indirect-only, removed, equal, downgraded and frozen-reference major targets.",
+    "unit": "recommended direct dependency targets implemented",
+    "doesNotProve": "Correct release-note classification, full issue grouping/cleanup, compilation, regression safety or sole workflow causation."
+  },
+  "dependabot-burner": {
+    "facet": "Retain the original current generated-source acceptance unchanged; any earlier general-bundler goal requires a separately preserved source-era contract before evaluating its native changes.",
+    "unit": "source-era dependency targets remediated",
+    "doesNotProve": "That February direct-manifest updates satisfy June-or-later generated-source remediation policy."
+  },
+  "attribution": "Separate native repository effects from a corroborated recommendation-to-implementation match. Exact preserved source recommendation, producer marker and implementation reference can corroborate shared contribution; they do not establish an authoritative creation receipt or exclusive causation.",
+  "costs": null,
+  "keepDecision": "not rated",
+  "keepDecisionReason": "No agreed native threshold or required number of complete periods."
+}

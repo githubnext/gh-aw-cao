@@ -196,8 +196,7 @@ test("the retained repository-wide proof replays coverage rather than promoting 
   for (const id of ["daily-model-resolution", "daily-model-inventory",
     "daily-credit-limit-test", "daily-aw-cross-repo-compile-check", "avenger",
     "step-name-alignment", "workflow-normalizer", "cli-consistency-checker", "daily-syntax-error-quality",
-    "artifacts-summary",
-    "dependabot-burner", "dependabot-go-checker", "go-fan", "eslint-miner", "eslint-refiner", "linter-miner"]) {
+    "artifacts-summary"]) {
     const row = model.workflows.find(workflow => workflow.id === id);
     assert.equal(row.measurement.status, "evaluation-in-progress");
     for (const key of ["functionReady", "evidenceReady", "evaluationReady", "plotReady"]) {
@@ -205,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 61);
-  assert.equal(model.totals.workflows - model.totals.measured, 283);
+  assert.equal(model.totals.measured, 66);
+  assert.equal(model.totals.workflows - model.totals.measured, 278);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -303,6 +302,48 @@ test("documentation native partials preserve rejected predicates, historical gap
   assert.equal(unbloat.blocked, true);
   assert.equal(unbloat.reportAvailable, true);
   for (const key of ["evidenceReady", "evaluationReady", "plotReady"]) assert.equal(unbloat[key], false);
+});
+
+test("lint mining counts actual native sites but not a latent source-only compatibility correction", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [id, expected, periods] of [["eslint-miner", 1, 17], ["linter-miner", 2, 23]]) {
+    const timeline = measurements.find(row => row.workflowId === id).input;
+    assert.equal(timeline.snapshots.length, periods);
+    assert.deepEqual(timeline.snapshots.map(row => row.metrics["observed-partial"])
+      .filter(value => value !== null), [expected]);
+    assert.equal(timeline.snapshots.at(-1).metrics["observed-partial"], null);
+    for (const row of timeline.snapshots) {
+      for (const key of ["fullGoal", "totalDelivery", "workflowContribution", "safety", "costs"]) {
+        assert.equal(row.evidence[key], null);
+      }
+    }
+    assert.equal(progress.find(row => row.workflowId === id).partial, true);
+  }
+  assert.equal(measurements.some(row => row.workflowId === "eslint-refiner"), false);
+  const refiner = progress.find(row => row.workflowId === "eslint-refiner");
+  assert.equal(refiner.reportAvailable, true);
+  assert.equal(refiner.blocked, true);
+  assert.equal(refiner.evaluationReady, false);
+});
+
+test("Go native targets and assertion migrations retain exact disjoint subtotals without safety claims", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [id, values, periods] of [
+    ["dependabot-burner", [4, 3], 38], ["dependabot-go-checker", [1, 2, 1], 50], ["go-fan", [10], 47],
+  ]) {
+    const timeline = measurements.find(row => row.workflowId === id).input;
+    assert.equal(timeline.snapshots.length, periods);
+    assert.deepEqual(timeline.snapshots.map(row => row.metrics["native-partial"]).filter(value => value !== null), values);
+    assert.deepEqual(timeline.snapshots.map(row => row.metrics["corroborated-partial"])
+      .filter(value => value !== null), values);
+    assert.equal(timeline.snapshots.at(-1).metrics["native-partial"], null);
+    for (const row of timeline.snapshots) {
+      for (const key of ["strictFullGoalAcceptance", "safeguards", "authoritativeCreationReceipts", "actualCosts"]) {
+        assert.equal(row.evidence[key], null);
+      }
+    }
+    assert.equal(progress.find(row => row.workflowId === id).partial, true);
+  }
 });
 
 test("positive partial native evaluations retain unknown completion and open-history labels", async () => {

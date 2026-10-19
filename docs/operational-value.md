@@ -416,6 +416,25 @@ covered. A full inventory still needs workflow-specific goal checks before
 producing native value events. Missing instrumentation must be shown explicitly,
 not rendered as zero delivery or a worsening signal.
 
+For workflows that publish Discussions, collect a separate bounded inventory
+without repeating the issue/PR crawl:
+
+```sh
+node scripts/collect-workflow-discussions.mjs --until 2026-10-18T15:00:12Z \
+  --request-budget 200 github/gh-aw PATH/DISCUSSION-HISTORY
+```
+
+This repository helper preserves exact acquired JSON response bodies, hashes,
+queries and acquisition times in size-bounded compressed pages. It verifies
+repository identity, cursor advancement, unique identities and cutoff counts;
+`--resume` validates completed pages before continuing. The request budget
+includes the repository-identity request. These are **surviving bodies observed
+now**, not original historical revisions, comment inventories, accepted outcomes
+or authoritative creation receipts. Keep the acquisition archive private until
+selecting the bounded public evidence needed by a reviewed instrument.
+`readDiscussionHistory` supplies validated bodies for independent source-specific
+checks; titles, tracking markers and report claims remain discovery only.
+
 ### Repository-wide proof coverage
 
 The retained [github/gh-aw coverage report](operational-value/gh-aw-workflows/index.html)
@@ -430,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-61 of 344 is 17.7%, with 283 workflows still unevaluated.
+66 of 344 is 19.2%, with 278 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -607,7 +626,7 @@ correctness, native Redis service-port operations and SDK file/read-back effects
 They follow the File Diet outcome-first path: inspect real downstream evidence,
 measure the smallest independently verified useful change, and separate broader
 acceptance and attribution. Assignment and fixture-only instruments are not
-native evaluations. The target remains all 344 workflows, with 283 still lacking
+native evaluations. The target remains all 344 workflows, with 278 still lacking
 native evaluations at this cutoff; refreshing this inventory does not complete it.
 
 Changeset now adds a real structural partial evaluation, not just an instrument:
@@ -695,11 +714,27 @@ It does **not** increase native coverage. Full semantic acceptance, human
 usability, workflow contribution, complete history and matched costs remain
 unknown across these cases.
 
-Six further workflows covering Go dependency improvement and lint-rule
-usefulness/precision retain local cohort drafts, not admitted native evaluations.
-Their source-only bootstraps and later evidence receipts remain distinct from
-completed replay packages. Incomplete drafts do not establish replay readiness;
-cloud execution is not required.
+Lint mining adds two narrow native evaluations: one retained `fs.mkdirSync`
+call newly guarded by local `try/catch`, and two library `os.Exit` sites replaced
+by same-function, same-code error returns. Unknown recovery, caller-wide
+semantics, full diagnostic precision and attribution remain separate.
+The refiner's standard EventEmitter alias correction is only a source-level
+compatibility facet: selected originals explicitly describe no live affected
+target. It remains an evidence-gap report, not native diagnostic coverage.
+
+Go dependency work adds three bounded native evaluations: seven selected
+historical bundled targets implemented, four recommended direct targets
+implemented, and ten assertion API sites structurally migrated in three files.
+These are different native units, not an additive portfolio score.
+The original Burner's 333-byte goal is issue bundling per runtime/manifest;
+explicit retrospective era v3 preserves that goal rather than backdating today's
+generated-source rule. The GoFan subtotal is ten, not the candidate's claimed
+602. Native Go AST and immutable manifest comparisons verify actual matched
+sites and targets; advancement is not proof of safe-patch classification,
+release correctness or behavioral preservation. Editable original issue links
+corroborate shared delivery, not authoritative creation receipts or sole causation.
+No-case periods, unassessed implementations, HTTP410 issue originals, full
+acceptance, safeguards and costs remain unknown.
 Assignments, edit counts and merged candidates do not increase native coverage.
 
 The work-queue observer investigation retains all 12 initial executions:

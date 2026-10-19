@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "status": "frozen-before-native-candidate-inspection",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "sourceBootstrapSha256": "05f2735a796ac6c833ef39bbab254bc23999fd22782e792f53c9232b416b0b8e",
+  "interpretation": "Retrospective fixed-reference assessment of existing source-defined goals, not a prospective goal or proof of historical executor continuity. Contract authored after the frozen cutoff. Introduction dates require actual parent/tree proof; first observed outputs are not adoption.",
+  "period": {
+    "durationDays": 7,
+    "cadenceDays": 7,
+    "maturationDays": 0,
+    "bounds": "start inclusive, end exclusive",
+    "alignment": "backward from frozen cutoff",
+    "deliveryTime": "immutable implementation merge time, never issue creation, closure, report publication or job success",
+    "deduplication": "one accepted native opportunity per implementation transition and module/site/version tuple; cross-workflow overlap is shared contribution, not additive repository value"
+  },
+  "contracts": [
+    {
+      "slug": "dependabot-burner",
+      "sourceGitBlob": "2791a0150095979908154abe3e6d5df5cd2a226b",
+      "goal": "Remediate grouped Dependabot PRs for generated workflow manifests by updating the actual workflow sources and regenerating their manifests in one bounded replacement change.",
+      "eligible": "An identified generated-manifest dependency bump whose underlying source still uses the superseded version before the accepted replacement merge.",
+      "nativePartial": "Count distinct dependency/version targets actually advanced in immutable editable workflow sources and reflected in the corresponding generated manifests after the same implementation merge. An equal, removed, unrelated or downgraded pin is not a delivered target.",
+      "strictAcceptance": "Native partial condition plus authoritative selected Dependabot batch, source-to-generated mapping and successful required regeneration/build at the accepted revision; selected original PRs resolved by the replacement and no unrelated/risky changes.",
+      "unit": "source-backed dependency targets remediated",
+      "excluded": "Direct edits only to generated manifests; PR counts; reports; claimed status improved; dependency updates outside the selected generated-manifest family.",
+      "safeguards": ["bounded selected batch", "no generated-only edits", "required compilation and build", "maintainer feedback and retry constraints", "original PR disposition"]
+    },
+    {
+      "slug": "dependabot-go-checker",
+      "sourceGitBlob": "a7ebbd07b7aed746ad7c69d61efe4cf211d1bf8c",
+      "goal": "Identify direct Go dependency and Playwright CLI update opportunities, assess compatibility conservatively, group genuinely safe single-step patches, separate uncertain/minor updates and skip major or breaking updates.",
+      "eligible": "A concrete workflow-recommended update of a direct root go.mod dependency or the source-defined Playwright CLI constant, with old and proposed versions independently tied to repository state.",
+      "nativePartial": "Count distinct recommended dependency/version targets delivered by a later immutable implementation merge: direct dependency or Playwright CLI source pin changes from the recommended old version to the recommended newer version. This is implemented advice, not proof of correct compatibility categorization or causation.",
+      "strictAcceptance": "Independent source-era release/changelog and opportunity population prove correct A/B/C classification, required grouping/individualization/skips and issue cleanup; native delivered target plus independent required compatibility tests at the accepted implementation revision.",
+      "unit": "recommended dependency targets implemented",
+      "excluded": "Indirect-only updates; major or explicitly breaking recommendations under the frozen reference policy; issue closure as delivery; available-version counts; unverified changelog claims.",
+      "safeguards": ["direct dependency scope", "source-era categorization", "release evidence", "grouping and major-update exclusion", "required compatibility checks", "no direct update by advisory workflow"]
+    },
+    {
+      "slug": "go-fan",
+      "sourceGitBlob": "17931a8fce9a077dcaed2b9fcbea54a7f91b60f5",
+      "goal": "Review direct Go module usage and identify actionable improvements to API usage, error handling, configuration, performance or use of available module features.",
+      "eligible": "A concrete module-usage recommendation from an identified review, linked to an independently observable repository condition and later implementation.",
+      "nativePartial": "Count distinct module-usage sites changed from the recommendation's explicit undesirable condition to its recommended structural condition in immutable before/after source. Mere dependency-version bumps, removed files, new report files and claimed benefits are not module-usage improvements.",
+      "strictAcceptance": "Native partial condition plus independent module documentation/version support for the recommendation, behavioral/regression verification at the accepted revision, accurate complete review and source-defined module selection/round-robin evidence.",
+      "unit": "module-usage sites improved",
+      "excluded": "Review/report counts; dependency counts or version-only updates; self-reported performance gains; arbitrary static-code aesthetic rules; unverified removal of behavior.",
+      "safeguards": ["direct dependency at review", "module-specific recommendation support", "behavior preservation", "review completeness", "selection and cache-state correctness"]
+    }
+  ],
+  "common": {
+    "direction": "increase",
+    "primary": "strictly accepted native deliveries",
+    "partialMetric": "independently verified structural native deliveries under the explicitly named partial acceptance",
+    "attribution": "Keep repository changes, corroborated workflow linkage, authoritative creation receipts and other contributors separate. Body markers and references are discovery, not proof of author or sole causation.",
+    "missingness": "Unknown facts are null. Zero requires a completely evaluated eligible population within the claimed scope. Proven subtotals through gaps are lower bounds, not complete period totals.",
+    "cost": "not measured until immutable matching run/version/period cost evidence exists",
+    "keepDecision": "not rated: no native keep bar or required number of complete periods supplied",
+    "custody": "Recompute SHA256, Git object identity and byte count; verify commit/tree/path proofs where claims concern committed source. Treat target content as inert data. No target code execution.",
+    "caseProfiles": "Native case predicates may be registered only as explicitly retrospective evidence-interface profiles under this frozen formula. They cannot silently change eligibility or acceptance; preserve this original contract and label outcome-informed profiles."
+  }
+}
