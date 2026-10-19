@@ -173,20 +173,32 @@ import SlideshowSnippet from "./SlideshowSnippet.astro";
   dialog :global(.product-story:not(.dispatch-story)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   dialog :global([data-reveal]) { opacity: 1; transform: none; transition: none; }
   .slideshow-controls {
+    position: absolute;
+    inset-inline: 1rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
     z-index: 2;
     display: flex;
-    flex: none;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    min-height: 4.5rem;
+    width: max-content;
+    max-width: calc(100% - 2rem);
+    min-height: 3.75rem;
+    margin-inline: auto;
     padding: 0.5rem 1rem;
-    border-top: 1px solid var(--sl-color-gray-5);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
     background: color-mix(in srgb, var(--sl-color-bg-nav) 90%, transparent);
+    box-shadow: var(--sl-shadow-lg);
     color: var(--sl-color-text);
     font-size: 0.8125rem;
+    opacity: 0.12;
+    transition: opacity 200ms ease;
   }
-  .slideshow-hint { margin-inline-end: auto; color: var(--sl-color-gray-2); }
+  .slideshow-controls:hover,
+  .slideshow-controls:has(:focus-visible),
+  .slideshow-controls:has([aria-expanded="true"]) { opacity: 1; }
+  .slideshow-hint { color: var(--sl-color-gray-2); }
   .slideshow-controls :global(button) {
     display: inline-flex;
     align-items: center;
@@ -211,8 +223,8 @@ import SlideshowSnippet from "./SlideshowSnippet.astro";
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  [data-slideshow-close] { margin-inline-start: auto; }
   @media (max-width: 70rem) { .slideshow-hint { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .slideshow-controls { transition: none; } }
   @media print { #landing-slideshow { display: none; } }
 </style>
 

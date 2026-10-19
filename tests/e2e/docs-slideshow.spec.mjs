@@ -160,6 +160,39 @@ test("expands and edits code locally without changing the original commands or n
 });
 
 for (const theme of ["light", "dark"]) {
+  test(`reveals the floating toolbar only during interaction in ${theme} mode`, async ({ page }) => {
+    await page.addInitScript(value => localStorage.setItem("starlight-theme", value), theme);
+    await page.goto("./");
+    await openSlideshow(page);
+    const controls = presentation(page).getByRole("group", { name: "Slide navigation", exact: true });
+    await expect(controls).toHaveCSS("opacity", "0.12");
+    await expect(controls).toHaveCSS("transition-duration", "0s");
+
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await controls.hover();
+    await expect(controls).toHaveCSS("opacity", "1");
+    await page.mouse.move(0, 0);
+    await expect(controls).toHaveCSS("opacity", "0.12");
+
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByRole("button", { name: "Next slide", exact: true })).toBeFocused();
+    await expect(controls).toHaveCSS("opacity", "1");
+    await presentation(page).locator("[data-slideshow-viewport]").click({ position: { x: 1, y: 1 } });
+    await expect(controls).toHaveCSS("opacity", "0.12");
+
+    await page.getByRole("button", { name: "Next slide", exact: true }).click();
+    await page.mouse.move(0, 0);
+    await expectSlide(page, 1);
+    await expect(controls).toHaveCSS("opacity", "0.12");
+    await page.getByRole("button", { name: "Drawing tools", exact: true }).click();
+    await page.mouse.move(0, 0);
+    await expect(page.getByRole("group", { name: "Draw on slides", exact: true })).toBeVisible();
+    await expect(controls).toHaveCSS("opacity", "1");
+    await page.getByRole("button", { name: "Drawing tools", exact: true }).click();
+    await page.mouse.move(0, 0);
+    await expect(controls).toHaveCSS("opacity", "0.12");
+  });
+
   for (const viewport of [{ width: 1440, height: 900 }, { width: 800, height: 600 }, { width: 1280, height: 480 }]) {
     test(`fits all slides to ${viewport.width}x${viewport.height} in ${theme} mode`, async ({ page }, testInfo) => {
       await page.setViewportSize(viewport);
@@ -167,6 +200,14 @@ for (const theme of ["light", "dark"]) {
       await page.goto("./");
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await openSlideshow(page);
+      const frame = await presentation(page).locator("[data-slideshow-viewport]").boundingBox();
+      expect(frame).toEqual({ x: 0, y: 0, ...viewport });
+      const toolbar = await presentation(page).locator(".slideshow-controls").boundingBox();
+      expect(toolbar.x).toBeGreaterThan(0);
+      expect(toolbar.x + toolbar.width).toBeLessThan(viewport.width);
+      expect(toolbar.width).toBeLessThan(viewport.width - 32);
+      expect(toolbar.y).toBeGreaterThan(0);
+      expect(toolbar.y + toolbar.height).toBeLessThan(viewport.height);
       for (let index = 0; index < 6; index++) {
         await expectSlide(page, index);
         const slide = presentation(page).locator("[data-slideshow-slide]:visible");
