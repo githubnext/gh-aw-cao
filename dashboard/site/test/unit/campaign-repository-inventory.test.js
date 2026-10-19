@@ -139,6 +139,9 @@ describe('campaign repository declaration-only inventory', () => {
       expect(queries.find((query) => query.name === name)?.filter?.predicates)
         .toEqual([{ field: 'workflow-active', equals: 'true' }]);
     }
+    for (const name of ['campaign-workflow-inventory', 'campaign-workflow-totals']) {
+      expect(queries.find((query) => query.name === name)?.filter).toBeUndefined();
+    }
     expect(resolveDashboardQuerySources(queries, [contract.declarations])
       .filter((name) => Object.hasOwn(TABLE_FIELDS, name))).toEqual(contract.dependencies);
   });

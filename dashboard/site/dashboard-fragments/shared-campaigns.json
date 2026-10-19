@@ -1162,17 +1162,6 @@
       "acceptance": "Group only orchestrator and worker workflow-inventory rows by campaign; retain workflow count, distinct roles/modes/registration and summed observed runs and AIC, without inferring successful outcomes.",
       "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
       "from": "campaign-workflow-inventory",
-      "filter": {
-        "predicates": [
-          {
-            "field": "workflow-role",
-            "in": [
-              "orchestrator",
-              "worker"
-            ]
-          }
-        ]
-      },
       "aggregate": {
         "by": [
           "campaign"
