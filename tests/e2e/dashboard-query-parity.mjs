@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -534,6 +534,13 @@ async function executePostgresBackend(
 ) {
   const binary = process.env.DASHBOARD_SERVER_BINARY;
   if (!binary) throw new Error("DASHBOARD_SERVER_BINARY is required");
+  const namespace = `query-parity-${process.pid}`;
+  execFileSync(binary, [
+    "database", "bootstrap", "--store", "canonical", "--namespace", namespace,
+  ], {
+    stdio: "inherit",
+    env: { ...process.env, CAO_DATABASE_ADMIN_URL: process.env.CAO_POSTGRES_URL },
+  });
   const marketplacePolicyPath = join(artifactDirectory, "cao.json");
   await writeFile(marketplacePolicyPath, JSON.stringify({
     version: 1,
@@ -553,7 +560,7 @@ async function executePostgresBackend(
     "--mcp-enabled",
     "--database-queries", databaseQueriesPath,
     "--redis-url", process.env.REDIS_URL ?? "redis://127.0.0.1:6379/0",
-    "--redis-namespace", `query-parity-${process.pid}`,
+    "--redis-namespace", namespace,
   ], {
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, CAO_MARKETPLACE_POLICY_PATH: marketplacePolicyPath },

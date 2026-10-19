@@ -369,6 +369,10 @@ start() {
   poll Postgres postgres_ready "$POSTGRES_CONTAINER_ID"
   poll Azurite azurite_ready "http://127.0.0.1:$blob_port/$AZURITE_ACCOUNT?comp=list"
 
+  CAO_DATABASE_ADMIN_URL="$CAO_POSTGRES_URL" "$APP_DIR/cao-dashboard" database bootstrap \
+    --store canonical --namespace "$namespace" \
+    >"$LOG_DIR/database-bootstrap.log" 2>&1
+
   "$APP_DIR/cao-dashboard" ingest \
     --source "$ROOT/server/testdata/deployed-subset" \
     --redis-url "redis://127.0.0.1:$redis_port/0" \
