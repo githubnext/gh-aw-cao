@@ -197,7 +197,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     "daily-credit-limit-test", "daily-aw-cross-repo-compile-check", "avenger",
     "step-name-alignment", "workflow-normalizer", "cli-consistency-checker", "daily-syntax-error-quality",
     "artifacts-summary", "designer-drift-audit", "daily-doc-healer", "daily-doc-updater",
-    "unbloat-docs", "developer-docs-consolidator", "claude-code-user-docs-review"]) {
+    "unbloat-docs", "developer-docs-consolidator", "claude-code-user-docs-review",
+    "dependabot-burner", "dependabot-go-checker", "go-fan", "eslint-miner", "eslint-refiner", "linter-miner"]) {
     const row = model.workflows.find(workflow => workflow.id === id);
     assert.equal(row.measurement.status, "evaluation-in-progress");
     for (const key of ["functionReady", "evidenceReady", "evaluationReady", "plotReady"]) {
@@ -209,6 +210,37 @@ test("the retained repository-wide proof replays coverage rather than promoting 
   assert.equal(model.totals.needsInstrumentation + model.totals.needsOutcomeContract
     + model.totals.needsIntentReview + model.totals.inProgress + model.totals.evidenceUnavailable + model.totals.measured, 344);
   assert.equal(archived.historyIndexSha256, censusDigest(acquired.index));
+});
+
+test("portable cohort bootstraps preserve exact frozen intent bytes without claiming complete evidence", () => {
+  const directory = "docs/operational-value/proof/cohort-inputs";
+  for (const [cohort, expectedHash, workflows] of [
+    ["go-dependency", "05f2735a796ac6c833ef39bbab254bc23999fd22782e792f53c9232b416b0b8e",
+      ["dependabot-burner", "dependabot-go-checker", "go-fan"]],
+    ["lint-rule", "abde598e90796f2a84cdc088960af9f1e3ea581e40cf394a453d5235d0c9fe85",
+      ["eslint-miner", "eslint-refiner", "linter-miner"]],
+  ]) {
+    const file = path.join(directory, `${cohort}.json.gz`);
+    assert.equal(createHash("sha256").update(readFileSync(file)).digest("hex"), expectedHash);
+    const bootstrap = readCensusJson(file);
+    assert.equal(bootstrap.kind, "frozen-workflow-source-bootstrap");
+    assert.equal(bootstrap.repository, "github/gh-aw");
+    assert.equal(bootstrap.revision, "c86377ec47b38f0b5af463277ee55d1d03d08da8");
+    assert.deepEqual(bootstrap.workflows, workflows);
+    assert.equal(bootstrap.paths.length, workflows.length);
+    assert.equal(bootstrap.objects.length, workflows.length);
+    for (const workflowId of workflows) {
+      const reference = bootstrap.paths.find(row => row.path === `.github/workflows/${workflowId}.md`);
+      const object = bootstrap.objects.find(row => row.gitBlob === reference.gitBlob);
+      const bytes = Buffer.from(object.contentBase64, "base64");
+      assert.equal(bytes.length, object.bytes);
+      assert.equal(createHash("sha256").update(bytes).digest("hex"), object.sha256);
+      assert.equal(createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex"), object.gitBlob);
+      assert.ok(bootstrap.unresolved.some(row => row.path === `.github/workflows/${workflowId}.lock.yml`));
+    }
+    assert.match(bootstrap.authority, /not instructions, accepted outcomes, adoption or execution evidence/);
+    assert.equal(bootstrap.origin.lazyFetch, false);
+  }
 });
 
 test("Pydantic native Python read does not satisfy strict read_file or full goal, and CI gaps stay unmeasured", async () => {

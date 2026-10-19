@@ -122,6 +122,12 @@ explicit fixed-reference assessment, never silently backdated current policy.
 Preserve actual unknown adoption and incompatible eras. Do not change dates just
 to make a frozen-cutoff evaluation run.
 
+Candidate descriptions are already outcome exposure. Freezing a new predicate
+after reading PR bodies or result summaries is outcome-informed retrospective
+authoring, even before inspecting immutable before/after bytes. Preserve that
+ordering, the original frozen contract and any rejected observations. Label the
+new assessment explicitly; do not claim blind or ex-ante acceptance.
+
 For source changes, `git-evidence.mjs` acquires bounded immutable first-parent
 changes and digest-checked blobs once; a versioned native oracle supplies facts,
 not another scoring API. Preserve its source/toolchain identity and use the

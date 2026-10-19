@@ -433,8 +433,8 @@ cutoff and report-normalizer activation follows it; their later prospective
 reports remain separate rather than backdating the functions or plotting fixtures
 as history. All four preserve original owned packages and discovery lineage,
 with costs, full accepted delivery and workflow contribution unmeasured.
-Fourteen other source-matched outcome proposals still need independent instruments,
-224 need outcome-contract authoring, and 11 changed source blobs need intent
+Thirteen other source-matched outcome proposals still need independent instruments,
+220 need outcome-contract authoring, and 10 changed source blobs need intent
 review. These are remaining measurement tasks or evidence gaps, not workflow
 failures or zero-value results. A steady repository conformance signal is not
 claimed as workflow delivery.
@@ -512,11 +512,15 @@ remain unknown, with original predicates, compressed reports and failure receipt
 preserved. An LLM invocation is not required for deterministic useful effects,
 but an unused prompt and a successful replay do not establish those effects.
 
-Two parallel documentation cohorts now own six further workflows: designer
-drift, documentation healing/updating, unbloating, developer-guide consolidation
-and Claude onboarding barriers. They share acquisition and mechanical checks
-while keeping separate goals and frozen acceptance predicates. Assignments,
-edit counts and merged candidates do not increase native coverage.
+Four parallel cohorts now own 12 further workflows: documentation accuracy
+(designer drift and documentation healing/updating), documentation consolidation
+(unbloating, developer-guide consolidation and Claude onboarding barriers),
+Go dependency improvement, and lint-rule usefulness/precision. They share
+acquisition and mechanical checks while keeping separate goals and frozen
+acceptance predicates. The latter two have portable source-only bootstrap
+packets with exact blob hashes and explicit missing imports/compiled evidence;
+these are not runtime or outcome proof. Assignments, edit counts and merged
+candidates do not increase native coverage.
 
 The work-queue observer investigation retains all 12 initial executions:
 seven belong to an incompatible historical finish-staging goal, and five are

@@ -851,6 +851,20 @@ export async function currentPortfolioInputs() {
   }
   for (const assignment of [
     ...[
+      ["dependabot-burner", "2791a0150095979908154abe3e6d5df5cd2a226b"],
+      ["dependabot-go-checker", "a7ebbd07b7aed746ad7c69d61efe4cf211d1bf8c"],
+      ["go-fan", "17931a8fce9a077dcaed2b9fcbea54a7f91b60f5"],
+    ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
+      stage: "dependency cohort: source-defined useful updates under investigation",
+      detail: "One isolated cohort shares immutable source inputs and acquisition while deriving separate dependency-update, risk and practical-improvement predicates. Dependency counts, opened PRs and passing jobs alone do not establish safe useful changes. Source-only inputs and assignment are not native evaluation or complete runtime custody." })),
+    ...[
+      ["eslint-miner", "aff6103ce5105365ed2d9dd338164d06f871ba68"],
+      ["eslint-refiner", "104f17519e69a7c3a079ac4fa7e2428044627d6c"],
+      ["linter-miner", "d75aa4cc4fd28219f0db9b616f5abc5680f3bccc"],
+    ].map(([workflowId, sourceGitBlob]) => ({ workflowId, sourceGitBlob,
+      stage: "lint-rule cohort: useful diagnostics and precision under investigation",
+      detail: "One isolated cohort derives independent source-specific rule usefulness and precision checks. Rules added, tests written and merged candidates are not independent acceptance. Native partial improvement, full correctness and false-positive safeguards remain distinct; source-only inputs and assignment add no measured coverage." })),
+    ...[
       ["designer-drift-audit", "91261191d20f97e8c511ed9690db4dd283ea35b9"],
       ["daily-doc-healer", "424b398cdf60be1db7f87708e3d67012eafc81ac"],
       ["daily-doc-updater", "02aebaffb8fbe3201e5a5c8a0ee6acf2e9be24cb"],

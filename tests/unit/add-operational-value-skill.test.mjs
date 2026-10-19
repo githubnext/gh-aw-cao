@@ -27,6 +27,15 @@ test("authoring distinguishes effective execution, exact tool conformance and in
   assert.match(contract, /Version historical source-era predicates separately/);
 });
 
+test("outcome exposure includes discovery prose before immutable native inspection", () => {
+  const contract = readContract();
+  assert.match(contract, /Candidate descriptions are already outcome exposure/);
+  assert.match(contract, /after reading PR bodies or result summaries is outcome-informed retrospective authoring/);
+  assert.match(contract, /even before inspecting immutable before\/after bytes/);
+  assert.match(contract, /the original frozen contract and any rejected observations/);
+  assert.match(contract, /do not claim blind or ex-ante acceptance/);
+});
+
 test("portable period validation preserves the canonical CAO adapter contract", () => {
   const period = { windowStart: "2026-09-01T00:00:00Z", windowEnd: "2026-09-02T00:00:00Z",
     measurementKind: "interval", coverageStatus: "partial" };

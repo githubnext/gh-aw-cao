@@ -4,7 +4,7 @@ description: "Count demonstrated workflow-enabled improvements over time, with g
 argument-hint: 'OWNER/REPO [WORKFLOW | SOURCE | --goal "GOAL"] [--campaign SLUG]'
 allowed-tools: bash node gh
 metadata:
-  version: "0.18.2"
+  version: "0.18.3"
 ---
 
 # Measure workflow value
