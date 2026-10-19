@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "sourceRevision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "until": "2026-10-18T15:00:12Z",
+  "architecture": "call-workflow safe output compiles to a job (`call-smoke-workflow-call` in smoke-call-workflow.lock.yml) that runs `uses: ./.github/workflows/smoke-workflow-call.lock.yml` nested inside the SAME orchestrator run id (compile-time fan-out). The worker's own independent run list (schedule/workflow_dispatch only) never contains workflow_call-context executions; those are only observable as a nested job inside smoke-call-workflow's run history.",
+  "worker": {
+    "workflowId": "smoke-workflow-call",
+    "sourcePath": ".github/workflows/smoke-workflow-call.md",
+    "sourceGitBlob": "4c18d992aaa8ceee3bcc4b0a5bcb505d7a79758b",
+    "lockGitBlob": "8a4ebdd786a55296e7d7f5beeb09cade276b4db9",
+    "adoption": {
+      "commit": "90f9f26129d3964aeee669d782d3adf2244c57d5",
+      "adoptedAt": "2026-02-27T18:15:46Z",
+      "baselineCommit": "23d39f6bb5af0cebff381500b6cacabde8229466",
+      "baselineAt": "2026-02-27T18:15:38Z"
+    },
+    "goal": "Validate PR branch checkout in reusable workflow_call context.",
+    "acceptance": "Independent checkout-state evidence matches the intended caller PR head and initialized Git state.",
+    "designLimitation": "Git commands working or a PASS comment cannot prove the intended PR was checked out."
+  },
+  "orchestrator": {
+    "workflowId": "smoke-call-workflow",
+    "sourcePath": ".github/workflows/smoke-call-workflow.md",
+    "sourceGitBlob": "7e126368cd292d93519d66aa3a317c46db414a51",
+    "lockGitBlob": "631f36c009524dfbf35a1244ad07f012e2343de0",
+    "adoption": {
+      "commit": "01de4d31085d484d9106892609ac17da2ba09f2d",
+      "adoptedAt": "2026-03-13T20:15:06Z",
+      "baselineCommit": "45de2430ee97a2ab208d963703f071bf6ee664ef",
+      "baselineAt": "2026-03-13T19:39:24Z"
+    },
+    "goal": "Validate reusable-worker invocation and checkout through call-workflow.",
+    "acceptance": "Independent invocation and checkout evidence confirms the requested worker and task input reached the intended context.",
+    "designLimitation": "A dispatch safe output alone does not demonstrate correct worker checkout."
+  },
+  "coupling": {
+    "mechanism": "compile-time fan-out via the call-workflow safe output",
+    "workerEligibilityFloor": "2026-03-13T20:15:06Z",
+    "workerEligibilityFloorReason": "Before the orchestrator existed, no workflow_call coupling to the worker was possible regardless of the worker's own earlier standalone adoption.",
+    "nestedJobName": "call-smoke-workflow-call",
+    "calledWorkflowFile": "./.github/workflows/smoke-workflow-call.lock.yml",
+    "expectedTaskDescriptionLiteral": "smoke test checkout validation"
+  },
+  "rejectedProxies": [
+    "a run concluding 'success'",
+    "a PASS/FAIL comment footer written by the agent itself",
+    "the call_workflow safe-output count alone (dispatch without confirmed destination/input match)",
+    "the worker's own schedule/workflow_dispatch run history (never reflects workflow_call context)",
+    "editable issue/PR body or comment text"
+  ],
+  "limitations": [
+    "Actions run/job/log-level evidence (run lists, job steps, and logs for both workflows) could not be acquired in this measurement environment; see acquisition below.",
+    "Repository, commit, blob, and adoption facts above were independently verified via unauthenticated public git smart-HTTP clone plus SHA1 blob hashing, which remained reachable.",
+    "Complete attribution and cost accounting remain not-measured."
+  ],
+  "acquisition": {
+    "attempts": [
+      {
+        "label": "gh api repos/github/gh-aw",
+        "ok": false,
+        "detail": "Command failed: gh api repos/github/gh-aw\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      {
+        "label": "gh api repos/github/gh-aw/actions/workflows/smoke-call-workflow.lock.yml/runs",
+        "ok": false,
+        "detail": "Command failed: gh api repos/github/gh-aw/actions/workflows/smoke-call-workflow.lock.yml/runs -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+      },
+      {
+        "label": "curl https://api.github.com/repos/github/gh-aw",
+        "ok": false,
+        "detail": "Command failed: curl -sS --fail --max-time 20 https://api.github.com/repos/github/gh-aw\ncurl: (22) The requested URL returned error: 403\n"
+      }
+    ],
+    "acquisitionAttemptedAt": "2026-10-19T14:35:39Z",
+    "classification": "blocked-acquisition"
+  },
+  "interpreterSha256": "a489050207c93efcd36beb8dd4e06783b74b749feaecda6375a561078b018fe6"
+}

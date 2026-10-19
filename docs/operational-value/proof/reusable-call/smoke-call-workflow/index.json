@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflowId": "smoke-call-workflow",
+  "role": "orchestrator",
+  "contractSha256": "66680c038ebf1f79886c8dde66807058cd7dec7d7ef88dbe6ed18d7cb63442bd",
+  "observationsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "inventoryRuns": 0,
+  "inventoryComplete": false,
+  "classification": "blocked-acquisition",
+  "acquisitionAttemptedAt": "2026-10-19T14:35:39Z",
+  "acquisitionAttempts": [
+    {
+      "label": "gh api repos/github/gh-aw",
+      "ok": false,
+      "detail": "Command failed: gh api repos/github/gh-aw\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+    },
+    {
+      "label": "gh api repos/github/gh-aw/actions/workflows/smoke-call-workflow.lock.yml/runs",
+      "ok": false,
+      "detail": "Command failed: gh api repos/github/gh-aw/actions/workflows/smoke-call-workflow.lock.yml/runs -f per_page=1\ngh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable. Example:\n  env:\n    GH_TOKEN: ${{ github.token }}\n"
+    },
+    {
+      "label": "curl https://api.github.com/repos/github/gh-aw",
+      "ok": false,
+      "detail": "Command failed: curl -sS --fail --max-time 20 https://api.github.com/repos/github/gh-aw\ncurl: (22) The requested URL returned error: 403\n"
+    }
+  ]
+}
