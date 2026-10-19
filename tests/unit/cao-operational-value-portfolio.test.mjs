@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 80);
-  assert.equal(model.totals.workflows - model.totals.measured, 264);
+  assert.equal(model.totals.measured, 82);
+  assert.equal(model.totals.workflows - model.totals.measured, 262);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -397,6 +397,29 @@ test("surviving monitoring bodies retain bounded factual accuracy and known repo
   assert.equal(weekly.snapshots.at(-1).metrics["opening-undercount-floor"], 30);
   assert.match(progress.find(row => row.workflowId === "daily-repo-chronicle").detail, /24h05m/);
   assert.match(progress.find(row => row.workflowId === "github-mcp-tools-report").detail, /not proof.*59 live tools/);
+});
+
+test("GPL facts and native parent cleanup preserve useful partials and exclude PR cleanup gaps", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const license = measurements.find(row => row.workflowId === "gpclean")?.input;
+  assert.ok(license);
+  assert.equal(license.snapshots.length, 36);
+  assert.deepEqual(license.snapshots.map(row => row.metrics["verified-license-facts"]).filter(value => value !== null), [6]);
+  assert.equal(license.snapshots.at(-1).metrics["verified-license-facts"], null);
+  assert.match(progress.find(row => row.workflowId === "gpclean").detail, /not.*legal compatibility/);
+  const parent = measurements.find(row => row.workflowId === "sub-issue-closer")?.input;
+  assert.ok(parent);
+  assert.equal(parent.snapshots.length, 44);
+  assert.deepEqual(parent.snapshots.map(row => row.metrics.native).filter(value => value !== null), [2]);
+  assert.equal(parent.snapshots.at(-1).metrics.contribution, 2);
+  assert.equal(parent.snapshots.at(-1).metrics.full, null);
+  for (const id of ["stale-pr-cleanup", "draft-pr-cleanup"]) {
+    assert.equal(measurements.some(row => row.workflowId === id), false);
+    const gap = progress.find(row => row.workflowId === id);
+    assert.equal(gap.blocked, true);
+    assert.equal(gap.evaluationReady, false);
+    assert.equal(gap.reportAvailable, true);
+  }
 });
 
 test("mathematically correct worked examples remain distinct from complete educational acceptance", async () => {

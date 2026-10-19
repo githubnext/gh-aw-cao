@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-80 of 344 is 23.3%, with 264 workflows still unevaluated.
+82 of 344 is 23.8%, with 262 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -480,6 +480,25 @@ not establish a trend or full lesson quality. These surviving body versions were
 acquired after cutoff; original publication-time accuracy, general model
 correctness, optimality, educational usefulness, nonrepetition and contribution
 remain separately unmeasured.
+
+The GPL audit partial corroborates six exact-version GPL-presence facts: original
+Go module ZIP checksums match immutable run-head `go.sum` entries, and their root
+license terms match an independently retained complete GNU GPL3 reference. This
+does **not** validate legal compatibility, detailed conjunctive license
+expressions, eligibility of development tools, complete transitive reachability
+or remediation recommendations. Fifty-four other failure/incomplete-style issue
+objects are not native audit completion. Preserved strict v1 acceptance remains
+separate from the explicitly outcome-informed retrospective v2 factual partial.
+
+The sub-issue cleanup instrument establishes two parent closures: one after all
+22 historically linked children were closed, and its own parent two seconds
+later. Original applied-output receipts independently link both transitions
+and comments to the exact workflow/source revision. The two receipt-linked
+contributions are a subset of those same two closures, not additional value or
+sole causation. This does not prove underlying child-task quality, exhaustive
+cleanup or full acceptance. Stale-PR and draft-PR cleanup retain genuine
+all-unknown gap reports: a failed warning and an active-draft no-op are not
+eligible applied cleanup, and historical pre-action state is never synthesized.
 
 Other linked native
 evaluations include File Diet's lifetime structural contributions, the

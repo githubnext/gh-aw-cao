@@ -61,6 +61,10 @@ import { collectBatch as collectNetworkSeparation, scoreMetric as scoreNetworkSe
 import { collectBatch as collectSetupRepairs, scoreMetric as scoreSetupRepairs } from "../docs/operational-value/proof/functions/daily-action-setup-security-audit.mjs";
 import { collectBatch as collectModelBoundaries, scoreMetric as scoreModelBoundaries } from "../docs/operational-value/proof/functions/daily-workflow-security-model.mjs";
 import { collectBatch as collectConstraintExamples, scoreMetric as scoreConstraintExamples } from "../docs/operational-value/proof/functions/constraint-solving-potd.mjs";
+import { collectBatch as collectGplFacts, scoreMetric as scoreGplFacts } from "../docs/operational-value/proof/functions/gpclean.mjs";
+import { collectBatch as collectParentClosures, scoreMetric as scoreParentClosures } from "../docs/operational-value/proof/functions/sub-issue-closer.mjs";
+import { collectBatch as collectStalePrCleanup, scoreMetric as scoreStalePrCleanup } from "../docs/operational-value/proof/functions/stale-pr-cleanup.mjs";
+import { collectBatch as collectDraftPrCleanup, scoreMetric as scoreDraftPrCleanup } from "../docs/operational-value/proof/functions/draft-pr-cleanup.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -764,6 +768,34 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "gpclean", sourceGitBlob: "2acc22f87c0532fee60b1296c70aa42876a851b9",
+      functionSha256: "e15737c95aaa34f7f3fb0dd4c715fe86b46393c908b5d84b8dc7f6630f1be0b8",
+      timelineDigest: "c57f7e114c6a63706d0fbd8fa2ffc85490a03b1f9d833a2e21cf60a0ff862de3",
+      reports: "docs/operational-value/proof/gpl-audit/reports/github-gh-aw",
+      collector: collectGplFacts, scorer: scoreGplFacts, partialMetricId: "verified-license-facts",
+      stage: "six exact-version GPL-presence facts independently corroborated; legal/audit acceptance unknown",
+      detail: "Six exact module/version ZIPs have canonical Go directory checksums matching immutable run-head go.sum entries. Each root LICENSE contains complete terms matching the independently retained GNU GPL3 reference. One surviving issue's versioned GPL-family facts are corroborated, not its detailed conjunctive expressions, legal compatibility, tool eligibility, complete transitive reachability or replacement/removal recommendations. The original strict v1 and explicitly outcome-informed retrospective v2 partial remain separate. Fifty-four other failure/incomplete-style issue objects do not establish native audits. One measured period and thirty-five unknown periods; surviving after-cutoff bytes do not prove original publication accuracy, receipt-verified contribution or costs." },
+    { workflowId: "sub-issue-closer", sourceGitBlob: "dc8cb877c7dcb045376bdf17a217ecdbb2fe1b9a",
+      functionSha256: "ae4dd0a6a9b7219be0f045bde156ccbb582e3dec1f3f417b23be0c78b0545fdc",
+      timelineDigest: "5e0aba32d982e106bbe831547c21f7f085da8dec4b903fca71e2fd79b13333b9",
+      reports: "docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw",
+      collector: collectParentClosures, scorer: scoreParentClosures, partialMetricId: "native",
+      stage: "two source-eligible completed-parent closures and their original applied-output receipts verified",
+      detail: "Independent historical relationship and lifecycle replay establishes parent 69626 closed after all22 linked children, and parent69627 closed two seconds after its sole child69626. Original safe-output application artifact12127649313 from run39104430263 binds both transitions and comments to the exact source/runtime SHA. Two receipt-linked contributions are a subset of the same two closures, not additional value or sole causation. One measured-subtotal period and forty-three unknown periods do not establish all508 discovered parents, every eligible opportunity, recursive completeness, underlying child-task quality, full acceptance, costs or a keep bar." },
+    { workflowId: "stale-pr-cleanup", sourceGitBlob: "43843cccd5effc58d80465b38d93f2b28e1c024b",
+      functionSha256: "22624c1fe2c95ae5f261a86e6dcdf4ed542a4243e324957a42da18e3f352bc23",
+      timelineDigest: "f872d316482ec5c698fe176b3290f1bccfac8421675bc434339a3523d3dc619c",
+      reports: "docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw",
+      collector: collectStalePrCleanup, scorer: scoreStalePrCleanup, blocked: true,
+      stage: "historically eligible applied stale-PR cleanup unavailable; report remains unqualified",
+      detail: "Original run39017177297 reads stale PR56568 but cannot apply its required warning comment; overall run success and declared labels are not native cleanup. No eligible historical pre-action snapshot is synthesized. All twenty-four periods remain unknown; a non-draft Dependabot closure is not substituted as accepted source-defined cleanup. The real deterministic collector and gap report do not increase measured coverage." },
+    { workflowId: "draft-pr-cleanup", sourceGitBlob: "a7fb0c6df9cba4af7453c14c4b995afb8faf3eb0",
+      functionSha256: "e5561851ddcee394f028fa5a2966692d933a310af8479e259e59e780a5d3b0ef",
+      timelineDigest: "7da9b92de8c4ca449b77749ccf5bc287571f8d52193c58ac1c94b3afd82739da",
+      reports: "docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw",
+      collector: collectDraftPrCleanup, scorer: scoreDraftPrCleanup, blocked: true,
+      stage: "inactive-draft cleanup acceptance unavailable; observed native no-op is not cleanup",
+      detail: "Original run39120881048 records a no-op after reading three active drafts. Comment/label searches and candidate closed PRs do not establish an eligible inactive-draft closure with independently captured pre-action activity, exemption and draft state. All thirty-eight periods remain unknown; current closed state is not backdated and synthetic checker snapshots earn no native coverage." },
     { workflowId: "constraint-solving-potd", sourceGitBlob: "d5b8d09c4241de247ded88bf47230c27efc68862",
       functionSha256: "56ef7ba6dfaced9f87f8ad069b0b5c197d45e59296a420b0f7eabcf52c982b9c",
       timelineDigest: "ea737e1e5982bb87fb402eccec0432d959194e3c7f7bfde36004975a9f5e1a3b",

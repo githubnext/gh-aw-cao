@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-native-versioned-license-replay",
+  "tests": 8,
+  "collectorChecks": 1,
+  "standardRefreshes": 2,
+  "completeTimelinesEqualExceptGeneratedAt": true,
+  "timelineSha256WithoutGeneratedAt": "81d860c60b3e12f4c5a8ef6e5e52cf0ec9e78996d0b24ee42fed5df4a80c4d4b",
+  "networkDeniedByOSAndProbed": true,
+  "originalWorkspaceReadDeniedAndProbed": true,
+  "sharedSessionCachesDeniedByOS": true,
+  "gitCheckoutAndNodeModulesAbsent": true,
+  "helperTamperingRejected": true,
+  "originalZipArchiveTamperingRejected": true,
+  "targetCodeExecuted": false,
+  "periods": 36,
+  "finiteValues": [
+    6
+  ],
+  "nativeSubtotal": 6,
+  "legalCompatibility": null,
+  "fullGoal": null,
+  "workflowContribution": null,
+  "costs": null
+}

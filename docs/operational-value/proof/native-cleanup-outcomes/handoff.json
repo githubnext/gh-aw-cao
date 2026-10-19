@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "scope": "Owned-only, local operational-value evaluation; no target execution, target changes, remote writes, dispatch, commits or PR.",
+  "status": "Partial native completion: exactly one of the three requested instruments is qualified. Do not count the two all-unknown PR reports as native coverage.",
+  "baseline": "e9837276b0b540a915b2cb3994b4215efa9e11dd",
+  "ownedLocations": {
+    "modules": "docs/operational-value/proof/functions/<slug>.mjs",
+    "evidenceAndReports": "docs/operational-value/proof/native-cleanup-outcomes/",
+    "coupledRuntime": "scripts/*native-cleanup*.mjs",
+    "tests": "tests/unit/native-cleanup-outcomes.test.mjs",
+    "relocation": "No root proof/ compatibility directory or symlink. Original provider/source archives and source contracts are byte-preserved; see the independently checked relocation receipt."
+  },
+  "target": {
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "cutoff": "2026-10-18T15:00:12Z",
+    "authority": "Original public repository metadata was verified and retained before source/content acquisition."
+  },
+  "sourceDiscovery": {
+    "archive": "source-index.json.gz",
+    "sourceHistory": "All revisions of the three workflow Markdown paths through the frozen revision, with source blobs and recursively referenced shared Markdown imports.",
+    "executors": "Original and frozen compiled workflows are retained, plus run-revision source/lock identities. Sources use actual agents, not samples replay or an overriding executor. Stale moves Copilot CLI to SDK; draft moves CLI to SDK and native-only MCP; sub-issue moves Copilot to Codex to Pi.",
+    "adoptionProof": "Git commit/tree objects prove the editable source was absent at each real first parent and the compiled workflow existed at adoption. Commit object hashes and adoption timestamps are independently checked at replay.",
+    "adoptions": {
+      "stale-pr-cleanup": "2026-05-05T12:28:50Z",
+      "draft-pr-cleanup": "2026-01-28T05:36:55Z",
+      "sub-issue-closer": "2025-12-17T22:01:09Z"
+    },
+    "contract": "contracts.json preserves the source-history-informed original acceptance, frozen before candidate discovery. No outcome-informed weaker metric was added."
+  },
+  "quantities": {
+    "sub-issue-closer": {
+      "qualifiedNativeInstrument": true,
+      "nativeKnownSubtotal": 2,
+      "nativeUnit": "completed parents retired",
+      "workflowContributionSubset": 2,
+      "fullAcceptance": null,
+      "periods": 44,
+      "measuredSubtotalPeriods": 1,
+      "unknownPeriods": 43,
+      "nativePeriod": {
+        "start": "2026-10-11T15:00:12Z",
+        "endExclusive": "2026-10-18T15:00:12Z"
+      },
+      "accepted": [
+        {
+          "number": 69626,
+          "closedAt": "2026-10-18T06:38:50Z",
+          "children": 22,
+          "nativeEvidence": "Complete retained sub_issue_added timeline reconciles to the terminal sub-issue set. Each child's independent closure/reopen timeline establishes CLOSED before this parent closed."
+        },
+        {
+          "number": 69627,
+          "closedAt": "2026-10-18T06:38:52Z",
+          "children": 1,
+          "nativeEvidence": "Parent timeline independently added #69626 before closure; #69626 closed two seconds earlier. This demonstrates the selected bottom-up parent-child pair."
+        }
+      ],
+      "attribution": "Original safe-outputs-items artifact 12127649313 from run 39104430263 independently records both open-to-closed transitions and applied comments. Run repository, exact workflow path, head SHA, source blobs, artifact run identity, entity targets, comment IDs and timestamps all join.",
+      "limitations": "No claim of all 508 discovered parents, every eligible opportunity, full recursive processing, underlying child work quality, causal impact, or a keep/change decision. The source requires CLOSED children, not independent acceptance of each child's own task."
+    },
+    "stale-pr-cleanup": {
+      "qualifiedNativeInstrument": false,
+      "nativeOutcome": null,
+      "periods": 24,
+      "unknownPeriods": 24,
+      "gap": "No independently source-eligible unmerged closure found in bounded evidence. Run 39017177297 reads stale PR #56568 and declares add_labels plus missing_tool because its warning comment cannot target scheduled events. Neither that declaration nor overall run success proves applied warning/cleanup.",
+      "nextRequiredEvidence": "A real qualifying closure plus independent historical updatedAt, draft/bot/role and exemption state, source classification and any required supersession facts. The retained inputs supply no qualifying pre-action snapshot; the collector does not synthesize one."
+    },
+    "draft-pr-cleanup": {
+      "qualifiedNativeInstrument": false,
+      "nativeOutcome": null,
+      "periods": 38,
+      "unknownPeriods": 38,
+      "gap": "Run 39120881048 records a no-op after reading three active drafts, not cleanup. Broader comment/label searches and two phrase-selected closed PRs did not establish an eligible inactive draft closure. Current post-cutoff closed state is never backdated.",
+      "nextRequiredEvidence": "A real inactive draft closure, independently captured pre-action draft status, all activity and exemption state, and transition evidence. The native checker is unit-exercised, but synthetic snapshots earn no native coverage and the production collector deliberately supplies none."
+    }
+  },
+  "reproduction": {
+    "command": "node scripts/replay-native-cleanup.mjs",
+    "standardEvaluation": "Each owned module uses the unmodified schema-3 collectBatch/scoreMetric interface. Standard evaluate.mjs --refresh at the frozen cutoff is run twice for each module, and exact snapshots/valueFunction contracts must match.",
+    "dependencies": "Node 24+, Python 3 standard-library ZIP parsing, shasum (used by the unchanged skill), and the separately SHA-identified unmodified skill runtime. No .git, node_modules, shared acquisition directory, remote API or target code is needed to replay.",
+    "checks": [
+      "Focused acceptance, missing-evidence, contradictions, temporal ordering, duplicate identity, disjoint-period, source/runtime/application and module scoring tests.",
+      "npm exec --no -- eslint on owned modules and scripts.",
+      "npm run typecheck:cao and npm run typecheck:copilot.",
+      "npm run compile with the repository schedule seed.",
+      "node scripts/check-file-sizes.mjs."
+    ],
+    "portableDelivery": "node scripts/package-native-cleanup.mjs ABSOLUTE-NEW-DELIVERY-DIRECTORY writes exact owned-only SHA256/size manifests and <=256KiB tar.gz chunks. COPYFILE_DISABLE=1 packaging is checked independently with Python tarfile for exact member-set, every digest, and absence of AppleDouble. The script extracts a clean workspace, supplies separately identified unchanged dependencies, denies Node network APIs and every subprocess except Node/Python and the skill's exact shasum call, runs all three standard refreshes twice and tests, and compares exact retained snapshots/contracts.",
+    "receipt": "See replay.json for actual in-checkout checks and the delivery manifest's verification object and offline-replay.log for actual independent clean replay."
+  },
+  "unchanged": [
+    "Skill 0.18.5 and all shared helpers",
+    "Global index, documentation, portfolio and runtime",
+    "github/gh-aw and all control-plane policy",
+    "All unchanged baseline files are excluded from the owned-only delivery archive"
+  ]
+}

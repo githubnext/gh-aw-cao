@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "until": "2026-10-18T15:00:12Z",
+  "node": "v25.0.0",
+  "checks": [
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/stale-pr-cleanup.mjs"
+      ],
+      "status": 0,
+      "output": "verified docs/operational-value/proof/functions/stale-pr-cleanup.mjs"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--root",
+        "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-parakeet",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/native-cleanup-outcomes/reports",
+        "--function",
+        "docs/operational-value/proof/functions/stale-pr-cleanup.mjs",
+        "--refresh",
+        "github/gh-aw",
+        "stale-pr-cleanup"
+      ],
+      "status": 0,
+      "output": "Timeline: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/stale-pr-cleanup-timeline.json\nDefinitions: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/stale-pr-cleanup-definitions.md\nInteractive pulse: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/stale-pr-cleanup-pulse.html\nEvidence archive: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/stale-pr-cleanup-evidence-archive.json"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--root",
+        "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-parakeet",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/native-cleanup-outcomes/reports",
+        "--function",
+        "docs/operational-value/proof/functions/stale-pr-cleanup.mjs",
+        "--refresh",
+        "github/gh-aw",
+        "stale-pr-cleanup"
+      ],
+      "status": 0,
+      "output": "Timeline: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/stale-pr-cleanup-timeline.json\nDefinitions: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/stale-pr-cleanup-definitions.md\nInteractive pulse: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/stale-pr-cleanup-pulse.html\nEvidence archive: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/stale-pr-cleanup-evidence-archive.json"
+    },
+    {
+      "slug": "stale-pr-cleanup",
+      "moduleSha256": "22624c1fe2c95ae5f261a86e6dcdf4ed542a4243e324957a42da18e3f352bc23",
+      "refreshes": 2,
+      "directCollectBatchReplays": 2,
+      "periods": 24,
+      "measuredSubtotalPeriods": 0,
+      "unknownPeriods": 24,
+      "nativeKnownSubtotal": 0,
+      "qualifiedNativeInstrument": false,
+      "comparison": "Exact snapshots and valueFunction match across standard --refresh evaluations."
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/draft-pr-cleanup.mjs"
+      ],
+      "status": 0,
+      "output": "verified docs/operational-value/proof/functions/draft-pr-cleanup.mjs"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--root",
+        "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-parakeet",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/native-cleanup-outcomes/reports",
+        "--function",
+        "docs/operational-value/proof/functions/draft-pr-cleanup.mjs",
+        "--refresh",
+        "github/gh-aw",
+        "draft-pr-cleanup"
+      ],
+      "status": 0,
+      "output": "Timeline: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/draft-pr-cleanup-timeline.json\nDefinitions: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/draft-pr-cleanup-definitions.md\nInteractive pulse: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/draft-pr-cleanup-pulse.html\nEvidence archive: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/draft-pr-cleanup-evidence-archive.json"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--root",
+        "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-parakeet",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/native-cleanup-outcomes/reports",
+        "--function",
+        "docs/operational-value/proof/functions/draft-pr-cleanup.mjs",
+        "--refresh",
+        "github/gh-aw",
+        "draft-pr-cleanup"
+      ],
+      "status": 0,
+      "output": "Timeline: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/draft-pr-cleanup-timeline.json\nDefinitions: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/draft-pr-cleanup-definitions.md\nInteractive pulse: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/draft-pr-cleanup-pulse.html\nEvidence archive: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/draft-pr-cleanup-evidence-archive.json"
+    },
+    {
+      "slug": "draft-pr-cleanup",
+      "moduleSha256": "e5561851ddcee394f028fa5a2966692d933a310af8479e259e59e780a5d3b0ef",
+      "refreshes": 2,
+      "directCollectBatchReplays": 2,
+      "periods": 38,
+      "measuredSubtotalPeriods": 0,
+      "unknownPeriods": 38,
+      "nativeKnownSubtotal": 0,
+      "qualifiedNativeInstrument": false,
+      "comparison": "Exact snapshots and valueFunction match across standard --refresh evaluations."
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/sub-issue-closer.mjs"
+      ],
+      "status": 0,
+      "output": "verified docs/operational-value/proof/functions/sub-issue-closer.mjs"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--root",
+        "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-parakeet",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/native-cleanup-outcomes/reports",
+        "--function",
+        "docs/operational-value/proof/functions/sub-issue-closer.mjs",
+        "--refresh",
+        "github/gh-aw",
+        "sub-issue-closer"
+      ],
+      "status": 0,
+      "output": "Timeline: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/sub-issue-closer-timeline.json\nDefinitions: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/sub-issue-closer-definitions.md\nInteractive pulse: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/sub-issue-closer-pulse.html\nEvidence archive: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/sub-issue-closer-evidence-archive.json"
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        ".github/skills/add-operational-value/scripts/evaluate.mjs",
+        "--root",
+        "/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-silver-parakeet",
+        "--end",
+        "2026-10-18T15:00:12Z",
+        "--output-dir",
+        "docs/operational-value/proof/native-cleanup-outcomes/reports",
+        "--function",
+        "docs/operational-value/proof/functions/sub-issue-closer.mjs",
+        "--refresh",
+        "github/gh-aw",
+        "sub-issue-closer"
+      ],
+      "status": 0,
+      "output": "Timeline: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/sub-issue-closer-timeline.json\nDefinitions: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/sub-issue-closer-definitions.md\nInteractive pulse: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/sub-issue-closer-pulse.html\nEvidence archive: docs/operational-value/proof/native-cleanup-outcomes/reports/github-gh-aw/sub-issue-closer-evidence-archive.json"
+    },
+    {
+      "slug": "sub-issue-closer",
+      "moduleSha256": "ae4dd0a6a9b7219be0f045bde156ccbb582e3dec1f3f417b23be0c78b0545fdc",
+      "refreshes": 2,
+      "directCollectBatchReplays": 2,
+      "periods": 44,
+      "measuredSubtotalPeriods": 1,
+      "unknownPeriods": 43,
+      "nativeKnownSubtotal": 2,
+      "qualifiedNativeInstrument": true,
+      "comparison": "Exact snapshots and valueFunction match across standard --refresh evaluations."
+    },
+    {
+      "command": [
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "--test",
+        "tests/unit/native-cleanup-outcomes.test.mjs"
+      ],
+      "status": 0,
+      "output": "✔ parent acceptance needs independent graph and every historical child closed (1.067042ms)\n✔ current closed children cannot backdate future completion; same-second ordering is unknown (0.114209ms)\n✔ graph removals, reopens, foreign identities and terminal contradictions fail closed (0.235791ms)\n✔ duplicate acquisition does not duplicate delivery; intervals are disjoint and end-exclusive (0.374042ms)\n✔ merged/closed PR or cleanup prose alone cannot establish native acceptance (0.229708ms)\n✔ originals replay establishes exactly two native parent closures and source/runtime/application joins (175.486916ms)\n✔ lifecycle starts at creation, reconciles terminal state and rejects incomplete history (0.135375ms)\n✔ owned modules distinguish measured native subtotals from unknown periods and safeguards (320.724167ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 543.049292"
+    }
+  ],
+  "networkRequired": false,
+  "gitRequired": false,
+  "nodeModulesRequired": false,
+  "pythonRequired": "Python 3 standard-library zipfile only; no archive member is executed.",
+  "shasumRequired": "The unchanged skill runtime uses shasum -a 256 FILE.",
+  "result": "Three deterministic instruments and reports replay. Only sub-issue-closer has demonstrated native useful-outcome evidence; the two PR cleanup instruments remain unqualified gaps."
+}

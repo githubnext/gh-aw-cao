@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "reason": "Use the repository's established portfolio proof locations, as requested by the coordinating parent.",
+  "fromPrefix": "proof/",
+  "toPrefix": "docs/operational-value/proof/",
+  "originalManifestSha256": "ece3987dd03abb6986794345fcaea5f90ade0e897826d91bc8ee145b2071e8fe",
+  "originalEvidence": {
+    "files": 248,
+    "bytes": 9603847,
+    "byteIdentical": true,
+    "verification": "For each originals/**, sources/**, contracts.json, source-index.json.gz, discovery.json.gz and inputs.json member in the original manifest, independently read the relocated path and compare exact byte size and SHA256.",
+    "originalPerPathManifest": "The original delivery-v2 manifest retains the exact original member identities; the corrected delivery manifest identifies the relocated members.",
+    "note": "Four additional read-only provider originals acquired while following the remaining aged-PR candidate are retained separately. They do not change the sealed runtime inputs or native qualifications."
+  },
+  "coupledChanges": [
+    "Owned module import depths",
+    "Owned helper and acquisition evidence directory",
+    "Replay, test, package and report module paths",
+    "Helper SHA256 pins and regenerated standard report module identities"
+  ],
+  "oracleSha256": "d3bd37bbc2b08d8395709dc327a1549e962c31c9b69fc6f1ff819e177b72318b",
+  "sealedInputsSha256": "14a272e473a4221a18c1c79f83f8fb419aedd092ef72dddd01e37cc128e7beca",
+  "archiveReaderSha256": "18045c03ca00fc5f8cccf2a02486255e03a0df22adddf0c426c9182fc6e2554b",
+  "qualificationsUnchanged": {
+    "sub-issue-closer": {
+      "qualified": true,
+      "nativeParentClosures": 2,
+      "receiptLinkedContribution": 2,
+      "fullGoalAcceptance": null
+    },
+    "stale-pr-cleanup": {
+      "qualified": false,
+      "nativeOutcome": null
+    },
+    "draft-pr-cleanup": {
+      "qualified": false,
+      "nativeOutcome": null
+    }
+  },
+  "oldRootAbsent": true,
+  "symlinksOrCompatibilityRoots": false,
+  "unchanged": "All original source/provider bytes, source contracts, source/adoption eras, qualifications, global portfolio/index/skill/docs and shared dependencies."
+}
