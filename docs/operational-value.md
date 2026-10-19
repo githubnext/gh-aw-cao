@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-79 of 344 is 23.0%, with 265 workflows still unevaluated.
+80 of 344 is 23.3%, with 264 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -469,6 +469,17 @@ safeguards, receipt-verified contribution and costs remain unknown. The security
 model retains a separate all-unknown gap report: eleven failure/incomplete issues
 and two original pinned-runtime preparation failures do not establish completed
 TLC exploration or native boundary acceptance.
+
+The constraint-solving lesson instrument independently verifies three explicit
+worked instances: a 4-Queens placement, an order-four Latin square and a proper
+coloring of a fully enumerated five-vertex graph. The finite mathematical oracle
+checks every defining witness constraint; it does not execute lesson code or
+trust a claimed solution. A fourth selected Sudoku lesson supplies only a partial
+input, not a complete witness, and remains unknown. Three measured periods do
+not establish a trend or full lesson quality. These surviving body versions were
+acquired after cutoff; original publication-time accuracy, general model
+correctness, optimality, educational usefulness, nonrepetition and contribution
+remain separately unmeasured.
 
 Other linked native
 evaluations include File Diet's lifetime structural contributions, the

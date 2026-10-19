@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "workflow": "constraint-solving-potd",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": "Source-goal-informed retrospective partial contract, frozen before inspecting candidate lesson bodies or results.",
+  "goal": "For readers of published constraint-solving lessons, deliver correct concrete worked examples, independently verified against the explicit instance and its mathematical constraints, measured as distinct correct worked instances per disjoint week.",
+  "source": {
+    "path": ".github/workflows/constraint-solving-potd.md",
+    "adoptionCommit": "dc1d7031d3db32579ac3467eaf40fc0f35e828a5",
+    "adoptionCommittedAt": "2026-03-04T17:30:28Z",
+    "requirements": [
+      "Present a small concrete instance with input/output specification.",
+      "Use precise standard constraint-solving terminology.",
+      "Compare at least two modeling approaches and their constraints.",
+      "The retained evaluation contract additionally asks whether a solution or answer is provided."
+    ],
+    "historyStatus": "Adoption and source-history identities discovered; complete original source/compiled closure and goal-era comparison are still required before admitting any observation."
+  },
+  "partialAcceptance": {
+    "unit": "independently correct explicit worked instances",
+    "predicate": "A surviving published lesson contains an unambiguous complete finite problem instance and an explicitly proposed complete witness. A deterministic mathematical oracle verifies every defining constraint and preservation of all given instance facts.",
+    "initialOracleScope": [
+      "N-Queens: exactly one queen per board row and column, with no shared diagonal.",
+      "Sudoku: complete square grid, all required symbols once per row/column/subgrid, preserving every stated given.",
+      "Latin squares: complete square grid, every required symbol exactly once in each row and column, preserving stated givens.",
+      "Graph coloring: complete assignment of every explicitly enumerated vertex, using the declared color bound, with unequal colors on every explicitly enumerated edge."
+    ],
+    "limits": [
+      "A feasibility witness does not prove optimality, uniqueness, solver performance or general model correctness.",
+      "Incomplete instance specification, ambiguous extraction, unsupported problem classes, illustrative pseudocode alone and assistant claims are unknown rather than accepted work.",
+      "Contradictory or mathematically invalid explicit witnesses are retained as rejected observations, not silently dropped.",
+      "A title, published discussion, run success or claimed solution is discovery, never native acceptance.",
+      "Source-specific extraction must bind exact retained body bytes and explicit instance/witness spans; it must not invent omitted inputs."
+    ]
+  },
+  "timeAndIdentity": {
+    "cadenceDays": 7,
+    "interval": "[start,end)",
+    "anchor": "Actual source-defined goal adoption; do not backdate later evaluation requirements.",
+    "deduplication": "Repository identity, immutable surviving discussion identity, explicit instance identity and bound body digest; no repeated delivery credit across periods.",
+    "bodyVersion": "A body observed after cutoff proves only correctness of that surviving version. It does not establish original publication-time bytes or correctness.",
+    "missingPeriods": null,
+    "emptyDiscoveryIsZero": false
+  },
+  "separateUnknowns": [
+    "Complete lesson acceptance and educational usefulness.",
+    "Recent-topic nonrepetition without independent prior cache evidence.",
+    "Reference quality, modeling completeness and comparative trade-off accuracy.",
+    "Original creation receipts, exclusive causation and workflow contribution.",
+    "Matching costs and an agreed native keep bar."
+  ],
+  "decision": "not-rated",
+  "deploymentAuthority": "None. Read-only evidence acquisition and local deterministic replay only."
+}

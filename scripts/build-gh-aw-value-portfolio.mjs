@@ -60,6 +60,7 @@ import { collectBatch as collectDailyIssueAccuracy, scoreMetric as scoreDailyIss
 import { collectBatch as collectNetworkSeparation, scoreMetric as scoreNetworkSeparation } from "../docs/operational-value/proof/functions/weekly-network-domains-audit.mjs";
 import { collectBatch as collectSetupRepairs, scoreMetric as scoreSetupRepairs } from "../docs/operational-value/proof/functions/daily-action-setup-security-audit.mjs";
 import { collectBatch as collectModelBoundaries, scoreMetric as scoreModelBoundaries } from "../docs/operational-value/proof/functions/daily-workflow-security-model.mjs";
+import { collectBatch as collectConstraintExamples, scoreMetric as scoreConstraintExamples } from "../docs/operational-value/proof/functions/constraint-solving-potd.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -763,6 +764,13 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "constraint-solving-potd", sourceGitBlob: "d5b8d09c4241de247ded88bf47230c27efc68862",
+      functionSha256: "56ef7ba6dfaced9f87f8ad069b0b5c197d45e59296a420b0f7eabcf52c982b9c",
+      timelineDigest: "ea737e1e5982bb87fb402eccec0432d959194e3c7f7bfde36004975a9f5e1a3b",
+      reports: "docs/operational-value/proof/constraint-potd/reports/github-gh-aw",
+      collector: collectConstraintExamples, scorer: scoreConstraintExamples, partialMetricId: "verified-worked-instances",
+      stage: "three explicit worked instances independently satisfy their mathematical constraints",
+      detail: "Original surviving lessons contain one valid 4-Queens placement, one valid order-four Latin square and one proper coloring of an explicitly enumerated five-vertex graph. Every defining finite witness constraint is independently checked; pseudocode, an alleged solution or publication alone cannot qualify. A fourth selected Sudoku lesson has only a partial input and no complete witness, so it remains unknown. Three native periods and thirty unknown periods are not complete lesson acceptance or an outcome census. Surviving body bytes were acquired after cutoff: original publication-time accuracy, general model correctness, optimality, educational usefulness, nonrepetition, receipt-verified contribution, costs and keep bar remain unknown." },
     { workflowId: "weekly-network-domains-audit", sourceGitBlob: "16eee7d42cf18f77b1ceffeed4fdafe51eb9356e",
       functionSha256: "701b9bda9f656e33e1d7ad133a317403b98c90c53cde1456563bca0400197dba",
       timelineDigest: "120748464b456fa70264bdcbc473309d39789814a2628836bf3fa5937411c3ce",

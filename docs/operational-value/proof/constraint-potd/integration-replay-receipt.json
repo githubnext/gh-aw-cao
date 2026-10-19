@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-native-mathematical-replay",
+  "tests": 8,
+  "collectorChecks": 1,
+  "standardRefreshes": 2,
+  "equality": "Complete timelines, definitions and evidence identical except generatedAt.",
+  "timelineSha256WithoutGeneratedAt": "d8a7a7a0abf87ef1a630c5ff35d46d1c72277a583335f145cac8cc158585b37e",
+  "networkDeniedByOSAndProbed": true,
+  "originalWorkspaceReadDeniedAndProbed": true,
+  "sharedSessionCachesDeniedByOS": true,
+  "gitCheckoutAndNodeModulesAbsent": true,
+  "helperTamperingRejected": true,
+  "periods": 33,
+  "finiteValues": [
+    1,
+    1,
+    1
+  ],
+  "nativeSubtotal": 3,
+  "selectedLessons": 4,
+  "missingWitnesses": 1,
+  "fullGoal": null,
+  "costs": null
+}

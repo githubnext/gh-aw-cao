@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 79);
-  assert.equal(model.totals.workflows - model.totals.measured, 265);
+  assert.equal(model.totals.measured, 80);
+  assert.equal(model.totals.workflows - model.totals.measured, 264);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -397,6 +397,22 @@ test("surviving monitoring bodies retain bounded factual accuracy and known repo
   assert.equal(weekly.snapshots.at(-1).metrics["opening-undercount-floor"], 30);
   assert.match(progress.find(row => row.workflowId === "daily-repo-chronicle").detail, /24h05m/);
   assert.match(progress.find(row => row.workflowId === "github-mcp-tools-report").detail, /not proof.*59 live tools/);
+});
+
+test("mathematically correct worked examples remain distinct from complete educational acceptance", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  const timeline = measurements.find(row => row.workflowId === "constraint-solving-potd")?.input;
+  assert.ok(timeline);
+  assert.equal(timeline.snapshots.length, 33);
+  assert.deepEqual(timeline.snapshots.map(row => row.metrics["verified-worked-instances"]).filter(value => value !== null), [1, 1, 1]);
+  assert.equal(timeline.snapshots.at(-1).metrics["verified-worked-instances"], null);
+  const records = timeline.snapshots.flatMap(row => row.evidence.records);
+  assert.equal(records.length, 4);
+  assert.equal(records.find(row => row.number === 64465).inspection.status, "missing");
+  assert.equal(timeline.snapshots.at(-1).evidence.fullAcceptance, null);
+  const row = progress.find(row => row.workflowId === "constraint-solving-potd");
+  assert.equal(row.partial, true);
+  assert.match(row.detail, /original publication-time accuracy/);
 });
 
 test("native policy repairs preserve distinct units and do not credit preparation failures", async () => {
