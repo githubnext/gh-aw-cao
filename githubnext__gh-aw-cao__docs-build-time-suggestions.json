@@ -1,7 +1,36 @@
 {
-  "source_sha": "6761234103464b8a1049e4936c6732a06b0464d1",
-  "next_category": "dependency installation and caching",
+  "source_sha": "37c9f53cb2bd99c35f5954820ea185a2eb4b6eac",
+  "next_category": "Astro documentation generation",
   "evaluations": [
+    {
+      "evaluated_at": "2026-10-19T10:04:46Z",
+      "worker_run_id": 39234100542,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39233749389,
+        39233011213,
+        39232359573,
+        39232175496,
+        39230782194,
+        39229238600,
+        39227764227,
+        39226469303,
+        39224225896,
+        39224092487,
+        39223719699,
+        39223660085,
+        39223644921,
+        39221352905,
+        39220421851,
+        39218728260,
+        39217175415,
+        39216376603,
+        39215159384,
+        39212154708,
+        39210914364
+      ],
+      "outcome": "Complete evaluation for category \"dependency installation and caching\" on source SHA 37c9f53cb2bd99c35f5954820ea185a2eb4b6eac. In the latest 20 completed docs.yml runs from 2026-10-19T06:49:29Z through 2026-10-19T09:57:50Z, 14 runs concluded success, 5 concluded skipped, and 1 concluded cancelled. Trusted job metadata showed 9 comparable successful build-bearing docs runs with median full execution 72.0s (p90 106.4s), median build job 55.0s (p90 59.2s), and median deploy job 30.0s (p90 30.0s across the 4 scheduled deploys). Across all 9 build-bearing docs runs, the Install dependencies and Save node_modules steps were skipped, and representative build logs for runs 39233749389 and 39223644921 confirmed cache hits for the setup-node npm cache (~298 MB), the root node_modules cache (~288 MB), and the cached CAO dashboard artifact (~54 MB). The single successful cao-dashboard.yml run in the same 14-day window (39210914364) spent only 3s in Install dashboard build dependencies, while Upgrade fallback activity data consumed 170s of its 215s build job. No new dependency or cache change met the threshold to save at least 60s or 15% of median docs execution without overlapping existing behavior or a different open issue category, so no actionable recommendation was emitted. next_category advances to \"Astro documentation generation\"."
+    },
     {
       "evaluated_at": "2026-10-19T09:39:27Z",
       "worker_run_id": 39231024164,
