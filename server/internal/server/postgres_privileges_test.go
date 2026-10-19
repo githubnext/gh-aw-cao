@@ -21,6 +21,46 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/webhookgatewaylocal"
 )
 
+func TestPostgresWebhookRuntimePrivilegeBoundary(t *testing.T) {
+	f := newPostgresRoles(t)
+	store, err := postgres.Open(t.Context(), f.runtimeDSN, f.namespace, postgres.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	rate := gateway.RateBudget{Capacity: 100, Period: time.Hour}
+	queue, err := store.OpenWebhookQueue(t.Context(), "webhooks", gateway.QueueOptions{
+		MaxRows: 128, MaxBytes: 2 << 20, MaxTenantRows: 128, MaxTenantBytes: 2 << 20,
+		MaxSourceRows: 128, MaxSourceBytes: 2 << 20, MaxDestinationRows: 128, MaxDestinationBytes: 2 << 20,
+		MaxPayloadBytes: 65536, MaxBatch: 16, MaxConcurrency: 8,
+		MaxAge: time.Hour, DedupWindow: time.Hour, TerminalRetention: 2 * time.Hour, LeaseDuration: time.Minute,
+		Rates: gateway.RateBudgets{Global: rate, App: rate, Tenant: rate, Destination: rate, Workflow: rate},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := queue.ApplyRevision(t.Context(), gateway.PolicyRevision{
+		Revision: 1, Digest: strings.Repeat("a", 64), Enabled: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if job, err := queue.Claim(t.Context(), gateway.ClaimRequest{Owner: "worker", LeaseDuration: time.Minute}); err != nil || job != nil {
+		t.Fatalf("empty gateway queue claim: %v %v", job, err)
+	}
+	runtimeDB, readerDB := roleDB(t, f.runtimeDSN), roleDB(t, f.readerDSN)
+	for _, table := range []string{"cao_operational_webhook_queues", "cao_operational_webhook_deliveries", "cao_operational_webhook_jobs"} {
+		for _, privilege := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
+			var allowed bool
+			if err := runtimeDB.QueryRowContext(t.Context(), `SELECT has_table_privilege(current_user,$1,$2)`, table, privilege).Scan(&allowed); err != nil || !allowed {
+				t.Fatalf("gateway runtime lacks %s on %s: %v", privilege, table, err)
+			}
+		}
+		qualified := pgx.Identifier{f.schema, table}.Sanitize()
+		assertSQLDenied(t, runtimeDB, "ALTER TABLE "+qualified+" ADD COLUMN forbidden int")
+		assertSQLDenied(t, readerDB, "SELECT * FROM "+qualified)
+	}
+}
+
 func roleDB(t *testing.T, dsn string) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("pgx", dsn)
