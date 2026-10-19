@@ -39,8 +39,8 @@ func (plan SQLPlan) OutputStatement(name string, offset, limit int) (string, []a
 	return statement, args, fields, err
 }
 
-// StatisticsStatement performs cardinality and byte accounting in Postgres,
-// without fetching or reconstructing collections in Go.
+// StatisticsStatement performs cardinality, byte accounting and join-key
+// validation in one Postgres execution, sharing the materialized relations.
 func (plan SQLPlan) StatisticsStatement() (string, []any, error) {
 	seen := map[string]bool{}
 	var branches []string
@@ -55,9 +55,15 @@ func (plan SQLPlan) StatisticsStatement() (string, []any, error) {
 			bound, SQLIdentifier(step.Relation)))
 	}
 	// Every relation is counted here, so each is evaluated once rather than
-	// inlined into each of its consumers.
+	// inlined into each of its consumers, including join-key checks.
 	counted := strings.ReplaceAll(plan.CTEs, " AS NOT MATERIALIZED (", " AS MATERIALIZED (")
-	builder.Write("{}\n{}", sqlbuilder.Fragment(counted), sqlbuilder.Fragment(strings.Join(branches, " UNION ALL ")))
+	duplicateJoin := "FALSE"
+	if len(plan.JoinKeys) != 0 {
+		duplicateJoin = "EXISTS ((" + strings.Join(plan.JoinKeys, ") UNION ALL (") + "))"
+	}
+	builder.Write("{}\nSELECT s.*, {} AS duplicate_join FROM ({}) AS s",
+		sqlbuilder.Fragment(counted), sqlbuilder.Fragment(duplicateJoin),
+		sqlbuilder.Fragment(strings.Join(branches, " UNION ALL ")))
 	return builder.Statement()
 }
 

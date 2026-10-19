@@ -12,7 +12,6 @@ import (
 
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
-	"github.com/githubnext/gh-cao/server/internal/sqlbuilder"
 )
 
 type SQLPage struct{ Offset, Limit int }
@@ -118,8 +117,12 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 		for rows.Next() {
 			var name string
 			var size relationSize
-			if err := rows.Scan(&name, &size.rows, &size.bytes); err != nil {
+			var duplicateJoin bool
+			if err := rows.Scan(&name, &size.rows, &size.bytes, &duplicateJoin); err != nil {
 				return nil, err
+			}
+			if duplicateJoin {
+				return nil, errors.New("joined source has more than one row per join key")
 			}
 			result[name] = size
 		}
@@ -168,23 +171,6 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 			metrics.LimitCount++
 		}
 		metrics.PushedDown = append(metrics.PushedDown, step.Operation)
-	}
-	for _, check := range plan.JoinKeys {
-		var duplicate int
-		scoped, scopedArgs, rewritten := plan.Scoped(check)
-		builder := sqlbuilder.New(scopedArgs...)
-		builder.Write("{}\n{}", sqlbuilder.Fragment(scoped), sqlbuilder.Fragment(rewritten[0]))
-		statement, args, err := builder.Statement()
-		if err != nil {
-			return nil, metrics, err
-		}
-		err = r.tx.QueryRowContext(ctx, statement, args...).Scan(&duplicate)
-		if err == nil {
-			return nil, metrics, errors.New("joined source has more than one row per join key")
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, metrics, fmt.Errorf("validate SQL join cardinality: %w", err)
-		}
 	}
 	output := make(map[string]model.Source, len(requested))
 	for _, name := range requested {

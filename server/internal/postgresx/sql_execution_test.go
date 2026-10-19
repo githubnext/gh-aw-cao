@@ -130,10 +130,11 @@ func TestRelationalSQLExecutesInPostgres(t *testing.T) {
 		for rows.Next() {
 			var relation string
 			var size, bytes int64
-			if err := rows.Scan(&relation, &size, &bytes); err != nil {
+			var duplicateJoin bool
+			if err := rows.Scan(&relation, &size, &bytes, &duplicateJoin); err != nil {
 				return err
 			}
-			if size < 0 || bytes < 0 {
+			if size < 0 || bytes < 0 || duplicateJoin {
 				t.Error("invalid SQL resource accounting")
 			}
 			count++
