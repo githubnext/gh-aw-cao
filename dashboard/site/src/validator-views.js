@@ -3,6 +3,7 @@ import { isReadOnlyCliAction, validateActionLevel } from './action-validator.js'
 import { CALLOUT_KEYS, ERROR_CODES, FIELD_DEFINITION_KEYS, LINK_FIELD_NAMES, FACTORY_FLOOR_STATION_VALUES, FACTORY_HEADER_SOURCE_ROLES, FACTORY_FLOOR_SOURCE_ROLES, GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS, IDENTIFIER_PATTERN, MAX_ESSENTIAL_VIEWS_PER_PAGE, PAGE_FORM_KEYS, PAGE_FORM_UPDATE_KEYS, PAGE_FORM_UPDATE_STRATEGY_VALUES, PAGE_FORM_FIELD_KEYS, PAGE_FORM_CONTROL_VALUES, PAGE_FORM_OPTION_KEYS, PAGE_FORM_MIN_DELAY_MS, PAGE_FORM_MAX_DELAY_MS, PAGE_ICON_VALUES, QUERY_SOURCE_VALUES, TABLE_ACTION_KEYS, TABLE_ACTION_PRESENTATION_VALUES, TABLE_ACTION_WHEN_KEYS, TREE_TABLE_KEYS, VIEW_DATA_KEYS, VIEW_DATA_ARGUMENT_KEYS, VIEW_CHART_VALUES, VIEW_CONTROL_VALUES, VIEW_LIST_DRILL_ARGUMENT_KEYS, VIEW_LIST_DRILL_KEYS, VIEW_LIST_DRILL_TYPE_VALUES, VIEW_LIST_LAYOUT_VALUES, VIEW_LIST_APPEARANCE_VALUES, VIEW_LIST_VIEW_ALL_KEYS, VIEW_DISCLOSURE_VALUES, VIEW_ELEMENT_CONFIG_KEYS, VIEW_ELEMENT_ANIMATION_VALUES, VIEW_ELEMENT_VALUES, PLURAL_LABEL_ELEMENTS, PLURAL_TEXT_KEYS, VIEW_KEYS, VIEW_REQUIREMENT_KEYS, VIEW_BACKEND_VALUES, VIEW_LAYOUT_VALUES, VIEW_LIST_KEYS, VIEW_LIST_STYLE_VALUES, VIEW_MARK_VALUES, VIEW_METRIC_KEYS, VIEW_METRIC_ANIMATION_VALUES, VIEW_METRIC_STYLE_VALUES, VIEW_METRIC_TONE_VALUES, VIEW_TITLE_LINK_KEYS } from './specification.js';
 import { OUTCOME_DETAIL_SECTION_BODY_VALUES, CAMPAIGN_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_BODY_VALUES } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
+import { environmentDefaultsCommand } from './environment-defaults.js';
 import { validateViewFilterBar as validateViewFilterBarContract } from './view-filter-validator.js';
 import { validateSource, sourceFieldNames, validateSourceSequence, validateSemanticFieldLiterals, validateContext, validateDatasetMetadata } from './validator-queries.js';
 import { validateEncoding } from './validator-encoding.js';
@@ -392,6 +393,10 @@ export function validateView(view, viewNode, path, viewIds, errors) {
     ));
   }
 
+  if (view.element === 'environment-defaults' && view.config === undefined) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+      'environment-defaults requires config.actions with scoped CLI action references.', `${path}.config`));
+  }
   if (view.config !== undefined) {
     if (!isPlainObject(view.config)) {
       errors.push(createError(
@@ -408,6 +413,35 @@ export function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
+      const defaultsActions = view.config.actions;
+      if ((view.config.actions !== undefined || view.element === 'environment-defaults') && (view.element !== 'environment-defaults'
+        || !isPlainObject(defaultsActions)
+        || Object.keys(defaultsActions).length !== 6
+        || ['get-repo', 'update-repo', 'get-org', 'update-org', 'get-ent', 'update-ent']
+          .some((key) => typeof defaultsActions[key] !== 'string' || !IDENTIFIER_PATTERN.test(defaultsActions[key])))) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+          'environment-defaults config.actions must map get/update for repo, org, and ent to CLI action IDs.',
+          `${path}.config.actions`));
+      } else if (view.element === 'environment-defaults' && isPlainObject(view.config.actions)) {
+        for (const [key, id] of Object.entries(view.config.actions)) {
+          const action = typeof id === 'string' ? state.declaredCliActions.get(id) : undefined;
+          const parsed = typeof action?.command === 'string' ? environmentDefaultsCommand(action.command) : null;
+          const [operation, scope] = key.split('-');
+          const args = action?.arguments;
+          const validUpdate = operation !== 'update' || typeof action?.command === 'string'
+            && !action.command.split(' ').includes('--dry-run')
+            && Array.isArray(args) && args.length === 1 && isPlainObject(args[0])
+            && args[0].id === 'dry-run' && args[0].flag === '--dry-run'
+            && args[0].type === 'boolean' && args[0].default === true;
+          if (!parsed || parsed.operation !== operation || parsed.scope !== scope
+            || action?.placement !== 'view' || action['copy-only'] === true
+            || action.level !== (operation === 'get' ? 'explore' : 'operate') || !validUpdate) {
+            errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'Defaults actions must reference matching view-placed scoped gh aw env commands.',
+              `${path}.config.actions.${key}`));
+          }
+        }
+      }
       if ((view.element === 'workflow-route-page' || view.element === 'campaign-route' || view.element === 'outcome-detail-section') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
        const allowedBodies = view.element === 'workflow-route-page'
@@ -840,7 +874,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       ));
     }
     if (view.mark === 'element') {
-      if (!(typeof view.element === 'string' && ['query-editor', 'command-terminal', 'storage-info'].includes(view.element) && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
+      if (!(typeof view.element === 'string' && ['query-editor', 'command-terminal', 'storage-info', 'environment-defaults'].includes(view.element) && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
         validateSourceSequence(view.data.sources, `${path}.data.sources`, errors);
       }
       if (view.data.source !== undefined) {

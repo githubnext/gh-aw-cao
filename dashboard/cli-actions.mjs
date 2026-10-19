@@ -3,6 +3,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnTerminalCommand } from "./cli-terminal-process.mjs";
+import { environmentDefaultsCommand } from "./site/src/environment-defaults.js";
+import { executeEnvironmentDefaults } from "./environment-defaults.mjs";
 
 const maximumOutputBytes = 1024 * 1024;
 const timeoutMilliseconds = 15 * 60 * 1000;
@@ -397,6 +399,7 @@ export async function executeDashboardCommand({
   const isCaoCommand = tokens[0] === "gh" && tokens[1] === "cao";
   const commandExecutable = ghExecutable;
   const commandArguments = tokens.slice(1);
+  const defaults = environmentDefaultsCommand(command);
   let gitIdentity;
   if (isGhAwCommand || isCaoCommand) {
     await ensureGhAwAvailable({
@@ -406,11 +409,38 @@ export async function executeDashboardCommand({
       execute,
       signal,
     });
-    gitIdentity = await resolveGitIdentity({
-      githubToken: resolvedGithubToken,
-      ghExecutable,
-      execute,
-      signal,
+    if (!defaults) {
+      gitIdentity = await resolveGitIdentity({
+        githubToken: resolvedGithubToken,
+        ghExecutable,
+        execute,
+        signal,
+      });
+    }
+  }
+  if (defaults) {
+    return executeEnvironmentDefaults({
+      operation: defaults.operation, input, onOutput, signal,
+      run: async (directory, output) => {
+        if (typeof onOutput === "function") {
+          return streamCommand({
+            ghExecutable: commandExecutable, args: commandArguments, workingDirectory: directory,
+            githubToken: resolvedGithubToken, terminal: false, onOutput: output, signal,
+            timeoutMs: Math.max(1, Math.min(timeoutMs, deadline - Date.now())),
+          });
+        }
+        try {
+          const result = await execute(commandExecutable, commandArguments, {
+            cwd: directory, env: commandEnvironment(resolvedGithubToken), terminal: false,
+            maxBuffer: maximumOutputBytes, timeout: Math.max(1, Math.min(timeoutMs, deadline - Date.now())),
+            windowsHide: true, signal,
+          });
+          return { ok: true, exitCode: 0, ...result };
+        } catch (error) {
+          return { ok: false, exitCode: Number.isInteger(error?.code) ? error.code : null,
+            error: "Compiler defaults command failed.", stdout: error?.stdout ?? "", stderr: error?.stderr ?? "" };
+        }
+      },
     });
   }
   if (typeof onOutput === "function") {

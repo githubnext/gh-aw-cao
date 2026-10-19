@@ -1,6 +1,7 @@
 import { once } from "node:events";
 import { cliActionTemplateFields, renderCliActionCommand } from "./site/src/cli-action-template.js";
 import { maximumCliActionInputCharacters, maximumCliActionRequestBytes } from "./cli-action-contract.mjs";
+import { environmentDefaultsCommand, parseEnvironmentDefaults } from "./site/src/environment-defaults.js";
 
 const terminalStatuses = new Set(["completed", "failed", "canceled", "timed-out"]);
 
@@ -49,8 +50,13 @@ export function resolveQueuedCliAction(dashboard, payload, context = {}) {
     ...declaredArguments.filter((argument) => argumentsValue[argument.id] ?? argument.default === true)
       .map((argument) => argument.flag),
   ].join(" ");
-  if ((payload.input !== undefined) !== (command === "gh agent-task create --from-file -")) {
+  const defaults = environmentDefaultsCommand(command);
+  if ((payload.input !== undefined) !== (command === "gh agent-task create --from-file -" || defaults?.operation === "update")) {
     throw failure(400, "CLI action input is not valid for this command.");
+  }
+  if (defaults?.operation === "update") {
+    try { parseEnvironmentDefaults(payload.input); }
+    catch { throw failure(400, "Invalid compiler defaults YAML. Use default_ keys with string or null values."); }
   }
   return {
     actionId: action.id, command, arguments: argumentsValue, values,

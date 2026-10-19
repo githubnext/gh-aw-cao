@@ -35,7 +35,7 @@ const debugUiElements = createDebug('ui-elements');
  *   viewId?: string,
  *   viewIndex?: number,
  *   sourcesSubscribed?: boolean,
- *   elementConfig?: { body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'browser-first-load'?: boolean, 'data-status'?: boolean, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'label-badge-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
+ *   elementConfig?: { actions?: Record<string, string>, body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'browser-first-load'?: boolean, 'data-status'?: boolean, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'label-badge-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
  *   headingTag: 'h2'|'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -87,7 +87,8 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'markdown',
   'measure-history',
   'command-terminal',
-  'storage-info'
+  'storage-info',
+  'environment-defaults'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail', 'campaign-route']);
 
@@ -112,6 +113,10 @@ function lazyElementRenderer(importModule, render) {
 
 /** @type {Map<string, (context: ElementRenderContext, signal?: AbortSignal) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
+  ['environment-defaults-lazy', lazyElementRenderer(
+    () => import('./environment-defaults.js'),
+    ({ renderEnvironmentDefaults }, context) => renderEnvironmentDefaults(context)
+  )],
   ['configuration-policy-lazy', lazyElementRenderer(
     () => import('./configuration-view.js'),
     ({ renderConfigurationView }, context) => renderConfigurationView(context)

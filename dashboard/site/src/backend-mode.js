@@ -7,6 +7,11 @@ export function cliQueueAvailable() {
   return Reflect.get(globalThis, '__CLI_QUEUE__') === true;
 }
 
+/** Local credentials can administer variable scopes; hosted installation tokens cannot. */
+export function localCliQueueAvailable() {
+  return cliQueueAvailable() && Reflect.get(globalThis, '__LOCAL_CLI_QUEUE__') === true;
+}
+
 /** @param {Document} [document] */
 export function usesRemoteDataBackend(document = globalThis.document) {
   const remote = document?.querySelector?.('meta[name="dashboard-data-backend"]')?.getAttribute("content") === "server-http";
