@@ -130,7 +130,8 @@ for (const moduleFile of moduleFiles) {
       name: "reusable-operational-values",
       from: "operationalValues",
       filter: { predicates: [
-        { field: "campaign", equals: path.basename(path.dirname(moduleDirectory)) },
+        { field: "campaign", equals: path.basename(path.dirname(moduleDirectory)) === ".github"
+          ? null : path.basename(path.dirname(moduleDirectory)) },
         { field: "repository", in: repositories },
         { field: "valueId", in: definition.metrics.map((metric) => `${definition.slug}.${metric.id}`) },
         { field: "evaluator-digest", equals: evaluatorDigest },
@@ -230,7 +231,8 @@ for (const moduleFile of moduleFiles) {
         cadenceDays: definition.evidence.window.cadenceDays,
         metricDirection: metric.direction,
         maturityStatus: value === null ? "unavailable" : evidence?.maturityStatus ?? "matured",
-        adoptionAt: definition.adoption.adoptedAt,
+        adoptionAt: definition.intent?.temporalAnchor === "contract-activation"
+          ? undefined : definition.adoption.adoptedAt,
         evaluationMode: definition.evaluation?.mode ?? "baseline-comparable",
         workflowSlug: definition.slug,
         workflowName: definition.workflowName,

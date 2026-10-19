@@ -5,6 +5,7 @@ import path from "node:path";
 import {
   fail, importValueModule, nowUtc, readJson, requireArgs, run, scriptDir, sha256File, writeJson,
 } from "./common.mjs";
+import { reviewValue } from "./review-value.mjs";
 
 const args = process.argv.slice(2);
 requireArgs(args, 3, 3, "build-timeline.mjs <value-function.mjs> <observations.json> <timeline.json>");
@@ -41,6 +42,8 @@ const snapshots = observations.snapshots.map((snapshot, index) => {
   return { ...snapshot, metrics: metricValues };
 });
 const mode = definition.evaluation?.mode ?? "baseline-comparable";
+const referenceName = definition.intent?.temporalAnchor === "contract-activation"
+  ? "contract activation" : "adoption";
 const baselineAt = Date.parse(definition.adoption.baselineAt ?? definition.adoption.adoptedAt);
 const periodOrder = (left, right) =>
   Date.parse(left.window?.endAt ?? left.observedAt) - Date.parse(right.window?.endAt ?? right.observedAt)
@@ -110,8 +113,8 @@ const reviewMetrics = definition.metrics.map((metric) => {
     adoptionComparison: comparison(metric, beforeSnapshot, afterSnapshot,
       stale ? "The latest assessment is stale or future relative to the analysis endpoint."
         : mode === "attainment-only" || !beforeSnapshot
-        ? "No accepted pre-adoption reference."
-        : !postAdoption ? "The current period is not wholly post-adoption."
+        ? `No accepted reference before ${referenceName}.`
+        : !postAdoption ? `The current period is not wholly after ${referenceName}.`
           : duration(beforeSnapshot) !== duration(afterSnapshot) ? "Measurement durations differ." : null),
   };
 });
@@ -146,8 +149,9 @@ const timeline = {
   snapshots,
   runs: observations.runs ?? [],
 };
+timeline.valueReview = reviewValue(timeline);
 if (sha256File(valueFunction) !== initialSha) fail("value function changed while building the timeline");
 mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
-writeFileSync(output, writeJson(timeline));
+writeFileSync(output, writeJson(timeline, 0));
 run(path.join(scriptDir, "validate-report-artifacts.mjs"), [output]);
 console.log(`wrote ${output}`);
