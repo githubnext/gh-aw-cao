@@ -65,6 +65,7 @@ import { collectBatch as collectGplFacts, scoreMetric as scoreGplFacts } from ".
 import { collectBatch as collectParentClosures, scoreMetric as scoreParentClosures } from "../docs/operational-value/proof/functions/sub-issue-closer.mjs";
 import { collectBatch as collectStalePrCleanup, scoreMetric as scoreStalePrCleanup } from "../docs/operational-value/proof/functions/stale-pr-cleanup.mjs";
 import { collectBatch as collectDraftPrCleanup, scoreMetric as scoreDraftPrCleanup } from "../docs/operational-value/proof/functions/draft-pr-cleanup.mjs";
+import { assessRetainedEvidence as assessFirewallEvidence } from "./collect-firewall-observability.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -301,6 +302,11 @@ export async function currentPortfolioInputs() {
     detail: native ? `${native.commits} immutable mainline Go-change commits and ${native.uniqueBlobs} digest-checked native blob features retained. Full race/behavior acceptance is separate.`
       : "Frozen native function authored; immutable source evidence is being acquired.",
   }];
+  const firewallGap = assessFirewallEvidence();
+  progress.push({ workflowId: "daily-firewall-report", sourceGitBlob: firewallGap.sourceGitBlob,
+    functionReady: false, evidenceReady: false, evaluationReady: false, plotReady: false, blocked: true,
+    stage: "fixed three-report native event investigation retains an evidence gap, not measured zero",
+    detail: "A source-first contract and 25 original responses retain the latest three title/profile-matched surviving Discussions from 169 candidates, exact reporting-run source/runtime bindings and provider artifact inventories for every explicitly cited run. All five distinct referenced runs currently return empty artifact inventories. Reported 270/33 blocked events, published chart assets and the third report's claimed no-data zero cannot establish original denied requests or complete reporting scopes. Native events, full acceptance and contribution remain unknown; this investigation is not a finished native value function or standard evaluation." });
   const engineContracts = "docs/operational-value/proof/engine-conformance/contracts.json";
   for (const contract of existsSync(engineContracts) ? readCensusJson(engineContracts) : []) {
     const archivePath = `docs/operational-value/proof/engine-conformance/${contract.workflowId}-v2.json.gz`;

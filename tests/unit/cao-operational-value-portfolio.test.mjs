@@ -420,6 +420,12 @@ test("GPL facts and native parent cleanup preserve useful partials and exclude P
     assert.equal(gap.evaluationReady, false);
     assert.equal(gap.reportAvailable, true);
   }
+  assert.equal(measurements.some(row => row.workflowId === "daily-firewall-report"), false);
+  const firewall = progress.find(row => row.workflowId === "daily-firewall-report");
+  assert.equal(firewall.blocked, true);
+  assert.equal(firewall.functionReady, false);
+  assert.equal(firewall.evaluationReady, false);
+  assert.match(firewall.detail, /not a finished native value function/);
 });
 
 test("mathematically correct worked examples remain distinct from complete educational acceptance", async () => {

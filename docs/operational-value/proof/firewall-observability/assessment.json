@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-firewall-report",
+  "sourceGitBlob": "7ee0837083802ad061526d60a9f334d24895ad1d",
+  "contractSha256": "947813345ea0c70402edcfffa211c6022cf45bdcc31d659f512aa14740780cad",
+  "indexSha256": "c8ab2bcb11914469451664ea0ef4bd5f450cdd401f6b9de7476091359d5688c9",
+  "candidateCount": 169,
+  "selectedReports": [
+    {
+      "number": 35842,
+      "createdAt": "2026-05-30T03:31:54Z",
+      "nativeValue": null,
+      "completedNativeEvaluation": false,
+      "referencedRuns": [
+        {
+          "id": 26673078192,
+          "sourcePath": ".github/workflows/daily-firewall-report.lock.yml",
+          "head": "5f014f06a9cd2c20c08f765840a83b68df730485",
+          "returnedArtifactCount": 0
+        }
+      ],
+      "reason": "Provider inventories for the report and explicitly cited runs retain no artifacts. Original firewall request events are not established."
+    },
+    {
+      "number": 34848,
+      "createdAt": "2026-05-26T03:41:11Z",
+      "nativeValue": null,
+      "completedNativeEvaluation": false,
+      "referencedRuns": [
+        {
+          "id": 26426709615,
+          "sourcePath": ".github/workflows/smoke-copilot.lock.yml",
+          "head": "5fa30ed81c802096c401fc9e2ff185e567b50d0f",
+          "returnedArtifactCount": 0
+        },
+        {
+          "id": 26428311918,
+          "sourcePath": ".github/workflows/avenger.lock.yml",
+          "head": "17c225a01d444baf23d5edc3a5d164a274a3c9b8",
+          "returnedArtifactCount": 0
+        },
+        {
+          "id": 26430363164,
+          "sourcePath": ".github/workflows/daily-firewall-report.lock.yml",
+          "head": "34e5154ae90daee8da512ed2696d9462f17b87e7",
+          "returnedArtifactCount": 0
+        }
+      ],
+      "reason": "Provider inventories for the report and explicitly cited runs retain no artifacts. Original firewall request events are not established."
+    },
+    {
+      "number": 34153,
+      "createdAt": "2026-05-23T03:26:24Z",
+      "nativeValue": null,
+      "completedNativeEvaluation": false,
+      "referencedRuns": [
+        {
+          "id": 26322093876,
+          "sourcePath": ".github/workflows/daily-firewall-report.lock.yml",
+          "head": "59cc38da92b5d27084569271904d6bdfc11637fb",
+          "returnedArtifactCount": 0
+        }
+      ],
+      "reason": "Provider inventories for the report and explicitly cited runs retain no artifacts. Original firewall request events are not established."
+    }
+  ],
+  "qualifiedNativeWorkflows": 0,
+  "nativeValue": null,
+  "fullAcceptance": null,
+  "contribution": null,
+  "costs": null,
+  "completedNativeEvaluation": false,
+  "limitation": "This is a bounded evidence-gap investigation, not a finished native value function or standard evaluation. Reported request totals, charts and a no-data report cannot replace original events or establish measured zero."
+}

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "workflow": "daily-firewall-report",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": "Source-informed contract frozen before inspecting this workflow's report bodies or native firewall records. Existing census proposals remain unchanged.",
+  "goal": "Make actual denied network traffic observable through accurate, traceable domain-frequency reporting, without confusing configured policy domains with observed blocked requests.",
+  "source": {
+    "workflow": ".github/workflows/daily-firewall-report.md",
+    "imports": [
+      ".github/workflows/shared/daily-report-worker.md",
+      ".github/workflows/shared/aw-logs-24h-fetch.md"
+    ],
+    "earliestKnownAdoption": "6e5b2eb1e8e83157a11bcb9123ba9551fe7f43c8",
+    "earliestKnownAdoptedAt": "2025-10-24T22:49:34Z",
+    "knownReintroduction": "d555622544af59f5fb656eb485ddf3a88c02948d"
+  },
+  "selection": {
+    "discovery": "Complete retained Discussion inventory, not proof of publication-time body accuracy or native tool effects.",
+    "rule": "Inspect the latest three original-creation-time-ordered, title-matched Daily Firewall Report Discussions created before cutoff. Preserve every selected disposition; do not replace a selected failure with an older success.",
+    "maximumReports": 3
+  },
+  "fullAcceptance": [
+    "Independently establish the actual source/runtime, reporting window and complete eligible run population, including historical assignment requirements applicable at the selected runtime.",
+    "Independently reconstruct actual allowed and denied request events, distinct domains and applicable rule attribution; compare every required reported aggregate and per-workflow detail.",
+    "Establish required chart delivery, complete or explicitly disclosed truncated coverage and source-defined output constraints.",
+    "Do not treat a successful run, report, chart, issue or firewall policy declaration as evidence of actual observed requests."
+  ],
+  "nativePartial": {
+    "id": "verified-blocked-domain-facts",
+    "unit": "independently corroborated reported blocked-domain frequency facts",
+    "formula": "For each selected surviving report, count distinct explicitly reported domain/frequency cells whose exact nonnegative integer frequency and scope match independently retained original firewall request events from the bound source/runtime and reporting interval.",
+    "direction": "increase",
+    "requirements": [
+      "Bind each original report and original event artifact to exact immutable repository/run/source identities.",
+      "Derive event semantics from the actual firewall producer contract, not report prose, configured allow/deny domain sets or an agent-generated summary.",
+      "Require complete independently retained event coverage for the specific cell's declared scope; never present a sampled frequency as a whole-window count.",
+      "Deduplicate event identities and reported cells; known subtotals are not full accepted reporting periods."
+    ],
+    "allocation": "Original report-creation cohort, once, in disjoint half-open weekly delivery periods. After-cutoff surviving bodies cannot establish original publication-time accuracy.",
+    "unknown": "Missing original event bytes, event custody, exact scope, historical source or complete cell coverage yields null, not zero and not completed native coverage."
+  },
+  "separateUnknowns": [
+    "Security legitimacy of blocked services or allowlisting recommendations",
+    "Complete full-goal acceptance and editorial usefulness",
+    "Receipt-verified workflow contribution and sole causation",
+    "Costs and an agreed keep/change bar",
+    "Unobserved report cohorts and periods",
+    "Source-absent intervals between historical deletion and reintroduction"
+  ],
+  "execution": "Read-only original acquisition and deterministic local inspection only. No target code, workflow dispatch, remote writes or authority changes."
+}
