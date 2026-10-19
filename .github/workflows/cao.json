@@ -55,6 +55,44 @@
       "dashboard": {
         "deploy": false
       },
+      "operational-value-coverage": {
+        "icon": "meter",
+        "enabled": false,
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "measure-1": {
+            "workflow": "value-coverage-measure-1",
+            "enabled": false,
+            "max-mode": "review"
+          },
+          "measure-2": {
+            "workflow": "value-coverage-measure-2",
+            "enabled": false,
+            "max-mode": "review"
+          },
+          "measure-3": {
+            "workflow": "value-coverage-measure-3",
+            "enabled": false,
+            "max-mode": "review"
+          },
+          "measure-4": {
+            "workflow": "value-coverage-measure-4",
+            "enabled": false,
+            "max-mode": "review"
+          },
+          "integrate": {
+            "workflow": "value-coverage-integrate",
+            "enabled": false,
+            "max-mode": "review"
+          },
+          "skill": {
+            "workflow": "value-coverage-skill",
+            "enabled": false,
+            "max-mode": "review"
+          }
+        }
+      },
       "uk-ai-advisory": {
         "icon": "eye",
         "workers": {

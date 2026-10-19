@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -49,6 +50,7 @@ const dashboardCampaignSource = focusedCampaignSource("dashboard");
 const dependabotUpdateSource = focusedCampaignSource("dependabot");
 const dependabotCampaignUpdateSource = `${campaignUpdateSource}/dependabot`;
 const optimizationCampaignSource = focusedCampaignSource("optimization");
+const valueCoverageCampaignSource = focusedCampaignSource("operational-value-coverage");
 const selfCareCampaignSource = focusedCampaignSource("self-care");
 const softwareDevelopmentPracticesCampaignSource = focusedCampaignSource("software-development-practices");
 const activityExpectedFiles = [
@@ -514,6 +516,44 @@ test("gh aw add installs the focused Optimization campaign contract", { timeout:
       !existsSync(join(consumer, ".github", "workflows", "dependabot.md")),
       "focused Optimization campaign installed an unrelated orchestrator",
     );
+  } finally {
+    rmSync(consumer, { recursive: true, force: true });
+  }
+});
+
+test("gh aw add installs the focused Value Coverage campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(valueCoverageCampaignSource);
+  try {
+    for (const file of [
+      "operational-value-coverage/coverage.mjs",
+      "operational-value-coverage/report.mjs",
+      ".github/skills/add-operational-value/SKILL.md",
+      ".github/skills/add-operational-value/scripts/json-archive.mjs",
+      ".github/skills/add-operational-value/scripts/render-pulse.mjs",
+      ".github/workflows/operational-value-coverage.md",
+      ".github/workflows/value-coverage-measure-1.md",
+      ".github/workflows/value-coverage-measure-2.md",
+      ".github/workflows/value-coverage-measure-3.md",
+      ".github/workflows/value-coverage-measure-4.md",
+      ".github/workflows/value-coverage-integrate.md",
+      ".github/workflows/value-coverage-skill.md",
+      ".github/workflows/shared/value-coverage-worker.md",
+      ".github/workflows/shared/value-coverage-measure.md",
+    ]) assert.ok(existsSync(join(consumer, file)), `focused Value Coverage omitted ${file}`);
+    const state = join(consumer, ".github/cao/operational-value-coverage");
+    assert.equal(existsSync(join(state, "active.json")), false);
+    assert.equal(existsSync(join(state, "receipts.json")), false);
+    mkdirSync(state, { recursive: true });
+    writeFileSync(join(state, "active.json"), '{"controlOwned":true}\n');
+    writeFileSync(join(state, "receipts.json"), '[{"preserve":"accepted-evidence"}]\n');
+    run(process.execPath, [materializerScript, "materialize", "operational-value-coverage"], consumer);
+    assert.equal(readFileSync(join(state, "active.json"), "utf8"), '{"controlOwned":true}\n');
+    assert.equal(readFileSync(join(state, "receipts.json"), "utf8"), '[{"preserve":"accepted-evidence"}]\n');
+    assert.equal(existsSync(join(consumer, "docs/operational-value/proof")), false);
+    run(process.execPath, ["--input-type=module", "-e",
+      "await import('./operational-value-coverage/coverage.mjs'); await import('./operational-value-coverage/report.mjs');"], consumer);
+    const orchestrator = readFileSync(join(consumer, ".github/workflows/operational-value-coverage.md"), "utf8");
+    assert.doesNotMatch(orchestrator, /^  schedule:/m);
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }

@@ -1,0 +1,12 @@
+{
+  "campaign": "operational-value-coverage",
+  "orchestrator": "operational-value-coverage",
+  "workers": {
+    "measure-1": "value-coverage-measure-1",
+    "measure-2": "value-coverage-measure-2",
+    "measure-3": "value-coverage-measure-3",
+    "measure-4": "value-coverage-measure-4",
+    "integrate": "value-coverage-integrate",
+    "skill": "value-coverage-skill"
+  }
+}

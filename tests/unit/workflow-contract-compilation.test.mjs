@@ -145,7 +145,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ inputs\.rollout_percent \|\| '' \}\}/);
       assert.match(generated, /rollout_percent:\n\s+default: 100\n\s+type: number/);
       assert.match(generated, /timeout-minutes: 15/);
-      assert.match(generated, /cancel-in-progress: true/);
+      assert.equal(parse(generated).concurrency["cancel-in-progress"],
+        campaignName !== "operational-value-coverage", lockName);
       const jobs = generatedJobs(generated);
       const agent = jobs.get("agent").block;
       const safeOutputs = jobs.get("safe_outputs").block;
@@ -166,7 +167,11 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /CAO_ROLE: worker/);
       assert.match(generated, new RegExp(`CAO_WORKER: ${workerName}`));
       assert.match(generated, /GH_AW_SAFE_OUTPUT_MODE: \$\{\{ inputs\.safe_output_mode \|\| 'review' \}\}/);
-      assert.match(generated, /SAFE_OUTPUT_REPO:.*safe_output_mode.*'review'.*safe_output_repo.*github\.repository.*inputs\.target_repo/);
+      if (campaignName === "operational-value-coverage") {
+        assert.match(generated, /SAFE_OUTPUT_REPO: \$\{\{ inputs\.safe_output_repo \}\}/);
+      } else {
+        assert.match(generated, /SAFE_OUTPUT_REPO:.*safe_output_mode.*'review'.*safe_output_repo.*github\.repository.*inputs\.target_repo/);
+      }
       assert.match(generated, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ inputs\.rollout_percent \|\| '' \}\}/);
       assert.match(generated, /GH_AW_SAFE_OUTPUTS_CONFIG:/);
     }

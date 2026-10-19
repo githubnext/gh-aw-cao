@@ -53,6 +53,7 @@ test("campaigns and repository workflows pin the supported gh-aw version", () =>
     "eslint-rules/aw.yml",
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
+    "operational-value-coverage/aw.yml",
     "repo-assist/aw.yml",
     "self-care/aw.yml",
     "software-development-practices/aw.yml",
@@ -129,6 +130,7 @@ test("catalog campaigns declare their current experimental maturity", () => {
     "eslint-rules/aw.yml",
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
+    "operational-value-coverage/aw.yml",
     "repo-assist/aw.yml",
     "self-care/aw.yml",
     "software-development-practices/aw.yml",
@@ -220,6 +222,8 @@ test("operational packages own their workflows without reinstalling the control 
 });
 
 test("campaign manifests exclude repository-only tests", () => {
+  const coverageManifest = readFileSync(join(root, "operational-value-coverage", "aw.yml"), "utf8");
+  assert.doesNotMatch(coverageManifest, /(?:tests\/|docs\/operational-value\/proof\/)/);
   for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("bug-bash", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("dreaming", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("repo-assist", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
@@ -292,6 +296,7 @@ test("operational campaigns install declarations matching their workflow identit
     "eslint-rules",
     "eu-cra-compliance",
     "optimization",
+    "operational-value-coverage",
     "repo-assist",
     "self-care",
     "software-development-practices",
@@ -302,7 +307,15 @@ test("operational campaigns install declarations matching their workflow identit
     const declaration = JSON.parse(readFileSync(join(root, campaignName, "cao.json"), "utf8"));
     const manifest = parse(readFileSync(join(root, campaignName, "aw.yml"), "utf8"));
     assert.equal(declaration.campaign, campaignName);
-    assert.equal(manifest.resources, undefined, campaignName);
+    if (campaignName === "operational-value-coverage") {
+      assert.deepEqual(manifest.resources.map(resource => resource.destination), [
+        "operational-value-coverage/coverage.mjs",
+        "operational-value-coverage/report.mjs",
+      ]);
+      assert.deepEqual(manifest.skills, [".github/skills/add-operational-value"]);
+    } else {
+      assert.equal(manifest.resources, undefined, campaignName);
+    }
     assert.ok(existsSync(join(root, campaignName, "cao.json")), campaignName);
 
     const orchestrator = workflow(`${declaration.orchestrator}.md`);

@@ -108,6 +108,18 @@ const suites = [
       ".github/workflows/shared/",
     ],
   },
+  {
+    name: "Value Coverage",
+    manifest: "operational-value-coverage/aw.yml",
+    testPattern: "focused Value Coverage campaign contract",
+    prefixes: [
+      "operational-value-coverage/",
+      ".github/skills/add-operational-value/",
+      ".github/workflows/operational-value-coverage",
+      ".github/workflows/value-coverage-",
+      ".github/workflows/shared/",
+    ],
+  },
 ];
 
 function sourcePath(manifest, source) {
