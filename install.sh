@@ -100,7 +100,7 @@ usage() {
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo requires typing an eligible OWNER and NAME with no defaults; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
-    '--quickstart requires explicit --target OWNER/REPO for an accessible public repository and pins the latest stable CAO release.' \
+    '--quickstart requires explicit --target OWNER/REPO for an accessible public repository and pins the latest published CAO release, including prereleases.' \
     'Use a clean connected control checkout, or explicitly request --create-repo [OWNER/NAME]; no owner or repository is suggested.' \
     'It configures and commits the review-only control plane, then stops with Repo Assist paused; no campaign or Activity run is dispatched.' \
     'Continue with gh cao quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
@@ -390,13 +390,13 @@ verify_gh_aw_version() {
 resolve_latest_cao_release() {
   local releases
   local draft
-  local prerelease
+  local _prerelease
   local release
   if releases="$(gh api --hostname github.com --paginate \
     'repos/githubnext/gh-cao/releases?per_page=100' \
     --jq '.[] | [.draft, .prerelease, .tag_name] | @tsv')"; then
-    while IFS=$'\t' read -r draft prerelease release; do
-      if [[ "$draft" == false && "$prerelease" == false &&
+    while IFS=$'\t' read -r draft _prerelease release; do
+      if [[ "$draft" == false &&
         "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         printf '%s\n' "$release"
         return
@@ -404,15 +404,54 @@ resolve_latest_cao_release() {
     done <<< "$releases"
   fi
   printf '%s\n' \
-    'Unable to resolve the latest stable CAO release with a vX.Y.Z tag.' \
+    'Unable to resolve the latest published CAO release with a vX.Y.Z tag (including prereleases).' \
     'Retry after GitHub release access is restored, or pass an explicit published tag such as githubnext/gh-cao@vX.Y.Z.' \
     'No CAO files were written.' >&2
+  return 1
+}
+
+verify_cao_extension_release() {
+  local release="$1"
+  local assets asset count prefix complete missing=""
+  if ! assets="$(gh api --hostname github.com \
+    "repos/githubnext/gh-cao/releases/tags/$release" \
+    --jq 'select(.draft == false) | .assets[] | select(.state == "uploaded" and .size > 0) | .name')"; then
+    printf 'Unable to inspect CAO extension release %s. No CAO files were written.\n' "$release" >&2
+    return 1
+  fi
+  count="$(awk '$0 == "checksums.txt" { count++ } END { print count + 0 }' <<< "$assets")"
+  if [[ "$count" == 1 ]]; then
+    for prefix in "gh-cao-" ""; do
+      complete=true
+      for asset in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64.exe windows-arm64.exe; do
+        asset="$prefix$asset"
+        count="$(awk -v asset="$asset" '$0 == asset { count++ } END { print count + 0 }' <<< "$assets")"
+        if [[ "$count" != 1 ]]; then
+          [[ -n "$missing" ]] || missing="$asset"
+          complete=false
+          break
+        fi
+      done
+      if [[ "$complete" == true ]]; then
+        printf '%s' "$prefix"
+        return
+      fi
+    done
+  else
+    missing=checksums.txt
+  fi
+  printf '%s\n' \
+    "CAO release $release is not installable: expected exactly one uploaded, nonempty $missing asset in a complete native asset set." \
+    "Releases must provide all six gh-cao-OS-ARCH binaries (or all six legacy OS-ARCH binaries) and checksums.txt." \
+    "Maintainers must publish a corrected release with scripts/build-release.sh assets; published prereleases are supported." \
+    "Published immutable releases cannot be repaired in place. No CAO files were written." >&2
   return 1
 }
 
 install_cao_extension() (
   set -euo pipefail
   local release="$1"
+  local asset_prefix="${2-gh-cao-}"
   local os arch suffix="" data_dir asset directory binary expected actual installed_version
   case "$(uname -s)" in
     Linux) os=linux ;;
@@ -447,7 +486,7 @@ install_cao_extension() (
   trap 'rm -rf -- "$staged"' EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
-  asset="gh-cao-$os-$arch$suffix"
+  asset="$asset_prefix$os-$arch$suffix"
   info "Downloading gh cao $release for $os-$arch..."
   local base_url="https://github.com/githubnext/gh-cao/releases/download/$release"
   curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 120 \
@@ -481,6 +520,26 @@ install_cao_extension() (
   mv -f "$binary" "$directory/gh-cao$suffix"
   success "Installed gh cao $release."
 )
+
+initialize_cao_policy() {
+  gh cao init || return "$?"
+  node --input-type=module - "$1" <<'NODE'
+import { readFile } from "node:fs/promises";
+import { minimalPolicy } from "./activity/cli/policy.mjs";
+import { writeJsonAtomically } from "./activity/cli/files.mjs";
+const file = process.argv[2];
+const policy = JSON.parse(await readFile(file, "utf8"));
+const expected = minimalPolicy(policy["gh-aw-version"], policy["control-plane"].scope["allowed-repositories"][0]).$schema;
+if (policy.$schema === expected) process.exit(0);
+const legacy = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
+const current = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";
+if (policy.$schema !== legacy || expected !== current) {
+  throw new Error("The initialized policy schema does not match the installed catalog.");
+}
+policy.$schema = expected;
+await writeJsonAtomically(file, policy);
+NODE
+}
 
 # Asks on the controlling terminal before reinstalling an installed gh-aw. A
 # declined prompt stops successfully with manual-upgrade guidance; no usable
@@ -536,6 +595,7 @@ main() {
   local quickstart_status
   local quickstart_release
   local extension_release=""
+  local extension_asset_prefix
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -707,7 +767,7 @@ main() {
     fi
     catalog_source="githubnext/gh-cao@$quickstart_release"
     explicit_source=true
-    note "Quickstart selected stable CAO release $quickstart_release."
+    note "Quickstart selected published CAO release $quickstart_release (including prereleases)."
   fi
 
   if [[ "$catalog_source" =~ ^githubnext/gh-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
@@ -715,6 +775,7 @@ main() {
   elif ! extension_release="$(resolve_latest_cao_release)"; then
     return 1
   fi
+  extension_asset_prefix="$(verify_cao_extension_release "$extension_release")"
 
   if [[ -d "$catalog_source" ]]; then
     catalog_source="$(cd "$catalog_source" && pwd)"
@@ -740,7 +801,7 @@ main() {
   else
     note "Using gh-aw $current_gh_aw."
   fi
-  install_cao_extension "$extension_release"
+  install_cao_extension "$extension_release" "$extension_asset_prefix"
 
   if [[ -n "$create_repository" ]]; then
     if [[ "$create_repository_in_place" == true ]]; then
@@ -811,7 +872,7 @@ main() {
     if ! run_quiet_command \
       "Initializing the CAO policy..." \
       "CAO policy initialized." \
-      gh cao init; then
+      initialize_cao_policy "$policy_path"; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi
