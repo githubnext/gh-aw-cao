@@ -225,6 +225,9 @@ node operational-value-coverage/report.mjs . \
 The structural gate delegates timeline validation, signal semantics and plot
 rendering to the same skill. It verifies hashes, identity, cutoff and exact
 HTML/JSON parity without reimplementing query or measurement semantics.
+The primary plot input must be the validated timeline's identical facts and
+function identity. Supplemental event/lifetime plots retain their independent
+checks; they cannot replace that timeline by matching labels and cutoff alone.
 Independent native replay and semantic review are **additional required
 checks**, not a claim a manifest can self-certify. In particular, File Diet's
 48 structural reductions and 13 receipt-strength subset must stay separate

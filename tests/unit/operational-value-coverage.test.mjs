@@ -8,7 +8,7 @@ import { parse } from "yaml";
 import { buildLedger, digest, fileHash, instrumentFiles, localFile, progressMetrics, readInventory, selectCohort, validatePlan, workKey } from "../../operational-value-coverage/coverage.mjs";
 import { reportingChecklist, validateReport } from "../../operational-value-coverage/report.mjs";
 import { readJsonArchive } from "../../.github/skills/add-operational-value/scripts/json-archive.mjs";
-import { eventPulse } from "../../.github/skills/add-operational-value/scripts/pulse-model.mjs";
+import { eventPulse, timelinePulse } from "../../.github/skills/add-operational-value/scripts/pulse-model.mjs";
 import { renderPulse } from "../../.github/skills/add-operational-value/scripts/render-pulse.mjs";
 import { reportingChecklist as skillChecklist } from "../../.github/skills/add-operational-value/scripts/report-completeness.mjs";
 
@@ -220,6 +220,33 @@ test("gap reports finish disposition but cannot claim native evaluation", () => 
   assert.equal(validateReport(root, plan, contract, manifest).disposition, "unavailable");
   manifest.nativeEvaluated = true;
   assert.throws(() => validateReport(root, plan, contract, manifest), /not native/);
+});
+
+test("plot inputs cannot replace the validated timeline with divergent native facts, functions or events", t => {
+  const plan = retainedPlan(), contract = plan.cohorts[0].workflows[0], manifest = manifestFor(plan);
+  const temporary = mkdtempSync(path.join(root, ".aw-value-report-coupling-test."));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const original = readJsonArchive(localFile(root, manifest.timeline));
+  const divergentFacts = structuredClone(original);
+  divergentFacts.snapshots.at(-1).metrics[manifest.metricId] += 7;
+  const divergentFunction = structuredClone(original);
+  divergentFunction.valueFunction.sha256 = "f".repeat(64);
+  const events = readJsonArchive(localFile(root, "docs/operational-value/proof/reports/file-diet-value-events.json"));
+  for (const [index, input] of [divergentFacts, divergentFunction, events].entries()) {
+    const model = input.kind === "operational-value-events" ? eventPulse(input) : timelinePulse(input);
+    const prefix = path.relative(root, temporary);
+    const staged = structuredClone(manifest);
+    Object.assign(staged, { plotInput: `${prefix}/${index}-input.json`,
+      pulseJson: `${prefix}/${index}-pulse.json`, pulseHtml: `${prefix}/${index}-pulse.html` });
+    for (const [file, text] of [
+      [staged.plotInput, JSON.stringify(input)], [staged.pulseJson, JSON.stringify(model)],
+      [staged.pulseHtml, renderPulse(model)],
+    ]) {
+      writeFileSync(path.join(root, file), text);
+      staged.files.push(pin(file));
+    }
+    assert.throws(() => validateReport(root, plan, contract, staged), /Plot input.*validated timeline/);
+  }
 });
 
 test("paths fail closed on traversal and symlinks", () => {

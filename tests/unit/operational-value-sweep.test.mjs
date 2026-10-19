@@ -61,10 +61,11 @@ test("the retained canonical inventory is fully assigned and measured entries re
     "weekly-editors-health-check", "workflow-normalizer",
     "go-logger", "go-pattern-detector", "daily-testify-uber-super-expert",
     "metrics-collector", "daily-firewall-report", "daily-code-debt-aider", "code-simplifier",
+    "breaking-change-checker",
   ].map(id => ({ id, reason: "Reserved by source-session handoffs; reconcile before remote work on this baseline." }));
   const result = sweepDecision(plan, inventory, []);
   assert.equal(result.summary.assigned, inventory.rows.length);
-  assert.equal(result.reservations.length, 22);
+  assert.equal(result.reservations.length, 23);
   const reserved = new Set(plan.reservations.map(reservation => {
     const cohort = plan.cohorts.find(item => item.workflows[0].id === reservation.id);
     return workKey(plan, cohort.workflows[0]);

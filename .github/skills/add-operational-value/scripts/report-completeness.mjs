@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { digest, localFile, verifyPins } from "./artifact-files.mjs";
 import { isIsoUtc, isRepository, isSlug } from "./common.mjs";
 import { readJsonArchive } from "./json-archive.mjs";
-import { eventPulse, timelinePulse } from "./pulse-model.mjs";
+import { timelinePulse } from "./pulse-model.mjs";
 import { renderPulse } from "./render-pulse.mjs";
 
 export const reportingChecklist = Object.freeze([
@@ -60,7 +60,9 @@ export function validateReportCompleteness(root, expected, manifest) {
     assert.ok(metric && (manifest.disposition === "partial" || metric.role === "primary"),
       "Name the evaluated native metric; diagnostics do not establish full native evaluation");
     const input = readJsonArchive(localFile(root, manifest.plotInput));
-    const model = input.kind === "operational-value-events" ? eventPulse(input) : timelinePulse(input);
+    assert.deepEqual(input, timeline,
+      "Plot input must match the validated timeline; independent event datasets cannot substitute for its facts");
+    const model = timelinePulse(timeline);
     assert.equal(model.repository, expected.repository);
     assert.equal(model.workflowSlug, expected.workflow);
     assert.equal(model.sourcePath, expected.sourcePath);

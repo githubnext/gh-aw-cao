@@ -59,6 +59,12 @@ checks contract identity/cutoff, the selected native metric, and exact HTML/JSON
 parity with retained facts. A native disposition requires the primary metric;
 a partial disposition names its facet explicitly. Neither disposition claims
 full-goal completion. All-unknown timelines cannot qualify as evaluated.
+`plotInput` must contain the identical validated timeline, including its native
+facts and function fingerprint; matching labels, cutoff and rendered files are
+not enough. Independent event datasets are not accepted as substitutes. Keep
+existing event/lifetime plots as separately verified supplemental artifacts.
+A new event-based claim needs its own reviewed native contract and reconciled
+timeline, not a generic inferred projection or a changed predecessor formula.
 Independent native replay and human semantic review remain required beyond
 this structural gate. Version 0.18.6 adds this reusable gate without changing
 the schema 3 evaluator interface or predecessor measurements.
