@@ -97,6 +97,14 @@ describe('dashboard-chunks source discovery', () => {
     ]);
   });
 
+  it('retains all ordinary view sources across modes for declarative page bindings', () => {
+    const document = sampleDocument();
+    document.dashboard.pages[0]['query-binding'] = 'page';
+    for (const mode of /** @type {const} */ (['chart', 'table', 'card'])) {
+      expect(dashboardPageSourceNames(document, 'alpha-page', mode)).toEqual(['alpha-source', 'callout-source']);
+    }
+  });
+
   it('requests only sources used by the selected view mode', () => {
     const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
       languageVersion: '0.1.0',

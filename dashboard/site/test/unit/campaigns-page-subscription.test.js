@@ -128,6 +128,12 @@ describe('Campaigns shared canonical page subscription', () => {
     expect(budget.operations).toBeLessThan(independentOperations * 0.5);
   });
 
+  it.each(['chart', 'table', 'card'])('retains every view payload when the page presents %s mode', async (viewMode) => {
+    subscribe({ queryContext: { viewMode } });
+    const result = await settled();
+    for (const source of Object.values(result)) expect(source.rows).toHaveLength(contract.rows);
+  });
+
   it('recomputes all view aliases after canonical refresh and unsubscribes cleanly', async () => {
     subscribe();
     await settled();

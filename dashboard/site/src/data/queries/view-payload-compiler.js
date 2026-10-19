@@ -56,10 +56,11 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     ...(options.queryContext?.formValues ?? {})
   };
   const views = Array.isArray(payload.views) ? payload.views : [];
+  const viewMode = payload['query-binding'] === 'page' ? undefined : options.queryContext?.viewMode;
   const activeViews = views.filter((view, index) => {
     if (options.backend && !viewBackendAvailable(view, options.backend)) return false;
     if (options.viewId) return isPlainObject(view) && (view.id ?? `view-${index + 1}`) === options.viewId;
-    return !options.queryContext?.viewMode || viewMatchesMode(view, options.queryContext.viewMode);
+    return !viewMode || viewMatchesMode(view, viewMode);
   });
   const requestedSources = options.sourceNames ? new Set(options.sourceNames) : null;
   const relevantSources = activeViews.flatMap((view) => getViewSources(view)
@@ -95,7 +96,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     if (options.backend && !viewBackendAvailable(view, options.backend)) return;
     if (options.viewId && (!isPlainObject(view)
       || (view.id ?? `view-${viewIndex + 1}`) !== options.viewId)) return;
-    if (!options.viewId && options.queryContext?.viewMode && !viewMatchesMode(view, options.queryContext.viewMode)) return;
+    if (!options.viewId && viewMode && !viewMatchesMode(view, viewMode)) return;
     const sources = getViewSources(view);
     if (sources.length === 0) return;
     const viewData = isPlainObject(view) && isPlainObject(view.data)
@@ -846,6 +847,7 @@ function pagePayload(page, reusableViews) {
     builtInDefinition?.views ?? (Array.isArray(configured.views) ? configured.views : [])
   );
   return {
+    'query-binding': configured['query-binding'],
     views: views.map((view) => typeof view === 'string' ? viewsById.get(view) ?? view : view),
     route: isPlainObject(configured.route) ? configured.route : null,
     form: isPlainObject(configured.form) ? configured.form : null

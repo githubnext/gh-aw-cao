@@ -50,6 +50,7 @@ test('Campaigns uses the shared page binding and refreshes its charts, table, an
   const root = page.locator('[data-page-id="campaigns"]');
   await expect(root.locator('[data-view-id="campaigns-dispatches"]')).toContainText('alpha');
   await expect(root.locator('[data-view-id="campaigns-repository-coverage"]')).toContainText('alpha');
+  await expect(root.locator('[data-view-state="unavailable"]')).toHaveCount(0);
   expect(await page.evaluate(() => Reflect.get(window, '__campaignPageBindings'))).toBe(1);
   await root.locator('[data-view-mode-value="table"]').click();
   const row = root.locator('[data-view-id="campaigns-inventory"] tbody > tr').filter({ hasText: 'alpha' });
@@ -57,6 +58,7 @@ test('Campaigns uses the shared page binding and refreshes its charts, table, an
   await expect(row.getByRole('cell').nth(5)).toHaveText('1');
   await expect(row.getByRole('cell').nth(6)).toHaveText('$0.02');
   await expect(row.locator('a').first()).toHaveAttribute('href', '#page-campaign-insights?campaign=alpha');
+  await expect(root.locator('[data-view-state="unavailable"]')).toHaveCount(0);
   updated = true;
   await page.evaluate(async documentModel => {
     const { refreshCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
@@ -71,5 +73,6 @@ test('Campaigns uses the shared page binding and refreshes its charts, table, an
   await expect(row.locator('a').first()).toBeVisible();
   await page.getByRole('button', { name: 'Switch to Chart view', exact: true }).click();
   await expect(root.locator('[data-view-id="campaigns-dispatches"]')).toContainText('alpha');
+  await expect(root.locator('[data-view-state="unavailable"]')).toHaveCount(0);
   expect(await page.evaluate(() => Reflect.get(window, '__campaignPageBindings'))).toBe(3);
 });
