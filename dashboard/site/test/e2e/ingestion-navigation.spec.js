@@ -42,6 +42,10 @@ async function expectRunsLoadOnScroll(page, expectedTotal) {
   const loadBoundary = view.locator('[data-table-more]');
   await expect(rows).toHaveCount(25);
   await expect(view.locator('.table-filter-result')).toHaveText(`Showing 25 of ${expectedTotal} results`);
+  const storageNotice = page.locator('[data-notification-id="dashboard:browser-storage"]');
+  if (await storageNotice.isVisible()) {
+    await storageNotice.getByRole('button', { name: /^Dismiss / }).click();
+  }
   await scroll.hover();
   await page.mouse.wheel(0, 10_000);
   await scroll.evaluate((element) => {
