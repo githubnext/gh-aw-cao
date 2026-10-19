@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"os"
+	"os/exec"
 	"slices"
 	"strings"
 	"testing"
@@ -37,5 +40,41 @@ func TestWorkloadEnvEmpty(t *testing.T) {
 	env := workloadEnv(nil)
 	if len(env) != len(proxyVariables)+2 {
 		t.Fatalf("got %d entries: %v", len(env), env)
+	}
+}
+
+func TestWorkloadExitCode(t *testing.T) {
+	if got := workloadExitCode(nil); got != 0 {
+		t.Fatalf("success code = %d, want 0", got)
+	}
+	err := exec.Command(os.Args[0], "-test.run=^$").Run()
+	if got := workloadExitCode(err); got != 0 {
+		t.Fatalf("real successful run code = %d, want 0", got)
+	}
+	if got := workloadExitCode(exec.Command("/nonexistent/cao-workload").Run()); got != 125 {
+		t.Fatalf("start failure code = %d, want 125", got)
+	}
+	if got := workloadExitCode(errors.New("other")); got != 125 {
+		t.Fatalf("generic error code = %d, want 125", got)
+	}
+}
+
+func TestWorkloadExitCodePropagatesWorkloadStatus(t *testing.T) {
+	sh, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh unavailable")
+	}
+	if got := workloadExitCode(exec.Command(sh, "-c", "exit 7").Run()); got != 7 {
+		t.Fatalf("exit code = %d, want 7", got)
+	}
+}
+
+func TestWorkloadExitCodeSignalled(t *testing.T) {
+	sh, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh unavailable")
+	}
+	if got := workloadExitCode(exec.Command(sh, "-c", "kill -9 $$").Run()); got != 125 {
+		t.Fatalf("signalled code = %d, want 125", got)
 	}
 }
