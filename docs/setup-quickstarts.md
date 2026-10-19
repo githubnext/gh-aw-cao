@@ -12,17 +12,17 @@ new agentic work running.**
 
 ## Prerequisites
 
-You need Git, Bash, `curl`, **Node.js 24+**, and **GitHub CLI 2.68+**.
-Sign in with `gh auth login` if needed. You need permission to configure
-Actions, credentials, and Pages in your control repository.
-
-CAO lives in a **control repository**: the repository that stores its
-configuration and runs collection. Prefer a separate repository; the repository
-you monitor does not need CAO installed in it.
-
-Use a private control repository for private or internal evidence. Dashboard
-visibility is a separate choice: a private repository does **not** guarantee a
-private Pages site. Setup checks this and asks before allowing public publication.
+- **Tools:** Git, Bash, `curl`, **Node.js 24+**, and **GitHub CLI 2.68+**.
+- **Sign in:** Run `gh auth login` if needed.
+- **Permissions:** You need permission to configure Actions, credentials, and
+  Pages in your control repository.
+- **Control repository:** CAO lives in a repository that stores its configuration
+  and runs collection. Prefer a separate repository; the repository you monitor
+  does not need CAO installed in it.
+- **Privacy:** Use a private control repository for private or internal evidence.
+  Dashboard visibility is a separate choice: a private repository does **not**
+  guarantee a private Pages site. Setup checks this and asks before allowing
+  public publication.
 
 ## 1. Install CAO
 
