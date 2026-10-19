@@ -3,14 +3,15 @@
 Load this reference only to inspect installer behavior, runtime layout, source
 versus generated files, or steering files.
 
-The root `install.sh` installs or upgrades the required gh-aw version, installs
-the root CAO package when runtime files are absent, materializes the runtime,
-makes `./cao.sh` executable, and runs `./cao.sh init` only when policy is absent.
+The root `install.sh` downloads and verifies the platform-specific Go extension
+from a published release, installs or upgrades the required gh-aw version,
+installs the root CAO package when runtime files are absent, materializes the runtime,
+and runs `gh cao init` only when policy is absent. Actions invoke Node entry points directly.
 It preserves an existing `.github/workflows/cao.json`.
 Tools, Node.js 24+, sign-in, and checkout-root readiness are checked before
 installation or upgrade. `--create-repo OWNER/NAME` explicitly creates and
 clones a private repository, refusing an existing clone directory. Bare
-installation stops and prints `./cao.sh setup`; `--setup` opens guided setup
+installation stops and prints `gh cao setup`; `--setup` opens guided setup
 directly on the controlling terminal. `--quickstart` uses a clean current
 public or private checkout, or creates a private control repository when run
 interactively outside a checkout, then delegates to the explicit end-to-end
@@ -90,8 +91,9 @@ Activity contains a run and the dashboard deployment succeeds.
 
 Canonical runtime files live together under `.github/workflows/shared/`,
 including `control.md`, `control.mjs`, `policy.mjs`, the policy schema, the
-materializer, and authentication helpers. The repository-local launcher is
-`./cao.sh`. Do not fetch a second runtime copy or construct one ad hoc.
+materializer, and authentication helpers. Operator commands use `gh cao`;
+Actions invoke `node activity/cao.mjs <command>` directly, without a shell launcher.
+Do not fetch a second runtime copy or construct one ad hoc.
 
 Editable workflow sources are `.github/workflows/*.md`; `.lock.yml` workflows
 are generated and must be changed only by compiling their sources. Campaign
@@ -105,4 +107,5 @@ in `.github/cao/instructions.md`; the gh-aw overlay under
 for custom prompting, so setup must not create it.
 
 Use [CAO Commands](https://github.com/githubnext/gh-aw-cao/blob/main/docs/cao-cli.md) for current command behavior and
-the installed `./cao.sh --help` output for exact syntax.
+the installed `gh cao --help` output for operator syntax. `node activity/cao.mjs --help`
+lists the retained pipeline tools.

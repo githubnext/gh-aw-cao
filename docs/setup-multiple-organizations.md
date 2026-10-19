@@ -49,7 +49,7 @@ Enterprise ownership alone grants no repository access.
 ## Configure the Control Repository
 
 ```bash
-./cao.sh setup-auth enterprise-app \
+gh cao setup auth enterprise-app \
   --repo "$CONTROL_REPO" \
   --read-client-id "<read-app-client-id>" \
   --write-client-id "<write-app-client-id>" \
@@ -57,7 +57,7 @@ Enterprise ownership alone grants no repository access.
   --write-repository "$CONTROL_REPO" \
   --dry-run
 
-./cao.sh setup-auth enterprise-app \
+gh cao setup auth enterprise-app \
   --repo "$CONTROL_REPO" \
   --read-client-id "<read-app-client-id>" \
   --write-client-id "<write-app-client-id>" \
@@ -84,7 +84,7 @@ git diff --check
 Review the diff. After explicit approval:
 
 ```bash
-git add .github activity dashboard cao.sh
+git add .github activity dashboard
 git commit -m "Install Central Agentic Ops control plane"
 git push --set-upstream origin HEAD
 ```

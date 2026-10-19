@@ -849,7 +849,7 @@ test("fine-grained token setup formats a concise completion summary", () => {
   assert.match(summary, /Read scope: 2 repositories across githubnext, github/);
   assert.match(summary, /Write scope: githubnext\/gh-aw-cao/);
   assert.match(summary, /Authentication mode: pat/);
-  assert.match(summary, /run \.\/cao\.sh validate/);
+  assert.match(summary, /publish policy changes, then run gh workflow run cao-validate\.yml/);
   assert.doesNotMatch(summary, /^\{/);
 });
 
@@ -1229,7 +1229,7 @@ test("live mode checks setup credentials and suggests setup only in CI when inco
   };
   const options = { execute, environment: { CI: "true" }, writeWarning: (message) => warnings.push(message) };
   checkLiveWriteAuthentication(options);
-  assert.match(warnings[0], /run \.\/cao\.sh setup/);
+  assert.match(warnings[0], /run gh cao setup/);
   assert.equal(calls.filter((args) => args.includes("--paginate")).length, 2);
 
   warnings.length = 0;

@@ -4,6 +4,44 @@ import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import { parseUnifiedSessionDocument } from '../../src/data/adapters/unified-session.js';
 import { normalizedActivityShards } from './normalized-shard.js';
+import { originalSessions, replay, runCacheLine } from '../model-resolution-fixture.js';
+
+/**
+ * Serves a copy of the site with the supplied normalized activity shards.
+ * @param {string} dataBackend @param {{ runs: string, records: string }} shards @param {string} run @param {string} timestamp
+ * @param {string} [repository]
+ */
+async function startRoutingServer(dataBackend, shards, run, timestamp, repository = 'octo/api') {
+  const [organization, name] = repository.split('/');
+  const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+  const workspace = await mkdtemp(fileURLToPath(new URL('../../../../.cao-routing-e2e-', import.meta.url)));
+  const siteRoot = fileURLToPath(new URL('../../', import.meta.url));
+  await cp(siteRoot, join(workspace, 'site'), {
+    recursive: true,
+    filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(relative(siteRoot, path).split(sep)[0])
+  });
+  /** @type {{ url: string, close: () => Promise<void> }} */
+  const server = await startDashboardServer({
+    workingDirectory: workspace, siteRoot: join(workspace, 'site'), catalogRoot: null,
+    port: 0, canvas: true, dataBackend,
+    output: () => {}, requestOutput: () => {}, traceOutput: () => {},
+    executeCliAction: async () => { throw new Error('CLI actions are disabled in routing browser tests.'); },
+    approveCliAction: async () => false,
+    downloadData: async (/** @type {string} */ destination) => {
+      await mkdir(destination, { recursive: true });
+      await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
+        repositories: { rows: [{ organization, repository: name, 'observed-at': timestamp }],
+          metadata: { 'as-of': timestamp, 'artifact-generation': 'routing-e2e' } }
+      }));
+      for (const phase of /** @type {const} */ (['runs', 'records'])) {
+        const directory = join(destination, `gh-aw-logs-${phase}`);
+        await mkdir(directory, { recursive: true });
+        await writeFile(join(directory, `logs-${run}-${'a'.repeat(64)}-${'1'.repeat(16)}.jsonl`), shards[phase]);
+      }
+    }
+  });
+  return { server, workspace };
+}
 
 for (const dataBackend of ['indexeddb', 'sqlite']) {
   test.describe(`${dataBackend} model routing`, () => {
@@ -12,13 +50,6 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
     let workspace = '';
 
     test.beforeAll(async () => {
-      const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
-      workspace = await mkdtemp(fileURLToPath(new URL('../../../../.cao-routing-e2e-', import.meta.url)));
-      const siteRoot = fileURLToPath(new URL('../../', import.meta.url));
-      await cp(siteRoot, join(workspace, 'site'), {
-        recursive: true,
-        filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(relative(siteRoot, path).split(sep)[0])
-      });
       const now = Date.now();
       const timestamp = new Date(now).toISOString();
       /** @param {string} type @param {Record<string, unknown>} data @param {string} [phase] */
@@ -43,25 +74,7 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
           created_at: timestamp, updated_at: timestamp, status: 'completed', conclusion: 'success',
           cao_unified_session: { version: 1, path: 'usage/aw_session.jsonl', ...document } }
       }));
-      server = await startDashboardServer({
-        workingDirectory: workspace, siteRoot: join(workspace, 'site'), catalogRoot: null,
-        port: 0, canvas: true, dataBackend,
-        output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-        executeCliAction: async () => { throw new Error('CLI actions are disabled in routing browser tests.'); },
-        approveCliAction: async () => false,
-        downloadData: async (/** @type {string} */ destination) => {
-          await mkdir(destination, { recursive: true });
-          await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
-            repositories: { rows: [{ organization: 'octo', repository: 'api', 'observed-at': timestamp }],
-              metadata: { 'as-of': timestamp, 'artifact-generation': 'routing-e2e' } }
-          }));
-          for (const phase of /** @type {const} */ (['runs', 'records'])) {
-            const directory = join(destination, `gh-aw-logs-${phase}`);
-            await mkdir(directory, { recursive: true });
-            await writeFile(join(directory, `logs-101-${'a'.repeat(64)}-${'1'.repeat(16)}.jsonl`), shards[phase]);
-          }
-        }
-      });
+      ({ server, workspace } = await startRoutingServer(dataBackend, shards, '101', timestamp));
     });
     test.afterAll(async () => {
       await server?.close();
@@ -96,6 +109,77 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
         await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('main_agent');
         await expect(page.locator('[data-view-id="routing-run-requests"]')).toContainText('as_selected');
         await expect(page.locator('[data-view-id="routing-run-timeline"]')).toContainText('firewall.model_routing');
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      });
+    }
+  });
+}
+
+for (const dataBackend of ['indexeddb', 'sqlite']) {
+  test.describe(`${dataBackend} model resolution`, () => {
+    /** @type {{ url: string, close: () => Promise<void> }} */
+    let server;
+    let workspace = '';
+
+    test.beforeAll(async () => {
+      const now = Date.now();
+      // Minimized real smoke sessions plus documented controlled replays (alias move and failures).
+      const sessions = [...originalSessions, replay('opus-before'), replay('opus-after'),
+        replay('pi-main-model-unavailable'), replay('pi-main-catalog-unavailable')];
+      const shards = normalizedActivityShards(sessions.map((source) => runCacheLine(source, now)).join('\n'));
+      ({ server, workspace } = await startRoutingServer(dataBackend, shards, '39091103540', new Date(now).toISOString(), 'github/gh-aw'));
+    });
+    test.afterAll(async () => {
+      await server?.close();
+      if (workspace) await rm(workspace, { recursive: true, force: true });
+    });
+
+    for (const width of [1280, 390]) {
+      test(`renders Model resolution and run resolution drill-down at ${width}px`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(`${server.url}/?local-preview=canvas#page-model-routing`);
+        await expect(page.getByRole('dialog', { name: 'Preparing your dashboard' })).toBeHidden();
+        if (width < 768) {
+          for (let step = 0; step < 2; step += 1) {
+            await page.locator('.mobile-view-mode-toggle').click();
+            if (await page.locator('.dashboard-page:not([hidden])').getAttribute('data-view-mode') === 'table') break;
+          }
+        } else await page.getByRole('button', { name: 'Table', exact: true }).click();
+        /** @param {string} id */
+        const section = async (id) => {
+          const disclosure = page.locator('details', { has: page.locator(`[data-view-id="${id}"]`) });
+          if (await disclosure.getAttribute('open') === null) await disclosure.locator('summary').first().press('Enter');
+          return page.locator(`[data-view-id="${id}"]`);
+        };
+        const coverage = await section('routing-resolution-coverage');
+        await expect(coverage).toContainText('Routed without resolution');
+        const moves = await section('routing-alias-moves');
+        await expect(moves).toContainText('alias moved');
+        await expect(moves).toContainText('claude-opus-5 → claude-opus-5.5');
+        await expect(moves).toContainText('claude-haiku-5.5');
+        const failures = await section('routing-resolution-failures');
+        await expect(failures).toContainText('model_unavailable');
+        await expect(failures).toContainText('catalog_unavailable');
+        await expect(failures).toContainText('copilot/gpt-5.3');
+        const screenshot = testInfo.outputPath(`model-resolution-${dataBackend}-${width}.png`);
+        await page.screenshot({ path: screenshot, fullPage: true });
+        await testInfo.attach(`model-resolution-${dataBackend}-${width}`, { path: screenshot, contentType: 'image/png' });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+        const engine = page.getByRole('textbox', { name: 'Engine', exact: true });
+        await engine.fill('codex');
+        await expect(moves).not.toContainText('claude-opus-5.5');
+        await expect(moves).toContainText('auto');
+        await expect(failures).toContainText('No failed configured-model resolution was recorded');
+        await engine.fill('');
+        await expect(failures).toContainText('model_unavailable');
+
+        await section('routing-resolution-failures');
+        await failures.locator('a[href*="routing-run=github%2Fgh-aw%3A990000003"]:visible').first().click();
+        await expect(page).toHaveURL(/#page-routing-run\?routing-run=github%2Fgh-aw%3A990000003$/);
+        const drill = await section('routing-run-resolutions');
+        await expect(drill).toContainText('copilot/gpt-5.3 → unknown');
+        await expect(drill).toContainText('model_unavailable');
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       });
     }

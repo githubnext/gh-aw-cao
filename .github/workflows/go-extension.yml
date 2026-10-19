@@ -78,6 +78,11 @@ jobs:
           test ! -s "$RUNNER_TEMP/go-extension-fmt.diff"
       - name: Lint
         run: golangci-lint run ./cmd/... ./internal/... ./dashboard
+      - name: Check shared local query engine
+        working-directory: internal/dashboardquery
+        run: |
+          golangci-lint fmt --diff
+          golangci-lint run ./...
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"

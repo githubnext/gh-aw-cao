@@ -13,8 +13,8 @@ test("getting started reaches monitoring before optional campaign execution", ()
   const monitoring = gettingStarted.slice(0, optional);
   const commands = [
     "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash",
-    "./cao.sh setup",
-    "./cao.sh validate",
+    "gh cao setup",
+    "gh cao doctor",
     'git commit -m "Set up CAO monitoring"',
     "git push",
     "gh workflow run cao-activity.yml",
@@ -35,6 +35,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.doesNotMatch(monitoring, /--quickstart|gh aw run|cao\.sh (?:add|enable|quickstart)|AI credits/);
   assert.match(monitoring, /setup installs no campaign and runs no workflow/i);
   assert.match(monitoring, /does not commit or push/);
+  assert.match(monitoring, /Check \*\*CAO validation\*\* in Actions/);
   assert.match(monitoring, /control-plane\.campaigns` is `\{\}`/);
   assert.match(monitoring, /empty dashboard is expected/);
   assert.match(monitoring, /not every ordinary Actions job/);
@@ -53,17 +54,16 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "init",
     "setup",
     "quickstart",
-    "setup-auth github-app",
-    "setup-auth enterprise-app",
-    "setup-auth hosted-cli",
-    "setup-auth token",
-    "add OWNER/REPO/CAMPAIGN",
+    "setup auth github-app",
+    "setup auth enterprise-app",
+    "setup auth token",
+    "campaigns add OWNER/REPO/CAMPAIGN",
     "update",
     "upgrade-gh-aw",
-    "mode preview",
-    "mode live",
-    "enable",
-    "disable",
+    "campaigns mode preview",
+    "campaigns mode live",
+    "campaigns enable",
+    "campaigns disable",
     "download",
     "doctor",
     "computation runtime-health",
@@ -71,27 +71,63 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "gh runs",
     "gh issues",
     "gh prs",
+  ]) {
+    assert.match(docs, new RegExp(`gh cao ${command.replaceAll("-", "\\-")}`));
+    const legacy = command.replace(/^campaigns /, "").replace(/^setup auth /, "setup-auth ");
+    assert.match(help, new RegExp(`cao ${legacy.split(" ")[0]}`));
+  }
+});
+
+test("Node-only command documentation uses explicit runtime entry points without a shell launcher", () => {
+  for (const command of [
+    "setup-auth hosted-cli",
+    "doctor",
     "operational-value",
     "cluster-problems",
+    "dashboard-complexity",
+    "prune-dashboard",
+    "validate --json",
   ]) {
-    assert.match(docs, new RegExp(`cao(?:\\.sh)? ${command.replaceAll("-", "\\-")}`));
-    assert.match(help, new RegExp(`cao ${command.split(" ")[0]}`));
+    assert.ok(docs.includes(`node activity/cao.mjs ${command}`), command);
   }
+  assert.doesNotMatch(docs, /cao\.sh/);
+  const demo = readFileSync("docs/components/TerminalDemo.astro", "utf8");
+  assert.match(demo, /gh cao<\/span> setup/);
+  assert.match(demo, /gh cao<\/span> doctor/);
+  assert.doesNotMatch(demo, /cao\.sh|<\/span> validate/);
 });
 
 test("CAO command guide explains the workflow execution boundary", () => {
   assert.match(docs, /There is intentionally no `cao run` command/);
   assert.match(docs, /gh-aw owns workflow execution/);
-  assert.match(docs, /`cao mode preview` writes `mode: review`/);
+  assert.match(docs, /`gh cao campaigns mode preview` writes `mode: review`/);
   assert.match(docs, /different from `gh aw doctor`/);
+  assert.match(docs, /Control-plane validation is Actions-only/);
+  assert.match(docs, /node activity\/cao\.mjs validate --json/);
+  assert.doesNotMatch(docs, /gh cao validate/);
+});
+
+test("campaign guides use supported native operator commands", () => {
+  for (const [filename, commands] of [
+    ["bug-bash/README.md", ["gh cao campaigns add githubnext/gh-aw-cao/bug-bash"]],
+    ["repo-assist/README.md", [
+      "gh cao quickstart --step run",
+      "gh cao quickstart --step collect",
+      "gh cao quickstart --step dashboard",
+    ]],
+  ]) {
+    const guide = readFileSync(filename, "utf8");
+    for (const command of commands) assert.ok(guide.includes(command), `${filename} must document ${command}`);
+    assert.doesNotMatch(guide, /\.\/cao\.sh (?:add|quickstart)\b/);
+  }
 });
 
 test("quickstart documents separate component stages and explicit checkpoints", () => {
   const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh");
   const command = quickstart.indexOf("bash -s -- --quickstart");
-  const campaign = quickstart.indexOf("./cao.sh quickstart --step run");
-  const activity = quickstart.indexOf("./cao.sh quickstart --step collect");
-  const dashboard = quickstart.indexOf("./cao.sh quickstart --step dashboard");
+  const campaign = quickstart.indexOf("gh cao quickstart --step run");
+  const activity = quickstart.indexOf("gh cao quickstart --step collect");
+  const dashboard = quickstart.indexOf("gh cao quickstart --step dashboard");
   const nextStep = quickstart.indexOf("## Next: assist another repository");
   const firstSuccess = quickstart.slice(0, nextStep);
 
@@ -112,7 +148,7 @@ test("quickstart documents separate component stages and explicit checkpoints", 
   assert.match(firstSuccess, /read-only step/);
   assert.match(firstSuccess, /normal push and scheduled\s+triggers/);
   assert.match(firstSuccess, /successful Pages deployment job, not merely a successful build/);
-  assert.match(firstSuccess, /\.\/cao\.sh quickstart --wait/);
+  assert.match(firstSuccess, /gh cao quickstart --wait/);
   assert.match(firstSuccess, /Do not use it to resume a staged installation/);
   assert.match(firstSuccess, /five numbered sections \*\*before each\s+corresponding change\*\*/);
   assert.match(firstSuccess, /stay in terminal scrollback/);
@@ -139,7 +175,7 @@ test("quickstart documents separate component stages and explicit checkpoints", 
   assert.match(quickstart, /works without a terminal and when `CI` is set/);
   assert.match(quickstart, /clean public or private\s+control repository on its default branch/);
   assert.match(quickstart, /gh auth status/);
-  assert.match(quickstart, /Do not run the installer or `cao add` again/);
+  assert.match(quickstart, /Do not run the installer or `gh cao campaigns add` again/);
   assert.match(quickstart, /control-plane\.scope\.allowed-owners/);
   assert.match(quickstart, /control-plane\.scope\.allowed-repositories/);
   assert.match(quickstart, /control-plane\.campaigns\.repo-assist\.targets/);

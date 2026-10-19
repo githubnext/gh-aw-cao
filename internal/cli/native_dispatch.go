@@ -20,8 +20,6 @@ func nativeOperator(gh ghExecutor) runtimeExecutor {
 			return nativeQuickstart(cmd, gh)
 		case "add":
 			return nativeRepositoryAdd(cmd, args[2], gh)
-		case "validate":
-			return nativeValidate(cmd, gh)
 		case "download":
 			return nativeDownload(cmd, gh)
 		case "upgrade-gh-aw":

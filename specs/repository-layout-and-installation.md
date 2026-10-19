@@ -130,7 +130,7 @@ preflighted before the first replacement.
 
 ### 4.2 Replacement
 
-Root materialization owns `activity/`, `dashboard/`, `cao.sh`,
+Root materialization owns `activity/`, `dashboard/`,
 `.github/actions/setup-cao-runtime/`, `.github/actions/setup-gh-aw/`, and
 `.github/cao/instructions.md`. Every repository-local action referenced by a
 workflow that the root campaign installs MUST be provided at its canonical path
@@ -139,6 +139,13 @@ reference the catalog, because gh-aw records their content hashes.
 Focused Activity or Dashboard materialization owns the corresponding canonical
 directory. Operational campaign materialization owns its complete
 `<campaign>/` directory.
+
+Root materialization MUST remove a retired shell launcher only when its contents
+match a known shipped SHA-256 digest. It MUST preserve unrelated files, symlinks,
+and directories. Focused campaign updates MUST NOT retire root files. A verified
+older runtime archive MAY contain the retired launcher; materialization MUST
+verify that entry but MUST NOT install it. Failed preflight or verification MUST
+NOT retire an existing launcher.
 
 Activity and Dashboard materialization MUST copy only the production resources
 selected at build time by `npm pack` using the dedicated
@@ -208,6 +215,29 @@ executable. The materializer MUST NOT remove paths outside the bounded owned
 destination set.
 
 ### 4.3 Lifecycle entry points
+
+The root installer MUST download the compiled `gh-cao-OS-ARCH` release asset
+and `checksums.txt` for the current supported platform (Linux, Darwin or Windows;
+amd64 or arm64). It MUST verify exactly one matching SHA-256 entry and the
+embedded version before atomically replacing the binary in GitHub CLI's
+`gh-cao` extension data directory. It MUST honor `XDG_DATA_HOME` and Windows
+`LOCALAPPDATA`, refuse linked/source installations, and preserve an existing
+binary on verification failure. An explicit `githubnext/gh-aw-cao@vX.Y.Z`
+source MUST select that extension release; other sources MUST use the latest
+stable extension. Runtime revision selection remains independent.
+The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
+removed shell equivalents. No shell launcher is installed. Actions and Node-only
+tools MUST invoke `node activity/cao.mjs <command>` or another explicit Node
+entry point directly, including SQLite `doctor` and `setup-auth hosted-cli`.
+User-facing commands MUST live in the Go extension, while Actions execution
+support MUST live in the JavaScript runtime. Control-plane validation MUST have
+one JavaScript implementation, without a Go or shell-wrapper command. Its workflow
+MUST execute the shipped JavaScript runtime directly with
+`node activity/cao.mjs validate --json` at its installed revision, using the
+production policy resolver. It MUST NOT build or download the Go extension or
+require consumer npm metadata. Runtime tests MUST preserve the structured report
+and exit-code contract. CI MUST keep its report under `RUNNER_TEMP`, not
+in the repository working tree.
 
 The supported root CAO installer MUST materialize the root runtime after gh-aw
 has resolved the root package record. For a main or SHA source, the
@@ -361,9 +391,10 @@ The quickstart MUST:
 - select repository-local workflow-token mode and require public GitHub Pages
   with GitHub Actions as its source;
 - refuse unrelated working-tree paths, stage only `.github/`, `activity/`,
-  `dashboard/`, `repo-assist/`, `cao.sh`, gh-aw's root `.gitattributes`,
+  `dashboard/`, `repo-assist/`, gh-aw's root `.gitattributes`,
   and its `.vscode/settings.json` project settings, refuse pre-staged changes,
-  then create and push one commit on the repository default branch;
+  include the retired launcher's unstaged deletion only when present, then create
+  and push one commit on the repository default branch;
 - dispatch one Repo Assist orchestrator and at most one maintenance worker,
   preserving blocked, incomplete, or failed outcomes rather than converting
   missing evidence into a finding;

@@ -71,7 +71,7 @@ export function checkLiveWriteAuthentication({
       }
     }
     if (!configured && environment.CI === 'true') {
-      writeWarning(`Live write authentication is not configured for ${repo}; run ./cao.sh setup to configure a GitHub App or PAT before posting live items.`);
+      writeWarning(`Live write authentication is not configured for ${repo}; run gh cao setup to configure a GitHub App or PAT before posting live items.`);
     }
   } catch {
     // Credential inspection is best-effort when the caller cannot read Actions settings.
@@ -147,7 +147,7 @@ export function formatSetupAuthenticationSummary(result) {
     `  Authentication mode: ${GITHUB_AUTH_MODES.PAT}`,
     '',
     'Existing GitHub App credentials, if present, are inactive while PAT mode is selected.',
-    'Next: run ./cao.sh validate, then validate a bounded review workflow before removing App credentials.',
+    'Next: review and publish policy changes, then run gh workflow run cao-validate.yml and a bounded review workflow before removing App credentials.',
   ].join('\n');
 }
 
@@ -233,8 +233,8 @@ export function activityCollectionPlan(controlSettings, {
   if (!Object.values(GITHUB_AUTH_MODES).includes(mode)) {
     throw new Error(
       "GH_AW_GITHUB_AUTH_MODE must select app, pat, or workflow-token for CAO Activity; "
-      + `run ./cao.sh setup-auth github-app --repo ${controlRepository} or `
-      + `./cao.sh setup-auth token --repo ${controlRepository}`,
+      + `run gh cao setup auth github-app --repo ${controlRepository} or `
+      + `gh cao setup auth token --repo ${controlRepository}`,
     );
   }
 

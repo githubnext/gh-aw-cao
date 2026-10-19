@@ -219,7 +219,7 @@ type nativeSetupStageError struct {
 
 func (e *nativeSetupStageError) Error() string {
 	if e.policySaved {
-		return fmt.Sprintf("%s\nConfiguration was saved; run ./cao.sh validate and review the installed files.", e.cause)
+		return fmt.Sprintf("%s\nConfiguration was saved; run gh cao doctor and review the installed files.", e.cause)
 	}
 	return fmt.Sprintf("%s\nSetup stopped during %s; the local policy was not changed, but Pages settings or credentials may already have changed.", e.cause, e.stage)
 }
@@ -298,7 +298,7 @@ func nativeSetup(cmd *cobra.Command, gh ghExecutor) error {
 	if result["cancelled"] == true {
 		return nil
 	}
-	_, err = fmt.Fprint(cmd.OutOrStdout(), "Next: ./cao.sh validate\nThen review git diff and git status, commit, and push the installed files.\nAdd your first campaign separately with ./cao.sh add githubnext/gh-aw-cao/CAMPAIGN.\n")
+	_, err = fmt.Fprint(cmd.OutOrStdout(), "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nAdd your first campaign separately with gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN.\n")
 	return err
 }
 
@@ -514,7 +514,7 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 			return " (" + pages.URL + ")"
 		}()); err != nil {
 			// The policy has been saved at this point; do not imply rollback.
-			return result, nativeErrorf("Configuration was saved, but completion could not be displayed; run ./cao.sh validate and review the installed files")
+			return result, nativeErrorf("Configuration was saved, but completion could not be displayed; run gh cao doctor and review the installed files")
 		}
 	}
 	return result, nil

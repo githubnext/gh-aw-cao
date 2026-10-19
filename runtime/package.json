@@ -90,7 +90,6 @@
     "dashboard/site/scripts/prepare-terminal.mjs",
     "dashboard/site/scripts/llms.mjs",
     "dashboard/site/service-worker.js",
-    "cao.sh",
     ".github/actions/setup-cao-runtime",
     ".github/actions/setup-gh-aw",
     ".github/cao/instructions.md",

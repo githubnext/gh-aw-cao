@@ -56,7 +56,7 @@ prints before continuing.
 ## 2. Connect one repository
 
 ```bash
-./cao.sh setup
+gh cao setup
 ```
 
 Follow **Repositories → Connections → Review and apply**:
@@ -77,10 +77,10 @@ supports the exact current public control repository, not an external target.
 
 ## 3. Publish your configuration
 
-Validate and inspect the installed files:
+Check the installation and inspect the installed files:
 
 ```bash
-./cao.sh validate
+gh cao doctor
 git status --short
 git diff -- .github
 ```
@@ -92,12 +92,13 @@ public dashboard.
 Commit the CAO files and push to the control repository's default branch:
 
 ```bash
-git add .github activity dashboard cao.sh
+git add .github activity dashboard
 git commit -m "Set up CAO monitoring"
 git push
 ```
 
 **Ready:** GitHub Actions can use your reviewed configuration.
+Check **CAO validation** in Actions for full policy and workflow validation.
 The installation includes scheduled Activity collection; pushing the policy
 also triggers collection. This collects evidence, not new agentic work.
 
@@ -134,7 +135,7 @@ browse the [campaign catalog](https://githubnext.github.io/gh-aw-cao/catalog/).
 Install a chosen campaign with:
 
 ```bash
-./cao.sh add githubnext/gh-aw-cao/CAMPAIGN
+gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN
 ```
 
 Installation is not execution. Review and commit its workflows and policy

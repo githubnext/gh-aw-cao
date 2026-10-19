@@ -46,7 +46,7 @@ Grant only the permissions that your installed campaigns need. For more informat
      enterprise Apps installed separately in each enrolled organization.
 
      ```bash
-     ./cao.sh setup-auth github-app \
+     gh cao setup auth github-app \
        --repo OWNER/CONTROL-REPOSITORY \
        --read-client-id READ-APP-CLIENT-ID \
        --write-client-id WRITE-APP-CLIENT-ID \
@@ -61,8 +61,8 @@ Grant only the permissions that your installed campaigns need. For more informat
 
      ```bash
      export GH_HOST=HOSTNAME
-     ./cao.sh setup-auth github-app --repo OWNER/CONTROL-REPOSITORY --dry-run
-     ./cao.sh setup-auth github-app \
+     gh cao setup auth github-app --repo OWNER/CONTROL-REPOSITORY --dry-run
+     gh cao setup auth github-app \
        --repo OWNER/CONTROL-REPOSITORY \
        --write-repository OWNER/OUTPUT-REPOSITORY
      ```
@@ -70,7 +70,7 @@ Grant only the permissions that your installed campaigns need. For more informat
    - **For several organizations in one enterprise,** create both private apps in your enterprise settings. The manifest helper can't create apps that an enterprise owns. Install each app on selected repositories in every enrolled organization, then run the following command.
 
      ```bash
-     ./cao.sh setup-auth enterprise-app \
+     gh cao setup auth enterprise-app \
        --repo OWNER/CONTROL-REPOSITORY \
        --read-client-id READ-APP-CLIENT-ID \
        --write-client-id WRITE-APP-CLIENT-ID \

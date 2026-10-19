@@ -90,7 +90,7 @@ Model routing uses typed Audit facts projected from `usage/aw_session.jsonl`,
 not a parallel telemetry table. The Model routing page resolves proxy-first
 state, per-phase accounting, sub-agent attribution and cost completeness with
 Dashboard Language queries. Missing costs remain unknown; partial runs do not
-enter cost quantiles. Browser schema 31 / IndexedDB version 41 rebuild older
+enter cost quantiles. Browser schema 32 / IndexedDB version 42 rebuild older
 projections, and hosted PostgreSQL requires a fresh generated schema.
 
 A Run owns ordered Domain, Tool, Skill, Friction, Audit, and Issue records combining observations
@@ -114,8 +114,8 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 31. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 41. Its canonical stores are
+The canonical model is version 32. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 42. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,

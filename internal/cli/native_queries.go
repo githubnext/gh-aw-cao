@@ -14,6 +14,8 @@ import (
 	"unicode/utf16"
 
 	"github.com/spf13/cobra"
+
+	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
 )
 
 func nativeQuery(cmd *cobra.Command, args []string) (err error) {
@@ -73,7 +75,7 @@ func nativeQuery(cmd *cobra.Command, args []string) (err error) {
 		if err := json.Unmarshal(content, &definition); err != nil || definition == nil {
 			return fmt.Errorf("--stdin requires one JSON query object")
 		}
-		rows, err := executeNativeQuery(cmd.Context(), definition, func(source string) ([]map[string]any, error) {
+		rows, err := dashboardquery.Execute(cmd.Context(), definition, func(source string) ([]map[string]any, error) {
 			if !slices.Contains(nativeCollections, source) {
 				return nil, nativeErrorf("Unknown collection: %s", source)
 			}
@@ -298,9 +300,9 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 				return nil, nativeErrorf("No canonical database query or runtime source is registered for %q.", source)
 			}
 			definition = nativeObject(nativeResolveOperands(definition, parameters, ""))
-			rows, err = executeNativeQuery(ctx, definition, func(input string) ([]map[string]any, error) {
+			rows, err = dashboardquery.Execute(ctx, definition, func(input string) ([]map[string]any, error) {
 				if isDashboard && input == source && c.database[source] != nil {
-					return executeNativeQuery(ctx, c.database[source], load)
+					return dashboardquery.Execute(ctx, c.database[source], load)
 				}
 				return load(input)
 			})

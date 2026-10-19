@@ -1,4 +1,4 @@
-package cli
+package dashboardquery
 
 import (
 	"bytes"
@@ -58,6 +58,7 @@ type engineBudget struct {
 	ctx        context.Context
 	deadline   time.Time
 	operations int64
+	outputRows int
 }
 
 func (b *engineBudget) spend(n int64) error {
@@ -85,6 +86,10 @@ func executeNativeQuery(ctx context.Context, definition map[string]any, load fun
 		ctx = context.Background()
 	}
 	budget := &engineBudget{ctx: ctx, deadline: time.Now().Add(60 * time.Second)}
+	return executeWithBudget(definition, load, budget)
+}
+
+func executeWithBudget(definition map[string]any, load func(string) ([]map[string]any, error), budget *engineBudget) ([]map[string]any, error) {
 	if err := budget.spend(0); err != nil {
 		return nil, err
 	}
@@ -259,8 +264,12 @@ func executeNativeQuery(ctx context.Context, definition map[string]any, load fun
 			return nil, err
 		}
 	}
-	if len(rows) > engineMaxOutputRows {
-		return nil, engineUnavailable("result exceeds max-output-rows (%d)", engineMaxOutputRows)
+	outputRows := engineMaxOutputRows
+	if budget.outputRows > 0 {
+		outputRows = budget.outputRows
+	}
+	if len(rows) > outputRows {
+		return nil, engineUnavailable("result exceeds max-output-rows (%d)", outputRows)
 	}
 	if err := budget.spend(0); err != nil {
 		return nil, err

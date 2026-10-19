@@ -56,7 +56,7 @@ The curated production bundle of canonical Activity and Dashboard code that a co
 
 ## CAO validation
 
-The read-only `./cao.sh validate` command that checks policy resolution against the production resolver, the installed gh-aw compiler version, strict compilation and generated-workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. It reports emitted findings (severity, category, remediation) and never rewrites a workflow artifact; exit code `0` means no errors, `1` means a finding met the requested severity threshold, and `2` means the validator itself could not complete. See [Validate the Control Plane](cao-cli.md#validate-the-control-plane).
+The Actions-only `cao-validate.yml` workflow, implemented in the shipped JavaScript runtime, that checks policy resolution against the production resolver, the installed gh-aw compiler version, strict compilation and generated-workflow drift, campaign workflow identity and enablement, `gh aw doctor`, and bounded trust-boundary security rules. It reports emitted findings (severity, category, remediation) and never rewrites a workflow artifact; exit code `0` means no errors, `1` means a finding met the requested severity threshold, and `2` means the validator itself could not complete. Request a run with `gh workflow run cao-validate.yml` and inspect its `cao-validation` report artifact. See [Validate the Control Plane](cao-cli.md#validate-the-control-plane).
 
 ## CLI command queue
 
@@ -108,7 +108,7 @@ The explicit `generic` HTTP target with `listener: external` that lets a separat
 
 ## gh cao
 
-The operator-facing GitHub CLI extension for CAO, installed from this repository as `gh aw-cao` because GitHub CLI derives the extension name from the repository name. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` release binaries with SHA-256 checksums. The extension is entirely Go and executes no Node.js, npm, or installed CAO runtime: policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics all run natively. Actions pipeline and maintainer commands remain owned by `./cao.sh` and are not migrated. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All operator commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot doctor, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
 
 ## GitHub quota service
 
@@ -128,7 +128,7 @@ The control repository's exclusive right to admit a `live` worker for a campaign
 
 ## Marketplace
 
-The read-only dashboard catalog of campaign packages resolved from an operator-ordered list of registries declared in `control-plane.marketplace.registries`. It shows normalized package metadata, provenance, and an immutable source coordinate, and only ever offers a copy-only `./cao.sh add` command; it never installs a package or contacts a registry from the browser. Package rows carry declaratively sorted and filtered verification, maintenance, popularity, installation, and adoption signals, each reported as a known value with its provenance source or `unknown`; these signals describe discovery only and never grant or infer control-plane authority. See [Browse Campaign Packages](marketplace.md).
+The read-only dashboard catalog of campaign packages resolved from an operator-ordered list of registries declared in `control-plane.marketplace.registries`. It shows normalized package metadata, provenance, and an immutable source coordinate, and only ever offers a copy-only `gh cao campaigns add` command; it never installs a package or contacts a registry from the browser. Package rows carry declaratively sorted and filtered verification, maintenance, popularity, installation, and adoption signals, each reported as a known value with its provenance source or `unknown`; these signals describe discovery only and never grant or infer control-plane authority. See [Browse Campaign Packages](marketplace.md).
 
 ## Operator
 
@@ -160,7 +160,7 @@ A control repository whose own visibility is public, so its policy, workflow run
 
 ## Quickstart
 
-The explicit staged guide run by `activity/quickstart.mjs`, distinct from ordinary install or `cao setup`. Installation requires an explicit public `--target OWNER/REPO` and a selected control repository; no owner or repository is suggested. It configures Repo Assist maintenance in review mode, commits and pushes bounded CAO paths, and stops with the orchestrator paused. Separate `--step run`, `--step collect`, and read-only `--step dashboard` commands reuse committed policy to introduce campaign execution, Activity evidence, and verified public dashboard publication without a long terminal wait. The campaign never modifies the target. Explicit `--wait` retains the end-to-end flow for unattended use immediately after bare installation, not for resuming stages. This optional campaign walkthrough is not required for monitoring. See [Try a Repo Assist review](repo-assist-quickstart.md), [Set Up CAO](setup-quickstarts.md), and [Repository Layout and Installation §4.3-4.4](https://github.com/githubnext/gh-aw-cao/blob/main/specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
+The explicit staged guide run by `gh cao quickstart`, distinct from ordinary install or `gh cao setup`. Installation requires an explicit public `--target OWNER/REPO` and a selected control repository; no owner or repository is suggested. It configures Repo Assist maintenance in review mode, commits and pushes bounded CAO paths, and stops with the orchestrator paused. Separate `--step run`, `--step collect`, and read-only `--step dashboard` commands reuse committed policy to introduce campaign execution, Activity evidence, and verified public dashboard publication without a long terminal wait. The campaign never modifies the target. Explicit `--wait` retains the end-to-end flow for unattended use immediately after bare installation, not for resuming stages. This optional campaign walkthrough is not required for monitoring. See [Try a Repo Assist review](repo-assist-quickstart.md), [Set Up CAO](setup-quickstarts.md), and [Repository Layout and Installation §4.3-4.4](https://github.com/githubnext/gh-aw-cao/blob/main/specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
 
 ## Repo memory
 

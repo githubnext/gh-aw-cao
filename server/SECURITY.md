@@ -814,11 +814,11 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
 - **Native command planning**: Go re-plans every command against the catalog
   allowlist. CAO campaign updates become native `gh-aw update` invocations
   constrained to the configured control repository and selected CAO package.
-  The backend does not run `cao.sh`, check out the control repository, or
+  The backend does not run repository shell scripts, check out the control repository, or
   execute scripts from it. The image reference is pinned by digest and included
   in command-start audit records. An operator-selected mirror must also use a
   reviewed digest-pinned reference.
-- **App setup**: `./cao.sh setup-auth hosted-cli` creates a least-privilege
+- **App setup**: `node activity/cao.mjs setup-auth hosted-cli` creates a least-privilege
   App (actions, contents, pull requests, and workflows write; metadata read).
   It refuses sensitive or organization permissions and installs the App only
   on the control repository and named same-owner targets. The private-key file

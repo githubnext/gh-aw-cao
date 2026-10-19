@@ -43,13 +43,13 @@ In `.github/workflows/cao.json`, add only the required owners and exact reposito
 ## Configure the Tokens
 
 ```bash
-./cao.sh setup-auth token \
+gh cao setup auth token \
   --repo "$CONTROL_REPO" \
   --write-repository "$CONTROL_REPO" \
   --expires-in 30 \
   --dry-run
 
-./cao.sh setup-auth token \
+gh cao setup auth token \
   --repo "$CONTROL_REPO" \
   --write-repository "$CONTROL_REPO" \
   --expires-in 30
@@ -77,7 +77,7 @@ git diff --check
 Review the diff. After explicit approval:
 
 ```bash
-git add .github activity dashboard cao.sh
+git add .github activity dashboard
 git commit -m "Install Central Agentic Ops control plane"
 git push --set-upstream origin HEAD
 ```

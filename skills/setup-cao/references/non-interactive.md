@@ -1,6 +1,6 @@
 # Non-interactive setup
 
-Load this reference when no user is available, `CI` is set, or `./cao.sh setup`
+Load this reference when no user is available, `CI` is set, or `gh cao setup`
 cannot run in an interactive terminal. This is a constrained fallback, not a
 second setup flow.
 
@@ -64,9 +64,9 @@ created; other control names or owners require exact
    secrets:
 
    ```bash
-   ./cao.sh setup-auth github-app --repo OWNER/CONTROL-REPOSITORY --dry-run
-   ./cao.sh setup-auth enterprise-app --repo OWNER/CONTROL-REPOSITORY --read-client-id READ_APP_CLIENT_ID --write-client-id WRITE_APP_CLIENT_ID --policy .github/workflows/cao.json --dry-run
-   ./cao.sh setup-auth token --repo OWNER/CONTROL-REPOSITORY --policy .github/workflows/cao.json --dry-run
+   gh cao setup auth github-app --repo OWNER/CONTROL-REPOSITORY --dry-run
+   gh cao setup auth enterprise-app --repo OWNER/CONTROL-REPOSITORY --read-client-id READ_APP_CLIENT_ID --write-client-id WRITE_APP_CLIENT_ID --policy .github/workflows/cao.json --dry-run
+   gh cao setup auth token --repo OWNER/CONTROL-REPOSITORY --policy .github/workflows/cao.json --dry-run
    ```
 
    These commands preview the selected profile; they do not configure
@@ -78,9 +78,10 @@ created; other control names or owners require exact
 8. Configure Pages in the control repository's settings to use GitHub Actions;
    for a private repository, restrict access to repository readers. Verify
    visibility and stop if the plan cannot restrict a private site's access.
-9. Run `./cao.sh validate`, `gh aw doctor --repo
+9. Run `gh cao doctor`, `gh aw doctor --repo
    OWNER/CONTROL_REPOSITORY --dir .`, and `git diff --check`; inspect the policy
-   and diff before asking to commit or push.
+   and diff before asking to commit or push. Full policy/workflow validation
+   runs in Actions after publication.
 
 Do not manually copy runtime files, invent a new credential profile, install a
 campaign, enable a workflow, or dispatch work.

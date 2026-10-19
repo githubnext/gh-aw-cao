@@ -182,6 +182,24 @@ test('CLI command sources are typed runtime projections, never canonical tables'
   }
 });
 
+test('configured-model resolution facts are optional typed Audit columns', () => {
+  const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  const bindings = readFileSync(new URL('../internal/postgresx/schema.gen.go', import.meta.url), 'utf8');
+  const auditTable = sql.match(/CREATE TABLE IF NOT EXISTS audits \(\n([\s\S]*?)\n\)/);
+  assert.ok(auditTable, 'Audit must have a physical Postgres table');
+  for (const [field, column] of [
+    ['resolutionRole', 'resolution_role'],
+    ['resolutionConfiguredModel', 'resolution_configured_model'],
+    ['resolutionResolvedModel', 'resolution_resolved_model']
+  ]) {
+    assert.ok(tables.get('$audits').has(field), `missing $audits.${field}`);
+    // Nullable without defaults: a failed resolution or absent field stays unknown, never an empty string.
+    assert.match(auditTable[1], new RegExp(`^  ${column} TEXT,$`, 'm'));
+    assert.ok(bindings.includes(`{field: "${field}", name: "${column}", kind: "", sql: "TEXT"}`));
+    assert.ok(definitions.find((definition) => definition.name === 'audits').select.some((selected) => selected.field === field));
+  }
+});
+
 test('generated Postgres contract persists Campaign as a namespace-scoped entity table', () => {
   const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
   const campaignTable = sql.match(/CREATE TABLE IF NOT EXISTS campaigns \(\n([\s\S]*?)\n\);/);

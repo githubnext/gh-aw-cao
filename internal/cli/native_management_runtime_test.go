@@ -9,13 +9,85 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
+const nativeRetiredLauncherFixture = `#!/bin/sh
+set -eu
+
+root="$(CDPATH='' cd -P "$(dirname "$0")" && pwd)"
+
+cli="$root/activity/cao.mjs"
+if [ ! -f "$cli" ]; then
+  echo "cao CLI is unavailable; install the Central Agentic Ops root campaign." >&2
+  exit 1
+fi
+
+exec node "$cli" --pipeline "$@"
+`
+
+func TestNativeRuntimeRetiresOnlyKnownLaunchers(t *testing.T) {
+	for _, name := range []string{"pipeline", "older", "consumer", "symlink", "directory", "absent"} {
+		t.Run(name, func(t *testing.T) {
+			nativeManagementDirectory(t)
+			content := nativeRetiredLauncherFixture
+			switch name {
+			case "older":
+				content = strings.Replace(content, " --pipeline ", " ", 1)
+				writeTestFile(t, "cao.sh", content)
+			case "pipeline":
+				writeTestFile(t, "cao.sh", content)
+			case "consumer":
+				content = "#!/bin/sh\necho consumer-owned\n"
+				writeTestFile(t, "cao.sh", content)
+			case "symlink":
+				if runtime.GOOS == "windows" {
+					t.Skip("symlink creation requires privileges on Windows")
+				}
+				writeTestFile(t, "consumer-script", content)
+				if err := os.Symlink("consumer-script", "cao.sh"); err != nil {
+					t.Fatal(err)
+				}
+			case "directory":
+				if err := os.Mkdir("cao.sh", 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := nativeRemoveRetiredLauncher(); err != nil {
+				t.Fatal(err)
+			}
+			info, err := os.Lstat("cao.sh")
+			if name == "pipeline" || name == "older" || name == "absent" {
+				if !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("retired launcher still exists: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if name == "directory" {
+				if !info.IsDir() {
+					t.Fatal("consumer directory was replaced")
+				}
+				return
+			}
+			if name == "symlink" && info.Mode()&os.ModeSymlink == 0 {
+				t.Fatal("consumer symlink was replaced")
+			}
+			got, err := os.ReadFile("cao.sh")
+			if err != nil || string(got) != content {
+				t.Fatalf("consumer launcher changed: %q %v", got, err)
+			}
+		})
+	}
+}
+
 func nativeRuntimeArchiveFixture(t *testing.T, revision string, corrupt bool) string {
 	t.Helper()
-	files := map[string]string{}
+	files := map[string]string{"cao.sh": nativeRetiredLauncherFixture}
 	for _, name := range nativeRuntimeRequiredFiles {
 		files[name] = "bundled: " + name
 	}
@@ -56,6 +128,7 @@ func TestNativeManagementRuntimeAttestationAndHashChecks(t *testing.T) {
 			revision := strings.Repeat("c", 40)
 			writeTestFile(t, ".github/aw/packages/root.json", `{"package":"githubnext/gh-aw-cao","source":"githubnext/gh-aw-cao@v1.2.3","resolvedCommit":"`+revision+`"}`)
 			writeTestFile(t, "activity/existing", "operator original")
+			writeTestFile(t, "cao.sh", nativeRetiredLauncherFixture)
 			archive := nativeRuntimeArchiveFixture(t, revision, failure == "hash")
 			attested := false
 			gh := func(_ context.Context, args ...string) (string, string, error) {
@@ -91,7 +164,14 @@ func TestNativeManagementRuntimeAttestationAndHashChecks(t *testing.T) {
 				if err != nil || string(content) != "operator original" {
 					t.Fatal("unverified runtime replaced installed resources")
 				}
+				content, err = os.ReadFile("cao.sh")
+				if err != nil || string(content) != nativeRetiredLauncherFixture {
+					t.Fatal("unverified runtime retired the existing launcher")
+				}
 			} else {
+				if _, err := os.Lstat("cao.sh"); !errors.Is(err, os.ErrNotExist) {
+					t.Fatal("verified legacy archive installed or preserved a retired launcher")
+				}
 				for _, name := range nativeRuntimeRequiredFiles {
 					if _, err := os.Stat(name); err != nil {
 						t.Fatalf("runtime is missing %s", name)

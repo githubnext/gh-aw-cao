@@ -49,7 +49,7 @@ func TestOperatorCommandInventory(t *testing.T) {
 	want := []string{
 		"campaigns", "computation", "doctor", "download", "gh", "init",
 		"mcp", "pages", "prompt", "queries", "query", "query-info",
-		"quickstart", "repos", "setup", "update", "upgrade-gh-aw", "validate", "version",
+		"quickstart", "repos", "setup", "update", "upgrade-gh-aw", "version",
 	}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("command inventory = %v, want %v", names, want)
@@ -69,6 +69,28 @@ func TestCampaignCommandInventory(t *testing.T) {
 	slices.Sort(names)
 	if want := []string{"add", "disable", "enable", "mode"}; !reflect.DeepEqual(names, want) {
 		t.Fatalf("campaign command inventory = %v, want %v", names, want)
+	}
+}
+
+func TestActionsValidationIsNotAnOperatorCommand(t *testing.T) {
+	for _, args := range [][]string{
+		{"validate"}, {"validate", "--json"}, {"validate", "--strict-warnings"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			root, stdout, stderr := testCommand(t, nil, nil)
+			root.SetArgs(args)
+			if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "unknown") {
+				t.Fatalf("expected unknown validation command, got %v", err)
+			}
+			if stdout.Len() != 0 || stderr.Len() != 0 {
+				t.Fatalf("unexpected output: stdout=%q stderr=%q", stdout, stderr)
+			}
+		})
+	}
+	root, stdout, _ := testCommand(t, nil, nil)
+	root.SetArgs([]string{"validate", "--help"})
+	if err := root.Execute(); err != nil || strings.Contains(stdout.String(), "gh cao validate") {
+		t.Fatalf("removed validation command has help: %v\n%s", err, stdout)
 	}
 }
 
@@ -128,7 +150,6 @@ func TestOperatorRuntimeArguments(t *testing.T) {
 		{[]string{"quickstart", "--step=run", "--json"}, []string{"quickstart", "--json", "--step", "run"}},
 		{[]string{"quickstart", "--target", "owner/repo"}, []string{"quickstart", "--target", "owner/repo"}},
 		{[]string{"quickstart", "--target", "owner/repo", "--wait"}, []string{"quickstart", "--target", "owner/repo", "--wait"}},
-		{[]string{"validate", "--strict-warnings", "--json=false"}, []string{"validate", "--strict-warnings"}},
 		{[]string{"download", "--url=https://example.test/cao/payload-hashes.json", "--output", "space dir"}, []string{"download", "--output", "space dir", "--url", "https://example.test/cao/payload-hashes.json"}},
 		{[]string{"pages", "--json", "overview"}, []string{"pages", "overview", "--json"}},
 		{[]string{"queries", "--dashboard", "custom.json"}, []string{"queries", "--dashboard", "custom.json"}},

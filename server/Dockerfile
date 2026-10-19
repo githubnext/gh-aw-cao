@@ -31,8 +31,10 @@ ARG VERSION=dev
 ARG REVISION=unknown
 WORKDIR /workspace/server
 COPY server/go.mod server/go.sum ./
+COPY internal/dashboardquery/go.mod internal/dashboardquery/go.sum /workspace/internal/dashboardquery/
 RUN go mod download
 COPY server/ ./
+COPY internal/dashboardquery/ /workspace/internal/dashboardquery/
 RUN CGO_ENABLED=0 go build \
     -trimpath \
     -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" \

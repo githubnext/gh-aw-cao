@@ -125,6 +125,17 @@ export function routingMetadata(type, data) {
   }
   /** @param {Record<string, unknown>} value */
   const clean = (value) => Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined));
+  if (type === 'model.resolution') {
+    // Runner-written configured-model resolution: keep values exactly, including provider prefixes.
+    return [{ fields: clean({
+      sourceEngine: identifier(data.engine), resolutionRole: identifier(data.role),
+      resolutionConfiguredModel: identifier(field(data, 'configuredModel')),
+      resolutionResolvedModel: identifier(field(data, 'resolvedModel')),
+      provider: identifier(data.provider),
+      status: ['resolved', 'exact', 'failed'].includes(String(data.status)) ? String(data.status) : undefined,
+      code: ['model_unavailable', 'catalog_unavailable'].includes(String(data.cause)) ? String(data.cause) : undefined
+    }) }];
+  }
   if (type === 'session.collection') {
     return [
       { key: 'summary', fields: clean({ status: 'collection-summary',

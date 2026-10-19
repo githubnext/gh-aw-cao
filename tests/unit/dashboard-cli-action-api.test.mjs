@@ -8,7 +8,7 @@ import { cliActionTemplateContext } from "../../dashboard/site/src/cli-action-te
 
 const dashboard = { dashboard: { "cli-actions": [
   { id: "compile", command: "gh aw compile", arguments: [{ id: "strict", flag: "--strict", default: true }] },
-  { id: "update", command: "./cao.sh update --repo {repository}" },
+  { id: "update", command: "gh cao update --repo {repository}" },
   { id: "copy", command: "gh aw compile", "copy-only": true },
 ] } };
 

@@ -44,7 +44,7 @@ Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
 a complete installation: gh-aw cannot run the required post-install materialization step
 for component manifests, and those manifests intentionally contain no duplicate
 runtime resources. The root installation adds the deterministic dashboard
-automation without an additional enable variable. Run `./cao.sh setup` to
+automation without an additional enable variable. Run `gh cao setup` to
 configure Pages for GitHub Actions with repository-restricted access for a
 private control repository. The standalone publisher remains manual-only and
 cannot enable Pages for the repository.
@@ -58,7 +58,7 @@ curl --fail --silent --show-error --location \
   bash -s -- githubnext/gh-aw-cao
 ```
 
-Use `./cao.sh update` to move installed campaigns to a newer reviewed
+Use `gh cao update` to move installed campaigns to a newer reviewed
 release. It runs gh-aw updates and rematerializes canonical runtime files from
 the immutable resolved commit recorded by gh-aw.
 
@@ -169,7 +169,7 @@ and timed-out commands. Attach by command ID to replay retained stdout/stderr
 and follow new output. Cancel explicitly to terminate work; Retry creates a new
 entry linked to a failed or timed-out command.
 
-The command service runs displayed `gh aw` and `./cao.sh` commands in a
+The command service runs displayed `gh aw` and `gh cao` commands in a
 pseudo-terminal through `node-pty`, capturing colors even when gh-aw requires
 TTY detection. Install its native runtime with `npm ci` in `dashboard/site`.
 The pseudo-terminal combines stdout and stderr in terminal order. Authentication,
@@ -273,7 +273,7 @@ This starts the local preview through Playwright with the Pixel 7 profile and a 
 
 ## Standalone Pages site
 
-Before running the standalone deployment, run `./cao.sh setup` in the control repository. It configures the Pages source as GitHub Actions and requires repository-restricted access for a private repository. If your plan does not support private Pages or you cannot manage Pages settings, setup fails rather than proceeding with a public dashboard. For an already configured review repository, verify the same settings:
+Before running the standalone deployment, run `gh cao setup` in the control repository. It configures the Pages source as GitHub Actions and requires repository-restricted access for a private repository. If your plan does not support private Pages or you cannot manage Pages settings, setup fails rather than proceeding with a public dashboard. For an already configured review repository, verify the same settings:
 
 1. In **Settings > Pages**, confirm **GitHub Actions** is the source.
 2. Confirm site access is restricted to the intended audience.

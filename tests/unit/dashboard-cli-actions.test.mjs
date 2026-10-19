@@ -65,11 +65,9 @@ if (args.includes("--help") || args[0] === "api") {
   process.stderr.write("\\x1b[38;2;10;20;30mProgress\\x1b[0m\\n");
 }
 `;
-  for (const filename of [executable, join(directory, "cao.sh")]) {
-    await writeFile(filename, script);
-    await chmod(filename, 0o755);
-  }
-  for (const command of ["gh aw compile", "./cao.sh update"]) {
+  await writeFile(executable, script);
+  await chmod(executable, 0o755);
+  for (const command of ["gh aw compile", "gh cao update"]) {
     for (const streaming of [false, true]) {
       const output = { stdout: "", stderr: "" };
       const result = await executeDashboardCommand({
@@ -216,11 +214,16 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
   );
 });
 
-test("CLI actions parse CAO helper commands without a shell", () => {
-  assert.deepEqual(
-    parseDashboardCommand("./cao.sh add githubnext/gh-aw-cao/dependabot"),
-    ["./cao.sh", "add", "githubnext/gh-aw-cao/dependabot"],
-  );
+test("CLI actions parse native gh cao command families without a shell", () => {
+  for (const [command, args] of [
+    ["gh cao campaigns add githubnext/gh-aw-cao/dependabot", ["campaigns", "add", "githubnext/gh-aw-cao/dependabot"]],
+    ["gh cao campaigns mode preview repo-assist", ["campaigns", "mode", "preview", "repo-assist"]],
+    ["gh cao repos add octo/repo", ["repos", "add", "octo/repo"]],
+    ["gh cao query campaign-runs --param 'campaign=repo-assist'", ["query", "campaign-runs", "--param", "campaign=repo-assist"]],
+    ["gh cao --version", ["--version"]],
+  ]) {
+    assert.deepEqual(parseDashboardCommand(command), ["gh", "cao", ...args]);
+  }
 });
 
 test("CLI actions reject commands outside supported GitHub CLI commands", () => {
@@ -228,7 +231,7 @@ test("CLI actions reject commands outside supported GitHub CLI commands", () => 
     () => parseDashboardCommand("gh api user"),
     {
       message:
-        'CLI action command must be an explicit "./cao.sh <command>" or "gh aw <command>" or "gh workflow run <workflow>" or "gh agent-task create --from-file -" invocation.',
+        'CLI action command must be an explicit "gh cao <command>" or "gh aw <command>" or "gh workflow run <workflow>" or "gh agent-task create --from-file -" invocation.',
     },
   );
   assert.throws(() => parseDashboardCommand("gh workflow view"), /must be an explicit/);
@@ -245,6 +248,9 @@ test("CLI actions reject commands outside supported GitHub CLI commands", () => 
     /must be an explicit/,
   );
   assert.throws(() => parseDashboardCommand("sh -c 'gh aw compile'"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand("./cao.sh add githubnext/gh-aw-cao/dependabot"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand("gh caox campaigns enable dependabot"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand("gh cao"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh aw compile\nwhoami"), /single line/);
   assert.throws(() => parseDashboardCommand("gh aw compile '"), /incomplete/);
 });
@@ -262,7 +268,7 @@ test("CLI actions accept only stdin-backed agent task creation", () => {
 test("CLI actions execute the CAO helper with the approved token and Git identity", async () => {
   const calls = [];
   const result = await executeDashboardCommand({
-    command: "./cao.sh update --major",
+    command: "gh cao update --major",
     workingDirectory: "/workspace",
     githubToken: "token-value",
     execute: async (...args) => {
@@ -280,8 +286,8 @@ test("CLI actions execute the CAO helper with the approved token and Git identit
 
   assert.equal(result.ok, true);
   assert.deepEqual(calls[2].slice(0, 2), [
-    "./cao.sh",
-    ["update", "--major"],
+    "gh",
+    ["cao", "update", "--major"],
   ]);
   assert.equal(calls[2][2].cwd, "/workspace");
   assert.equal(calls[2][2].env.GH_TOKEN, "token-value");

@@ -167,7 +167,7 @@ you intend to assist. Do not rerun installation to continue.
 Start the campaign only when you are ready:
 
 ```bash
-./cao.sh quickstart --step run
+gh cao quickstart --step run
 ```
 
 This uses the target already recorded in policy; it does not reinstall or
@@ -199,7 +199,7 @@ display. It does not rerun the maintenance analysis or apply a proposal.
 After reviewing the completed campaign, request collection:
 
 ```bash
-./cao.sh quickstart --step collect
+gh cao quickstart --step collect
 ```
 
 The command dispatches Activity and returns its Actions link without waiting.
@@ -213,7 +213,7 @@ Do not repeat `--step collect` as a status check; it requests a new snapshot.
 Check publication without starting another workflow:
 
 ```bash
-./cao.sh quickstart --step dashboard
+gh cao quickstart --step dashboard
 ```
 
 This read-only step checks for successful, data-bearing Activity and its
@@ -234,7 +234,7 @@ workers or live authority is a separate reviewed policy decision.
 ### Optional: wait for the whole flow
 
 For deliberate unattended use immediately after bare installation,
-`./cao.sh quickstart --wait --target TARGET_OWNER/TARGET_REPOSITORY` retains the end-to-end installation, run,
+`gh cao quickstart --wait --target TARGET_OWNER/TARGET_REPOSITORY` retains the end-to-end installation, run,
 collection, and deployment flow. It commits and pushes, starts workflows, and
 waits for remote completion. Do not use it to resume a staged installation or
 as a status check. The staged guide above is the default onboarding experience.
@@ -274,7 +274,7 @@ complete onboarding. Your one real maintenance run may honestly produce a no-op.
 ## Next: assist another repository
 
 Reuse the same control repository and installed Repo Assist campaign.
-Do not run the installer or `cao add` again.
+Do not run the installer or `gh cao campaigns add` again.
 Replace `CONTROL_OWNER/CONTROL_REPOSITORY` below with your actual control
 repository, and `OWNER/REPOSITORY` with the new target you choose.
 
@@ -290,16 +290,16 @@ In the control repository, edit `.github/workflows/cao.json`:
 Keep `control-plane.activity.repositories` set to `CONTROL_OWNER/CONTROL_REPOSITORY`; Activity
 collects the control-plane runs, not source data from the target.
 
-Validate, commit, and push the reviewed policy change:
+Inspect, commit, and push the reviewed policy change:
 
 ```bash
-./cao.sh validate
+git diff -- .github/workflows/cao.json
 git add .github/workflows/cao.json
 git commit -m "Target Repo Assist at OWNER/REPOSITORY"
 git push
 ```
 
-Then run the already-installed campaign:
+Wait for **CAO validation** to pass in Actions, then run the already-installed campaign:
 
 ```bash
 gh workflow enable repo-assist.lock.yml
@@ -336,11 +336,11 @@ curl --fail --silent --show-error --location \
 
 Guided setup installs no campaign and runs no workflow; it never commits or
 pushes. Bare installation also stops without a prompt and prints
-`Next: ./cao.sh setup`. It offers authentication choices based on that scope
+`Next: gh cao setup`. It offers authentication choices based on that scope
 and shows each profile's prerequisites before applying it.
 
 For an optional first look, start with **Repo Assist** after guided setup:
-`./cao.sh add githubnext/gh-aw-cao/repo-assist`.
+`gh cao campaigns add githubnext/gh-aw-cao/repo-assist`.
 
 See [Control Plane Authentication Profiles](control-plane-authentication.md)
 for advanced authentication choices.

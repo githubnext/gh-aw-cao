@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -391,16 +391,18 @@ test("root campaign provides default control-repository agent context", () => {
   assert.match(setupSkill, /Preserve root `AGENTS\.md`/);
 });
 
-test("root campaign installs the CAO CLI helper", () => {
+test("root campaign exposes the explicit Node runtime without a shell launcher", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
-  const helper = readFileSync(join(root, "cao.sh"), "utf8");
-  const materializer = readFileSync(join(root, ".github", "workflows", "shared", "materialize-cao.mjs"), "utf8");
+  const runtimeManifest = JSON.parse(readFileSync(join(root, "runtime", "package.json"), "utf8"));
 
+  assert.equal(existsSync(join(root, "cao.sh")), false);
+  assert.equal(existsSync(join(root, "activity", "pipeline-cli.mjs")), false);
   assert.equal((rootManifest.resources ?? []).some(({ source }) => source === "cao.sh"), false);
-  assert.match(materializer, /'cao\.sh'/);
-  assert.match(helper, /^#!\/bin\/sh/);
-  assert.match(helper, /activity\/cao\.mjs/);
-  assert.doesNotMatch(helper, /\.github\/aw\//);
+  assert.equal(runtimeManifest.files.includes("cao.sh"), false);
+  assert.equal(runtimeManifest.files.includes("activity/pipeline-cli.mjs"), false);
+  const help = execFileSync(process.execPath, [join(root, "activity", "cao.mjs"), "--help"], { encoding: "utf8" });
+  assert.match(help, /cao ingest/);
+  assert.match(help, /cao validate/);
 });
 
 test("root campaign resolves the single CAO bootstrap runtime", () => {
@@ -450,19 +452,19 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
-  assert.match(quickstart, /\.\/cao\.sh setup/);
+  assert.match(quickstart, /gh cao setup/);
   assert.match(quickstart, /installs no campaign and runs no workflow/);
   const campaignQuickstart = readFileSync(join(root, "docs", "repo-assist-quickstart.md"), "utf8");
   assert.match(campaignQuickstart, /latest stable CAO `vX\.Y\.Z`\s+release/);
   assert.match(campaignQuickstart, /development build by passing `githubnext\/gh-aw-cao@main`/);
   assert.doesNotMatch(quickstart, /commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
-  assert.match(updateSection, /\.\/cao\.sh update --major --cool-down 0/);
+  assert.match(updateSection, /gh cao update --major --cool-down 0/);
   assert.match(updateSection, /upgrades `gh-aw` to the minimum version declared by `\.github\/workflows\/cao\.json`/);
   assert.match(updateSection, /resolves published GitHub releases[\s\S]*?updates each installed CAO campaign to its latest compatible release/);
-  assert.match(updateSection, /\.\/cao\.sh update main/);
+  assert.match(updateSection, /gh cao update main/);
   assert.match(updateSection, /resolves the ref once[\s\S]*?same immutable revision/);
-  assert.match(updateSection, /\.\/cao\.sh update latest/);
+  assert.match(updateSection, /gh cao update latest/);
   assert.match(updateSection, /Do not fetch control files separately or copy them with a script/);
   assert.match(updateSection, /predate the campaign-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add|--create-pull-request/);
@@ -470,70 +472,6 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
   assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
   assert.match(admission, /Bash installer installs the explicit CAO root package and creates the consumer-owned policy/i);
-});
-
-test("root campaign CAO helper stays portable across POSIX-family shells", {
-  skip: process.platform === "win32",
-}, () => {
-  const helper = readFileSync(join(root, "cao.sh"), "utf8");
-  assert.match(helper, /^#!\/bin\/sh/);
-  assert.doesNotMatch(helper, /\bBASH_SOURCE\b|\[\[|pipefail/);
-
-  const temporaryRoot = mkdtempSync(join(tmpdir(), "cao-helper-shell-"));
-  try {
-    const helperPath = join(temporaryRoot, "cao.sh");
-    const activityDirectory = join(temporaryRoot, "activity");
-    const binDirectory = join(temporaryRoot, "bin");
-    const nodeArgsPath = join(temporaryRoot, "node-args.txt");
-    mkdirSync(activityDirectory);
-    mkdirSync(binDirectory);
-    writeFileSync(helperPath, helper);
-    chmodSync(helperPath, 0o755);
-    writeFileSync(join(activityDirectory, "cao.mjs"), "");
-    writeFileSync(join(binDirectory, "node"), `#!/bin/sh
-: "\${CAO_NODE_ARGS:?}"
-printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
-`);
-    chmodSync(join(binDirectory, "node"), 0o755);
-
-    const shells = ["sh", "bash", "zsh"].flatMap((shell) => {
-      try {
-        const shellPath = execFileSync("sh", ["-c", "command -v \"$1\"", "shell-probe", shell], {
-          encoding: "utf8",
-        }).trim();
-        return shellPath === "" ? [] : [{ name: shell, path: shellPath }];
-      } catch {
-        return [];
-      }
-    });
-    assert.ok(shells.some(({ name }) => name === "sh"), "sh must be available for the POSIX portability contract");
-
-    const runHelper = (command, args, expectedCli, label) => {
-      writeFileSync(nodeArgsPath, "");
-      execFileSync(command, args, {
-        cwd: temporaryRoot,
-        env: {
-          ...process.env,
-          CAO_NODE_ARGS: nodeArgsPath,
-          PATH: `${binDirectory}:${process.env.PATH}`,
-        },
-      });
-      assert.deepEqual(
-        readFileSync(nodeArgsPath, "utf8").trimEnd().split("\n"),
-        [expectedCli, "status", "with spaces"],
-        label,
-      );
-    };
-
-    const sourceCli = join(realpathSync(temporaryRoot), "activity", "cao.mjs");
-    runHelper(helperPath, ["status", "with spaces"], sourceCli, "shebang");
-    for (const shell of shells) {
-      runHelper(shell.path, [helperPath, "status", "with spaces"], sourceCli, shell.name);
-    }
-
-  } finally {
-    rmSync(temporaryRoot, { force: true, recursive: true });
-  }
 });
 
 test("root campaign composes its operational campaigns through manifests", () => {
@@ -699,7 +637,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /references\/implementation-details\.md/);
   assert.match(setupSkill, /Preferred human flow/i);
   assert.match(setupSkill, /setup quickstart/);
-  assert.match(setupSkill, /\.\/cao\.sh setup/);
+  assert.match(setupSkill, /gh cao setup/);
   assert.match(setupSkill, /offers authentication choices\s+based on that scope/);
   assert.match(setupSkill, /setup fails after approved mutations[\s\S]*credential configuration metadata/);
   assert.match(setupQuickstart, /offers authentication choices based on that scope[\s\S]*profile's\s+prerequisites/);
@@ -719,7 +657,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupReferences["implementation-details"], /second runtime copy/);
   assert.match(setupReferences["implementation-details"], /campaign-owned/);
   assert.match(setupReferences["implementation-details"], /\.github\/cao\/<campaign-slug>\.md/);
-  assert.match(setupReferences["non-interactive"], /\.\/cao\.sh setup-auth/);
+  assert.match(setupReferences["non-interactive"], /gh cao setup auth/);
   assert.match(setupReferences["non-interactive"], /--read-client-id READ_APP_CLIENT_ID --write-client-id WRITE_APP_CLIENT_ID/);
   assert.match(setupReferences["non-interactive"], /rerun only the selected command without `--dry-run`/);
   assert.match(setupReferences["non-interactive"], /Configure Pages.*GitHub Actions/);

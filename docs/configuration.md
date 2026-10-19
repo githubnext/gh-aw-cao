@@ -203,7 +203,7 @@ one environment secret name. GitHub App entries reference `app-id-secret`,
 `private-key-secret`, and `installation-id-secret`. Values stay in the trusted
 Activity or hosted resolver and are never published to the dashboard. The
 marketplace is read-only: its action copies
-`./cao.sh add OWNER/REPOSITORY[/PATH]@COMMIT`; it does not execute installation.
+`gh cao campaigns add OWNER/REPOSITORY[/PATH]@COMMIT`; it does not execute installation.
 See [Browse campaign packages](marketplace.md) for registry setup, backend
 behavior, troubleshooting, and the read-only dashboard flow.
 `specs/marketplace.md` defines the normalized package and failure contracts.

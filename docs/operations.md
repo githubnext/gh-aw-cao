@@ -205,7 +205,7 @@ For a standalone Pages site:
 3. Run **Central Agentic Ops Dashboard** from the repository's **Actions** page.
 4. Verify the deployment URL and confirm that the report shows data only from the intended control-plane repository.
 
-Run `./cao.sh setup` to configure the control repository's Pages source as GitHub Actions with repository-restricted access for private repositories. The standalone workflow passes `enablement: false` to `actions/configure-pages`, checks private-site access before publishing, and has no schedule. Set `control-plane.campaigns.dashboard.deploy` to `false` when an existing Pages workflow owns deployment. The dashboard workflow continues to publish `central-agentic-ops-dashboard`; the owning workflow can list successful `cao-dashboard.yml` runs on the default branch, download the latest artifact into its site output, and deploy the combined artifact.
+Run `gh cao setup` to configure the control repository's Pages source as GitHub Actions with repository-restricted access for private repositories. The standalone workflow passes `enablement: false` to `actions/configure-pages`, checks private-site access before publishing, and has no schedule. Set `control-plane.campaigns.dashboard.deploy` to `false` when an existing Pages workflow owns deployment. The dashboard workflow continues to publish `central-agentic-ops-dashboard`; the owning workflow can list successful `cao-dashboard.yml` runs on the default branch, download the latest artifact into its site output, and deploy the combined artifact.
 
 The Activity workflow restores its source-shard cache, collects bounded read-only
 `gh aw logs --audit --artifacts usage` evidence for the resolved repository scope,
@@ -542,11 +542,11 @@ remove release assets afterward. A failure before publication leaves the draft
 unpublished; a later failure leaves a correctly tagged prerelease for diagnosis,
 never a stable release that quickstart or update can select.
 
-Promotion to latest also enables `gh extension install githubnext/gh-aw-cao`
-(installed command: `gh aw-cao`). GitHub CLI detects binary extensions from the
-latest stable release; uploading binaries only to a prerelease does not make a
-repository installable when its latest stable release has no binaries, even
-with `--pin`. See [the CLI reference](cao-cli.md#github-cli-extension).
+Promotion to latest makes those compiled binaries available to the root
+installer's default selection. The installer downloads the platform binary and
+checksums, verifies the embedded version, and registers it directly as `gh cao`.
+An explicit `githubnext/gh-aw-cao@vX.Y.Z` catalog source selects that same
+extension tag. See [the CLI reference](cao-cli.md#github-cli-extension).
 
 ## Update CAO
 
@@ -555,7 +555,7 @@ Update campaign-owned workflows and runtime resources through a reviewable updat
 From the control repository:
 
 ```bash
-./cao.sh update --major --cool-down 0
+gh cao update --major --cool-down 0
 ```
 
 The command installs or upgrades `gh-aw` to the minimum version declared by `.github/workflows/cao.json`, resolves published GitHub releases, updates each installed CAO campaign to its latest compatible release, and refreshes CAO campaign worker declarations in policy without widening operator-owned rollout settings. Commit the resulting campaign-owned workflows, generated locks, shared runtime modules, ownership records, and policy declaration refresh as one atomic runtime revision. Do not fetch control files separately or copy them with a script. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records by hand.
@@ -565,20 +565,20 @@ Stable releases are used by default. Pass `--pre-releases` to include published 
 To explicitly select the catalog's default-branch HEAD or a particular commit instead of a release:
 
 ```bash
-./cao.sh update main
-./cao.sh update master
-./cao.sh update 0123456789abcdef0123456789abcdef01234567
+gh cao update main
+gh cao update master
+gh cao update 0123456789abcdef0123456789abcdef01234567
 ```
 
-The positional ref accepts `main`, `master`, `latest`, or a 7-40 character hexadecimal commit SHA. Both `main` and `master` select the CAO catalog repository's default branch as reported by GitHub, regardless of its actual name; they do not use the control repository's branch. Options can appear before or after the ref, for example `./cao.sh update --force main`. CAO resolves the ref once through the catalog repository to a full SHA and reapplies every installed CAO package at that same immutable revision, then verifies the recorded revision before materializing its runtime. This is a replacement, not a three-way merge: campaign-owned files and local edits to them are overwritten. Operator-owned rollout policy is preserved, apart from refreshing campaign worker declarations. Review unreleased code before enabling it.
+The positional ref accepts `main`, `master`, `latest`, or a 7-40 character hexadecimal commit SHA. Both `main` and `master` select the CAO catalog repository's default branch as reported by GitHub, regardless of its actual name; they do not use the control repository's branch. Options can appear before or after the ref, for example `gh cao update --force main`. CAO resolves the ref once through the catalog repository to a full SHA and reapplies every installed CAO package at that same immutable revision, then verifies the recorded revision before materializing its runtime. This is a replacement, not a three-way merge: campaign-owned files and local edits to them are overwritten. Operator-owned rollout policy is preserved, apart from refreshing campaign worker declarations. Review unreleased code before enabling it.
 
 After installing an untagged default-branch or SHA revision, return to published releases explicitly:
 
 ```bash
-./cao.sh update latest
+gh cao update latest
 ```
 
-`latest` selects the highest published stable `vMAJOR.MINOR.PATCH` version across all release pages, excluding drafts, prereleases, and non-version tags, and pins its full commit SHA for every installed CAO package. It intentionally bypasses major-version compatibility and cooldown selection, so review the selected release before committing. Once installed, subsequent `./cao.sh update` commands follow release-based selection again. Without a release tag on the installed revision, a bare update stops with guidance to use `latest` rather than guessing a compatible release.
+`latest` selects the highest published stable `vMAJOR.MINOR.PATCH` version across all release pages, excluding drafts, prereleases, and non-version tags, and pins its full commit SHA for every installed CAO package. It intentionally bypasses major-version compatibility and cooldown selection, so review the selected release before committing. Once installed, subsequent `gh cao update` commands follow release-based selection again. Without a release tag on the installed revision, a bare update stops with guidance to use `latest` rather than guessing a compatible release.
 
 The selected release must contain the canonical runtime resources required by the materializer. Incomplete or incompatible historical releases fail materialization; `latest` does not bypass that check. As with other update failures, inspect the working-tree changes before committing or retrying.
 

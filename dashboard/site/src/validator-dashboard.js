@@ -560,7 +560,7 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
         const isGhAwCommand =
           commandTokens?.[0] === 'gh' && commandTokens[1] === 'aw' && commandTokens.length >= 3;
         const isCaoCommand =
-          commandTokens?.[0] === './cao.sh' && commandTokens.length >= 2;
+          commandTokens?.[0] === 'gh' && commandTokens[1] === 'cao' && commandTokens.length >= 3;
         const isWorkflowDispatchCommand =
           commandTokens?.[0] === 'gh'
           && commandTokens[1] === 'workflow'
@@ -582,7 +582,7 @@ export function validateDashboard(dashboard, dashboardNode, errors) {
         if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand && !isAgentTaskCreateCommand) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'CLI action command must start with "./cao.sh", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".',
+            'CLI action command must start with "gh cao", "gh aw", "gh workflow run", or be "gh agent-task create --from-file -".',
             `${path}.command`
           ));
         }

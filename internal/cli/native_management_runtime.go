@@ -20,7 +20,7 @@ import (
 var regexpStableVersion = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 
 var nativeRuntimeResources = []string{
-	"activity", "dashboard", "cao.sh", ".github/actions/setup-cao-runtime", ".github/actions/setup-gh-aw",
+	"activity", "dashboard", ".github/actions/setup-cao-runtime", ".github/actions/setup-gh-aw",
 	".github/cao/instructions.md", ".github/workflows/shared/activity-cache.md",
 	".github/workflows/shared/control.md", ".github/workflows/shared/review-bundle.md",
 }
@@ -148,6 +148,9 @@ func nativeMaterializeRuntime(ctx context.Context, gh ghExecutor, campaign strin
 				return err
 			}
 		}
+	}
+	if campaign == "root" {
+		return nativeRemoveRetiredLauncher()
 	}
 	if campaign != "root" {
 		metadata, err := repositoryPath(filepath.Join(".github", "cao", "intelligence", campaign+".json"))
@@ -327,7 +330,7 @@ func nativeExtractRuntime(ctx context.Context, filename, destination string) (ro
 		if header.Typeflag != tar.TypeReg || relative == "" {
 			return "", fmt.Errorf("unsupported CAO runtime archive entry: %s", name)
 		}
-		allowed := relative == "package.json" || relative == "cao-runtime.json"
+		allowed := relative == "package.json" || relative == "cao-runtime.json" || relative == "cao.sh"
 		for _, resource := range nativeRuntimeResources {
 			allowed = allowed || relative == resource || strings.HasPrefix(relative, resource+"/")
 		}
@@ -338,6 +341,29 @@ func nativeExtractRuntime(ctx context.Context, filename, destination string) (ro
 			return "", err
 		}
 	}
+}
+
+func nativeRemoveRetiredLauncher() error {
+	info, err := os.Lstat("cao.sh")
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return nil
+	}
+	digest, err := nativeHashFile("cao.sh")
+	if err != nil {
+		return err
+	}
+	switch digest {
+	case "c55be5e923b46a247eeee6d8c2f0926883f469e9577b4ac4b99d7171972e4c4d",
+		"f186ab9735fb4d2a44333a81eac9ed18638ae2c4304af37ab351cc39ecf983c3":
+		return os.Remove("cao.sh")
+	}
+	return nil
 }
 
 func nativeVerifyRuntime(root, revision string) error {

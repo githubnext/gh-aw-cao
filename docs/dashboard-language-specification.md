@@ -1429,7 +1429,7 @@ opens the command's full-page, read-only console, with no separate
 terminal-window option. Its first output line shows the executed command.
 Terminal emulation cannot be expressed by data marks and does not query or
 derive dashboard evidence.
-Displayed `gh aw` and `./cao.sh` commands use a pseudo-terminal with ANSI color
+Displayed `gh aw` and `gh cao` commands use a pseudo-terminal with ANSI color
 enabled, combining stdout/stderr in terminal order.
 Prompts and pagers are disabled. Stdin-backed commands and
 preparation reads retain separate pipes.
@@ -1473,7 +1473,7 @@ by the query; `target` must name one command template token. For example:
   "label": "Add repository",
   "icon": "plus",
   "placement": "view",
-  "command": "./cao.sh add --repository {{repository}}",
+  "command": "gh cao repos add {{repository}}",
   "selector": {
     "label": "Repository",
     "debounce-ms": 300,
@@ -1508,8 +1508,17 @@ A CLI action may declare `copy-only: true`. Presenters must expose its resolved
 command for copying and must not execute it.
 
 A dashboard CLI action command is a single-line GitHub CLI invocation.
-Presenters recognize `gh aw ...`, `gh workflow run <workflow> ...`, and
+Presenters recognize `gh cao ...`, `gh aw ...`, `gh workflow run <workflow> ...`, and
 `gh agent-task create --from-file -` by default; the workflow command triggers a workflow that declares `workflow_dispatch`, while the agent-task command receives the reviewed prompt through standard input.
+`gh cao <command>` is a first-class cli-actions command, not a shell alias.
+Local and Copilot hosts MUST launch the configured GitHub CLI executable with
+an argument vector beginning with `cao`, preserving the approved subcommand and
+arguments. They MUST NOT rewrite it to a repository shell script or a Node.js operator command.
+Native CAO actions use the same declaration resolution, per-invocation approval,
+durable queue, output streaming, cancellation, and retry protocol as other CLI
+actions. Recognizing the prefix MUST NOT widen the experimental
+[hosted executor's allowlist](../specs/server-hosted-cli.md): commands that only
+edit a local checkout remain local-only.
 The agent-task invocation follows the [GitHub CLI `agent-task create` reference](https://cli.github.com/manual/gh_agent-task_create), where `--from-file -` reads the task description from standard input.
 Workflow dispatch commands may use `--repo`, `--ref`, and non-file-backed
 inputs through `--raw-field` (`-f`). Presenters reject file-reading workflow inputs
@@ -1803,7 +1812,7 @@ Every authoritative page also has one concise, action-oriented `description`
 that states its single CAO operational purpose. Caveats, source limitations and
 measurement conditions belong in `acceptance`, not in the description.
 
-The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt.js`, separate from semantic composition in `view-semantics.js`, so subject, objective, and acceptance can be evaluated and improved independently. Browser prompts include the page contract as separately labelled context; it does not override selected view/query semantics, activate otherwise disabled prompts, or make other views additional tasks. The CLI command `./cao.sh prompt QUERY_ID` renders the same template with the selected query's own subject, objective, and acceptance; its dependency-first named query IDs provide context for requerying, not additional tasks. A bounded preview can be included from an explicit `--database FILE`. The prompt starts with a CAO improvement goal spanning ROI, cost, operational value, reliability, and velocity; links the analysis and CLI skills, acquisition/MCP guide, canonical data contract, Dashboard Language specification, source document and fragments, architecture and workflow guidance; labels bounded evidence “This is a preview of the data. Requery for full data.” or explains that no preview was supplied; and ends with “Create a PR with the changes.” Read-only and operational prompt levels retain their narrower final instructions instead.
+The view/query prompt template lives in `dashboard/site/src/semantic-view-prompt.js`, separate from semantic composition in `view-semantics.js`, so subject, objective, and acceptance can be evaluated and improved independently. Browser prompts include the page contract as separately labelled context; it does not override selected view/query semantics, activate otherwise disabled prompts, or make other views additional tasks. The CLI command `gh cao prompt QUERY_ID` renders the same template with the selected query's own subject, objective, and acceptance; its dependency-first named query IDs provide context for requerying, not additional tasks. A bounded preview can be included from an explicit `--database FILE`. The prompt starts with a CAO improvement goal spanning ROI, cost, operational value, reliability, and velocity; links the analysis and CLI skills, acquisition/MCP guide, canonical data contract, Dashboard Language specification, source document and fragments, architecture and workflow guidance; labels bounded evidence “This is a preview of the data. Requery for full data.” or explains that no preview was supplied; and ends with “Create a PR with the changes.” Read-only and operational prompt levels retain their narrower final instructions instead.
 
 When a valid dashboard repository coordinate is supplied, the prompt also links
 its candidate control policy and workflow sources; absent identity is reported

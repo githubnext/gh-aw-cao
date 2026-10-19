@@ -11,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
 )
 
 func nativeTimestamp(value any) float64 {
-	if timestamp, ok := engineParseDate(nativeScalar(value)); ok {
+	if timestamp, ok := dashboardquery.ParseDate(nativeScalar(value)); ok {
 		return timestamp
 	}
 	return math.Inf(-1)

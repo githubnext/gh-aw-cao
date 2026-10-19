@@ -209,7 +209,7 @@ test("candidate command bypasses quota only for known offline operations", async
     assert.deepEqual(await admission.admission({ command }), { concurrency: 4, reason: "available" });
   }
   for (const command of [
-    "gh aw update", "./cao.sh update", "gh workflow run activity",
+    "gh aw update", "gh cao update", "gh workflow run activity",
     "gh agent-task create --from-file -", "gh aw compile --repo owner/repository",
     "gh aw compile -Rowner/repository", "gh aw compile --check-update",
   ]) {
@@ -235,7 +235,7 @@ test("only exact workflow dispatch commands can narrow required quota resources"
   });
   t.after(() => admission.close());
   assert.equal((await admission.admit({ command: "gh workflow run activity" })).reservationId, "core");
-  for (const command of ["gh aw update", "./cao.sh update", "gh agent-task create --from-file -"]) {
+  for (const command of ["gh aw update", "gh cao update", "gh agent-task create --from-file -"]) {
     assert.equal((await admission.admit({ command, resources: ["core"] })).reservationId, "core,graphql");
   }
 });

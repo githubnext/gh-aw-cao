@@ -114,7 +114,7 @@ collection scope rather than inferring a control-repository-only subset.
 ### Reuse approved Apps
 
 If private read/write Apps are already approved, use
-`./cao.sh setup-auth github-app --repo OWNER/CONTROL --read-client-id READ-ID --write-client-id WRITE-ID`
+`gh cao setup auth github-app --repo OWNER/CONTROL --read-client-id READ-ID --write-client-id WRITE-ID`
 instead of registering replacements. Add `--dry-run` to preview exact scopes.
 Setup prompts securely for the keys and verifies App identity, permission
 ceilings, and selected repositories using the App's own credentials, without
@@ -162,7 +162,7 @@ The helper reads `allowed-repositories`; it does not expand `allowed-owners` int
 Preview the two private App manifests and exact repository selections:
 
 ```bash
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo acme/central-agentic-ops \
   --dry-run
 ```
@@ -170,7 +170,7 @@ Preview the two private App manifests and exact repository selections:
 Then create and configure the Apps:
 
 ```bash
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo acme/central-agentic-ops
 ```
 
@@ -210,13 +210,13 @@ node .github/workflows/shared/setup-github-apps.mjs --repo acme/central-agentic-
 [GitHub App manifests cannot create enterprise-owned Apps](https://docs.github.com/en/enterprise-cloud@latest/apps/sharing-github-apps/registering-a-github-app-from-a-manifest). Create read and write Apps in enterprise settings, install both on selected repositories in every enrolled organization, then run:
 
 ```bash
-./cao.sh setup-auth enterprise-app \
+gh cao setup auth enterprise-app \
   --repo acme/central-agentic-ops \
   --read-client-id '<read-app-client-id>' \
   --write-client-id '<write-app-client-id>' \
   --dry-run
 
-./cao.sh setup-auth enterprise-app \
+gh cao setup auth enterprise-app \
   --repo acme/central-agentic-ops \
   --read-client-id '<read-app-client-id>' \
   --write-client-id '<write-app-client-id>'
@@ -224,7 +224,7 @@ node .github/workflows/shared/setup-github-apps.mjs --repo acme/central-agentic-
 
 The command prompts for each private key. Never put a private key in a command argument. Enterprise ownership alone does not grant repository access; each organization installation is still required.
 
-The CLI reads `control-plane.scope.allowed-repositories` from `.github/workflows/cao.json`, groups the control repository and exact allowed repositories by owner, and verifies a selected-repository installation for each account. The manifest helper creates private organization-owned Apps only, so every selected repository must belong to the control repository organization. For multiple organizations in one enterprise, manually create enterprise-owned private Apps because GitHub App manifests do not support enterprise-owned App creation. Install them separately on each enrolled organization, then run `./cao.sh setup-auth enterprise-app` to store their client IDs and interactively enter their private keys. Installation IDs and tokens are not stored in policy or dispatch inputs. gh-aw selects the correct installation from the target owner and repository at runtime.
+The CLI reads `control-plane.scope.allowed-repositories` from `.github/workflows/cao.json`, groups the control repository and exact allowed repositories by owner, and verifies a selected-repository installation for each account. The manifest helper creates private organization-owned Apps only, so every selected repository must belong to the control repository organization. For multiple organizations in one enterprise, manually create enterprise-owned private Apps because GitHub App manifests do not support enterprise-owned App creation. Install them separately on each enrolled organization, then run `gh cao setup auth enterprise-app` to store their client IDs and interactively enter their private keys. Installation IDs and tokens are not stored in policy or dispatch inputs. gh-aw selects the correct installation from the target owner and repository at runtime.
 
 On a GitHub Enterprise Cloud data-residency hostname, export `GH_HOST` before
 running setup. The helper uses that host for repository API calls and all App
@@ -285,7 +285,7 @@ Follow this order:
 
 1. Do not rerun before the reported reset time. GitHub directs integrations with zero remaining capacity to wait until `x-ratelimit-reset`; repeated requests while limited can result in integration blocking. See [rate limits for the REST API](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api#exceeding-the-rate-limit) and [REST API best practices](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api#handle-rate-limit-errors-appropriately).
 2. For long-lived cross-repository automation, configure the least-privilege GitHub App profile. Follow [GitHub's guide to authenticated App requests in Actions](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow). Shared control requests only `Actions: read` and `Contents: read` for pre-activation and still applies the checked-in CAO scope.
-3. If an App cannot be installed and the exact scope is PAT-compatible, use separate owner-scoped read-only and write-capable fine-grained PATs only after informed consent. Follow [GitHub's fine-grained PAT guidance](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token), restrict each token to its required repositories and permissions, set expirations, and let `cao setup-auth token` store the protected Actions secrets and non-secret repository maps.
+3. If an App cannot be installed and the exact scope is PAT-compatible, use separate owner-scoped read-only and write-capable fine-grained PATs only after informed consent. Follow [GitHub's fine-grained PAT guidance](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token), restrict each token to its required repositories and permissions, set expirations, and let `gh cao setup auth token` store the protected Actions secrets and non-secret repository maps.
 
 ## Fine-Grained PAT Fallback
 
@@ -356,7 +356,7 @@ A campaign-only installation should narrow these permissions to that campaign's 
 Preview the owner-scoped PAT configuration:
 
 ```bash
-./cao.sh setup-auth token \
+gh cao setup auth token \
   --repo acme/central-agentic-ops \
   --write-repository acme/approved-output-repository \
   --dry-run
@@ -365,7 +365,7 @@ Preview the owner-scoped PAT configuration:
 Then configure the profile:
 
 ```bash
-./cao.sh setup-auth token \
+gh cao setup auth token \
   --repo acme/central-agentic-ops \
   --write-repository acme/approved-output-repository
 ```
@@ -409,7 +409,7 @@ A PAT is not a substitute for repository or organization access. Use one only wh
 Explain that the PAT is user-bound, longer-lived than an App token, API-limited, and manually rotated. Obtain explicit confirmation to proceed. Inability to install an App, or the presence of an existing PAT secret, is not consent.
 
 ```bash
-./cao.sh setup-auth token \
+gh cao setup auth token \
   --repo acme/central-agentic-ops
 ```
 

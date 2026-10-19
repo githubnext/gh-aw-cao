@@ -13,7 +13,7 @@ metadata:
 2. Discover eligible campaigns from structured manifests at that commit.
 3. Recommend at most three matches with safety tradeoffs and `None of these`.
 4. Require selection and explicit installation approval.
-5. Install through `./cao.sh add`, validate policy preservation, and report.
+5. Install through `gh cao campaigns add`, validate policy preservation, and report.
 
 Choose from the current catalog. Never use a hard-coded list or silently select
 or install a campaign.
@@ -21,19 +21,20 @@ or install a campaign.
 ## Deterministic boundary
 
 The agent interprets intent, compares candidates, and explains tradeoffs.
-After selection, `./cao.sh add` owns package resolution,
+After selection, `gh cao campaigns add` owns package resolution,
 installation, policy merging, and installed-declaration validation. Use
-`./cao.sh validate` and `gh aw doctor --dir .` for postconditions; do not
-reimplement package or policy mutation.
+`gh cao doctor` and `gh aw doctor --dir .` for local checks; inspect CAO validation
+in Actions after approved changes are published. Do not reimplement package or
+policy mutation.
 
 ## Boundaries
 
 - Use `create-cao-campaign` to author a new campaign or when none fits.
-- Require `.github/workflows/cao.json` and executable `./cao.sh`; hand off to
+- Require `.github/workflows/cao.json` and installed `gh cao`; hand off to
   `setup-cao` when the control repository is not initialized.
 - Keep discovery read-only until the user sees the recommendation and safety
   summary, selects a campaign, and approves installation.
-- Install through `cao add`, whose wrapper validates the declaration and merges
+- Install through `gh cao campaigns add`, which validates the declaration and merges
   policy without enabling live mode or broadening scope.
 - Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records directly.
 - Treat all installed campaign package sources as immutable. Add requested prompt guidance only through the consumer-owned `.github/cao/<campaign-slug>.md` file loaded by the installed workflows' optional `runtime-import`; do not patch installed workflow Markdown or other package-owned files.
@@ -85,7 +86,7 @@ Treat missing declarations, invalid metadata, inaccessible sources, unresolved p
 After explicit approval, run the repository-local CLI from the control repository:
 
 ```bash
-./cao.sh add githubnext/gh-aw-cao/<campaign-slug>@<catalog-commit>
+gh cao campaigns add githubnext/gh-aw-cao/<campaign-slug>@<catalog-commit>
 ```
 
 Forward additional campaign-installer options only when the user requested them and they do not weaken the reviewed boundary. Do not pass secrets in command arguments.

@@ -83,20 +83,25 @@ test("removed setup wizard route redirects to the command quickstart", async ({ 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Set Up CAO");
 });
 
-test("landing page exposes mobile navigation and header controls", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect((await page.goto("./"))?.ok()).toBe(true);
+for (const width of [320, 390, 768, 1024]) {
+  test(`landing page exposes navigation and header controls at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    expect((await page.goto("./"))?.ok()).toBe(true);
 
-  await expect(page.getByRole("button", { name: /Switch to (light|dark) theme/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "GitHub repository" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Switch to (light|dark) theme/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: "GitHub repository" })).toBeVisible();
 
-  const menu = page.locator(".cao-mobile-nav");
-  await expect(menu.locator("summary")).toBeVisible();
-  await expect(menu.getByRole("navigation", { name: "Primary navigation menu" })).toBeHidden();
-  await menu.locator("summary").click();
-  await expect(menu).toHaveAttribute("open", "");
-  await expect(menu.getByRole("link")).toHaveText(["Campaigns", "Blog"]);
-});
+    const menu = page.locator(".cao-mobile-nav");
+    await expect(menu.locator("summary")).toBeVisible();
+    await expect(menu.getByRole("navigation", { name: "Global links menu" })).toBeHidden();
+    await menu.locator("summary").click();
+    await expect(menu).toHaveAttribute("open", "");
+    await expect(menu.getByRole("navigation", { name: "Global links menu" })).toBeVisible();
+    await expect(menu.getByRole("link")).toHaveText(["Campaigns", "Blog"]);
+    expect(await page.locator("html").evaluate((element) => element.scrollWidth))
+      .toBeLessThanOrEqual(width);
+  });
+}
 
 for (const colorScheme of ["light", "dark"]) {
   test.describe(`${colorScheme} scheme`, () => {
@@ -132,9 +137,64 @@ test("sidebar groups Dashboard documentation by reader task", async ({ page }) =
 
 for (const { name, viewport } of [
   { name: "desktop", viewport: { width: 1280, height: 900 } },
+  { name: "wide desktop", viewport: { width: 1920, height: 1080 } },
+  { name: "tablet", viewport: { width: 768, height: 1024 } },
   { name: "mobile", viewport: { width: 390, height: 844 } },
 ]) {
   for (const colorScheme of ["light", "dark"]) {
+    test(`landing ${name} has compact branding and balanced spacing in ${colorScheme} mode`, async ({ page }, testInfo) => {
+      await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      await page.setViewportSize(viewport);
+      expect((await page.goto("./"))?.ok()).toBe(true);
+      await page.evaluate(() => document.fonts.ready);
+
+      const logo = page.locator(".site-title img:visible");
+      const logoBounds = await logo.boundingBox();
+      const title = page.locator(".site-title span");
+      const titleBounds = await title.boundingBox();
+      const titleFontSize = await title.evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+      expect(logoBounds?.width).toBeLessThanOrEqual(titleFontSize);
+      expect(logoBounds?.height).toBeLessThanOrEqual(titleBounds.height);
+      expect(logoBounds?.width).toBeGreaterThanOrEqual(12);
+      expect(await page.locator(".site-title span").evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      )).toBe(true);
+      for (const action of await page.locator(".hero-action").all()) {
+        expect((await action.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+      }
+
+      const hero = await page.locator(".hierarchy-hero").boundingBox();
+      const stories = await page.locator(".product-story").evaluateAll(
+        (elements) => elements.map((element) => element.getBoundingClientRect().toJSON()),
+      );
+      expect(hero?.width).toBeLessThanOrEqual(1216);
+      expect(Math.max(...stories.map((story) => story.width))
+        - Math.min(...stories.map((story) => story.width))).toBeLessThanOrEqual(1);
+      const eyebrow = await page.locator(".dispatch-story > .section-eyebrow").boundingBox();
+      const heading = await page.locator("#dispatch-title").boundingBox();
+      expect(heading.y - (eyebrow.y + eyebrow.height)).toBeLessThanOrEqual(16);
+      if (name === "desktop" || name === "wide desktop") {
+        const actions = await page.locator(".actions").boundingBox();
+        expect(actions.y + actions.height).toBeLessThan(viewport.height);
+      } else if (name === "mobile") {
+        expect((await page.locator(".phone-preview").boundingBox())?.width).toBeLessThanOrEqual(240);
+      }
+      expect(await page.locator("html").evaluate((element) => element.scrollWidth))
+        .toBeLessThanOrEqual(viewport.width);
+
+      if (name === "desktop" || name === "mobile") {
+        await page.locator(".product-shot").last().scrollIntoViewIfNeeded();
+        await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
+          (images) => images.every((image) => image.complete && image.naturalWidth > 0),
+        )).toBe(true);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        const screenshot = testInfo.outputPath(`homepage-${name}-${colorScheme}.png`);
+        await page.screenshot({ path: screenshot, fullPage: true });
+        await testInfo.attach(`Homepage (${name}, ${colorScheme})`, { path: screenshot, contentType: "image/png" });
+      }
+    });
+
     test(`landing ${name} emphasizes overview and control in ${colorScheme} mode`, async ({ page }) => {
       await page.addInitScript(() => localStorage.removeItem("starlight-theme"));
       await page.emulateMedia({ colorScheme });

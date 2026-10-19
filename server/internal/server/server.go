@@ -31,6 +31,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/githubnext/gh-aw-cao/server/internal/audit"
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboardstore"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
@@ -41,6 +42,7 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
 	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
+	"github.com/githubnext/gh-aw-cao/server/internal/sqlitex"
 	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
 )
 
@@ -65,7 +67,7 @@ type Config struct {
 	CORS                 CORSPolicy
 	GitHubOAuth          *GitHubOAuthConfig
 	DatabaseQueriesPath  string
-	Database             *postgresx.Store
+	Database             dashboardstore.Store
 	DashboardQueries     []query.Definition
 	DashboardQueriesPath string
 	AgentCatalogPath     string
@@ -98,8 +100,8 @@ type Config struct {
 type App struct {
 	services         operational.OperationalServices
 	ownedOperational operational.Store
-	database         *postgresx.Store
-	ownedDatabase    *postgresx.Store
+	database         dashboardstore.Store
+	ownedDatabase    dashboardstore.Store
 	closeDatabase    sync.Once
 	closeError       error
 	databaseQueries  []query.Definition
@@ -135,8 +137,19 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	if err := operational.CheckStore(store); err != nil {
 		return nil, fmt.Errorf("operational storage is required: %w", err)
 	}
-	if config.Database == nil {
-		return nil, errors.New("dashboard Postgres database is required")
+	postgresDatabase, isPostgres := config.Database.(*postgresx.Store)
+	sqliteDatabase, localSQLite := config.Database.(*sqlitex.Store)
+	if config.Database == nil || isPostgres && postgresDatabase == nil || localSQLite && sqliteDatabase == nil {
+		return nil, errors.New("dashboard database is required")
+	}
+	if localSQLite {
+		if err := validateLocalSQLiteConfig(config); err != nil {
+			return nil, err
+		}
+		config.QueryCache.Disabled = true
+	}
+	if !isPostgres && (config.Collector != nil || config.SourceDirectory != "") {
+		return nil, errors.New("server ingestion and collection require PostgreSQL; local SQLite serves an existing snapshot")
 	}
 	var databaseQueries []query.Definition
 	if config.DatabaseQueriesPath != "" {
@@ -156,7 +169,7 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	services := store.OperationalServices()
 	capabilities := store.Capabilities()
 	requirements := operational.Requirements{
-		SingleProcess: (config.HostProfile.SingleProcess && config.SingleReplicaConfirmed) || config.HostProfile.IsolateProcessNamespace,
+		SingleProcess: localSQLite || (config.HostProfile.SingleProcess && config.SingleReplicaConfirmed) || config.HostProfile.IsolateProcessNamespace,
 		AllowVolatile: config.AllowVolatile || config.HostProfile.IsolateProcessNamespace,
 		OAuth:         config.HostProfile.Authentication == HostAuthenticationOAuth,
 		Collection:    config.Collector != nil,
@@ -244,7 +257,7 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 		return nil, err
 	}
 	if config.Collector != nil {
-		collector, err := NewCollector(ctx, store, config.Database, *config.Collector, config.DatabaseQueriesPath)
+		collector, err := NewCollector(ctx, store, postgresDatabase, *config.Collector, config.DatabaseQueriesPath)
 		if err != nil {
 			return nil, fmt.Errorf("configure collection: %w", err)
 		}
@@ -264,7 +277,7 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	}
 	if reconciler == nil && config.SourceDirectory != "" {
 		reconciler = DirectoryReconciler{
-			Store: config.Database, SourceDirectory: config.SourceDirectory,
+			Store: postgresDatabase, SourceDirectory: config.SourceDirectory,
 			DatabaseQueriesPath: config.DatabaseQueriesPath,
 		}
 	}
@@ -297,8 +310,8 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota, drain: make(chan struct{}),
 	}
-	if config.Database != nil {
-		app.githubResources.store = config.Database
+	if resources, ok := config.Database.(githubResourceStore); ok {
+		app.githubResources.store = resources
 	}
 	if os.Getenv("CAO_SERVER_LOGS_ENABLED") == "true" {
 		app.logs = logger.EnableBuffer()
@@ -350,7 +363,12 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	}
 	serverLog.Printf("starting service initial_ingestion=%t", a.config.SourceDirectory != "")
 	if a.config.SourceDirectory != "" {
-		result, err := ingest.Run(startupCtx, a.database, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
+		database, ok := a.database.(*postgresx.Store)
+		if !ok {
+			cancel()
+			return errors.New("initial ingestion requires PostgreSQL")
+		}
+		result, err := ingest.Run(startupCtx, database, a.config.SourceDirectory, ingest.Options{DatabaseQueriesPath: a.config.DatabaseQueriesPath})
 		if err != nil {
 			cancel()
 			return fmt.Errorf("initial ingestion failed: %w", err)
@@ -1707,7 +1725,11 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 		return
 	}
 	html := string(content)
-	injections := `<meta name="dashboard-data-backend" content="server-http"><meta name="dashboard-storage-backend" content="postgres">`
+	storageBackend := "postgres"
+	if _, local := a.database.(*sqlitex.Store); local {
+		storageBackend = "sqlite"
+	}
+	injections := `<meta name="dashboard-data-backend" content="server-http"><meta name="dashboard-storage-backend" content="` + storageBackend + `">`
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
 		if a.hostedCLI != nil {

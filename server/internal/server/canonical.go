@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/githubnext/gh-aw-cao/server/internal/dashboardstore"
 	"github.com/githubnext/gh-aw-cao/server/internal/logger"
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
@@ -14,7 +15,7 @@ import (
 var canonicalLog = logger.New("cao:server:canonical")
 
 type canonicalService struct {
-	store       *postgresx.Store
+	store       dashboardstore.Store
 	definitions []query.Definition
 }
 

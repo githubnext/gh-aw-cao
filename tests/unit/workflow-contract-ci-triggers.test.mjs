@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { posix } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, posix } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
-import { workflow } from "./workflow-contract.helpers.mjs";
+import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 const mainOnlyWorkflows = [
   "actions.yml",
@@ -70,6 +71,20 @@ test("MCP parity keeps service-backed Go integration tests out of its contract s
   assert.equal(parity.run, "npm run test:e2e:dashboard-query-parity");
   assert.ok(job.env.REDIS_URL);
   assert.ok(job.env.CAO_POSTGRES_URL);
+});
+
+test("service integration harnesses provision canonical storage before starting runtime processes", () => {
+  const parity = readFileSync(join(root, "tests/e2e/dashboard-query-parity.mjs"), "utf8");
+  assert.match(parity, /const namespace = `query-parity-\$\{process\.pid\}`/);
+  assert.match(parity, /execFileSync\(binary, \[\s*"database", "bootstrap", "--store", "canonical", "--namespace", namespace,/);
+  assert.match(parity, /env: \{ \.\.\.process\.env, CAO_DATABASE_ADMIN_URL: process\.env\.CAO_POSTGRES_URL \}/);
+  assert.match(parity, /"--redis-namespace", namespace/);
+  assert.ok(parity.indexOf('execFileSync(binary, [') < parity.indexOf('const child = spawn(binary, ['));
+
+  const azure = readFileSync(join(root, "scripts/azure-local/azure-local.sh"), "utf8");
+  assert.match(azure, /CAO_DATABASE_ADMIN_URL="\$CAO_POSTGRES_URL" "\$APP_DIR\/cao-dashboard" database bootstrap \\\n\s+--store canonical --namespace "\$namespace"/);
+  assert.ok(azure.indexOf('"$APP_DIR/cao-dashboard" database bootstrap') < azure.indexOf('"$APP_DIR/cao-dashboard" ingest'));
+  assert.doesNotMatch(azure, /export CAO_DATABASE_ADMIN_URL/);
 });
 
 test("Go extension quality checks cover root-module sources and lint configuration", () => {

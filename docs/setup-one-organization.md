@@ -44,11 +44,11 @@ private GitHub Apps** in guided setup. Keys are entered only at hidden prompts.
 Otherwise create a pair:
 
 ```bash
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo "$CONTROL_REPO" \
   --dry-run
 
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo "$CONTROL_REPO"
 ```
 
@@ -77,7 +77,7 @@ git diff --check
 Review the diff. After explicit approval:
 
 ```bash
-git add .github activity dashboard cao.sh
+git add .github activity dashboard
 git commit -m "Install Central Agentic Ops control plane"
 git push --set-upstream origin HEAD
 ```

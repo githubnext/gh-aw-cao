@@ -160,7 +160,7 @@ it('keeps failed admissions on the current page and allows retry', async () => {
 it('binds campaign updates to separate scoped CLI commands', async () => {
   setDeclaredCliActions([{
     id: 'update', label: 'Update all', icon: 'sync', placement: 'view',
-    command: './cao.sh update --campaign {{campaign}}'
+    command: 'gh cao update --campaign {{campaign}}'
   }]);
   const targets = [{ campaign: 'activity' }, { campaign: 'dependabot' }];
   const root = renderDeclaredCliAction('update', {}, { rows: targets, fields: ['campaign'], available: true });

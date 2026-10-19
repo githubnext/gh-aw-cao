@@ -18,11 +18,11 @@ CAO does not publish Apps. A private App cannot support organizations outside it
 ## Reuse approved Apps
 
 Prefer an existing private read/write App pair when your organization or
-enterprise has already approved one. In `./cao.sh setup`, choose **Reuse approved
+enterprise has already approved one. In `gh cao setup`, choose **Reuse approved
 private GitHub Apps**, or preview and configure it directly:
 
 ```bash
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo acme/central-agentic-ops \
   --read-client-id '<read-app-client-id>' \
   --write-client-id '<write-app-client-id>' \
@@ -67,11 +67,11 @@ For one organization:
 ```bash
 export GH_HOST=github.example.ghe.com # Omit on github.com.
 
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo acme/central-agentic-ops \
   --dry-run
 
-./cao.sh setup-auth github-app \
+gh cao setup auth github-app \
   --repo acme/central-agentic-ops \
   --write-repository acme/approved-output-repository
 ```
@@ -102,7 +102,7 @@ An organization-owned private App fails closed when policy enrolls a repository 
 For organizations in one enterprise, create the read and write Apps manually in the enterprise settings. [GitHub App manifests do not support enterprise-owned Apps](https://docs.github.com/en/enterprise-cloud@latest/apps/sharing-github-apps/registering-a-github-app-from-a-manifest). Install each private App separately on the selected repositories in every enrolled organization, then configure the control repository:
 
 ```bash
-./cao.sh setup-auth enterprise-app \
+gh cao setup auth enterprise-app \
   --repo acme/central-agentic-ops \
   --read-client-id '<read-app-client-id>' \
   --write-client-id '<write-app-client-id>' \
@@ -110,7 +110,7 @@ For organizations in one enterprise, create the read and write Apps manually in 
   --write-repository acme/central-agentic-ops \
   --dry-run
 
-./cao.sh setup-auth enterprise-app \
+gh cao setup auth enterprise-app \
   --repo acme/central-agentic-ops \
   --read-client-id '<read-app-client-id>' \
   --write-client-id '<write-app-client-id>' \
@@ -154,7 +154,7 @@ Use a PAT only after confirming:
 Run:
 
 ```bash
-./cao.sh setup-auth token \
+gh cao setup auth token \
   --repo acme/central-agentic-ops \
   --write-repository acme/approved-output-repository
 ```

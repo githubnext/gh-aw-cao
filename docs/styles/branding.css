@@ -55,17 +55,21 @@
   background: none !important;
   color: #1f2328 !important;
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 1.05rem;
-  font-weight: 750;
-  letter-spacing: 0.075em;
-  line-height: 1;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
   -webkit-text-fill-color: currentColor !important;
 }
 
 .site-title img {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1em;
+  height: 1em;
   flex-shrink: 0;
+}
+
+.site-title span {
+  text-overflow: ellipsis;
 }
 
 :root[data-theme="dark"] .site-title {
@@ -107,6 +111,11 @@ button[data-open-modal]:focus-visible {
 }
 
 @media (max-width: 49.999rem) {
+  .site-title {
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+
   :root:not([data-has-sidebar]) .right-group {
     display: flex;
   }
@@ -195,11 +204,7 @@ button[data-open-modal]:focus-visible {
 @media (max-width: 22rem) {
   .site-title {
     gap: 0.45rem;
-    font-size: 0.95rem;
+    font-size: 0.875rem;
   }
 
-  .site-title img {
-    width: 1.45rem;
-    height: 1.45rem;
-  }
 }

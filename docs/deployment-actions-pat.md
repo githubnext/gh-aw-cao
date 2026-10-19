@@ -52,7 +52,7 @@ You need everything in the [prerequisites for the GitHub Actions only deployment
 1. Create both tokens with the setup helper. Replace `OWNER/CONTROL-REPOSITORY` with your control repository and `OWNER/OUTPUT-REPOSITORY` with an approved safe-output repository.
 
    ```bash
-   ./cao.sh setup-auth token \
+   gh cao setup auth token \
      --repo OWNER/CONTROL-REPOSITORY \
      --write-repository OWNER/OUTPUT-REPOSITORY
    ```

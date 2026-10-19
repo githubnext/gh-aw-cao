@@ -14,9 +14,11 @@ fmt:
 lint:
 	@test -z "$$(gofmt -l cmd internal dashboard/catalog.go)" || (gofmt -l cmd internal dashboard/catalog.go; exit 1)
 	go vet ./cmd/... ./internal/... ./dashboard
+	go -C internal/dashboardquery vet ./...
 
 test:
 	go test -race ./cmd/... ./internal/... ./dashboard
+	go -C internal/dashboardquery test -race ./...
 
 test-doctor:
 	go test -race -run '^TestDoctorUnit' ./internal/cli

@@ -87,7 +87,25 @@ describe('model routing unified-session contract', () => {
       }));
       expect(result[payload.aliases[0]].metadata.availability).not.toBe('unavailable');
     }
+    const detail = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.detail);
+    expect(detail.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual(contract['detail-views']);
+    for (const view of detail.views) {
+      const payload = compileDashboardViewPayloadQueries(detail, detail.id, {
+        queries: dashboard.queries, views: dashboard.views, viewId: view.id, sourceNames: [view.data.source],
+        routeParameters: { 'routing-run': 'octo/api:1' }
+      });
+      expect(payload.aliases.length).toBeGreaterThan(0);
+      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+        operation: 'load-dashboard-query-sources', sources: {},
+        queries: [...dashboard.queries, ...payload.queries], sourceNames: payload.aliases
+      }));
+      expect(result[payload.aliases[0]].metadata.availability).not.toBe('unavailable');
+    }
     const result = await query(indexedDB, contract.queries, { 'minimum-sample': 1 });
+    expect(result['routing-resolutions'].rows).toEqual([]);
+    expect(result['routing-resolution-coverage'].rows).toMatchObject([{
+      runs: 1, 'resolution-runs': 0, 'routed-runs': 1, 'routed-without-resolution': 1, 'missing-resolution': 0, 'resolution-records': 0
+    }]);
     expect(result['routing-runs'].rows).toMatchObject([{
       'routing-state': 'selected', 'pick-model': 'gpt-5', 'pick-effort': 'high', 'failure-count': 1
     }]);

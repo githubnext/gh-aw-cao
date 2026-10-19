@@ -163,8 +163,10 @@ executable, and rebuilding updates that local installation. The extension is
 named `gh cao`; the Go module path and repository URLs remain
 `github.com/githubnext/gh-aw-cao` until the repository is renamed.
 In a differently named worktree, run `./gh-cao` directly instead.
-Remote installation under the `gh cao` name awaits the repository rename;
-release assets can be downloaded and run directly in the meantime.
+The root installer downloads verified release assets directly into GitHub CLI's
+extension data directory under `gh-cao`, so released installs use `gh cao`
+without renaming the repository. It refuses to overwrite local linked/source
+installations.
 On Windows, build `gh-cao.exe` with
 `go build -o gh-cao.exe ./cmd/gh-cao`.
 
@@ -191,14 +193,16 @@ Guided onboarding runs as `gh cao setup`; independent authentication profiles
 are grouped under `gh cao setup auth github-app|enterprise-app|token`, not a
 root-level `setup-auth` command. These native commands preserve the setup and
 setup-auth JSON result contracts and secure credential prompts.
-`./cao.sh` keeps its existing command names.
+Actions and Node-only tools invoke `node activity/cao.mjs <command>` directly,
+including SQLite `doctor` and `setup-auth hosted-cli`. There is no shell launcher;
+retained internal Node implementations serve Actions and parity tests, not operators.
 `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure
 and compiler pin without loading Node.js. Authentication may contact GitHub.
 Every operator command runs in Go without Node.js or an installed JavaScript
 runtime. `CAO_RUNTIME_ROOT` has no effect. Run policy mutations from the control
 checkout root. Keep the root Go module independent of the server module.
 
-Preserve production onboarding, authentication, policy validation, computation,
+Preserve production onboarding, authentication, policy handling, computation,
 and Dashboard Language semantics with focused native tests and the JavaScript
 implementation as a parity oracle in tests only. Never invoke a JavaScript
 runtime from a production extension command. Node.js 24+ and root `npm ci`
@@ -210,14 +214,23 @@ migrate or repair downloaded projections. `TestNativeStandaloneBinary` runs
 the built binary with an empty `PATH` outside the checkout to enforce this boundary.
 `campaigns add` and `update` pass evolving gh-aw options unchanged.
 Activity/Dashboard pipeline commands are deliberately not registered in Go;
-their Actions, Node command modules, runtime ownership, and `cao.sh` remain
-unchanged. See [the operator migration table](docs/cao-cli.md#github-cli-extension).
+their Actions, Node command modules and runtime ownership remain unchanged.
+CI invokes the shipped JavaScript validator directly with
+`node activity/cao.mjs validate --json`; it does not build or download the Go
+extension or require consumer npm metadata. User-facing commands belong in
+`gh cao`; Actions execution support belongs in JavaScript. Control-plane
+validation has one JavaScript implementation and no Go or shell-wrapper command.
+Preserve its report and exit-code contracts in `tests/unit/cao-validation.test.mjs`.
+Retain native policy guards used by operator construction and mutation.
+The CI JSON artifact stays outside the
+checkout in `RUNNER_TEMP`.
+See [the operator migration table](docs/cao-cli.md#github-cli-extension).
 
 #### Release binaries
 
 Following the gh-aw release pattern, `make release VERSION=v1.2.3` writes
-standalone `darwin-amd64`, `darwin-arm64`, `linux-amd64`, `linux-arm64`,
-`windows-amd64.exe`, and `windows-arm64.exe` assets and `checksums.txt` under
+standalone `gh-cao-OS-ARCH` assets for Darwin, Linux and Windows on amd64/arm64
+(`.exe` on Windows), plus `checksums.txt` under
 `dist/gh-cao/`. The version must be a stable `vMAJOR.MINOR.PATCH` tag, and the
 output directory must be empty to prevent stale assets from entering a release.
 For a different output directory, run:

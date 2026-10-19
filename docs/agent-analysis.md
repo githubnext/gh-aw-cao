@@ -1,6 +1,6 @@
 ---
 title: Agent analysis
-description: Give an agent the dashboard's own pages and named queries through the cao CLI or a read-only MCP server, with or without shell access.
+description: Give an agent the dashboard's own pages and named queries through gh cao or a read-only MCP server, with or without shell access.
 agent:
   type: agent-interface
   prominent: true
@@ -19,23 +19,24 @@ list of pages or queries:
 | Agent | Transport | Discovery | Execution |
 | --- | --- | --- | --- |
 | Browser agent | [WebMCP](dashboard-webmcp.md) | Generated page tools | Dashboard query engine |
-| Shell agent | `cao` CLI | `cao pages`, `cao queries` | `cao query QUERY_ID` |
+| Shell agent | `gh cao` | `gh cao pages`, `gh cao queries` | `gh cao query QUERY_ID` |
 | Agent without a shell | HTTP MCP server | `cao_catalog` | `cao_query` |
 
 ## Decide which path applies
 
 ```
 Do you have shell access?
-  YES           -> cao CLI
+  YES           -> gh cao
   NO / MCP only -> cao_catalog, then cao_query
 ```
 
 ## For a shell-capable agent
 
-1. Install CAO and download the current snapshot:
+1. Verify `gh cao --version`, using the [CAO installer](cao-cli.md#github-cli-extension)
+   if needed, then download the current snapshot:
 
    ```bash
-   cao download
+   gh cao download
    ```
 
    In Copilot cloud-agent sessions, the repository's setup steps download the
@@ -50,28 +51,28 @@ Do you have shell access?
 2. Discover the dashboard pages an operator reads:
 
    ```bash
-   cao pages
-   cao pages insights --json
+   gh cao pages
+   gh cao pages insights --json
    ```
 
 3. Discover the named queries behind those pages:
 
    ```bash
-   cao queries
-   cao queries --json
+   gh cao queries
+   gh cao queries --json
    ```
 
 4. Inspect one query before running it:
 
    ```bash
-   cao query-info usage-by-workflow
+   gh cao query-info usage-by-workflow
    ```
 
 5. Run it:
 
    ```bash
-   cao query usage-by-workflow --limit 50
-   cao query campaign-runs --param campaign=CAMPAIGN_SLUG
+   gh cao query usage-by-workflow --limit 50
+   gh cao query campaign-runs --param campaign=CAMPAIGN_SLUG
    ```
 
 Every discovery command supports `--json`, which prints only JSON on standard
@@ -85,7 +86,7 @@ It provides context, not permission to execute work or broaden a selected query.
 Each page description is a single action-oriented sentence naming the CAO
 operational decision the page supports; limitations remain in `acceptance`.
 
-`cao prompt QUERY_ID` produces the same analysis prompt used by dashboard view
+`gh cao prompt QUERY_ID` produces the same analysis prompt used by dashboard view
 actions. It links the analysis skill, CLI/MCP guide, canonical data and Dashboard
 Language contracts, dashboard source/fragment manifest, architecture, and
 workflow guidance. Browser prompts additionally include their page contract.
@@ -94,11 +95,11 @@ and editable workflow sources. Verify that repository's control role, the
 analyzed deployment revision and the exact workflow-SHA policy; documentation
 links to `main` or `HEAD` are navigation aids, not revision evidence. For another
 deployment, establish its verified `payload-hashes.json` URL and use
-`cao download --url URL` rather than silently querying the public default.
+`gh cao download --url URL` rather than silently querying the public default.
 
 The existing generic escape hatches remain available for advanced shell agents:
-`cao query --collection runs --limit 20` reads a canonical collection, and
-`cao query --stdin` executes an arbitrary Dashboard Language query object.
+`gh cao query --collection runs --limit 20` reads a canonical collection, and
+`gh cao query --stdin` executes an arbitrary Dashboard Language query object.
 
 ## For an agent without a shell
 
@@ -183,7 +184,7 @@ its sources.
 ## Run the MCP server
 
 ```bash
-cao mcp --database .cao/gh-aw-logs.sqlite --host 127.0.0.1 --port 8765
+gh cao mcp --database .cao/gh-aw-logs.sqlite --host 127.0.0.1 --port 8765
 ```
 
 The server implements the stateless MCP revision `2026-07-28`. It stores no
@@ -202,15 +203,15 @@ isolated network, and do not publish it to a routable interface.
 Preparation has network access; serving does not need any.
 
 ```
-install CAO -> cao download -> start CAO MCP container -> start agent
+install CAO -> gh cao download -> start CAO MCP container -> start agent
 ```
 
 ```yaml
 steps:
-  - name: Install CAO
-    run: ./cao.sh --version
+  - name: Verify the preinstalled CAO extension
+    run: gh cao --version
   - name: Download the CAO activity snapshot
-    run: ./cao.sh download
+    run: gh cao download
   - name: Start CAO MCP
     run: |
       docker run --detach \
@@ -223,6 +224,8 @@ steps:
 ```
 
 Point the workflow's MCP server configuration at `http://127.0.0.1:8765/mcp`.
+Provision `gh cao` on the runner with the [CAO installer](cao-cli.md#github-cli-extension)
+before these steps; the version check does not install it.
 Take the remote-MCP declaration syntax from the gh-aw version the workflow pins
 rather than from a CAO-specific dialect. Publishing the port on `127.0.0.1`
 keeps the endpoint on the runner; an equivalent job-local bridge network shared

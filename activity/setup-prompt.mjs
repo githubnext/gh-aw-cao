@@ -138,7 +138,7 @@ function createArrowSelect({ input, output, cancelActive }) {
 
 export function createTerminalPrompt({ input, output, UsageError }) {
   if (!input.isTTY || !output.isTTY) {
-    throw new UsageError('cao setup requires an interactive terminal. Run ./cao.sh setup from a terminal; use ./cao.sh setup-auth for scripted authentication.');
+    throw new UsageError('cao setup requires an interactive terminal. Run gh cao setup from a terminal; use gh cao setup auth for scripted authentication.');
   }
 
   const styled = styledPromptsEnabled({ input, output });
