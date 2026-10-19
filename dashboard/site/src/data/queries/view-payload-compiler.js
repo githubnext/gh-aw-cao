@@ -46,7 +46,7 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
 /**
  * @param {unknown} page
  * @param {string} pageId
- * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, sourceNames?: Iterable<string>, backend?: import('../../view-availability.js').DashboardDataBackend, partial?: boolean }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, viewIds?: Iterable<string>, sourceNames?: Iterable<string>, backend?: import('../../view-availability.js').DashboardDataBackend, partial?: boolean }} [options]
  * @returns {{ aliases: string[], queries: Array<Record<string, unknown>>, replacedSources: string[] }}
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
@@ -57,8 +57,10 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   };
   const views = Array.isArray(payload.views) ? payload.views : [];
   const viewMode = payload['query-binding'] === 'page' ? undefined : options.queryContext?.viewMode;
+  const selectedViewIds = options.viewIds ? new Set(options.viewIds) : null;
   const activeViews = views.filter((view, index) => {
     if (options.backend && !viewBackendAvailable(view, options.backend)) return false;
+    if (selectedViewIds && (!isPlainObject(view) || !selectedViewIds.has(String(view.id ?? `view-${index + 1}`)))) return false;
     if (options.viewId) return isPlainObject(view) && (view.id ?? `view-${index + 1}`) === options.viewId;
     return !viewMode || viewMatchesMode(view, viewMode);
   });
@@ -94,6 +96,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
 
   views.forEach((view, viewIndex) => {
     if (options.backend && !viewBackendAvailable(view, options.backend)) return;
+    if (selectedViewIds && (!isPlainObject(view) || !selectedViewIds.has(String(view.id ?? `view-${viewIndex + 1}`)))) return;
     if (options.viewId && (!isPlainObject(view)
       || (view.id ?? `view-${viewIndex + 1}`) !== options.viewId)) return;
     if (!options.viewId && viewMode && !viewMatchesMode(view, viewMode)) return;
@@ -191,6 +194,26 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   });
 
   return { aliases, queries, replacedSources: [...replacedSources] };
+}
+
+/**
+ * @param {unknown} page
+ * @param {{ views?: unknown, viewId?: string, sourceNames: string[] }} options
+ */
+export function dashboardPartialViewSources(page, options) {
+  const payload = pagePayload(page, options.views);
+  if (!options.viewId && payload['query-binding'] !== 'page') return [];
+  if (options.viewId && options.sourceNames.length !== 1) return [];
+  return (payload.views ?? []).flatMap((view, index) => {
+    if (!isPlainObject(view) || !isPlainObject(view.data)) return [];
+    const viewId = typeof view.id === 'string' ? view.id : `view-${index + 1}`;
+    if (options.viewId && options.viewId !== viewId) return [];
+    const source = view.data.source;
+    const partialSource = view.data['partial-source'];
+    return typeof source === 'string' && options.sourceNames.includes(source)
+      && getViewSources(view).length === 1 && typeof partialSource === 'string'
+      ? [{ viewId, source, partialSource }] : [];
+  });
 }
 
 /** @param {unknown} form */
