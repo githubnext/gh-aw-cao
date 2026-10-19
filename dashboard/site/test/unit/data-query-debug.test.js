@@ -136,4 +136,26 @@ describe('dashboard query debug logging', () => {
     expect(time).not.toHaveBeenCalled();
     expect(timeEnd).not.toHaveBeenCalled();
   });
+
+  it('attributes adjacent computation and projection to one budgeted traversal', async () => {
+    window.history.replaceState(null, '', '/?debug=data:query');
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const { executeDashboardQuery } = await import('../../src/data/queries/declarative.js');
+    const result = executeDashboardQuery({
+      name: 'projected',
+      from: 'input',
+      compute: [{ as: 'label', function: 'concat', args: [{ field: 'value' }, { value: '!' }] }],
+      select: [{ field: 'label' }]
+    }, {
+      input: { source: 'input', rows: [{ value: 'one' }, { value: 'two' }], metadata: metadata('input') }
+    });
+    expect(result.rows).toEqual([{ label: 'one!' }, { label: 'two!' }]);
+    expect(debug).toHaveBeenCalledWith('[cao:data:query]', 'stage', expect.objectContaining({
+      query: 'projected', stage: 'compute-select',
+      inputRows: 2, outputRows: 2, operations: 2, status: 'complete'
+    }));
+    expect(debug).toHaveBeenCalledWith('[cao:data:query]', 'query', expect.objectContaining({
+      query: 'projected', operations: 2, status: 'available'
+    }));
+  });
 });

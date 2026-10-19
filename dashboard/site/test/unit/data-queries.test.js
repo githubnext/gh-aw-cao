@@ -105,6 +105,41 @@ describe('declarative dashboard queries', () => {
     expect(row.value).toBe(2);
   });
 
+  it('fuses adjacent compute and select without changing ordered expressions or projection semantics', () => {
+    const rows = [
+      Object.freeze({ value: 2, label: 'two', blank: null, absent: undefined, discarded: true }),
+      Object.freeze({ value: 0, label: 'zero', blank: null })
+    ];
+    const compute = [
+      { as: 'double', function: /** @type {const} */ ('product'), args: [{ field: 'value' }, { value: 2 }] },
+      { as: 'result', function: /** @type {const} */ ('sum'), args: [{ field: 'double' }, { value: 1 }] }
+    ];
+    const select = [
+      { field: 'result', as: 'total' }, { field: 'label' },
+      { field: 'blank' }, { field: 'absent' }, { field: 'missing' }
+    ];
+    const expected = tidy(rows, [{ op: 'compute', values: compute }, { op: 'select', fields: select }]);
+    const budget = createDashboardQueryBudget({ maxOperations: rows.length });
+    const result = executeDashboardQuery({
+      name: 'projected', from: 'input', compute, select
+    }, { input: { source: 'input', rows, metadata: metadata('input') } }, undefined, budget);
+    expect(result.rows).toEqual(expected);
+    expect(result.rows).toEqual([
+      { total: 5, label: 'two', blank: null }, { total: 1, label: 'zero', blank: null }
+    ]);
+    expect(budget.operations).toBe(rows.length);
+    expect(result.rows[0]).not.toBe(rows[0]);
+    result.rows[0].label = 'changed';
+    expect(rows[0].label).toBe('two');
+    expect(() => {
+      const cancelled = executeDashboardQuery({
+        name: 'cancelled', from: 'input', compute, select
+      }, { input: { source: 'input', rows, metadata: metadata('input') } }, undefined,
+      createDashboardQueryBudget({ maxOperations: rows.length - 1 }));
+      return cancelled.rows;
+    }).toThrow('max-operations');
+  });
+
   it('retains independent result rows for selection-only pipelines and charges their copy pass', () => {
     const row = Object.freeze({ value: 2 });
     const budget = createDashboardQueryBudget({ maxOperations: 2 });

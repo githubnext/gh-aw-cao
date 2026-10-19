@@ -8,7 +8,7 @@ import { incrementalAggregate } from '../../src/data/queries/incremental-aggrega
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const queries = authoritativeDashboard.dashboard.queries.filter(
-  (/** @type {{ name: string }} */ query) => ['firewall-domain-totals', 'firewall-most-blocked-domains'].includes(query.name)
+  (/** @type {{ name: string }} */ query) => ['firewall-domain-totals', 'firewall-most-blocked-domains', 'firewall-domain-workflows'].includes(query.name)
 );
 const firewall = authoritativeDashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');
 
@@ -21,7 +21,8 @@ async function seed(count, mixed = false, runCount = 2) {
       transaction.onerror = () => reject(transaction.error);
       transaction.oncomplete = () => resolve(undefined);
       for (let run = 1; run <= runCount; run++) transaction.objectStore('runs').put({
-        id: `run:${run}`, githubRunId: String(run), owner: 'org', repository: 'repo', workflowPath: 'test.md'
+        id: `run:${run}`, githubRunId: String(run), owner: 'org', repository: 'repo', workflowPath: 'test.md',
+        workflowLink: { href: `https://github.example/org/repo/blob/${run}/test.md` }
       });
       for (let index = 0; index < count; index++) transaction.objectStore('domains').put({
         id: `event:${String(index).padStart(7, '0')}`,
@@ -47,7 +48,7 @@ afterEach(async () => {
 
 describe('native streaming canonical aggregates', () => {
   it('keeps workflow-level firewall evidence within the unchanged operation budget at deployed scale', async () => {
-    await seed(350001, false, 10000);
+    await seed(400001, false, 10000);
     const name = 'firewall-domain-workflows';
     const budget = createDashboardQueryBudget();
     const result = await queryIndexedDatabaseSources(
@@ -57,9 +58,10 @@ describe('native streaming canonical aggregates', () => {
     );
     expect(result[name].rows).toEqual([{
       domain: 'example.com', organization: 'org', repository: 'repo', workflow: 'test.md',
-      'workflow-source-url': null, runs: 1, accepted: 0, blocked: 350001
+      'workflow-source-url': 'https://github.example/org/repo/blob/1/test.md', runs: 1, accepted: 0, blocked: 400001
     }]);
     expect(result[name].metadata.availability).toBe('available');
+    expect(budget.operations).toBe(4810415);
     expect(budget.operations).toBeLessThan(5000000);
   }, 240000);
 
@@ -84,7 +86,7 @@ describe('native streaming canonical aggregates', () => {
   it('matches ordinary projection and aggregate semantics across mixed batches and scope filters', async () => {
     await seed(3001, true);
     const compiled = compileDashboardViewPayloadQueries(firewall, 'firewall', {
-      queries, sourceNames: ['firewall-most-blocked-domains'],
+      queries, sourceNames: ['firewall-most-blocked-domains', 'firewall-domain-workflows'],
       queryContext: { timeWindow: { start: '2026-10-01T00:00:00Z', end: '2026-11-01T00:00:00Z' } }
     });
     const definitions = [...queries, ...compiled.queries];
@@ -93,7 +95,10 @@ describe('native streaming canonical aggregates', () => {
     const native = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await loadDatabaseQuerySources(indexedDB, {}, {
       queries: definitions, sourceNames: compiled.aliases
     }));
-    expect(native[compiled.aliases[0]].rows).toEqual(ordinary[compiled.aliases[0]].rows);
+    for (const alias of compiled.aliases) {
+      expect(native[alias].rows).toEqual(ordinary[alias].rows);
+      expect(native[alias].metadata.availability).toBe('available');
+    }
     expect(native[compiled.aliases[0]].rows).toHaveLength(2);
     const excluded = compileDashboardViewPayloadQueries(firewall, 'firewall', {
       queries, sourceNames: ['firewall-most-blocked-domains'],
