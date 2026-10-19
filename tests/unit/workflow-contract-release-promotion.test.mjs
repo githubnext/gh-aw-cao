@@ -211,6 +211,15 @@ test("repository identifiers cannot change the API route", () => {
   }
 });
 
+test("promotion jobs cannot publish shared caches while executing the candidate", () => {
+  const workflow = parse(readFileSync(new URL("../../.github/workflows/release-promote.yml", import.meta.url), "utf8"));
+  assert.equal(workflow["cache-mode"], "read");
+  for (const [name, job] of Object.entries(workflow.jobs)) {
+    assert.ok(["read", "none"].includes(job["cache-mode"] ?? workflow["cache-mode"]),
+      `${name} must not override read-only cache authority with write access`);
+  }
+});
+
 test("only promotion is approval-gated; automated prerelease publication and PR filters are unchanged", () => {
   const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
   const workflow = parse(read(".github/workflows/release-promote.yml"));

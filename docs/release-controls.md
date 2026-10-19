@@ -76,6 +76,13 @@ Failure before the update leaves the candidate a prerelease. A failed readback
 after the update is reported as failure, not silently rolled back or declared
 successful; an operator must inspect the actual release state.
 
+Promotion's GitHub.com `cache-mode: read` denies cache writes through scoped
+job tokens. No job overrides it.
+Unsupported GHES versions must omit this key without an equivalent guarantee.
+Docs cache npm downloads, never `node_modules`, and always run `npm ci` with
+lockfile integrity checks. Approval follows validation and does not protect
+earlier execution. Dashboard delivery is unchanged.
+
 ## Administrator setup (not performed by this change)
 
 1. Independently review and land the promotion workflow. Keep the existing

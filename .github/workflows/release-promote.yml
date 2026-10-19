@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+# GitHub.com enforces read-only cache tokens, including for candidate validation.
+cache-mode: read
+
 concurrency:
   group: release-latest-promotion
   cancel-in-progress: false
