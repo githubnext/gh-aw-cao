@@ -198,6 +198,9 @@ func enginePredictionInputs(row nativeRow, predictors []string) ([]float64, bool
 
 func engineFitPrediction(observations []engineObservation, def nativeRow) func([]float64) float64 {
 	method := engineString(def["method"])
+	if (method == "" || method == "linear") && len(observations) > 0 && len(observations[0].values) == 1 {
+		return engineFitSimpleLinear(observations)
+	}
 	design := func(values []float64) []float64 { return append([]float64{1}, values...) }
 	evaluate := func(coefficients, values []float64) float64 {
 		result := coefficients[0]
@@ -274,6 +277,35 @@ func engineFitPrediction(observations []engineObservation, def nativeRow) func([
 		}
 	}
 	return engineFitLinear(observations, design, evaluate)
+}
+
+func engineFitSimpleLinear(observations []engineObservation) func([]float64) float64 {
+	if len(observations) < 2 {
+		return nil
+	}
+	meanX, meanY := float64(0), float64(0)
+	for _, observation := range observations {
+		meanX += observation.values[0]
+		meanY += observation.target
+	}
+	meanX /= float64(len(observations))
+	meanY /= float64(len(observations))
+	variance, covariance := float64(0), float64(0)
+	for _, observation := range observations {
+		dx := observation.values[0] - meanX
+		variance += dx * dx
+		covariance += dx * (observation.target - meanY)
+	}
+	if !engineFinite(variance) || math.Sqrt(variance) <= math.Nextafter(1, 2)-1 {
+		return nil
+	}
+	slope := covariance / variance
+	if !engineFinite(slope) || !engineFinite(meanY) {
+		return nil
+	}
+	// Center both axes so predictions near the sample means do not subtract
+	// large intercepts or accumulate QR normalization roundoff.
+	return func(values []float64) float64 { return meanY + slope*(values[0]-meanX) }
 }
 
 func engineDot(left, right []float64) float64 {

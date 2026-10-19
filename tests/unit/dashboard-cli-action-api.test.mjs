@@ -85,7 +85,6 @@ test("native queue API resolves declarations, rejects overrides, and enforces Or
 
 test("native output resumes by cursor and persists enterprise PR completion, ANSI and bounded history across restart", async (t) => {
   const server = await fixture(t, {
-    hold: false,
     initialOutput: [{ stream: "stdout", data: "https://github.com/octo/repo/pull/1\n" }],
     completionOutput: [
       { stream: "stderr", data: "\x1b[32mhttps://ghe.example.test:8443/github/team/project/pull/42\x1b[0m\n" },
@@ -99,6 +98,12 @@ test("native output resumes by cursor and persists enterprise PR completion, ANS
   assert.equal(job.command, "gh workflow run maintenance.yml --repo octo/example --ref release");
   assert.equal((await (await server.request("/__cli_commands", "POST", { ...invocation, arguments: { release: true } }, headers)).json()).id, job.id);
   assert.equal((await server.request("/__cli_commands", "POST", invocation, headers)).status, 409);
+  // Separate pipes preserve stream order, not the order of writes across streams.
+  await until(async () => {
+    const detail = await (await server.request(`/__cli_commands/${job.id}`)).json();
+    return detail.stdout?.includes("https://github.com/octo/repo/pull/1");
+  });
+  server.commands.finish();
   const events = await complete(server, job.id);
   const output = events.filter(({ type }) => type === "output");
   assert.ok(output.length >= 2);
