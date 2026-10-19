@@ -26,15 +26,23 @@ The shared control component keeps one canonical runtime under `.github/workflow
 | Runtime revision | `github.workflow_sha` is an exact commit and the policy and both CAO modules are readable at that revision. |
 | Policy document | The JSON has supported keys, types, ranges, unique names, no duplicate keys, and no GitHub Actions expressions. |
 | Control plane | `control-plane` exists. |
-| Workflow identity | The workflow declares `orchestrator` or `worker`; workers also declare an exact worker identity. |
-| Campaign | The campaign is declared and not disabled. |
+| Workflow identity | The workflow declares `orchestrator`, `worker`, or `standalone`; workers declare an exact worker identity, while standalone workflow slugs must match the actual compiled workflow reference. |
+| Campaign | The campaign, or standalone workflow under `control-plane.workflows`, is declared and not disabled. |
 | Worker | A worker is declared under that campaign and not disabled. |
 | Target input | A supplied `target_repo` uses exact `owner/repository` form. Scope and access are checked later during precompute. |
 | Mode input | `review` or `live` does not exceed the checked-in ceiling; request-only `debug` passes the manual worker and human authorization gates below. |
 | Run limits | `max_repos` and `rollout_percent` are valid and do not exceed checked-in policy. |
 | GitHub API capacity | The credential used for precompute has enough primary REST API capacity for the run. |
 
-A manual dispatch can narrow a run, such as changing an authorized `live` run to `review` or reducing `max_repos`. It cannot promote mode, add scope, enable a campaign or worker, or increase a limit.
+A manual dispatch can narrow a run, such as changing an authorized `live` run to `review` or reducing `max_repos`. It cannot promote mode, add scope, enable a standalone workflow, campaign, or worker, or increase a limit.
+
+Standalone workflows use these same gates without campaign records or worker
+discovery. Precompute admits a deterministic repository set through the shared
+scope, inventory, percentage, and repository limits; each candidate carries its
+effective mode and output route. The workflow executes its own mission directly
+on that set and cannot discover additional targets or dispatch work. Required
+inventory failures prevent activation. See
+[standalone workflow configuration](configuration.md#standalone-agentic-workflows).
 
 ### Manual Debug Admission
 
@@ -95,6 +103,7 @@ The [Configuration Reference](configuration.md) defines every policy field. The 
 | Configuration | Admission effect | Precompute effect |
 | --- | --- | --- |
 | `control-plane.campaigns` and `workers` | Declares and enables the exact workflow identity. | Resolves installed worker workflow paths. |
+| `control-plane.workflows` | Declares and enables the exact standalone workflow identity. | Admits its bounded repository set without worker workflow discovery. |
 | `mode`, target `mode`, and worker `max-mode` | Establishes the maximum mode a dispatch may request. | Re-resolves the central ceiling before worker execution. |
 | `max-repositories` and `rollout-percent` | Rejects a wider manual request. | Bounds selected repositories. |
 | `scope` | Validates and returns the configured owners and repositories. | Filters inventory and rejects out-of-scope targets or review destinations; workers also reject targets outside a configured exact repository allowlist. |
@@ -109,7 +118,9 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 | Cannot read or execute CAO runtime | Runtime revision | Verify that the CAO root package installed `.github/workflows/shared/control.mjs` and `policy.mjs` and that both exist at the workflow revision. |
 | `control policy validation failed` | Policy document | Validate policy keys, types, ranges, unique names, and expressions in `.github/workflows/cao.json`. |
 | `control-plane-absent` | Control plane | Add `control-plane` to `.github/workflows/cao.json`. |
-| `role must be orchestrator or worker`, `worker identity is required`, `worker identity is forbidden for orchestrators` | Workflow identity | Fix the dispatched role and worker identity for the workflow. |
+| `role must be orchestrator, worker, or standalone`, `worker identity is required`, `worker identity is forbidden for orchestrators` | Workflow identity | Fix the role and its workflow or worker identity. |
+| `standalone workflow identity must match GITHUB_WORKFLOW_REF` | Workflow identity | Set the standalone import's `workflow` to its exact compiled filename slug. |
+| `workflow-undeclared`, `workflow-disabled` | Campaign | Review the standalone entry under `control-plane.workflows` and its enablement. |
 | `campaign-undeclared` | Campaign | Add the installed campaign under `control-plane.campaigns`. |
 | `campaign-disabled` | Campaign | Review the campaign, then remove `enabled: false` when it is safe to resume. |
 | `worker-disabled`, `unknown worker: <campaign>/<worker>` | Worker | Review the worker, then remove `enabled: false` or declare it under `control-plane.campaigns.<campaign>.workers` when it is safe to resume. |

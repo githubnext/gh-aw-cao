@@ -120,6 +120,28 @@
       },
       "additionalProperties": { "$ref": "#/$defs/campaignPolicy" }
     },
+    "workflowPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "max-mode": { "$ref": "#/$defs/mode" },
+        "max-repositories": { "$ref": "#/$defs/maxRepositories" },
+        "rollout-percent": { "$ref": "#/$defs/rolloutPercent" },
+        "monthly-ai-credit-budget": { "$ref": "#/$defs/monthlyAiCreditBudget" },
+        "targets": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/repository" },
+          "additionalProperties": { "$ref": "#/$defs/targetPolicy" }
+        }
+      }
+    },
+    "controlWorkflows": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+      "additionalProperties": { "$ref": "#/$defs/workflowPolicy" }
+    },
     "scope": {
       "type": "object",
       "additionalProperties": false,
@@ -471,6 +493,7 @@
         "web": { "$ref": "#/$defs/web" },
         "defaults": { "$ref": "#/$defs/defaults" },
         "campaigns": { "$ref": "#/$defs/controlCampaigns" },
+        "workflows": { "$ref": "#/$defs/controlWorkflows" },
         "publishing": { "$ref": "#/$defs/publishing" },
         "marketplace": { "$ref": "#/$defs/marketplace" }
       }

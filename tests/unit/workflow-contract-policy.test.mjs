@@ -310,8 +310,8 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
 
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
-  assert.match(control, /campaign:\n\s+type: string\n\s+required: true/);
-  assert.match(control, /role:\n\s+type: choice\n\s+options: \[orchestrator, worker\]/);
+  assert.match(control, /campaign:\n\s+type: string\n\s+default: "__none__"/);
+  assert.match(control, /role:\n\s+type: choice\n\s+options: \[orchestrator, worker, standalone\]/);
   assert.match(control, /worker:\n\s+type: string\n\s+default: "__none__"/);
   assert.match(precompute, /join\(admissionDirectory\(\), "effective-policy\.json"\)/);
   assert.doesNotMatch(control, /^steps:/m);
@@ -479,7 +479,7 @@ test("live workers use central policy as the activation authority", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  assert.match(control, /campaign:\n\s+type: string\n\s+required: true/);
+  assert.match(control, /campaign:\n\s+type: string\n\s+default: "__none__"/);
   assert.doesNotMatch(precompute, /validateLiveAuthority|target_authority_source|target default branch/);
   assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*writeWorkerPrecompute\(context\)/);
 
@@ -587,7 +587,7 @@ test("shared control keeps manual and scheduled routing event-scoped", () => {
     assert.doesNotMatch(orchestrator, /vars\.CENTRAL_AGENTIC_OPS_/);
   }
   assert.match(control, /CAO_REQUESTED_MODE: \$\{\{ inputs\.safe_output_mode \|\| '' \}\}/);
-  assert.match(control, /CAO_SAFE_OUTPUT_REPOSITORY: \$\{\{ \(inputs\.safe_output_mode/);
+  assert.match(control, /CAO_SAFE_OUTPUT_REPOSITORY: \$\{\{ env\.CAO_ROLE == 'standalone'[\s\S]*?\|\| \(inputs\.safe_output_mode/);
   assert.doesNotMatch(control, /review_repo/);
   assert.match(control, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ inputs\.rollout_percent \|\| '' \}\}/);
   assert.match(control, /select no more than `effective_max_repos` repositories/);

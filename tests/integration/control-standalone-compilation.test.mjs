@@ -1,0 +1,46 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import { parse } from "yaml";
+import { root } from "../helpers/control-precompute.mjs";
+
+test("the pinned compiler integrates standalone admission without a campaign or worker declaration", () => {
+  const directory = mkdtempSync(join(tmpdir(), "cao-standalone-compile-"));
+  const workflows = join(directory, ".github", "workflows");
+  const run = (command, args) => {
+    const result = spawnSync(command, args, { cwd: directory, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+    assert.equal(result.status, 0, `${command} ${args.join(" ")}: ${result.error?.message ?? ""}\n${result.stderr}`);
+    return result;
+  };
+  try {
+    mkdirSync(workflows, { recursive: true });
+    cpSync(join(root, ".github", "workflows", "shared"), join(workflows, "shared"), { recursive: true });
+    cpSync(join(root, "tests", "fixtures", "workflows", "fleet-audit.md"), join(workflows, "fleet-audit.md"));
+    run("git", ["init", "--quiet"]);
+    run("git", ["add", "--all"]);
+    run("git", ["-c", "user.name=CAO Test", "-c", "user.email=cao-test@localhost",
+      "commit", "--quiet", "--no-gpg-sign", "-m", "Standalone compilation fixture"]);
+    const expectedVersion = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"))["gh-aw-version"];
+    assert.ok(run("gh", ["aw", "version"]).stdout.includes(expectedVersion));
+    run("gh", ["aw", "compile", "--strict", "--no-check-update", "--schedule-seed", "githubnext/gh-cao"]);
+    const compiled = parse(readFileSync(join(workflows, "fleet-audit.lock.yml"), "utf8"));
+    assert.equal(compiled.env.CAO_ROLE, "standalone");
+    assert.equal(compiled.env.CAO_WORKFLOW, "fleet-audit");
+    assert.equal(compiled.env.CAO_CAMPAIGN, "__none__");
+    const steps = compiled.jobs.pre_activation.steps;
+    for (const id of ["cao_admission", "cao_precompute", "cao_precompute_validation"]) {
+      const step = steps.find(step => step.id === id);
+      assert.ok(step, `missing compiled ${id} step`);
+      assert.equal(step.env.CAO_ROLE, "standalone");
+      assert.equal(step.env.CAO_WORKFLOW, "fleet-audit");
+      assert.equal(step.env.CAO_CAMPAIGN, "__none__");
+    }
+    assert.match(steps.find(step => step.id === "cao_precompute").env.CAO_SAFE_OUTPUT_REPOSITORY, /env.CAO_ROLE == 'standalone'/);
+    assert.match(compiled.jobs.activation.if, /needs.pre_activation.outputs.cao_authorized/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

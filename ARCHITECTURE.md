@@ -1,9 +1,9 @@
 # Architecture
 
-Central Agentic Ops (CAO) campaigns agentic operations and runs them from a
+Central Agentic Ops (CAO) governs agentic workflows and runs them from a
 central GitHub repository against an explicitly bounded repository fleet. This
 repository is both the public campaign catalog and a source-managed control plane
-used to develop and exercise those campaigns.
+used to develop and exercise campaigns and standalone workflows.
 
 This document is a map of the stable system boundaries and source tree. The
 normative contracts live under `specs/`; operator-facing explanations live
@@ -61,6 +61,24 @@ compiled by gh-aw. No one input can widen another.
 
 Orchestrators decide rollout and selection; workers are independent,
 single-target enforcement points.
+
+A standalone agentic workflow may instead import shared control with
+`role: standalone` and its exact `workflow` slug. It declares no campaign or
+worker and needs no campaign record. `control-plane.workflows.<workflow>` owns
+its enablement, mode, optional `max-mode` ceiling, target modes, repository cap,
+and rollout percentage. Admission verifies that identity against the actual
+compiled workflow reference, loads policy at the exact workflow SHA, and checks
+API capacity through the same admission path as campaigns. Precompute reuses
+bounded inventory, deterministic cells and batches, excludes archived/disabled
+repositories, and admits a deterministic subset capped by repository count and
+rollout percentage. Each admitted repository carries its own effective mode and
+output destination. The workflow performs its mission directly on that set;
+it cannot discover extra targets or dispatch more work. No orchestrator or
+downstream workflow inventory is required. Missing inventory evidence fails
+closed. Credential reach and safe-output capabilities remain declared by gh-aw;
+CAO does not expand them for fleet execution.
+Bare setup rejects policies with declared standalone workflows before changing
+scope or authentication, just as it rejects declared operational campaigns.
 
 A local debugger may manually launch one worker in request-only `debug` mode.
 Admission verifies a human `workflow_dispatch` sender with current write access
@@ -882,8 +900,8 @@ all public; that does not authorize non-public targets or other campaigns.
   the admitted workflow runs.
 - `.github/workflows/cao.json` is policy, not a credential store. Credentials
   stay in GitHub Actions secrets and are resolved inside a run.
-- Review mode is the default. Live operation requires explicit campaign, worker,
-  scope, and target authority.
+- Review mode is the default. Live operation requires explicit standalone
+  workflow or campaign/worker policy, scope, and target authority.
 - Target repository files cannot grant, narrow, or revoke control-plane
   authority.
 - GitHub tools available to agents are read-only. Repository changes use only
@@ -899,6 +917,8 @@ all public; that does not authorize non-public targets or other campaigns.
   targets or dispatch more work, and cannot widen its mode.
 - Dispatch envelopes carry repository identity, mode, review destination, and
   provenance. They never carry credentials.
+- Standalone workflows use their own policy identity and bounded precomputed
+  targets, not synthetic campaigns, workers, or dispatcher envelopes.
 
 ### Evidence and presentation
 

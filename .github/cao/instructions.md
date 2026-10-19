@@ -8,7 +8,7 @@ The `dashboard/` campaign is the deterministic exception. It contains convention
 
 ## CAO and gh-aw authority
 
-Central Agentic Ops governs **whether and where** an installed operation may run: campaign and worker enablement, eligible owners and repositories, review/live ceilings, inventory partitioning, rollout, and monthly campaign admission.
+Central Agentic Ops governs **whether and where** an installed operation may run: standalone workflow, campaign, and worker enablement, eligible owners and repositories, review/live ceilings, inventory partitioning, and rollout.
 
 gh-aw governs **how** an authorized workflow executes: engines and models, per-run turns and AI Credit limits, tools, network access, permissions, generated job topology, authentication mechanics, and safe-output primitives and execution.
 
@@ -26,6 +26,15 @@ remains gh-aw-owned.
 ## Workflow authoring
 
 For an operational campaign, apply `skills/create-cao-campaign/SKILL.md`. It defines the CAO orchestrator/worker topology, rollout boundary, and required `.github/workflows/shared/control.md` imports.
+
+For a standalone agentic workflow, import `shared/control.md` with
+`role: standalone` and `workflow: <exact-workflow-slug>` instead of campaign and
+worker identities. Declare it under `control-plane.workflows`, and preserve the
+pre-activation admission output and activation gate used by campaign workflows.
+It may execute directly against its deterministically admitted repository set,
+using each target's precomputed mode and output destination, without downstream
+dispatch or additional discovery. No campaign descriptor or ownership record is
+required. See `docs/configuration.md` for the policy and import contract.
 
 ## Deterministic core campaigns
 

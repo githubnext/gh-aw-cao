@@ -57,7 +57,7 @@ structure:
   runtime_distribution: .github/workflows/cao-runtime.yml
 
 architecture:
-  style: policy-governed central control plane with catalog campaigns and bounded workers
+  style: policy-governed central control plane with standalone workflows, catalog campaigns, and bounded workers
   roles:
     catalog: publishes versioned operation campaigns
     control_repository: owns rollout policy, credentials, installed workflows, and workflow runs
@@ -102,6 +102,9 @@ components:
   worker:
     path: .github/workflows/<operation>-<worker>.md
     responsibility: revalidate a dispatch or manual-debug envelope, analyze one target, and emit declared safe outputs
+  standalone_workflow:
+    path: .github/workflows/<workflow>.md
+    responsibility: import shared control with an exact workflow identity, admit directly against control-plane.workflows at the workflow SHA, and execute its mission on a deterministically bounded fleet without campaigns, worker inventory, or downstream dispatch
   activity:
     path: activity/
     responsibility: collect bounded evidence, ingest JSONL, create SQLite projections, and provide the cao CLI
@@ -309,6 +312,9 @@ dependencies:
   - catalog -> control_repository
   - control_repository -> policy_resolution
   - policy_resolution -> orchestrator
+  - policy_resolution -> standalone_workflow
+  - standalone_workflow -> review_repository
+  - standalone_workflow -> target_repository
   - orchestrator -> worker
   - worker -> review_repository
   - worker -> target_repository
@@ -443,7 +449,9 @@ invariants:
   - "Quickstart installation does not explicitly dispatch Activity, but normal Activity push/schedule triggers remain active and may publish a baseline independently. Dashboard readiness requires an actual successful Pages deployment job; successful workflows with skipped deployments are insufficient."
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
   - "No authority input can widen another."
-  - "Review mode is the default; live mode requires explicit campaign, worker, scope, and target authority."
+  - "Review mode is the default; live mode requires explicit standalone workflow or campaign/worker policy, scope, and target authority."
+  - "Standalone workflows MUST declare their exact slug under control-plane.workflows and import role standalone without a campaign or worker identity. Admission MUST match the compiled workflow reference, use exact-workflow-SHA policy and API-capacity checks, and fail closed. Precompute MUST reuse bounded inventory, deterministic cells/batches, repository and percentage caps, exclude archived/disabled targets, and publish only the admitted deterministic subset with per-target mode/output routing. Missing inventory evidence MUST fail closed. Standalone execution MUST NOT discover extra targets, dispatch work, fabricate campaign records or dispatcher envelopes, or expand gh-aw credentials or safe-output capabilities."
+  - "Bare setup MUST reject declared standalone workflows before changing policy or authentication, just as it rejects installed operational campaigns."
   - "Debug is request-only for one human workflow_dispatch worker with current control-repository write access; preserve exact-SHA policy, scope, enablement, and limits, require matching target/output repositories, reject dispatcher-envelope inputs, and record the actor with empty dispatcher correlation. Shared control MUST force gh-aw safe-output staging and suppress automatic activation/failure issues. Debug MUST NOT grant live authority, enter persistent policy, or be selected by an orchestrator. GitHub cannot attest local CLI origin; repository-memory staging remains gh-aw-owned."
   - "Credentials remain GitHub Actions secrets and are resolved only inside a run."
   - "Missing policy, authority, credentials, access, or required evidence MUST fail closed."
@@ -542,6 +550,11 @@ invariants:
   - "Marketplace UI access MUST cross the existing data-worker query boundary and package actions MUST be copy-only canonical CAO add commands; the dashboard MUST NOT install packages."
 
 flows:
+  standalone_execution:
+    - control_repository
+    - policy_resolution
+    - standalone_workflow
+    - review_repository
   first_success_quickstart:
     - control_plane_quickstart
     - control_repository

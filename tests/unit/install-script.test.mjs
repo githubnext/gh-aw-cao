@@ -1228,6 +1228,23 @@ test("headless guided reinstallation preserves incompatible operator-owned polic
   assert.equal(await log(), "add\n");
 });
 
+test("headless setup does not reconfigure an existing standalone control plane", async (t) => {
+  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
+  await streamInstaller(consumer, env);
+  const customPolicy = JSON.stringify({
+    version: 1, "gh-aw-version": supportedGhAw,
+    "control-plane": { campaigns: {}, workflows: { audit: { enabled: true } } },
+  });
+  await writeFile(path.join(consumer, policyPath), customPolicy);
+  const result = await runStreamed(consumer, {
+    ...env, CI: "1", FAKE_CONTROL_VISIBILITY: "PUBLIC",
+  }, ["--setup"]);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /requires a bare control plane with no declared standalone workflows/);
+  assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
+  assert.equal(await log(), "add\n");
+});
+
 test("headless quickstart selects the current checkout and validates it before mutation", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   await writeFile(path.join(consumer, "README.md"), "existing change\n");
