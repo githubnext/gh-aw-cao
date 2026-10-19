@@ -25,7 +25,8 @@ Build dashboard experiences declaratively first. Use JavaScript only for interac
 - Keep specialized views declarative: they select sources and an element but do not directly query, create, replace, or mutate DOM nodes.
 - Reuse `dashboard/site/src/dom.js`, shared UI primitives, chart elements, badges, formatters, Octicons, and view chrome instead of duplicating markup or behavior.
 - Return one owned root element. Keep selectors and events scoped to that root, preserve semantic HTML and keyboard operation, and expose accessible names and state.
-- Add the element to `EMPTY_AWARE_ELEMENTS` only when it renders honest empty or unavailable states itself.
+- Declare how the element's sources are loaded in `ui-elements.js`. By default the page subscription supplies `context.sources` and the presenter renders the shared empty and unavailable states. Add the element to `ASYNC_SOURCE_ELEMENTS` only when it loads its declared sources itself, scoped by `createFactoryScope()`; add it to `PAGE_BOUND_ELEMENTS` only when it must keep its DOM while the active page republishes query results.
+- Add the element to `EMPTY_AWARE_ELEMENTS` or `UNAVAILABLE_AWARE_ELEMENTS` only when it renders honest empty or unavailable states itself.
 - Use lazy registration for substantial elements that are not needed on every page.
 
 ## Reactive state
