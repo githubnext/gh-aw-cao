@@ -944,7 +944,18 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
             h('span', { className: 'sr-only' }, `Loading ${getViewTitle(view, index)}`)
           ], headingTag)
         : renderCustomView(page.id, view, index, readySources, units, cardTemplates, headingTag, routeParameter, queryContext);
-      if (pending && isPlainObject(view) && view.mark === 'chart' && view.chart === 'pie') {
+      const fullPie = isPlainObject(view) && view.mark === 'chart' && view.chart === 'pie' && view.layout === 'full';
+      const pieState = fullPie ? rendered.querySelector(':scope > .view-state-card') : null;
+      if (fullPie) rendered.classList.add('chart-view', 'chart-view-pie');
+      if (pieState && isPlainObject(view)) {
+        if (typeof view.description === 'string') {
+          pieState.before(h('p', { className: 'view-description' }, view.description));
+        }
+        const layout = h('div', { className: 'pie-chart-layout' });
+        pieState.before(layout);
+        layout.append(pieState);
+      }
+      if ((pending && isPlainObject(view) && view.mark === 'chart' && view.chart === 'pie') || pieState) {
         const heading = rendered.querySelector(':scope > :is(h2, h3, h4)');
         if (heading) {
           const titleRow = h('div', { className: 'chart-prompt-heading' });

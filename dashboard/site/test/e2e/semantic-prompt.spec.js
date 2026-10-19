@@ -64,8 +64,10 @@ test('a loading chart has no prompt action until its own data arrives', async ({
   await page.evaluate(() => Reflect.get(window, 'finishLoading')());
 });
 
-for (const width of [390, 1280]) {
-  test(`pie chart loading reserves visible heading and description at ${width}px`, async ({ page }) => {
+for (const { width, categories } of [390, 1280].flatMap((width) => (
+  [0, 1, 9, 18].map((categories) => ({ width, categories }))
+))) {
+  test(`pie chart loading reserves responsive space for ${categories} categories at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.setContent(`
       <div id="root"></div>
@@ -76,10 +78,12 @@ for (const width of [390, 1280]) {
           availability: 'available', completeness: 'complete', freshness: 'fresh'
         };
         const loadPageSources = (_pageId, options) => new Promise((resolve) => {
+          window.finishLoading = () => resolve({});
           window.publishCost = () => {
-            const sources = { usage: { source: 'usage', rows: [{ campaign: 'daily', credits: 3 }], metadata } };
+            const sources = { usage: { source: 'usage', rows: Array.from({ length: ${categories} }, (_, index) => ({
+              campaign: 'Campaign ' + index, credits: index + 1
+            })), metadata } };
             options.onUpdate(sources);
-            resolve(sources);
           };
         });
         document.querySelector('#root').append(renderDashboard({
@@ -94,6 +98,13 @@ for (const width of [390, 1280]) {
                   description: 'Compare AI Credits consumed by each campaign.',
                   mark: 'chart', chart: 'pie', layout: 'full', prompt: 'always',
                   data: { source: 'usage' },
+                  encoding: {
+                    x: { field: 'campaign', type: 'nominal' },
+                    y: { field: 'credits', type: 'quantitative' }
+                  }
+                }, {
+                  id: 'remaining-chart', title: 'Remaining evidence',
+                  mark: 'chart', chart: 'bar', data: { source: 'remaining' },
                   encoding: {
                     x: { field: 'campaign', type: 'nominal' },
                     y: { field: 'credits', type: 'quantitative' }
@@ -119,6 +130,17 @@ for (const width of [390, 1280]) {
     expect(headingBounds.width).toBeGreaterThan(100);
     expect(headingBounds.height).toBeGreaterThan(16);
     await expect(view.locator(':scope > .chart-prompt-heading')).toHaveCSS('min-height', '32px');
+    const loadingBounds = await view.boundingBox();
+    await page.evaluate(async () => {
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const shifts = /** @type {number[]} */ ([]);
+      Reflect.set(window, 'observedLayoutShifts', shifts);
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (!Reflect.get(entry, 'hadRecentInput')) shifts.push(Reflect.get(entry, 'value'));
+        }
+      }).observe({ type: 'layout-shift' });
+    });
 
     await page.evaluate(() => Reflect.get(window, 'publishCost')());
 
@@ -126,6 +148,40 @@ for (const width of [390, 1280]) {
     await expect(heading).toBeVisible();
     await expect(description).toHaveText('Compare AI Credits consumed by each campaign.');
     await expect(view.locator('.pie-chart-layout')).toBeVisible();
+    const readyBounds = await view.boundingBox();
+    const legend = view.locator('.chart-legend-pie');
+    if (!loadingBounds || !readyBounds) throw new Error('The chart must retain its complete layout.');
+    if (categories === 0) {
+      await expect(view.locator('[data-view-state="empty"]')).toBeVisible();
+      await expect(legend).toHaveCount(0);
+    } else {
+      await expect(legend.locator('li')).toHaveCount(categories);
+      const legendBounds = await legend.boundingBox();
+      if (!legendBounds) throw new Error('Every legend row must be included in the chart layout.');
+      expect(legendBounds.y + legendBounds.height).toBeLessThanOrEqual(readyBounds.y + readyBounds.height + 1);
+    }
+    if (width === 390) {
+      const skeletonWidth = loadingBounds.width;
+      expect(loadingBounds.height).toBeGreaterThan(skeletonWidth);
+      const layout = await view.locator('.pie-chart-layout').boundingBox();
+      expect(layout?.height).toBeGreaterThanOrEqual(skeletonWidth);
+      await page.waitForTimeout(100);
+      const cls = await page.evaluate(() => {
+        const shifts = /** @type {number[]} */ (Reflect.get(window, 'observedLayoutShifts'));
+        return shifts.reduce((sum, value) => sum + value, 0);
+      });
+      expect(cls).toBeLessThanOrEqual(0.1);
+    }
+    if (width === 390 && categories > 0) {
+      const toggle = view.locator('.pie-chart-table-toggle');
+      await toggle.click();
+      await expect(legend).toBeHidden();
+      await expect(toggle).toHaveAccessibleName('Show chart table');
+      await toggle.click();
+      await expect(legend).toBeVisible();
+      await expect(legend.locator('li')).toHaveCount(categories);
+    }
+    await page.evaluate(() => Reflect.get(window, 'finishLoading')());
   });
 }
 

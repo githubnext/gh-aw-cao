@@ -415,6 +415,10 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .notification-actions { grid-column: 4; grid-row: 1; }
   .workflow-run-health > .chart-legend, .value-chart > dl { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-template-columns: 1fr; }
+  /* Reserve the same width-based plotting area while loading; long legends still expand it. */
+  .chart-view-pie > .pie-chart-layout:not([data-chart-table-hidden])::before { content: ""; grid-column: 1; grid-row: 1 / span 2; width: 100%; aspect-ratio: 1; pointer-events: none; }
+  .chart-view-pie > .pie-chart-layout > .chart-legend-pie { grid-column: 1; grid-row: 2; }
+  .custom-view.chart-view-pie > .dashboard-view-skeleton { height: auto; min-height: 280px; aspect-ratio: 1; }
   .pie-chart-layout .chart-widget { min-height: 140px; }
   .pie-chart-layout .chart-widget svg { max-width: 140px; }
   .document-list-card { grid-template-columns: auto minmax(0, 1fr); }

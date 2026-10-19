@@ -1372,6 +1372,7 @@ describe('dashboard DOM provenance', () => {
               description: 'Compare AI Credits consumed by each campaign.',
               mark: 'chart',
               chart: 'pie',
+              layout: 'full',
               data: { source: 'usage' },
               encoding: {
                 x: { field: 'campaign', type: 'nominal' },
@@ -1389,12 +1390,55 @@ describe('dashboard DOM provenance', () => {
       expect(rendered.querySelector('[data-view-id="cost-by-campaign"] .dashboard-view-skeleton')).not.toBeNull();
     });
     const view = rendered.querySelector('[data-view-id="cost-by-campaign"]');
+    expect(view?.classList.contains('chart-view-pie')).toBe(true);
     expect(view?.querySelector(':scope > .chart-prompt-heading > :is(h2, h3, h4)')?.textContent)
       .toBe('Cost by campaign');
     expect(view?.querySelector(':scope > .view-description')?.textContent)
       .toBe('Compare AI Credits consumed by each campaign.');
     expect(view?.getAttribute('aria-busy')).toBe('true');
     expect(view?.querySelector('.table-intent-button')).toBeNull();
+  });
+
+  it.each(['empty', 'unavailable'])('retains full-width pie chrome for %s evidence', async (availability) => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'pie-states', title: 'Costs',
+          pages: [{
+            id: 'cost', kind: 'custom', title: 'Cost',
+            views: [{
+              id: 'cost-chart', title: 'Cost by campaign',
+              description: 'Compare AI Credits consumed by each campaign.',
+              mark: 'chart', chart: 'pie', layout: 'full', data: { source: 'usage' },
+              encoding: {
+                x: { field: 'campaign', type: 'nominal' },
+                y: { field: 'credits', type: 'quantitative' }
+              }
+            }]
+          }]
+        }
+      },
+      sources: {
+        usage: {
+          source: 'usage', rows: [],
+          metadata: {
+            availability: availability === 'empty' ? 'empty' : 'unavailable',
+            'source-id': 'usage', 'source-kind': 'fixture', 'as-of': '', 'retrieved-at': '',
+            completeness: 'complete', freshness: 'fresh'
+          }
+        }
+      }
+    });
+    await vi.waitFor(() => {
+      const view = rendered.querySelector('[data-view-id="cost-chart"]');
+      expect(view?.classList.contains('chart-view-pie')).toBe(true);
+      expect(view?.querySelector(':scope > .chart-prompt-heading h2')?.textContent).toBe('Cost by campaign');
+      expect(view?.querySelector(':scope > .view-description')?.textContent)
+        .toBe('Compare AI Credits consumed by each campaign.');
+      expect(view?.querySelector(`:scope > .pie-chart-layout > [data-view-state="${availability}"]`))
+        .not.toBeNull();
+    });
   });
 
   it('shows a view loading skeleton instead of unavailable source errors during initial load', async () => {
