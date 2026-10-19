@@ -57,6 +57,9 @@ import { collectBatch as collectTreeMapAccuracy, scoreMetric as scoreTreeMapAccu
 import { collectBatch as collectMcpMappingAccuracy, scoreMetric as scoreMcpMappingAccuracy } from "../docs/operational-value/proof/functions/github-mcp-tools-report.mjs";
 import { collectBatch as collectWeeklyIssueAccuracy, scoreMetric as scoreWeeklyIssueAccuracy } from "../docs/operational-value/proof/functions/weekly-issue-summary.mjs";
 import { collectBatch as collectDailyIssueAccuracy, scoreMetric as scoreDailyIssueAccuracy } from "../docs/operational-value/proof/functions/daily-issues-report.mjs";
+import { collectBatch as collectNetworkSeparation, scoreMetric as scoreNetworkSeparation } from "../docs/operational-value/proof/functions/weekly-network-domains-audit.mjs";
+import { collectBatch as collectSetupRepairs, scoreMetric as scoreSetupRepairs } from "../docs/operational-value/proof/functions/daily-action-setup-security-audit.mjs";
+import { collectBatch as collectModelBoundaries, scoreMetric as scoreModelBoundaries } from "../docs/operational-value/proof/functions/daily-workflow-security-model.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -760,6 +763,27 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "weekly-network-domains-audit", sourceGitBlob: "16eee7d42cf18f77b1ceffeed4fdafe51eb9356e",
+      functionSha256: "701b9bda9f656e33e1d7ad133a317403b98c90c53cde1456563bca0400197dba",
+      timelineDigest: "120748464b456fa70264bdcbc473309d39789814a2628836bf3fa5937411c3ce",
+      reports: "docs/operational-value/proof/native-policy-outcomes/reports/github-gh-aw",
+      collector: collectNetworkSeparation, scorer: scoreNetworkSeparation, partialMetricId: "native-deliveries",
+      stage: "three concrete infrastructure hosts separated from explicit Claude transport opt-in",
+      detail: "The landed actual-parent transition independently removes cdn.playwright.dev, ghcr.io and playwright.download.prss.microsoft.com from the named Claude transport set while preserving explicit infrastructure ecosystem access. These engine sets were already network.allowed opt-ins, not unconditional engine defaults. Preserved v1 acceptance and explicitly outcome-informed retrospective v2 partial remain separate. One native period and eight unknown periods establish neither runtime egress nor full audit acceptance. Comprehensive safeguards, receipt-verified workflow contribution, costs and keep bar remain unknown." },
+    { workflowId: "daily-action-setup-security-audit", sourceGitBlob: "7183eb22bd3f797f52a10ffcacedc339dc75da64",
+      functionSha256: "6d516bbf9ca86ac15c98939418a656587b053f4ee72d7c20e15f046786718c18",
+      timelineDigest: "8354e1517f5c259c009b7a0862e5408fa1401ed3db68d755ad6a5bfb35983ecf",
+      reports: "docs/operational-value/proof/native-policy-outcomes/reports/github-gh-aw",
+      collector: collectSetupRepairs, scorer: scoreSetupRepairs, partialMetricId: "native-deliveries",
+      stage: "two credential-at-rest condition repairs independently reproduced at actual-parent transitions",
+      detail: "Bounded local native replay establishes removal of origin-token persistence and wrapper permissions changing from 0755 to 0700 for both fresh and existing files. The wrapper repair counts once, not once per filesystem case; dummy markers are not real credentials and generated wrappers are never invoked. Preserved v1 acceptance is separate from explicitly outcome-informed retrospective v2. Two measured periods and nine unknown periods do not establish full security acceptance, comprehensive safeguards, receipt-verified workflow contribution or costs." },
+    { workflowId: "daily-workflow-security-model", sourceGitBlob: "92b6532f4cbce377997e6433f33497e81ffe4bc5",
+      functionSha256: "0107d922a45c276fea09fe92a2f36f70b4bae6effa89974ac6775ade4b421886",
+      timelineDigest: "18e7433fb7e76b68235f12077c4e8d2c0ea7b4d0a7d5bf9b6f447fd9bbb638f0",
+      reports: "docs/operational-value/proof/native-policy-outcomes/reports/github-gh-aw",
+      collector: collectModelBoundaries, scorer: scoreModelBoundaries, blocked: true,
+      stage: "original pinned-runtime preparation failures; native TLC boundary acceptance unavailable",
+      detail: "Eleven surviving failure/incomplete issues provide discovery, not accepted boundaries. Two independently acquired original job graphs establish failure while preparing the pinned TLA+ runtime before agent execution. All fifteen periods remain unknown: no complete native TLC exploration and intended mutation/witness result survives. The replayable gap report does not increase measured coverage; fixture validation, issue counts and preparation failures are not native goal completion." },
     { workflowId: "codex-github-remote-mcp-test", sourceGitBlob: "64676ca797c1676d7c11c4d13d4fd99fc6872f41",
       functionSha256: "d95c564d204c8d004ccb746a9558a543dd12927484ac947ab69321f6a127c879",
       timelineDigest: "b79d51fde91f130ec2434136f65790b4d525f51ddc1ec135b17222236d8d08e3",

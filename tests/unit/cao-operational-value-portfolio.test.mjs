@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 77);
-  assert.equal(model.totals.workflows - model.totals.measured, 267);
+  assert.equal(model.totals.measured, 79);
+  assert.equal(model.totals.workflows - model.totals.measured, 265);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -397,6 +397,33 @@ test("surviving monitoring bodies retain bounded factual accuracy and known repo
   assert.equal(weekly.snapshots.at(-1).metrics["opening-undercount-floor"], 30);
   assert.match(progress.find(row => row.workflowId === "daily-repo-chronicle").detail, /24h05m/);
   assert.match(progress.find(row => row.workflowId === "github-mcp-tools-report").detail, /not proof.*59 live tools/);
+});
+
+test("native policy repairs preserve distinct units and do not credit preparation failures", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [id, values, periods] of [
+    ["weekly-network-domains-audit", [3], 9],
+    ["daily-action-setup-security-audit", [1, 1], 11],
+  ]) {
+    const timeline = measurements.find(row => row.workflowId === id)?.input;
+    assert.ok(timeline);
+    assert.equal(timeline.snapshots.length, periods);
+    assert.deepEqual(timeline.snapshots.map(row => row.metrics["native-deliveries"]).filter(value => value !== null), values);
+    const observed = timeline.snapshots.filter(row => row.metrics["native-deliveries"] !== null);
+    for (const row of observed) {
+      assert.equal(row.evidence.fullAcceptance, null);
+      assert.equal(row.evidence.contribution, null);
+      assert.equal(row.evidence.costs, null);
+    }
+    assert.equal(progress.find(row => row.workflowId === id).partial, true);
+  }
+  assert.match(progress.find(row => row.workflowId === "weekly-network-domains-audit").detail, /not unconditional engine defaults/);
+  assert.equal(measurements.some(row => row.workflowId === "daily-workflow-security-model"), false);
+  const gap = progress.find(row => row.workflowId === "daily-workflow-security-model");
+  assert.equal(gap.blocked, true);
+  assert.equal(gap.reportAvailable, true);
+  assert.equal(gap.evaluationReady, false);
+  assert.match(gap.detail, /fifteen periods remain unknown/);
 });
 
 test("Codex native access cannot turn filtered upstream issue bytes into agent readback", async () => {

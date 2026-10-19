@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "version": "native-policy-outcomes/1.0.0",
+  "authoredAt": "2026-10-19",
+  "scope": {
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "cutoff": "2026-10-18T15:00:12Z"
+  },
+  "authoring": {
+    "classification": "source-history-informed retrospective",
+    "outcomeExposure": "Frozen workflow sources, descriptions, adoption commit messages and source-history subjects have been read. No issue/PR candidate bodies, Discussion results, or native before/after candidate source facts have been inspected in this workstream.",
+    "policy": "Preserve this contract before candidate discovery. Any candidate-specific narrower instrument is a separately versioned outcome-informed retrospective facet, not blind validation."
+  },
+  "contracts": [
+    {
+      "slug": "weekly-network-domains-audit",
+      "adoption": "ed0b7c928799f21e71fcafa55449eb36aa4d584d",
+      "adoptedAt": "2026-08-21T22:08:28Z",
+      "nativeUnit": "distinct engine/package-domain default grants removed",
+      "acceptance": "At an immutable actual-parent to landed-commit transition after adoption, a resolvable engine default previously grants a domain also covered by an explicit ecosystem/package-registry set; afterwards it does not, while that explicit ecosystem opt-in still contains the domain. Wildcard removal is not accepted if another remaining wildcard or explicit grant preserves the same access. Unchanged ecosystem classification must be established. Deduplicate engine/domain grants across the lifetime.",
+      "partialFacet": "Direct default versus explicit ecosystem separation only, not all egress safety, engine functionality, vendor minimality, or full audit acceptance.",
+      "reject": ["style-only changes", "domain moved to a shared base but effective access unchanged", "reported overlaps without an immutable removal", "changed ecosystem labels alone", "mere issue closure or merge"],
+      "temporalAnchor": "workflow-adoption",
+      "cadenceDays": 7
+    },
+    {
+      "slug": "daily-workflow-security-model",
+      "adoption": "54a96bb535ec345984e56abc989c388235140afc",
+      "adoptedAt": "2026-10-04T02:10:41Z",
+      "nativeUnit": "independently reproduced additional model security boundaries",
+      "acceptance": "A landed post-adoption model refinement adds a source-traceable security boundary with a benign independently replayed negative mutation or reachability witness. Complete TLC exploration must reject the mutation for the intended invariant and preserve the secure run, prior negative controls and witness traces. Retain model/config/tool digests, commands, statuses and state counts. Parser failures or missing tools are not counterexamples.",
+      "partialFacet": "Additional verified model boundary coverage only, not implementation exploit confirmation or a declaration count.",
+      "reject": ["new invariant names without behavior", "green checker without intended negative control", "producer claims or editable reports as independent proof", "weakened invariant", "intentional fault reported as exploit"],
+      "temporalAnchor": "workflow-adoption",
+      "cadenceDays": 1
+    },
+    {
+      "slug": "daily-action-setup-security-audit",
+      "adoption": "53843da968225dc56e1590978a7ed6407a8438ac",
+      "adoptedAt": "2026-08-06T05:48:54Z",
+      "nativeUnit": "independently verified setup security-condition repairs",
+      "acceptance": "A source-linked post-adoption landed change repairs a specific independently established unsafe condition in non-test actions/setup files. Retain immutable actual-parent and after sources and a benign, non-networked differential oracle for the concrete condition; old source must demonstrate the condition and new source must prevent it without merely hiding reporting. Deduplicate by file, boundary and root cause. No real credentials or target workflows are executed.",
+      "partialFacet": "A concrete verified security condition, not comprehensive setup safety, report volume, or an arbitrary security score.",
+      "reject": ["issue closure", "PR merge alone", "masked symptom", "test-only findings", "speculative severity", "unreproduced vulnerability claims"],
+      "temporalAnchor": "workflow-adoption",
+      "cadenceDays": 7
+    }
+  ],
+  "common": {
+    "attribution": "Independently established native repository outcome is separate from linked workflow contribution. Editable markers establish candidates only; original creation receipts are required for receipt-verified contribution.",
+    "periods": "Disjoint delivery intervals, timestamped at landed commit committer time; missing or incomplete native evidence is null, never zero. Current body edits are not historical originals.",
+    "fullAcceptance": "Not inferred from a native partial facet.",
+    "costs": "Not measured.",
+    "decision": "Not rated; no native keep/change bar agreed.",
+    "scope": "Three bounded acquisition and evaluation attempts only; no remote mutations, dispatch, deployment, credential expansion, or index changes."
+  }
+}

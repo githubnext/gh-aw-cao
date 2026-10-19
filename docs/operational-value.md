@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-77 of 344 is 22.4%, with 267 workflows still unevaluated.
+79 of 344 is 23.0%, with 265 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -457,6 +457,20 @@ groups are compiled from the retained portfolio; browser controls only display
 those precomputed rows. This portable file report does not query the CAO dashboard.
 
 This is **not a completed value evaluation of all 344 workflows**. Linked native
+policy-outcome evaluations establish three concrete infrastructure hosts removed
+from the explicit Claude transport opt-in, and two independently reproduced
+credential-at-rest condition repairs: origin-token persistence and wrapper
+permissions for both fresh and existing files. The wrapper repair counts once,
+not once per test case. Named engine sets were already explicit `network.allowed`
+opt-ins, not unconditional engine access. These are heterogeneous native units,
+not a combined value score. Preserved v1 contracts remain separate from the
+explicitly outcome-informed retrospective v2 facets. Full acceptance, comprehensive
+safeguards, receipt-verified contribution and costs remain unknown. The security
+model retains a separate all-unknown gap report: eleven failure/incomplete issues
+and two original pinned-runtime preparation failures do not establish completed
+TLC exploration or native boundary acceptance.
+
+Other linked native
 evaluations include File Diet's lifetime structural contributions, the
 rendering verifier's repository conformance, Go Test Parallelizer's unchanged-body
 parallel activations, and six engine-conformance workflows' independently proven

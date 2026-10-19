@@ -1,0 +1,766 @@
+{
+  "schemaVersion": 1,
+  "kind": "native-policy-outcomes-independent-replay",
+  "scope": {
+    "repository": "github/gh-aw",
+    "repositoryId": 1036865607,
+    "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+    "cutoff": "2026-10-18T15:00:12Z"
+  },
+  "toolchain": {
+    "node": "v25.0.0",
+    "platform": "darwin",
+    "git": "git version 2.53.0",
+    "bash": "GNU bash, version 3.2.57(1)-release (arm64-apple-darwin26)"
+  },
+  "originalsVerified": 161,
+  "sourceHistory": {
+    "weekly-network-domains-audit": [
+      {
+        "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+        "blob": "16eee7d42cf18f77b1ceffeed4fdafe51eb9356e",
+        "bodySha256": "8aca5d6a39c36d0a4c1fca5672190ed714c786c061573127158ccd6e5334fe80"
+      },
+      {
+        "revision": "6db8ade37d00364f58495e5d83df673fa28d57fa",
+        "blob": "16eee7d42cf18f77b1ceffeed4fdafe51eb9356e",
+        "bodySha256": "8aca5d6a39c36d0a4c1fca5672190ed714c786c061573127158ccd6e5334fe80"
+      },
+      {
+        "revision": "144a2530835ed52f06cf5a6831498162e56c66b9",
+        "blob": "08173cc2a6acace6208b4e04820fdae93ed0daf1",
+        "bodySha256": "8aca5d6a39c36d0a4c1fca5672190ed714c786c061573127158ccd6e5334fe80"
+      },
+      {
+        "revision": "b3d0bd9e9981ea46c1f104e8477254d953a841fb",
+        "blob": "d0fab877a82779b6e4b62ed04f00783bebd5518c",
+        "bodySha256": "8aca5d6a39c36d0a4c1fca5672190ed714c786c061573127158ccd6e5334fe80"
+      },
+      {
+        "revision": "7098a9a22a392bf1f3d1d0ca929a6f1529fa5c80",
+        "blob": "f0f8b1cce082ea672efda747b084e1395d09273b",
+        "bodySha256": "8aca5d6a39c36d0a4c1fca5672190ed714c786c061573127158ccd6e5334fe80"
+      },
+      {
+        "revision": "ef0f2f523d5a9dcf63c89126d551428b907cb2ec",
+        "blob": "2751f78a90cef1b67e4d33a48aee3f32e9bbbc24",
+        "bodySha256": "0a42c6b4bce897c8691698cd10b07594c4b6b9ac2811fa2b0481a195bc41ec7f"
+      },
+      {
+        "revision": "ed0b7c928799f21e71fcafa55449eb36aa4d584d",
+        "blob": "1b5eaebc1484616a226665e2ed64da9a7c01c50a",
+        "bodySha256": "0a42c6b4bce897c8691698cd10b07594c4b6b9ac2811fa2b0481a195bc41ec7f"
+      }
+    ],
+    "daily-workflow-security-model": [
+      {
+        "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+        "blob": "92b6532f4cbce377997e6433f33497e81ffe4bc5",
+        "bodySha256": "18ca4e09477c14d50d3dac768cc321bc7caf7b0661241b8a9f37f302448e8f09"
+      },
+      {
+        "revision": "7597eb9ca2da8362f551d4bc74cb9113835b16f8",
+        "blob": "92b6532f4cbce377997e6433f33497e81ffe4bc5",
+        "bodySha256": "18ca4e09477c14d50d3dac768cc321bc7caf7b0661241b8a9f37f302448e8f09"
+      },
+      {
+        "revision": "b62dc3faa67545c062713266e1e18658007cf4c5",
+        "blob": "dd388afdb9c7eef35f62318613b82566dc9ec8c5",
+        "bodySha256": "18ca4e09477c14d50d3dac768cc321bc7caf7b0661241b8a9f37f302448e8f09"
+      },
+      {
+        "revision": "d6c3458b08d7586f0a086130e4f88ee9865e6e35",
+        "blob": "71a5aabca044d13ea51159933b1e0e028fcc4309",
+        "bodySha256": "18ca4e09477c14d50d3dac768cc321bc7caf7b0661241b8a9f37f302448e8f09"
+      },
+      {
+        "revision": "bc3991ee9b06be7532722548675955d8165ab6db",
+        "blob": "e6c9a20ff6bfbaf8e2fafea0eaaec7773269346a",
+        "bodySha256": "18ca4e09477c14d50d3dac768cc321bc7caf7b0661241b8a9f37f302448e8f09"
+      },
+      {
+        "revision": "6ed63e25bd7a59dab0eae0a45c4f6b701cf56ffb",
+        "blob": "2ceefa0785a7b37ea9aa47958f8fc25090dffae6",
+        "bodySha256": "18ca4e09477c14d50d3dac768cc321bc7caf7b0661241b8a9f37f302448e8f09"
+      },
+      {
+        "revision": "427d9293ba982ccb484bb814f478ef1a91e6d209",
+        "blob": "e6c9a20ff6bfbaf8e2fafea0eaaec7773269346a",
+        "bodySha256": "18ca4e09477c14d50d3dac768cc321bc7caf7b0661241b8a9f37f302448e8f09"
+      },
+      {
+        "revision": "54a96bb535ec345984e56abc989c388235140afc",
+        "blob": "dc87c7e6b6a5b5faefd32c97b4f2719c6a1e2827",
+        "bodySha256": "18ca4e09477c14d50d3dac768cc321bc7caf7b0661241b8a9f37f302448e8f09"
+      }
+    ],
+    "daily-action-setup-security-audit": [
+      {
+        "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+        "blob": "7183eb22bd3f797f52a10ffcacedc339dc75da64",
+        "bodySha256": "9f91d7c6c34c19fb3325749e3f5e36bb879dccbc7e9923ec71aebc5ed15e5037"
+      },
+      {
+        "revision": "5fdf98e4d2117e37d3260de02f7783ecce16ea49",
+        "blob": "7183eb22bd3f797f52a10ffcacedc339dc75da64",
+        "bodySha256": "9f91d7c6c34c19fb3325749e3f5e36bb879dccbc7e9923ec71aebc5ed15e5037"
+      },
+      {
+        "revision": "d893c7da0420f85d053d134bb95fadd28ffdeb92",
+        "blob": "77d61261bba0a4f6539e49882ab056117409eda0",
+        "bodySha256": "9f91d7c6c34c19fb3325749e3f5e36bb879dccbc7e9923ec71aebc5ed15e5037"
+      },
+      {
+        "revision": "31d54a7cd7466bb4bb025985dfad631952ac1c7b",
+        "blob": "4cf3a95f482ea285f41a924bcde7c9098df881d2",
+        "bodySha256": "9f91d7c6c34c19fb3325749e3f5e36bb879dccbc7e9923ec71aebc5ed15e5037"
+      },
+      {
+        "revision": "d0b30443641191c90785bc4ea1e7ddc9a16f7525",
+        "blob": "846a12fc47c4ae8d96c7764d85521c3404385957",
+        "bodySha256": "4b501ecab260db0d21d07fdd3949f26eac020bc1e93f7d9ba3bdac5812bafa52"
+      },
+      {
+        "revision": "e123c10207028f35dd37390e62cc2ce80374348a",
+        "blob": "47fd32d239812f6640aba92c6efb470b52a96938",
+        "bodySha256": "4b501ecab260db0d21d07fdd3949f26eac020bc1e93f7d9ba3bdac5812bafa52"
+      },
+      {
+        "revision": "53843da968225dc56e1590978a7ed6407a8438ac",
+        "blob": "9de4904f612df75a1e630d6c413978e4d58e8c2e",
+        "bodySha256": "4b501ecab260db0d21d07fdd3949f26eac020bc1e93f7d9ba3bdac5812bafa52"
+      }
+    ]
+  },
+  "reports": {
+    "weekly-network-domains-audit": {
+      "nativeCoverage": "bounded-native-subtotal",
+      "acceptedNativeSubtotal": 3,
+      "measuredPeriods": 1,
+      "missingPeriods": 8,
+      "totalPeriods": 9,
+      "fullAcceptance": null,
+      "safeguards": "Not comprehensively replayed; bounded native postconditions only.",
+      "workflowContribution": null,
+      "costs": null,
+      "decision": "not-rated",
+      "periods": [
+        {
+          "windowStart": "2026-08-21T22:08:28Z",
+          "windowEnd": "2026-08-23T15:00:12Z",
+          "observedAt": "2026-08-23T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-08-23T15:00:12Z",
+          "windowEnd": "2026-08-30T15:00:12Z",
+          "observedAt": "2026-08-30T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-08-30T15:00:12Z",
+          "windowEnd": "2026-09-06T15:00:12Z",
+          "observedAt": "2026-09-06T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-09-06T15:00:12Z",
+          "windowEnd": "2026-09-13T15:00:12Z",
+          "observedAt": "2026-09-13T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-09-13T15:00:12Z",
+          "windowEnd": "2026-09-20T15:00:12Z",
+          "observedAt": "2026-09-20T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-09-20T15:00:12Z",
+          "windowEnd": "2026-09-27T15:00:12Z",
+          "observedAt": "2026-09-27T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-09-27T15:00:12Z",
+          "windowEnd": "2026-10-04T15:00:12Z",
+          "observedAt": "2026-10-04T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-04T15:00:12Z",
+          "windowEnd": "2026-10-11T15:00:12Z",
+          "observedAt": "2026-10-11T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-11T15:00:12Z",
+          "windowEnd": "2026-10-18T15:00:12Z",
+          "observedAt": "2026-10-18T15:00:12Z",
+          "nativeValue": 3,
+          "missingReason": "Native subtotal only; candidate acquisition does not establish an exhaustive absence of other outcomes.",
+          "coverageStatus": "bounded-native-subtotal",
+          "knownPreparationFailures": []
+        }
+      ]
+    },
+    "daily-workflow-security-model": {
+      "nativeCoverage": "gap-not-native-coverage",
+      "acceptedNativeSubtotal": null,
+      "measuredPeriods": 0,
+      "missingPeriods": 15,
+      "totalPeriods": 15,
+      "fullAcceptance": null,
+      "safeguards": "Not comprehensively replayed; bounded native postconditions only.",
+      "workflowContribution": null,
+      "costs": null,
+      "decision": "not-rated",
+      "periods": [
+        {
+          "windowStart": "2026-10-04T02:10:41Z",
+          "windowEnd": "2026-10-04T15:00:12Z",
+          "observedAt": "2026-10-04T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-04T15:00:12Z",
+          "windowEnd": "2026-10-05T15:00:12Z",
+          "observedAt": "2026-10-05T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-05T15:00:12Z",
+          "windowEnd": "2026-10-06T15:00:12Z",
+          "observedAt": "2026-10-06T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-06T15:00:12Z",
+          "windowEnd": "2026-10-07T15:00:12Z",
+          "observedAt": "2026-10-07T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-07T15:00:12Z",
+          "windowEnd": "2026-10-08T15:00:12Z",
+          "observedAt": "2026-10-08T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-08T15:00:12Z",
+          "windowEnd": "2026-10-09T15:00:12Z",
+          "observedAt": "2026-10-09T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-09T15:00:12Z",
+          "windowEnd": "2026-10-10T15:00:12Z",
+          "observedAt": "2026-10-10T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-10T15:00:12Z",
+          "windowEnd": "2026-10-11T15:00:12Z",
+          "observedAt": "2026-10-11T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-11T15:00:12Z",
+          "windowEnd": "2026-10-12T15:00:12Z",
+          "observedAt": "2026-10-12T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-12T15:00:12Z",
+          "windowEnd": "2026-10-13T15:00:12Z",
+          "observedAt": "2026-10-13T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-13T15:00:12Z",
+          "windowEnd": "2026-10-14T15:00:12Z",
+          "observedAt": "2026-10-14T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": [
+            {
+              "runId": 38516258798,
+              "headSha": "d8a7fcfb81657cae402adb31035d69e07b180b08",
+              "createdAt": "2026-10-14T05:22:11Z",
+              "jobId": 115695792653,
+              "failedStep": "Prepare pinned TLA+ runtime",
+              "runReceipt": "docs/operational-value/proof/native-policy-outcomes/originals/960ec7545611bc5fe54c0fdd3b6b3d7020fdf622d9818de36e72b2ce198763bf.json.gz",
+              "jobsReceipt": "docs/operational-value/proof/native-policy-outcomes/originals/cc008afc563e62996797af4f23aaf2a20e25f587e4d775278ecd8b2493a855ff.json.gz"
+            }
+          ]
+        },
+        {
+          "windowStart": "2026-10-14T15:00:12Z",
+          "windowEnd": "2026-10-15T15:00:12Z",
+          "observedAt": "2026-10-15T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-15T15:00:12Z",
+          "windowEnd": "2026-10-16T15:00:12Z",
+          "observedAt": "2026-10-16T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": [
+            {
+              "runId": 38855400841,
+              "headSha": "f1621a88b38f17a437449f04b73f9992c0cb2922",
+              "createdAt": "2026-10-16T05:22:04Z",
+              "jobId": 116825759086,
+              "failedStep": "Prepare pinned TLA+ runtime",
+              "runReceipt": "docs/operational-value/proof/native-policy-outcomes/originals/be6dcce7382e9a8f92136359dc23b940b349a37ca81597fe3ce3332a54ef4964.json.gz",
+              "jobsReceipt": "docs/operational-value/proof/native-policy-outcomes/originals/a0accec4c5a34a820aede9bb7a0f637ea9a58f8ea32c7a41fae2c780c2a48543.json.gz"
+            }
+          ]
+        },
+        {
+          "windowStart": "2026-10-16T15:00:12Z",
+          "windowEnd": "2026-10-17T15:00:12Z",
+          "observedAt": "2026-10-17T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-17T15:00:12Z",
+          "windowEnd": "2026-10-18T15:00:12Z",
+          "observedAt": "2026-10-18T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        }
+      ]
+    },
+    "daily-action-setup-security-audit": {
+      "nativeCoverage": "bounded-native-subtotal",
+      "acceptedNativeSubtotal": 2,
+      "measuredPeriods": 2,
+      "missingPeriods": 9,
+      "totalPeriods": 11,
+      "fullAcceptance": null,
+      "safeguards": "Not comprehensively replayed; bounded native postconditions only.",
+      "workflowContribution": null,
+      "costs": null,
+      "decision": "not-rated",
+      "periods": [
+        {
+          "windowStart": "2026-08-06T05:48:54Z",
+          "windowEnd": "2026-08-09T15:00:12Z",
+          "observedAt": "2026-08-09T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-08-09T15:00:12Z",
+          "windowEnd": "2026-08-16T15:00:12Z",
+          "observedAt": "2026-08-16T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-08-16T15:00:12Z",
+          "windowEnd": "2026-08-23T15:00:12Z",
+          "observedAt": "2026-08-23T15:00:12Z",
+          "nativeValue": 1,
+          "missingReason": "Native subtotal only; candidate acquisition does not establish an exhaustive absence of other outcomes.",
+          "coverageStatus": "bounded-native-subtotal",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-08-23T15:00:12Z",
+          "windowEnd": "2026-08-30T15:00:12Z",
+          "observedAt": "2026-08-30T15:00:12Z",
+          "nativeValue": 1,
+          "missingReason": "Native subtotal only; candidate acquisition does not establish an exhaustive absence of other outcomes.",
+          "coverageStatus": "bounded-native-subtotal",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-08-30T15:00:12Z",
+          "windowEnd": "2026-09-06T15:00:12Z",
+          "observedAt": "2026-09-06T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-09-06T15:00:12Z",
+          "windowEnd": "2026-09-13T15:00:12Z",
+          "observedAt": "2026-09-13T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-09-13T15:00:12Z",
+          "windowEnd": "2026-09-20T15:00:12Z",
+          "observedAt": "2026-09-20T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-09-20T15:00:12Z",
+          "windowEnd": "2026-09-27T15:00:12Z",
+          "observedAt": "2026-09-27T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-09-27T15:00:12Z",
+          "windowEnd": "2026-10-04T15:00:12Z",
+          "observedAt": "2026-10-04T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-04T15:00:12Z",
+          "windowEnd": "2026-10-11T15:00:12Z",
+          "observedAt": "2026-10-11T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        },
+        {
+          "windowStart": "2026-10-11T15:00:12Z",
+          "windowEnd": "2026-10-18T15:00:12Z",
+          "observedAt": "2026-10-18T15:00:12Z",
+          "nativeValue": null,
+          "missingReason": "No independently verified native delivery retained for this period; absence is not zero.",
+          "coverageStatus": "missing",
+          "knownPreparationFailures": []
+        }
+      ]
+    }
+  },
+  "native": {
+    "network": {
+      "accepted": [
+        {
+          "id": "claude:cdn.playwright.dev",
+          "engine": "claude",
+          "domain": "cdn.playwright.dev",
+          "ecosystems": [
+            "playwright"
+          ]
+        },
+        {
+          "id": "claude:ghcr.io",
+          "engine": "claude",
+          "domain": "ghcr.io",
+          "ecosystems": [
+            "containers"
+          ]
+        },
+        {
+          "id": "claude:playwright.download.prss.microsoft.com",
+          "engine": "claude",
+          "domain": "playwright.download.prss.microsoft.com",
+          "ecosystems": [
+            "playwright"
+          ]
+        }
+      ],
+      "rejected": null
+    },
+    "setup": {
+      "accepted": [
+        {
+          "id": "repo-memory-origin-token-persistence",
+          "commit": "dd2a92d6e897d438fb7c4054800816d6ad029f7d",
+          "parent": "1bdfdfa5a0f9d51ce8c1879f2a5f84826ad33735",
+          "committedAt": "2026-08-22T03:24:26Z",
+          "pr": 54701,
+          "before": {
+            "command": "set -eu\ngit init --quiet --template=\nORIGIN_URL=\"https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${TARGET_REPO}.git\"\ngit remote add origin \"$ORIGIN_URL\"\ngit config --get remote.origin.url",
+            "commandSha256": "60a22b19e2793f44eb43d3fe70d3e2f694f2af26bd1e9e9cfc1e38dba7ab511c",
+            "exitCode": 0,
+            "persistedMarker": true,
+            "origin": "https://x-access-token:<dummy-marker>@github.com/github/gh-aw.git",
+            "configSha256": "bc48541443ee07ca96cf51d151f667881b5a8bff91d7980a6392a4fc195066da",
+            "targetPreserved": true,
+            "isolation": "Local empty Git repository only; no clone, credential or network request."
+          },
+          "after": {
+            "command": "set -eu\ngit init --quiet --template=\nSAFE_ORIGIN_URL=\"https://${SERVER_HOST}/${TARGET_REPO}.git\"\ngit remote add origin \"$SAFE_ORIGIN_URL\"\ngit config --get remote.origin.url",
+            "commandSha256": "825f5b45fcc22f9e67df629f61f7bb9c181b752b1d460de7ef058341c4387aa7",
+            "exitCode": 0,
+            "persistedMarker": false,
+            "origin": "https://github.com/github/gh-aw.git",
+            "configSha256": "a78556027ff19346b6c4095d1a617bf1f0cb3f5e97c0aa5141fd219646f408a3",
+            "targetPreserved": true,
+            "isolation": "Local empty Git repository only; no clone, credential or network request."
+          }
+        },
+        {
+          "id": "mcp-wrapper-group-world-readability",
+          "commit": "b9974fb67d6b01fbd40caaf03ad4d2413ea3cabd",
+          "parent": "d4295e60fca5a8e74411eb1b4f551a842aea5236",
+          "committedAt": "2026-08-25T04:09:22Z",
+          "pr": 55587,
+          "cases": [
+            {
+              "before": {
+                "sourceProgramSha256": "da8975562df2f334aa427f0fe7b079c89c50ae38ee3ab510c163f28b6c5529be",
+                "sourceBlob": "32a1c764d05f42f4ec8e788950faa9d6167fe06b",
+                "preexisting": false,
+                "exitCode": 0,
+                "umask": "0022",
+                "mode": 493,
+                "containsMarker": true,
+                "ownerExecutable": true,
+                "groupWorldReadable": true,
+                "bytesSha256": "4d66cf7b3b928d51b3d0f17deaf8238e256a4da77c15444a02183de4d5fe2f49",
+                "isolation": "Original generator and wrapper-write statements only; generated wrapper is never invoked."
+              },
+              "after": {
+                "sourceProgramSha256": "ec44e2bda8b17f1fdc4c59bcc15daced225d98ce23a12bc3e46f683ba3695639",
+                "sourceBlob": "3acaf78eaf57a536646f87e72752e1f694bd3751",
+                "preexisting": false,
+                "exitCode": 0,
+                "umask": "0022",
+                "mode": 448,
+                "containsMarker": true,
+                "ownerExecutable": true,
+                "groupWorldReadable": false,
+                "bytesSha256": "4d66cf7b3b928d51b3d0f17deaf8238e256a4da77c15444a02183de4d5fe2f49",
+                "isolation": "Original generator and wrapper-write statements only; generated wrapper is never invoked."
+              }
+            },
+            {
+              "before": {
+                "sourceProgramSha256": "da8975562df2f334aa427f0fe7b079c89c50ae38ee3ab510c163f28b6c5529be",
+                "sourceBlob": "32a1c764d05f42f4ec8e788950faa9d6167fe06b",
+                "preexisting": true,
+                "exitCode": 0,
+                "umask": "0022",
+                "mode": 493,
+                "containsMarker": true,
+                "ownerExecutable": true,
+                "groupWorldReadable": true,
+                "bytesSha256": "4d66cf7b3b928d51b3d0f17deaf8238e256a4da77c15444a02183de4d5fe2f49",
+                "isolation": "Original generator and wrapper-write statements only; generated wrapper is never invoked."
+              },
+              "after": {
+                "sourceProgramSha256": "ec44e2bda8b17f1fdc4c59bcc15daced225d98ce23a12bc3e46f683ba3695639",
+                "sourceBlob": "3acaf78eaf57a536646f87e72752e1f694bd3751",
+                "preexisting": true,
+                "exitCode": 0,
+                "umask": "0022",
+                "mode": 448,
+                "containsMarker": true,
+                "ownerExecutable": true,
+                "groupWorldReadable": false,
+                "bytesSha256": "4d66cf7b3b928d51b3d0f17deaf8238e256a4da77c15444a02183de4d5fe2f49",
+                "isolation": "Original generator and wrapper-write statements only; generated wrapper is never invoked."
+              }
+            }
+          ]
+        }
+      ],
+      "nativeCases": {
+        "originBefore": {
+          "command": "set -eu\ngit init --quiet --template=\nORIGIN_URL=\"https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${TARGET_REPO}.git\"\ngit remote add origin \"$ORIGIN_URL\"\ngit config --get remote.origin.url",
+          "commandSha256": "60a22b19e2793f44eb43d3fe70d3e2f694f2af26bd1e9e9cfc1e38dba7ab511c",
+          "exitCode": 0,
+          "persistedMarker": true,
+          "origin": "https://x-access-token:<dummy-marker>@github.com/github/gh-aw.git",
+          "configSha256": "bc48541443ee07ca96cf51d151f667881b5a8bff91d7980a6392a4fc195066da",
+          "targetPreserved": true,
+          "isolation": "Local empty Git repository only; no clone, credential or network request."
+        },
+        "originAfter": {
+          "command": "set -eu\ngit init --quiet --template=\nSAFE_ORIGIN_URL=\"https://${SERVER_HOST}/${TARGET_REPO}.git\"\ngit remote add origin \"$SAFE_ORIGIN_URL\"\ngit config --get remote.origin.url",
+          "commandSha256": "825f5b45fcc22f9e67df629f61f7bb9c181b752b1d460de7ef058341c4387aa7",
+          "exitCode": 0,
+          "persistedMarker": false,
+          "origin": "https://github.com/github/gh-aw.git",
+          "configSha256": "a78556027ff19346b6c4095d1a617bf1f0cb3f5e97c0aa5141fd219646f408a3",
+          "targetPreserved": true,
+          "isolation": "Local empty Git repository only; no clone, credential or network request."
+        },
+        "wrapper": [
+          {
+            "before": {
+              "sourceProgramSha256": "da8975562df2f334aa427f0fe7b079c89c50ae38ee3ab510c163f28b6c5529be",
+              "sourceBlob": "32a1c764d05f42f4ec8e788950faa9d6167fe06b",
+              "preexisting": false,
+              "exitCode": 0,
+              "umask": "0022",
+              "mode": 493,
+              "containsMarker": true,
+              "ownerExecutable": true,
+              "groupWorldReadable": true,
+              "bytesSha256": "4d66cf7b3b928d51b3d0f17deaf8238e256a4da77c15444a02183de4d5fe2f49",
+              "isolation": "Original generator and wrapper-write statements only; generated wrapper is never invoked."
+            },
+            "after": {
+              "sourceProgramSha256": "ec44e2bda8b17f1fdc4c59bcc15daced225d98ce23a12bc3e46f683ba3695639",
+              "sourceBlob": "3acaf78eaf57a536646f87e72752e1f694bd3751",
+              "preexisting": false,
+              "exitCode": 0,
+              "umask": "0022",
+              "mode": 448,
+              "containsMarker": true,
+              "ownerExecutable": true,
+              "groupWorldReadable": false,
+              "bytesSha256": "4d66cf7b3b928d51b3d0f17deaf8238e256a4da77c15444a02183de4d5fe2f49",
+              "isolation": "Original generator and wrapper-write statements only; generated wrapper is never invoked."
+            }
+          },
+          {
+            "before": {
+              "sourceProgramSha256": "da8975562df2f334aa427f0fe7b079c89c50ae38ee3ab510c163f28b6c5529be",
+              "sourceBlob": "32a1c764d05f42f4ec8e788950faa9d6167fe06b",
+              "preexisting": true,
+              "exitCode": 0,
+              "umask": "0022",
+              "mode": 493,
+              "containsMarker": true,
+              "ownerExecutable": true,
+              "groupWorldReadable": true,
+              "bytesSha256": "4d66cf7b3b928d51b3d0f17deaf8238e256a4da77c15444a02183de4d5fe2f49",
+              "isolation": "Original generator and wrapper-write statements only; generated wrapper is never invoked."
+            },
+            "after": {
+              "sourceProgramSha256": "ec44e2bda8b17f1fdc4c59bcc15daced225d98ce23a12bc3e46f683ba3695639",
+              "sourceBlob": "3acaf78eaf57a536646f87e72752e1f694bd3751",
+              "preexisting": true,
+              "exitCode": 0,
+              "umask": "0022",
+              "mode": 448,
+              "containsMarker": true,
+              "ownerExecutable": true,
+              "groupWorldReadable": false,
+              "bytesSha256": "4d66cf7b3b928d51b3d0f17deaf8238e256a4da77c15444a02183de4d5fe2f49",
+              "isolation": "Original generator and wrapper-write statements only; generated wrapper is never invoked."
+            }
+          }
+        ]
+      }
+    },
+    "model": {
+      "accepted": [],
+      "failures": [
+        {
+          "runId": 38516258798,
+          "headSha": "d8a7fcfb81657cae402adb31035d69e07b180b08",
+          "createdAt": "2026-10-14T05:22:11Z",
+          "jobId": 115695792653,
+          "failedStep": "Prepare pinned TLA+ runtime",
+          "runReceipt": "docs/operational-value/proof/native-policy-outcomes/originals/960ec7545611bc5fe54c0fdd3b6b3d7020fdf622d9818de36e72b2ce198763bf.json.gz",
+          "jobsReceipt": "docs/operational-value/proof/native-policy-outcomes/originals/cc008afc563e62996797af4f23aaf2a20e25f587e4d775278ecd8b2493a855ff.json.gz"
+        },
+        {
+          "runId": 38855400841,
+          "headSha": "f1621a88b38f17a437449f04b73f9992c0cb2922",
+          "createdAt": "2026-10-16T05:22:04Z",
+          "jobId": 116825759086,
+          "failedStep": "Prepare pinned TLA+ runtime",
+          "runReceipt": "docs/operational-value/proof/native-policy-outcomes/originals/be6dcce7382e9a8f92136359dc23b940b349a37ca81597fe3ce3332a54ef4964.json.gz",
+          "jobsReceipt": "docs/operational-value/proof/native-policy-outcomes/originals/a0accec4c5a34a820aede9bb7a0f637ea9a58f8ea32c7a41fae2c780c2a48543.json.gz"
+        }
+      ],
+      "missingReason": "No independently replayed complete TLC exploration and intended mutation/witness result. Surviving workflow-linked objects are failure/incomplete reports; original job graphs establish preparation failures only."
+    }
+  },
+  "coverage": {
+    "attemptedWorkflows": 3,
+    "workflowsWithBoundedNativeOutcomes": 2,
+    "honestGapReports": 1
+  },
+  "isolation": "No network, no shared Git cache, no shared output/Discussion acquisition and no target workflow execution during replay.",
+  "integration": {
+    "freshTests": 11,
+    "collectorChecks": 3,
+    "standardRefreshes": 6,
+    "allTimelinesEqualExceptGeneratedAt": true,
+    "timelineHashes": {
+      "weekly-network-domains-audit": "b05dedc6f3f4b91aec44ab882a4ab2ea2897a459fbec95e2982ab92e0cd3d4a7",
+      "daily-action-setup-security-audit": "c6c4b3cb43930c6980d2e46b80a73e04faf77e128646c990acf39c5844dc4051",
+      "daily-workflow-security-model": "83c9abeae1217aead897ba696bc367a80b98359a28620f29082472cadeb966ef"
+    },
+    "originalWorkspaceReadDenied": true,
+    "networkDeniedByOS": true,
+    "sharedSessionCachesDeniedByOS": true,
+    "gitCheckoutAndNodeModulesAbsent": true
+  }
+}
