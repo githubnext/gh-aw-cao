@@ -367,6 +367,27 @@ Coolify logs, query and ingestion spans, and Postgres child spans. An
 observability backend is diagnostic infrastructure only: it cannot become
 dashboard data authority, policy, or rollout authority.
 
+#### Local canonical snapshot serving
+
+The Go server may explicitly select `serve --sqlite PATH` to serve an existing
+canonical SQLite projection through the ordinary HTTP query, canonical API,
+diagnostics, revision subscriptions, and optional read-only MCP boundary.
+`server/internal/sqlitex/` implements the existing canonical storage reader
+contract behind `server/internal/dashboardstore/`; PostgreSQL's SQL executor,
+ingestion, and hosted defaults remain unchanged.
+
+This profile is loopback-only and bearer-authenticated, with no PostgreSQL or
+Redis service requirement. It opens the existing versioned snapshot read-only,
+never bootstraps, migrates, repairs or ingests it, and uses one consistent read
+transaction per request. The bounded native Go evaluator and canonical SQLite
+reader live in the small independent `internal/dashboardquery/` module shared
+by the root extension and server; neither module acquires the other's dependency
+graph. Request services use bounded volatile memory without OAuth, collection,
+webhook, or hosted execution capabilities. Query result caching is disabled;
+in-place commits change the revision and notify active subscriptions. Snapshot
+quality remains unknown without stronger evidence. This explicit local mode
+does not introduce a hosted SQLite backend or a fallback from PostgreSQL.
+
 #### Hosted storage boundary
 
 The hosted dashboard has one strict storage split:
@@ -500,6 +521,7 @@ reconstructable.
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Independent, entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds the dashboard's authoritative JSON contracts. Actions pipeline commands remain Node-owned. |
+| `internal/dashboardquery/` | Small independent Go module sharing the bounded local Dashboard Language evaluator and read-only canonical SQLite reader between the extension and explicit local server profile; never a hosted PostgreSQL fallback. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, and peer Azure Functions and Coolify deployment profiles. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |

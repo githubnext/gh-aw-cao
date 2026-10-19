@@ -5,12 +5,15 @@ go 1.26.9
 require (
 	github.com/cli/go-gh/v2 v2.16.1
 	github.com/github/gh-aw v0.92.0
+	github.com/githubnext/gh-aw-cao/internal/dashboardquery v0.0.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/term v0.47.0
 	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.60.1
 )
+
+replace github.com/githubnext/gh-aw-cao/internal/dashboardquery => ./internal/dashboardquery
 
 require (
 	charm.land/bubbles/v2 v2.2.1 // indirect

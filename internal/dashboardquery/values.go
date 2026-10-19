@@ -1,4 +1,4 @@
-package cli
+package dashboardquery
 
 import (
 	"encoding/json"

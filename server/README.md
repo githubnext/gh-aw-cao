@@ -1,4 +1,4 @@
-# Go dashboard server with Postgres and operational storage
+# Go dashboard server with Postgres, local SQLite, and operational storage
 
 The [TypeSpec HTTP contract](spec/README.md) is the source for generated
 OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
@@ -29,6 +29,49 @@ the focused contracts.
 
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
+
+## Local SQLite snapshot serving
+
+Serve an existing canonical dashboard snapshot without PostgreSQL or Redis:
+
+```bash
+# From the repository root, after downloading data and building the dashboard:
+go -C server run ./cmd/cao-dashboard serve \
+  --sqlite ../.cao/gh-aw-logs.sqlite \
+  --listen 127.0.0.1:8443
+```
+
+The built site defaults to `dashboard/site/dist`. Use `--site` for a different
+build directory and `--mcp-enabled` to expose the existing read-only MCP endpoint.
+Paths in this example resolve from `server/` because of `go -C server`.
+`gh cao download` prepares the default CAO snapshot; use `--url` with another
+dashboard's `payload-hashes.json` URL to select different data.
+`npm --prefix dashboard/site run build` builds the site. The snapshot must use
+the canonical IndexedDB-compatible SQLite layout and database version 42.
+Missing files, unsupported versions, and missing requested stores fail closed;
+startup never creates, repairs, migrates, or ingests SQLite data.
+
+This is an explicitly selected **local bearer-only, read-only** profile.
+Only loopback listeners are accepted; HTTP is supported locally, with optional
+`--cert` and `--key` for HTTPS. Existing access-token authentication and the HTTP
+query, canonical API, diagnostics, revision events, and optional MCP protocols
+remain in use. Queries execute in Go against one consistent SQLite read
+transaction, using the same bounded local Dashboard Language evaluator as
+`gh cao`. Intermediate results are bounded to 200,000 rows and wire results to
+100,000 rows per source; ordinary continuation pagination remains available. Snapshot
+quality is reported as unknown rather than verified complete or current.
+In-place SQLite commits update revisions and active subscriptions without a
+server restart. Restart after replacing the snapshot file itself.
+
+Operational request services are bounded, process-local, and volatile. Query
+result caching is disabled so a changed snapshot cannot serve stale results.
+OAuth, collection, ingestion, rebuilds, webhooks, and persisted GitHub-resource
+caching are unavailable in this profile. `--sqlite` cannot be combined with
+`--postgres-url`, `--redis-url`, or `--source`; database service environment
+variables are not used to select its storage. Reviewed hosted operational-store
+selection still requires `serve-hosted` and cannot be overridden by local serving.
+The default `serve` PostgreSQL path, hosted deployments, and PostgreSQL SQL
+execution remain unchanged; SQLite is never an automatic fallback.
 
 ## Single-process memory operational storage
 

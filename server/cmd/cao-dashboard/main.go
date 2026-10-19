@@ -682,13 +682,14 @@ func (e actionsEnvironment) present() string {
 func newServeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "serve dashboard data and operational state from Postgres",
+		Short: "serve dashboard data from Postgres or a local SQLite snapshot",
 	}
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "explicitly opt in to Redis operational state instead of Postgres")
 	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres dashboard entity store URL; defaults to CAO_POSTGRES_URL")
+	sqlitePath := cmd.Flags().String("sqlite", "", "serve an existing canonical SQLite snapshot locally without Postgres or Redis")
 	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
-	listen := cmd.Flags().String("listen", "127.0.0.1:8443", "HTTPS listen address")
+	listen := cmd.Flags().String("listen", "127.0.0.1:8443", "loopback HTTP listen address; HTTPS when --cert and --key are set")
 	cert := cmd.Flags().String("cert", "", "optional TLS certificate PEM file")
 	key := cmd.Flags().String("key", "", "optional TLS private key PEM file")
 	accessToken := cmd.Flags().String("access-token", "", "dashboard access token (generated when omitted)")
@@ -698,6 +699,9 @@ func newServeCommand() *cobra.Command {
 	agentCatalog := cmd.Flags().String("agent-catalog", "../dashboard/site/src/agent/catalog.generated.json", "materialized read-only agent catalog")
 	mcpContract := cmd.Flags().String("mcp-contract", "../dashboard/site/src/agent/mcp-contract.json", "shared MCP tool contract")
 	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
+	cmd.MarkFlagsMutuallyExclusive("sqlite", "postgres-url")
+	cmd.MarkFlagsMutuallyExclusive("sqlite", "redis-url")
+	cmd.MarkFlagsMutuallyExclusive("sqlite", "source")
 	cmd.RunE = func(*cobra.Command, []string) error {
 		if namespaceErr != nil {
 			return namespaceErr
@@ -709,8 +713,17 @@ func newServeCommand() *cobra.Command {
 		if selected {
 			return errors.New("reviewed operational-store selection requires serve-hosted or an external OAuth host; local bearer serve cannot override it")
 		}
-		if _, _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
-			return err
+		if cmd.Flags().Changed("sqlite") {
+			if strings.TrimSpace(*sqlitePath) == "" {
+				return errors.New("--sqlite requires an existing canonical snapshot file")
+			}
+			if err := server.ValidateListen(*listen, *cert, *key); err != nil {
+				return err
+			}
+		} else {
+			if _, _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
+				return err
+			}
 		}
 		commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -720,6 +733,45 @@ func newServeCommand() *cobra.Command {
 			return err
 		}
 		defer closeTelemetry()
+		configure := func() (server.Config, error) {
+			definitions, err := server.ParseDashboardQueries(*dashboardQueries)
+			if err != nil {
+				return server.Config{}, err
+			}
+			actionsEnv := resolveActionsEnvironment(os.Getenv)
+			commandLog.Printf("serve resolved actions environment %s", actionsEnv.present())
+			return server.Config{
+				Listen:               *listen,
+				SiteDirectory:        *siteDirectory,
+				CertFile:             *cert,
+				KeyFile:              *key,
+				AccessToken:          *accessToken,
+				SourceDirectory:      *source,
+				DatabaseQueriesPath:  *databaseQueries,
+				DashboardQueries:     definitions,
+				DashboardQueriesPath: *dashboardQueries,
+				AgentCatalogPath:     *agentCatalog,
+				MCPContractPath:      *mcpContract,
+				MCPEnabled:           *mcpEnabled,
+				BuildRevision:        revision,
+				GitHubActionsToken:   actionsEnv.Token,
+				GitHubActionsActor:   actionsEnv.Actor,
+				ActionsRepository:    actionsEnv.Repository,
+				GitHubAPIURL:         actionsEnv.APIURL,
+				Logger:               log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
+			}, nil
+		}
+		if cmd.Flags().Changed("sqlite") {
+			config, err := configure()
+			if err != nil {
+				return err
+			}
+			app, err := server.NewLocalSQLiteApp(ctx, *sqlitePath, config)
+			if err != nil {
+				return err
+			}
+			return app.Serve(ctx)
+		}
 		var store operational.Store
 		if cmd.Flags().Changed("redis-url") {
 			store, err = newRedisStore(*redisURL, *redisNamespace)
@@ -744,33 +796,12 @@ func newServeCommand() *cobra.Command {
 			return err
 		}
 		defer func() { _ = database.Close() }()
-		definitions, err := server.ParseDashboardQueries(*dashboardQueries)
+		config, err := configure()
 		if err != nil {
 			return err
 		}
-		actionsEnv := resolveActionsEnvironment(os.Getenv)
-		commandLog.Printf("serve resolved actions environment %s", actionsEnv.present())
-		app, err := server.New(ctx, store, server.Config{
-			Database:             database,
-			Listen:               *listen,
-			SiteDirectory:        *siteDirectory,
-			CertFile:             *cert,
-			KeyFile:              *key,
-			AccessToken:          *accessToken,
-			SourceDirectory:      *source,
-			DatabaseQueriesPath:  *databaseQueries,
-			DashboardQueries:     definitions,
-			DashboardQueriesPath: *dashboardQueries,
-			AgentCatalogPath:     *agentCatalog,
-			MCPContractPath:      *mcpContract,
-			MCPEnabled:           *mcpEnabled,
-			BuildRevision:        revision,
-			GitHubActionsToken:   actionsEnv.Token,
-			GitHubActionsActor:   actionsEnv.Actor,
-			ActionsRepository:    actionsEnv.Repository,
-			GitHubAPIURL:         actionsEnv.APIURL,
-			Logger:               log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
-		})
+		config.Database = database
+		app, err := server.New(ctx, store, config)
 		if err != nil {
 			return err
 		}

@@ -1,10 +1,8 @@
 package cli
 
 import (
-	"cmp"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -13,14 +11,15 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode/utf16"
 
 	"github.com/spf13/cobra"
 	_ "modernc.org/sqlite"
+
+	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
 )
 
 const nativeDatabasePath = ".cao/gh-aw-logs.sqlite"
-const nativeDatabaseName = "gh-aw-cao-dashboard-data"
+const nativeDatabaseName = dashboardquery.DatabaseName
 
 var nativeCollections = []string{
 	"repositories", "workflows", "runs", "domains", "tools", "skills", "friction", "audits", "issues",
@@ -96,81 +95,7 @@ func readNativeCollection(ctx context.Context, db *sql.DB, collection string) (r
 	if !slices.Contains(nativeCollections, collection) && collection != "campaigns" && collection != "marketplacePackages" {
 		return nil, nativeErrorf("Unknown collection: %s", collection)
 	}
-	rows, err := db.QueryContext(ctx, `SELECT record_key, value FROM __idb_records WHERE database_name=? AND store_name=?`, nativeDatabaseName, collection)
-	if err != nil {
-		return nil, fmt.Errorf("read canonical %s: %w", collection, err)
-	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
-	type entry struct {
-		key    any
-		record map[string]any
-	}
-	entries := []entry{}
-	for rows.Next() {
-		var keyJSON, content string
-		if err := rows.Scan(&keyJSON, &content); err != nil {
-			return nil, err
-		}
-		var key any
-		if err := json.Unmarshal([]byte(keyJSON), &key); err != nil || !nativeRecordKeyValid(key) {
-			return nil, fmt.Errorf("invalid canonical %s record key", collection)
-		}
-		var record map[string]any
-		if err := json.Unmarshal([]byte(content), &record); err != nil || record == nil {
-			return nil, fmt.Errorf("invalid canonical %s record JSON", collection)
-		}
-		if collection != "transactions" {
-			delete(record, "_queryKeys")
-			delete(record, "_storage")
-		}
-		entries = append(entries, entry{key: key, record: record})
-	}
-	slices.SortFunc(entries, func(left, right entry) int { return nativeCompareRecordKeys(left.key, right.key) })
-	result = make([]map[string]any, len(entries))
-	for index, entry := range entries {
-		result[index] = entry.record
-	}
-	return result, rows.Err()
-}
-
-func nativeRecordKeyValid(key any) bool {
-	switch key := key.(type) {
-	case float64, string:
-		return true
-	case []any:
-		for _, part := range key {
-			if !nativeRecordKeyValid(part) {
-				return false
-			}
-		}
-		return true
-	default:
-		return false
-	}
-}
-
-func nativeCompareRecordKeys(left, right any) int {
-	rank := func(key any) int {
-		switch key.(type) {
-		case float64:
-			return 1
-		case string:
-			return 3
-		default:
-			return 4
-		}
-	}
-	if difference := rank(left) - rank(right); difference != 0 {
-		return difference
-	}
-	switch left := left.(type) {
-	case float64:
-		return cmp.Compare(left, right.(float64))
-	case string:
-		return slices.Compare(utf16.Encode([]rune(left)), utf16.Encode([]rune(right.(string))))
-	default:
-		return slices.CompareFunc(left.([]any), right.([]any), nativeCompareRecordKeys)
-	}
+	return dashboardquery.ReadCollection(ctx, db, collection, 0, 0)
 }
 
 func requireNativeSnapshot(cmd *cobra.Command, named bool) error {
@@ -221,5 +146,5 @@ func nativeFieldLookup(record map[string]any, field string) (any, bool) {
 }
 
 func nativeScalar(value any) string {
-	return engineJSString(value)
+	return dashboardquery.String(value)
 }

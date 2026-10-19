@@ -30,6 +30,7 @@ structure:
   go_extension_commands: internal/cli/
   go_extension_github_helper: internal/ghcli/
   go_extension_catalog: dashboard/catalog.go
+  local_go_query_engine: internal/dashboardquery/
   dashboard: dashboard/
   dashboard_data: dashboard/site/src/data/
   dashboard_go_server: server/
@@ -159,6 +160,15 @@ components:
   postgres_entity_store:
     path: server/internal/postgresx/
     responsibility: bootstrap a fresh TypeSpec-generated schema and weekly partitions as owner; runtime opens validated provisioned state without DDL, with a fixed schema-qualified ANALYZE capability; daily owner maintenance preserves historical and four upcoming weeks; transactionally replace and read query-minimal native entity tables, entity-owned relational child values, quality metadata, diagnostics, and revision state; preserve missing versus null with compact presence bits; compile and execute bounded Dashboard Language plans as SQL in a repeatable-read snapshot without persisted documents, duplicate scalar representations, or compatibility migrations
+  canonical_storage_contract:
+    path: server/internal/dashboardstore/
+    responsibility: accept existing canonical storage readers without changing PostgreSQL SQL execution or ingestion
+  local_sqlite_entity_store:
+    path: server/internal/sqlitex/, server/internal/server/local_sqlite.go
+    responsibility: explicitly serve an existing canonical snapshot with loopback bearer authentication and read-only request transactions; expose the ordinary HTTP, canonical API, diagnostics, revision subscriptions and optional MCP protocols with bounded volatile request services, unknown snapshot quality and no query result caching; never enable hosted OAuth, collection, ingestion, webhooks, hosted execution, or PostgreSQL fallback
+  local_go_query_engine:
+    path: internal/dashboardquery/
+    responsibility: share the bounded native Dashboard Language evaluator and canonical SQLite reader through a small independent Go module, without coupling the extension and server dependency graphs
   redis_operational_store:
     path: server/internal/redisx/
     responsibility: support operational caches, queues, and sessions, not dashboard entity storage or query execution
@@ -293,6 +303,10 @@ dependencies:
   - go_extension_entrypoint -> go_extension_commands
   - go_extension_commands -> go_extension_github_helper
   - go_extension_commands -> go_extension_catalog
+  - go_extension_commands -> local_go_query_engine
+  - dashboard_https_server -> canonical_storage_contract
+  - local_sqlite_entity_store -> canonical_storage_contract
+  - local_sqlite_entity_store -> local_go_query_engine
   - catalog -> control_repository
   - control_repository -> policy_resolution
   - policy_resolution -> orchestrator
@@ -441,6 +455,7 @@ invariants:
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
   - "Postgres is the exclusive hosted dashboard entity and query store: it holds native typed entity and inventory tables, quality metadata, diagnostics, and revision state; replacement is transactional and does not create generations or persistent derived projections."
+  - "Local SQLite serving MUST be explicitly selected with serve --sqlite PATH, remain loopback-only and bearer-authenticated, and open existing canonical snapshots read-only without bootstrap, migration, repair or ingestion. It MUST NOT change hosted PostgreSQL execution, ingest behavior or defaults, become an automatic fallback, enable hosted capabilities, or cache stale query results. In-place commits MUST notify revision subscribers; quality stays unknown without stronger evidence."
   - "The hosted query plan executor MUST bind values and namespace and enforce pre-filter input and resource bounds; all hosted row operations execute in SQL without Go evaluator fallback."
   - "TypeSpec owns the fresh Postgres physical schema; entities MUST NOT be duplicated in generic source storage or persisted as JSON/JSONB/serialized documents. Startup MUST NOT migrate or import old database layouts."
   - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."

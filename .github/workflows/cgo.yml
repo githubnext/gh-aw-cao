@@ -4,12 +4,18 @@ on:
   pull_request:
     paths:
       - .github/workflows/cgo.yml
+      - internal/dashboardquery/**
+      - go.mod
+      - go.sum
       - server/**
       - "!server/**/*.md"
   push:
     branches: [main]
     paths:
       - .github/workflows/cgo.yml
+      - internal/dashboardquery/**
+      - go.mod
+      - go.sum
       - dashboard/site/**
       - server/**
       - scripts/test-dashboard-backfill.sh
@@ -50,6 +56,12 @@ jobs:
         run: golangci-lint run ./...
       - name: Unit tests
         run: go -C server test ./...
+      - name: Check shared local query engine
+        working-directory: internal/dashboardquery
+        run: |
+          golangci-lint fmt --diff
+          golangci-lint run ./...
+          go test ./...
 
   server-backfill:
     name: Postgres backfill and OpenObserve integration
