@@ -207,6 +207,21 @@ For a standalone Pages site:
 
 Run `gh cao setup` to configure the control repository's Pages source as GitHub Actions with repository-restricted access for private repositories. The standalone workflow passes `enablement: false` to `actions/configure-pages`, checks private-site access before publishing, and has no schedule. Set `control-plane.campaigns.dashboard.deploy` to `false` when an existing Pages workflow owns deployment. The dashboard workflow continues to publish `central-agentic-ops-dashboard`; the owning workflow can list successful `cao-dashboard.yml` runs on the default branch, download the latest artifact into its site output, and deploy the combined artifact.
 
+In the CAO catalog repository, **Documentation Pages** (`docs.yml`) owns the
+combined documentation and dashboard deployment. Scheduled runs, successful
+default-branch dashboard completions, and normal manual runs skip rebuilding when
+both deployed components are current; matching pushes always rebuild. To redeploy
+after a repository rename or Pages configuration change, select **Run workflow**
+on the default branch and enable **force_deploy**, or run:
+
+```sh
+gh workflow run docs.yml --repo githubnext/gh-cao --ref main -f force_deploy=true
+```
+
+This bypasses freshness checks, rebuilds the documentation, and deploys the
+combined site only after the build succeeds. Pages environment protections and
+permissions still apply.
+
 The Activity workflow restores its source-shard cache, collects bounded read-only
 `gh aw logs --audit --artifacts usage` evidence for the resolved repository scope,
 and refreshes native operational-value measurements. Its index job merges the

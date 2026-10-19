@@ -2,6 +2,11 @@ name: Documentation Pages
 
 on:
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: Rebuild and deploy even when documentation and dashboard are current
+        type: boolean
+        default: false
   workflow_run: # zizmor: ignore[dangerous-triggers] - The build job accepts only successful default-branch runs and checks out the default branch.
     workflows:
       - CAO Dashboard
@@ -37,6 +42,7 @@ jobs:
   schedule-freshness:
     if: >-
       github.event_name == 'schedule'
+      || (github.event_name == 'workflow_dispatch' && !inputs.force_deploy)
       || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     permissions:
@@ -105,7 +111,8 @@ jobs:
   build:
     needs: schedule-freshness
     if: >-
-      !failure() && !cancelled() && ((github.event_name != 'schedule' && github.event_name != 'workflow_run') || needs.schedule-freshness.outputs.should-build == 'true')
+      !failure() && !cancelled()
+      && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.force_deploy) || needs.schedule-freshness.outputs.should-build == 'true')
       && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch))
     runs-on: ubuntu-latest
     permissions:
@@ -192,6 +199,7 @@ jobs:
 
   deploy:
     needs: build
+    if: ${{ !failure() && !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
