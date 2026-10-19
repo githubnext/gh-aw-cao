@@ -350,7 +350,12 @@ func engineInt(value any) int {
 	if !ok || n < float64(math.MinInt) || n >= -float64(math.MinInt) {
 		return 0
 	}
-	return int(n)
+	// Checked parsing makes the final native-width conversion explicit.
+	result, err := strconv.Atoi(strconv.FormatFloat(math.Trunc(n), 'f', 0, 64))
+	if err != nil {
+		return 0
+	}
+	return result
 }
 func engineDefaultInt(value any, fallback int) int {
 	if value == nil {
