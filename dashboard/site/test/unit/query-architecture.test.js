@@ -76,10 +76,11 @@ describe('dashboard query architecture', () => {
     expect(databaseQueries.every((/** @type {{ stores?: unknown }} */ query) => Array.isArray(query.stores))).toBe(true);
     expect(startup).toContain('subscribeCanonicalDashboardView(');
     expect(startup).toContain('signal: pageOptions.signal');
-    expect(startup).toContain('bindContinuations(pageId, sources, paginatedSources, pageOptions)');
-    expect(startup).toContain('const sourceName = bindings[alias]?.sourceName');
+    expect(startup).toContain('bindContinuations(pageId, sources, paginatedSources, { sourceNames }, pageOptions)');
+    expect(startup).toContain('scope.sourceNames,\n        dashboardContext,\n        pagination,');
+    expect(startup).toContain('sourceNames: [...new Set(sourceNames)], viewId');
     expect(startup).toContain('dashboardContext,\n        pagination,');
-    expect(startup).toContain('viewId: binding?.viewId');
+    expect(startup).toContain('viewId: scope.viewId');
     expect(startup).toContain('routeParameters: pageOptions.routeParameters');
     expect(startup).toContain('queryContext: pageOptions.queryContext');
     expect(presenter).not.toMatch(/filterDashboardSources|filterRowsForView|deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
