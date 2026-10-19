@@ -55,10 +55,19 @@ const (
 )
 
 type engineBudget struct {
-	ctx        context.Context
-	deadline   time.Time
-	operations int64
-	outputRows int
+	ctx           context.Context
+	deadline      time.Time
+	operations    int64
+	outputRows    int
+	inputRows     int
+	maxOperations int64
+}
+
+func (b *engineBudget) inputLimit() int {
+	if b.inputRows > 0 {
+		return b.inputRows
+	}
+	return engineMaxInputRows
 }
 
 func (b *engineBudget) spend(n int64) error {
@@ -69,7 +78,11 @@ func (b *engineBudget) spend(n int64) error {
 	if time.Now().After(b.deadline) {
 		return &NativeQueryCancelledError{Kind: "timeout", Cause: context.DeadlineExceeded}
 	}
-	if b.operations > engineMaxOperations {
+	limit := int64(engineMaxOperations)
+	if b.maxOperations > 0 {
+		limit = b.maxOperations
+	}
+	if b.operations > limit {
 		return &NativeQueryCancelledError{Kind: "budget"}
 	}
 	return nil
@@ -114,8 +127,8 @@ func executeWithBudget(definition map[string]any, load func(string) ([]map[strin
 			}
 			return nil, &NativeQueryUnavailableError{Source: source, Reason: "input source is unavailable", Cause: err}
 		}
-		if len(rows) > engineMaxInputRows {
-			return nil, engineUnavailable("%q exceeds max-input-rows (%d)", source, engineMaxInputRows)
+		if len(rows) > budget.inputLimit() {
+			return nil, engineUnavailable("%q exceeds max-input-rows (%d)", source, budget.inputLimit())
 		}
 		return rows, budget.spend(0)
 	}
@@ -124,13 +137,14 @@ func executeWithBudget(definition map[string]any, load func(string) ([]map[strin
 		return nil, err
 	}
 	rows = append([]nativeRow{}, rows...)
+	ownedRows := false
 	for _, branch := range engineList(definition["union"]) {
 		additional, err := read(engineString(branch), true)
 		if err != nil {
 			return nil, err
 		}
-		if len(rows)+len(additional) > engineMaxInputRows {
-			return nil, engineUnavailable("union exceeds max-input-rows (%d)", engineMaxInputRows)
+		if len(rows)+len(additional) > budget.inputLimit() {
+			return nil, engineUnavailable("union exceeds max-input-rows (%d)", budget.inputLimit())
 		}
 		rows = append(rows, additional...)
 	}
@@ -150,6 +164,7 @@ func executeWithBudget(definition map[string]any, load func(string) ([]map[strin
 		if err != nil {
 			return nil, err
 		}
+		ownedRows = true
 	}
 	for _, stage := range []string{"filter", "compute", "temporal-series", "aggregate", "predict", "window", "select", "order-by", "limit", "facet"} {
 		value, present := definition[stage]
@@ -211,7 +226,7 @@ func executeWithBudget(definition map[string]any, load func(string) ([]map[strin
 		case "filter":
 			rows, err = engineFilter(rows, engineMap(value), budget)
 		case "compute":
-			rows, err = engineCompute(rows, engineList(value), budget)
+			rows, err = engineCompute(rows, engineList(value), budget, ownedRows)
 		case "aggregate":
 			rows, err = engineAggregate(rows, engineMap(value), budget)
 		case "select":
@@ -263,6 +278,10 @@ func executeWithBudget(definition map[string]any, load func(string) ([]map[strin
 		if err != nil {
 			return nil, err
 		}
+		switch stage {
+		case "compute", "aggregate", "select", "window", "predict", "temporal-series", "facet":
+			ownedRows = true
+		}
 	}
 	outputRows := engineMaxOutputRows
 	if budget.outputRows > 0 {
@@ -277,7 +296,11 @@ func executeWithBudget(definition map[string]any, load func(string) ([]map[strin
 	// Never expose borrowed source maps, even for a raw canonical projection.
 	result := make([]nativeRow, len(rows))
 	for i, row := range rows {
-		result[i] = engineClone(row)
+		if ownedRows {
+			result[i] = row
+		} else {
+			result[i] = engineClone(row)
+		}
 	}
 	return result, nil
 }
@@ -719,8 +742,8 @@ func engineJoin(rows, right []nativeRow, join nativeRow, budget *engineBudget) (
 			matches = []nativeRow{nil}
 		}
 		for _, match := range matches {
-			if len(result) == engineMaxInputRows {
-				return nil, engineUnavailable("join exceeds max-join-rows (%d)", engineMaxInputRows)
+			if len(result) == budget.inputLimit() {
+				return nil, engineUnavailable("join exceeds max-join-rows (%d)", budget.inputLimit())
 			}
 			if err := budget.spend(1); err != nil {
 				return nil, err

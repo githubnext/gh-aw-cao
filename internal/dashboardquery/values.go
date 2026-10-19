@@ -15,7 +15,7 @@ import (
 var engineShardDay = regexp.MustCompile(`^(?:[^?#]*/)?([0-9]{4}-[0-9]{2}-[0-9]{2})-[0-9]{4,}-[a-fA-F0-9]{16}\.jsonl(?:[?#].*)?$`)
 var engineTimestamp = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$`)
 
-func engineCompute(rows []nativeRow, definitions []any, budget *engineBudget) ([]nativeRow, error) {
+func engineCompute(rows []nativeRow, definitions []any, budget *engineBudget, ownedRows bool) ([]nativeRow, error) {
 	result := make([]nativeRow, 0, len(rows))
 	for i, row := range rows {
 		if i%4096 == 0 {
@@ -23,7 +23,10 @@ func engineCompute(rows []nativeRow, definitions []any, budget *engineBudget) ([
 				return nil, err
 			}
 		}
-		out := engineClone(row)
+		out := row
+		if !ownedRows {
+			out = engineClone(row)
+		}
 		for _, item := range definitions {
 			def := engineMap(item)
 			value, err := engineComputeValue(out, def)

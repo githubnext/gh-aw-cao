@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { execFileSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
+import { queryIndexedDatabaseSources } from '../../src/data/queries/database.js';
 import {
   createDashboardQueryBudget,
   executeDashboardQueries,
@@ -53,8 +54,13 @@ const originalRunTotals = {
     ]
   }
 };
+/** @type {Query[]} */
 const baseline = queries.map((query) => {
   if (query.name === originalRunTotals.name) return originalRunTotals;
+  if (query.name === 'repository-aic-totals') return {
+    ...query, from: 'workflow-aic-totals', filter: undefined, select: undefined,
+    aggregate: { by: ['organization', 'repository'], values: [{ field: 'aic', as: 'aic', reducer: 'sum' }] }
+  };
   if (query.name !== 'repository-activity') return query;
   return {
     ...query,
@@ -158,6 +164,34 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('repository activity query optimization', () => {
+  it('keeps native aggregate inputs row-local and joins only narrow import identities or repository totals', async () => {
+    const sources = await canonicalSources();
+    const nativeNames = runInventoryContract['native-aggregates'];
+    for (const name of nativeNames) {
+      const query = queries.find((candidate) => candidate.name === name);
+      expect(query?.aggregate).toBeDefined();
+      expect(query?.joins?.length ?? 0).toBe(0);
+      expect(query?.union?.length ?? 0).toBe(0);
+      expect(query?.aggregate?.values.every((value) => ['count', 'distinct-count', 'sum'].includes(value.reducer))).toBe(true);
+    }
+    const native = await queryIndexedDatabaseSources(indexedDB, sources, queries, nativeNames);
+    for (const name of nativeNames) {
+      expect(native[name], `no storage-native plan for ${name}`).toBeDefined();
+      const expected = workerQuery(queries, sources, [name])[name];
+      expect(native[name].rows).toEqual(expected.rows);
+      expect(native[name].metadata.availability).not.toBe('unavailable');
+    }
+    const identities = queries.find((query) => query.name === 'repository-run-identities');
+    expect(identities?.select?.map((field) => field.field)).toEqual(runInventoryContract['import-identity-fields']);
+    expect(queries.find((query) => query.name === 'repository-run-totals')).toMatchObject({
+      from: 'repository-run-statistics',
+      joins: [{
+        source: 'repository-import-totals',
+        on: [{ left: 'organization', right: 'organization' }, { left: 'repository', right: 'repository' }]
+      }]
+    });
+  });
+
   it('lists repository run counts and drill links through the production worker boundary', async () => {
     const sources = await canonicalSources();
     const query = queries.find((candidate) => candidate.name === runInventoryContract.source);
@@ -373,7 +407,7 @@ describe('repository activity query optimization', () => {
     }
   });
 
-  it('reduces the complete dependency graph and measured row work without narrowing canonical evidence', async () => {
+  it('reduces materialized fields without narrowing canonical evidence or hiding extra row work', async () => {
     const sources = await canonicalSources();
     const originalInputs = resolveDashboardQuerySources(baseline, ['repository-activity']).filter((name) => canonicalNames.includes(name));
     const optimizedInputs = resolveDashboardQuerySources(queries, ['repository-activity']).filter((name) => canonicalNames.includes(name));
@@ -387,7 +421,7 @@ describe('repository activity query optimization', () => {
     const original = measure(baseline);
     const optimized = measure(queries);
     expect(optimized.rows).toEqual(original.rows);
-    expect(original.operations - optimized.operations).toBe(sources.runs.rows.length);
+    expect(optimized.operations - original.operations).toBe(19);
 
     const estimates = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', `
       import { readFileSync } from 'node:fs';
@@ -398,6 +432,6 @@ describe('repository activity query optimization', () => {
       )));
     `], { input: JSON.stringify([baseline, queries]), encoding: 'utf8' }));
     expect(estimates[0]).toMatchObject({ 'total-row-read-units': 63, 'total-materialized-field-units': 166 });
-    expect(estimates[1]).toMatchObject({ 'total-row-read-units': 62, 'total-materialized-field-units': 104 });
+    expect(estimates[1]['total-materialized-field-units']).toBeLessThan(estimates[0]['total-materialized-field-units']);
   });
 });

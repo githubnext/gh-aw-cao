@@ -56,7 +56,7 @@ it('excludes zero and missing AIC from per-run averages without changing run cou
     'workflow-aic-run-totals', 'cost-per-workflow-run', 'workflow-aic-per-run',
     'workflow-aic-totals', 'workflow-inventory', 'entity-workflow-run-totals',
     'entity-workflows', 'engines-models-usage', 'campaign-performance-baseline-totals',
-    'repository-aic-totals', 'campaign-cost-totals', 'cost-by-campaign', 'cost-by-repository', 'cost-by-workflow'
+    'repository-run-statistics', 'repository-aic-totals', 'campaign-cost-totals', 'cost-by-campaign', 'cost-by-repository', 'cost-by-workflow'
   ];
   const definitions = authoritativeDashboard.dashboard.queries.filter(
     (/** @type {{ name?: string }} */ query) => names.includes(query.name ?? '')

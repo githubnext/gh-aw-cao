@@ -984,25 +984,52 @@
       ]
     },
     {
+      "name": "repository-run-statistics",
+      "subject": "Reduce run counts, conclusions, and positive AI Credits before repository enrichment.",
+      "objective": "Share one row-local run aggregate between repository execution and cost summaries.",
+      "acceptance": "Keep organization/repository grain, distinct run IDs, existing failure and approval counts, and positive recorded AIC. Reduce before joins; missing evidence is not zero activity or free execution.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "positive-aic",
+          "function": "greater-than",
+          "args": [{ "field": "aic-total" }, { "value": 0 }]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository"],
+        "values": [
+          { "field": "run", "as": "runs", "reducer": "distinct-count" },
+          {
+            "field": "run-conclusion", "as": "failed", "reducer": "count",
+            "filter": { "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "timed-out"] }] }
+          },
+          {
+            "field": "run-conclusion", "as": "action-required", "reducer": "count",
+            "filter": { "predicates": [{ "field": "run-conclusion", "equals": "action-required" }] }
+          },
+          {
+            "field": "run", "as": "aic-runs", "reducer": "count",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
+          },
+          {
+            "field": "aic-total", "as": "aic", "reducer": "sum",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
+          }
+        ]
+      }
+    },
+    {
       "name": "repository-aic-totals",
       "subject": "Summarize observed AI Credit usage by repository.",
       "objective": "Provide repository-level retained AI Credit totals for comparing observed usage with run activity.",
       "acceptance": "Sum only positive recorded aic-total by organization and repository; exclude zero and missing costs rather than treating them as free execution.",
       "description": "Observed AI Credit totals for each repository.",
-      "from": "workflow-aic-totals",
-      "aggregate": {
-        "by": [
-          "organization",
-          "repository"
-        ],
-        "values": [
-          {
-            "field": "aic",
-            "as": "aic",
-            "reducer": "sum"
-          }
-        ]
-      }
+      "from": "repository-run-statistics",
+      "filter": { "predicates": [{ "field": "aic-runs", "gte": 1 }] },
+      "select": [
+        { "field": "organization" }, { "field": "repository" }, { "field": "aic" }
+      ]
     },
     {
       "name": "maintenance-repository-versions",

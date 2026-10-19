@@ -66,8 +66,30 @@ func newSQLiteTestApp(t *testing.T, mcpEnabled bool) (*App, string) {
 	return app, path
 }
 
+func TestLocalSQLitePreservesQueryAdmissionOverride(t *testing.T) {
+	original, path := newSQLiteTestApp(t, false)
+	config := original.config
+	config.Database = nil
+	config.RateLimits.Query.Capacity = 3
+	app, err := NewLocalSQLiteApp(t.Context(), path, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := app.Stop(context.WithoutCancel(t.Context())); err != nil {
+			t.Error(err)
+		}
+	})
+	if app.config.RateLimits.Query.Capacity != 3 {
+		t.Fatal("local snapshot serving widened an explicit query-admission limit")
+	}
+}
+
 func TestLocalSQLiteHTTPAndLifecycle(t *testing.T) {
 	app, path := newSQLiteTestApp(t, false)
+	if app.config.RateLimits.Query.Capacity != 300 {
+		t.Fatal("local snapshot query admission must allow ordinary page navigation")
+	}
 	if !app.config.QueryCache.Disabled {
 		t.Fatal("mutable local snapshots must not use a stale query cache")
 	}

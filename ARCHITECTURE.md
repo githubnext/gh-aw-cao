@@ -376,6 +376,14 @@ diagnostics, revision subscriptions, and optional read-only MCP boundary.
 contract behind `server/internal/dashboardstore/`; PostgreSQL's SQL executor,
 ingestion, and hosted defaults remain unchanged.
 
+For developer startup, `serve --download-sqlite[=URL]` explicitly downloads a
+published cache before opening it. Any Pages site or custom-domain directory,
+dashboard directory, or direct manifest URL may supply the snapshot; directory
+discovery checks its root and then `cao/` on HTTP 404. Bounded streaming,
+manifest SHA-256 verification, and canonical-version validation precede atomic
+replacement; failed acquisition preserves the old file and fails startup.
+This acquisition path does not ingest shards or relax read-only serving.
+
 This profile is loopback-only and bearer-authenticated, with no PostgreSQL or
 Redis service requirement. It opens the existing versioned snapshot read-only,
 never bootstraps, migrates, repairs or ingests it, and uses one consistent read
@@ -387,6 +395,19 @@ webhook, or hosted execution capabilities. Query result caching is disabled;
 in-place commits change the revision and notify active subscriptions. Snapshot
 quality remains unknown without stronger evidence. This explicit local mode
 does not introduce a hosted SQLite backend or a fallback from PostgreSQL.
+Its fixed local evaluator profile admits 500,000 input/intermediate rows and
+50 million operations with 1 GiB working-source and 2 GiB / 2 million live
+retained-row budgets; final-consumer release discards completed DAG inputs.
+Backward field liveness narrows row-local projections and removes unused pure
+computations. SQLite executes root field selection natively while retaining full
+stored-record byte checks, JSON types, missing-value semantics and IndexedDB
+UTF-16 key ordering; unknown shapes and requested raw sources remain complete.
+Read-only memory mapping is capped at 1 GiB. Remaining local operators execute
+in the shared Go evaluator, not a claimed SQLite SQL-plan compiler.
+Wire output remains bounded to 100,000 rows. The shared engine's default CLI
+limits and hosted PostgreSQL limits remain unchanged. This local-only profile
+defaults to a 300-unit/minute weighted query-admission bucket while preserving
+explicit embedding overrides and all other request policies.
 
 #### Hosted storage boundary
 

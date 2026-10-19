@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
@@ -13,6 +14,14 @@ import (
 	"github.com/githubnext/gh-aw-cao/server/internal/model"
 	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-aw-cao/server/internal/query"
+)
+
+const (
+	maxSnapshotInputRows     = 500_000
+	maxSnapshotWorkingBytes  = 1 << 30
+	maxSnapshotRetainedRows  = 2_000_000
+	maxSnapshotRetainedBytes = 2 << 30
+	maxSnapshotOperations    = 50_000_000
 )
 
 func (r *reader) ExecuteSQLPlan(ctx context.Context, definitions []query.Definition, requested []string) (map[string]model.Source, model.Metrics, error) {
@@ -34,38 +43,63 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 	if len(order) > query.MaxPlanQueries {
 		return nil, metrics, errors.New("local query exceeds max plan queries")
 	}
+	executionDefinitions, fields := projectSnapshotPlan(definitions, requested, order)
 	state, err := r.State(ctx)
 	if err != nil {
 		return nil, metrics, err
 	}
 	roots := map[string]model.Metadata{}
 	cache := map[string][]map[string]any{}
-	evaluator := dashboardquery.NewEvaluator(ctx)
+	uses := map[string]int{}
+	reachable := map[string]bool{}
+	for _, name := range order {
+		reachable[name] = true
+	}
+	for _, definition := range definitions {
+		if reachable[definition.Name] {
+			for _, input := range snapshotInputs(definition) {
+				uses[input]++
+			}
+		}
+	}
+	for _, name := range requested {
+		uses[name]++
+	}
+	sizes := map[string]int64{}
+	var retainedRows int
+	var retainedBytes int64
+	evaluator, err := dashboardquery.NewEvaluatorWithLimits(ctx, maxSnapshotInputRows, maxSnapshotOperations)
+	if err != nil {
+		return nil, metrics, err
+	}
 	retain := func(name string, rows []map[string]any) error {
 		owned := make([]model.Row, len(rows))
 		for index, row := range rows {
 			owned[index] = model.Row(row)
 		}
-		bytes := query.EstimateRowsBytes(owned)
+		bytes := query.EstimateRowsBytesWithLimit(owned, maxSnapshotRetainedBytes)
 		metrics.PeakWorkingRows = max(metrics.PeakWorkingRows, len(rows))
 		metrics.PeakWorkingBytes = max(metrics.PeakWorkingBytes, bytes)
-		metrics.RetainedRows += len(rows)
-		metrics.RetainedBytes += bytes
+		retainedRows += len(rows)
+		retainedBytes += bytes
+		metrics.RetainedRows = max(metrics.RetainedRows, retainedRows)
+		metrics.RetainedBytes = max(metrics.RetainedBytes, retainedBytes)
 		metrics.Operations = int(evaluator.Operations())
-		if len(rows) > query.MaxInputRows || bytes > query.MaxWorkingBytes {
+		if len(rows) > maxSnapshotInputRows || bytes > maxSnapshotWorkingBytes {
 			return fmt.Errorf("local query %q exceeds working input budget", name)
 		}
-		if metrics.RetainedRows > query.MaxRetainedRows || metrics.RetainedBytes > query.MaxRetainedBytes {
+		if retainedRows > maxSnapshotRetainedRows || retainedBytes > maxSnapshotRetainedBytes {
 			return &query.PlanLimitError{QueryID: name, Boundary: query.BoundaryRetainedBytes}
 		}
 		cache[name] = rows
+		sizes[name] = bytes
 		return nil
 	}
 	loadRoot := func(name string) error {
 		if _, exists := cache[name]; exists {
 			return nil
 		}
-		source, err := r.source(ctx, name, state, options)
+		source, err := r.source(ctx, name, state, options, fields[name])
 		if err != nil {
 			return err
 		}
@@ -76,7 +110,7 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 		}
 		return retain(name, rows)
 	}
-	err = query.WalkPlan(definitions, requested, loadRoot, func(definition query.Definition) error {
+	err = query.WalkPlan(executionDefinitions, requested, loadRoot, func(definition query.Definition) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -99,7 +133,20 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 			return err
 		}
 		metrics.QueryCount++
-		return retain(definition.Name, rows)
+		if err := retain(definition.Name, rows); err != nil {
+			return err
+		}
+		// Results are owned clones, so completed inputs can leave the live DAG.
+		for _, input := range snapshotInputs(definition) {
+			uses[input]--
+			if uses[input] == 0 {
+				retainedRows -= len(cache[input])
+				retainedBytes -= sizes[input]
+				delete(cache, input)
+				delete(sizes, input)
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, metrics, err
@@ -144,13 +191,29 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 	return output, metrics, nil
 }
 
-func (r *reader) source(ctx context.Context, name string, state dashboardstore.State, options dashboardstore.ExecutionOptions) (model.Source, error) {
+func snapshotInputs(definition query.Definition) []string {
+	inputs := append([]string{definition.From}, definition.Union...)
+	for _, join := range definition.Joins {
+		inputs = append(inputs, join.Source)
+	}
+	return inputs
+}
+
+func (r *reader) source(ctx context.Context, name string, state dashboardstore.State, options dashboardstore.ExecutionOptions, fields snapshotFields) (model.Source, error) {
 	collection := strings.TrimPrefix(name, "$")
 	if strings.HasPrefix(name, "$") && canonicalCollection(collection) {
 		if _, declared := state.Counts[name]; !declared {
 			return model.Source{}, fmt.Errorf("canonical SQLite source %q is not present in the snapshot", name)
 		}
-		rows, err := dashboardquery.ReadCollection(ctx, r.tx, collection, query.MaxInputRows, query.MaxWorkingBytes)
+		var projected []string
+		if !fields.all {
+			projected = make([]string, 0, len(fields.fields))
+			for field := range fields.fields {
+				projected = append(projected, field)
+			}
+			sort.Strings(projected)
+		}
+		rows, err := dashboardquery.ReadCollectionFields(ctx, r.tx, collection, projected, maxSnapshotInputRows, maxSnapshotWorkingBytes)
 		if err != nil {
 			return model.Source{}, err
 		}

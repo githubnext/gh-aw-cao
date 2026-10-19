@@ -164,6 +164,7 @@ function createConnection(filename) {
   connection.function('__idb_key_compare', { deterministic: true }, (left, right) => (
     compareKeys(JSON.parse(String(left)), JSON.parse(String(right)))
   ));
+  connection.function('__idb_key_sort', { deterministic: true }, (key) => sortableKey(JSON.parse(String(key))));
   connection.exec('PRAGMA busy_timeout = 5000;');
   connection.exec(SQLITE_INDEXEDDB_METADATA_SCHEMA);
   connection.exec('BEGIN IMMEDIATE;');
@@ -245,6 +246,38 @@ function isValidJsonKey(value) {
   return (typeof value === 'number' && Number.isFinite(value))
     || typeof value === 'string'
     || (Array.isArray(value) && value.every(isValidJsonKey));
+}
+
+/** @param {unknown} key @returns {Uint8Array} */
+function sortableKey(key) {
+  if (typeof key === 'number' && Number.isFinite(key)) {
+    const bytes = new Uint8Array(9);
+    bytes[0] = 1;
+    new DataView(bytes.buffer).setFloat64(1, key === 0 ? 0 : key);
+    const negative = bytes[1] >= 128;
+    for (let index = 1; index < bytes.length; index++) {
+      bytes[index] ^= negative ? 255 : index === 1 ? 128 : 0;
+    }
+    return bytes;
+  }
+  if (typeof key === 'string') {
+    const bytes = new Uint8Array(2 + 3 * key.length);
+    bytes[0] = 3;
+    for (let index = 0; index < key.length; index++) {
+      const unit = key.charCodeAt(index);
+      bytes.set([1, unit >> 8, unit & 255], 1 + index * 3);
+    }
+    return bytes;
+  }
+  if (Array.isArray(key)) {
+    const parts = key.map(sortableKey);
+    const bytes = new Uint8Array(2 + parts.reduce((size, part) => size + part.length, 0));
+    bytes[0] = 4;
+    let offset = 1;
+    for (const part of parts) { bytes.set(part, offset); offset += part.length; }
+    return bytes;
+  }
+  throw new TypeError('Invalid IndexedDB key');
 }
 
 /**
@@ -348,18 +381,9 @@ class SqliteIDBIndex {
       const selection = this.selection(query);
       return transaction.database.connection.prepare(`${selection.text}
         SELECT record_key, value, index_key FROM indexed_records WHERE ${selection.predicate}
-      `).all(...selection.values)
-        .map((row) => ({
-          indexKey: JSON.parse(String(row.index_key)),
-          primaryKey: JSON.parse(String(row.record_key)),
-          value: JSON.parse(String(row.value))
-        }))
-        .sort((left, right) => (
-          compareKeys(left.indexKey, right.indexKey)
-          || compareKeys(left.primaryKey, right.primaryKey)
-        ))
-        .slice(0, count)
-        .map(({ value }) => value);
+        ORDER BY __idb_key_sort(index_key), __idb_key_sort(record_key) LIMIT ?
+      `).all(...selection.values, count ?? -1)
+        .map((row) => JSON.parse(String(row.value)));
     });
   }
 
@@ -505,11 +529,26 @@ class SqliteIDBObjectStore {
 
   /** @param {unknown} [query] @param {number} [count] */
   getAll(query, count) {
-    return this.requireTransaction().runRequest(() => this.database.records(this.name)
-      .filter((record) => matchesQuery(record.key, query))
-      .sort((left, right) => compareKeys(left.key, right.key))
-      .slice(0, count)
-      .map((record) => clone(record.value)));
+    return this.requireTransaction().runRequest(() => {
+      const predicates = ['database_name = ?', 'store_name = ?'];
+      const values = [this.database.name, this.name];
+      /** @param {unknown} key @param {string} operator */
+      const bound = (key, operator) => {
+        if (!isValidJsonKey(key)) throw new TypeError('Invalid IndexedDB key');
+        predicates.push(`__idb_key_compare(record_key, ?) ${operator} 0`);
+        values.push(encodeKey(key));
+      };
+      if (query instanceof SqliteIDBKeyRange) {
+        if (query.lower !== undefined) bound(query.lower, query.lowerOpen ? '>' : '>=');
+        if (query.upper !== undefined) bound(query.upper, query.upperOpen ? '<' : '<=');
+      } else if (query !== undefined && query !== null) {
+        bound(query, '=');
+      }
+      return this.database.connection.prepare(`
+        SELECT value FROM __idb_records WHERE ${predicates.join(' AND ')}
+        ORDER BY __idb_key_sort(record_key) LIMIT ?
+      `).all(...values, count ?? -1).map((row) => JSON.parse(String(row.value)));
+    });
   }
 
   /** @param {unknown} [query] */

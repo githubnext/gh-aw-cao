@@ -548,7 +548,7 @@ describe('canonical view sources', () => {
     );
 
     expect(result['repository-logical-count'].rows).toEqual([{ repositories: 1 }]);
-    expect(result['repository-optional-count']).toBeUndefined();
+    expect(result['repository-optional-count'].rows).toEqual([{ repositories: 1 }]);
     expect(nativeCounts).toHaveBeenCalledOnce();
   });
 
@@ -628,7 +628,7 @@ describe('canonical view sources', () => {
     expect(collectionReads).not.toHaveBeenCalled();
   });
 
-  it('keeps computed daily run aggregates in the declarative engine', async () => {
+  it('streams row-local computed daily run aggregates without changing declarative results', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
     const native = await queryNativeCountSources(
@@ -638,10 +638,12 @@ describe('canonical view sources', () => {
       ['runs-daily-conclusions']
     );
 
-    expect(Object.keys(native)).toEqual([]);
+    const canonical = await queryCanonicalViewSources(indexedDB, sources, ['runs']);
+    const expected = executeDashboardQueries(dashboardQueries, canonical, ['runs-daily-conclusions']);
+    expect(native['runs-daily-conclusions'].rows).toEqual(expected['runs-daily-conclusions'].rows);
   });
 
-  it('falls back for joins, transformed counts, invalid queries, and non-table sources', async () => {
+  it('streams eligible transformed counts and declines joins, invalid queries, and non-table sources', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const definitions = [
       {
@@ -716,7 +718,13 @@ describe('canonical view sources', () => {
       requested
     );
 
-    expect(Object.keys(projected)).toEqual(['repository-count']);
+    expect(Object.keys(projected)).toEqual([
+      'repository-count', 'filtered-run-count', 'grouped-run-count', 'non-key-run-count',
+      'distinct-run-count', 'limited-run-count', 'selected-run-count'
+    ]);
+    const canonical = await queryCanonicalViewSources(indexedDB, sources, ['repositories', 'runs']);
+    const expected = executeDashboardQueries(definitions, canonical, requested);
+    for (const name of Object.keys(projected)) expect(projected[name].rows).toEqual(expected[name].rows);
     expect(projected['repository-count']).toMatchObject({
       source: 'repository-count',
       rows: [{ repositories: 1 }],

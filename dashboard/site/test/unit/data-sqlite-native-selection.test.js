@@ -17,6 +17,7 @@ import {
 import {
   DASHBOARD_QUERY_LIMITS, executeDashboardQueries
 } from '../../src/data/queries/declarative.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const directories = /** @type {string[]} */ ([]);
 const metadata = { 'as-of': '2026-10-02T20:00:00Z', availability: 'available' };
@@ -91,6 +92,46 @@ afterEach(() => {
 });
 
 describe('real SQLite native record selection', () => {
+  it('reduces production repository run statistics in bounded SQLite scans before joins', async () => {
+    const factory = sqliteFactory();
+    vi.stubGlobal('IDBKeyRange', SqliteIDBKeyRange);
+    const canonical = evidence();
+    canonical.tools = [];
+    canonical.audits = [];
+    canonical.runs = Array.from({ length: 2501 }, (_, index) => ({
+      id: `run:${String(index).padStart(5, '0')}`,
+      githubRunId: String(index % 2), owner: 'org', repository: 'repo',
+      repositoryId: 'repository:1', workflowId: 'workflow:1', attempt: index + 1,
+      conclusion: index % 2 ? 'failure' : 'success', aicTotal: index % 2 ? 2 : 0
+    }));
+    await upsertCanonicalBatch(factory, canonical);
+    const name = 'repository-run-statistics';
+    const queries = authoritativeDashboard.dashboard.queries;
+    const ordinarySources = await queryDatabaseSources(factory, sources, ['runs']);
+    const expected = structuredClone(executeDashboardQueries(queries, ordinarySources, [name])[name].rows);
+    const database = await openCanonicalDatabase(factory);
+    const prototype = Object.getPrototypeOf(database);
+    const records = prototype.records;
+    vi.spyOn(prototype, 'records').mockImplementation(/** @this {object} */ function (/** @type {unknown} */ store) {
+      if (store === 'runs') throw new Error('whole-run materialization');
+      return records.call(this, store);
+    });
+    database.close();
+    const previous = DASHBOARD_QUERY_LIMITS['max-input-rows'];
+    DASHBOARD_QUERY_LIMITS['max-input-rows'] = 2000;
+    try {
+      const native = await queryIndexedDatabaseSources(factory, sources, queries, [name]);
+      expect(native[name].rows).toEqual(expected);
+      expect(native[name].rows).toEqual([{
+        organization: 'org', repository: 'repo', runs: 2, failed: 1250,
+        'action-required': 0, 'aic-runs': 1250, aic: 2500
+      }]);
+      expect(native[name].metadata.availability).toBe('available');
+    } finally {
+      DASHBOARD_QUERY_LIMITS['max-input-rows'] = previous;
+    }
+  });
+
   it.each(['tools', 'audits'])('scopes %s to run 42 before applying the input-row budget', async (source) => {
     const factory = sqliteFactory();
     await upsertCanonicalBatch(factory, evidence());
@@ -222,10 +263,15 @@ describe('SQLite index count and getAll key parity', () => {
       { id: 'boolean', prefix: 'p', key: true }, { id: 'object', prefix: 'p', key: {} },
       { id: 'invalid-array', prefix: 'p', key: [null] },
       { id: 'number', prefix: 'p', key: 42 }, { id: 'number-other', prefix: 'p', key: 7 },
+      { id: 'negative', prefix: 'p', key: -7 }, { id: 'fraction', prefix: 'p', key: -0.5 },
+      { id: 'zero', prefix: 'p', key: 0 }, { id: 'small-positive', prefix: 'p', key: Number.MIN_VALUE },
       { id: 'string', prefix: 'p', key: '42' }, { id: 'string-duplicate', prefix: 'p', key: '42' },
       { id: 'empty-string', prefix: 'p', key: '' }, { id: 'empty-array', prefix: 'p', key: [] },
       { id: 'array-number', prefix: 'p', key: [42] }, { id: 'array-string', prefix: 'p', key: ['42'] },
       { id: 'nested-array', prefix: 'p', key: [[42], '42'] },
+      { id: 'supplementary', prefix: 'p', key: '\u{10000}' },
+      { id: 'bmp', prefix: 'p', key: '\ue000' },
+      { id: 'nul', prefix: 'p', key: '\0' },
       { id: 'missing-prefix', key: '42' }, { id: 'null-prefix', prefix: null, key: '42' }
     ];
     const sqlite = await indexedRecords(sqliteFactory(), records);
@@ -267,5 +313,39 @@ describe('SQLite index count and getAll key parity', () => {
       sqlite.close();
       native.close();
     }
+  });
+
+  describe('SQLite bounded primary-key reads', () => {
+    it('matches native primary-key order and ranges without materializing the object store', async () => {
+      const keys = [-10, -0.25, 0, Number.MIN_VALUE, 10, '', '\0', 'a', 'aa', '\u{10000}', '\ue000', [], [1], [1, 'a'], [[1]]];
+      const records = keys.map((id) => ({ id, key: 'same', prefix: 'p' }));
+      const sqlite = await indexedRecords(sqliteFactory(), records);
+      const native = await indexedRecords(new IDBFactory(), records);
+      vi.spyOn(Object.getPrototypeOf(sqlite), 'records').mockImplementation(() => {
+        throw new Error('whole-store materialization');
+      });
+      try {
+        for (const [sqliteQuery, nativeQuery] of /** @type {Array<[unknown, unknown]>} */ ([
+          [undefined, undefined],
+          [SqliteIDBKeyRange.lowerBound('a', true), NativeKeyRange.lowerBound('a', true)],
+          [SqliteIDBKeyRange.upperBound(0), NativeKeyRange.upperBound(0)],
+          [SqliteIDBKeyRange.bound('', [1]), NativeKeyRange.bound('', [1])],
+          [SqliteIDBKeyRange.only([1]), NativeKeyRange.only([1])]
+        ])) {
+          const left = sqlite.transaction('records');
+          const right = native.transaction('records');
+          const done = Promise.all([completed(left), completed(right)]);
+          const [actual, expected] = await Promise.all([
+            result(left.objectStore('records').getAll(/** @type {IDBKeyRange} */ (sqliteQuery), 3)),
+            result(right.objectStore('records').getAll(/** @type {IDBKeyRange} */ (nativeQuery), 3))
+          ]);
+          expect(actual).toEqual(expected);
+          await done;
+        }
+      } finally {
+        sqlite.close();
+        native.close();
+      }
+    });
   });
 });

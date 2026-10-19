@@ -32,10 +32,53 @@ database credentials. It communicates only with the same-origin HTTP(S) API.
 
 ## Local SQLite snapshot serving
 
-Serve an existing canonical dashboard snapshot without PostgreSQL or Redis:
+Build the dashboard once, then download the latest deployed SQLite cache and
+serve it without PostgreSQL, Redis, `gh`, or a separate download command:
 
 ```bash
-# From the repository root, after downloading data and building the dashboard:
+# From the repository root:
+npm ci
+npm --prefix dashboard/site ci
+npm --prefix dashboard/site run build
+go -C server run ./cmd/cao-dashboard serve --download-sqlite
+```
+
+`--download-sqlite` alone uses the public CAO Pages deployment, or
+`DASHBOARD_DATA_URL` when set, and caches the image at
+`.cao/gh-aw-logs.sqlite` in this checkout. It accepts any GitHub Pages site,
+including project sites and custom domains:
+
+```bash
+go -C server run ./cmd/cao-dashboard serve \
+  --download-sqlite https://OWNER.github.io/REPOSITORY/
+
+# A dashboard directory or direct payload-hashes.json URL also works.
+go -C server run ./cmd/cao-dashboard serve \
+  --download-sqlite=https://dashboard.example.org/cao/ \
+  --sqlite ../.cao/custom.sqlite
+```
+
+For a site URL, the downloader looks for `payload-hashes.json` in that directory,
+then under `cao/` if the first location returns HTTP 404. The image is fetched
+beside the discovered manifest; the hostname is not restricted to
+`githubnext.github.io`. URLs must use HTTP or HTTPS without embedded credentials
+or fragments. HTTPS redirects cannot downgrade to HTTP.
+
+The download streams only the SQLite image, not inventory or JSONL shards.
+It verifies the manifest's SHA-256 checksum and canonical database version
+before atomically replacing the selected cache. Transient failures and
+deployment-time checksum mismatches retry up to three times with fresh manifest
+requests; failures leave an existing cache unchanged and do not start a server
+against stale data. Requests have a five-minute timeout within a ten-minute
+overall deadline; manifests are limited to 8 MiB and images to 2 GiB.
+An unbuilt `--site` fails before downloading. Stop any existing snapshot users
+before refreshing; symlink destinations and existing SQLite journal sidecars
+are rejected rather than risking corruption. Checkpoint a locally modified
+snapshot with its owning tool, or select a different `--sqlite` path.
+
+For offline startup, omit `--download-sqlite` and select an existing snapshot:
+
+```bash
 go -C server run ./cmd/cao-dashboard serve \
   --sqlite ../.cao/gh-aw-logs.sqlite \
   --listen 127.0.0.1:8443
@@ -46,10 +89,12 @@ build directory and `--mcp-enabled` to expose the existing read-only MCP endpoin
 Paths in this example resolve from `server/` because of `go -C server`.
 `gh cao download` prepares the default CAO snapshot; use `--url` with another
 dashboard's `payload-hashes.json` URL to select different data.
-`npm --prefix dashboard/site run build` builds the site. The snapshot must use
+The snapshot must use
 the canonical IndexedDB-compatible SQLite layout and database version 42.
 Missing files, unsupported versions, and missing requested stores fail closed;
 startup never creates, repairs, migrates, or ingests SQLite data.
+The optional download replaces a verified file before the read-only server
+opens it; it is not ingestion or an automatic fallback.
 
 This is an explicitly selected **local bearer-only, read-only** profile.
 Only loopback listeners are accepted; HTTP is supported locally, with optional
@@ -59,16 +104,46 @@ remain in use. Queries execute in Go against one consistent SQLite read
 transaction, using the same bounded local Dashboard Language evaluator as
 `gh cao`. Both storage paths share the server's query validation, dependency
 traversal, generated runtime-source registry, and source-quality propagation;
-only storage reads and query execution differ. Intermediate results are bounded to 200,000 rows and wire results to
-100,000 rows per source; ordinary continuation pagination remains available. Snapshot
+only storage reads and query execution differ. The local snapshot profile admits
+500,000 input/intermediate rows and 50 million operations per query plan, with
+1 GiB per working source and 2 GiB / 2 million rows of simultaneously retained
+results. Completed dependency inputs are released after their final consumer.
+The planner traces live fields across consumers, prunes unused row-local
+computations, and projects only required properties inside SQLite. Requested
+raw sources and unknown result shapes keep full documents; original-record byte
+limits, JSON types, missing fields, and canonical UTF-16 key order are preserved.
+Read-only SQLite memory mapping is capped at 1 GiB to reduce page-read overhead.
+These are bounded accounting limits, not an RSS guarantee; large snapshots can
+require several GiB of developer-machine memory. Hosted PostgreSQL and CLI
+defaults are unchanged. Wire results remain bounded to 100,000 rows per source;
+ordinary continuation pagination remains available. Local query admission has
+a 300-unit/minute token bucket so expensive snapshot plans do not exhaust the
+hosted 30-unit burst during ordinary page navigation; per-plan cost accounting,
+other request limits, and explicit embedding overrides remain enforced. Snapshot
 quality is reported as unknown rather than verified complete or current.
 In-place SQLite commits update revisions and active subscriptions without a
 server restart. Restart after replacing the snapshot file itself.
 
+After building the site, profile the production Repositories query against an
+existing snapshot without modifying it:
+
+```sh
+CAO_SQLITE_SNAPSHOT=/absolute/path/to/gh-aw-logs.sqlite \
+  go -C server test ./internal/sqlitex -run '^$' \
+  -bench '^BenchmarkSnapshotRepositoryActivity$' -benchtime=1x -benchmem
+```
+
+Repository queries reduce row-local counts and positive recorded AIC before
+repository-grain joins, and carry only run-attempt keys into import matching.
+PostgreSQL compiles the declarative plan to SQL; IndexedDB and the Node SQLite
+facade use bounded native storage scans and exact streaming reductions where
+eligible. The local Go SQLite server pushes field projection into SQL and runs
+the remaining bounded declarative operators in its shared Go evaluator.
+
 Operational request services are bounded, process-local, and volatile. Query
 result caching is disabled so a changed snapshot cannot serve stale results.
 OAuth, collection, ingestion, rebuilds, webhooks, and persisted GitHub-resource
-caching are unavailable in this profile. `--sqlite` cannot be combined with
+caching are unavailable in this profile. Neither `--sqlite` nor `--download-sqlite` can be combined with
 `--postgres-url`, `--redis-url`, or `--source`; database service environment
 variables are not used to select its storage. Reviewed hosted operational-store
 selection still requires `serve-hosted` and cannot be overridden by local serving.

@@ -8,7 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"unicode/utf16"
+	"strings"
+	"unicode/utf8"
 )
 
 const DatabaseName = "gh-aw-cao-dashboard-data"
@@ -22,7 +23,31 @@ type SnapshotReader interface {
 // ReadCollection preserves canonical IndexedDB key order and omits storage-only
 // fields. Positive limits bound allocation before materializing a collection.
 func ReadCollection(ctx context.Context, db SnapshotReader, collection string, maxRows int, maxBytes int64) (result []map[string]any, err error) {
-	rows, err := db.QueryContext(ctx, `SELECT record_key, value FROM __idb_records WHERE database_name=? AND store_name=?`, DatabaseName, collection)
+	return ReadCollectionFields(ctx, db, collection, nil, maxRows, maxBytes)
+}
+
+// ReadCollectionFields projects known-live fields inside SQLite. A nil field
+// list preserves every public field, and limits still cover full stored records.
+func ReadCollectionFields(ctx context.Context, db SnapshotReader, collection string, fields []string, maxRows int, maxBytes int64) (result []map[string]any, err error) {
+	contentSQL := "value"
+	args := []any{}
+	if fields != nil {
+		placeholders := make([]string, len(fields))
+		for index, field := range fields {
+			placeholders[index] = "?"
+			args = append(args, field)
+		}
+		contentSQL = `CASE WHEN json_type(value)='object' THEN (
+			SELECT json_group_object(key,json(CASE type
+				WHEN 'true' THEN 'true' WHEN 'false' THEN 'false' WHEN 'null' THEN 'null'
+				WHEN 'array' THEN value WHEN 'object' THEN value
+				ELSE json_quote(value) END))
+			FROM json_each(__idb_records.value) WHERE key IN (` + strings.Join(placeholders, ",") + `)
+		) END`
+	}
+	args = append(args, DatabaseName, collection)
+	rows, err := db.QueryContext(ctx, `SELECT record_key, `+contentSQL+`, length(CAST(value AS BLOB))
+		FROM __idb_records WHERE database_name=? AND store_name=?`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("read canonical %s: %w", collection, err)
 	}
@@ -35,10 +60,11 @@ func ReadCollection(ctx context.Context, db SnapshotReader, collection string, m
 	var bytes int64
 	for rows.Next() {
 		var keyJSON, content string
-		if err := rows.Scan(&keyJSON, &content); err != nil {
+		var storedBytes int64
+		if err := rows.Scan(&keyJSON, &content, &storedBytes); err != nil {
 			return nil, err
 		}
-		bytes += int64(len(keyJSON) + len(content))
+		bytes += int64(len(keyJSON)) + storedBytes
 		if maxRows > 0 && len(entries) >= maxRows || maxBytes > 0 && bytes > maxBytes {
 			return nil, fmt.Errorf("canonical %s exceeds local query input budget", collection)
 		}
@@ -98,8 +124,33 @@ func CompareRecordKeys(left, right any) int {
 	case float64:
 		return cmp.Compare(left, right.(float64))
 	case string:
-		return slices.Compare(utf16.Encode([]rune(left)), utf16.Encode([]rune(right.(string))))
+		return compareRecordStrings(left, right.(string))
 	default:
 		return slices.CompareFunc(left.([]any), right.([]any), CompareRecordKeys)
 	}
+
+}
+
+func compareRecordStrings(left, right string) int {
+	for len(left) > 0 && len(right) > 0 {
+		l, leftSize := utf8.DecodeRuneInString(left)
+		r, rightSize := utf8.DecodeRuneInString(right)
+		if l != r {
+			// IndexedDB compares UTF-16 units, so supplementary characters sort
+			// by their high surrogate before BMP characters above U+DFFF.
+			leftUnit, rightUnit := l, r
+			if l >= 0x10000 {
+				leftUnit = 0xd800 + ((l - 0x10000) >> 10)
+			}
+			if r >= 0x10000 {
+				rightUnit = 0xd800 + ((r - 0x10000) >> 10)
+			}
+			if order := cmp.Compare(leftUnit, rightUnit); order != 0 {
+				return order
+			}
+			return cmp.Compare(l, r)
+		}
+		left, right = left[leftSize:], right[rightSize:]
+	}
+	return cmp.Compare(len(left), len(right))
 }

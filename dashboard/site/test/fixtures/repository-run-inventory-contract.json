@@ -4,6 +4,15 @@
   "source": "repository-run-inventory",
   "chart": "horizontal-bar",
   "limit": 100,
+  "native-aggregates": [
+    "repository-run-statistics",
+    "repository-workflow-totals",
+    "audit-event-runs",
+    "domain-event-runs",
+    "tool-event-runs",
+    "issue-event-runs"
+  ],
+  "import-identity-fields": ["organization", "repository", "workflow", "run", "run-attempt"],
   "rows": [
     { "repository": "org/alpha", "runs": 6 },
     { "repository": "org/approval", "runs": 1 },

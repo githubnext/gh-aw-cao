@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -687,6 +688,12 @@ func newServeCommand() *cobra.Command {
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "explicitly opt in to Redis operational state instead of Postgres")
 	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres dashboard entity store URL; defaults to CAO_POSTGRES_URL")
 	sqlitePath := cmd.Flags().String("sqlite", "", "serve an existing canonical SQLite snapshot locally without Postgres or Redis")
+	dataURLDefault := strings.TrimSpace(os.Getenv("DASHBOARD_DATA_URL"))
+	if dataURLDefault == "" {
+		dataURLDefault = defaultSQLiteDataURL
+	}
+	downloadURL := cmd.Flags().String("download-sqlite", "", "download and verify a Pages site's SQLite snapshot before serving; optional URL defaults to DASHBOARD_DATA_URL or CAO Pages (cache: "+defaultSQLitePath+")")
+	cmd.Flags().Lookup("download-sqlite").NoOptDefVal = dataURLDefault
 	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
 	listen := cmd.Flags().String("listen", "127.0.0.1:8443", "loopback HTTP listen address; HTTPS when --cert and --key are set")
@@ -702,7 +709,16 @@ func newServeCommand() *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("sqlite", "postgres-url")
 	cmd.MarkFlagsMutuallyExclusive("sqlite", "redis-url")
 	cmd.MarkFlagsMutuallyExclusive("sqlite", "source")
-	cmd.RunE = func(*cobra.Command, []string) error {
+	cmd.MarkFlagsMutuallyExclusive("download-sqlite", "postgres-url")
+	cmd.MarkFlagsMutuallyExclusive("download-sqlite", "redis-url")
+	cmd.MarkFlagsMutuallyExclusive("download-sqlite", "source")
+	cmd.Args = func(cmd *cobra.Command, args []string) error {
+		if len(args) == 1 && cmd.Flags().Changed("download-sqlite") && *downloadURL == dataURLDefault {
+			return nil
+		}
+		return cobra.NoArgs(cmd, args)
+	}
+	cmd.RunE = func(_ *cobra.Command, args []string) error {
 		if namespaceErr != nil {
 			return namespaceErr
 		}
@@ -713,12 +729,27 @@ func newServeCommand() *cobra.Command {
 		if selected {
 			return errors.New("reviewed operational-store selection requires serve-hosted or an external OAuth host; local bearer serve cannot override it")
 		}
-		if cmd.Flags().Changed("sqlite") {
-			if strings.TrimSpace(*sqlitePath) == "" {
+		downloadSnapshot := cmd.Flags().Changed("download-sqlite")
+		snapshotURL := *downloadURL
+		if len(args) == 1 {
+			snapshotURL = args[0]
+		}
+		localSQLite := cmd.Flags().Changed("sqlite") || downloadSnapshot
+		snapshotPath := strings.TrimSpace(*sqlitePath)
+		if localSQLite {
+			if cmd.Flags().Changed("sqlite") && snapshotPath == "" {
 				return errors.New("--sqlite requires an existing canonical snapshot file")
+			}
+			if snapshotPath == "" {
+				snapshotPath = defaultSQLitePath
 			}
 			if err := server.ValidateListen(*listen, *cert, *key); err != nil {
 				return err
+			}
+			if downloadSnapshot {
+				if _, err := sqliteManifestURLs(snapshotURL); err != nil {
+					return err
+				}
 			}
 		} else {
 			if _, _, err := resolvePostgresEndpoint(*postgresURL, os.Getenv("CAO_POSTGRES_URL")); err != nil {
@@ -726,7 +757,7 @@ func newServeCommand() *cobra.Command {
 			}
 		}
 		commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
 		if err != nil {
@@ -761,12 +792,25 @@ func newServeCommand() *cobra.Command {
 				Logger:               log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
 			}, nil
 		}
-		if cmd.Flags().Changed("sqlite") {
+		if localSQLite {
 			config, err := configure()
 			if err != nil {
 				return err
 			}
-			app, err := server.NewLocalSQLiteApp(ctx, *sqlitePath, config)
+			if downloadSnapshot {
+				if info, err := os.Stat(config.SiteDirectory); err != nil || !info.IsDir() {
+					return errors.New("build the dashboard before downloading: npm --prefix dashboard/site run build (from the repository root), or select an existing build with --site")
+				}
+				if _, err := os.Stat(filepath.Join(config.SiteDirectory, "index.html")); err != nil {
+					return errors.New("--site must contain the built dashboard index.html")
+				}
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Downloading and verifying the deployed SQLite snapshot...")
+				if err := downloadSQLite(ctx, snapshotURL, snapshotPath); err != nil {
+					return err
+				}
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "SQLite snapshot ready.")
+			}
+			app, err := server.NewLocalSQLiteApp(ctx, snapshotPath, config)
 			if err != nil {
 				return err
 			}

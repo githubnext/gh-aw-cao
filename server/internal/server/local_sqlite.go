@@ -29,6 +29,9 @@ func NewLocalSQLiteApp(ctx context.Context, path string, config Config) (*App, e
 	}
 	store := localSQLiteOperationalStore{Store: services}
 	config.Database = database
+	if config.RateLimits.Query.Capacity == 0 {
+		config.RateLimits.Query.Capacity = 300
+	}
 	app, err := New(ctx, store, config)
 	if err != nil {
 		_ = store.Close()
