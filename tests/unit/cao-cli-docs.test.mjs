@@ -39,7 +39,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(monitoring, /control-plane\.campaigns` is `\{\}`/);
   assert.match(monitoring, /empty dashboard is expected/);
   assert.match(monitoring, /not every ordinary Actions job/);
-  assert.match(monitoring, /does \*\*not\*\* guarantee a\s+private Pages site/);
+  assert.match(monitoring, /does\s+\*\*not\*\*\s+guarantee a\s+private Pages site/);
   assert.match(monitoring, /including its Pages deployment/);
   assert.match(monitoring, /headless setup only\s+supports the exact current public control repository/);
   assert.match(gettingStarted.slice(optional), /repo-assist-quickstart\.md/);
