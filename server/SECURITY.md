@@ -36,7 +36,8 @@ The supported deployment is:
 - one local checkout or worktree;
 - an HTTP listener on loopback for debugging, or HTTPS with an
   operator-supplied certificate and key;
-- a dedicated or access-controlled Redis database;
+- a read-only SQLite snapshot for default local serving, or an explicit
+  PostgreSQL profile with access-controlled operational storage;
 - dashboard artifacts obtained from a trusted local workflow or download;
 - browser access through the capability URL printed by the server.
 
@@ -44,6 +45,11 @@ GitHub authentication, organization authorization, multi-user access, public
 hosting, reverse proxies, tunnels, and webhook ingestion are not part of the
 local profile. Use `serve-hosted` rather than exposing `serve` through a tunnel
 or public reverse proxy.
+
+Default local startup downloads and verifies a deployed snapshot only when the
+cache is missing; existing invalid or unreadable caches fail closed without an
+automatic repair download. `--download-sqlite` explicitly refreshes the cache
+before opening it read-only and does not relax the local security boundary.
 
 ## Host-neutral hosted profile
 

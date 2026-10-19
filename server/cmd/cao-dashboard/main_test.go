@@ -79,7 +79,7 @@ func TestServeWithExistingPostgresOperationalTables(t *testing.T) {
 	cmd := newServeCommand()
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
-	cmd.SetArgs([]string{"--dashboard-queries", filepath.Join(t.TempDir(), "missing-dashboard-queries.json")})
+	cmd.SetArgs([]string{"--postgres-url=", "--dashboard-queries", filepath.Join(t.TempDir(), "missing-dashboard-queries.json")})
 	err = cmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "missing-dashboard-queries.json") {
 		t.Fatalf("serve must reach dashboard query loading after both stores initialize: %v", err)

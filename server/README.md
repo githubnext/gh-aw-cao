@@ -9,8 +9,10 @@ same compacted data published with the deployed dashboard, stores current
 native entity rows in PostgreSQL and executes hosted Dashboard Language plans
 as SQL through the bounded PostgreSQL query engine,
 and serves the built dashboard either over loopback HTTP or through an
-authenticated host-neutral service profile. PostgreSQL is also the default
-operational adapter, so the default deployment requires no Redis service.
+authenticated host-neutral service profile. Local `serve` defaults to a cached
+SQLite snapshot, downloading deployed data only when the file is missing.
+PostgreSQL is the hosted default operational adapter, so the default deployment
+requires no Redis service.
 Explicit Redis configuration remains supported; an acknowledged single-process memory adapter supports the
 same OAuth, signed-webhook, collection, quota, and backfill services with volatile
 state. The PostgreSQL operational adapter supports durable,
@@ -32,20 +34,25 @@ database credentials. It communicates only with the same-origin HTTP(S) API.
 
 ## Local SQLite snapshot serving
 
-Build the dashboard once, then download the latest deployed SQLite cache and
-serve it without PostgreSQL, Redis, `gh`, or a separate download command:
+Build the dashboard once, then run the local server without PostgreSQL, Redis,
+`gh`, or a separate download command:
 
 ```bash
 # From the repository root:
 npm ci
 npm --prefix dashboard/site ci
 npm --prefix dashboard/site run build
-go -C server run ./cmd/cao-dashboard serve --download-sqlite
+go -C server run ./cmd/cao-dashboard serve
 ```
 
-`--download-sqlite` alone uses the public CAO Pages deployment, or
-`DASHBOARD_DATA_URL` when set, and caches the image at
-`.cao/gh-aw-logs.sqlite` in this checkout. It accepts any GitHub Pages site,
+Plain `serve` reuses `.cao/gh-aw-logs.sqlite` in this checkout without network
+access. If that cache is missing, startup downloads the public CAO Pages snapshot,
+or `DASHBOARD_DATA_URL` when set. `--sqlite PATH` selects another cache and has the
+same download-if-missing behavior. Database service environment variables alone
+do not change this local default.
+
+Use `--download-sqlite` to explicitly refresh the cache, even when it exists.
+Its optional URL overrides `DASHBOARD_DATA_URL` and accepts any GitHub Pages site,
 including project sites and custom domains:
 
 ```bash
@@ -76,7 +83,8 @@ before refreshing; symlink destinations and existing SQLite journal sidecars
 are rejected rather than risking corruption. Checkpoint a locally modified
 snapshot with its owning tool, or select a different `--sqlite` path.
 
-For offline startup, omit `--download-sqlite` and select an existing snapshot:
+For offline startup, use plain `serve` with an existing default cache, or select
+another existing snapshot:
 
 ```bash
 go -C server run ./cmd/cao-dashboard serve \
@@ -91,12 +99,14 @@ Paths in this example resolve from `server/` because of `go -C server`.
 dashboard's `payload-hashes.json` URL to select different data.
 The snapshot must use
 the canonical IndexedDB-compatible SQLite layout and database version 42.
-Missing files, unsupported versions, and missing requested stores fail closed;
-startup never creates, repairs, migrates, or ingests SQLite data.
-The optional download replaces a verified file before the read-only server
-opens it; it is not ingestion or an automatic fallback.
+Only a genuinely missing cache triggers automatic acquisition. Unreadable or
+invalid existing files, dangling symlinks, unsupported versions, and missing
+requested stores fail closed without a repair download. Startup never creates
+an empty database, repairs, migrates, or ingests SQLite data. Acquisition installs
+a verified file before the read-only server opens it; it is not ingestion or a
+fallback from a failed database connection.
 
-This is an explicitly selected **local bearer-only, read-only** profile.
+This is the default **local bearer-only, read-only** profile.
 Only loopback listeners are accepted; HTTP is supported locally, with optional
 `--cert` and `--key` for HTTPS. Existing access-token authentication and the HTTP
 query, canonical API, diagnostics, revision events, and optional MCP protocols
@@ -147,13 +157,17 @@ caching are unavailable in this profile. Neither `--sqlite` nor `--download-sqli
 `--postgres-url`, `--redis-url`, or `--source`; database service environment
 variables are not used to select its storage. Reviewed hosted operational-store
 selection still requires `serve-hosted` and cannot be overridden by local serving.
-The default `serve` PostgreSQL path, hosted deployments, and PostgreSQL SQL
-execution remain unchanged; SQLite is never an automatic fallback.
+To select PostgreSQL locally, pass `--postgres-url="$CAO_POSTGRES_URL"`; an
+explicit empty `--postgres-url=` reads that environment variable instead.
+The existing PostgreSQL-specific `--source` and `--redis-url` flags also select
+the PostgreSQL profile and require its configured database. Hosted deployments
+and PostgreSQL SQL execution remain unchanged; SQLite is never a fallback from
+a failed PostgreSQL connection.
 
 ## Single-process memory operational storage
 
-PostgreSQL remains the default. To select memory in reviewed
-`control-plane.web.host` configuration, replace legacy `host.redis` with:
+PostgreSQL remains the hosted operational-storage default. To select memory in
+reviewed `control-plane.web.host` configuration, replace legacy `host.redis` with:
 
 ```json
 {
@@ -251,8 +265,10 @@ the same database without sharing tables or lifecycle. Keep connection strings
 in server-side secrets, not policy. TLS is required for non-loopback TCP
 connections, including every configured fallback. The canonical namespace
 remains the existing `REDIS_NAMESPACE`; changing the operational namespace
-does not move canonical data. Local bearer `serve` also defaults to PostgreSQL operational
-storage; supplying `--redis-url` explicitly opts in to Redis instead. Hosted
+does not move canonical data. The explicit PostgreSQL profile of local bearer
+`serve` also defaults to PostgreSQL operational storage; supplying `--redis-url`
+opts in to Redis instead. Plain `serve` uses SQLite with bounded volatile
+request services and requires neither database service. Hosted
 `serve-hosted`, external/platform hosts, collection roles, and `doctor` resolve
 the reviewed policy; the presence of a Redis credential never overrides it.
 
@@ -2336,22 +2352,32 @@ npm run dashboard:server:setup:macos
 ```
 
 The command installs Homebrew Go, Node.js 24, the Docker CLI, Docker Compose,
-Colima, and the dashboard npm dependencies. Plain Redis runs only through
-`server/docker-compose.yml`; the setup does not install or start a native Redis
+Colima, and the dashboard npm dependencies. Docker and the optional
+PostgreSQL/Redis stack in `server/docker-compose.yml` are not required for the
+default SQLite profile; the setup does not install or start a native Redis
 service.
 
-From the repository root:
+From the repository root, start with the default SQLite cache:
 
 ```bash
-docker-compose -f server/docker-compose.yml up -d
-
 npm --prefix dashboard/site ci
 npm run dashboard:server:build
+
+go -C server run ./cmd/cao-dashboard serve
+```
+
+The server downloads the deployed snapshot if missing and reuses it offline on
+later starts. To exercise PostgreSQL instead, start the optional database stack,
+configure `CAO_POSTGRES_URL`, and provision storage as described in
+[`POSTGRES.md`](POSTGRES.md) before ingesting:
+
+```bash
+docker compose -f server/docker-compose.yml up -d
 
 go -C server run ./cmd/cao-dashboard ingest \
   --source /absolute/path/to/deployed-dashboard
 
-go -C server run ./cmd/cao-dashboard serve
+go -C server run ./cmd/cao-dashboard serve --postgres-url="$CAO_POSTGRES_URL"
 ```
 
 To inspect local traces and metrics, start the optional
@@ -2515,7 +2541,8 @@ initializing origin-scoped browser local storage. Refreshes continue to work
 without restoring the token in the URL. Use `--access-token` with a
 value of at least 32 characters only when deterministic automation requires it.
 
-Ingest and serve in one process:
+To ingest into PostgreSQL and serve in one process, configure and provision
+`CAO_POSTGRES_URL` first; `--source` explicitly selects that profile:
 
 ```bash
 go -C server run ./cmd/cao-dashboard serve \

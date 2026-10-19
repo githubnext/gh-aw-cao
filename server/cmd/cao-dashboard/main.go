@@ -683,16 +683,16 @@ func (e actionsEnvironment) present() string {
 func newServeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "serve dashboard data from Postgres or a local SQLite snapshot",
+		Short: "serve dashboard data locally from SQLite, with explicit Postgres support",
 	}
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "explicitly opt in to Redis operational state instead of Postgres")
-	postgresURL := cmd.Flags().String("postgres-url", "", "Postgres dashboard entity store URL; defaults to CAO_POSTGRES_URL")
-	sqlitePath := cmd.Flags().String("sqlite", "", "serve an existing canonical SQLite snapshot locally without Postgres or Redis")
+	postgresURL := cmd.Flags().String("postgres-url", "", "opt in to Postgres dashboard storage; an empty value uses CAO_POSTGRES_URL")
+	sqlitePath := cmd.Flags().String("sqlite", defaultSQLitePath, "local SQLite snapshot cache; download deployed data if missing")
 	dataURLDefault := strings.TrimSpace(os.Getenv("DASHBOARD_DATA_URL"))
 	if dataURLDefault == "" {
 		dataURLDefault = defaultSQLiteDataURL
 	}
-	downloadURL := cmd.Flags().String("download-sqlite", "", "download and verify a Pages site's SQLite snapshot before serving; optional URL defaults to DASHBOARD_DATA_URL or CAO Pages (cache: "+defaultSQLitePath+")")
+	downloadURL := cmd.Flags().String("download-sqlite", "", "refresh the SQLite cache from a Pages site even if it exists; optional URL defaults to DASHBOARD_DATA_URL or CAO Pages")
 	cmd.Flags().Lookup("download-sqlite").NoOptDefVal = dataURLDefault
 	redisNamespace, namespaceErr := registerRedisNamespaceFlag(cmd, "Redis key and index namespace")
 	siteDirectory := cmd.Flags().String("site", "../dashboard/site/dist", "built dashboard site directory")
@@ -730,21 +730,30 @@ func newServeCommand() *cobra.Command {
 			return errors.New("reviewed operational-store selection requires serve-hosted or an external OAuth host; local bearer serve cannot override it")
 		}
 		downloadSnapshot := cmd.Flags().Changed("download-sqlite")
-		snapshotURL := *downloadURL
+		snapshotURL := dataURLDefault
+		if downloadSnapshot {
+			snapshotURL = *downloadURL
+		}
 		if len(args) == 1 {
 			snapshotURL = args[0]
 		}
-		localSQLite := cmd.Flags().Changed("sqlite") || downloadSnapshot
+		localSQLite := !cmd.Flags().Changed("postgres-url") &&
+			!cmd.Flags().Changed("redis-url") && !cmd.Flags().Changed("source")
 		snapshotPath := strings.TrimSpace(*sqlitePath)
 		if localSQLite {
-			if cmd.Flags().Changed("sqlite") && snapshotPath == "" {
-				return errors.New("--sqlite requires an existing canonical snapshot file")
-			}
 			if snapshotPath == "" {
-				snapshotPath = defaultSQLitePath
+				return errors.New("--sqlite requires a local snapshot cache path")
 			}
 			if err := server.ValidateListen(*listen, *cert, *key); err != nil {
 				return err
+			}
+			if !downloadSnapshot {
+				_, err := os.Lstat(snapshotPath)
+				if errors.Is(err, os.ErrNotExist) {
+					downloadSnapshot = true
+				} else if err != nil {
+					return fmt.Errorf("inspect local SQLite cache: %w", err)
+				}
 			}
 			if downloadSnapshot {
 				if _, err := sqliteManifestURLs(snapshotURL); err != nil {
