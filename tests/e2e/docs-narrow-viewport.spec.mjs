@@ -16,6 +16,7 @@ const paths = [
   "dashboard/",
   "catalog/",
   "catalog/dependabot/",
+  "blog/",
   "operational-observability-visualization-specification/",
 ];
 
@@ -97,11 +98,31 @@ for (const width of [320, 390, 768, 1024]) {
     await menu.locator("summary").click();
     await expect(menu).toHaveAttribute("open", "");
     await expect(menu.getByRole("navigation", { name: "Global links menu" })).toBeVisible();
-    await expect(menu.getByRole("link")).toHaveText(["Campaigns", "Blog"]);
+    await expect(menu.getByRole("link")).toHaveText(["Docs", "Blog"]);
+    await expect(menu.getByRole("link", { name: "Docs", exact: true }))
+      .toHaveAttribute("href", "/gh-aw-cao/architecture-at-a-glance/");
     expect(await page.locator("html").evaluate((element) => element.scrollWidth))
       .toBeLessThanOrEqual(width);
   });
 }
+
+test("desktop documentation navigation links to the introduction and an empty blog", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  expect((await page.goto("setup-quickstarts/"))?.ok()).toBe(true);
+
+  const navigation = page.getByRole("navigation", { name: "Global links", exact: true });
+  await expect(navigation.getByRole("link")).toHaveText(["Docs", "Blog"]);
+  await navigation.getByRole("link", { name: "Docs", exact: true }).click();
+  await expect(page).toHaveURL(/\/architecture-at-a-glance\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("What Is Central Agentic Ops?");
+
+  await navigation.getByRole("link", { name: "Blog", exact: true }).click();
+  await expect(page).toHaveURL(/\/blog\/$/);
+  await expect(page).toHaveTitle(/Central Agentic Ops Blog/);
+  await expect(page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link"))
+    .toHaveText(["All posts", "RSS"]);
+  await expect(page.locator('main a[href*="/blog/"]')).toHaveCount(0);
+});
 
 for (const colorScheme of ["light", "dark"]) {
   test.describe(`${colorScheme} scheme`, () => {
