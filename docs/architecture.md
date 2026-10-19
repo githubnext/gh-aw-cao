@@ -67,16 +67,20 @@ collection flow and data-quality behavior.
 - missing authority, authentication, routing, or eligibility fails closed.
 
 :::caution[The control plane is not a universal policy boundary]
-Central Agentic Ops governs participating campaigns, not every observed workflow
+Central Agentic Ops governs explicitly integrated workflows, not every observed workflow
 or every workflow in a target repository. Merely hosting a workflow in the
 control repository does not apply CAO rollout policy. Use GitHub rulesets,
 Actions policy, protected environments, CODEOWNERS, and credential scoping to
 govern other automation.
 
-Extending CAO's scope, enablement, and review controls to directly invoked
-workers and standalone scheduled or event-driven AWs is a **future direction,
-not an available governance integration today**. AW remains responsible for
-execution capabilities and safe outputs.
+Standalone scheduled, event-driven, or manually invoked AWs can opt in through
+`shared/control.md` with `role: standalone` and their own
+`control-plane.workflows` entry. They receive the same admission gates and
+bounded rollout without requiring an orchestrator/worker pair. Their mission
+runs directly against the precomputed admitted set. This is explicit
+integration, not automatic governance of observed workflows.
+See [standalone workflow configuration](configuration.md#standalone-agentic-workflows).
+AW remains responsible for execution capabilities and safe outputs.
 :::
 
 ## Detailed References

@@ -104,6 +104,9 @@ func TestNativeSetupBoundedPolicy(t *testing.T) {
 		{"broad activity", func(c map[string]any) { c["activity"] = map[string]any{"repositories": []string{"org/target"}} }, false},
 		{"malformed activity", func(c map[string]any) { c["activity"] = nil }, false},
 		{"campaign", func(c map[string]any) { c["campaigns"] = map[string]any{"repo-assist": map[string]any{}} }, false},
+		{"standalone workflow", func(c map[string]any) { c["workflows"] = map[string]any{"audit": map[string]any{}} }, false},
+		{"empty standalone workflows", func(c map[string]any) { c["workflows"] = map[string]any{} }, true},
+		{"malformed standalone workflows", func(c map[string]any) { c["workflows"] = nil }, false},
 		{"missing campaigns", func(c map[string]any) { delete(c, "campaigns") }, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {

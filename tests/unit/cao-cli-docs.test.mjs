@@ -157,7 +157,7 @@ test("quickstart documents separate component stages and explicit checkpoints", 
   assert.doesNotMatch(firstSuccess, /setup-auth (?:workflow-token|github-app|enterprise-app|token)|gh aw run/);
   assert.match(quickstart, /up to \*\*1,250 AI\s+credits\*\*/);
   assert.match(quickstart, /public GitHub Pages dashboard/);
-  assert.match(quickstart, /resolves the latest stable CAO `vX\.Y\.Z`\s+release/);
+  assert.match(quickstart, /resolves the latest published CAO `vX\.Y\.Z`\s+release, including prereleases but excluding drafts/);
   assert.match(quickstart, /never silently falls back to `main`/);
   assert.match(quickstart, /githubnext\/gh-cao@main/);
   assert.match(quickstart, /In a public control repository[\s\S]*review outputs are\s+also public/);

@@ -41,6 +41,18 @@
       "queries": []
     },
     {
+      "id": "governance",
+      "title": "Governance",
+      "description": "Review inherited gh-aw compiler defaults before approving a scoped configuration change.",
+      "intent": "Configure gh-aw compiler defaults at an explicitly selected repository, organization, or enterprise scope.",
+      "subject": "Non-secret GitHub Actions compiler default variables and their inherited repository reach.",
+      "objective": "Review the complete defaults document before approving scoped changes.",
+      "acceptance": "Load the selected scope and preview all sets and deletions before approval; preserve narrower overrides and visibility, report access failures, and never grant CAO rollout authority.",
+      "experimental": false,
+      "parameters": [],
+      "queries": []
+    },
+    {
       "id": "steering",
       "title": "Steering",
       "description": "Identify workflows whose retained steering warnings require a CAO limit investigation.",

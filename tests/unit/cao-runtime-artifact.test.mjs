@@ -112,6 +112,10 @@ test("producer artifact binds its production inventory to an immutable revision"
     "dashboard/cli-terminal-child.mjs",
     "dashboard/site/scripts/prepare-terminal.mjs",
   ]) assert.ok(metadata.files[file], `missing terminal runtime file: ${file}`);
+  for (const file of [
+    "dashboard/environment-defaults.mjs",
+    "dashboard/site/src/environment-defaults.js",
+  ]) assert.ok(metadata.files[file], `missing Governance runtime file: ${file}`);
   const dashboardManifest = JSON.parse(readFileSync(path.join(root, "dashboard/site/package.json"), "utf8"));
   const dashboardLock = JSON.parse(readFileSync(path.join(root, "dashboard/site/package-lock.json"), "utf8"));
   assert.ok(dashboardManifest.dependencies["node-pty"]);
@@ -125,8 +129,26 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.doesNotMatch(prompt, /Bundled dependency:|@clack\/|fast-string-width|fast-wrap-ansi|sisteransi/);
   assert.equal(existsSync(path.join(root, "node_modules")), false);
   assert.match(readFileSync(path.join(root, "dashboard/site/src/validator-dashboard.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
+  assert.match(readFileSync(path.join(root, "dashboard/site/src/environment-defaults.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
   assert.equal(existsSync(path.join(root, "dashboard/site/node_modules")), false);
   assert.throws(() => validateCaoRuntimeArtifact(root, "2".repeat(40)), /provenance does not match/);
+});
+
+test("the prebuilt archive loads the Governance CLI transport and its bundled YAML parser", async (t) => {
+  const root = unpack(t);
+  const { executeDashboardCommand } = await import(pathToFileURL(path.join(root, "dashboard/cli-actions.mjs")));
+  const yaml = 'default_max_turns: "20"\n';
+  const result = await executeDashboardCommand({
+    command: "gh aw env get cao-governance.yml --scope org --org acme",
+    workingDirectory: root,
+    githubToken: "test-fixture",
+    execute: async (_executable, args, options) => {
+      if (!args.includes("--help")) writeFileSync(path.join(options.cwd, "cao-governance.yml"), yaml);
+      return { stdout: "", stderr: "" };
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.stdout, yaml);
 });
 
 test("producer archives are reproducible across temporary build directories", () => {

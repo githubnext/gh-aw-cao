@@ -99,9 +99,11 @@ func nativeSetupReadPolicy(path string) (map[string]any, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s control-plane must be an object", path)
 		}
-		if value, exists := control["campaigns"]; exists {
-			if _, ok := value.(map[string]any); !ok {
-				return nil, fmt.Errorf("%s control-plane.campaigns must be an object", path)
+		for _, key := range []string{"campaigns", "workflows"} {
+			if value, exists := control[key]; exists {
+				if _, ok := value.(map[string]any); !ok {
+					return nil, fmt.Errorf("%s control-plane.%s must be an object", path, key)
+				}
 			}
 		}
 	}
@@ -308,6 +310,11 @@ func nativeSetupBoundedPolicy(policy map[string]any, repo string) error {
 	if campaigns == nil || len(campaigns) != 0 {
 		return errors.New("non-interactive setup requires a bare control plane with no declared campaigns")
 	}
+	if value, exists := control["workflows"]; exists {
+		if workflows := nativeSetupMap(value); workflows == nil || len(workflows) != 0 {
+			return errors.New("non-interactive setup requires a bare control plane with no declared standalone workflows")
+		}
+	}
 	exact := func(value any, expected string) bool {
 		values, ok := nativeSetupStrings(value)
 		return ok && len(values) == 1 && strings.EqualFold(values[0], expected)
@@ -356,6 +363,11 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 	campaigns := nativeSetupMap(control["campaigns"])
 	if campaigns == nil || len(campaigns) != 0 {
 		return nil, errors.New("setup only configures a bare control plane with no declared campaigns")
+	}
+	if value, exists := control["workflows"]; exists {
+		if workflows := nativeSetupMap(value); workflows == nil || len(workflows) != 0 {
+			return nil, errors.New("setup only configures a bare control plane with no declared standalone workflows")
+		}
 	}
 	owner := strings.Split(controlRepo.Repository, "/")[0]
 	repositories := []string{controlRepo.Repository}

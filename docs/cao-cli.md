@@ -41,16 +41,15 @@ rename. It honors `XDG_DATA_HOME` and Windows `LOCALAPPDATA`, defaulting to
 `~/.local/share/gh/extensions/gh-cao`. Rerun the installer to update this
 manually installed extension; `gh extension upgrade` does not manage it.
 Linked/source installations are not overwritten. Release binaries use the
-`gh-cao-OS-ARCH` naming convention, with `.exe` for Windows, and cover Linux,
+`gh-cao-OS-ARCH` naming convention (legacy releases use `OS-ARCH`), with `.exe` for Windows, and cover Linux,
 macOS, and Windows on amd64 and arm64. `checksums.txt` contains their SHA-256
 digests. Downloads fail closed unless the asset's exact checksum and embedded
 version match. Verification finishes before replacing an existing binary.
 An explicit catalog source `githubnext/gh-cao@vX.Y.Z` selects the same
 extension tag, including a published prerelease with that tag; otherwise the
-installer selects the latest stable CAO release that contains extension assets.
-Before the first such stable release exists, it falls back to the newest
-published extension prerelease. Main/SHA and local catalog sources still select
-their own runtime revision independently.
+installer selects the latest published CAO `vX.Y.Z` release, including prereleases
+but excluding drafts. Main/SHA and local catalog
+sources still select their own runtime revision independently.
 Node.js 24+ remains required for installing the repository's pipeline runtime,
 but not for running the Go operator commands afterward.
 

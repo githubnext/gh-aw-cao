@@ -139,10 +139,39 @@ Layered charts omit `data.limit` and use a source query `limit` of at most 200.
 Forms, lazy pagination, and drill navigation are not supported in previews.
 This editor does not change rollout policy or control-plane authority.
 
-The dashboard helps you observe and investigate campaigns. It does not start
+The published dashboard helps you observe and investigate campaigns. It does not start
 work, approve an output, grant workflow authority, change rollout policy, or
 write to a repository. Make those decisions through the control repository and
 its reviewed workflows and policy.
+
+### Configure compiler defaults
+
+Open **Maintenance → Governance** in the local Copilot canvas, or start an
+authorized loopback admin dashboard:
+
+```sh
+npm run dashboard:local -- --repo OWNER/REPOSITORY --admin
+```
+
+Select **Organization**, **Enterprise**, or **Repository** and enter the exact
+target. **Load defaults** uses `gh aw env get` to obtain every compiler default
+supported by the installed gh-aw version. Edit the complete YAML document,
+keeping values as quoted strings or `null`, then select **Preview changes**.
+Review the proposed sets and deletions, choose **Review and apply**, and confirm
+the exact scope and YAML. All commands use the existing approved CLI-action
+queue and your local GitHub CLI credentials. Reload after applying to verify
+the saved variables; recompile workflows to incorporate changed compiler defaults.
+
+Organization and enterprise variables are inherited by repositories with access
+to them, including CAO repositories, but may also affect repositories outside
+CAO. Existing narrower overrides and variable access lists remain in effect.
+`null` or omitted keys remove an override at the selected scope, not an inherited
+default. Visibility controls access for newly created variables only.
+
+This page manages **non-secret GitHub Actions variables**, not secrets, rollout
+policy, or live authority. Never enter credentials in the YAML. The chosen scope
+requires administrative access; hosted repository installation tokens cannot
+perform these operations, so the hosted and published pages keep editing disabled.
 
 ## Continue reading
 

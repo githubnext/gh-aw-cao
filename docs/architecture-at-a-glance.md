@@ -28,12 +28,13 @@ Connect one repository to get started.
 | --- | --- |
 | **Observe activity** | See collected activity across configured repositories, inspect recorded runs, and follow them back to GitHub. |
 | **Evaluate results** | Inspect costs, outputs, and outcomes where evidence is available. Use them to investigate what the work produced, not just whether it ran. |
-| **Scale and roll out shared work** | Participating campaigns coordinate reusable tasks across explicitly allowed repositories. In `review` mode, proposals go to a review destination; target repositories stay unchanged until live output is explicitly authorized. |
+| **Scale and roll out shared work** | Standalone workflows and campaigns can opt into admission and bounded rollout across explicitly allowed repositories. In `review` mode, proposals go to a review destination; target repositories stay unchanged until live output is explicitly authorized. |
 
 Workflows can stay repository-local, be shared across projects, or run centrally.
 **Campaigns are one opinionated way to package, scale, and roll out shared work,
-not the only operating pattern.** Today's integrated review and rollout controls
-apply to participating campaigns, not automatically to every observed workflow.
+not the only operating pattern.** Integrated review and rollout controls also
+support [standalone agentic workflows](configuration.md#standalone-agentic-workflows),
+but do not apply automatically to every observed workflow.
 
 For example, after an issue-triage workflow runs, you can inspect its run and
 follow the collected evidence to see what it produced. The dashboard helps you

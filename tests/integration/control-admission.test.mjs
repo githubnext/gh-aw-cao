@@ -22,6 +22,7 @@ function runAdmission({
   runPrecompute = false,
   precomputeEnv = {},
   githubActions = true,
+  repositories = [],
   env: extraEnv = {},
 } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "central-ops-admission-"));
@@ -30,6 +31,8 @@ function runAdmission({
   const githubOutput = join(directory, "github-output");
   const stepSummary = join(directory, "step-summary");
   const eventFile = join(directory, "event.json");
+  const repositoriesFile = join(directory, "repositories.json");
+  writeFileSync(repositoriesFile, JSON.stringify(repositories));
   writeFileSync(eventFile, JSON.stringify({
     sender,
     inputs: {
@@ -56,6 +59,16 @@ case "$*" in
   *collaborators/developer/permission*)
     [ "$MOCK_PERMISSION_FAILURE" != "true" ] || exit 1
     printf '{"permission":"%s","user":{"login":"developer","type":"User"}}\\n' "$MOCK_PERMISSION"
+    ;;
+  *repos/acme/*)
+    node - "$@" <<'EOF'
+const fs = require('node:fs');
+const endpoint = process.argv.slice(2).find(value => value.startsWith('repos/acme/'));
+const repository = JSON.parse(fs.readFileSync(process.env.MOCK_REPOSITORIES_FILE, 'utf8'))
+  .find(value => endpoint === 'repos/' + (value.requested_name || value.full_name));
+if (!repository) process.exit(2);
+console.log(JSON.stringify(repository));
+EOF
     ;;
   *)
     exit 2
@@ -91,6 +104,7 @@ esac
       MOCK_RATE_FAILURE: String(rateFailure),
       MOCK_PERMISSION: permission,
       MOCK_PERMISSION_FAILURE: String(permissionFailure),
+      MOCK_REPOSITORIES_FILE: repositoriesFile,
       RUNNER_TEMP: realpathSync(directory),
       GITHUB_WORKFLOW_SHA: "1111111111111111111111111111111111111111",
       ...extraEnv,
@@ -123,6 +137,136 @@ esac
     rmSync(directory, { recursive: true, force: true });
   }
 }
+
+const standaloneEnv = {
+  CAO_CAMPAIGN: "__none__",
+  CAO_WORKFLOW: "fleet-audit",
+  CAO_ROLE: "standalone",
+  CAO_WORKER: "__none__",
+  CAO_SAFE_OUTPUT_REPOSITORY: "acme/control",
+  GITHUB_WORKFLOW_REF: "acme/control/.github/workflows/fleet-audit.lock.yml@refs/heads/main",
+};
+
+function standalonePolicy(workflow = {}, inventory = {}) {
+  return JSON.stringify({
+    version: 1,
+    "gh-aw-version": "v0.92.5",
+    "control-plane": {
+      scope: {
+        "allowed-owners": ["acme"],
+        "allowed-repositories": ["acme/one", "acme/two", "acme/three", "acme/four"],
+      },
+      inventory,
+      workflows: { "fleet-audit": { "max-repositories": 3, "rollout-percent": 50, ...workflow } },
+    },
+  });
+}
+
+const standaloneRepositories = ["one", "two", "three", "four"].map((name, index) => ({
+  id: index + 1, full_name: `acme/${name}`, archived: false, disabled: false, private: true,
+}));
+
+test("standalone admission and precompute process a bounded fleet without campaign or dispatch APIs", () => {
+  const { result, output, admission, precomputeResult, precompute } = runAdmission({
+    policy: standalonePolicy({ targets: { "acme/one": { mode: "live" } } }),
+    env: standaloneEnv, repositories: standaloneRepositories, runPrecompute: true,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(output.authorized, "true");
+  assert.equal(admission.workflow_id, "fleet-audit");
+  assert.equal(admission.campaign, "");
+  assert.equal(admission.worker, "");
+  assert.equal(precomputeResult.status, 0, precomputeResult.stderr);
+  assert.equal(precompute.control_role, "standalone");
+  assert.equal(precompute.workflow, "fleet-audit");
+  assert.equal(precompute.effective_max_repos, 2);
+  assert.equal(precompute.total_repositories_scanned, 4);
+  assert.deepEqual(precompute.candidate_repositories.map(({ full_name, safe_output_mode, safe_output_repo }) =>
+    [full_name, safe_output_mode, safe_output_repo]), [
+    ["acme/one", "live", "acme/one"], ["acme/two", "review", "acme/control"],
+  ]);
+  assert.deepEqual(precompute.worker_workflows, []);
+  assert.equal(precompute.policy_source.sha, "1111111111111111111111111111111111111111");
+});
+
+test("standalone precompute applies deterministic cells, batches, disabled exclusions, and mode ceiling", () => {
+  const { precomputeResult, precompute } = runAdmission({
+    policy: standalonePolicy({ "max-mode": "review", targets: { "acme/two": { mode: "live" } } }, {
+      "cell-count": 2, "cell-index": 0, "batch-size": 1, "batch-index": 1,
+    }),
+    env: standaloneEnv, repositories: standaloneRepositories, runPrecompute: true,
+  });
+  assert.equal(precomputeResult.status, 0, precomputeResult.stderr);
+  assert.equal(precompute.cell_repository_count, 2);
+  assert.equal(precompute.batch_count, 2);
+  assert.deepEqual(precompute.candidate_repositories.map(({ full_name }) => full_name), ["acme/four"]);
+  const excluded = runAdmission({
+    policy: standalonePolicy({ "rollout-percent": 100 }),
+    env: standaloneEnv,
+    repositories: standaloneRepositories.map(repository => ({ ...repository, archived: true })),
+    runPrecompute: true,
+  });
+  assert.equal(excluded.precomputeResult.status, 0, excluded.precomputeResult.stderr);
+  assert.equal(excluded.precompute.effective_max_repos, 0);
+  assert.deepEqual(excluded.precompute.candidate_repositories, []);
+});
+
+for (const [name, options, reason] of [
+  ["undeclared workflow", { policy: standalonePolicy(), env: { CAO_WORKFLOW: "missing", GITHUB_WORKFLOW_REF: "acme/control/.github/workflows/missing.lock.yml@main" } }, "workflow-undeclared"],
+  ["disabled workflow", { policy: standalonePolicy({ enabled: false }) }, "workflow-disabled"],
+  ["spoofed workflow identity", { env: { CAO_WORKFLOW: "different" } }, "standalone workflow identity must match GITHUB_WORKFLOW_REF"],
+  ["campaign identity", { env: { CAO_CAMPAIGN: "invented" } }, "standalone workflows must not specify a campaign or worker identity"],
+  ["worker identity", { env: { CAO_WORKER: "invented" } }, "standalone workflows must not specify a campaign or worker identity"],
+  ["debug", { env: { CAO_REQUESTED_MODE: "debug" } }, "debug requires a manual workflow_dispatch worker run"],
+  ["API exhaustion", { rateRemaining: 0 }, "github-api-capacity-insufficient"],
+  ["unverifiable API capacity", { rateFailure: true }, "github-api-capacity-unavailable"],
+]) {
+  test(`standalone admission fails closed for ${name}`, () => {
+    const { output } = runAdmission({
+      policy: standalonePolicy(), ...options, env: { ...standaloneEnv, ...options.env },
+    });
+    assert.equal(output.authorized, "false");
+    assert.equal(output.reason, reason);
+  });
+}
+
+test("standalone precompute refuses incomplete evidence, out-of-scope requests, and dispatcher envelopes", () => {
+  for (const [env, repositories, reason] of [
+    [{}, [], /standalone inventory unavailable/],
+    [{ CAO_TARGET_REPOSITORY: "acme/outside" }, standaloneRepositories, /target_repo is not allowed/],
+    [{ CAO_CORRELATION_ID: "123-1" }, standaloneRepositories, /must not carry a dispatcher envelope/],
+    [{ CAO_SAFE_OUTPUT_REPOSITORY: "acme/one" }, standaloneRepositories, /review safe_output_repo must differ/],
+  ]) {
+    const { precomputeResult } = runAdmission({
+      policy: standalonePolicy(), env: { ...standaloneEnv, ...env }, repositories, runPrecompute: true,
+    });
+    assert.notEqual(precomputeResult.status, 0);
+    assert.match(precomputeResult.stderr, reason);
+  }
+});
+
+test("standalone requests narrow repository counts and every target's live mode", () => {
+  const { precomputeResult, precompute } = runAdmission({
+    policy: standalonePolicy({ mode: "live" }),
+    env: { ...standaloneEnv, CAO_REQUESTED_MODE: "review", CAO_REQUESTED_MAX_REPOSITORIES: "1" },
+    repositories: standaloneRepositories, runPrecompute: true,
+  });
+  assert.equal(precomputeResult.status, 0, precomputeResult.stderr);
+  assert.equal(precompute.effective_max_repos, 1);
+  assert.deepEqual(precompute.candidate_repositories.map(({ safe_output_mode }) => safe_output_mode), ["review"]);
+});
+
+test("standalone inventory redirects cannot bypass exact repository scope", () => {
+  const { precomputeResult } = runAdmission({
+    policy: standalonePolicy(),
+    env: standaloneEnv,
+    repositories: standaloneRepositories.map(repository => repository.full_name === "acme/one"
+      ? { ...repository, requested_name: "acme/one", full_name: "acme/renamed" } : repository),
+    runPrecompute: true,
+  });
+  assert.notEqual(precomputeResult.status, 0);
+  assert.match(precomputeResult.stderr, /standalone target_repo is not allowed/);
+});
 
 const debugEnv = {
   CAO_ROLE: "worker",

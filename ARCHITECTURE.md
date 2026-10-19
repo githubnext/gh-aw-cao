@@ -1,9 +1,9 @@
 # Architecture
 
-Central Agentic Ops (CAO) campaigns agentic operations and runs them from a
+Central Agentic Ops (CAO) governs agentic workflows and runs them from a
 central GitHub repository against an explicitly bounded repository fleet. This
 repository is both the public campaign catalog and a source-managed control plane
-used to develop and exercise those campaigns.
+used to develop and exercise campaigns and standalone workflows.
 
 This document is a map of the stable system boundaries and source tree. The
 normative contracts live under `specs/`; operator-facing explanations live
@@ -61,6 +61,24 @@ compiled by gh-aw. No one input can widen another.
 
 Orchestrators decide rollout and selection; workers are independent,
 single-target enforcement points.
+
+A standalone agentic workflow may instead import shared control with
+`role: standalone` and its exact `workflow` slug. It declares no campaign or
+worker and needs no campaign record. `control-plane.workflows.<workflow>` owns
+its enablement, mode, optional `max-mode` ceiling, target modes, repository cap,
+and rollout percentage. Admission verifies that identity against the actual
+compiled workflow reference, loads policy at the exact workflow SHA, and checks
+API capacity through the same admission path as campaigns. Precompute reuses
+bounded inventory, deterministic cells and batches, excludes archived/disabled
+repositories, and admits a deterministic subset capped by repository count and
+rollout percentage. Each admitted repository carries its own effective mode and
+output destination. The workflow performs its mission directly on that set;
+it cannot discover extra targets or dispatch more work. No orchestrator or
+downstream workflow inventory is required. Missing inventory evidence fails
+closed. Credential reach and safe-output capabilities remain declared by gh-aw;
+CAO does not expand them for fleet execution.
+Bare setup rejects policies with declared standalone workflows before changing
+scope or authentication, just as it rejects declared operational campaigns.
 
 A local debugger may manually launch one worker in request-only `debug` mode.
 Admission verifies a human `workflow_dispatch` sender with current write access
@@ -621,7 +639,12 @@ are preserved. Verified older archives may contain the retired launcher but
 never install it. Quickstart stages its deletion only when present, never a
 nonexistent launcher on a fresh installation.
 User-facing commands belong in the Go extension; Actions execution support
-belongs in the shipped JavaScript runtime. Control-plane validation is
+belongs in the shipped JavaScript runtime under `activity/` and `dashboard/`.
+Agentic workflow execution and agent evidence preparation must not build,
+install, or invoke the native extension. Copilot setup stages dashboard evidence
+with `node activity/cao.mjs download`. Dedicated extension build, release, and
+operator-installer compatibility tests remain separate from agent runtime.
+Control-plane validation is
 Actions-only, with one implementation invoked directly as
 `node activity/cao.mjs validate --json`, using the installed runtime revision
 and production policy resolver. The extension exposes no `validate` command.
@@ -648,8 +671,16 @@ atomically replaces the binary in GitHub CLI's `gh-cao` extension data directory
 It honors `XDG_DATA_HOME` and Windows `LOCALAPPDATA`, refuses linked/source
 installations, and never replaces a working binary on download or verification
 failure. An explicit stable-format catalog tag selects the same extension
-release; other catalog refs use the latest stable extension independently of
-the runtime revision. Initialization, setup and quickstart invoke `gh cao`;
+release; other catalog refs use the latest published version-tagged extension,
+including prereleases but excluding drafts, independently of the runtime
+revision. Before changing tools or CAO files, the installer requires a complete
+six-platform asset set and checksums. It accepts the legacy `OS-ARCH` naming set
+as well as `gh-cao-OS-ARCH`, preferring the latter when both are complete, without
+mixing names or retrying another asset after verification failure.
+For a newly initialized policy only, it aligns the former catalog's schema URI
+from an older extension with the installed catalog's canonical schema URI,
+rejecting unknown mismatches without rewriting authority fields or existing policy.
+Initialization, setup and quickstart invoke `gh cao`;
 Node.js remains an installation/pipeline prerequisite, not an operator dependency.
 
 Campaign manifests are the catalog's source of truth for installed workflows and
@@ -754,10 +785,11 @@ authentication. Private/internal repositories, broader existing policy, or
 installed campaigns fail closed. Headless repository creation still requires
 an exact `--create-repo OWNER/NAME`, and missing prerequisites fail rather than
 appearing successful. Streamed bootstrap children otherwise retain null stdin.
-An implicit `--quickstart` resolves the latest stable CAO `vX.Y.Z` release
+An implicit `--quickstart` resolves the latest published CAO `vX.Y.Z` release,
+including prereleases but excluding drafts,
 after prerequisite and checkout validation but before repository creation or
 file installation, then installs or refreshes the owned catalog resources and
-verified runtime at that release's immutable commit. Missing, inaccessible, or non-stable release
+verified runtime at that release's immutable commit. Missing, inaccessible, or invalid release
 resolution fails without mutation or fallback to `main`. Any explicit catalog
 source, including `@main`, a tag, a SHA, or a local directory, is preserved.
 Bare installation and guided setup retain their existing unversioned source
@@ -798,7 +830,7 @@ Existing repositories and clone paths are never reused or overwritten.
 In-place connection of a checkout without remotes checks only
 remote-name availability because no clone directory is created.
 Unless the operator supplies a catalog source, the installer pins quickstart to
-the latest stable CAO release before this flow begins; Repo Assist is
+the latest published CAO release, including prereleases, before this flow begins; Repo Assist is
 then pinned to the same installed CAO commit.
 Quickstart installation and explicit `--wait` require `--target OWNER/REPO`
 to select an existing public repository before any mutation; later stages reuse
@@ -882,8 +914,8 @@ all public; that does not authorize non-public targets or other campaigns.
   the admitted workflow runs.
 - `.github/workflows/cao.json` is policy, not a credential store. Credentials
   stay in GitHub Actions secrets and are resolved inside a run.
-- Review mode is the default. Live operation requires explicit campaign, worker,
-  scope, and target authority.
+- Review mode is the default. Live operation requires explicit standalone
+  workflow or campaign/worker policy, scope, and target authority.
 - Target repository files cannot grant, narrow, or revoke control-plane
   authority.
 - GitHub tools available to agents are read-only. Repository changes use only
@@ -899,6 +931,8 @@ all public; that does not authorize non-public targets or other campaigns.
   targets or dispatch more work, and cannot widen its mode.
 - Dispatch envelopes carry repository identity, mode, review destination, and
   provenance. They never carry credentials.
+- Standalone workflows use their own policy identity and bounded precomputed
+  targets, not synthetic campaigns, workers, or dispatcher envelopes.
 
 ### Evidence and presentation
 

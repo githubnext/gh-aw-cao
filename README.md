@@ -113,6 +113,8 @@ SQLite snapshot repair and hosted-CLI App setup remain Node-only.
 Releases include version-stamped
 binaries named `gh-cao-OS-ARCH` (`.exe` on Windows) for Linux, macOS, and Windows
 (amd64 and arm64), plus SHA-256 checksums.
+The installer selects the latest published `vX.Y.Z` release, including prereleases
+but excluding drafts, and also verifies older releases' legacy `OS-ARCH` assets.
 See [the command reference](docs/cao-cli.md#github-cli-extension) for the migration
 boundary and [extension development](CONTRIBUTING.md#go-extension-development)
 for local installation, project layout, and checks.

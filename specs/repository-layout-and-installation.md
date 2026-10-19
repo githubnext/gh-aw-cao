@@ -217,6 +217,7 @@ destination set.
 ### 4.3 Lifecycle entry points
 
 The root installer MUST download the compiled `gh-cao-OS-ARCH` release asset
+(or the legacy `OS-ARCH` asset from an older published release)
 and `checksums.txt` for the current supported platform (Linux, Darwin or Windows;
 amd64 or arm64). It MUST verify exactly one matching SHA-256 entry and the
 embedded version before atomically replacing the binary in GitHub CLI's
@@ -224,13 +225,33 @@ embedded version before atomically replacing the binary in GitHub CLI's
 `LOCALAPPDATA`, refuse linked/source installations, and preserve an existing
 binary on verification failure. An explicit `githubnext/gh-cao@vX.Y.Z`
 source MUST select that extension release; other sources MUST use the latest
-stable extension. Runtime revision selection remains independent.
+published `vX.Y.Z` extension release, including prereleases but excluding drafts.
+Runtime revision selection remains independent.
+Before installing or upgrading tools or writing CAO files, the installer MUST
+verify that the selected published release contains exactly one uploaded,
+nonempty asset for each of the six supported platform binaries and
+`checksums.txt`. The installer MUST select one complete naming set, preferring
+`gh-cao-OS-ARCH` when both sets are complete, and MUST verify the checksum entry
+for the exact downloaded name. It MUST NOT mix naming sets or retry another
+asset after verification fails. Runtime-only or incomplete releases MUST fail
+with an actionable release-contract error, without substituting another release.
+An immutable published release cannot be repaired in place.
+When an older verified extension initializes a new policy using the former
+`githubnext/gh-aw-cao` schema URI, the installer MUST align only that metadata URI
+with the installed catalog's canonical schema URI. It MUST reject unknown
+mismatches and MUST NOT rewrite an existing policy or any authority fields.
 The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
 removed shell equivalents. No shell launcher is installed. Actions and Node-only
 tools MUST invoke `node activity/cao.mjs <command>` or another explicit Node
 entry point directly, including SQLite `doctor` and `setup-auth hosted-cli`.
 User-facing commands MUST live in the Go extension, while Actions execution
-support MUST live in the JavaScript runtime. Control-plane validation MUST have
+support MUST live in the JavaScript runtime under `activity/` and `dashboard/`.
+Agentic workflow execution and agent evidence preparation MUST NOT build,
+install, or invoke the native extension as a runtime dependency. Copilot setup
+MUST stage dashboard evidence with `node activity/cao.mjs download`. Dedicated
+extension build, release, and operator-installer compatibility tests are separate
+from this runtime boundary.
+Control-plane validation MUST have
 one JavaScript implementation, without a Go or shell-wrapper command. Its workflow
 MUST execute the shipped JavaScript runtime directly with
 `node activity/cao.mjs validate --json` at its installed revision, using the

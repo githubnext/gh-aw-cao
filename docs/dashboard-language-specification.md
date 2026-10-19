@@ -97,6 +97,40 @@ configuration rather than activity evidence: browser-local IndexedDB, local-serv
 SQLite, or server PostgreSQL. Unknown server configuration remains unknown; this
 element does not query, derive, or infer a storage engine from retained rows.
 
+The `environment-defaults` element declares `data.sources: []` and a
+`config.actions` mapping of `get-repo`, `update-repo`, `get-org`, `update-org`,
+`get-ent`, and `update-ent` to matching view-placed `gh aw env` CLI actions.
+It is an interaction-only configuration editor: mutable YAML, file transport,
+preview output, and explicit write approval cannot be expressed by evidence
+marks. It never queries activity data or infers configuration from dashboard
+rows. The Governance page under Maintenance uses this element.
+
+Governance requires an authorized local admin or Copilot canvas dashboard and
+the GitHub CLI identity's administrative access to the selected repository,
+organization, or enterprise. Hosted repository installation credentials do not
+authorize organization or enterprise administration. Load the current scope,
+edit its complete `default_` YAML mapping (quoted strings or `null`), and run
+**Preview changes** before **Review and apply**. Every command passes through
+the existing CLI-action queue and trusted-host approval. Changing the document
+or new-variable visibility invalidates the preview. Unsaved edits must be
+discarded before changing the target.
+
+These actions name `cao-governance.yml`. Local execution stages that file in a
+private temporary directory, supplies update YAML from the approved queue input,
+and returns downloaded YAML as stdout, separate from command diagnostics. It
+never reads or overwrites a checkout file or interprets YAML as shell commands.
+The installed gh-aw compiler owns the supported defaults registry; the editor
+does not maintain a partial list. Unknown keys are rejected by gh-aw.
+
+`gh aw env update` replaces the managed defaults at the selected scope:
+omitted and `null` fields delete overrides. Organization and enterprise
+variables can affect repositories outside CAO, and narrower overrides remain
+effective. New variables may use `all` or `private` visibility; existing
+visibility and selected-repository access lists are preserved. Reload after
+applying to verify saved values, and recompile workflows to incorporate changed
+compiler defaults. This edits non-secret Actions variables, not CAO rollout
+policy, credentials, or live authority.
+
 ### 1.3 Design Goals
 
 The language is designed to be minimal, deterministic, auditable, and safe to validate. Built-in pages provide useful defaults. Custom pages provide only metric, table, chart, and time-series views.
@@ -285,7 +319,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | View `requires` | `backend`, `message`, `on-unavailable` |
 | View `data` | `source` or `sources`, `partial-source`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
-| View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |
+| View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message`, `actions` |
 | View `list` | `style`, `layout`, `icon`, `action`, `action-context`, `actions`, `card`, `drill` |
 | List `drill` | `type`, `field`, `page`, `query`, `title-field`, `arguments` |
 | Query drill argument | `name`, `field` |

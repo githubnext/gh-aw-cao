@@ -1,0 +1,13 @@
+{
+  "page": "governance",
+  "element": "environment-defaults",
+  "sources": [],
+  "actions": {
+    "get-repo": "governance-get-repo",
+    "update-repo": "governance-update-repo",
+    "get-org": "governance-get-org",
+    "update-org": "governance-update-org",
+    "get-ent": "governance-get-ent",
+    "update-ent": "governance-update-ent"
+  }
+}

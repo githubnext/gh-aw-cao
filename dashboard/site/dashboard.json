@@ -1200,6 +1200,7 @@
         "placement": "bottom",
         "pages": [
           "maintenance",
+          "governance",
           "commands",
           "marketplace",
           "indexing",
@@ -1210,6 +1211,7 @@
   },
   "fragments": [
     "dashboard-fragments/commands.json",
+    "dashboard-fragments/governance.json",
     "dashboard-fragments/shared-events.json",
     "dashboard-fragments/shared-inventory.json",
     "dashboard-fragments/shared-campaigns.json",

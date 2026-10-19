@@ -283,6 +283,30 @@ export async function validatePolicy(root, source) {
       remediation: `Install ${campaign} or remove its stale policy entry`,
     }));
   }
+  for (const workflowName of Object.keys(policy["control-plane"]?.workflows ?? {})) {
+    const workflowPath = path.posix.join(WORKFLOW_DIRECTORY, `${workflowName}.md`);
+    if (!workflowNames.has(workflowName)) {
+      findings.push(finding("missing-standalone-workflow", "error", "policy", "Policy references a missing standalone workflow", {
+        files: [POLICY_PATH, workflowPath],
+        expected: `${workflowName}.md is installed`,
+        observed: "Workflow source is missing",
+        remediation: `Install ${workflowName} or remove its stale policy entry`,
+      }));
+      continue;
+    }
+    try {
+      effectivePolicy(policy, {
+        workflowName, role: "standalone",
+        controlRepository: process.env.GITHUB_REPOSITORY || "local/control",
+      });
+    } catch (error) {
+      findings.push(finding("invalid-policy-resolution", "error", "policy", "Standalone workflow policy cannot be resolved", {
+        files: [POLICY_PATH, workflowPath],
+        observed: error.message,
+        remediation: `Reconcile ${workflowPath} with ${POLICY_PATH}`,
+      }));
+    }
+  }
   return { policy, installed, findings };
 }
 

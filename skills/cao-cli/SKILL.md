@@ -18,6 +18,11 @@ rewrite its behavior in agent-authored code.
 
 ## Procedure
 
+Inside an agentic workflow, use the installed JavaScript runtime under
+`activity/` and `dashboard/`, never the native `gh cao` extension. Follow
+[workflow runtime](references/workflow-runtime.md) before the operator routes
+below; do not build or install the extension when the runtime or cache is absent.
+
 1. Identify the task before running a command:
    - control-plane setup or campaign lifecycle: use the compiled `gh cao` extension;
    - activity analysis with shell access: use `gh cao`;

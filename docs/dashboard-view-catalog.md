@@ -21,6 +21,7 @@ These are the default product destinations. They are custom pages composed from 
 | --- | --- | --- | --- |
 | `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes campaign health, repository coverage, weekly rhythm, and campaign shortcuts. |
 | `configuration` | Settings | `configuration-policy` | Presents checked-in control policy and its editable settings surface. |
+| `governance` | Governance | `environment-defaults` | Loads, previews, and explicitly approves gh-aw compiler default variables at repository, organization, or enterprise scope through authorized local CLI actions. |
 
 ## Built-in pages
 
@@ -127,6 +128,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `problem-detail` | Presents one campaign runtime problem with its failure evidence, scope, environment, and repair action. |
 | `entity-route` | Allocates a route-selected entity title and native GitHub link. |
 | `configuration-policy` | Presents and edits checked-in CAO policy. |
+| `environment-defaults` | Edits the full gh-aw defaults YAML through declared `gh aw env` actions, with scope selection, dry-run preview, explicit approval, and private temporary-file transport; does not query activity evidence or grant rollout authority. |
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
 | `factory-header` | Presents campaign status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |

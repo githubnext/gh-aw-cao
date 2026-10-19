@@ -91,9 +91,10 @@ coordinate yourself, or use the existing repository's clean checkout.
 Missing `--target` stops before installation or repository creation; the later
 run, collect, and dashboard stages reuse the target in committed policy.
 
-With no catalog source, `--quickstart` resolves the latest stable CAO `vX.Y.Z`
-release and pins the control plane, Repo Assist campaign, and verified
-release runtime to its immutable commit. It fails closed if a stable release
+With no catalog source, `--quickstart` resolves the latest published CAO `vX.Y.Z`
+release, including prereleases but excluding drafts, and pins the control plane,
+Repo Assist campaign, and verified release runtime to its immutable commit.
+It fails closed if a published release
 cannot be resolved; it never silently falls back to `main`. Maintainers can opt
 into the development build by passing `githubnext/gh-cao@main` before
 `--quickstart`.
