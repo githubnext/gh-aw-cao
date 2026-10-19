@@ -56,7 +56,7 @@ export function createSlideshow(trigger: HTMLButtonElement): SlideshowController
     entrances = elements.map((element, i) => {
       const stagger = elements.length > 1 ? (i * (1000 - delay - duration)) / (elements.length - 1) : 0;
       const animation = element.animate(
-        [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "translateY(0)" }],
+        [{ opacity: 0 }, { opacity: 1 }],
         { duration, delay: delay + stagger, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)", fill: "backwards" },
       );
       animation.id = "cao-slide-entrance";
