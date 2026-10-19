@@ -47,6 +47,9 @@ test("presents existing landing content with bounded keyboard and button navigat
   for (let index = 1; index < 6; index++) {
     await page.getByRole("button", { name: "Next slide", exact: true }).click();
     await expectSlide(page, index);
+    if (index === 1) {
+      await expect(presentation(page).locator(".hero-action:visible")).toHaveCount(0);
+    }
   }
   await expect(page.getByRole("button", { name: "Next slide", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Exit slideshow", exact: true })).toBeFocused();
@@ -60,6 +63,7 @@ test("presents existing landing content with bounded keyboard and button navigat
   await expect(presentation(page)).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Start slideshow", exact: true })).toBeFocused();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(slideTitles[1]);
+  await expect(page.locator(".hero-action:visible")).toHaveCount(3);
   await expect(page.locator(".product-story:visible")).toHaveCount(4);
   await expect(page.locator("[data-snippet-trigger]")).toHaveCount(0);
   await expect(page.locator("[data-slideshow-slides]")).not.toHaveAttribute("style", /transform|slide-width|slide-height/);
@@ -266,7 +270,7 @@ for (const viewTransitions of [true, false]) {
         const entered = new Promise(resolve => dialog.addEventListener("slideshow:slide-change", resolve, { once: true }));
         dialog.querySelector(`[data-slideshow-${direction}]`).click();
         await entered;
-        const elements = [...dialog.querySelectorAll(".docs-hero-intro h1, .docs-hero-intro .tagline, .docs-hero-intro .actions")];
+        const elements = [...dialog.querySelectorAll(".docs-hero-intro h1, .docs-hero-intro .tagline")];
         const frames = [];
         const start = performance.now();
         do {
