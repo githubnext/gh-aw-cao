@@ -7,8 +7,7 @@ This guide walks you through installing CAO in a control repository, connecting
 one repository to monitor, and publishing a dashboard of its existing GitHub
 Agentic Workflow runs, costs, and outcomes.
 
-Setup collects activity from existing workflows without starting new agentic
-work. You do not need to install or run a campaign.
+This setup is for monitoring only.
 
 ## Prerequisites
 

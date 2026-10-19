@@ -73,7 +73,7 @@ test("getting started leads from monitoring to a separate optional campaign guid
     "Optional: add automation later",
   ]);
   const content = page.locator(".sl-markdown-content");
-  await expect(content).toContainText("You do not need to install or run a campaign.");
+  await expect(content).toContainText("This setup is for monitoring only.");
   await expect(content).toContainText("An empty dashboard is expected.");
   await expect(content).not.toContainText("gh aw run");
   for (const [name, viewport] of [
