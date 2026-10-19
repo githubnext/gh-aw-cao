@@ -9,6 +9,11 @@ metadata:
 
 # Analyze CAO Data
 
+In agentic workflows, use JavaScript under `activity/` and `dashboard/`:
+[`node activity/cao.mjs`](../cao-cli/references/workflow-runtime.md) or read-only
+MCP. Never build, install, or invoke native `gh cao`. The operator procedure below
+does not apply.
+
 ## Procedure
 
 1. Choose shell access (`gh cao`) or MCP-only access (`cao_catalog`, then

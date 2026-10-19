@@ -27,6 +27,20 @@ remains gh-aw-owned.
 
 For an operational campaign, apply `skills/create-cao-campaign/SKILL.md`. It defines the CAO orchestrator/worker topology, rollout boundary, and required `.github/workflows/shared/control.md` imports.
 
+## Agent runtime
+
+Agentic workflows execute the installed JavaScript runtime under `activity/`
+and `dashboard/`, using `node activity/cao.mjs <command>` or the relevant
+JavaScript module directly. Do not build, install, or invoke the native `gh cao`
+extension as an agent runtime dependency. The native extension and root
+`install.sh` are operator tools; their dedicated build, release, and installation
+tests do not change the agent runtime boundary.
+
+For Activity-backed analysis, follow
+`skills/cao-cli/references/workflow-runtime.md`: use the restored cache with an
+explicit database path, or fall back to bounded read-only tools when the runtime
+or evidence is unavailable. Do not install the operator extension as a fallback.
+
 ## Deterministic core campaigns
 
 - Install the `activity/` campaign from the root manifest. It owns the scheduled and manually dispatchable data-collection workflow, cache key contract, and activity index schema.

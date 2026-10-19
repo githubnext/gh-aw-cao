@@ -245,7 +245,13 @@ removed shell equivalents. No shell launcher is installed. Actions and Node-only
 tools MUST invoke `node activity/cao.mjs <command>` or another explicit Node
 entry point directly, including SQLite `doctor` and `setup-auth hosted-cli`.
 User-facing commands MUST live in the Go extension, while Actions execution
-support MUST live in the JavaScript runtime. Control-plane validation MUST have
+support MUST live in the JavaScript runtime under `activity/` and `dashboard/`.
+Agentic workflow execution and agent evidence preparation MUST NOT build,
+install, or invoke the native extension as a runtime dependency. Copilot setup
+MUST stage dashboard evidence with `node activity/cao.mjs download`. Dedicated
+extension build, release, and operator-installer compatibility tests are separate
+from this runtime boundary.
+Control-plane validation MUST have
 one JavaScript implementation, without a Go or shell-wrapper command. Its workflow
 MUST execute the shipped JavaScript runtime directly with
 `node activity/cao.mjs validate --json` at its installed revision, using the

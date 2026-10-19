@@ -621,7 +621,12 @@ are preserved. Verified older archives may contain the retired launcher but
 never install it. Quickstart stages its deletion only when present, never a
 nonexistent launcher on a fresh installation.
 User-facing commands belong in the Go extension; Actions execution support
-belongs in the shipped JavaScript runtime. Control-plane validation is
+belongs in the shipped JavaScript runtime under `activity/` and `dashboard/`.
+Agentic workflow execution and agent evidence preparation must not build,
+install, or invoke the native extension. Copilot setup stages dashboard evidence
+with `node activity/cao.mjs download`. Dedicated extension build, release, and
+operator-installer compatibility tests remain separate from agent runtime.
+Control-plane validation is
 Actions-only, with one implementation invoked directly as
 `node activity/cao.mjs validate --json`, using the installed runtime revision
 and production policy resolver. The extension exposes no `validate` command.

@@ -212,7 +212,7 @@ test("downloads the deployed compacted activity shards and SQLite file without r
       : request.url?.includes("/gh-aw-logs-runs/") ? runsContent : recordsContent);
   });
 
-  test("uses .cao as the default download location", async () => {
+  test("stages default .cao evidence through Node without operator tooling on PATH", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-default-output-"));
     const logsContent = '{"schema_version":2,"kind":"run","run":{"run_id":404}}\n';
     const databaseContent = Buffer.from("default sqlite bytes");
@@ -236,11 +236,15 @@ test("downloads the deployed compacted activity shards and SQLite file without r
     try {
       const address = server.address();
       assert.ok(address && typeof address === "object");
-      await executeFile(cao, [
-        "download",
-        "--url",
-        `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
-      ], { cwd: root });
+      await executeFile(process.execPath, [cao, "download"], {
+        cwd: root,
+        env: {
+          ...process.env,
+          PATH: "",
+          Path: "",
+          DASHBOARD_DATA_URL: `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
+        },
+      });
       assert.equal(await readFile(path.join(root, ".cao", "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), logsContent);
       assert.deepEqual(await readFile(path.join(root, ".cao", "gh-aw-logs.sqlite")), databaseContent);
       assert.equal(await readFile(path.join(root, ".cao", "inventory-sources.json"), "utf8"), inventoryContent);
