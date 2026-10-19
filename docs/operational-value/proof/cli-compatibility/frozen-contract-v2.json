@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "version": "2.0.0",
+  "authoring": "Explicitly outcome-informed retrospective, after inspecting the retained candidate implementations. Preserve the original source-informed v1 unchanged; this partial does not claim restored acceptance of removed schema fields.",
+  "predecessor": "frozen-contract-v1.json",
+  "repository": "github/gh-aw",
+  "workflow": "breaking-change-checker",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "nativePartial": {
+    "id": "verified-automatic-migration-repairs",
+    "unit": "independently verified automatic migration repairs",
+    "formula": "Count one top-level app-to-github-app automatic migration repair only when actual single-parent before/after source, native Go AST structure, unchanged production helper/dispatch wiring, the pre-repair independently promised migration and the destination schema establish restored gh aw fix coverage. Count the repair once, not once per YAML field, test, edited file or later observation.",
+    "caseIdentity": "7bc15e21c80d251de946b34e2798afe58fcfaf62:gh-aw-fix:top-level-app-to-github-app",
+    "scope": "The documented plain top-level block-form app: mapping with ordinary space indentation and a supported app-id/private-key payload. Quoted/flow/duplicate keys, all YAML forms, compiler execution and unrelated migration behavior are not established.",
+    "requiredNativeConditions": [
+      "The actual parent is 375b4ea31602a598069772db17f7673e9e7b9517, not the PR base or a reconstructed diff.",
+      "Before detection only checks nested tools/safe-outputs/checkout; after adds the first unconditional top-level app existence guard returning true, with the old remaining detection body unchanged.",
+      "The after rewriter adds an exact guarded top-level app key replacement that appends the renamed line, marks modification and continues; removing this branch yields the same pre-repair rewriter AST.",
+      "The production codemod ID, Apply closure, fix-command dispatch and required helper implementations are independently checked and unchanged except the two intended guards.",
+      "The pre-repair changeset promises gh aw fix migrates a shown top-level app block; destination schema permits github-app, rejects app and leaves the destination auth payload unchanged.",
+      "A locally authored native witness checks the bounded key-only migration and payload/markdown content preservation. Existing parser TrimSpace/reconstruction may normalize boundary whitespace; byte-for-byte whole-file preservation is not claimed. Original target code is parsed as data, never executed."
+    ]
+  },
+  "allocation": "Half-open seven-day delivery periods, once at actual repair commit timestamp 2026-07-01T18:10:03Z.",
+  "contribution": "A pre-repair original report independently calls for verifying app-to-github-app codemod coverage; a retained original dated GitHub graph edge and downstream implementation corroborate shared contribution. Editable report bodies and footer/run bindings are not publication-time content, original safe-output receipts or causal attribution.",
+  "rejectedClaims": [
+    "No count for release notes, major changeset labels, merged PRs, synthetic positives or workflow jq allowance.",
+    "The selected report's shallow-history and all-six-findings assertions are not adopted as accurate.",
+    "This repair does not restore direct compiler acceptance of deprecated app syntax.",
+    "One verified migration condition is not full CLI compatibility, all-window analysis completeness or full workflow attainment."
+  ],
+  "unknownPolicy": "Every period without independently verified delivery is null, not measured zero. Full goal acceptance, complete safeguards, receipt-backed attribution, costs and keep decision remain unknown/not rated."
+}

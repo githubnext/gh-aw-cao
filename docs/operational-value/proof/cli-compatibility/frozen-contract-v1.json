@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "workflow": "breaking-change-checker",
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "sourceBlob": "dc7b08a992ed544f5f6350187252029ef30f3088",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": {
+    "status": "source-informed-before-candidate-body-inspection",
+    "priorExposure": "Frozen census proposal and candidate identities/counts, source history, workflow/imports, compiled prompt configuration, and repository compatibility rules only. No selected issue/PR body or candidate implementation was inspected before this contract.",
+    "effectiveExecutor": "Frozen compiled workflow includes the actual runtime-imported breaking-change prompt and Copilot SDK execution. Specific historical execution and applied-output custody must be verified separately when claimed; an SDK/sample filename alone establishes neither replay nor live execution."
+  },
+  "adoption": {
+    "commit": "1b9624bd63b4ec51584288bfa335b113b70629c2",
+    "parent": "d54664b9c6e01708df3ec5c8aaa7e0eb6eaaec7a",
+    "adoptedAt": "2025-11-27T08:47:18Z",
+    "sourcePath": ".github/workflows/breaking-change-checker.md",
+    "initialRulesPath": "specs/breaking-cli-rules.md",
+    "currentRulesPath": "scratchpad/breaking-cli-rules.md"
+  },
+  "originalCensusProposal": {
+    "goal": "Prevent unintended breaking CLI changes according to the repository's compatibility rules.",
+    "acceptance": "An independent compatibility fixture or adjudicated rule application must verify actual command/flag/output/behavior incompatibilities and their remediation.",
+    "limitation": "A no-breaking-changes report, merge status or absence of findings cannot establish compatibility."
+  },
+  "fullAcceptance": "Correctly identify all relevant breaking changes in the source-required preceding 24 hours under the contemporaneous repository rules, and establish their remediation or explicitly approved breaking-release treatment. Completeness, actual user behavior, approvals, migration sufficiency and full historical coverage are not inferred from issue closure or merge.",
+  "nativePartial": {
+    "id": "restored-cli-compatibility-cases",
+    "unit": "independently verified CLI compatibility restorations",
+    "direction": "increase",
+    "formula": "Count distinct existing CLI contract cases whose actual repair commit and real parent independently prove a broken existing command, flag, output, exit/default behavior or schema contract is restored, corroborated by an older immutable contract or independent compatibility fixture. Deduplicate repair commit plus affected public contract identity; a title, edit count, migration note or workflow-infrastructure repair is not a CLI restoration.",
+    "eligibility": [
+      "Repair is on immutable bound repository history by cutoff and after actual workflow introduction.",
+      "Original issue/PR/run identities are retained; editable markers discover candidates but are not creation receipts.",
+      "Native before/after and independently established prior CLI contract prove the specified restoration without executing target code.",
+      "Downstream linkage is established separately from native restoration; shared corroboration is not sole causation or receipt-backed attribution."
+    ]
+  },
+  "selection": {
+    "scope": "All 45 marker-linked roots and all three related PR candidates in the already frozen workflow census; graph discovery may add directly linked downstream PRs, with explicit exhaustive/bounded pagination disposition.",
+    "roots": [15420,16119,18503,19435,19869,20373,27382,32171,33351,33796,38147,38662,38875,39424,39608,39824,40102,41073,42793,43001,43821,43822,44071,44582,46031,46272,47106,49164,50310,52097,56409,57972,58256,59764,60292,61159,61371,61627,62391,62684,62975,63200,63458,64035,68465],
+    "pulls": [43822,50311,52128]
+  },
+  "periods": {
+    "cadenceDays": 7,
+    "durationDays": 7,
+    "maturationDays": 0,
+    "interval": "Half-open delivery periods; each restoration belongs once to its actual repair-commit timestamp, never repeated snapshot stock."
+  },
+  "unknownPolicy": "No accepted native case means null useful outcome, not measured whole-workflow zero. Rejected or unavailable candidates remain separately inspectable. Synthetic checker positives do not qualify real coverage.",
+  "separateUnknowns": [
+    "Full goal attainment and all-period or all-candidate completeness",
+    "Actual original publication-time body correctness",
+    "Comprehensive safeguards and behavior preservation",
+    "Receipt-backed workflow contribution, sole causation and attributable costs",
+    "Keep decision without an explicitly agreed native threshold"
+  ],
+  "acquisition": {
+    "transport": "Public read-only gh API originals with SHA-256 custody and bounded pagination",
+    "requestBudget": 280,
+    "targetExecution": false,
+    "remoteWrites": false
+  }
+}

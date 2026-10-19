@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "frozenSource": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "instrumentSha256": "7ae333621fb1da0f7356ae2b281fa27dbd97d5dc68a7b1f7dd48f1c5495850a7",
+  "finiteUsefulMeasuredWorkflowCount": 1,
+  "quantities": {
+    "daily-code-debt-aider": {
+      "status": "blocked-no-accepted-native-outcome",
+      "qualifiedWorkflow": false,
+      "unit": "unreachable private functions removed",
+      "nativeUnits": null,
+      "selectedImplementations": 6,
+      "acceptedImplementations": [],
+      "weeklyPeriods": 11,
+      "knownWeeklyPeriods": 0,
+      "timelineSha256ExceptGeneratedAt": "dd2a53ada752aea6d026db006c2f898c8d22bf324a8bab7cd58bfd4f870e344a",
+      "collectorCheck": "verified docs/operational-value/proof/functions/daily-code-debt-aider.mjs",
+      "fullGoalAcceptance": null,
+      "behaviorPreservation": null,
+      "wholePopulationValue": null,
+      "costs": null,
+      "keepDecision": "not rated"
+    },
+    "code-simplifier": {
+      "status": "finite-useful-structural-partial",
+      "qualifiedWorkflow": true,
+      "unit": "duplicate command-result handling algorithms consolidated",
+      "nativeUnits": 1,
+      "selectedImplementations": 70,
+      "acceptedImplementations": [
+        {
+          "number": 26384,
+          "commit": "9dd21ebefb913330c3e9ba307304797e97faa24c",
+          "parent": "1869c125eb6172e337d0ee4a0be8621e7728f2df",
+          "at": "2026-04-15T13:06:28Z",
+          "value": 1,
+          "corroborated": true,
+          "receiptBackedAttribution": null
+        }
+      ],
+      "weeklyPeriods": 40,
+      "knownWeeklyPeriods": 1,
+      "timelineSha256ExceptGeneratedAt": "ad0e209711fe0aa23d3054f0028dbd6a841aee39ed583e9fb8155d66c070d82e",
+      "collectorCheck": "verified docs/operational-value/proof/functions/code-simplifier.mjs",
+      "fullGoalAcceptance": null,
+      "behaviorPreservation": null,
+      "wholePopulationValue": null,
+      "costs": null,
+      "keepDecision": "not rated"
+    }
+  },
+  "nativeResult": {
+    "value": 1,
+    "identity": "runGHWithSpinner+runGHWithSpinnerContext",
+    "algorithmSha256": "b4c41172f9e34dddc22e64bbbff2ecd4b285c6fc5ab08f1717367b47867c6cc7",
+    "nativeStatementSequence": [
+      "if tty.IsStderrTerminal() {\n\tspinner := console.NewSpinner(spinnerMessage)\n\tspinner.Start()\n\tvar output []byte\n\tvar err error\n\tif combined {\n\t\toutput, err = cmd.CombinedOutput()\n\t} else {\n\t\toutput, err = cmd.Output()\n\t\terr = enrichGHError(err)\n\t}\n\tspinner.Stop()\n\treturn output, err\n}",
+      "if combined {\n\treturn cmd.CombinedOutput()\n}",
+      "output, err := cmd.Output()",
+      "return output, enrichGHError(err)"
+    ],
+    "constructorChanged": true,
+    "qualification": "One exact duplicated command-result handling algorithm consolidated. Command construction changes from nil context to background context and logging differs; full behavior preservation is NOT established."
+  },
+  "nativeUniverse": {
+    "beforeFiles": 1709,
+    "afterFiles": 1709,
+    "beforePackageFiles": 935,
+    "afterPackageFiles": 935,
+    "parsedPackageFiles": 1870,
+    "globalLinkerEntries": 0,
+    "opaqueNativeFiles": 0,
+    "priorRemovedSymbolIdentifiers": 4,
+    "otherProductionCallers": 0,
+    "afterRemovedSymbolIdentifiers": 0
+  },
+  "historicalEligibility": {
+    "run": 24439426053,
+    "head": "e44f4e7fec20d266caec65919fa1a8ac57948e50",
+    "runCreatedAt": "2026-04-15T06:13:37Z",
+    "windowStart": "2026-04-14T06:13:37.000Z",
+    "recent": [
+      {
+        "id": "e44f4e7fec20d266caec65919fa1a8ac57948e50",
+        "tree": "5604f4f2e7834296a01a69227b099c3794c2cc30",
+        "parents": [
+          "7934db73db9fdc1893b838ba019fd1e56a410897"
+        ],
+        "at": "2026-04-15T06:04:18Z"
+      },
+      {
+        "id": "ce1794953e0ec42adc41b6fca05e02ab49ee21c3",
+        "tree": "5c5626037b9c21a7a9a1494579b8e14c501525be",
+        "parents": [
+          "c25673e72856f5d65028a1c72c97c999af836359"
+        ],
+        "at": "2026-04-14T23:08:38Z"
+      }
+    ],
+    "runtimePromptPresent": false,
+    "candidateListReceipt": null
+  },
+  "actualAdoptions": [
+    {
+      "slug": "daily-code-debt-aider",
+      "commit": "0841c9e3e6fc99312ed0e7f770fc5a0b6438ead8",
+      "adoptedAt": "2026-08-07T19:10:33Z"
+    },
+    {
+      "slug": "code-simplifier",
+      "commit": "6f27e6d8218a5a3729f44ee5a6dbd68957ac0865",
+      "adoptedAt": "2026-01-11T16:03:53Z"
+    }
+  ],
+  "rejected": [
+    {
+      "version": "v1",
+      "number": 26384,
+      "nativeValue": 0,
+      "reason": "Removed runGHWithSpinner has two live wrapper callers, not unreachable."
+    },
+    {
+      "version": "v1",
+      "number": 19261,
+      "nativeValue": 0,
+      "reason": "marshalCanonicalJSON is called in its prior file, not unreachable; no positive dead-code claim."
+    },
+    {
+      "version": "v2",
+      "number": 26384,
+      "nativeValue": 0,
+      "reason": "setupGHCommand changed; v2 unchanged-constructor condition fails. v3 names only the retained duplicated result algorithm."
+    }
+  ],
+  "acquisition": {
+    "originalInventoryPartitions": 346,
+    "originalInventoryEntities": 58048,
+    "scope": "Only the selected 209 workflow-linked candidate identities and exact bounded public graph responses are transferred; shared full inventory is not owned.",
+    "discoveryCandidates": {
+      "daily-code-debt-aider": 71,
+      "code-simplifier": 138
+    },
+    "markerIsCreationReceipt": false
+  },
+  "unchangedBaselineDependencies": [
+    ".github/skills/add-operational-value/scripts/build-timeline.mjs",
+    ".github/skills/add-operational-value/scripts/collect-output-history.mjs",
+    ".github/skills/add-operational-value/scripts/common.mjs",
+    ".github/skills/add-operational-value/scripts/discover-intent.mjs",
+    ".github/skills/add-operational-value/scripts/evaluate.mjs",
+    ".github/skills/add-operational-value/scripts/extract-workflow-intent.mjs",
+    ".github/skills/add-operational-value/scripts/fingerprint-value-function.mjs",
+    ".github/skills/add-operational-value/scripts/git-evidence.mjs",
+    ".github/skills/add-operational-value/scripts/github-lineage.mjs",
+    ".github/skills/add-operational-value/scripts/inspect-workflow-at-adoption.mjs",
+    ".github/skills/add-operational-value/scripts/json-archive.mjs",
+    ".github/skills/add-operational-value/scripts/list-repository-workflows.mjs",
+    ".github/skills/add-operational-value/scripts/list-workflows.mjs",
+    ".github/skills/add-operational-value/scripts/measurement-period.mjs",
+    ".github/skills/add-operational-value/scripts/portfolio-model.mjs",
+    ".github/skills/add-operational-value/scripts/pulse-model.mjs",
+    ".github/skills/add-operational-value/scripts/pulse-view.mjs",
+    ".github/skills/add-operational-value/scripts/pulse.css",
+    ".github/skills/add-operational-value/scripts/render-definitions.mjs",
+    ".github/skills/add-operational-value/scripts/render-pulse.mjs",
+    ".github/skills/add-operational-value/scripts/review-value.mjs",
+    ".github/skills/add-operational-value/scripts/validate-report-artifacts.mjs",
+    ".github/skills/add-operational-value/scripts/value-function-path.mjs",
+    ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+    ".github/skills/add-operational-value/scripts/wire-campaign.mjs",
+    ".github/skills/add-operational-value/scripts/wire-workflow.mjs",
+    "docs/operational-value/proof/native-go-quality/custody.mjs"
+  ],
+  "oracleCustody": {
+    "goToolchainManifestSha256": "efef3e54a8d99bff4be19d52f6bc876b8c78a60c354f7d2c39f441df509d5b06",
+    "oracleSha256": "f6a5b47910dc84226fe7c5bf78052b15732e61b6d9f3683f5d5a0a4d6ebc4edc",
+    "nodeAndGoBinariesPinned": true,
+    "targetSourceExecuted": false
+  },
+  "limitations": "One narrow outcome-informed structural maintenance-surface consolidation. Changed constructors and logging prevent full behavior-equivalence claims. Aider remains an unfinished measurement attempt, not zero workflow value. Historical full executor continuity, candidate-list receipts, complete safeguards, causal attribution, costs and a keep bar remain unknown."
+}

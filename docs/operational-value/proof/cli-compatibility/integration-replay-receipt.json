@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "networkDeniedWithRealProbe": true,
+  "originalWorkspacesAndSessionCachesDeniedWithRealProbes": true,
+  "gitDirectoryPresent": false,
+  "nodeModulesPresent": false,
+  "freshHomeAndGoCaches": true,
+  "targetCodeExecuted": false,
+  "completeTimelinesEqualRemovingOnlyTopLevelGeneratedAt": true,
+  "timelineDigests": {
+    "breaking-change-checker": "e07f84ea293e609a611c43a6f164174f4fad07aebe41ec1f90486238f9fb1784"
+  },
+  "nativeEvidenceAssessmentMatches": true,
+  "focusedTestsPassed": 7,
+  "qualifiedWorkflows": 1,
+  "fullGoalAcceptance": null,
+  "originalSkillPinsPreserved": true
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "version": "native-code-debt-v3",
+  "predecessors": ["contract-v1.json", "contract-v2.json"],
+  "authoring": "Outcome-informed retrospective. v1 dead-function candidates are referenced and rejected. v2 is also rejected for PR 26384 because setupGHCommand changed. Preserve both originals. This separately named v3 narrows the claim to the independently established maintenance surface, without claiming unchanged constructors or behavior.",
+  "partialAcceptance": "One exact duplicate command-result handling algorithm consolidated: two prior complete AST statement suffixes after distinct cmd constructors are identical, one retained suffix is unchanged, both prior exported wrappers route with unchanged spinner message, stdout/combined selector and variadic arguments to the retained implementation, and the removed duplicate and its callsites no longer exist in the complete package. The error-enrichment helper and context-aware forwarding wrappers are unchanged. Native AST parsing covers every package Go variant and test. Require complete Git-bound package source and repository entry/linker exception scrutiny. Constructors and logging can change: record those changes, do not infer behavioral equivalence.",
+  "unit": "duplicate command-result handling algorithms consolidated",
+  "formula": "One per immutable actual-parent declaration-pair consolidation, deduplicated across markers, wrappers and weekly delivery periods; no independently evaluated eligible case in a period is null.",
+  "qualification": "A verified structural simplification and smaller duplicated maintenance surface, not a defect fix, generic readability score, full accepted simplification, successful target build/tests or creation proof.",
+  "unknowns": ["behavior preservation", "safeguard completeness", "target validation", "complete historical executor continuity", "candidate-list receipt", "receipt-backed contribution", "cost", "keep bar"],
+  "period": {"durationDays": 7, "cadenceDays": 7, "maturationDays": 0}
+}

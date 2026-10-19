@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "records": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exitStatus": 0,
+      "stdout": "\n> central-agentic-ops@0.0.0 lint\n> node scripts/check-file-sizes.mjs && npm run check:gh-aw-versions && npm run check:agent-plugin && eslint .\n\n\n> central-agentic-ops@0.0.0 check:gh-aw-versions\n> node scripts/check-gh-aw-versions.mjs\n\ngh-aw version declarations are consistent at v0.92.4.\n\n> central-agentic-ops@0.0.0 check:agent-plugin\n> node scripts/validate-agent-plugin.mjs\n\n",
+      "stderr": "Agent plugin manifest, skills, links, and bundled resources are valid.\n"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck:cao"
+      ],
+      "exitStatus": 0,
+      "stdout": "\n> central-agentic-ops@0.0.0 typecheck:cao\n> npx tsc -p .github/workflows/shared/tsconfig.json\n\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck:copilot"
+      ],
+      "exitStatus": 0,
+      "stdout": "\n> central-agentic-ops@0.0.0 typecheck:copilot\n> tsc --allowJs --noEmit --skipLibCheck --module NodeNext --target ES2022 com.github.copilot/extensions/cao-dashboard/extension.mjs\n\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "scripts/check-file-sizes.mjs"
+      ],
+      "exitStatus": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "tests/unit/native-code-debt.test.mjs"
+      ],
+      "exitStatus": 0,
+      "stdout": "✔ actual source proves one structural consolidation, not full behavioral acceptance (3257.20875ms)\n✔ rejected predecessor predicates and original census contracts remain preserved (0.880667ms)\n✔ native positive and negative fixtures test semantics, never historical delivery (17.884625ms)\n✔ changed native algorithm, forwarding, import or dependent error helper is rejected (17.0765ms)\n✔ malformed native syntax and entry directives never become clean observations (12.829083ms)\n✔ methods, init, exported funcs, recursion and function values do not prove dead code (20.978875ms)\n✔ Aider failure-linked plumbing changes do not become code-debt outcomes (0.503708ms)\n✔ delivery boundary is start-inclusive/end-exclusive and native case deduplicates (5.2215ms)\n✔ overlapping, oversized, wrong-repository and malformed requests fail explicitly (0.438667ms)\n✔ forged evidence cannot supply native effects and routine collection is deterministic (0.531875ms)\n✔ missing original blob, byte tampering and unsafe paths fail custody validation (1374.812667ms)\n✔ adoption and historical recent-change eligibility are independent immutable facts (1084.080833ms)\nℹ tests 12\nℹ suites 0\nℹ pass 12\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 5954.57475\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/daily-code-debt-aider.mjs"
+      ],
+      "exitStatus": 0,
+      "stdout": "verified docs/operational-value/proof/functions/daily-code-debt-aider.mjs\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+        "--collector",
+        "docs/operational-value/proof/functions/code-simplifier.mjs"
+      ],
+      "exitStatus": 0,
+      "stdout": "verified docs/operational-value/proof/functions/code-simplifier.mjs\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "scripts/replay-native-code-debt.mjs",
+        "--write"
+      ],
+      "exitStatus": 0,
+      "stdout": "{\n  \"schemaVersion\": 1,\n  \"repository\": \"github/gh-aw\",\n  \"repositoryId\": 1036865607,\n  \"frozenSource\": \"c86377ec47b38f0b5af463277ee55d1d03d08da8\",\n  \"cutoff\": \"2026-10-18T15:00:12Z\",\n  \"instrumentSha256\": \"7ae333621fb1da0f7356ae2b281fa27dbd97d5dc68a7b1f7dd48f1c5495850a7\",\n  \"finiteUsefulMeasuredWorkflowCount\": 1,\n  \"quantities\": {\n    \"daily-code-debt-aider\": {\n      \"status\": \"blocked-no-accepted-native-outcome\",\n      \"qualifiedWorkflow\": false,\n      \"unit\": \"unreachable private functions removed\",\n      \"nativeUnits\": null,\n      \"selectedImplementations\": 6,\n      \"acceptedImplementations\": [],\n      \"weeklyPeriods\": 11,\n      \"knownWeeklyPeriods\": 0,\n      \"timelineSha256ExceptGeneratedAt\": \"dd2a53ada752aea6d026db006c2f898c8d22bf324a8bab7cd58bfd4f870e344a\",\n      \"collectorCheck\": \"verified docs/operational-value/proof/functions/daily-code-debt-aider.mjs\",\n      \"fullGoalAcceptance\": null,\n      \"behaviorPreservation\": null,\n      \"wholePopulationValue\": null,\n      \"costs\": null,\n      \"keepDecision\": \"not rated\"\n    },\n    \"code-simplifier\": {\n      \"status\": \"finite-useful-structural-partial\",\n      \"qualifiedWorkflow\": true,\n      \"unit\": \"duplicate command-result handling algorithms consolidated\",\n      \"nativeUnits\": 1,\n      \"selectedImplementations\": 70,\n      \"acceptedImplementations\": [\n        {\n          \"number\": 26384,\n          \"commit\": \"9dd21ebefb913330c3e9ba307304797e97faa24c\",\n          \"parent\": \"1869c125eb6172e337d0ee4a0be8621e7728f2df\",\n          \"at\": \"2026-04-15T13:06:28Z\",\n          \"value\": 1,\n          \"corroborated\": true,\n          \"receiptBackedAttribution\": null\n        }\n      ],\n      \"weeklyPeriods\": 40,\n      \"knownWeeklyPeriods\": 1,\n      \"timelineSha256ExceptGeneratedAt\": \"ad0e209711fe0aa23d3054f0028dbd6a841aee39ed583e9fb8155d66c070d82e\",\n      \"collectorCheck\": \"verified docs/operational-value/proof/functions/code-simplifier.mjs\",\n      \"fullGoalAcceptance\": null,\n      \"behaviorPreservation\": null,\n      \"wholePopulationValue\": null,\n      \"costs\": null,\n      \"keepDecision\": \"not rated\"\n    }\n  },\n  \"nativeResult\": {\n    \"value\": 1,\n    \"identity\": \"runGHWithSpinner+runGHWithSpinnerContext\",\n    \"algorithmSha256\": \"b4c41172f9e34dddc22e64bbbff2ecd4b285c6fc5ab08f1717367b47867c6cc7\",\n    \"nativeStatementSequence\": [\n      \"if tty.IsStderrTerminal() {\\n\\tspinner := console.NewSpinner(spinnerMessage)\\n\\tspinner.Start()\\n\\tvar output []byte\\n\\tvar err error\\n\\tif combined {\\n\\t\\toutput, err = cmd.CombinedOutput()\\n\\t} else {\\n\\t\\toutput, err = cmd.Output()\\n\\t\\terr = enrichGHError(err)\\n\\t}\\n\\tspinner.Stop()\\n\\treturn output, err\\n}\",\n      \"if combined {\\n\\treturn cmd.CombinedOutput()\\n}\",\n      \"output, err := cmd.Output()\",\n      \"return output, enrichGHError(err)\"\n    ],\n    \"constructorChanged\": true,\n    \"qualification\": \"One exact duplicated command-result handling algorithm consolidated. Command construction changes from nil context to background context and logging differs; full behavior preservation is NOT established.\"\n  },\n  \"nativeUniverse\": {\n    \"beforeFiles\": 1709,\n    \"afterFiles\": 1709,\n    \"beforePackageFiles\": 935,\n    \"afterPackageFiles\": 935,\n    \"parsedPackageFiles\": 1870,\n    \"globalLinkerEntries\": 0,\n    \"opaqueNativeFiles\": 0,\n    \"priorRemovedSymbolIdentifiers\": 4,\n    \"otherProductionCallers\": 0,\n    \"afterRemovedSymbolIdentifiers\": 0\n  },\n  \"historicalEligibility\": {\n    \"run\": 24439426053,\n    \"head\": \"e44f4e7fec20d266caec65919fa1a8ac57948e50\",\n    \"runCreatedAt\": \"2026-04-15T06:13:37Z\",\n    \"windowStart\": \"2026-04-14T06:13:37.000Z\",\n    \"recent\": [\n      {\n        \"id\": \"e44f4e7fec20d266caec65919fa1a8ac57948e50\",\n        \"tree\": \"5604f4f2e7834296a01a69227b099c3794c2cc30\",\n        \"parents\": [\n          \"7934db73db9fdc1893b838ba019fd1e56a410897\"\n        ],\n        \"at\": \"2026-04-15T06:04:18Z\"\n      },\n      {\n        \"id\": \"ce1794953e0ec42adc41b6fca05e02ab49ee21c3\",\n        \"tree\": \"5c5626037b9c21a7a9a1494579b8e14c501525be\",\n        \"parents\": [\n          \"c25673e72856f5d65028a1c72c97c999af836359\"\n        ],\n        \"at\": \"2026-04-14T23:08:38Z\"\n      }\n    ],\n    \"runtimePromptPresent\": false,\n    \"candidateListReceipt\": null\n  },\n  \"actualAdoptions\": [\n    {\n      \"slug\": \"daily-code-debt-aider\",\n      \"commit\": \"0841c9e3e6fc99312ed0e7f770fc5a0b6438ead8\",\n      \"adoptedAt\": \"2026-08-07T19:10:33Z\"\n    },\n    {\n      \"slug\": \"code-simplifier\",\n      \"commit\": \"6f27e6d8218a5a3729f44ee5a6dbd68957ac0865\",\n      \"adoptedAt\": \"2026-01-11T16:03:53Z\"\n    }\n  ],\n  \"rejected\": [\n    {\n      \"version\": \"v1\",\n      \"number\": 26384,\n      \"nativeValue\": 0,\n      \"reason\": \"Removed runGHWithSpinner has two live wrapper callers, not unreachable.\"\n    },\n    {\n      \"version\": \"v1\",\n      \"number\": 19261,\n      \"nativeValue\": 0,\n      \"reason\": \"marshalCanonicalJSON is called in its prior file, not unreachable; no positive dead-code claim.\"\n    },\n    {\n      \"version\": \"v2\",\n      \"number\": 26384,\n      \"nativeValue\": 0,\n      \"reason\": \"setupGHCommand changed; v2 unchanged-constructor condition fails. v3 names only the retained duplicated result algorithm.\"\n    }\n  ],\n  \"acquisition\": {\n    \"originalInventoryPartitions\": 346,\n    \"originalInventoryEntities\": 58048,\n    \"scope\": \"Only the selected 209 workflow-linked candidate identities and exact bounded public graph responses are transferred; shared full inventory is not owned.\",\n    \"discoveryCandidates\": {\n      \"daily-code-debt-aider\": 71,\n      \"code-simplifier\": 138\n    },\n    \"markerIsCreationReceipt\": false\n  },\n  \"unchangedBaselineDependencies\": [\n    \".github/skills/add-operational-value/scripts/build-timeline.mjs\",\n    \".github/skills/add-operational-value/scripts/collect-output-history.mjs\",\n    \".github/skills/add-operational-value/scripts/common.mjs\",\n    \".github/skills/add-operational-value/scripts/discover-intent.mjs\",\n    \".github/skills/add-operational-value/scripts/evaluate.mjs\",\n    \".github/skills/add-operational-value/scripts/extract-workflow-intent.mjs\",\n    \".github/skills/add-operational-value/scripts/fingerprint-value-function.mjs\",\n    \".github/skills/add-operational-value/scripts/git-evidence.mjs\",\n    \".github/skills/add-operational-value/scripts/github-lineage.mjs\",\n    \".github/skills/add-operational-value/scripts/inspect-workflow-at-adoption.mjs\",\n    \".github/skills/add-operational-value/scripts/json-archive.mjs\",\n    \".github/skills/add-operational-value/scripts/list-repository-workflows.mjs\",\n    \".github/skills/add-operational-value/scripts/list-workflows.mjs\",\n    \".github/skills/add-operational-value/scripts/measurement-period.mjs\",\n    \".github/skills/add-operational-value/scripts/portfolio-model.mjs\",\n    \".github/skills/add-operational-value/scripts/pulse-model.mjs\",\n    \".github/skills/add-operational-value/scripts/pulse-view.mjs\",\n    \".github/skills/add-operational-value/scripts/pulse.css\",\n    \".github/skills/add-operational-value/scripts/render-definitions.mjs\",\n    \".github/skills/add-operational-value/scripts/render-pulse.mjs\",\n    \".github/skills/add-operational-value/scripts/review-value.mjs\",\n    \".github/skills/add-operational-value/scripts/validate-report-artifacts.mjs\",\n    \".github/skills/add-operational-value/scripts/value-function-path.mjs\",\n    \".github/skills/add-operational-value/scripts/verify-value-function.mjs\",\n    \".github/skills/add-operational-value/scripts/wire-campaign.mjs\",\n    \".github/skills/add-operational-value/scripts/wire-workflow.mjs\",\n    \"docs/operational-value/proof/native-go-quality/custody.mjs\"\n  ],\n  \"oracleCustody\": {\n    \"goToolchainManifestSha256\": \"efef3e54a8d99bff4be19d52f6bc876b8c78a60c354f7d2c39f441df509d5b06\",\n    \"oracleSha256\": \"f6a5b47910dc84226fe7c5bf78052b15732e61b6d9f3683f5d5a0a4d6ebc4edc\",\n    \"nodeAndGoBinariesPinned\": true,\n    \"targetSourceExecuted\": false\n  },\n  \"limitations\": \"One narrow outcome-informed structural maintenance-surface consolidation. Changed constructors and logging prevent full behavior-equivalence claims. Aider remains an unfinished measurement attempt, not zero workflow value. Historical full executor continuity, candidate-list receipts, complete safeguards, causal attribution, costs and a keep bar remain unknown.\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1)(allow default)(deny network*)",
+        "/Users/mnkiefer/.nvm/versions/node/v25.0.0/bin/node",
+        "-e",
+        "const assert=require(\"node:assert/strict\"),net=require(\"node:net\");let s=net.createConnection({host:\"127.0.0.1\",port:9});s.on(\"error\",e=>{assert.ok([\"EPERM\",\"EACCES\"].includes(e.code));console.log(\"Compiler sandbox network-denial probe passed\")});s.on(\"connect\",()=>{s.destroy();throw Error(\"network unexpectedly available\")});"
+      ],
+      "exitStatus": 0,
+      "stdout": "Compiler sandbox network-denial probe passed\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1)(allow default)(deny network*)",
+        "pinned-gh-aw-v0.92.4",
+        "compile",
+        "--strict",
+        "--no-emit",
+        "--no-check-update",
+        "--schedule-seed",
+        "githubnext/gh-aw-cao"
+      ],
+      "exitStatus": 0,
+      "stdout": "",
+      "stderr": "⚠ Action actions/upload-artifact@v7.0.1 is outdated; latest available version is v7.0.2.\n  Consider upgrading (update the version tag in your workflow file).\ni guard policy dry-run report for dependabot-update-planner.md:\n  allowed-repos: all (default)\n  min-integrity: unapproved\ni guard policy dry-run report for design-decision-gate.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for mattpocock-skills-reviewer.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for pr-reviewer.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for pr-sous-chef.md:\n  allowed-repos: all (default)\n  min-integrity: approved\n⚠ Action actions/download-artifact@v8.0.1 is outdated; latest available version is v8.0.2.\n  Consider upgrading (update the version tag in your workflow file).\ni guard policy dry-run report for self-care-accessibility-checker.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-code-improvement.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-dashboard-debug-logging.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-dashboard-language-refactor.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-dashboard-performance.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-docs-build-time-investigator.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-docs-maintainer.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-documentation-discoverability.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-glossary.md:\n  allowed-repos: all (default)\n  min-integrity: approved\n.github/workflows/self-care-hosted-health.md: info: This workflow grants id-token: write permission\nOIDC tokens can authenticate to cloud providers (AWS, Azure, GCP).\nEnsure proper audience validation and trust policies are configured.\n\ni guard policy dry-run report for self-care-hosted-health.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-open-source-failures.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-pages-health.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-primer-brand-checker.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-reactive-ui-expert.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-release-blogger.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-server-go-logging.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care-specs-maintainer.md:\n  allowed-repos: all (default)\n  min-integrity: approved\ni guard policy dry-run report for self-care.md:\n  allowed-repos: all (default)\n  min-integrity: approved\n⚠ Experimental features in use:\n  • gh-aw-detection: 2 workflows\n⚠ Compiled 72 workflows: 72 succeeded, 2 warnings\n"
+    }
+  ],
+  "compilerSha256": "b8e5619d277bb78c67998d31c363e6e9eb3d105343d8cbcffd8dc1991a4eff0d",
+  "allPassed": true,
+  "dependencyRestoration": "Initial root validation lacked yaml/typescript. Restored exact lockfile with npm ci --ignore-scripts; no manifest changes.",
+  "fullTargetBuildOrTestsExecuted": false
+}

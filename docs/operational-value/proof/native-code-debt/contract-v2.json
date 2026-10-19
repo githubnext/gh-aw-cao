@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "version": "native-code-debt-v2",
+  "predecessor": "contract-v1.json",
+  "authoring": "Explicitly outcome-informed retrospective extension after inspection of PR 26384 source. Original unreachable-function predicate and its rejected cases remain unchanged in v1. This is not a prospective or blind measure.",
+  "sourceGoal": "Improve clarity, consistency and maintainability by removing duplication while keeping behavior unchanged.",
+  "partialAcceptance": "Independently establish that two prior Go command-result handling algorithms have exactly equal complete native AST statement sequences after their distinct command constructors; that only one such implementation remains after the actual-parent transition; that its AST and dependent command/error helpers are unchanged; and that both exported prior entry points explicitly route to that retained implementation with the same spinner message, stdout/combined selector and variadic arguments. Report the supplied background context and changed command-construction/logging route explicitly. This proves one duplicated maintenance surface consolidated, NOT complete behavioral equivalence, readability scoring or passing target checks.",
+  "unit": "duplicate command-result handling algorithms consolidated",
+  "nativeFormula": "Count one exact duplicate algorithm eliminated per actual-parent source transition and immutable prior declaration pair. Repeated markers, wrappers, branches and periods do not multiply the same consolidation.",
+  "eligibility": "Production Go implementation in a retained code-simplifier PR with historical source-goal evidence. Recent-change eligibility is independently reported from retained immutable history, not assumed from today's workflow. It is not a historical candidate-list receipt.",
+  "safeguards": "Target code is parsed as data only. Full behavior preservation, build/test/lint results, candidate-list custody, creation receipt, whole-population totals, costs and keep decision remain unknown.",
+  "rejected": ["fewer lines", "declaration deletion alone", "textual or approximate clone similarity", "changed shared algorithm", "different selector/arguments", "unverified call routing", "PR claim as independent acceptance"],
+  "period": {"durationDays": 7, "cadenceDays": 7, "maturationDays": 0}
+}

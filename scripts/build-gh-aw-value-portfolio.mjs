@@ -70,6 +70,9 @@ import { collectBatch as collectDurableMetrics, scoreMetric as scoreDurableMetri
 import { collectBatch as collectLoggerQuality, scoreMetric as scoreLoggerQuality } from "../docs/operational-value/proof/functions/go-logger.mjs";
 import { collectBatch as collectPatternQuality, scoreMetric as scorePatternQuality } from "../docs/operational-value/proof/functions/go-pattern-detector.mjs";
 import { collectBatch as collectTestifyQuality, scoreMetric as scoreTestifyQuality } from "../docs/operational-value/proof/functions/daily-testify-uber-super-expert.mjs";
+import { collectBatch as collectCliMigration, scoreMetric as scoreCliMigration } from "../docs/operational-value/proof/functions/breaking-change-checker.mjs";
+import { collectBatch as collectSimplification, scoreMetric as scoreSimplification } from "../docs/operational-value/proof/functions/code-simplifier.mjs";
+import { collectBatch as collectDebtRemediation, scoreMetric as scoreDebtRemediation } from "../docs/operational-value/proof/functions/daily-code-debt-aider.mjs";
 import { collectBatch as collectTemporaryIds, scoreMetric as scoreTemporaryIds } from "../smoke-temporary-id/operational-value/smoke-temporary-id.mjs";
 
 const text = value => escapeXml(value == null ? "Not defined" : typeof value === "string" ? value : JSON.stringify(value));
@@ -311,16 +314,6 @@ export async function currentPortfolioInputs() {
     functionReady: false, evidenceReady: false, evaluationReady: false, plotReady: false, blocked: true,
     stage: "fixed three-report native event investigation retains an evidence gap, not measured zero",
     detail: "A source-first contract and 25 original responses retain the latest three title/profile-matched surviving Discussions from 169 candidates, exact reporting-run source/runtime bindings and provider artifact inventories for every explicitly cited run. All five distinct referenced runs currently return empty artifact inventories. Reported 270/33 blocked events, published chart assets and the third report's claimed no-data zero cannot establish original denied requests or complete reporting scopes. Native events, full acceptance and contribution remain unknown; this investigation is not a finished native value function or standard evaluation." });
-  progress.push(
-    { workflowId: "daily-code-debt-aider", sourceGitBlob: "3774deb1dcc48c170419e18dff3343d623150c76",
-      stage: "local source-first debt outcome authoring",
-      functionReady: false, evidenceReady: false, evaluationReady: false, plotReady: false,
-      detail: "A local isolated cohort owns this workflow and code-simplifier. It is deriving independently observable useful debt-removal predicates from actual source/adoption and native implementation evidence. No function or accepted outcome is admitted yet; TODO deletion, removed lines, fixtures and merged PRs do not earn coverage." },
-    { workflowId: "code-simplifier", sourceGitBlob: "b93dc061a8dc056497cf8ada5006eb9a9124bb25",
-      stage: "local source-first simplification outcome authoring",
-      functionReady: false, evidenceReady: false, evaluationReady: false, plotReady: false,
-      detail: "The local native code-debt cohort owns this workflow and daily-code-debt-aider. It is separating genuine source-defined simplification from cosmetic counters and independently checking any useful partial. This reservation is not instrument completion or native measurement; remote test selection must not duplicate the cohort." },
-  );
   const engineContracts = "docs/operational-value/proof/engine-conformance/contracts.json";
   for (const contract of existsSync(engineContracts) ? readCensusJson(engineContracts) : []) {
     const archivePath = `docs/operational-value/proof/engine-conformance/${contract.workflowId}-v2.json.gz`;
@@ -788,6 +781,27 @@ export async function currentPortfolioInputs() {
       detail: "1,932 first-parent states, 5,863 Markdown transitions and 6,602 immutable Markdown blobs replayed with no eligible Elixir fences. Native tooling works and fixture probes are retained, but an empty eligible population is not measured lint compliance. All 16 primary periods remain unknown; runtime absence is not the blocker." },
   ]) await retainNativeGapReport(progress, entry);
   for (const entry of [
+    { workflowId: "breaking-change-checker", sourceGitBlob: "dc7b08a992ed544f5f6350187252029ef30f3088",
+      functionSha256: "cfa87c997a28ccc91d1be6c4e954b8aeaa1c5edd54d667b042a824282dc8c65c",
+      timelineDigest: "6ae16654b2795109a40da99d4765b0a9f4be117f4ca7ced0504c297252e7286f",
+      reports: "docs/operational-value/proof/cli-compatibility/reports/github-gh-aw",
+      collector: collectCliMigration, scorer: scoreCliMigration, partialMetricId: "verified-automatic-migration-repairs",
+      stage: "one independently verified top-level automatic migration repair; full CLI compatibility unknown",
+      detail: "All 45 frozen roots and five discovered PRs retain bounded originals. Actual-parent transition375b4ea31602a598069772db17f7673e9e7b9517 to7bc15e21c80d251de946b34e2798afe58fcfaf62 in PR42794 restores the independently pre-promised gh aw fix migration of a plain top-level app mapping to github-app. Native Go AST verifies both new guards, unchanged remaining migration bodies and production helper/dispatch wiring; the actual destination schema accepts the retained string auth payload. One repair is delivered once; 46 other periods remain unknown. This outcome-informed v2 partial is not restored direct compiler acceptance of app, full YAML/behavior compatibility, six accurate report findings or publication-time report correctness. Original report/run and dated graph corroborate shared contribution, not a creation receipt or sole causation; full acceptance, safeguards, costs and keep decision remain unknown." },
+    { workflowId: "code-simplifier", sourceGitBlob: "b93dc061a8dc056497cf8ada5006eb9a9124bb25",
+      functionSha256: "d373aa43ada0066416dd60f8730bbdc42e43e8d9c6f44edab81f0f0674686a55",
+      timelineDigest: "732d26c0560cd739527cfe9c19e665c320ec2ca57d0a6169f0ce77a10251f755",
+      reports: "docs/operational-value/proof/native-code-debt/reports/github-gh-aw",
+      collector: collectSimplification, scorer: scoreSimplification, partialMetricId: "native-partial",
+      stage: "one duplicated command-result handling algorithm consolidated; behavioral acceptance unknown",
+      detail: "Actual-parent transition1869c125eb6172e337d0ee4a0be8621e7728f2df to9dd21ebefb913330c3e9ba307304797e97faa24c in PR26384 consolidates exactly one duplicated command-result handling algorithm. A complete Git-bound universe retains 1709 Go files at each endpoint; 1870 native package parses verify two equal result-handling suffixes before and one unchanged shared suffix after, with wrapper selectors/arguments preserved and no removed package symbol remaining. Recent-change eligibility is independently bound to original run24439426053. The removed functions were not dead, and setupGHCommand/logging changed: preserved v1/v2 are rejected while explicitly outcome-informed v3 names structural maintenance-surface reduction only, not behavioral equivalence. One measured subtotal period and39 unknown; marker/run corroboration is not a creation receipt, full acceptance, safeguards, costs or a keep bar." },
+    { workflowId: "daily-code-debt-aider", sourceGitBlob: "3774deb1dcc48c170419e18dff3343d623150c76",
+      functionSha256: "f10c919d3101356d78d8d7f0b38838548eb8f3086997b6cd85ef748413b166b5",
+      timelineDigest: "92463371e7f3f3dd33ff26c72814ccff7f81f9529f8dcb2fcaf62273091ab364",
+      reports: "docs/operational-value/proof/native-code-debt/reports/github-gh-aw",
+      collector: collectDebtRemediation, scorer: scoreDebtRemediation, blocked: true,
+      stage: "failure-linked plumbing repairs do not establish source-goal Go debt removal",
+      detail: "71 retained marked candidates are failure issues; six merged downstream graph implementations repair workflow/runtime plumbing rather than independently demonstrated production Go debt. Both supposedly unreachable-function examples examined by the cohort have real callers. The source-first contract, originals, native checker and11-period standard report are retained, but all useful native outcomes remain null. Neither plumbing fixes, deleted lines, successful runs, synthetic positives nor an all-unknown report earn qualification. Whole-workflow value, full acceptance and costs remain unknown, not measured zero." },
     { workflowId: "daily-testify-uber-super-expert", sourceGitBlob: "056fcfb013431372bc7b0e2f1f235a3379ef6366",
       functionSha256: "5c77c823eaaca860e005a49346098be9d44edf4c9fec1bc31703e25756157d7f",
       timelineDigest: "50d5baef068177a858a2839e12208c2725e6e19cac4ec5d48341f356285b885b",

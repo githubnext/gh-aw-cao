@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "workflow": "breaking-change-checker",
+  "metricId": "verified-automatic-migration-repairs",
+  "nativeSubtotal": 1,
+  "qualifiedWorkflows": 1,
+  "deliveryAt": "2026-07-01T18:10:03Z",
+  "caseIdentity": "7bc15e21c80d251de946b34e2798afe58fcfaf62:gh-aw-fix:top-level-app-to-github-app",
+  "sourceGitBlob": "dc7b08a992ed544f5f6350187252029ef30f3088",
+  "selectedRoots": 45,
+  "discoveredPulls": [
+    42794,
+    43822,
+    46273,
+    50311,
+    52128
+  ],
+  "originalResponses": 143,
+  "contribution": {
+    "status": "corroborated-shared",
+    "receiptVerified": null,
+    "causal": null
+  },
+  "fullAcceptance": null,
+  "safeguards": null,
+  "costs": null,
+  "decision": "not-rated",
+  "authoring": "Explicitly outcome-informed retrospective, after inspecting the retained candidate implementations. Preserve the original source-informed v1 unchanged; this partial does not claim restored acceptance of removed schema fields.",
+  "limitation": "Every period without independently verified delivery is null, not measured zero. Full goal acceptance, complete safeguards, receipt-backed attribution, costs and keep decision remain unknown/not rated.",
+  "runBinding": {
+    "status": "verified-run-reference",
+    "sourcePath": ".github/workflows/breaking-change-checker.md",
+    "executionPath": ".github/workflows/breaking-change-checker.lock.yml",
+    "headSha": "dfc4ad520a1caa1e21501769efb39348a4d70bc0",
+    "attempt": 1,
+    "createdAt": "2026-07-01T15:46:48Z",
+    "url": "https://github.com/github/gh-aw/actions/runs/28529934198",
+    "limitation": "An editable footer links to a verified run; it is not a safe-output creation receipt."
+  }
+}

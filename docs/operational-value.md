@@ -449,7 +449,7 @@ is not claimed to be historical state at that cutoff.
 The standalone report has sortable **Signal**, **Evaluation coverage** and
 **Evidence freshness** columns, plus status selection and direct evidence links.
 Its headline shows the native-evaluated percentage, count and remaining work;
-83 of 344 is 24.1%, with 261 workflows still unevaluated.
+85 of 344 is 24.7%, with 259 workflows still unevaluated.
 Coverage shows periods with native values, not full-goal acceptance. Stale reports,
 historical-only values, unknowns and scoped negatives remain distinct; freshness is
 relative to the frozen cutoff, not today's date. Presentation orders and status
@@ -509,6 +509,25 @@ code is never executed. The dated recommendation graph corroborates shared
 contribution, not receipt-backed attribution. The logger's checked
 computation-guard subtotal of zero is not zero whole-workflow value; its broader
 usefulness and the pattern detector's historical finding remain unqualified.
+
+The compatibility checker partial establishes one repaired automatic migration:
+an actual-parent transition restores the independently documented `gh aw fix`
+migration from a plain top-level `app:` block to schema-supported `github-app:`.
+Native Go AST verifies both new guards and unchanged remaining migration/helper
+wiring without executing target code. This does not restore direct compiler
+acceptance of deprecated syntax or establish complete YAML/CLI compatibility.
+The strict v1 remains separate from the outcome-informed retrospective v2.
+
+The simplifier partial establishes one exact duplicate command-result handling
+algorithm consolidated, with complete Git-bound Go inventories and package-wide
+native AST checks. Both public wrappers retain their selectors/arguments and
+route to one shared suffix. The removed implementation had callers; constructors
+and logging changed. Preserved v1/v2 are rejected, and outcome-informed v3 claims
+structural maintenance-surface reduction, **not behavioral equivalence**.
+The Aider instrument remains unqualified: its retained failure issues and six
+downstream plumbing fixes do not establish production Go debt remediation.
+Neither partial proves full acceptance, comprehensive safeguards, receipt-backed
+attribution, causal effect, matched costs or an agreed keep decision.
 
 Durable storage is separately observable, not evidence that stored metrics are
 correct. Three immutable repo-memory snapshots preserve 344 records each, but

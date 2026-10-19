@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "actualCollectorVerified": true,
+  "focusedTests": 7,
+  "completeRefreshes": 2,
+  "exactTimelineParityIgnoringOnlyGeneratedAt": true,
+  "timelineFactsSha256": "e07f84ea293e609a611c43a6f164174f4fad07aebe41ec1f90486238f9fb1784",
+  "functionSha256": "cfa87c997a28ccc91d1be6c4e954b8aeaa1c5edd54d667b042a824282dc8c65c",
+  "qualifiedWorkflows": 1,
+  "nativeSubtotal": 1,
+  "targetCodeExecuted": false,
+  "qualification": "One bounded automatic-migration repair, not full compatibility or original-report accuracy"
+}

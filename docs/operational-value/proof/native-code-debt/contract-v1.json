@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "version": "native-code-debt-v1",
+  "repository": "github/gh-aw",
+  "repositoryId": 1036865607,
+  "revision": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
+  "cutoff": "2026-10-18T15:00:12Z",
+  "authoring": "Source-informed fixed-reference retrospective assessment. Coordinator candidate descriptions were already exposed; no claim of blind authoring. This contract precedes local candidate discovery and native result inspection.",
+  "strictAcceptance": {
+    "daily-code-debt-aider": "Correctly resolve source-eligible self-contained TODO/FIXME debt or trivially dead Go code, with successful required build and safe output.",
+    "code-simplifier": "Meaningfully simplify recently changed production code while preserving behavior and passing the source-required project checks."
+  },
+  "partialAcceptance": "A removed nonexported top-level Go function, other than init, is independently established unreachable in its complete prior package across every retained build/test variant. Require native parsing and no identifier use beyond its declaration (including recursion, function values, tests and receiver expressions); no cgo, assembly, opaque linker objects or compiler/linker entry directives affecting that package; complete repository-wide linkname/entry-directive scrutiny. A deletion alone, textual reference search, TODO removal, merge or fixture is not evidence. Unsupported or missing source is null. This partial establishes removal of unreachable private code only, not all behavior preservation.",
+  "eligibility": "Retained actual-parent implementations associated with either workflow, on github/gh-aw only, before the frozen cutoff. Production Go files only; methods, exported functions, generated code and vendor code excluded. Historical source/executor continuity and recent-change selection remain independently assessed; do not backdate today's scope.",
+  "unit": "unreachable private functions removed",
+  "deduplication": "Actual first-parent transition plus immutable prior path and declaration identity, counted once, in start-inclusive/end-exclusive weekly delivery windows. No candidate in a period is null, not zero.",
+  "unknowns": ["full goal acceptance", "historical executor continuity", "complete population", "costs", "causal attribution", "safeguard completeness", "keep bar"],
+  "rejectedPredicates": ["PR activity", "merged PR count", "lines removed", "TODO/FIXME marker removal", "absence of lexical references alone", "method removal without dispatch proof", "fixtures as historical outcomes"],
+  "period": {"durationDays": 7, "cadenceDays": 7, "maturationDays": 0}
+}

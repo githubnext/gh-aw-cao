@@ -204,8 +204,8 @@ test("the retained repository-wide proof replays coverage rather than promoting 
     }
     assert.equal(row.measurement.model, null);
   }
-  assert.equal(model.totals.measured, 83);
-  assert.equal(model.totals.workflows - model.totals.measured, 261);
+  assert.equal(model.totals.measured, 85);
+  assert.equal(model.totals.workflows - model.totals.measured, 259);
   assert.deepEqual(archived.totals, model.totals);
   const index = readFileSync(path.join(directory, "index.html"), "utf8");
   const percentage = (100 * model.totals.measured / model.totals.workflows).toFixed(1);
@@ -443,13 +443,28 @@ test("Go failure containment qualifies once while logger, pattern and durable me
     assert.equal(gap.reportAvailable, true);
     assert.equal(gap.evaluationReady, false);
   }
-  for (const id of ["daily-code-debt-aider", "code-simplifier"]) {
-    assert.equal(measurements.some(row => row.workflowId === id), false);
-    const reserved = progress.find(row => row.workflowId === id);
-    assert.equal(reserved.functionReady, false);
-    assert.equal(reserved.evaluationReady, false);
-    assert.match(reserved.stage, /local source-first/);
+});
+
+test("native migration and consolidation qualify as bounded partials while Aider remains unqualified", async () => {
+  const { measurements, progress } = await currentPortfolioInputs();
+  for (const [id, metric, periods] of [
+    ["breaking-change-checker", "verified-automatic-migration-repairs", 47],
+    ["code-simplifier", "native-partial", 40],
+  ]) {
+    const timeline = measurements.find(row => row.workflowId === id)?.input;
+    assert.ok(timeline);
+    assert.equal(timeline.snapshots.length, periods);
+    assert.deepEqual(timeline.snapshots.map(row => row.metrics[metric]).filter(value => value !== null), [1]);
   }
+  assert.match(progress.find(row => row.workflowId === "breaking-change-checker").detail, /not restored direct compiler acceptance/);
+  assert.match(progress.find(row => row.workflowId === "code-simplifier").detail, /not behavioral equivalence/);
+  assert.equal(measurements.some(row => row.workflowId === "daily-code-debt-aider"), false);
+  const gap = progress.find(row => row.workflowId === "daily-code-debt-aider");
+  assert.equal(gap.blocked, true);
+  assert.equal(gap.reportAvailable, true);
+  assert.equal(gap.evaluationReady, false);
+  assert.equal(progress.filter(row => row.workflowId === "code-simplifier").length, 1);
+  assert.equal(progress.filter(row => row.workflowId === "daily-code-debt-aider").length, 1);
 });
 
 test("mathematically correct worked examples remain distinct from complete educational acceptance", async () => {
