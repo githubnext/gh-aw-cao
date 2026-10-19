@@ -5,23 +5,26 @@ inventory without pretending every workflow is natively measurable. This
 campaign builds on the existing operational-value skill and portfolio, not a
 replacement scoring system or an agentic version of the dashboard.
 
-**Shipped state: disabled, review-only, manual-only, no active plan.** Installing
+**Shipped state: disabled, review-only, no active plan.** Installing
 the catalog package does not authorize execution. This source-managed control
 repository's `cao.json` disables the campaign and every worker. There is no
-schedule, automatic acquisition, publishing, merge or target write.
+automatic acquisition, publishing, merge or target write. A deterministic
+15-minute controller is installed but cannot wake agents while policy is disabled.
 
 ## Pipeline and ownership
 
 | Workflow | Bounded responsibility |
 | --- | --- |
 | `operational-value-coverage` | Reconcile inventory, select ready work, dispatch only |
+| `value-coverage-pump.yml` | Check the full-inventory ledger/PR/run state and wake the orchestrator only when work is ready |
 | `value-coverage-measure-1` through `-4` | One cohort per fixed lane, 1-5 workflows, isolated draft PR |
 | `value-coverage-integrate` | Independent validation and one serial integration/report PR |
 | `value-coverage-skill` | One evidence-backed regression/skill proposal, never live self-modification |
 
 Four distinct measurement IDs preserve CAO's worker/target/mode deduplication.
 Each is repository-serialized with cancellation disabled; an occupied lane or
-open work-key PR suppresses new dispatch. There are at most four simultaneous
+open work-key PR suppresses duplicate work, not other ready cohorts in that lane.
+There are at most four simultaneous
 measurement runs, not four cohorts per workflow. Prefer 3-5 related workflows
 per cohort only where evidence reuse is compatible. Every native contract
 remains per workflow. No worker discovers targets or dispatches other workers.
@@ -39,6 +42,46 @@ githubnext/gh-aw-cao/operational-value-coverage@REVIEWED_COMMIT`, then run
 operational-value-coverage`. As with the other CAO campaigns, the materializer
 provides the campaign-directory helpers; they are not gh-aw manifest resources.
 Keep the campaign disabled until the prerequisites below are reviewed.
+
+## One automatic full-inventory pass
+
+The first pass covers the entire frozen inventory, not a pilot or phased
+rollout. Add `scope: "full-inventory"` to the reviewed plan and assign **every**
+inventory workflow exactly once. Already measured workflows, including File
+Diet, are validation-only. Missing native contracts use `author` tasks: draft
+them without scoring, obtain human review, then pin the approved instruments
+in a new reviewed plan. Contract proposals never count as native evaluations.
+
+Freeze the baseline portfolio and its linked partitions outside the live
+report output directory (for example under
+`.github/cao/operational-value-coverage/snapshots/`). Set `portfolioPath` and
+its pins to that immutable copy. Integration may update the published report
+without invalidating the frozen input or claiming that an evolving denominator
+is the original full inventory.
+
+After the reviewed installation/plan/enablement reaches the control repository's
+default branch, the controller checks every 15 minutes. It uses the existing
+`gh aw run` entry point to wake the review-only orchestrator; no custom token,
+agent loop, direct worker dispatch or new campaign-wide credit cap is added.
+Existing gh-aw per-run limits and platform permissions still apply. Four lanes
+are a throughput setting, not a pilot: idle lanes continue with later cohorts
+even while earlier PRs await review. There is no new per-cohort go/no-go gate.
+
+The read-only `node operational-value-coverage/sweep.mjs . OWNER/CONTROL`
+reports `ready`, `running`, `waiting-for-review`, `blocked`, or `complete`.
+Disabled/missing/proposed plans are reported without API acquisition or agent
+startup. Invalid plans/pins and API failures fail visibly. Fully terminal
+ledgers suppress further agent runs; blocked/rejected work does not spin.
+Completion requires accepted native/partial reports or reviewed unavailable
+dispositions for **every** inventory entry, not merely exhausting a subset.
+Reviewing contracts, merging code and accepting integration PRs remain human
+actions. Skill changes still require a new pinned plan.
+
+Staging PRs carry `<!-- value-coverage-work:KEY:ATTEMPT -->` markers. Integration
+PRs carry the shared snapshot's `integrationMarker`, binding the plan and
+reviewed ledger. The controller reads labeled PR metadata and active Actions
+runs only; these claims prevent duplicates but cannot establish acceptance.
+Only the reviewed receipt ledger can do that.
 
 ## Evidence and approval boundary
 

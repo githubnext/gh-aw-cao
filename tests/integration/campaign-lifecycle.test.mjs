@@ -232,6 +232,9 @@ async function installCampaign(source) {
         run("bash", ["-s", "--", source], consumer, installerSource);
         return consumer;
       }
+      if (campaign === "operational-value-coverage") {
+        run("gh", ["aw", "add", campaignSource, "--force", "--no-security-scanner"], consumer);
+      }
       run("gh", [
         "aw",
         "add",
@@ -527,6 +530,9 @@ test("gh aw add installs the focused Value Coverage campaign contract", { timeou
     for (const file of [
       "operational-value-coverage/coverage.mjs",
       "operational-value-coverage/report.mjs",
+      "operational-value-coverage/sweep.mjs",
+      ".github/workflows/value-coverage-pump.yml",
+      ".github/workflows/shared/policy.mjs",
       ".github/skills/add-operational-value/SKILL.md",
       ".github/skills/add-operational-value/scripts/json-archive.mjs",
       ".github/skills/add-operational-value/scripts/render-pulse.mjs",
@@ -551,7 +557,7 @@ test("gh aw add installs the focused Value Coverage campaign contract", { timeou
     assert.equal(readFileSync(join(state, "receipts.json"), "utf8"), '[{"preserve":"accepted-evidence"}]\n');
     assert.equal(existsSync(join(consumer, "docs/operational-value/proof")), false);
     run(process.execPath, ["--input-type=module", "-e",
-      "await import('./operational-value-coverage/coverage.mjs'); await import('./operational-value-coverage/report.mjs');"], consumer);
+      "await import('./operational-value-coverage/coverage.mjs'); await import('./operational-value-coverage/report.mjs'); await import('./operational-value-coverage/sweep.mjs');"], consumer);
     const orchestrator = readFileSync(join(consumer, ".github/workflows/operational-value-coverage.md"), "utf8");
     assert.doesNotMatch(orchestrator, /^  schedule:/m);
   } finally {

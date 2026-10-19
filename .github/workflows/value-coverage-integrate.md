@@ -77,6 +77,17 @@ accept your own measurement. Stage proposed reports from the exact PR commit;
 do not execute unreviewed PR code. Require human merge of code/contracts before
 running them. Verify plan, dependency closure, source blob, cutoff and artifact
 digests. Reject stale contracts or proposed skill changes.
+Use the shared sweep snapshot's `integrationKeys` to identify merged staging
+work; an open staging PR cannot authorize executing its code. Include the
+snapshot's exact `integrationMarker` in this integration PR body. It binds the
+plan and current reviewed receipts so a closed/rejected proposal does not
+trigger an automatic reproposal loop. Reopen that PR or obtain a reviewed
+receipt disposition before trying the same integration state again.
+For an `author` task, review the contract proposal without running a native
+evaluation. Record `submitted` with the reviewed contract commit and the need
+for a newly approved measurement plan; never record native acceptance. Once
+that submission is in the reviewed ledger, the controller waits for the new
+plan rather than repeatedly integrating the same contract proposal.
 
 Apply every `reportingChecklist` item in `operational-value-coverage/report.mjs`
 against the already-computed daily-file-diet entry and linked artifacts.

@@ -6,6 +6,7 @@ experimental: true
 includes:
   - README.md
   - .github/workflows/operational-value-coverage.md
+  - .github/workflows/value-coverage-pump.yml
   - .github/workflows/value-coverage-measure-1.md
   - .github/workflows/value-coverage-measure-2.md
   - .github/workflows/value-coverage-measure-3.md

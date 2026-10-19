@@ -43,6 +43,7 @@ export function instrumentFiles(root) {
     `${skill}/SKILL.md`, `${skill}/references/module-contract.md`,
     ...readdirSync(path.join(root, skill, "scripts")).sort().map(file => `${skill}/scripts/${file}`),
     "operational-value-coverage/coverage.mjs", "operational-value-coverage/report.mjs",
+    "operational-value-coverage/sweep.mjs", ".github/workflows/value-coverage-pump.yml",
   ];
 }
 
@@ -164,7 +165,8 @@ export function buildLedger(plan, receipts = []) {
       )), "Receipt transitions must be ordered; blocked work requires reviewed disposition");
     if (["accepted-native", "accepted-partial", "unavailable"].includes(receipt.status)) {
       if (receipt.status !== "unavailable") assert.ok(entry.status === "submitted"
-        && receipt.attempt === entry.attempts, "Native acceptance requires submitted work");
+        && receipt.attempt === entry.attempts && entry.task !== "author",
+      "Native acceptance requires submitted measurement or validation, not contract authoring");
       assert.ok(nonempty(receipt.reviewCommit) && gitSha(receipt.reviewCommit)
         && sha(receipt.reportManifestSha256), "Acceptance needs independent reviewed integration");
     }
@@ -179,11 +181,14 @@ export function buildLedger(plan, receipts = []) {
   } };
 }
 
-export function selectCohort(plan, ledger, lane) {
+export function selectCohort(plan, ledger, lane, excludedKeys = []) {
   assert.ok(Number.isInteger(lane) && lane >= 1 && lane <= 4);
   assert.equal(ledger.planSha256, digest(plan));
+  assert.ok(Array.isArray(excludedKeys) && excludedKeys.every(sha));
+  const excluded = new Set(excludedKeys);
   return plan.cohorts.find(cohort => cohort.lane === lane && ledger.entries.some(entry =>
-    entry.cohort === cohort.id && ["pending", "rework"].includes(entry.status) && entry.attempts < 2)) ?? null;
+    entry.cohort === cohort.id && ["pending", "rework"].includes(entry.status) && entry.attempts < 2
+    && !excluded.has(entry.key))) ?? null;
 }
 
 export function progressMetrics(plan, receipts, executions, startAt, endAt) {

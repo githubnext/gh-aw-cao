@@ -1,0 +1,55 @@
+name: Value Coverage / Automatic sweep
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: value-coverage-pump
+  cancel-in-progress: false
+
+jobs:
+  pump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+      issues: read
+    steps:
+      - name: Checkout trusted controller revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Inspect full-inventory sweep
+        id: sweep
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node operational-value-coverage/sweep.mjs . "$GITHUB_REPOSITORY"
+
+      - name: Set up policy-pinned gh-aw
+        if: steps.sweep.outputs.dispatch == 'true'
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - trusted controller checkout at github.workflow_sha.
+
+      - name: Wake the existing review-only orchestrator
+        if: steps.sweep.outputs.dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REPO: ${{ steps.sweep.outputs.target }}
+        run: |
+          gh aw run operational-value-coverage \
+            --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" \
+            --raw-field "target_repo=$TARGET_REPO" \
+            --raw-field "safe_output_repo=$GITHUB_REPOSITORY" \
+            --raw-field safe_output_mode=review
