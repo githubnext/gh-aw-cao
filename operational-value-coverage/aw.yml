@@ -14,8 +14,3 @@ includes:
   - .github/workflows/value-coverage-skill.md
 skills:
   - .github/skills/add-operational-value
-resources:
-  - source: coverage.mjs
-    destination: operational-value-coverage/coverage.mjs
-  - source: report.mjs
-    destination: operational-value-coverage/report.mjs

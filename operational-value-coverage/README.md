@@ -33,6 +33,13 @@ human review/merge remains the publishing approval boundary. It never deploys
 Pages. The root `aw.yml` intentionally continues to install Activity and the
 deterministic Dashboard only; this campaign is an opt-in catalog package.
 
+Install into an existing CAO control repository with `gh aw add
+githubnext/gh-aw-cao/operational-value-coverage@REVIEWED_COMMIT`, then run
+`node .github/workflows/shared/materialize-cao.mjs materialize
+operational-value-coverage`. As with the other CAO campaigns, the materializer
+provides the campaign-directory helpers; they are not gh-aw manifest resources.
+Keep the campaign disabled until the prerequisites below are reviewed.
+
 ## Evidence and approval boundary
 
 Start from the existing report's `portfolio.json.gz` and digest-linked workflow

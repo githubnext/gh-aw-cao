@@ -307,14 +307,9 @@ test("operational campaigns install declarations matching their workflow identit
     const declaration = JSON.parse(readFileSync(join(root, campaignName, "cao.json"), "utf8"));
     const manifest = parse(readFileSync(join(root, campaignName, "aw.yml"), "utf8"));
     assert.equal(declaration.campaign, campaignName);
+    assert.equal(manifest.resources, undefined, campaignName);
     if (campaignName === "operational-value-coverage") {
-      assert.deepEqual(manifest.resources.map(resource => resource.destination), [
-        "operational-value-coverage/coverage.mjs",
-        "operational-value-coverage/report.mjs",
-      ]);
       assert.deepEqual(manifest.skills, [".github/skills/add-operational-value"]);
-    } else {
-      assert.equal(manifest.resources, undefined, campaignName);
     }
     assert.ok(existsSync(join(root, campaignName, "cao.json")), campaignName);
 
