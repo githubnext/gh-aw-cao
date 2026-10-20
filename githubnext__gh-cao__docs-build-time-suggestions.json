@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-20T09:24:29Z",
-      "worker_run_id": "39400134687",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39398865390,
-        39397756747,
-        39396576266,
-        39394069863,
-        39393719815,
-        39390537827,
-        39388787873,
-        39386887878,
-        39386513324,
-        39383844471,
-        39381458818,
-        39381197975,
-        39378144737,
-        39376963126,
-        39376153086,
-        39375999551,
-        39375801479,
-        39374762521,
-        39372664779,
-        39371749392
-      ],
-      "outcome": "incomplete: during the 2026-10-20T04:51:06Z to 2026-10-20T09:11:29Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 15 successful runs were freshness checks that skipped build and deploy. The newest successful schedule run 39397756747 spent 12 seconds in schedule-freshness, including 9 seconds checking freshness, then skipped build and deploy. The sole comparable build restored the dashboard cache, installed dependencies in 14 seconds, built documentation in 9 seconds, completed the build job in 70 seconds, deployment in 18 seconds, and the workflow in 97 seconds with no queue delay. One build sample cannot establish required median/p90 build and deploy timings or repeated cache effectiveness, and docs.yml has no dashboard job. Fewer than five comparable successful build samples were available, so the evaluation is incomplete and the category remains next."
-    },
-    {
       "evaluated_at": "2026-10-20T09:40:25Z",
       "worker_run_id": "39402161466",
       "category": "dependency installation and caching",
@@ -820,6 +792,34 @@
         39467160399
       ],
       "outcome": "incomplete: the 2026-10-20T17:33:43Z to 2026-10-20T20:48:42Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Only four successful runs executed both build and deploy (three push and one workflow_run, across four source SHAs), below the required minimum of five comparable successful builds. Trusted metadata retrieved before the resource limit confirmed the newest build ran for 148 seconds end to end, with a 113-second build job, 19-second deploy job, 29-second dependency installation, 10-second documentation build, 3-second dashboard-cache restore, skipped dashboard artifact fallback, and 10-second Pages upload. Further bounded job metadata collection hit the runner OS-thread resource limit (failed to create a new OS thread), so per resource-limit policy no additional API work was attempted. Required median/p90 workflow, build, deploy, and repeated cache-effectiveness measurements could not be completed; docs.yml has no dashboard job because generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T21:22:39Z",
+      "worker_run_id": "39499410518",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39499549966,
+        39497001456,
+        39495125880,
+        39493508349,
+        39491858643,
+        39491441523,
+        39488433149,
+        39487836723,
+        39486361919,
+        39484726164,
+        39484498653,
+        39484331843,
+        39483522398,
+        39482760104,
+        39482357411,
+        39479892762,
+        39477603930,
+        39475085157,
+        39474674500,
+        39471268585
+      ],
+      "outcome": "incomplete: the 2026-10-20T18:02:24Z to 2026-10-20T21:20:29Z latest-20 window contained 16 successful and four skipped completed docs.yml runs. Only four successful runs executed both build and deploy (three push and one workflow_run, across four source SHAs), below the required minimum of five comparable successful builds. The newly observed schedule run 39497001456 completed in 14 seconds and did not add a build sample. Required median/p90 workflow, build, deploy, and repeated dependency-cache effectiveness measurements therefore cannot be completed. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. No recommendation was made and the category remains next."
     }
   ]
 }
