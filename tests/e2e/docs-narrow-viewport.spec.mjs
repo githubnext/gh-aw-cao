@@ -725,10 +725,10 @@ for (const { name, viewport } of [
         )).toBe(true);
         const rolloutStory = page.locator(".terminal-story");
         await rolloutStory.scrollIntoViewIfNeeded();
-        await expect(rolloutStory).toContainText("Start with one CAO-integrated workflow, such as daily team status.");
+        await expect(rolloutStory).toContainText("Start with a CAO-integrated workflow, such as Daily Repo Status from Agentics.");
         await expect(rolloutStory).toContainText("In review mode, inspect its proposed report in a review repository");
         await expect(rolloutStory.locator(".terminal")).not.toContainText(/campaign|dependabot/i);
-        await expect(rolloutStory.locator('[data-terminal-output="rollout"]')).toContainText('"daily-team-status"');
+        await expect(rolloutStory.locator('[data-terminal-output="rollout"]')).toContainText('"repo-status"');
         await expect(rolloutStory).toHaveCSS("opacity", "1");
         const rolloutScreenshot = testInfo.outputPath(`rollout-story-${name}-${colorScheme}.png`);
         await rolloutStory.screenshot({ path: rolloutScreenshot });
@@ -760,7 +760,7 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Roll out with confidence.", exact: true })).toBeAttached();
       await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Setup, authentication, and rollout");
       await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
-        "Set repository scope and connect separate read/write credentials. Start with one CAO-integrated workflow, such as daily team status. In review mode, inspect its proposed report in a review repository before authorizing live delivery. Keep credentials in Actions secrets and rollout decisions in versioned policy. Add campaigns when you're ready to scale.",
+        "Set repository scope and connect separate read/write credentials. Start with a CAO-integrated workflow, such as Daily Repo Status from Agentics. In review mode, inspect its proposed report in a review repository before authorizing live delivery. Keep credentials in Actions secrets and rollout decisions in versioned policy. Add campaigns when you're ready to scale.",
       );
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
@@ -793,7 +793,7 @@ for (const { name, viewport } of [
         "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.",
       );
       expect(JSON.parse(await page.locator('[data-terminal-output="rollout"]').textContent())).toEqual({
-        "daily-team-status": {
+        "repo-status": {
           enabled: true, mode: "review", "max-mode": "review", "max-repositories": 1,
         },
       });

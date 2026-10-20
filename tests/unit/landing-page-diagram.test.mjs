@@ -50,7 +50,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Roll out with confidence\./);
   assert.match(hero, /Set repository scope and connect separate read\/write credentials\./);
-  assert.match(hero, /Start with one CAO-integrated workflow,\s+such as daily team status\./);
+  assert.match(hero, /Start with a CAO-integrated workflow,\s+such as Daily Repo Status from Agentics\./);
   assert.match(hero, /In review mode, inspect its proposed report in a review repository before authorizing\s+live delivery\./);
   assert.match(hero, /Keep credentials in Actions secrets/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
@@ -63,7 +63,7 @@ test("landing page presents the product through real operational surfaces", () =
   const reviewPolicy = terminal.match(/data-terminal-output="rollout">\{`([\s\S]*?)`\}/)?.[1];
   assert.ok(reviewPolicy);
   assert.deepEqual(JSON.parse(reviewPolicy), {
-    "daily-team-status": {
+    "repo-status": {
       enabled: true, mode: "review", "max-mode": "review", "max-repositories": 1,
     },
   });
