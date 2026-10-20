@@ -723,6 +723,16 @@ for (const { name, viewport } of [
         await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
           (images) => images.every((image) => image.complete && image.naturalWidth > 0),
         )).toBe(true);
+        const rolloutStory = page.locator(".terminal-story");
+        await rolloutStory.scrollIntoViewIfNeeded();
+        await expect(rolloutStory).toContainText("Start with one CAO-integrated workflow, such as daily team status.");
+        await expect(rolloutStory).toContainText("In review mode, inspect its proposed report in a review repository");
+        await expect(rolloutStory).toHaveCSS("opacity", "1");
+        const rolloutScreenshot = testInfo.outputPath(`rollout-story-${name}-${colorScheme}.png`);
+        await rolloutStory.screenshot({ path: rolloutScreenshot });
+        await testInfo.attach(`Rollout story (${name}, ${colorScheme})`, {
+          path: rolloutScreenshot, contentType: "image/png",
+        });
         await page.evaluate(() => window.scrollTo(0, 0));
         const screenshot = testInfo.outputPath(`homepage-${name}-${colorScheme}.png`);
         await page.screenshot({ path: screenshot, fullPage: true });
