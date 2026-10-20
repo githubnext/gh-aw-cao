@@ -9,6 +9,7 @@ const SKILLS = [
   ["Use the CAO CLI", "cao-cli", "Download, inspect, and query the SQLite snapshot."],
   ["Create a campaign", "create-cao-campaign", "Author a new governed orchestrator and worker campaign."],
   ["Add a campaign", "add-cao-campaign", "Discover, compare, and install an existing catalog campaign."],
+  ["Integrate a workflow", "integrate-cao-workflow", "Adapt an existing workflow into a locally maintained standalone CAO variant."],
 ];
 
 const REQUIRED_SECTIONS = [

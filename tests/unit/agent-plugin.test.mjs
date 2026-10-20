@@ -24,6 +24,7 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
     "debug-cao",
     "add-cao-campaign",
     "create-cao-campaign",
+    "integrate-cao-workflow",
     "analyze-cao",
     "cao-cli",
   ]) {
@@ -50,6 +51,34 @@ test("add-cao-campaign requires discovery, consent, and review-safe installation
   assert.match(skill, /did not broaden or change/);
   assert.match(skill, /Treat all installed campaign package sources as immutable/);
   assert.match(skill, /\.github\/cao\/<campaign-slug>\.md/);
+});
+
+test("standalone integration preserves upstream ownership and fails closed before activation", async () => {
+  const skill = await readFile(new URL("skills/integrate-cao-workflow/SKILL.md", root), "utf8");
+  assert.ok(Buffer.byteLength(skill) <= 6 * 1024, "portable entry point must remain within its routing budget");
+  for (const requirement of [
+    /`gh aw add` and\s+`gh aw update` retain upstream installation ownership/,
+    /locally maintained variant/,
+    /Leave upstream-managed source and ownership\s+metadata unchanged/,
+    /Start with manual dispatch only/,
+    /Do not disable the original automatically/,
+    /role: standalone/,
+    /workflow: <exact-variant-slug>/,
+    /enabled: false/,
+    /mode: review/,
+    /max-mode: review/,
+    /max-repositories: 1/,
+    /control-precompute\.json/,
+    /safe_output_mode/,
+    /safe_output_repo/,
+    /close-older-issues/,
+    /policy-pinned `gh aw`/,
+    /undeclared\/disabled denial, empty admission/,
+    /Do not commit, push, dispatch, enable, alter remote secrets, or activate a\s+schedule unless separately requested/,
+    /review destination changed while the target did not/,
+  ]) assert.match(skill, requirement);
+  const instructions = await readFile(new URL(".github/cao/instructions.md", root), "utf8");
+  assert.match(instructions, /follow the `integrate-cao-workflow`\s+skill/);
 });
 
 test("experimental Codebase Model skill remains repository-local", async () => {

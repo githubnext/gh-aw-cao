@@ -27,6 +27,10 @@ remains gh-aw-owned.
 
 For an operational campaign, apply `skills/create-cao-campaign/SKILL.md`. It defines the CAO orchestrator/worker topology, rollout boundary, and required `.github/workflows/shared/control.md` imports.
 
+To integrate an existing agentic workflow, follow the `integrate-cao-workflow`
+skill. Prepare a locally maintained standalone variant without taking over
+`gh aw add`/`update` ownership; preserve explicit review and trigger cutover gates.
+
 For a standalone agentic workflow, import `shared/control.md` with
 `role: standalone` and `workflow: <exact-workflow-slug>` instead of campaign and
 worker identities. Declare it under `control-plane.workflows`, and preserve the

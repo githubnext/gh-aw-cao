@@ -158,6 +158,13 @@ Shared control applies schema defaults, then `control-plane.defaults`, campaign 
 
 ### Standalone Agentic Workflows
 
+To adapt an existing workflow, use the
+[`integrate-cao-workflow` skill](https://github.com/githubnext/gh-cao/blob/main/skills/integrate-cao-workflow/SKILL.md).
+It prepares a locally maintained variant with explicit upstream update
+responsibility, disabled review-only policy, admission and output routing, and
+validation. It does not compete with `gh aw add`/`update` or activate a second
+schedule automatically.
+
 Any agentic workflow can opt into CAO without becoming a campaign or introducing
 an orchestrator/worker pair. Install or maintain its Markdown source in the
 control repository, retain its own trigger and mission, and declare its exact

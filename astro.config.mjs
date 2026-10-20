@@ -137,6 +137,11 @@ export default defineConfig({
               description: "Use create-cao-campaign to author an orchestrator and its workers.",
             },
             {
+              label: "Integrate an existing workflow",
+              url: "https://github.com/githubnext/gh-cao/blob/main/skills/integrate-cao-workflow/SKILL.md",
+              description: "Use integrate-cao-workflow for a locally maintained standalone CAO variant.",
+            },
+            {
               label: "Analyze CAO activity",
               url: "https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md",
               description: "Use analyze-cao to answer questions from a published Activity snapshot.",
