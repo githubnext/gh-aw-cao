@@ -4,7 +4,7 @@
   "workflowSlug": "daily-code-debt-aider",
   "workflowName": "daily-code-debt-aider - native code-debt assessment",
   "sourcePath": ".github/workflows/daily-code-debt-aider.md",
-  "valueFunctionSha256": "f10c919d3101356d78d8d7f0b38838548eb8f3086997b6cd85ef748413b166b5",
+  "valueFunctionSha256": "06737830b41f0e94dae4fa8657e8deb27c7609f55f86a2fb26c11c56d9535aaf",
   "window": {
     "startAt": "2026-08-07T19:10:33Z",
     "endAt": "2026-10-18T15:00:12Z"

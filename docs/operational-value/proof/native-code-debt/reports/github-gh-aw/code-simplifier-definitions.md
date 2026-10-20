@@ -77,4 +77,4 @@ The frozen definitions and formulas are applied to every post-adoption observati
 
 This report can show whether the intended outcome is attained after adoption. It cannot estimate change from pre-adoption conditions or attribute attainment to the workflow.
 
-Value-function SHA-256: `d373aa43ada0066416dd60f8730bbdc42e43e8d9c6f44edab81f0f0674686a55`
+Value-function SHA-256: `7e0aada1a9f666e8d7f2f085b7e74af6c669a14cc3f00fd4e779348000648997`

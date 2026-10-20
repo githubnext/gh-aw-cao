@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "destination": "/Users/mnkiefer/.copilot/session-state/8c4bd83e-6e85-44bb-b6cd-5addf8a4ac38/files/methodology-code-debt-runtime-isolation",
+  "manifestFile": "/Users/mnkiefer/.copilot/session-state/8c4bd83e-6e85-44bb-b6cd-5addf8a4ac38/files/methodology-code-debt-runtime-isolation/native-code-debt.manifest.json",
+  "manifestSha256": "aa23b7cb6338631d36a96a3aa1220f8305e102eeb378b0f2449cd76667cc51dc",
+  "archiveSha256": "1347e086ff5b35b07b65baa02ee62fe8ea6fee00cf5ee5a916c5899733779384",
+  "chunks": 60,
+  "regularMembers": 233,
+  "exactMemberSet": true,
+  "allBytesAndDigestsVerified": true,
+  "appleDouble": false,
+  "unsafePaths": false,
+  "chunkReassemblyVerified": true,
+  "extraction": "/var/folders/v4/28qn8nzx3jz56fqh8y0w9t880000gn/T/native-code-debt-clean-MwecS1",
+  "isolation": {
+    "networkDenied": true,
+    "originalWorkspaceDenied": true,
+    "sharedAcquisitionDenied": true,
+    "originalBundleDenied": true,
+    "gitDirectory": false,
+    "nodeModules": false
+  },
+  "sandboxProfile": "(version 1)(allow default)(deny network*)(deny file-read* (subpath \"/Users/mnkiefer/.copilot/copilot-worktrees/gh-aw-cao/mnkiefer-fuzzy-meme\") (subpath \"/Users/mnkiefer/.copilot/session-state/8c4bd83e-6e85-44bb-b6cd-5addf8a4ac38/files\") (subpath \"/Users/mnkiefer/.copilot/session-state/8c4bd83e-6e85-44bb-b6cd-5addf8a4ac38/files/methodology-code-debt-runtime-isolation\"))",
+  "freshGoBuildCache": true,
+  "unchangedBaselineDependenciesCopiedAndVerified": [
+    {
+      "path": ".github/skills/add-operational-value/scripts/build-timeline.mjs",
+      "bytes": 8142,
+      "sha256": "79caf49ff72d5fbd2266a8a6d461415f9844dcc54ad2f2f3d72fac5a770f6edf"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/collect-output-history.mjs",
+      "bytes": 16053,
+      "sha256": "52ed43049cff5a15209397bee042bbb950aa5fe0628c3c2a6e03c41a5c9e5eea"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/common.mjs",
+      "bytes": 5716,
+      "sha256": "c865f10a46d4ad3e6f20ea2afba98f280910f8e3c7049e2e303e9daf3605a836"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/discover-intent.mjs",
+      "bytes": 2646,
+      "sha256": "fba0c4c672676ffb7cccad358665d65a681b29e89181ea2efa8eea0a8be67ce9"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/evaluate.mjs",
+      "bytes": 14025,
+      "sha256": "6455ddf4164222e73cb0cee57f4cd87d728713b3cb66ec901feea5b81ce3eb4d"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/extract-workflow-intent.mjs",
+      "bytes": 2187,
+      "sha256": "c1de26e3a9ba7aef7acec6ab4f369fe1721ea681e3055560f3d144331a56b488"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/fingerprint-value-function.mjs",
+      "bytes": 344,
+      "sha256": "099529287000e7203d8b2acbfe96616fcd306b4687b2e28486057695233452e2"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/git-evidence.mjs",
+      "bytes": 6780,
+      "sha256": "9755c2a63568ec0be7f99e671d3b1b17a2e721c9540e4ced07b1f99426340067"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/github-lineage.mjs",
+      "bytes": 4774,
+      "sha256": "f35d6546c78197c49a91b08bf2ac88cba0af37125df726fa6b7c2926c83eccf5"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/inspect-workflow-at-adoption.mjs",
+      "bytes": 617,
+      "sha256": "7a2b458724e13e520d0b5edf1637de0f638ce37b48aea5558694f4ddc75e50c0"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/json-archive.mjs",
+      "bytes": 3572,
+      "sha256": "18045c03ca00fc5f8cccf2a02486255e03a0df22adddf0c426c9182fc6e2554b"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/list-repository-workflows.mjs",
+      "bytes": 844,
+      "sha256": "1d1d60301087856887900db5eb9a29b4f6b4386c7f504ebc9f37293ac9b6155c"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/list-workflows.mjs",
+      "bytes": 2659,
+      "sha256": "2a67f148ddebe02871ee461eec0fda90eb8c7f96876053bda7e28eeb5b213f86"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/measurement-period.mjs",
+      "bytes": 2558,
+      "sha256": "5a069f31c3a1e96fa31fd0edb640bb278e7aeebb7e4f8817f31ed9758f1881a6"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/portfolio-model.mjs",
+      "bytes": 8300,
+      "sha256": "9d1913e07f00b31133e5a3eebb62e68af8545be40e87ad125fca21dd81b79d57"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/pulse-model.mjs",
+      "bytes": 15823,
+      "sha256": "5aee8a79e848347eac29a1177d6bc462f42e27ecd4f9305259cf5f156088fabf"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/pulse-view.mjs",
+      "bytes": 10692,
+      "sha256": "3db4b03ecd74544271e8b57aaa7bd6f4b64b4e53f160ef1c1a72027a068e576c"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/pulse.css",
+      "bytes": 3218,
+      "sha256": "cc5124f987158402bce6a6d4d5e18c7521bf7301834aa50c7b2e9352773fc62a"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/render-definitions.mjs",
+      "bytes": 8969,
+      "sha256": "c44ef79144eb79fbef3fd7dbb32aed904384d43a167c27d0e046f12af22ae599"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/render-pulse.mjs",
+      "bytes": 2196,
+      "sha256": "a5902a339d6202bdd61b9eed4d64bf4603542347ff8ca93eca688a5afe4c9a2a"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/review-value.mjs",
+      "bytes": 8453,
+      "sha256": "95bfadfe25912d9a4f8d720ab53bba56f1f7ad3e08134ad64fa853348639aada"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/validate-report-artifacts.mjs",
+      "bytes": 4060,
+      "sha256": "ef28de67614241290f0d653fed72552ee3479f6c8175f0470f54a361137f2bf2"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/value-function-path.mjs",
+      "bytes": 621,
+      "sha256": "a4b30a23b7e5027e8125533aba59924b61ed225151185fe67a4ed46d231bb920"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
+      "bytes": 11554,
+      "sha256": "165b50c0098eb42f852966c964ce7a1ca74bc9cd09d1b55bcc362a9d2120ed14"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/wire-campaign.mjs",
+      "bytes": 1740,
+      "sha256": "2834f0a9f085475b06685b8673fc8290510a0e3978683dab85f5c04d63bafefb"
+    },
+    {
+      "path": ".github/skills/add-operational-value/scripts/wire-workflow.mjs",
+      "bytes": 1294,
+      "sha256": "ca46c7f06b7c6de8d9c00b4a586fe0d788cd6e533b82c901e346dd20429cf884"
+    },
+    {
+      "path": "docs/operational-value/proof/native-go-quality/custody.mjs",
+      "bytes": 8914,
+      "sha256": "74e515a9b715c65336bee1a86a027252d13361d6024abbbb2119ffe450fe9e36"
+    }
+  ],
+  "originalAssessmentMatches": true,
+  "wholeStandardTimelinesEqualExceptGeneratedAt": true,
+  "focusedTestsPassed": 12,
+  "finiteUsefulMeasuredWorkflowCount": 1,
+  "nativeQuantities": {
+    "daily-code-debt-aider": null,
+    "code-simplifier": 1
+  },
+  "targetCodeExecuted": false,
+  "nodeModulesPresent": false,
+  "toolchain": "Pinned system Go/Node binaries and standard-library source closure; fresh isolated GOCACHE, GOPATH and HOME. No target code execution.",
+  "limitations": "One narrow outcome-informed structural maintenance-surface consolidation. Changed constructors and logging prevent full behavior-equivalence claims. Aider remains an unfinished measurement attempt, not zero workflow value. Historical full executor continuity, candidate-list receipts, complete safeguards, causal attribution, costs and a keep bar remain unknown."
+}

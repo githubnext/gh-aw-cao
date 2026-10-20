@@ -108,8 +108,8 @@
     },
     {
       "path": ".github/skills/add-operational-value/scripts/pulse-model.mjs",
-      "bytes": 15646,
-      "sha256": "568dc9e982a50892e9425fc2681bd226a6b276221a48791122de7b5098ae24b5"
+      "bytes": 15823,
+      "sha256": "5aee8a79e848347eac29a1177d6bc462f42e27ecd4f9305259cf5f156088fabf"
     },
     {
       "path": ".github/skills/add-operational-value/scripts/pulse-view.mjs",
@@ -133,8 +133,8 @@
     },
     {
       "path": ".github/skills/add-operational-value/scripts/review-value.mjs",
-      "bytes": 8491,
-      "sha256": "fb6999b940ed89abea4a7848dfb5f98a35e3477d8483e13973a981864cbb136d"
+      "bytes": 8453,
+      "sha256": "95bfadfe25912d9a4f8d720ab53bba56f1f7ad3e08134ad64fa853348639aada"
     },
     {
       "path": ".github/skills/add-operational-value/scripts/validate-report-artifacts.mjs",
@@ -148,8 +148,8 @@
     },
     {
       "path": ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
-      "bytes": 11425,
-      "sha256": "e878b4f21dd9b98fb4654d8f5a254d298ed5aa82dabfc932daf8c16701a008df"
+      "bytes": 11554,
+      "sha256": "165b50c0098eb42f852966c964ce7a1ca74bc9cd09d1b55bcc362a9d2120ed14"
     },
     {
       "path": ".github/skills/add-operational-value/scripts/wire-campaign.mjs",
@@ -1173,8 +1173,8 @@
     },
     {
       "path": "docs/operational-value/proof/native-code-debt/replay-baseline.json",
-      "bytes": 5525,
-      "sha256": "ca3dadb261d6b26de8ee042f53797595c1642b5096ecf140e5385465c1546dda"
+      "bytes": 5555,
+      "sha256": "84d4a001ceb6fec0f383a9c5d54ac6eebc6997cfeaea872abdc1db5ddeedbbbe"
     },
     {
       "path": "docs/operational-value/proof/native-code-debt/toolchain.json",
@@ -1186,5 +1186,17 @@
       "bytes": 8914,
       "sha256": "74e515a9b715c65336bee1a86a027252d13361d6024abbbb2119ffe450fe9e36"
     }
-  ]
+  ],
+  "runtimeRefresh": {
+    "version": "0.19.0",
+    "predecessorCommit": "68b921b3ff5ab7adc9fafac37609b760805a39b8",
+    "predecessorLockSha256": "7ae333621fb1da0f7356ae2b281fa27dbd97d5dc68a7b1f7dd48f1c5495850a7",
+    "preservedRuntimeSha256": "a2fc25e1a1dff5533cc17fa845d4e1d9c06d2c4a9f6209a72f38288d282f1cdb",
+    "changedHelpers": [
+      ".github/skills/add-operational-value/scripts/pulse-model.mjs",
+      ".github/skills/add-operational-value/scripts/review-value.mjs",
+      ".github/skills/add-operational-value/scripts/verify-value-function.mjs"
+    ],
+    "scope": "Portable reporting and verification runtime only; native source, oracle, contracts, eligibility and numerical facts unchanged."
+  }
 }

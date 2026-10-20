@@ -533,6 +533,11 @@ The Aider instrument remains unqualified: its retained failure issues and six
 downstream plumbing fixes do not establish production Go debt remediation.
 Neither partial proves full acceptance, comprehensive safeguards, receipt-backed
 attribution, causal effect, matched costs or an agreed keep decision.
+The portable runtime's explicit v0.19.0 refresh preserves the complete previous
+skill/report closure in `native-code-debt/runtime-v0185.json.gz`. Whole-timeline
+reconciliation permits only validated runtime identity fields and generation
+time to differ; native source, acceptance contracts, quantities and unknowns are
+unchanged. This dependency refresh is not new measured work.
 
 The CI coach partial establishes nine conditional fuzz-target selector
 restorations, not eleven executions. Complete Git-bound test inventories and

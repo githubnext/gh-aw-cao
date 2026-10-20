@@ -4,7 +4,7 @@
   "repositoryId": 1036865607,
   "frozenSource": "c86377ec47b38f0b5af463277ee55d1d03d08da8",
   "cutoff": "2026-10-18T15:00:12Z",
-  "instrumentSha256": "7ae333621fb1da0f7356ae2b281fa27dbd97d5dc68a7b1f7dd48f1c5495850a7",
+  "instrumentSha256": "64a10d29d0ae859e0e48f2e4d006fad39195299069761cd02a30d2be00bf0b79",
   "finiteUsefulMeasuredWorkflowCount": 1,
   "quantities": {
     "daily-code-debt-aider": {
@@ -16,7 +16,7 @@
       "acceptedImplementations": [],
       "weeklyPeriods": 11,
       "knownWeeklyPeriods": 0,
-      "timelineSha256ExceptGeneratedAt": "dd2a53ada752aea6d026db006c2f898c8d22bf324a8bab7cd58bfd4f870e344a",
+      "timelineSha256ExceptGeneratedAt": "bef7fae0cbbd2bae2d7a86a4d2be00297ef1236cce5f44489d742153fde69fe2",
       "collectorCheck": "verified docs/operational-value/proof/functions/daily-code-debt-aider.mjs",
       "fullGoalAcceptance": null,
       "behaviorPreservation": null,
@@ -43,7 +43,7 @@
       ],
       "weeklyPeriods": 40,
       "knownWeeklyPeriods": 1,
-      "timelineSha256ExceptGeneratedAt": "ad0e209711fe0aa23d3054f0028dbd6a841aee39ed583e9fb8155d66c070d82e",
+      "timelineSha256ExceptGeneratedAt": "ea62c7cb9143fc8f104e6910bd56c46d80dfa0d636acfdf52a4bad7e47fd620a",
       "collectorCheck": "verified docs/operational-value/proof/functions/code-simplifier.mjs",
       "fullGoalAcceptance": null,
       "behaviorPreservation": null,

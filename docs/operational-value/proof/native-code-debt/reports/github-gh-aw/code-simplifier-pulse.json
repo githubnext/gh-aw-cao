@@ -4,7 +4,7 @@
   "workflowSlug": "code-simplifier",
   "workflowName": "code-simplifier - native code-debt assessment",
   "sourcePath": ".github/workflows/code-simplifier.md",
-  "valueFunctionSha256": "d373aa43ada0066416dd60f8730bbdc42e43e8d9c6f44edab81f0f0674686a55",
+  "valueFunctionSha256": "7e0aada1a9f666e8d7f2f085b7e74af6c669a14cc3f00fd4e779348000648997",
   "window": {
     "startAt": "2026-01-11T16:03:53Z",
     "endAt": "2026-10-18T15:00:12Z"

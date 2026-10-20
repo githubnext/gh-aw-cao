@@ -1,6 +1,6 @@
 {
   "kind": "unchanged-baseline-replay-dependencies",
-  "baselineCommit": "f4a8753b47d4a1345efb4e3cec525e7f5390bc5d",
+  "baselineCommit": "21bfd97e7f1bb224d8d73a5b5ecf3b92262280f0",
   "files": [
     {
       "path": ".github/skills/add-operational-value/scripts/build-timeline.mjs",
@@ -79,8 +79,8 @@
     },
     {
       "path": ".github/skills/add-operational-value/scripts/pulse-model.mjs",
-      "bytes": 15646,
-      "sha256": "568dc9e982a50892e9425fc2681bd226a6b276221a48791122de7b5098ae24b5"
+      "bytes": 15823,
+      "sha256": "5aee8a79e848347eac29a1177d6bc462f42e27ecd4f9305259cf5f156088fabf"
     },
     {
       "path": ".github/skills/add-operational-value/scripts/pulse-view.mjs",
@@ -104,8 +104,8 @@
     },
     {
       "path": ".github/skills/add-operational-value/scripts/review-value.mjs",
-      "bytes": 8491,
-      "sha256": "fb6999b940ed89abea4a7848dfb5f98a35e3477d8483e13973a981864cbb136d"
+      "bytes": 8453,
+      "sha256": "95bfadfe25912d9a4f8d720ab53bba56f1f7ad3e08134ad64fa853348639aada"
     },
     {
       "path": ".github/skills/add-operational-value/scripts/validate-report-artifacts.mjs",
@@ -119,8 +119,8 @@
     },
     {
       "path": ".github/skills/add-operational-value/scripts/verify-value-function.mjs",
-      "bytes": 11425,
-      "sha256": "e878b4f21dd9b98fb4654d8f5a254d298ed5aa82dabfc932daf8c16701a008df"
+      "bytes": 11554,
+      "sha256": "165b50c0098eb42f852966c964ce7a1ca74bc9cd09d1b55bcc362a9d2120ed14"
     },
     {
       "path": ".github/skills/add-operational-value/scripts/wire-campaign.mjs",
@@ -137,5 +137,6 @@
       "bytes": 8914,
       "sha256": "74e515a9b715c65336bee1a86a027252d13361d6024abbbb2119ffe450fe9e36"
     }
-  ]
+  ],
+  "runtimeVersion": "0.19.0"
 }
