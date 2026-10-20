@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 const Issuer = "https://token.actions.githubusercontent.com"
@@ -171,6 +173,12 @@ func (v *Verifier) key(ctx context.Context, kid string) (*rsa.PublicKey, error) 
 		return nil, ErrUnavailable
 	}
 	v.lastRefresh = now
+	return observeOperation(ctx, telemetry.SpanAdmissionKeys, func(ctx context.Context) (*rsa.PublicKey, error) {
+		return v.refreshKey(ctx, kid, now)
+	})
+}
+
+func (v *Verifier) refreshKey(ctx context.Context, kid string, now time.Time) (*rsa.PublicKey, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, Issuer+"/.well-known/jwks", nil)
 	if err != nil {
 		return nil, ErrUnavailable

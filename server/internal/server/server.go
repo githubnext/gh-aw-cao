@@ -712,6 +712,10 @@ func (a *App) Handler() http.Handler {
 	dashboardHandler := handler
 	handler = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.URL.Path == "/api/admission" {
+			route := semconv.HTTPRoute("/api/admission")
+			trace.SpanFromContext(request.Context()).SetAttributes(route)
+			labeler, _ := otelhttp.LabelerFromContext(request.Context())
+			labeler.Add(route)
 			a.activationAdmission(response, request)
 			return
 		}

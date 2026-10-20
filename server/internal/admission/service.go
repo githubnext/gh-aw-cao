@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 var admissionLog = logger.New("cao:admission")
@@ -65,7 +66,9 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	identity, err := s.Verifier.Verify(ctx, auth[1])
+	identity, err := observeOperation(ctx, telemetry.SpanAdmissionIdentity, func(ctx context.Context) (Identity, error) {
+		return s.Verifier.Verify(ctx, auth[1])
+	})
 	if err != nil {
 		if errors.Is(err, ErrUnavailable) {
 			status = http.StatusServiceUnavailable
@@ -85,10 +88,15 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// triggering_actor is informational only. This profile authorizes exclusively
 	// with the signed original actor_id, never the rerun initiator's privileges.
-	proposal, err := s.Policies.Evaluate(ctx, identity)
+	proposal, err := observeOperation(ctx, telemetry.SpanAdmissionPolicy, func(ctx context.Context) (Allowances, error) {
+		return s.Policies.Evaluate(ctx, identity)
+	})
 	if err != nil && !errors.Is(err, ErrDenied) {
 		status = http.StatusServiceUnavailable
-		if errors.Is(s.Decisions.CheckAdmission(ctx, identity.Key()), ErrDenied) {
+		_, replayErr := observeOperation(ctx, telemetry.SpanAdmissionReplay, func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, s.Decisions.CheckAdmission(ctx, identity.Key())
+		})
+		if errors.Is(replayErr, ErrDenied) {
 			status = http.StatusForbidden
 		}
 		return
@@ -101,7 +109,9 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		candidate = &proposal
 	}
-	decision, err := s.Decisions.ResolveAdmission(ctx, identity.Key(), candidate)
+	decision, err := observeOperation(ctx, telemetry.SpanAdmissionDecision, func(ctx context.Context) (Allowances, error) {
+		return s.Decisions.ResolveAdmission(ctx, identity.Key(), candidate)
+	})
 	if candidate == nil {
 		if err != nil && !errors.Is(err, ErrDenied) {
 			admissionLog.Printf("decision revocation could not be persisted")

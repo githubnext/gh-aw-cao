@@ -288,6 +288,12 @@ Valid incoming traceparent parents the server HTTP span and dependencies;
 HTTP instrumentation must consume the sanitized context without re-extracting
 global baggage/tracestate or another parent. Invalid/duplicate context starts
 a fresh trace without changing authorization, and responses expose no trace ID.
+Admission reuses the hosted OTLP providers and bounded shutdown flush, emits
+fixed-name identity/JWKS/policy/decision/replay spans, and labels HTTP
+duration/status metrics with the fixed admission route even across its separate
+authentication path. Raw errors, credentials, identities, allowance values and
+denial reasons never enter those signals; exporter failures do not change
+operation results.
 Native `gh cao admission setup/status/disable` commands configure the
 selected scope's three managed non-secret variables. `gh cao setup admission`
 reuses admission setup without introducing workflow secrets. Setup/disable apply

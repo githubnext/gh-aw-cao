@@ -332,6 +332,47 @@ choice and the configured server exporter/sampler still owns export. No trace
 headers are returned, including on timeouts, disabled service, drain or
 operational throttling. Admission does not enable exporters.
 
+### OpenTelemetry operations
+
+Admission uses the server's existing vendor-neutral OTLP/HTTP setup and bounded
+shutdown flush; it does not start another exporter or provider. Configure the
+same `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_EXPORTER_OTLP_ENDPOINT`
+or signal-specific trace/metric endpoints used by the hosted server:
+
+```sh
+export OTEL_SERVICE_NAME=cao-dashboard
+export OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=production
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://collector.example.org
+```
+
+Keep exporter authorization headers in protected server configuration. Standard
+OTLP per-signal headers and endpoints remain supported; no exporter credentials
+belong in workflow admission variables. With no configured endpoints, no
+exporter starts; `OTEL_SDK_DISABLED=true` disables exporter setup. Log export is
+separately opt-in (`CAO_OTEL_LOGS_ENABLED=true`) and debug-category gated, not a
+required source of admission diagnostics.
+
+The ordinary `http.server.request.duration` histogram captures admission status
+and latency using the fixed `http.route=/api/admission` label, including durable
+denials, operational throttles and unavailability. It carries no trace, actor,
+repository or policy identifiers as dimensions. Stage spans are fixed names:
+
+| Span | Operation |
+| --- | --- |
+| `cao_dashboard.admission.identity.verify` | Signature and signed identity verification |
+| `cao_dashboard.admission.keys.refresh` | Trusted JWKS refresh, nested under verification |
+| `cao_dashboard.admission.policy.evaluate` | Protected policy and accounting read/evaluation |
+| `cao_dashboard.admission.decision.resolve` | Durable first-decision/revocation transition |
+| `cao_dashboard.admission.replay.check` | Retained eligibility check during a dependency outage |
+
+Dependency failures have only a generic unavailable status; telemetry never
+records raw exceptions, tokens, claims, request bodies, allowance values or
+budget/denial reasons. Policy denial is not marked as a dependency failure.
+Exporter errors do not change the result, retry admission, or grant authority.
+Server-side spans and HTTP metrics use the existing configured providers and
+resource attributes, so a collector can correlate and monitor the service
+without exposing per-tenant operational data.
+
 Keep ingress/access logging and exception capture free of Authorization,
 request bodies, raw claims and accounting evidence. The application does not
 log them or emit tenant/actor/trace IDs as metric dimensions. Public responses
@@ -367,3 +408,7 @@ parses every allowance combination and integer boundaries using that client.
 Without the explicit fixture path it skips; ordinary Go tests need no Node
 runtime or network fetch. Do not use sanitized `gh api` raw-terminal output as
 parser source: decode the contents API's `content` field and verify its bytes.
+The OTel tests also export protobuf to an isolated HTTP collector and verify
+shutdown flush, service resource identity, caller trace continuity and
+redaction. Separate metric checks cover denial/throttle/unavailability routing;
+an injected exporter failure verifies instrumentation cannot change the result.

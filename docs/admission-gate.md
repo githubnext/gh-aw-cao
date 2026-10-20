@@ -101,6 +101,18 @@ returns a trace/correlation ID. Missing, malformed or duplicate context starts
 a fresh trace without changing the decision; baggage and tracestate are
 discarded, and sampling is controlled locally.
 
+The service is instrumented through the hosted server's standard OTLP/HTTP
+configuration, not a separate admission exporter. Set `OTEL_EXPORTER_OTLP_ENDPOINT`
+(or signal-specific trace/metric endpoints) and the server's service/resource
+attributes. HTTP duration/status metrics use the fixed `/api/admission` route;
+child spans identify identity verification, trusted-key refresh, policy
+evaluation and durable decisions. No raw credentials, request identity,
+allowances or denial reasons are captured. Export failure does not change an
+admission result, and shutdown flushes exporters with the server's existing
+bounded lifecycle. See the
+[OTel operation reference](https://github.com/githubnext/gh-cao/blob/main/server/ADMISSION.md#opentelemetry-operations)
+for names and configuration.
+
 ## 2. Configure one canary repository
 
 Preview the exact endpoint and audience:
