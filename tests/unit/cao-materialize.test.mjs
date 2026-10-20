@@ -148,6 +148,8 @@ test("the runtime package uses npm files selection without shipping development 
     assert.ok(packed.files.includes("dashboard/site/scripts/build.mjs"));
     assert.ok(packed.files.includes("dashboard/site/src/data-worker.js"));
     assert.ok(packed.files.includes("dashboard/site/package-lock.json"));
+    assert.ok(!packed.files.includes("activity/quickstart.mjs"));
+    assert.ok(!packed.files.includes("activity/commands/quickstart.mjs"));
     assert.deepEqual(JSON.parse(readFileSync(path.join(packed.sourceRoot, "package.json"), "utf8")), runtimeManifest);
     for (const file of packed.files) {
       assert.doesNotMatch(file, /(?:^|\/)(?:test|tests|fixtures|screenshots|skills|com\.github\.copilot)(?:\/|$)/);

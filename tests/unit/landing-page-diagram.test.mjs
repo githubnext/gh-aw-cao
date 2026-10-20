@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
+import { issueOpenedPaths } from "../../docs/components/workflow-illustration-icons.mjs";
 
 const landingPage = readFileSync("docs/README.md", "utf8");
 const hero = readFileSync("docs/components/HierarchyHero.astro", "utf8");
 const heroIntro = readFileSync("docs/components/HeroIntro.astro", "utf8");
 const illustration = readFileSync("docs/components/DispatchIllustration.astro", "utf8");
+const ecosystem = readFileSync("docs/components/WorkflowEcosystem.astro", "utf8");
+const ecosystemModel = readFileSync("docs/lib/workflow-ecosystem.mjs", "utf8");
+const workflowRun = readFileSync("docs/components/WorkflowRun.astro", "utf8");
+const illustrationIcons = readFileSync("docs/components/workflow-illustration-icons.mjs", "utf8");
+const campaignPage = readFileSync("docs/pages/catalog/index.astro", "utf8");
 const terminal = readFileSync("docs/components/TerminalDemo.astro", "utf8");
 let terminalText = terminal;
 let previousTerminalText;
@@ -80,19 +86,89 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.doesNotMatch(hero, /<ul class="story-points">/);
 });
 
-test("landing page explains and illustrates governed cross-repository dispatch", () => {
-  assert.match(hero, /Execution policy/);
-  assert.match(hero, /Control where workflows run\./);
+test("landing page shows shared and local workflows with explicit ownership", () => {
+  assert.match(hero, /One workflow ecosystem/);
+  assert.match(hero, /Shared work\. Clear ownership\./);
   assert.match(hero, /\.product-story \{[^}]*width: min\(calc\(100% - 2rem\), 76rem\)/);
   assert.match(hero, /\.dispatch-story \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*gap: 0\.75rem/);
   assert.match(hero, /\.dispatch-story > \.section-eyebrow \{[\s\S]*?justify-self: center/);
   assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[^}]*max-width: 60ch/);
   assert.match(hero, /@media \(min-width: 64rem\) \{[\s\S]*?\.dispatch-story h2 \{[\s\S]*?white-space: nowrap/);
-  assert.match(hero, /Run workflows centrally across enrolled repositories and organizations/);
-  assert.match(hero, /Reviewed policy sets the scope/);
-  assert.match(hero, /each worker handles one authorized target/);
-  assert.match(hero, /<DispatchIllustration \/>/);
+  assert.match(hero, /Enterprise teams, organizations, and repository maintainers own their workflows/);
+  assert.match(hero, /<WorkflowEcosystem \/>/);
+  assert.doesNotMatch(hero, /DispatchIllustration/);
   assert.match(hero, /aria-describedby="dispatch-description"/);
+  assert.match(hero, /send declared safe outputs\s+directly to enrolled repositories/);
+  assert.match(hero, /Labels and layout identify ownership; green marks delivery and completed outputs/);
+  assert.match(hero, /Reviewed policy governs shared work, not the visual hierarchy/);
+  for (const label of [
+    "Optimization", "Issue triage", "Release readiness", "Daily team status", "Test coverage",
+    "Org 1", "Org 2", "Org N", "Repo 1", "Repo 2", "Repo 3", "Repo N", "More organizations", "More repositories",
+    "Organization standards", "Release checks",
+  ]) {
+    assert.ok((ecosystem + ecosystemModel).includes(label), `ecosystem should show ${label}`);
+  }
+  assert.match(ecosystem, /class="safe-output-icons workflow-outputs"/);
+  assert.doesNotMatch(ecosystem, /ecosystem-legend/);
+  assert.doesNotMatch(ecosystem + ecosystemModel, /node-owner|Enterprise automation team|Platform team|Engineering team|Organization team|Maintainers/);
+  assert.doesNotMatch(ecosystem, /Dependabot|dependabot/);
+  assert.doesNotMatch(ecosystem + ecosystemModel + workflowRun, /Supply chain|supply-chain/);
+  assert.match(ecosystem, /index === 1 &&/);
+  assert.doesNotMatch(ecosystem, /runtime-label|ecosystem-scale|Runs in |Shared work arriving|Local workflow running/);
+  const outputMarkup = ecosystem.match(/<div class="safe-output-icons workflow-outputs"[^>]*>([\s\S]*?)<\/div>/)?.[1];
+  assert.ok(outputMarkup);
+  assert.match(outputMarkup, /class={`safe-output-icon \$\{output\.owner\}`}/);
+  assert.match(outputMarkup, /<small title=\{output\.source \?\? organization\.workflow\}>\{output\.caption \?\? organization\.caption\}<\/small>/);
+  assert.doesNotMatch(outputMarkup, /WorkflowRun|workflow-chip|"Pull request"|"Issue"/);
+  assert.doesNotMatch(outputMarkup, /management-label/);
+  assert.match(ecosystem, /<div class="managed-workflows" role="group" aria-label="Centrally managed workflows">/);
+  assert.match(ecosystem, /<p class="management-label">Centrally managed<\/p>/);
+  assert.match(ecosystem, /<div class="local-workflows"[^>]*>\s*<p class="management-label">Repo-managed &middot; monitored<\/p>/);
+  assert.match(ecosystem, /Enterprise open issue safe output/);
+  assert.match(ecosystem, /Organization open issue safe output/);
+  assert.match(outputMarkup, /output\.paths\.map/);
+  assert.match(outputMarkup, /owner: "repository", source: repository\.local, caption: repository\.caption, phase: "local"/);
+  assert.match(outputMarkup, /safeOutputPaths\[repository\.output\]/);
+  assert.deepEqual(issueOpenedPaths, [
+    "M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z",
+    "M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z",
+  ]);
+  assert.match(ecosystem, /class="local-workflows" aria-label="Repository-owned workflow"/);
+  assert.match(ecosystem, /<div class="local-workflows"[\s\S]*?<div class="safe-output-icons workflow-outputs"/);
+  assert.match(ecosystem, /connectorLayers\.map/);
+  assert.match(ecosystem, /class={`\$\{layer\.owner\}-route`}/);
+  assert.match(ecosystem, /<animateMotion dur="14s"/);
+  assert.match(ecosystem, /class="continuation-point organization-continuation"/);
+  assert.match(ecosystem, /class="continuation-point repository-continuation"/);
+  assert.match(ecosystem, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(ecosystem, /\.safe-output-icon \{ color: var\(--success\); opacity: 1; \}/);
+  assert.match(ecosystem, /\.safe-output\.local::before/);
+  assert.match(ecosystem, /0%, 49% \{ color: var\(--node-muted\); opacity: 0\.35; \} 50%, 100% \{ color: var\(--success\); opacity: 1; \}/);
+  assert.match(ecosystem, /\.organization-route \{ stroke: var\(--node-muted\); \}/);
+  assert.doesNotMatch(ecosystem, /--enterprise|--organization|--repository/);
+  assert.match(ecosystem, /\.route-pulse \{ fill: var\(--success\);/);
+  assert.match(ecosystem, /<button class="animation-toggle" type="button" hidden>Pause animation<\/button>/);
+  assert.match(ecosystem, /routes\.pauseAnimations\(\)/);
+  assert.match(ecosystem, /routes\.unpauseAnimations\(\)/);
+  assert.match(ecosystem, /animation-play-state: paused !important/);
+  assert.doesNotMatch(workflowRun, /class="branch"/);
+  assert.match(ecosystem, /<WorkflowRun name=\{repository\.local\} phase="local"/);
+  assert.match(ecosystem, /from "\.\/workflow-illustration-icons\.mjs"/);
+  assert.match(illustration, /from "\.\/workflow-illustration-icons\.mjs"/);
+  assert.match(workflowRun, /from "\.\/workflow-illustration-icons\.mjs"/);
+  assert.match(workflowRun, /stroke-dasharray: 22 18/);
+  assert.match(workflowRun, /animation: spin 1\.05s linear infinite/);
+  assert.match(workflowRun, /class="status queued"/);
+  assert.match(workflowRun, /class="status running action-progress"/);
+  assert.match(workflowRun, /class="status complete"/);
+});
+
+test("campaign documentation preserves the animated bounded dispatch illustration", () => {
+  assert.match(campaignPage, /import DispatchIllustration/);
+  assert.match(campaignPage, /How campaigns run/);
+  assert.match(campaignPage, /<DispatchIllustration \/>/);
+  assert.match(campaignPage, /container-type: inline-size/);
+  assert.match(campaignPage, /Their workflow definitions stay in the control repository, not the targets/);
   assert.doesNotMatch(illustration, /cao-dashboard-campaign/);
   assert.match(illustration, /Central Agentic Ops \(CAO\)/);
   assert.match(illustration, /<small>Control plane<\/small>/);
@@ -189,7 +265,7 @@ test("landing page explains and illustrates governed cross-repository dispatch",
   assert.match(illustration, /@keyframes mobile-route-job-5/);
   assert.match(
     illustration,
-    /@media \(max-width: 1180px\) \{[\s\S]*?\.flow-layout \{[\s\S]*?display: none[\s\S]*?\.mobile-flow \{[\s\S]*?display: block/,
+    /@container \(max-width: 1180px\) \{[\s\S]*?\.flow-layout \{[\s\S]*?display: none[\s\S]*?\.mobile-flow \{[\s\S]*?display: block/,
   );
   assert.match(hero, /width: min\(100%, 80rem\)/);
   assert.match(illustration, /operation: "Dependabot update planner"/);
@@ -212,7 +288,7 @@ test("landing page explains and illustrates governed cross-repository dispatch",
   assert.match(illustration, /class="progress-ring"/);
   assert.match(illustration, /class="progress-dot"/);
   assert.match(illustration, /stroke-dasharray: 22 18/);
-  assert.match(illustration, /M8 0a8 8 0 1 1 0 16/);
+  assert.match(illustrationIcons, /M8 0a8 8 0 1 1 0 16/);
   assert.match(illustration, /repository: "github\/gh-aw-firewall"/);
   assert.match(illustration, /repository: "githubnext\/gh-cao"/);
   assert.match(illustration, /repository: "githubnext\/agentics"/);

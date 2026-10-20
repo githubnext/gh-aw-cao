@@ -55,6 +55,102 @@ const evalArtifact = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('unified evaluation evidence', () => {
+  it.each([false, true])('ingests v2 split graders without duplicating session built-ins: %s', (withSession) => {
+    const builtin = { id: 'loops', value: 0, status: 'pass', source: 'builtin' };
+    const files = [
+      { path: 'worker-graders/grader_manifest.json', content: JSON.stringify({
+        version: 2, graders: [{ id: 'custom-count', unit: 'count', direction: 'higher_is_better',
+          threshold: 1, script: 'PRIVATE_SCRIPT' }]
+      }) },
+      { path: 'worker-graders/grader_results.json', content: JSON.stringify({
+        version: 2, run: { id: '303', attempt: 1 }, results: [
+          { ...builtin, value: withSession ? 99 : 0 },
+          { id: 'custom-count', value: null, status: 'unavailable', source: 'inline',
+            metrics: [{ id: 'primary', value: null }, { id: 'diagnostic', value: 7 }],
+            implementation: { id: 'gh-aw/custom-graders', version: 2, digest: 'sha256:frozen' },
+            message: 'PRIVATE_MESSAGE', error: 'PRIVATE_ERROR' }
+        ]
+      }) }
+    ];
+    if (withSession) files.push({ path: 'usage/aw_session.jsonl', content: [
+      { type: 'session.format', data: { version: 1 } },
+      { type: 'grader.result', data: { version: 2, run: { id: '303', attempt: 1 }, results: [builtin] } }
+    ].map((event) => JSON.stringify(event)).join('\n') });
+    const batch = normalize(adaptGhAwLogs(artifactInput(files)).observations);
+    expect(batch.graders?.map((row) => row.name).sort()).toEqual(['custom-count', 'loops']);
+    const custom = batch.graders?.find((row) => row.name === 'custom-count');
+    const observed = batch.graderObservations?.find((row) => row.graderId === custom?.id);
+    expect(observed).toMatchObject({
+      value: null,
+      evaluatorDigest: 'sha256:frozen',
+      metrics: [{ id: 'primary', value: null }, { id: 'diagnostic', value: 7 }]
+    });
+    expect(batch.graderObservations?.find((row) => row.graderId !== custom?.id)?.value).toBe(0);
+    expect(custom).toMatchObject({ direction: 'higher_is_better', unit: 'count', threshold: 1 });
+    expect(batch.graderObservations?.every((row) => batch.audits.some((audit) => audit.id === row.auditId))).toBe(true);
+    expect(relationshipErrors(batch)).toEqual([]);
+    expect(JSON.stringify(batch)).not.toContain('PRIVATE_');
+  });
+
+  it('rejects ambiguous, malformed and cross-run grader artifacts', () => {
+    const file = { path: 'graders/grader_results.json',
+      content: JSON.stringify({ version: 2, results: [{ id: 'loops', value: 0 }] }) };
+    expect(() => adaptGhAwLogs(artifactInput([file, { ...file, path: 'worker-graders/grader_results.json' }])))
+      .toThrow('Multiple grader result artifacts');
+    for (const output of [
+      { version: 3, results: [] },
+      { version: 2, run: { id: '404', attempt: 1 }, results: [] },
+      { version: 2, run: { id: '303', attempt: 2 }, results: [] },
+      { version: 2, results: [{ id: 'quality', value: 1 }, { id: 'quality', value: 2 }] }
+    ]) {
+      expect(() => adaptGhAwLogs(artifactInput([{ ...file, content: JSON.stringify(output) }]))).toThrow();
+    }
+  });
+
+  it.each(['browser', 'sqlite'])('retains split graders idempotently through the %s worker query boundary', async (backend) => {
+    const directory = backend === 'sqlite' ? mkdtempSync(join(tmpdir(), 'cao-graders-')) : null;
+    if (directory) onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
+    const filename = directory ? join(directory, 'graders.sqlite') : null;
+    const indexedDB = filename ? createSqliteIndexedDB(filename) : new IDBFactory();
+    vi.stubGlobal('indexedDB', indexedDB);
+    vi.stubGlobal('IDBKeyRange', filename ? SqliteIDBKeyRange : IDBKeyRange);
+    const input = artifactInput([{
+      path: 'usage/aw_session.jsonl', content: [
+        { type: 'session.format', data: { version: 1 } },
+        { type: 'grader.result', data: { version: 2, results: [
+          { id: 'loops', value: 0, status: 'pass', source: 'builtin' }
+        ] } }
+      ].map((record) => JSON.stringify(record)).join('\n')
+    }, {
+      path: 'graders/grader_results.json', content: JSON.stringify({
+        version: 2, run: { id: '303', attempt: 1 }, results: [
+          { id: 'loops', value: 99, status: 'fail', source: 'builtin' },
+          { id: 'quality', value: 0.75, status: 'pass', source: 'inline', unit: 'ratio' }
+        ]
+      })
+    }]);
+    for (let repeat = 0; repeat < 2; repeat++) {
+      await ingestGhAwLogs(indexedDB, input, { now: Date.parse('2026-10-16T00:00:00Z') });
+    }
+    if (filename) vi.stubGlobal('indexedDB', createSqliteIndexedDB(filename));
+    const dashboard = authoritativeDashboard.dashboard;
+    const sources = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      await processDataRequest({
+        operation: 'query-canonical-dashboard',
+        sourceNames: [contract.graders.query, contract.graders.scatter.query],
+        context: { queries: dashboard.queries, pages: dashboard.pages }
+      })
+    );
+    expect(sources[contract.graders.query].rows).toHaveLength(2);
+    expect(sources[contract.graders.query].rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ grader: 'loops', value: 0 }),
+      expect.objectContaining({ grader: 'quality', value: 0.75 })
+    ]));
+    expect(sources[contract.graders.scatter.query].rows).toMatchObject([
+      { grader: 'quality', value: 0.75, 'max-grader-value': 0.75, 'normalized-value': 1 }
+    ]);
+  });
+
   it('rejects invalid or ambiguous standalone assignments without exposing their contents', () => {
     for (const content of ['PRIVATE_INVALID_JSON', 'null', '[]', '{"prompt":100}', '{"prompt":""}']) {
       expect(() => parseExperimentAssignments(content, 'experiment/assignments.json'))

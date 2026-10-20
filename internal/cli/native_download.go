@@ -25,6 +25,8 @@ const nativeDefaultDataURL = "https://githubnext.github.io/gh-cao/cao/payload-ha
 
 var nativeDigestPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
+var errNativeDownloadDowngrade = errors.New("dashboard download redirect must not downgrade HTTPS")
+
 type nativeDownloadFailure struct {
 	message string
 	retry   bool
@@ -87,13 +89,16 @@ func nativeDownloadSnapshot(ctx context.Context, rawURL, output, digest string, 
 	if client == nil {
 		client = &http.Client{Timeout: 120 * time.Second}
 	}
-	// Validate each redirect too: a public URL must not smuggle credentials
-	// into the redirected request.
+	// Redirects must not smuggle credentials or downgrade HTTPS, even when a
+	// caller supplies its own redirect policy.
 	copyClient := *client
 	previousRedirect := copyClient.CheckRedirect
 	copyClient.CheckRedirect = func(request *http.Request, via []*http.Request) error {
 		if _, err := nativeDownloadURL(request.URL.String()); err != nil {
 			return err
+		}
+		if len(via) > 0 && via[len(via)-1].URL.Scheme == "https" && request.URL.Scheme != "https" {
+			return errNativeDownloadDowngrade
 		}
 		if previousRedirect != nil {
 			return previousRedirect(request, via)
@@ -135,6 +140,9 @@ func nativeFetchFile(ctx context.Context, client *http.Client, source *url.URL, 
 	if err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
+		}
+		if errors.Is(err, errNativeDownloadDowngrade) {
+			return errNativeDownloadDowngrade
 		}
 		return &nativeDownloadFailure{fmt.Sprintf("Unable to download %s: transport failure", source), true}
 	}

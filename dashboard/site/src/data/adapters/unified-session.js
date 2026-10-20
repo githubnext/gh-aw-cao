@@ -323,7 +323,7 @@ export function parseUnifiedSessionDocument(content, path, context) {
             ...(Array.isArray(grader.metrics) ? { metrics: grader.metrics.flatMap((metric) => {
               const value = object(metric);
               return value && typeof value.id === 'string' && value.id.trim()
-                && typeof value.value === 'number' && Number.isFinite(value.value)
+                && (value.value === null || (typeof value.value === 'number' && Number.isFinite(value.value)))
                 ? [{ id: value.id, value: value.value }] : [];
             }) } : {})
           });

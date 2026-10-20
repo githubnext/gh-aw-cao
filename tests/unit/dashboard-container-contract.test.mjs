@@ -8,6 +8,28 @@ async function text(path) {
   return readFile(new URL(path, root), "utf8");
 }
 
+test("server and native CLI builds require the CA-compromise-patched Go toolchain", async () => {
+  for (const path of ["go.mod", "server/go.mod", "internal/dashboardquery/go.mod"]) {
+    const module = await text(path);
+    assert.match(module, /^go 1\.27\.3$/m, `${path} must reject unpatched Go 1.27 toolchains`);
+  }
+  for (const path of [
+    ".github/workflows/cgo.yml",
+    ".github/workflows/cao-package.yml",
+    ".github/workflows/release-promote.yml",
+    ".github/workflows/backfill-stress.yml",
+    ".github/workflows/mcp-parity.yml",
+    ".github/workflows/dashboard-query-parity.yml",
+    ".github/workflows/azure-local-integration.yml",
+    ".github/workflows/copilot-setup-steps.yml",
+  ]) {
+    const workflow = await text(path);
+    const versions = [...workflow.matchAll(/go-version:\s*(\S+)/g)].map((match) => match[1]);
+    assert.ok(versions.length > 0, `${path} must declare a Go toolchain`);
+    assert.ok(versions.every((version) => version === "1.27.3"), `${path} must use patched Go`);
+  }
+});
+
 test("dashboard image is multi-stage, non-root, versioned, and health checked", async () => {
   const dockerfile = await text("server/Dockerfile");
   const dockerignore = await text(".dockerignore");
@@ -15,7 +37,7 @@ test("dashboard image is multi-stage, non-root, versioned, and health checked", 
   const ghAwVersion = policy["gh-aw-version"];
 
   assert.match(dockerfile, /FROM node:24-alpine@sha256:[0-9a-f]{64} AS dashboard-build/);
-  assert.match(dockerfile, /FROM golang:1\.27\.2-alpine@sha256:[0-9a-f]{64} AS server-build/);
+  assert.match(dockerfile, /FROM golang:1\.27\.3-alpine@sha256:[0-9a-f]{64} AS server-build/);
   assert.match(dockerfile, /FROM alpine:3\.22@sha256:[0-9a-f]{64} AS dashboard-runtime/);
   assert.match(dockerfile, /FROM node:24-alpine@sha256:[0-9a-f]{64} AS collector-runtime/);
   assert.match(dockerfile, /ARG CAO_PROFILE=cao\.json/);

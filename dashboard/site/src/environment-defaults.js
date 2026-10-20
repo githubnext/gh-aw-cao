@@ -1,4 +1,7 @@
 import { parseDocument } from 'yaml';
+import { createDebug } from './debug.js';
+
+const debugDefaults = createDebug('src:environment-defaults');
 
 export const environmentDefaultsFile = 'cao-governance.yml';
 
@@ -6,6 +9,13 @@ export const environmentDefaultsFile = 'cao-governance.yml';
  * @param {string} command
  */
 export function environmentDefaultsCommand(command) {
+  const result = parseCommand(command);
+  debugDefaults({ event: 'command', recognized: result !== null, operation: result?.operation, scope: result?.scope });
+  return result;
+}
+
+/** @param {string} command */
+function parseCommand(command) {
   const tokens = command.split(' ');
   if (tokens[0] !== 'gh' || tokens[1] !== 'aw' || tokens[2] !== 'env'
     || !['get', 'update'].includes(tokens[3]) || tokens[4] !== environmentDefaultsFile) return null;
@@ -36,19 +46,26 @@ export function environmentDefaultsCommand(command) {
   return { operation, scope };
 }
 
+/** @param {string} reason @param {string} message */
+function rejectDefaults(reason, message) {
+  debugDefaults({ event: 'parse-rejected', reason });
+  return new Error(message);
+}
+
 /** Validate the flat, non-secret gh-aw defaults document without duplicating its evolving key registry.
  * @param {string} text
  * @returns {Record<string, string | null>}
  */
 export function parseEnvironmentDefaults(text) {
-  if (!text.trim() || text.length > 100_000) throw new Error('Defaults YAML must contain 1 to 100,000 characters.');
+  if (!text.trim() || text.length > 100_000) throw rejectDefaults('size', 'Defaults YAML must contain 1 to 100,000 characters.');
   const document = parseDocument(text);
-  if (document.errors.length) throw new Error('Defaults must be valid YAML with unique keys.');
+  if (document.errors.length) throw rejectDefaults('yaml', 'Defaults must be valid YAML with unique keys.');
   const values = document.toJS({ maxAliasCount: 0 });
   if (!values || typeof values !== 'object' || Array.isArray(values) || !Object.keys(values).length
     || Object.entries(values).some(([key, value]) =>
       !/^default_[a-z][a-z0-9_]*$/.test(key) || value !== null && typeof value !== 'string')) {
-    throw new Error('Use a flat mapping of default_ keys to quoted strings or null. Do not include secrets.');
+    throw rejectDefaults('shape', 'Use a flat mapping of default_ keys to quoted strings or null. Do not include secrets.');
   }
+  debugDefaults({ event: 'parsed', keys: Object.keys(values).length });
   return values;
 }

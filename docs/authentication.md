@@ -85,9 +85,9 @@ workflow-token quota. Owner-wide or cross-repository Activity scopes require
 `app` or `pat`; Activity rejects those scopes rather than silently collecting
 only the control repository.
 
-The public quickstart has broader rollout scope because Repo Assist
-reads its selected public target, but the agentic workflows themselves run in
-the control repository. It declares the narrower Activity scope explicitly:
+A Repo Assist campaign can have broader rollout scope while its agentic
+workflows run in the control repository. To collect only that repository's
+workflow evidence, declare the narrower Activity scope explicitly:
 
 ```json
 {

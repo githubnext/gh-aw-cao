@@ -1714,6 +1714,16 @@ Grader values and units MUST remain distinct from YES/NO eval answers in
 dashboard views; a grader score or pass/fail status does not create an Eval.
 Direct artifact ingestion SHALL apply the same classification and identity
 checks to supplied `evals.jsonl` records when session eval evidence is absent.
+Version-1 and version-2 `grader_results.json` documents SHALL use the same
+allowlisted projection as session grader events, enriched by the adjacent
+`grader_manifest.json`. Collection SHALL verify the artifact's repository,
+run and attempt using `aw_info.json`; supplied result run identities and
+attempts MUST also agree. Session results remain authoritative for duplicate
+IDs; the downstream `graders` artifact MAY supplement them with previously
+unrecorded custom results, without duplicating built-ins. Compact
+`usage/graders/`, named or prefixed `graders` artifacts, and flattened files
+SHALL be supported. Ordered metrics SHALL preserve explicit `null` values
+as unavailable evidence, not discard them or promote a diagnostic metric.
 The Evals observation ledger SHALL display retained `YES`, `NO`, and `UNKNOWN`
 answers distinctly, preserving run evidence links and observation times rather
 than hiding unknown answers behind a binary-only filter.

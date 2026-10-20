@@ -223,3 +223,55 @@ func TestBootstrapAnchorReadFailure(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildDeliveryOptionsBounds(t *testing.T) {
+	dir := t.TempDir()
+	anchorPath := filepath.Join(dir, "anchor.json")
+	if err := os.WriteFile(anchorPath, []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	badPath := filepath.Join(dir, "bad.json")
+	if err := os.WriteFile(badPath, []byte(`not json`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name      string
+		stream    string
+		maxEvents int
+		maxAge    time.Duration
+		timeout   time.Duration
+		bootstrap string
+		wantErr   string
+		wantBoot  bool
+	}{
+		{name: "valid", stream: "prod", maxEvents: 100, maxAge: time.Hour, timeout: time.Minute},
+		{name: "valid with bootstrap", stream: "prod", maxEvents: 1, maxAge: time.Minute, timeout: time.Second, bootstrap: anchorPath, wantBoot: true},
+		{name: "timeout too short", stream: "prod", maxEvents: 100, maxAge: time.Hour, timeout: time.Millisecond, wantErr: "timeout"},
+		{name: "timeout too long", stream: "prod", maxEvents: 100, maxAge: time.Hour, timeout: 31 * time.Minute, wantErr: "timeout"},
+		{name: "bad stream", stream: "bad stream!", maxEvents: 100, maxAge: time.Hour, timeout: time.Minute, wantErr: "stream"},
+		{name: "bad max events", stream: "prod", maxEvents: 0, maxAge: time.Hour, timeout: time.Minute, wantErr: "max-events"},
+		{name: "bad anchor age", stream: "prod", maxEvents: 5, maxAge: time.Second, timeout: time.Minute, wantErr: "max-anchor-age"},
+		{name: "invalid bootstrap", stream: "prod", maxEvents: 5, maxAge: time.Hour, timeout: time.Minute, bootstrap: badPath, wantErr: "bootstrap"},
+		{name: "missing bootstrap", stream: "prod", maxEvents: 5, maxAge: time.Hour, timeout: time.Minute, bootstrap: filepath.Join(dir, "none.json"), wantErr: "bootstrap"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			options, err := buildDeliveryOptions(tc.stream, tc.maxEvents, tc.maxAge, tc.timeout, tc.bootstrap)
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("error = %v, want containing %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if options.Stream != tc.stream || options.MaxEvents != tc.maxEvents || options.MaxAnchorAge != tc.maxAge {
+				t.Fatalf("options = %+v", options)
+			}
+			if (options.Bootstrap != nil) != tc.wantBoot {
+				t.Fatalf("bootstrap set = %v, want %v", options.Bootstrap != nil, tc.wantBoot)
+			}
+		})
+	}
+}

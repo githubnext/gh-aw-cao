@@ -240,11 +240,12 @@ When an older verified extension initializes a new policy using the former
 `githubnext/gh-aw-cao` schema URI, the installer MUST align only that metadata URI
 with the installed catalog's canonical schema URI. It MUST reject unknown
 mismatches and MUST NOT rewrite an existing policy or any authority fields.
-The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
-removed shell equivalents. No shell launcher is installed. Actions and Node-only
+The installer MUST invoke `gh cao init` and `gh cao setup`.
+No shell launcher is installed. Actions and Node-only
 tools MUST invoke `node activity/cao.mjs <command>` or another explicit Node
 entry point directly, including SQLite `doctor` and `setup-auth hosted-cli`.
-User-facing commands MUST live in the Go extension, while Actions execution
+User-facing commands MUST live in the Go extension except the Node-only
+administration tools above. Actions execution
 support MUST live in the JavaScript runtime under `activity/` and `dashboard/`.
 Agentic workflow execution and agent evidence preparation MUST NOT build,
 install, or invoke the native extension as a runtime dependency. Copilot setup
@@ -284,15 +285,12 @@ MUST support keyboard-driven entry and MUST fall back to plain text
 when `ACCESSIBLE` or `NO_COLOR` is set or the terminal reports no styling
 support. It MUST create a private repository and refuse an existing clone
 directory. After a successful
-installation without `--setup` or `--quickstart`, it MUST finish without
+installation without `--setup`, it MUST finish without
 another prompt and print the setup command for later. `--setup` MUST open
 guided setup directly on the controlling terminal without allowing streamed
-children to consume installer source from stdin. Interactive `--quickstart`
-MUST preserve that controlling terminal for its progress UI. `--quickstart`
-MUST also run with plain progress from a clean current public or private
-control-repository checkout when no terminal is available or `CI` is set.
-Outside a connected checkout it MUST require explicit `--create-repo OWNER/NAME`
-or interactive `--create-repo` entry of both owner and name. No signed-in owner,
+children to consume installer source from stdin.
+Repository creation MUST require explicit `--create-repo OWNER/NAME`
+or interactive entry of both owner and name. No signed-in owner,
 control name, target, or generated fallback coordinate may be inferred or
 suggested. Occupied remote names or local paths, including dangling symlinks,
 MUST be rejected without choosing a replacement. In-place connection of a
@@ -333,100 +331,12 @@ broader existing scope, or non-empty campaigns. It MUST use plain unstyled
 output and MUST NOT prompt, open a browser, install a campaign, dispatch,
 commit, or push.
 
-`--quickstart` MUST be a separate, explicit staged guide rather than an
-implicit continuation of install or setup. It MUST use a clean current public
-or private control repository, or create a private control repository only
-when its owner and name are explicitly selected through `--create-repo`.
-It MUST
-disclose before execution that it configures public Pages, creates the
-explicitly selected private control repository when
-needed, targets the existing public repository selected by the required
-`--target OWNER/REPO`, and commits and
-pushes bounded CAO configuration. Before the run stage it MUST disclose that
-Repo Assist maintenance runs in review mode and may consume up to 1,250 AI
-credits under default limits (250 orchestration, 600 maintenance, 400 output
-checking; configured output-check limits may differ). The installer flag
-authorizes bounded campaign installation, configuration, commit, and push,
-but MUST NOT explicitly dispatch Repo Assist or Activity or wait for remote
-completion. The install stage MUST leave the orchestrator paused. Separate
-`--step run` and `--step collect` commands authorize their respective dispatches
-and MUST return without watching remote jobs. `--step dashboard` MUST be
-read-only, report pending work without polling, and be safe to repeat. Normal
-Activity push and schedule triggers MAY collect a baseline independently.
-Every stage MUST explain its component and provide the next command or Actions
-link. Explicit `cao quickstart --wait` MAY retain the end-to-end installation,
-dispatch, collection, and deployment waits for unattended use immediately
-after bare installation; it MUST NOT be presented as a resume command. The
-installer MUST NOT add a redundant post-install confirmation.
-Each potentially long quickstart phase MUST expose elapsed progress and end in
-an explicit success, warning, or failure state. Node experimental-runtime
-diagnostics MUST NOT be mixed into normal quickstart progress.
-
-The quickstart MUST:
-
-- require the checked-out default branch and refuse any pre-install working-tree
-  change; it MAY add its bounded commit on top of existing repository history;
-- accept public, private, and internal control repositories because its target
-  and collected evidence are public, without widening that visibility exception
-  to another target or campaign;
-- require and validate an explicit public `--target OWNER/REPO` for installation
-  or `--wait`, rejecting missing input before mutation; it MUST NOT suggest a
-  target, create, fork, copy, otherwise mutate a target,
-  or substitute another target when access fails; the existing worker's
-  checkout and recorded base SHA MUST remain the source identity;
-- admit repositories without existing Agentic Workflows, Actions history, or
-  telemetry and run the Repo Assist maintenance contract, not a new assessment
-  campaign or framework audit;
-- use campaign `repo-assist` with only the existing `maintenance` worker enabled
-  at review, explicitly disabling other workers; ordinary dispatch inputs,
-  budgets, source checkout, duplicate checking, implementation, focused
-  validation, and review-bundle behavior MUST remain unchanged;
-- not introduce an onboarding-only worker, snapshot helper, or execution
-  profile; proposals MUST NOT be presented as requirements for using CAO,
-  prohibit readiness grades or source-convention eligibility gates, and allow
-  keeping the repository unchanged as a valid outcome; admission MUST depend
-  on policy and access, not tests, CI, instructions, or recommendation adoption;
-- disclose normal budgets including the default configurable output-check
-  budget without claiming measured tokens or expected cost;
-- compile installed workflows with `--schedule-seed githubnext/gh-cao`
-  before committing, matching the deterministic lock-file validator;
-- use existing validated policy for later stages without broadening authority;
-  the run stage MUST reject ambiguous targets or non-review worker settings;
-- explicitly enable the orchestrator for the run stage and pause it through
-  `gh workflow disable` immediately after
-  requesting the initial run, including on dispatch failure, to prevent
-  recurring six-hour runs without modifying campaign sources; pause failures
-  MUST be explicit, and re-enabling MUST be disclosed as also resuming schedule;
-  validation MUST report a manually paused orchestrator with active workers as
-  a pause note, not a recommendation to resume scheduled spending;
-- publish one validated optional maintenance proposal as a control review issue
-  plus review bundle, or record an honest no-op; unavailable required evidence
-  MUST remain incomplete; other worker enablement and live authority MUST remain
-  separate reviewed choices;
-- configure exact global scope for the control repository and selected public
-  target while declaring `control-plane.activity.repositories` as only the
-  control repository;
-- set Repo Assist to `review`, cap selection at one repository, set
-  rollout to 100 percent for the exact selected target, and cap its worker at
-  `review`;
-- select repository-local workflow-token mode and require public GitHub Pages
-  with GitHub Actions as its source;
-- refuse unrelated working-tree paths, stage only `.github/`, `activity/`,
-  `dashboard/`, `repo-assist/`, gh-aw's root `.gitattributes`,
-  and its `.vscode/settings.json` project settings, refuse pre-staged changes,
-  include the retired launcher's unstaged deletion only when present, then create
-  and push one commit on the repository default branch;
-- dispatch one Repo Assist orchestrator and at most one maintenance worker,
-  preserving blocked, incomplete, or failed outcomes rather than converting
-  missing evidence into a finding;
-- dispatch Activity only in its requested collection stage (or explicit `--wait`)
-  with a correlatable request ID; to report dashboard readiness require a successful
-  data-bearing Activity artifact with at least one unique run, then require the
-  corresponding dashboard Pages deployment job to succeed (workflow success
-  with a skipped deployment MUST NOT establish readiness); and
-- never modify the selected target; and
-- print target, control-repository, and Actions links as navigation during stages,
-  but MUST NOT report a ready dashboard until those success conditions are verified.
+Operational campaigns MUST remain separate from installation and setup.
+Operators install campaigns with `gh cao campaigns add`, review and commit
+workflows and policy together, then explicitly dispatch authorized work through
+`gh aw run`. Installation and setup MUST NOT commit, push, or dispatch campaigns.
+Validation MUST report a manually paused orchestrator with active workers as a
+pause note rather than recommending scheduled re-enablement.
 
 `control-plane.activity.repositories`, when present, MUST contain exact
 repository coordinates, contain at least one entry, remain within

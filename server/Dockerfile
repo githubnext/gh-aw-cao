@@ -25,7 +25,7 @@ RUN printf '%s' "${CAO_PROFILE}" | grep -Eq '^cao(\.[a-z0-9-]+)?\.json$' \
       npm --prefix dashboard/site run build -- dist "${policy}"; \
     fi
 
-FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS server-build
+FROM golang:1.27.3-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd AS server-build
 
 ARG VERSION=dev
 ARG REVISION=unknown
@@ -88,7 +88,7 @@ SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 ARG VERSION=dev
 ARG REVISION=unknown
 ARG CREATED=unknown
-ARG GH_AW_VERSION=v0.92.5
+ARG GH_AW_VERSION=v0.92.6
 ARG TARGETARCH
 LABEL org.opencontainers.image.title="Central Agentic Ops collector" \
       org.opencontainers.image.description="Hosted CAO collection worker and backfill runtime" \
@@ -105,8 +105,8 @@ RUN apk upgrade --no-cache \
     && adduser -S -D -H -u 65532 -G cao cao \
     && mkdir -p /app/catalog /app/evidence /app/.local/share/gh/extensions/gh-aw \
     && case "${TARGETARCH}" in \
-      amd64) checksum="600c41015ce36b09d03a2dad63b589b9642ecbf83cdb2584851892c8dec32f5d" ;; \
-      arm64) checksum="4238430125d3219576e1fcfc3750ae0e1e8173f3a86952e282b69e35a6649416" ;; \
+      amd64) checksum="1888d9faa40e102cbaa784ecb2e646c0e81ac3f1003d1cb3460d3a23908d4938" ;; \
+      arm64) checksum="2bc9a5e212cab7fb02efa91ea362a27c381b1760af37f0effa3e5b3c5e8a6393" ;; \
       *) echo "Unsupported collector architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
     && wget -q -O /usr/local/bin/gh-aw \
