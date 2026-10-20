@@ -9,6 +9,19 @@ import { pathToFileURL } from "node:url";
 const root = path.resolve(import.meta.dirname, "../..");
 const scripts = path.join(root, ".github/skills/add-operational-value/scripts");
 
+test("skill connects frozen intent, final acceptance, dated lineage and reusable reporting", () => {
+  const skill = readFileSync(path.join(root, ".github/skills/add-operational-value/SKILL.md"), "utf8");
+  assert.match(skill, /Intent defines what to measure; acceptance anchors when to measure it/);
+  assert.match(skill, /ClosedEvent.closer/);
+  assert.match(skill, /collectEvents/);
+  assert.match(skill, /--report/);
+  assert.match(skill, /examples\/daily-file-diet.mjs/);
+  const events = JSON.parse(readFileSync(path.join(root, "tests/fixtures/operational-value/file-diet-events.json"), "utf8")).events;
+  assert.equal(events.filter(event => !event.lineage.some(edge => edge.relation === "connected")
+    && event.lineage.some(edge => edge.relation === "closed-by")).length, 26);
+  assert.ok(events.every(event => event.lineage.some(edge => edge.relation === "closed-by")));
+});
+
 test("skill uses query-first evidence without limiting history to source retention", () => {
   const skill = readFileSync(
     path.join(root, ".github/skills/add-operational-value/SKILL.md"),

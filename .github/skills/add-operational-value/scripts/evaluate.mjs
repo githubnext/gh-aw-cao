@@ -8,9 +8,11 @@ import {
   deepEqual, fail, importValueModule, isIsoUtc, nowUtc, readJson, repoRoot, run, runJson,
   scriptDir, sha256File, shiftDays, writeJson,
 } from "./common.mjs";
+import { eventPulse } from "./pulse-model.mjs";
+import { writePulse } from "./render-pulse.mjs";
 
 function usage() {
-  return "usage: evaluate.mjs [--end ISO-8601] [--output-dir DIR] [--function PATH] [--campaign SLUG] [--no-runs] [--refresh] OWNER/REPO WORKFLOW-NAME-OR-PATH";
+  return "usage: evaluate.mjs [--end ISO-8601] [--output-dir DIR] [--function PATH] [--campaign SLUG] [--no-runs] [--report] [--refresh] OWNER/REPO WORKFLOW-NAME-OR-PATH";
 }
 
 const args = process.argv.slice(2);
@@ -20,6 +22,7 @@ let valueFunction;
 let campaign;
 let collectRuns = true;
 let refresh = false;
+let report = false;
 while (args[0]?.startsWith("-")) {
   const option = args.shift();
   if (option === "--end") endAt = args.shift() ?? fail("--end requires an ISO-8601 timestamp");
@@ -28,6 +31,7 @@ while (args[0]?.startsWith("-")) {
   else if (option === "--campaign") campaign = args.shift() ?? fail("--campaign requires a slug");
   else if (option === "--no-runs") collectRuns = false;
   else if (option === "--refresh") refresh = true;
+  else if (option === "--report") report = true;
   else if (["-h", "--help"].includes(option)) {
     console.log(usage());
     process.exit(0);
@@ -216,7 +220,59 @@ try {
   run(path.join(scriptDir, "build-timeline.mjs"), [valueFunction, observations, timeline]);
   run(path.join(scriptDir, "render-definitions.mjs"), [timeline, definitions]);
   run(path.join(scriptDir, "validate-report-artifacts.mjs"), [timeline, definitions]);
-  if (sha256File(valueFunction) !== initialSha) fail("value function changed during deterministic evaluation");
+  const reportFiles = [];
+  let eventLedger;
+  if (report) {
+    if (valueModule.collectEvents !== undefined) {
+      if (typeof valueModule.collectEvents !== "function") throw new Error("collectEvents must be a function");
+      const cached = archive.functions?.[initialSha]?.eventLedger;
+      const ledgerStart = ledger => ledger.basis === "workflow-contribution" ? definition.adoption.adoptedAt : startAt;
+      const reusable = !refresh && cached?.window?.endAt === endAt
+        && cached.window.startAt === ledgerStart(cached) && cached.observedAt === endAt
+        && eventPulse(cached).metrics[0].completeTotal !== null;
+      eventLedger = reusable ? cached : await valueModule.collectEvents({
+        windowStart: startAt, windowEnd: endAt, observedAt: endAt,
+      });
+      const metric = definition.metrics.find(item => item.id === eventLedger?.metric?.id);
+      if (typeof eventLedger?.repository !== "string"
+        || eventLedger.repository.toLowerCase() !== repository.toLowerCase() || eventLedger.workflowSlug !== workflowSlug
+        || eventLedger.sourcePath !== definition.sourcePath
+        || typeof definition.intent?.goal !== "string" || !definition.intent.goal.trim()
+        || eventLedger.intent?.goal !== definition.intent?.goal
+        || !metric || metric.version !== eventLedger.metric.version
+        || metric.formula !== eventLedger.metric.formula || metric.unit !== eventLedger.metric.unit
+        || metric.direction !== eventLedger.metric.direction
+        || (eventLedger.basis === "workflow-contribution" && metric.role !== "diagnostic")
+        || eventLedger.window?.startAt !== ledgerStart(eventLedger)
+        || eventLedger.window?.endAt !== endAt || eventLedger.observedAt !== endAt) {
+        throw new Error("Event ledger does not match the frozen value function or evaluation scope");
+      }
+      const eventsById = new Map(eventPulse(eventLedger).metrics[0].events.map(event => [event.id, event]));
+      if (cached) {
+        if (cached.basis !== eventLedger.basis || !deepEqual(cached.metric, eventLedger.metric)) {
+          throw new Error("Event ledger changed the archived measurement contract");
+        }
+        for (const previous of eventPulse(cached).metrics[0].events) {
+          if (Date.parse(previous.at) < Date.parse(eventLedger.window.startAt)
+            || Date.parse(previous.at) >= Date.parse(eventLedger.window.endAt)) continue;
+          const current = eventsById.get(previous.id);
+          if (!current || previous.at !== current.at || previous.value !== current.value
+            || !deepEqual(previous.acceptance, current.acceptance)) {
+            throw new Error(`Event ledger changed archived accepted facts: ${previous.id}`);
+          }
+        }
+      }
+      eventLedger = { ...eventLedger, valueFunctionSha256: initialSha };
+      const events = path.join(work, `${workflowSlug}-events.json`);
+      writeFileSync(events, writeJson(eventLedger));
+      reportFiles.push([events, path.join(reportDir, path.basename(events))]);
+    }
+    const pulse = path.join(work, `${workflowSlug}-pulse.html`);
+    writePulse(eventLedger ?? readJson(timeline), pulse);
+    reportFiles.push([pulse, path.join(reportDir, path.basename(pulse))]);
+    reportFiles.push([pulse.replace(/\.html$/, ".json"), path.join(reportDir, `${workflowSlug}-pulse.json`)]);
+  }
+  if (sha256File(valueFunction) !== initialSha) throw new Error("value function changed during deterministic evaluation");
 
   const builtTimeline = readJson(timeline);
   const primary = definition.metrics.find(({ role }) => role === "primary").id;
@@ -228,6 +284,7 @@ try {
   const retainedFunctions = Object.fromEntries(
     Object.entries(archive.functions ?? {}).filter(([sha, entry]) => (
       sha === initialSha
+      || entry.eventLedger
       || !entry.snapshots.every((snapshot) => {
         const current = currentByKey.get(keyFor(snapshot));
         return current && deepEqual(current, snapshot);
@@ -241,7 +298,8 @@ try {
     workflowSlug,
     functions: {
       ...retainedFunctions,
-      [initialSha]: { valueFunctionSha256: initialSha, snapshots: currentSnapshots },
+      [initialSha]: { ...archive.functions?.[initialSha], valueFunctionSha256: initialSha, snapshots: currentSnapshots,
+        ...(eventLedger ? { eventLedger } : {}) },
     },
   };
   const archiveOutput = path.join(work, `${workflowSlug}-evidence-archive.json`);
@@ -251,6 +309,7 @@ try {
     [timeline, finalTimeline],
     [definitions, finalDefinitions],
     [archiveOutput, evidenceArchive],
+    ...reportFiles,
   ]) {
     copyFileSync(source, destination);
   }
@@ -260,3 +319,4 @@ try {
 console.log(`Timeline: ${finalTimeline}`);
 console.log(`Definitions: ${finalDefinitions}`);
 console.log(`Evidence archive: ${evidenceArchive}`);
+if (report) console.log(`Report: ${path.join(reportDir, `${workflowSlug}-pulse.html`)}`);

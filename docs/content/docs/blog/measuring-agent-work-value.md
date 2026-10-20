@@ -168,8 +168,10 @@ This example closes an evidence gap between "suggestion produced" and
 "independently checked change delivered." It does not close every gap to
 productivity or financial return.
 
-The newer portable report and research helpers remain source-branch
-prerequisites, not features introduced into main by these docs. See the
+The updated skill includes a shared HTML/JSON report renderer and a File Diet
+replay example. The preserved input evidence remains on the experimental
+branch; broader experimental discovery and acquisition tools are not required.
+See the
 [replay prerequisites](#replay-the-file-diet-report).
 The existing [CAO collection path](/gh-cao/operational-value/) is a separate integration.
 
@@ -260,35 +262,38 @@ causality for you.
 
 ## Replay the File Diet report
 
-These commands use the **source branch**, not main. The portable discovery,
-event-pulse reporting and File Diet instruments are pinned at
-`0782148c0af21f4f1d10b7cb5e81b571ed58c463`. This article does not install
-them into your project. Main has an earlier skill and evaluator.
+Use this checkout's updated skill to replay the **preserved evidence** from
+experimental revision `0782148c0af21f4f1d10b7cb5e81b571ed58c463`.
+No experimental executable code needs to be copied into the skill.
 
 You need Node.js 24+ and Git. Offline replay needs no npm installation,
 GitHub credentials, campaign or dashboard. The report URL uses the former
 repository name `githubnext/gh-aw-cao`; use `githubnext/gh-cao` for checkout.
 The repository being measured is **`github/gh-aw`**.
 
-Use a separate directory:
+From this checkout's root, obtain the evidence in a separate directory:
 
 ```sh
 git clone --single-branch --branch mnkiefer-workflow-operational-value \
   https://github.com/githubnext/gh-cao.git cao-value-example
-cd cao-value-example
-git checkout --detach 0782148c0af21f4f1d10b7cb5e81b571ed58c463
-mkdir -p .tmp/file-diet
-node scripts/measure-file-diet-lifetime.mjs --replay \
-  docs/operational-value/proof/file-diet-lifetime .tmp/file-diet/lifetime.json
-node scripts/build-file-diet-value-events.mjs \
-  docs/operational-value/proof/file-diet-lifetime .tmp/file-diet/events.json
-node .github/skills/add-operational-value/scripts/render-pulse.mjs \
-  .tmp/file-diet/events.json .tmp/file-diet/daily-file-diet-pulse.html
-node --test tests/unit/cao-operational-value-file-diet-lifetime.test.mjs
+git -C cao-value-example checkout --detach 0782148c0af21f4f1d10b7cb5e81b571ed58c463
+node .github/skills/add-operational-value/examples/daily-file-diet.mjs \
+  cao-value-example/docs/operational-value/proof/file-diet-lifetime \
+  .tmp/file-diet/daily-file-diet-pulse.html
 ```
 
 Open `.tmp/file-diet/daily-file-diet-pulse.html`. Its adjacent JSON contains
-the same computed facts. Replay verifies retained digests and inventories;
+the same computed facts; `daily-file-diet-pulse-events.json` preserves the
+accepted-event ledger. The shared renderer can independently regenerate the
+HTML and pulse JSON from that ledger:
+
+```sh
+node .github/skills/add-operational-value/scripts/render-pulse.mjs \
+  .tmp/file-diet/daily-file-diet-pulse-events.json \
+  .tmp/file-diet/daily-file-diet-pulse.html
+```
+
+Replay verifies retained digests and inventories;
 it does not reacquire Git blobs or prove that every historical output survived.
 
 The saved report covers November 15, 2025 through October 18, 2026, with
@@ -335,6 +340,16 @@ A safe-output request is only an attempt. Where retained, an applied
 revision; editable tracking text is not a receipt. Follow dated implementation
 links. A closed issue need not be rejected, a cross-reference need not establish
 acceptance, and even a green run can hide a failed assignment handoff.
+Do not equate a missing `connected` event with missing dated lineage. In the
+preserved evidence, 26 keyword-linked cases have a pre-merge cross-reference
+and a GraphQL `ClosedEvent.closer` naming the PR, without a separate `connected`
+event. Their issue closures are recorded 1–2 seconds after the merge. For
+example, [github/gh-aw#4059](https://github.com/github/gh-aw/pull/4059) references
+[github/gh-aw#4058](https://github.com/github/gh-aw/issues/4058) at
+`2025-11-15T13:42:56Z`, merges at `17:16:12Z`, and closes the issue at
+`17:16:13Z`. The replay joins the preserved graph and timeline evidence and
+keeps those distinct timestamps. GitHub documents both
+[keyword and manual linking](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
 
 The [pinned skill](https://github.com/githubnext/gh-cao/blob/0782148c0af21f4f1d10b7cb5e81b571ed58c463/.github/skills/add-operational-value/SKILL.md),
 [module contract](https://github.com/githubnext/gh-cao/blob/0782148c0af21f4f1d10b7cb5e81b571ed58c463/.github/skills/add-operational-value/references/module-contract.md)

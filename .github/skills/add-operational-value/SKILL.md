@@ -1,10 +1,10 @@
 ---
 name: add-operational-value
-description: "Design and optionally evaluate a deterministic operational-value measure for a GitHub Agentic Workflow using pre-adoption evidence. Use for workflow or campaign-scoped selection, outcome contracts, value functions, baseline comparison, and attainment evaluation. Usage: /add-operational-value OWNER/REPO [WORKFLOW-NAME] [--campaign CAMPAIGN-SLUG]."
+description: "Define and measure workflow value from Markdown intent, accepted safe outputs and independent repository evidence. Design frozen value functions, evaluate outcomes and create deterministic HTML/JSON reports, including acceptance-timed Git contribution. Usage: /add-operational-value OWNER/REPO [WORKFLOW-NAME] [--campaign CAMPAIGN-SLUG]."
 argument-hint: "OWNER/REPO [WORKFLOW-NAME] [--campaign CAMPAIGN-SLUG]"
 allowed-tools: bash node gh
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Add Operational Value
@@ -24,6 +24,33 @@ Design the evidence contract only from information available by adoption. Never 
 Do not confuse workflow adoption with creation of the measured phenomenon. Before classifying any measure, ask: **Could this exact repository outcome and native measure exist before the workflow was adopted?** AIC per successful run, failure rate, file size, issue resolution, and other repository outcomes often predate the workflow even when the workflow-specific recommendation, trace, or output does not. Test the outcome measure itself, not the workflow mechanism.
 
 Do not derive the primary measure from a gh-aw workflow's own output, recommendation, issue, trace, run, or engagement signal. Ask first: **What pre-existing repository problem caused this workflow to exist, and which repository-native facts would prove that problem improved?** Measure that problem independently of the workflow and count improvement regardless of whether it was produced by a maintainer, Dependabot, another automation, or the workflow. Adoption-timed movement is association, never causation.
+
+## Intent, acceptance and measurement
+
+**Intent defines what to measure; acceptance anchors when to measure it.**
+Recover the intended outcome and checks from workflow Markdown, imports,
+precomputes and the effective executor. Translate them into a fixed value
+function before inspecting results; do not invent a new goal or score.
+
+For linked contribution, follow an applied safe output to its accepted
+implementation. A proposal issue may lead to a PR implemented by a person or
+another agent. Record the explicit relationship, final acceptance state and
+delivery time. For merged code, evaluate the native condition at the merge's
+actual first parent and merge revision, after any required maturation period.
+Output creation and a green run are not acceptance; merge alone does not prove
+every quality safeguard. Pending, rejected and unknown outcomes remain visible.
+Do not confuse absence of a literal `connected` event with absent dated
+lineage: closing keywords may produce a `CrossReferencedEvent` and a
+`ClosedEvent.closer` pointing to the PR. Preserve the later closure timestamp
+separately from merge time; a current closing declaration alone is undated.
+
+Explicit lineage plus time-aligned native measurements demonstrate the named
+contribution, not exclusive causation. Count each delivery once at its original
+acceptance time, even if stronger receipts arrive later. Keep the independent
+primary repository measure separate: improvements by anyone must count.
+Preserve full-acceptance checks when reporting a separately named, versioned
+partial improvement. Missing quality evidence and missing attribution receipts
+qualify different claims; neither is an invented zero.
 
 ## Inputs
 
@@ -65,6 +92,9 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   - eligible opportunity population;
   - accepted evidence and evidence repositories;
   - deterministic opportunity/outcome matching rule and maturation period;
+  - output-to-implementation lineage, final acceptance predicate, delivery-time
+    anchor, immutable before/after references and evidence-observation time for
+    each proposed contribution diagnostic;
   - observation window, cadence, evidence shape, and zero-versus-missing rule;
   - evidence source plan, including canonical queries, immutable repository facts, source retention, and historical backfill capability;
   - whether the outcome can occur without the workflow;
@@ -106,15 +136,64 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   - Without a campaign manifest, create the standard adapter beside the module but do not create or enroll a campaign solely to host an evaluation example.
   - Run `.github/skills/add-operational-value/scripts/verify-value-function.mjs --collector --cao-adapter <adapter> <path>` and do not report success unless it passes.
   - Report the outcome contract, evidence shape, metrics and roles, agreement or disagreement, rejected metrics, limitations, selected model, generated module and adapter, and successful verification command. Do not create evaluation artifacts yet.
+  - For an acceptance-anchored contribution report, implement a deterministic
+    projection of the acquired evidence into the
+    [event ledger contract](references/event-ledger.md). This projection must
+    use the frozen native rule and independent postcondition checks, not PR
+    counts or the model's assessment. It is not a new primary metric or a
+    substitute for the module's strict acceptance diagnostic.
 
 7. **Offer deterministic evaluation.** Ask whether to evaluate the verified function now. If declined, stop. If accepted, capture one UTC endpoint and run:
 
   ```bash
   END_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-  .github/skills/add-operational-value/scripts/evaluate.mjs --end "$END_AT" [--campaign CAMPAIGN-SLUG] OWNER/REPO WORKFLOW-NAME
+  .github/skills/add-operational-value/scripts/evaluate.mjs --report --end "$END_AT" [--campaign CAMPAIGN-SLUG] OWNER/REPO WORKFLOW-NAME
   ```
 
   Use the repository and slug from the verified definition. Never let evaluation evidence alter the frozen function, contract, formulas, targets, roles, or classification. Use `--refresh` only when explicitly requested. Report the endpoint and artifact paths. Describe baseline-comparable results as association, attainment-only results as attainment, and neither as causation. State that evaluation artifacts were generated deterministically from the frozen function. Offer AI interpretation only with explicit consent and label it as interpretation.
+
+  `--report` writes the standard HTML/JSON pulse. If the module exports
+  `collectEvents`, it also validates and archives the accepted-event ledger
+  against the same frozen metric, intent, repository and evaluation endpoint.
+  Otherwise it reports the existing timeline without inventing event deliveries.
+  A complete matching archived ledger is reused; `--refresh` is explicit.
+  The renderer can also replay either input directly:
+
+  ```bash
+  node .github/skills/add-operational-value/scripts/render-pulse.mjs INPUT_JSON REPORT-pulse.html
+  ```
+
+  It writes self-contained HTML and adjacent pulse JSON without model calls,
+  remote queries or a dashboard. Do not implement a custom chart or report for
+  each workflow. The report preserves native units, separate outcome and
+  contribution bases, explicit evidence gaps and inspectable event links.
+  Adjacent 28-day event windows describe recent delivery; the overlapping 91-day
+  curve is context, not a pre-adoption baseline. Without an agreed decision bar
+  or matched costs, report **not rated** and **not measured**.
+
+## Reproduce the Daily File Diet report
+
+Use the preserved `github/gh-aw` evidence from source revision
+`0782148c0af21f4f1d10b7cb5e81b571ed58c463` on
+`mnkiefer-workflow-operational-value`. Only the evidence directory is needed
+from that checkout; use this skill's updated tools:
+
+```bash
+node .github/skills/add-operational-value/examples/daily-file-diet.mjs \
+  SOURCE_CHECKOUT/docs/operational-value/proof/file-diet-lifetime \
+  REPORT_DIRECTORY/daily-file-diet-pulse.html
+```
+
+The example validates preserved inventories and receipt identities, follows
+explicit implementation links, and measures each merged PR at its actual
+first parent and merge revision. It writes the input event ledger plus the
+standard HTML/JSON pulse. Expected results: **48 net structural reductions**,
+including a **13-reduction receipt-backed subset**, latest 28-day delivery
+**0 files/week** versus **0.5** previously, and **worsening / review**.
+Full behavior preservation remains unknown. This is replay of a saved,
+outcome-informed retrospective instrument, not a fresh prospective design or
+proof of causal impact. It does not require copying experimental executable
+code, acquiring live evidence or installing a campaign.
 
 ## Design Invariants
 
@@ -178,6 +257,15 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
 - A metric may return a provisional number for valid interim evidence. The evidence must carry `maturityStatus: "interim"` and `dubious: true`; adapters and reports must preserve that status wherever the number is shown.
 - Include `targetAttained`, `targetMissed`, `missing`, and `malformed` validation examples for every metric. `targetAttained` must score higher than `targetMissed`.
 - The collector acceptance gate must validate evidence and provenance. Temporary evidence must be removed in `finally` cleanup.
+- For accepted-event reporting, the module may additionally export
+  `collectEvents({windowStart, windowEnd, observedAt})`. It returns the
+  [event ledger](references/event-ledger.md), using the same acquired originals
+  and frozen measurement rules without remote calls. Declare the selected
+  metric's immutable `version` and `formula` in `definition.metrics` and its
+  intended goal in `definition.intent.goal`. Contribution events must bind to
+  a diagnostic, never replace the primary repository outcome. An accepted
+  event is counted once at delivery after required maturation; pending and
+  rejected outputs remain lifecycle evidence, not successful deliveries.
 
 ### CAO Adapter Interface
 

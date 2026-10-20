@@ -77,8 +77,9 @@ Use `/add-operational-value OWNER/REPO WORKFLOW` to design and verify a measure
 with the skill. Reuse that fixed definition for subsequent evaluations.
 
 > [!IMPORTANT]
-> The example's portable report and replay tools require the pinned
-> `mnkiefer-workflow-operational-value` source branch, not main.
+> The skill includes the report renderer and File Diet replay tool. Replaying
+> this saved example requires its preserved evidence from the pinned
+> `mnkiefer-workflow-operational-value` source branch.
 
 For research, limitations and exact replay commands, read the
 [long-form blog article](/gh-cao/blog/measuring-agent-work-value/).
