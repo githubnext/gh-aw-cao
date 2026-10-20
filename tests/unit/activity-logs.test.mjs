@@ -127,7 +127,7 @@ process.stderr.write("Fetched 1 run\\n");
     assert.equal(args.includes("--json"), false);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",
-      "usage,experiment",
+      "usage,experiment,graders",
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
     const shardPrefix = path.join(item.root, "cache", "gh-aw-logs-shards", "github-gh-aw-logs-");

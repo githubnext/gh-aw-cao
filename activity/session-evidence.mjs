@@ -3,20 +3,26 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseUnifiedSessionDocument } from '../dashboard/site/src/data/adapters/unified-session.js';
 import { experimentAssignmentArtifact, parseExperimentAssignments } from '../dashboard/site/src/data/adapters/experiment-evidence.js';
+import { parseGraderArtifacts } from '../dashboard/site/src/data/adapters/grader-evidence.js';
 import { classifiedEval, isSupportedGhAwJsonlSchemaVersion } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { runId as canonicalRunId } from '../dashboard/site/src/data/model/ids.js';
 import { readJsonlRecords } from './jsonl.mjs';
 
-async function artifactFile(directory, filename) {
+async function artifactFiles(directory, filename) {
   let entries;
   try {
     entries = await readdir(directory, { withFileTypes: true });
   } catch (error) {
-    if (error.code === 'ENOENT') return null;
+    if (error.code === 'ENOENT') return [];
     throw error;
   }
   const candidates = entries.flatMap((entry) => {
     if (entry.isFile() && entry.name === filename) return [path.join(directory, entry.name)];
+    if (filename.startsWith('grader_') && entry.isDirectory()) {
+      if (/(^|-)graders$/.test(entry.name)) return [path.join(directory, entry.name, filename)];
+      if (/(^|-)usage$/.test(entry.name)) return [path.join(directory, entry.name, 'graders', filename)];
+      return [];
+    }
     if (entry.isDirectory() && (/(^|-)usage$/.test(entry.name)
         || (filename === 'evals.jsonl' && /(^|-)evals$/.test(entry.name)))) {
       if (filename === 'assignments.json') {
@@ -37,6 +43,11 @@ async function artifactFile(directory, filename) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
+  return found;
+}
+
+async function artifactFile(directory, filename) {
+  const found = await artifactFiles(directory, filename);
   if (filename === 'assignments.json') {
     const file = experimentAssignmentArtifact(found.map((file) => ({
       ...file, path: path.relative(directory, file.path).split(path.sep).join('/')
@@ -50,7 +61,7 @@ async function artifactFile(directory, filename) {
 async function sessionIdentity(runDirectory, sessionPath) {
   const artifactDirectory = path.dirname(sessionPath);
   const directories = [artifactDirectory];
-  if (/(^|-)experiments?$/.test(path.basename(artifactDirectory))) {
+  if (/(^|-)(?:experiments?|graders)$/.test(path.basename(artifactDirectory))) {
     directories.push(path.dirname(artifactDirectory));
   }
   directories.push(runDirectory);
@@ -61,11 +72,36 @@ async function sessionIdentity(runDirectory, sessionPath) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
-  if (/(^|-)experiments?$/.test(path.basename(artifactDirectory))) {
+  if (/(^|-)(?:experiments?|graders)$/.test(path.basename(artifactDirectory))
+      || path.basename(sessionPath).startsWith('grader_')) {
     const file = await artifactFile(runDirectory, 'aw_info.json');
     if (file) return JSON.parse(file.content);
   }
   return null;
+}
+
+async function graderEvidence(runDirectory, runId, attempt, repository, session) {
+  try {
+    const results = await artifactFiles(runDirectory, 'grader_results.json');
+    if (!results.length) return session;
+    for (const file of results) {
+      const info = await sessionIdentity(runDirectory, file.path);
+      if (!info || String(info.run_id) !== String(runId)
+          || String(info.repository).toLowerCase() !== repository.toLowerCase()
+          || !Number.isInteger(Number(info.run_attempt)) || Number(info.run_attempt) < 1) {
+        throw new TypeError('Grader artifact identity unavailable or mismatched');
+      }
+      if (Number(info.run_attempt) !== Number(attempt)) return session;
+    }
+    const manifests = await artifactFiles(runDirectory, 'grader_manifest.json');
+    return parseGraderArtifacts([...results, ...manifests].map((file) => ({
+      ...file, path: path.relative(runDirectory, file.path).split(path.sep).join('/')
+    })), { runId: String(runId), attempt: Number(attempt) }, session);
+  } catch (error) {
+    if (!(error instanceof SyntaxError) && !(error instanceof TypeError)) throw error;
+    console.warn(`Skipping invalid grader evidence for run ${runId}`);
+    return session;
+  }
 }
 
 async function experimentEvidence(runDirectory, runId, attempt, repository) {
@@ -127,6 +163,7 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
   const sessions = new Map();
   const evals = new Map();
   const experiments = new Map();
+  const graders = new Map();
   let enriched = 0;
   for (const name of names) {
     const filename = path.join(directory, name);
@@ -173,6 +210,13 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
           sessions.set(key, evidence);
         }
         const evidence = sessions.get(key);
+        if (!graders.has(key)) {
+          graders.set(key, await graderEvidence(
+            path.join(logDirectory, `run-${runId}`), runId, run.run_attempt ?? 1, repository, evidence?.graders
+          ));
+        }
+        const results = graders.get(key);
+        if (evidence && results) evidence.graders = results;
         if (!evidence?.experiments && !experiments.has(key)) {
           experiments.set(key, await experimentEvidence(
             path.join(logDirectory, `run-${runId}`), runId, run.run_attempt ?? 1, repository
@@ -185,6 +229,11 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
           ));
         }
         let runChanged = false;
+        if (!evidence && results && JSON.stringify(results) !== JSON.stringify(run.graders)) {
+          run.graders = results;
+          changed = true;
+          runChanged = true;
+        }
         const assignments = evidence?.experiments ? null : experiments.get(key);
         if (assignments && JSON.stringify(assignments) !== JSON.stringify(run.experiments)) {
           run.experiments = assignments;
