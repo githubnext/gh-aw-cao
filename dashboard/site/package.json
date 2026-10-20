@@ -25,7 +25,8 @@
     "@xterm/xterm": "^5.5.0",
     "esbuild": "^0.28.2",
     "node-pty": "^1.1.0",
-    "strip-ansi": "^7.2.0"
+    "strip-ansi": "^7.2.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -39,7 +40,6 @@
     "puppeteer-core": "^25.10.0",
     "source-map-js": "file:packages/source-map-compat",
     "typescript": "^5.9.2",
-    "vitest": "^5.0.0",
-    "yaml": "^2.9.0"
+    "vitest": "^5.0.0"
   }
 }
