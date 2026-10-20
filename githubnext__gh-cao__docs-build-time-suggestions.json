@@ -1,35 +1,7 @@
 {
-  "source_sha": "d9a6ec563de532b787cce1a0c9625d0a4bea9c61",
+  "source_sha": "251152f70de183158723b2f306de86df19d10fdd",
   "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-20T09:57:00Z",
-      "worker_run_id": "39404043636",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39403590816,
-        39402236283,
-        39400711523,
-        39398865390,
-        39397756747,
-        39396576266,
-        39394069863,
-        39393719815,
-        39390537827,
-        39388787873,
-        39386887878,
-        39386513324,
-        39383844471,
-        39381458818,
-        39381197975,
-        39378144737,
-        39376963126,
-        39376153086,
-        39375999551,
-        39375801479
-      ],
-      "outcome": "incomplete: during the 2026-10-20T05:36:30Z to 2026-10-20T09:50:33Z evidence window, the latest 20 completed docs.yml runs contained 15 successful runs and five skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 14 successful runs were schedule freshness checks that skipped build and deploy. The newest schedule run 39403590816 queued its freshness job for 4 seconds, ran that job for 10 seconds (7 seconds in the freshness check), then skipped build and deploy. The sole comparable build completed the build job in 70 seconds, deployment in 18 seconds, and the workflow in 97 seconds with 4 seconds of initial job queue time; prior bounded step evidence for that unchanged run showed a dashboard-cache hit, 14-second dependency installation, and 9-second documentation build. One build sample cannot establish required median/p90 build and deploy timings or repeated dependency-cache effectiveness, and docs.yml has no dashboard job. Fewer than five comparable successful build samples were available, so the evaluation is incomplete and the category remains next."
-    },
     {
       "evaluated_at": "2026-10-20T10:22:16Z",
       "worker_run_id": "39407082642",
@@ -820,6 +792,34 @@
         39475085157
       ],
       "outcome": "incomplete: the 2026-10-20T18:28:47Z to 2026-10-20T21:33:55Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Only four successful runs executed both build and deploy (three push and one workflow_run, across four source SHAs), below the required minimum of five comparable successful builds. The two newly observed schedule runs completed in 13 and 17 seconds and freshness-checked without adding build samples. Required median/p90 workflow, build, deploy, and repeated dependency-cache effectiveness measurements therefore cannot be completed. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. No recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T21:50:00Z",
+      "worker_run_id": "39503473408",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39503217685,
+        39502971923,
+        39501354413,
+        39499956441,
+        39499549966,
+        39497001456,
+        39495125880,
+        39493508349,
+        39491858643,
+        39491441523,
+        39488433149,
+        39487836723,
+        39486361919,
+        39484726164,
+        39484498653,
+        39484331843,
+        39483522398,
+        39482760104,
+        39482357411,
+        39479892762
+      ],
+      "outcome": "incomplete: the 2026-10-20T19:01:39Z to 2026-10-20T21:49:41Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Five successful runs appeared to execute both build and deploy (four push and one workflow_run, across five source SHAs), satisfying the sample-count screen. Trusted metadata for the newest two builds showed 119-148 second end-to-end workflows, 85-113 second build jobs, 19-25 second deploy jobs, 19-29 second dependency installation, 10-13 second documentation generation, 3-second dashboard-cache restoration with artifact fallback skipped, and 10-12 second Pages upload. During collection of the remaining required job, step, and cache-log evidence, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API work stopped. Complete median/p90 workflow, queue, build, deploy, and repeated cache-effectiveness measurements could not be established; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
     }
   ]
 }
