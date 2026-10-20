@@ -745,10 +745,14 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Shared work. Clear ownership.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
-      await expect(page.getByRole("heading", { name: "Your workflows. Your rules.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Go from insight to action.", exact: true })).toBeAttached();
+      await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("One CLI. Fleet-wide control.");
+      await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
+        "Investigate failures and costs. Give agents operational evidence. Install campaigns and steer priorities. Control where automation runs with scoped authentication and reviewed rollout policy.",
+      );
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
-      for (const story of await page.locator(".product-story-copy, .dispatch-story").all()) {
+      for (const story of await page.locator(".runs-story .product-story-copy, .value-story .product-story-copy, .dispatch-story").all()) {
         await expect(story).not.toContainText(/campaign/i);
       }
       expect(await page.locator("html").evaluate((element) => element.scrollWidth))
