@@ -3,34 +3,6 @@
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-20T07:08:06Z",
-      "worker_run_id": "39384228105",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39383844471,
-        39381458818,
-        39381197975,
-        39378144737,
-        39376963126,
-        39376153086,
-        39375999551,
-        39375801479,
-        39374762521,
-        39372664779,
-        39371749392,
-        39370827216,
-        39369620161,
-        39369423241,
-        39367420475,
-        39366749142,
-        39365869604,
-        39364416816,
-        39364240691,
-        39362154443
-      ],
-      "outcome": "incomplete: during the 2026-10-20T03:02:18Z to 2026-10-20T07:01:28Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 15 successes were schedule freshness checks that skipped both jobs. That build restored the dashboard cache successfully, installed dependencies in 14 seconds, built documentation in 9 seconds, completed the build job in 70 seconds, and completed deployment in 18 seconds, but one sample cannot establish median/p90 timings or repeated cache behavior. Fewer than five comparable successful build samples were available, so the required evaluation is incomplete and the category remains next."
-    },
-    {
       "evaluated_at": "2026-10-20T07:31:54Z",
       "worker_run_id": "39386801365",
       "category": "dependency installation and caching",
@@ -841,6 +813,13 @@
         39449842682
       ],
       "outcome": "no-op: the 2026-10-20T15:35:35Z to 2026-10-20T18:46:10Z latest-20 window contained 15 successful, four skipped, and one cancelled completed docs.yml run; the cancelled push was excluded. Six successful builds were comparable (four schedule, one push, and one workflow_run, across five source SHAs): median/p90 end-to-end 140/217 seconds, initial queue or concurrency wait 3.5/70 seconds, queue-excluded execution 131/171.5 seconds, build job 87/101.5 seconds, and deploy job 18.5/33.5 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. Trusted bounded logs verified six of six hits for the same 57 MiB central-agentic-ops-dashboard cache; restoration took median/p90 2.5/3.5 seconds and every dashboard run lookup/artifact-download fallback was skipped. Reuse therefore remains effective, and even eliminating restoration entirely would save neither 60 seconds nor 15% of median execution. No correctness- and freshness-preserving reusable-dashboard change met the actionability threshold, so the category advanced. One push had a 136-second concurrency wait and was disclosed rather than attributed to dashboard reuse."
+    },
+    {
+      "evaluated_at": "2026-10-20T18:57:59Z",
+      "worker_run_id": "39478935538",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
     }
   ]
 }
