@@ -29,6 +29,34 @@
         39359167383
       ],
       "outcome": "incomplete: the latest 20 completed docs.yml runs contained 16 successes, but only one successful run executed the build and deploy jobs; the other 15 successful runs were freshness checks that skipped build and deploy. Fewer than five comparable successful build samples were available, so cache effectiveness and build-job median/p90 timing could not be evaluated reliably. Four workflow_run entries were skipped. The category remains next because this was not a complete evaluation."
+    },
+    {
+      "evaluated_at": "2026-10-20T07:08:06Z",
+      "worker_run_id": "39384228105",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39383844471,
+        39381458818,
+        39381197975,
+        39378144737,
+        39376963126,
+        39376153086,
+        39375999551,
+        39375801479,
+        39374762521,
+        39372664779,
+        39371749392,
+        39370827216,
+        39369620161,
+        39369423241,
+        39367420475,
+        39366749142,
+        39365869604,
+        39364416816,
+        39364240691,
+        39362154443
+      ],
+      "outcome": "incomplete: during the 2026-10-20T03:02:18Z to 2026-10-20T07:01:28Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 15 successes were schedule freshness checks that skipped both jobs. That build restored the dashboard cache successfully, installed dependencies in 14 seconds, built documentation in 9 seconds, completed the build job in 70 seconds, and completed deployment in 18 seconds, but one sample cannot establish median/p90 timings or repeated cache behavior. Fewer than five comparable successful build samples were available, so the required evaluation is incomplete and the category remains next."
     }
   ]
 }
