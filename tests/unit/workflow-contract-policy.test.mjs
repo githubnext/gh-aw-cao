@@ -49,6 +49,15 @@ function operationWorkflowRegistrations() {
   ]);
 }
 
+test("Pi workflows no longer pin the unavailable GPT-5.4 model", () => {
+  const names = readdirSync(workflowsDirectory).filter((name) => name.endsWith(".md"));
+  const piWorkflows = names.filter((name) => workflowConfig(name).engine?.id === "pi");
+  assert.ok(piWorkflows.length > 0);
+  for (const name of piWorkflows) {
+    assert.notEqual(workflowConfig(name).engine.model, "copilot/gpt-5.4", name);
+  }
+});
+
 test("all scheduled configurations and manual selections route safely", () => {
   const cases = policyCases();
   const uniqueInputs = new Set(cases.map(({ id, ...values }) => JSON.stringify(values)));

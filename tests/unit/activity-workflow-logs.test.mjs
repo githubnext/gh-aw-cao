@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import test from 'node:test';
-import { workflowLogTargets } from '../../activity/collect-workflow-logs.mjs';
+import { collectWorkflowLogs, workflowLogTargets } from '../../activity/collect-workflow-logs.mjs';
 
 const execute = promisify(execFile);
 
@@ -24,7 +24,7 @@ test('workflow collection uses sorted repository-owned compiled paths across eve
 });
 
 async function fixture(t, { response = '[{"workflows":[{"path":".github/workflows/remote-experiment.lock.yml"}]}]',
-  discoveryStatus = 0, collectionStatus = 0, stderr = '' } = {}) {
+  discoveryStatus = 0, collectionStatus = 0, collectionDelay = 0, stderr = '' } = {}) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'cao-workflow-logs-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const binary = path.join(directory, 'gh');
@@ -38,7 +38,7 @@ if (args[0] === 'api') {
   process.stderr.write(${JSON.stringify(stderr)});
   process.exit(${discoveryStatus});
 }
-process.exit(${collectionStatus});
+setTimeout(() => process.exit(${collectionStatus}), ${collectionDelay});
 `);
   await chmod(binary, 0o700);
   return {
@@ -95,4 +95,30 @@ test('collection preserves quota-exhausted statuses from discovery and gh-aw', a
       return true;
     });
   }
+});
+
+test('collection allows gh-aw one minute to flush evidence after its own timeout', async (t) => {
+  const timeout = AbortSignal.timeout.bind(AbortSignal);
+  const deadlines = [];
+  t.mock.method(AbortSignal, 'timeout', (milliseconds) => {
+    deadlines.push(milliseconds);
+    return timeout(milliseconds / 20);
+  });
+  const f = await fixture(t, { collectionDelay: 3_250 });
+  const [, binary, ...args] = f.args;
+  args[args.indexOf('--timeout') + 1] = '1';
+
+  assert.equal(await collectWorkflowLogs(binary, args), 0);
+  assert.deepEqual(deadlines, [120_000]);
+  assert.equal((await f.calls()).length, 2);
+});
+
+test('collection still fails closed when gh-aw exceeds the bounded cleanup window', async (t) => {
+  const timeout = AbortSignal.timeout.bind(AbortSignal);
+  t.mock.method(AbortSignal, 'timeout', (milliseconds) => timeout(milliseconds / 20));
+  const f = await fixture(t, { collectionDelay: 10_000 });
+  const [, binary, ...args] = f.args;
+  args[args.indexOf('--timeout') + 1] = '1';
+
+  await assert.rejects(collectWorkflowLogs(binary, args), /Workflow log collection exceeded its timeout/);
 });
