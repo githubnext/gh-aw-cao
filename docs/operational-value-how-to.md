@@ -80,8 +80,9 @@ In the [saved File Diet report](https://raw.githack.com/githubnext/gh-aw-cao/ref
 - **Diagnostic:** verified reductions at linked merges. There are 48 over the
   workflow's lifetime. Useful repairs can coexist with a growing problem.
 
-The skill's report puts these beside recent progress and flags unverified
-goal checks. Select a headline number for its exact period or implementations;
+The skill's report leads with the repository outcome and its history, then
+separates recent results from lifetime contribution. Unverified quality checks
+stay visible. Select a headline number for its exact period or implementations;
 chart points reveal the counted files with links at the measured Git revision.
 **Explore evidence** links each result to its issue, merged change, before/after
 files and measurement rules. Historical reductions

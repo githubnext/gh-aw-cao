@@ -221,9 +221,15 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   or matched costs, report **not rated** and **not measured**.
 
   Lead reports with the goal and a deterministic plain-language assessment,
-  then three compact facts: recent progress, historical contribution and
-  independent repository state. Show a concise unknown-quality caveat and,
-  when available, the independent snapshot chart. Do not make the default
+  then an outcome-first composition: the independent repository state is the
+  dominant fact, with its first-snapshot change and a compact, directly labelled
+  snapshot chart beside it. Put recent results and historical contribution
+  beneath it as two subordinate facts with explicit, different time scopes.
+  Use a short human result label, such as "file reductions", when supplied by
+  the collector; never make readers infer what identical units mean.
+  Keep the default view to roughly 150 words, not an equal-weight audit table
+  or a wall of cards. Show one linked unknown-quality caveat.
+  Do not make the default
   report a tutorial: avoid card grids, a workflow walkthrough and repeated
   disclaimers. Keep missing coverage visible. Put goal-check details,
   investigation guidance, example implementations, elapsed times, rates,

@@ -186,6 +186,7 @@ export function fileDietEvents({ proof, inventories }) {
       ...(proof.acquisition ? { acquisition: proof.acquisition } : {}),
       ...(proof.previousProof ? { previousProof: proof.previousProof } : {}) }],
     observedAt: proof.observedAt, cadenceDays: 1, maturationDays: 0,
+    resultLabel: "file reductions",
     metric: { id: "oversized-files-reduced", name: "Workflow-enabled oversized-file reductions",
       unit: "files", direction: "increase", version: "observed-800-line-net-reductions-v1",
       formula: "Count regular non-test Go files under pkg/ with at least 800 newline characters before the merge, minus the same count after it, including replacements." },

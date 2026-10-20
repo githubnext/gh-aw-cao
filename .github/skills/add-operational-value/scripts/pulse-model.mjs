@@ -39,6 +39,8 @@ export function readerSummary(metric) {
               : `${subject} is unchanged between comparable periods`;
   return {
     title,
+    displayTitle: ready && metric.kind === "events" && status.status !== "no-opportunity" && status.current === 0
+      ? "No recent net progress" : title,
     caution: contribution
       ? "Linked changes show a measured contribution, not exclusive workflow credit or proof that every quality requirement passed."
       : "Repository movement includes everyone's work; it does not establish this workflow's causal impact.",
@@ -158,6 +160,9 @@ export function timelinePulse(timeline) {
 }
 
 function reportContext(ledger) {
+  if (ledger.resultLabel !== undefined && (typeof ledger.resultLabel !== "string" || !ledger.resultLabel.trim())) {
+    throw new Error("Invalid report result label");
+  }
   const checks = ledger.checks ?? [];
   if (!Array.isArray(checks) || checks.some(check => !check || !check.name || !check.detail
     || typeof check.name !== "string" || typeof check.detail !== "string"
@@ -186,7 +191,7 @@ function reportContext(ledger) {
       previous = time(row.at);
     }
   }
-  return { checks, repositoryState: state ?? null };
+  return { checks, repositoryState: state ?? null, resultLabel: ledger.resultLabel ?? null };
 }
 
 function validateLedger(ledger) {

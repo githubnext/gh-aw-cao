@@ -72,6 +72,7 @@ test("delivery trends are exact adjacent-window native rates, not the overlappin
 test("beginner summaries distinguish net change, missing evidence and whole-goal verification", () => {
   const quiet = focus(ledger(2, 0));
   assert.match(quiet.reader.title, /No net improvement in the last 28 days/);
+  assert.equal(quiet.reader.displayTitle, "No recent net progress");
   assert.equal(quiet.currentTotal, 0);
   assert.equal(quiet.previousTotal, 2);
   assert.match(quiet.reader.caution, /not exclusive workflow credit/);
@@ -83,6 +84,7 @@ test("beginner summaries distinguish net change, missing evidence and whole-goal
   partial.coverage[0].status = "partial";
   const unknown = focus(partial);
   assert.match(unknown.reader.title, /Not enough evidence/);
+  assert.equal(unknown.reader.displayTitle, unknown.reader.title, "Missing data must not become a zero-progress headline.");
   assert.equal(unknown.currentTotal, null);
   assert.equal(unknown.previousTotal, null);
   assert.deepEqual(eventPulse(ledger()).checks, []);
@@ -90,8 +92,22 @@ test("beginner summaries distinguish net change, missing evidence and whole-goal
   const noWork = ledger(0, 0);
   noWork.opportunities = 0;
   assert.equal(focus(noWork).reader.title, "No eligible work observed");
+  assert.equal(focus(noWork).reader.displayTitle, "No eligible work observed");
 });
 
+test("optional result labels describe the native measure without changing any values or rules", () => {
+  const input = ledger();
+  const before = eventPulse(input);
+  input.resultLabel = "verified fixes";
+  const after = eventPulse(input);
+  assert.equal(after.resultLabel, "verified fixes");
+  assert.deepEqual(after.metrics, before.metrics);
+  assert.equal(before.resultLabel, null);
+  for (const label of ["", " ", 12, {}, null]) {
+    input.resultLabel = label;
+    assert.throws(() => eventPulse(input), /Invalid report result label/);
+  }
+});
 test("independent snapshot context and explicit quality checks survive without becoming contribution", () => {
   const input = ledger();
   input.repositoryState = {
@@ -399,6 +415,7 @@ test("signal selection validates basis without silently crediting an actor-indep
 test("reports are self-contained and treat workflow goals/labels as untrusted text", () => {
   const model = eventPulse(ledger());
   model.workflowName = "</script><img src=x onerror=alert(1)>";
+  model.resultLabel = "</script><img src=x onerror=alert(5)>";
   model.metrics[0].events[0].detail = "</script><script>alert(2)</script>";
   model.metrics[0].events[0].title = "</script><img src=x onerror=alert(3)>";
   model.metrics[0].events[0].summary = "</script><script>alert(4)</script>";

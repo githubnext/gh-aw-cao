@@ -77,6 +77,7 @@ test("File Diet measures actual merge-parent inventories and replacement files, 
   const input = example();
   const ledger = fileDietEvents(input);
   assert.equal(ledger.events.length, 1);
+  assert.equal(ledger.resultLabel, "file reductions");
   assert.equal(ledger.events[0].value, 1);
   assert.equal(ledger.events[0].at, input.proof.pulls[0].mergedAt);
   assert.equal(ledger.events[0].acceptance.ref, merged);

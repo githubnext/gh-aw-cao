@@ -88,9 +88,12 @@ delay. Evidence observation must follow acceptance by that interval.
 
 ### Beginner-facing context
 
-The default report has one deterministic plain-language assessment, three
-compact facts (recent results, historical contribution and repository state),
-an unknown-quality caveat and an independent snapshot chart when available.
+The default report has one deterministic plain-language assessment and an
+outcome-first hierarchy, not three equal-weight audit rows. The independent
+repository measure leads with its change since the first snapshot and a compact
+snapshot chart beside it. Recent results and historical contribution sit below
+with separate time scopes. A linked quality caveat leads to the named checks.
+Aim for at most 150 visible words; keep technical detail out of the first read.
 Historical contribution is not the repository's current
 state or exclusive workflow credit. A quiet period does not diagnose its cause.
 Goal-check details, example changes, detailed charts, formulas, receipt
@@ -112,6 +115,10 @@ An event may add `title` and a short `summary`; both are untrusted display text,
 not measurements or acceptance evidence. Preserve full native facts in `detail`.
 The ledger may additionally supply:
 
+- `resultLabel`: a short, nonempty display noun phrase such as "file reductions"
+  or "verified fixes". It clarifies what recent and historical result figures
+  represent; it does not replace the native metric name, unit, formula, evidence
+  or acceptance rule. Omission uses the generic linked-result wording.
 - `repositoryState`: `{metric, observations, limitation}`. `metric` declares
   `id`, `name`, `unit`, `version`, `formula` and `direction` (`increase` or
   `decrease`) for the already-defined independent snapshot measure.

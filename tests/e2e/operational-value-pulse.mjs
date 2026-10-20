@@ -38,11 +38,14 @@ try {
           assert.equal(await page.locator("h1").evaluate(element => getComputedStyle(element).fontWeight), "600");
           assert.deepEqual(await page.locator(".eyebrow a").evaluateAll(links => links.map(link => link.href)), [
             `https://github.com/${model.repository}`,
-            `https://github.com/${model.repository}/blob/HEAD/${model.sourcePath}`,
           ]);
-          assert.match(await page.locator(".eyebrow").innerText(), /source \(current\)/);
+          assert.equal(await page.locator('#measurement-rules a').first().getAttribute("href"),
+            `https://github.com/${model.repository}/blob/HEAD/${model.sourcePath}`);
+          assert.match(await page.locator('#measurement-rules a').first().textContent(), /source \(current\)/);
+          assert.match(await page.locator(".report-date").innerText(), /Saved report/);
+          assert.ok((await page.locator(".report-date").getAttribute("title")).includes(model.observedAt));
           assert.match(await page.locator("main").innerText(), /Goal: Identify oversized production Go files/);
-          assert.match(await page.locator(".signal").innerText(), /No net improvement in the last 28 days/);
+          assert.equal(await page.locator(".signal h2").innerText(), "No recent net progress");
           assert.match(await page.locator("main").innerText(), /not verified/i);
           assert.equal(await page.locator(".facts > div").count(), 3);
           assert.equal(await page.locator('.fact-icon[aria-hidden="true"]').count(), 3);
@@ -54,7 +57,13 @@ try {
           assert.ok(await page.locator(".disclosure-hint").isVisible());
           assert.equal(await page.locator(".chart:visible").count(), model.repositoryState ? 1 : 0);
           const words = (await page.locator("main").innerText()).trim().split(/\s+/).length;
-          assert.ok(words <= 220, `Default File Diet view is too verbose: ${words} words.`);
+          assert.ok(words <= 150, `Default File Diet view is too verbose: ${words} words.`);
+          const height = await page.locator("main").evaluate(element => element.getBoundingClientRect().height);
+          assert.ok(height <= (width >= 1000 ? 800 : 1000), `At-a-glance view is too tall: ${height}px at ${width}px.`);
+          assert.ok(await page.locator(".facts > div").first().evaluate(element => element.classList.contains("repository-fact")),
+            "The independent repository outcome must lead, not the contribution total.");
+          assert.ok(await page.locator(".repository-fact .snapshot-chart").count() === (model.repositoryState ? 1 : 0),
+            "The chart belongs beside the outcome, not in a second repeated section.");
           assert.equal(await page.locator(".metric-picker").isVisible(), false);
           assert.doesNotMatch(await page.locator("main").innerText(), /Lineage:|Fixed rule|Basis: workflow-contribution/);
           assert.equal(await page.locator(".history").getAttribute("open"), null);
@@ -64,15 +73,28 @@ try {
           if (model.repositoryState) {
             assert.equal(await page.locator(".snapshot-chart circle").count(), model.repositoryState.observations.length);
             assert.equal(await page.locator(".snapshot-chart path").count(), 0, "Sparse snapshots must not imply continuous change.");
+            assert.ok(await page.locator(".snapshot-chart .axis, .snapshot-chart .snapshot-value").evaluateAll(labels =>
+              labels.every(label => parseFloat(getComputedStyle(label).fontSize) * label.getScreenCTM().a >= 11)),
+            "Chart labels must remain readable after SVG scaling on narrow screens.");
             assert.deepEqual(await page.locator(".snapshot-value").allTextContents(),
               [model.repositoryState.observations[0].value, model.repositoryState.observations.at(-1).value].map(String));
             assert.match(await page.locator(".facts").innerText(),
               new RegExp(`${model.repositoryState.observations.at(-1).value} files`));
+            const change = model.repositoryState.observations.at(-1).value - model.repositoryState.observations[0].value;
+            assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), `${change > 0 ? "+" : ""}${change} since first snapshot`);
             assert.deepEqual(await page.locator(".snapshot-chart a").evaluateAll(links => links.map(link => link.getAttribute("href"))),
               model.repositoryState.observations.map((_, index) => `#snapshot-${index}`));
             assert.equal(await page.locator(".snapshot-chart").getByRole("link").count(), model.repositoryState.observations.length,
               "Snapshot links must be exposed to assistive technology.");
           } else assert.match(await page.locator(".facts").innerText(), /Not measured here/);
+          if (model.resultLabel) {
+            assert.equal(await page.locator(".recent-fact dt").innerText(), `Recent ${model.resultLabel}`);
+            assert.equal(await page.locator(".historical-fact dt").innerText(), `Historical ${model.resultLabel}`);
+          }
+          await page.locator('.quality-note a').click();
+          assert.equal(await page.locator("#goal-checks").evaluate(element => element === document.activeElement), true);
+          assert.ok(await page.locator("#goal-checks").isVisible(), "Unknown quality must have an obvious, actionable explanation.");
+          await page.locator(".evidence").evaluate(element => { element.open = false; });
           const internalLinks = await page.locator('a[href^="#"]').evaluateAll(links => links.map(link => ({
             destination: link.getAttribute("href"), exists: !!document.getElementById(link.getAttribute("href").slice(1)),
           })));
@@ -96,7 +118,7 @@ try {
           assert.equal(await page.locator(".result-list > li").count(), model.metrics[0].events.length);
           if (model.repositoryState) {
             const index = model.repositoryState.observations.length - 1;
-            await page.locator(`.facts a[href="#snapshot-${index}"]`).click();
+            await page.locator(`.facts strong a[href="#snapshot-${index}"]`).click();
             assert.equal(await page.locator("#repository-snapshots").evaluate(element => element.open), true);
             assert.equal(await page.locator(`#snapshot-${index}`).evaluate(element => element.open && element === document.activeElement), true);
             const retained = model.repositoryState.observations[index].items ?? [];
@@ -186,9 +208,25 @@ try {
       const page = await browser.newPage({ colorScheme, viewport: { width: 320, height: 900 } });
       try {
         if (ledger.repositoryState) {
+          const singleton = structuredClone(ledger);
+          singleton.repositoryState.observations = [singleton.repositoryState.observations.at(-1)];
+          writePulse(singleton, output);
+          await page.goto(pathToFileURL(output).href);
+          assert.match(await page.locator(".repository-fact .fact-detail").innerText(), /No earlier snapshot for comparison/);
+          assert.equal(await page.locator(".snapshot-chart circle").count(), 1);
+          assert.equal(await page.locator(".snapshot-chart .axis").count(), 1,
+            "One snapshot must not produce an overlapping or invented comparison.");
+          const recovered = structuredClone(ledger);
+          const final = recovered.repositoryState.observations.at(-1);
+          final.value = recovered.repositoryState.observations[0].value - 1;
+          delete final.items;
+          writePulse(recovered, output);
+          await page.reload();
+          assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), "-1 since first snapshot");
           const missingItems = structuredClone(ledger);
           for (const row of missingItems.repositoryState.observations) delete row.items;
           writePulse(missingItems, output);
+          await page.goto("about:blank");
           await page.goto(`${pathToFileURL(output).href}#snapshot-0`);
           assert.match(await page.locator("#snapshot-0").innerText(), /Item-level evidence was not retained/);
           assert.equal(await page.locator("#snapshot-0 .snapshot-items a").count(), 0);
@@ -230,7 +268,7 @@ try {
         await page.goto(pathToFileURL(output).href);
         await page.locator(".signal h2").waitFor();
         assert.match(await page.locator(".signal").innerText(), /No eligible work observed/);
-        assert.match(await page.locator("main").innerText(), /not verified here/);
+        assert.match(await page.locator("main").innerText(), /Full quality checks not verified/);
         await page.locator(".evidence > summary").click();
         assert.match(await page.locator("main").innerText(), /does not establish workflow failure/);
         const metrics = [

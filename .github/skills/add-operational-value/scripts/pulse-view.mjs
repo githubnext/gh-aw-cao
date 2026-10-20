@@ -63,17 +63,19 @@ export function mountPulse(document, model) {
     "M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z",
   ];
   const main = document.querySelector("main");
-  const identity = node("p", null, main, "eyebrow");
+  const header = node("header", null, main, "report-header");
+  const identity = node("p", null, header, "eyebrow");
   const repositoryUrl = `https://github.com/${model.repository}`;
   const workflowUrl = `${repositoryUrl}/blob/HEAD/${model.sourcePath.split("/").map(encodeURIComponent).join("/")}`;
   link({ label: model.repository, url: repositoryUrl }, identity);
   node("span", "/", identity);
-  link({ label: `${model.workflowSlug} source (current)`, url: workflowUrl }, identity);
-  node("h1", model.workflowName, main);
+  node("span", "Workflow value", identity, "muted");
+  const stamp = node("p", `Saved report · ${date(model.window.endAt)}`, header, "report-date muted");
+  stamp.title = `Cutoff: ${model.window.endAt}${model.observedAt ? `; evidence captured ${model.observedAt}` : ""}. Not live.`;
+  node("h1", model.workflowName, header);
   if (typeof model.intent?.goal === "string" && model.intent.goal) {
-    node("p", `Goal: ${model.intent.goal}`, main, "goal");
-  } else node("p", "Goal not recorded in this report. Inspect the workflow Markdown before judging its purpose.", main, "notice");
-  node("p", `As of ${date(model.window.endAt)}${model.observedAt ? `; evidence captured ${date(model.observedAt)}` : ""}. Saved report, not live.`, main, "muted");
+    node("p", `Goal: ${model.intent.goal}`, header, "goal muted");
+  } else node("p", "Goal not recorded. Inspect the workflow Markdown before judging its purpose.", header, "notice");
   const label = node("label", "Explore a measure ", main, "metric-picker");
   label.hidden = model.metrics.length === 1;
   const select = node("select", null, label);
@@ -97,50 +99,60 @@ export function mountPulse(document, model) {
     const status = metric.signal;
     const contribution = metric.basis === "workflow-contribution";
     const heading = node("div", null, content, `signal ${status.attention}`);
-    node("h2", metric.reader.title, heading);
+    node("span", events ? `Last ${metric.shortDays} days` : "Recent results", heading, "signal-period muted");
+    node("h2", metric.reader.displayTitle, heading);
+    heading.title = metric.reader.title;
     const facts = node("dl", null, content, "facts");
-    const fact = (name, value, unit, detail, destination) => {
-      const row = node("div", null, facts);
+    const fact = (name, value, unit, detail, destination, iconIndex, className) => {
+      const row = node("div", null, facts, className);
       const label = node("dt", null, row);
       const icon = svgNode("svg", { viewBox: "0 0 16 16", class: "fact-icon",
         "aria-hidden": "true", focusable: "false" }, label);
-      svgNode("path", { d: icons[facts.children.length - 1] }, icon);
+      svgNode("path", { d: icons[iconIndex] }, icon);
       node("span", name, label);
       const description = node("dd", null, row);
-      const amount = node("strong", destination ? null : value, description);
+      const body = node("div", null, description, "fact-body");
+      const quantity = node("span", null, body, "fact-value");
+      const amount = node("strong", destination ? null : value, quantity);
       if (destination) {
         const anchor = internalLink(node("a", value, amount), destination);
         anchor.setAttribute("aria-label", `${name}: ${value}${unit ? ` ${unit}` : ""}. Explore evidence.`);
       }
-      if (unit) node("span", ` ${unit}`, description, "fact-unit");
-      node("span", detail, description, "fact-detail muted");
+      if (unit) node("span", ` ${unit}`, quantity, "fact-unit");
+      node("span", detail, body, "fact-detail muted");
+      return row;
     };
     const state = model.repositoryState;
     const firstState = state?.observations[0], lastState = state?.observations.at(-1);
     const primary = model.metrics.find(item => item.basis === "repository-outcome");
-    fact(events ? `Last ${metric.shortDays} days` : "Recent change", events
-      ? format(metric.currentTotal) : format(status.directionAwareGain), metric.unit,
-    events ? `${format(metric.previousTotal)} in the previous ${metric.shortDays} days; net measured change.`
-      : "Direction-aware change; unknown is not zero.", events ? "recent-results" : "measurement-rules");
-    fact(events ? contribution ? "Linked contribution" : "Measured outcomes" : "Latest measure", events
-      ? format(metric.completeTotal ?? metric.observedTotal) : format(status.current), metric.unit,
-    events ? `${metric.completeTotal == null ? "Known subtotal only; coverage is incomplete. " : ""}${metric.name} since ${date(model.window.startAt)}; not the number remaining today.`
-      : `${metric.name}. ${status.status === "insufficient-evidence" ? "Recent comparison is not verified." : ""}`,
-    events ? "accepted-results" : `observations-${metric.id}`);
-    fact("Repository state", state
+    const stateChange = state?.observations.length > 1 ? lastState.value - firstState.value : null;
+    const repositoryFact = fact(state ? state.metric.name : "Repository outcome", state
       ? format(lastState.value) : primary ? format(primary.signal.current) : "Not measured here",
     state?.metric.unit ?? primary?.unit ?? null,
-    state ? `${state.metric.name} on ${date(lastState.at)}; ${format(firstState.value)} at the first snapshot. ${state.metric.direction === "decrease" ? "Lower" : "Higher"} is better. Includes everyone's work.`
-      : primary ? `${primary.name}. Includes everyone's work.` : "Linked contribution does not establish overall repository health.",
-    state ? `snapshot-${state.observations.length - 1}` : primary ? `observations-${primary.id}` : null);
+    state ? stateChange == null ? "No earlier snapshot for comparison"
+      : `${stateChange > 0 ? "+" : ""}${format(stateChange)} since first snapshot`
+      : primary ? primary.name : "Overall repository health is unknown.",
+    state ? `snapshot-${state.observations.length - 1}` : primary ? `observations-${primary.id}` : null,
+    2, "repository-fact");
+    node("span", state
+      ? `${state.metric.direction === "decrease" ? "Lower" : "Higher"} is better · Includes everyone's work`
+      : "Includes everyone's work", repositoryFact.querySelector(".fact-body"), "fact-context muted");
+    fact(events ? model.resultLabel ? `Recent ${model.resultLabel}` : contribution ? "Recent linked results" : "Recent outcomes" : "Recent change", events
+      ? format(metric.currentTotal) : format(status.directionAwareGain), metric.unit,
+    events ? `Net in ${metric.shortDays} days · ${format(metric.previousTotal)} in the previous ${metric.shortDays}`
+      : "Direction-aware change; unknown is not zero.", events ? "recent-results" : "measurement-rules", 0, "recent-fact");
+    fact(events ? model.resultLabel ? `Historical ${model.resultLabel}` : contribution ? "Historical linked results" : "Historical outcomes" : "Latest measure", events
+      ? format(metric.completeTotal ?? metric.observedTotal) : format(status.current), metric.unit,
+    events ? `${metric.completeTotal == null ? "Known subtotal only; coverage is incomplete. " : ""}Net at linked changes since ${date(model.window.startAt)}`
+      : `${metric.name}. ${status.status === "insufficient-evidence" ? "Recent comparison is not verified." : ""}`,
+    events ? "accepted-results" : `observations-${metric.id}`, 1, "historical-fact");
     const unknownChecks = model.checks?.filter(check => check.status !== "verified") ?? [];
-    node("p", unknownChecks.length
-      ? `Not verified: ${unknownChecks.map(check => check.name).join("; ")}.`
-      : model.checks?.length ? "Only the named checks are verified; see the evidence for their scope."
-        : "Whole-goal acceptance is not verified here.", content, "notice");
+    const caveat = node("p", null, content, "quality-note");
+    internalLink(node("a", unknownChecks.length || !model.checks?.length
+      ? "Full quality checks not verified" : "Inspect verified quality checks", caveat), "goal-checks");
     if (status.status === "insufficient-evidence") node("p", status.reason, content, "notice");
     const evidence = disclosure("Explore evidence", content, "evidence");
-    node("span", "Linked changes, checks and measurement rules", evidence.querySelector("summary"), "disclosure-hint");
+    node("span", "Files, changes and checks", evidence.querySelector("summary"), "disclosure-hint");
     node("p", metric.reader.caution, evidence, "muted");
     const eventPositions = new Map(metric.events.map((event, index) => [event.id, index]));
     const eventLinks = (ids, parent) => {
@@ -187,15 +199,17 @@ export function mountPulse(document, model) {
       : `Last positive contribution: ${date(metric.lastPositiveAt)}, about ${Math.round(metric.daysSincePositive)} days before this report's cutoff.`, evidence);
     node("h2", "What to investigate", evidence);
     node("p", metric.reader.next, evidence);
-    node("h2", "Goal checks", evidence);
+    const goalChecks = node("section", null, evidence);
+    goalChecks.id = "goal-checks";
+    node("h2", "Goal checks", goalChecks);
     if (model.checks?.length) {
-      const checks = node("ul", null, evidence, "checks");
+      const checks = node("ul", null, goalChecks, "checks");
       for (const check of model.checks) {
         const item = node("li", null, checks);
         node("strong", `${check.status === "verified" ? "Verified" : "Not verified"}: ${check.name}. `, item);
         node("span", check.detail, item);
       }
-    } else node("p", "Not verified here. This report does not establish that every acceptance requirement passed.", evidence);
+    } else node("p", "Not verified here. This report does not establish that every acceptance requirement passed.", goalChecks);
     node("p", status.status === "no-opportunity"
       ? "No eligible work was observed; that does not establish workflow failure."
       : "The reason for a quiet or weaker period is unknown from these measurements alone.", evidence, "muted");
@@ -231,10 +245,27 @@ export function mountPulse(document, model) {
     if (state) {
       const panel = document.createElement("section");
       panel.className = "snapshot-chart";
-      content.insertBefore(panel, evidence);
-      const plot = chart(state.metric.name, "Select a point to inspect its measured items. Changes between snapshots are unknown.",
-        state.observations.map(row => row.value), 190, panel,
-        [{ at: firstState.at, label: date(firstState.at) }, { at: lastState.at, label: date(lastState.at) }], 500);
+      panel.setAttribute("aria-label", `${state.metric.name}: independent snapshots`);
+      repositoryFact.querySelector("dd").append(panel);
+      const wrap = node("div", null, panel, "chart");
+      wrap.setAttribute("tabindex", "0");
+      wrap.setAttribute("role", "region");
+      wrap.setAttribute("aria-label", `${state.metric.name}: independent snapshots`);
+      const svg = svgNode("svg", { viewBox: "0 0 500 180", role: "group",
+        "aria-label": `${state.metric.name}: independent snapshots` }, wrap);
+      svgNode("title", {}, svg, "Independent repository snapshots; select a point to inspect measured items.");
+      const low = Math.min(0, ...state.observations.map(row => row.value));
+      const high = Math.max(1, ...state.observations.map(row => row.value));
+      const plot = { svg, x: at => state.observations.length === 1 ? 250 : 32 + (Date.parse(at) - start) / (end - start) * 436,
+        y: value => 28 + (high - value) / (high - low) * 104 };
+      for (const value of [low, low + (high - low) / 2, high]) svgNode("line", {
+        x1: 32, x2: 468, y1: plot.y(value), y2: plot.y(value), class: "grid",
+      }, svg);
+      const dateLabels = state.observations.length === 1 ? [[firstState, "middle"]]
+        : [[firstState, "start"], [lastState, "end"]];
+      for (const [row, anchor] of dateLabels) svgNode("text", {
+        x: plot.x(row.at), y: 157, "text-anchor": anchor, class: "axis",
+      }, svg, new Date(row.at).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", year: "numeric" }));
       for (const [index, row] of state.observations.entries()) {
         const source = internalLink(svgNode("a", {
           "aria-label": `${date(row.at)}: ${format(row.value)} ${state.metric.unit}. Inspect measured items.`,
@@ -243,11 +274,12 @@ export function mountPulse(document, model) {
         svgNode("circle", { cx: plot.x(row.at), cy: plot.y(row.value), r: 5,
           class: row === lastState ? "point latest" : "point" }, source);
         if (row === firstState || row === lastState) svgNode("text", {
-          x: plot.x(row.at) + (row === lastState ? -12 : 12),
-          y: Math.max(30, plot.y(row.value) - 12),
-          "text-anchor": row === lastState ? "end" : "start", class: "snapshot-value",
+          x: plot.x(row.at),
+          y: plot.y(row.value) - 12,
+          "text-anchor": "middle", class: "snapshot-value",
         }, source, format(row.value));
       }
+      node("p", "Snapshots only · Select for files", panel, "chart-caption muted");
       const snapshots = disclosure("Inspect the repository snapshots", evidence);
       snapshots.id = "repository-snapshots";
       const list = node("ul", null, snapshots, "snapshot-list");
@@ -369,6 +401,7 @@ export function mountPulse(document, model) {
     evidence.append(history);
     const rules = disclosure("Measurement rules and evidence limits", evidence);
     rules.id = "measurement-rules";
+    node("p", `Report cutoff: ${model.window.endAt}. Evidence captured: ${model.observedAt ?? "not recorded"}. Saved report, not live.`, rules, "muted");
     link({ label: `Workflow source (current): ${model.sourcePath}`, url: workflowUrl }, node("p", null, rules));
     node("p", "The current Markdown may have changed. This saved measurement uses its fixed rule and retained revisions, not the current source.", rules, "muted");
     if (typeof model.intent?.acceptance === "string" && model.intent.acceptance) node("p", `Acceptance: ${model.intent.acceptance}`, rules);
