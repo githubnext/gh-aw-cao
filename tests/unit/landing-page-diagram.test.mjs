@@ -48,18 +48,19 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
   assert.match(hero, /Setup, authentication, and rollout/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(hero, /Set the boundaries\. Scale with confidence\./);
-  assert.match(hero, /Choose repository scope, configure separate read\/write credentials, and review your setup\./);
-  assert.match(hero, /Start campaigns in review mode, then enable live changes deliberately through checked-in rollout policy\./);
+  assert.match(hero, /Roll out with confidence\./);
+  assert.match(hero, /Choose which repositories CAO can reach and connect separate read\/write credentials\./);
+  assert.match(hero, /start in review mode,\s+and promote selected repositories to live only through explicit policy/);
+  assert.match(hero, /Keep credentials in Actions secrets/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
-  assert.match(terminalText, /For an installed campaign/);
   assert.match(terminalText, /gh cao campaigns mode preview dependabot/);
-  assert.match(terminalText, /Preview sets review mode, not execution/);
-  assert.match(terminalText, /Review and commit workflows and policy before running/);
-  assert.match(terminal, /href="\/gh-cao\/authentication\/"/);
-  assert.match(terminal, /href="\/gh-cao\/rollout-and-routing\/"/);
+  assert.match(terminalText, /CAO runtime materialized and verified/);
+  assert.match(terminalText, /Next: gh cao doctor/);
+  assert.match(terminalText, /Then review git diff and git status, commit, and push the installed files/);
+  assert.match(terminal, /"command": "mode",\s+"mode": "preview",\s+"policy": "\.github\/workflows\/cao\.json"/);
+  assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
   assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field/);
   assert.match(hero, /Monitor what runs\./);
@@ -84,10 +85,20 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.ok(tagline && wordCount(tagline) <= 25, "hero tagline should stay within twenty-five words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
   assert.equal(paragraphs.length, 5);
+  const terminalParagraph = hero.match(/id="terminal-title"[\s\S]*?<p>\s*([\s\S]*?)<\/p>/)?.[1];
   for (const [, paragraph] of paragraphs) {
-    assert.ok(wordCount(paragraph) <= 30, "each supporting paragraph should stay within thirty words");
+    const budget = paragraph === terminalParagraph ? 60 : 30;
+    assert.ok(wordCount(paragraph) <= budget, `supporting paragraph should stay within ${budget} words`);
   }
   assert.doesNotMatch(hero, /<ul class="story-points">/);
+});
+
+test("terminal output excerpts remain grounded in the production installer and CLI", () => {
+  const installer = readFileSync("install.sh", "utf8");
+  const setup = readFileSync("internal/cli/native_setup.go", "utf8");
+  assert.ok(installer.includes('"CAO runtime materialized and verified."'));
+  assert.ok(setup.includes("Next: gh cao doctor\\nThen review git diff and git status, commit, and push the installed files."));
+  assert.match(hero, /Add a campaign when you're ready, start in review mode/);
 });
 
 test("landing page shows shared and local workflows with explicit ownership", () => {

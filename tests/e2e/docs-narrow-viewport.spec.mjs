@@ -745,10 +745,10 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Shared work. Clear ownership.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
-      await expect(page.getByRole("heading", { name: "Set the boundaries. Scale with confidence.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Roll out with confidence.", exact: true })).toBeAttached();
       await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Setup, authentication, and rollout");
       await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
-        "Choose repository scope, configure separate read/write credentials, and review your setup. Start campaigns in review mode, then enable live changes deliberately through checked-in rollout policy.",
+        "Choose which repositories CAO can reach and connect separate read/write credentials. Guided setup brings scope, authentication, and dashboard visibility together for review. Add a campaign when you're ready, start in review mode, and promote selected repositories to live only through explicit policy. Keep credentials in Actions secrets and rollout decisions in versioned configuration.",
       );
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
@@ -775,6 +775,14 @@ for (const { name, viewport } of [
         "gh cao setup",
         "gh cao campaigns mode preview dependabot",
       ]);
+      await expect(page.locator(".terminal a")).toHaveCount(0);
+      await expect(page.locator('[data-terminal-output="install"]')).toHaveText("==> CAO runtime materialized and verified.");
+      await expect(page.locator('[data-terminal-output="setup"]')).toHaveText(
+        "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.",
+      );
+      expect(JSON.parse(await page.locator('[data-terminal-output="rollout"]').textContent())).toEqual({
+        campaigns: ["dependabot"], command: "mode", mode: "preview", policy: ".github/workflows/cao.json",
+      });
       await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);
       await expect(page.locator(".product-shot-mobile")).toHaveCount(2);
       await page.locator(".product-shot").last().scrollIntoViewIfNeeded();

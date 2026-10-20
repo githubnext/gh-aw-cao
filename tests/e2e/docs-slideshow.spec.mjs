@@ -6,7 +6,7 @@ const slideTitles = [
   "Central Agentic Ops",
   "Monitor and control GitHub Agentic Workflows at scale.",
   "Shared work. Clear ownership.",
-  "Set the boundaries. Scale with confidence.",
+  "Roll out with confidence.",
   "Monitor what runs.",
   "Roll out safely.",
 ];

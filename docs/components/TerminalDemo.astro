@@ -3,24 +3,32 @@
     <span class="terminal-dot red"></span>
     <span class="terminal-dot yellow"></span>
     <span class="terminal-dot green"></span>
-    <span class="terminal-title">CAO — setup · auth · rollout</span>
+    <span class="terminal-title">CAO — output excerpts</span>
   </div>
   <div class="terminal-body">
     <div class="terminal-line command" style="--line-delay: 0ms">
       <span class="prompt">$</span>
       <code><span class="syntax-command">curl</span> <span class="syntax-option">-fsSL</span> <span class="syntax-url">https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh</span> <span class="syntax-operator">|</span> <span class="syntax-command">bash</span></code>
     </div>
+    <pre class="terminal-output" data-terminal-output="install">==&gt; CAO runtime materialized and verified.</pre>
     <div class="terminal-line command" style="--line-delay: 550ms">
       <span class="prompt">$</span>
       <code><span class="syntax-command">gh cao</span> setup</code>
     </div>
-    <p class="terminal-note">For an <a href="/gh-cao/setup-quickstarts/#optional-add-automation-later">installed campaign</a>:</p>
+    <pre class="terminal-output" data-terminal-output="setup">Next: gh cao doctor
+Then review git diff and git status, commit, and push the installed files.</pre>
     <div class="terminal-line command" style="--line-delay: 1100ms">
       <span class="prompt">$</span>
       <code><span class="syntax-command">gh cao</span> campaigns mode preview dependabot<span class="cursor" aria-hidden="true"></span></code>
     </div>
-    <p class="terminal-note">Preview sets review mode, not execution. Review and commit workflows and policy before running.</p>
-    <p class="terminal-note"><a href="/gh-cao/setup-quickstarts/">Setup guide</a> · <a href="/gh-cao/authentication/">Authentication</a> · <a href="/gh-cao/rollout-and-routing/">Rollout controls</a></p>
+    <pre class="terminal-output" data-terminal-output="rollout">{`{
+  "campaigns": [
+    "dependabot"
+  ],
+  "command": "mode",
+  "mode": "preview",
+  "policy": ".github/workflows/cao.json"
+}`}</pre>
   </div>
 </div>
 
@@ -115,14 +123,17 @@
     line-height: 1.55;
   }
 
-  .terminal-note {
+  .terminal-output {
+    min-width: 0;
     margin: 0;
-    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  }
-
-  .terminal-note {
+    padding: 0 0 0 1.5rem;
+    border: 0;
+    background: none;
     color: var(--terminal-muted);
+    font: inherit;
     font-size: 0.85em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   .terminal-line {
