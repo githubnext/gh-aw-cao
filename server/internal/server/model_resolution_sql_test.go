@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/githubnext/gh-cao/server/internal/model"
@@ -11,7 +10,8 @@ import (
 
 // Configured-model resolution facts are optional Audit columns. A failed
 // resolution keeps its resolved model unknown, absent fields stay unknown, and
-// a routed session without resolution is not counted as missing evidence.
+// it appears in Problems with its cause and run link; a routed session without
+// resolution is not reported as a problem.
 func TestModelResolutionContractUsesPostgres(t *testing.T) {
 	store := integrationDatabase(t)
 	audit := func(id, run string, sequence int, fields model.Row) model.Row {
@@ -27,7 +27,8 @@ func TestModelResolutionContractUsesPostgres(t *testing.T) {
 			"path": ".github/workflows/smoke-pi-sub-agents.md"}}},
 		"$runs": {Rows: []model.Row{
 			{"id": "covered", "workflowId": "workflow", "repositoryId": "repository", "owner": "github",
-				"repository": "gh-aw", "githubRunId": "990000003", "attempt": 1},
+				"repository": "gh-aw", "githubRunId": "990000003", "attempt": 1,
+				"workflowPath": ".github/workflows/smoke-pi-sub-agents.md"},
 			{"id": "routed", "workflowId": "workflow", "repositoryId": "repository", "owner": "github",
 				"repository": "gh-aw", "githubRunId": "39091105929", "attempt": 1},
 		}},
@@ -52,7 +53,7 @@ func TestModelResolutionContractUsesPostgres(t *testing.T) {
 	if err := bindDashboardSQLCorpusInputs(definitions, parameters); err != nil {
 		t.Fatal(err)
 	}
-	names := []string{"routing-resolutions", "routing-resolution-coverage", "routing-resolution-failures", "routing-alias-moves"}
+	names := []string{"routing-resolutions", "routing-resolution-failure-records", "routing-problems"}
 	err = store.WithReadTransaction(t.Context(), func(ctx context.Context, reader postgresx.NativeReader) error {
 		sources, metrics, err := reader.ExecuteSQLPlan(ctx, definitions, names)
 		if err != nil {
@@ -79,26 +80,20 @@ func TestModelResolutionContractUsesPostgres(t *testing.T) {
 			exact["resolution-cause"] != nil || exact["configured-to-resolved"] != "copilot/gpt-5-mini → gpt-5-mini" {
 			t.Errorf("exact resolution = %#v", exact)
 		}
-		coverage := sources["routing-resolution-coverage"].Rows
-		want := map[string]json.Number{"runs": "2", "resolution-runs": "1", "routed-runs": "1",
-			"routed-without-resolution": "1", "missing-resolution": "0", "failed-runs": "1", "resolution-records": "2"}
-		if len(coverage) != 1 {
-			t.Fatalf("routing-resolution-coverage = %#v", coverage)
+		failures := sources["routing-resolution-failure-records"].Rows
+		if len(failures) != 1 || failures[0]["run"] != "990000003" || failures[0]["resolution-cause"] != "model_unavailable" ||
+			failures[0]["configured-model"] != "copilot/gpt-5.3" || failures[0]["full-repository"] != "github/gh-aw" {
+			t.Errorf("routing-resolution-failure-records = %#v", failures)
 		}
-		for key, value := range want {
-			if coverage[0][key] != value {
-				t.Errorf("coverage %s = %#v, want %s", key, coverage[0][key], value)
-			}
+		problems := sources["routing-problems"].Rows
+		if len(problems) != 1 || problems[0]["run"] != "990000003" || problems[0]["problem-kind"] != "resolution failure" ||
+			problems[0]["problem-cause"] != "model_unavailable" || problems[0]["full-repository"] != "github/gh-aw" ||
+			problems[0]["workflow"] != ".github/workflows/smoke-pi-sub-agents.md" || problems[0]["observed-at"] != nil {
+			t.Errorf("routing-problems = %#v", problems)
 		}
-		failures := sources["routing-resolution-failures"].Rows
-		if len(failures) != 1 || failures[0]["resolution-cause"] != "model_unavailable" ||
-			failures[0]["affected-runs"] != json.Number("1") || failures[0]["configured-model"] != "copilot/gpt-5.3" {
-			t.Errorf("routing-resolution-failures = %#v", failures)
-		}
-		moves := sources["routing-alias-moves"].Rows
-		if len(moves) != 1 || moves[0]["configured-model"] != "copilot/gpt-5-mini" || moves[0]["alias-change"] != "stable" ||
-			moves[0]["first-run"] != nil {
-			t.Errorf("routing-alias-moves = %#v", moves)
+		link, _ := problems[0]["routing-dashboard-link"].(map[string]any)
+		if link["dashboard-href"] != "#page-routing-run?routing-run=github%2Fgh-aw%3A990000003" {
+			t.Errorf("routing-problems link = %#v", problems[0]["routing-dashboard-link"])
 		}
 		return nil
 	})

@@ -70,21 +70,19 @@ GitHub creation or ingestion time.
 
 The Model routing page SHALL admit `model.resolution` into
 `routing-session-observations` and apply the same latest-attempt selection and
-Routing scope filters before joining resolution events. Its Model resolution
-section SHALL report coverage over scoped runs (runs with resolution evidence,
-positively identified routed runs, routed runs without resolution and non-routed
-runs without resolution), status by event engine and role with distinct run and
-record counts, alias moves and history, and failures grouped by configured
-model and cause with links to the contributing runs. Roles are records, not
-runs: four roles from one run count as one run. A routed session is expected to
-have no configured-model resolution; absence SHALL NOT classify a run as routed,
-failed or successful, and legacy sessions without the event SHALL report no
-resolution evidence. Alias series SHALL be keyed by repository, workflow,
-engine, role, provider and configured model, so unrelated resolutions cannot
-manufacture a move. A move SHALL be highlighted only between adjacent runs with
-recorded session clocks; untimed runs are counted but cannot establish a
-transition. Alias moves are observations of resolution, not served-model
-evidence or a cause. The `routing-run` drill-down SHALL list each run's
+Routing scope filters before joining resolution events. Failed resolutions
+SHALL appear in its Problems view with their distinct causes and a link to the
+run page; per-run resolution roles SHALL stay on the run page. Roles are
+records, not runs: four roles from one run count as one run. A routed session is
+expected to have no configured-model resolution; absence SHALL NOT classify a
+run as routed, failed or successful, and legacy sessions without the event
+SHALL report no resolution evidence. Any future alias view SHALL key alias
+series by repository, workflow, engine, role, provider and configured model, so
+unrelated resolutions cannot manufacture a move, and SHALL highlight a move only
+between adjacent runs with recorded session clocks; untimed runs are counted but
+cannot establish a transition. Alias moves are observations of resolution, not
+served-model evidence or a cause. The page is not required to show alias
+history. The `routing-run` drill-down SHALL list each run's
 resolution roles with configured-to-resolved model, status, cause, engine and
 provider, showing unknown values rather than manufacturing rows.
 
@@ -100,10 +98,22 @@ source-query limits before view scope. All authored query limits, including a
 displayed source's limit, remain semantic boundaries and MUST NOT be moved across
 scope.
 
-The Model routing page currently provides adoption, objective/classifier
-dimensions, label-to-pick counts, workflow stability, exclusive AIC/token
-attribution, complete-cost distributions and observational baselines, deviation
-shares, failure facts, agent-job Wilson intervals and a run drill-down. It does
+The Model routing page currently provides five views. Routing health by
+workflow answers whether routing is on and working: per repository and workflow
+with a routed run, it shows routed runs, the share with a model selected, the
+share with an agent-phase routing failure or degraded classification (no
+separate fallback field exists), the share of runs whose agent-phase requests
+followed the pick, the success rate over known agent-job outcomes and the median
+AIC per complete run. Models picked over time answers what the router chooses,
+counting proxy-selected runs with a known pick model per UTC ISO week.
+Cost per run over time answers whether routing pays off with the weekly median
+AIC per routing state; it is labeled observational, not causal, because routed
+and unrouted runs are different tasks. Problems answers what needs attention
+with one row per run and kind (routing failure, deviation or resolution failure),
+its cause, a run-page link and the run's recorded observation time. Routing runs
+lists identified runs and opens the run drill-down. A share or median without
+evidence (a zero denominator or no complete cost) and a week with fewer complete
+runs than the minimum sample SHALL be unknown or a gap, never zero. It does
 not yet implement candidate ranking, inventory/router change context, prioritized deviation causes, failure clustering, or the full
 safe-output/grader/delayed-outcome comparison surfaces of the upstream analytics
 specification. Absent producer fields and these unimplemented analyses MUST NOT
