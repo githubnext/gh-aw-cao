@@ -20,7 +20,8 @@ function example() {
     [parent, [file("pkg/a.go", 1129, "a"), file("pkg/unrelated.go", 900, "b")]],
     [merged, [file("pkg/a.go", 248, "c"), file("pkg/replacement.go", 850, "d")]],
   ]);
-  const issue = { id: "I_1", number: 1, targetPath: "pkg/a.go", createdAt: "2026-01-02T00:00:00Z",
+  const issue = { id: "I_1", number: 1, title: "[file-diet] Refactor pkg/a.go",
+    targetPath: "pkg/a.go", createdAt: "2026-01-02T00:00:00Z",
     reference: { runId: "99" }, run: { validation: { headSha: adopted } },
     receipt: { status: "missing" },
     timeline: { complete: true, events: [{ type: "connected", at: "2026-01-04T00:00:00Z",
@@ -77,6 +78,12 @@ test("File Diet measures actual merge-parent inventories and replacement files, 
   const input = example();
   const ledger = fileDietEvents(input);
   assert.equal(ledger.events.length, 1);
+  assert.equal(ledger.outputs.items.length, 1);
+  assert.deepEqual(ledger.outputs.items[0].implementationIds, ["PR_2"]);
+  assert.equal(ledger.outputs.items[0].origin, "corroborated");
+  assert.equal(ledger.outputs.items[0].state, "unknown", "Missing lifecycle history must not invent an open state.");
+  assert.match(ledger.intent.sources[0].url, new RegExp(`/blob/${adopted}/`));
+  assert.ok(ledger.intent.requirements.some(requirement => requirement.includes("public API")));
   assert.equal(ledger.resultLabel, "file reductions");
   assert.equal(ledger.events[0].value, 1);
   assert.equal(ledger.events[0].at, input.proof.pulls[0].mergedAt);
@@ -140,7 +147,8 @@ test("tracked auxiliary outputs and receipts for another object are not credited
     const ledger = fileDietEvents(input);
     assert.equal(ledger.events.length, 0);
     assert.equal(ledger.checks.find(check => check.name === "Structural change measured").status, "not-verified");
-    assert.match(ledger.limitations[1], /auxiliary outputs/);
+    assert.ok(ledger.limitations.some(note => /auxiliary outputs/.test(note)));
+    assert.equal(ledger.outputs.items.length, 0);
   }
 });
 test("unmerged proposals, later connections and disconnected links do not become deliveries", () => {
@@ -163,7 +171,25 @@ test("retained undated closing declarations are explicit corroboration, not inve
   input.proof.pulls[0].graph.edges = [{ relation: "declares-closing", target: { id: "I_1" } }];
   const ledger = fileDietEvents(input);
   assert.equal(ledger.events[0].attribution, "corroborated");
-  assert.match(ledger.limitations[1], /1 retained closing links lack a dated connection or closed-by event/);
+  assert.ok(ledger.limitations.some(note => /1 retained closing links lack a dated connection or closed-by event/.test(note)));
+});
+
+test("closed outputs are not accepted unless they link to a measured implementation", () => {
+  const input = example();
+  const first = input.proof.issues[0];
+  first.graph = { historyComplete: true, events: [
+    { type: "closed", at: "2026-01-06T00:00:00Z" },
+    { type: "reopened", at: "2026-05-02T00:00:00Z" },
+  ] };
+  input.proof.issues.push({ ...structuredClone(first), id: "I_3", number: 3,
+    title: "Another proposal", timeline: { complete: true, events: [] } });
+  const model = eventPulse(fileDietEvents(input));
+  assert.deepEqual(model.outputs.items.map(item => item.state), ["closed", "closed"]);
+  assert.deepEqual([model.outputs.retainedCount, model.outputs.implementedOutputCount,
+    model.outputs.implementationCount], [2, 1, 1]);
+  assert.equal(model.outputs.items[1].implementationIds.length, 0);
+  input.proof.issues[0].graph.events.push({ type: "reopened", at: "2026-02-01T00:00:00Z" });
+  assert.equal(fileDietEvents(input).outputs.items[0].state, "open");
 });
 
 test("keyword-linked issues retain dated closer evidence even without connected events", () => {
@@ -217,6 +243,7 @@ test("creation receipts strengthen attribution without changing measured value o
   assert.equal(after.events[0].value, before.events[0].value);
   assert.equal(after.events[0].at, before.events[0].at);
   assert.equal(eventPulse(after).metrics[0].receiptTotal, 1);
+  assert.equal(eventPulse(after).outputs.receiptCount, 1);
   input.proof.issues[0].receipt.runId = 100;
   assert.throws(() => fileDietEvents(input), /99/);
 });

@@ -26,8 +26,9 @@ that measures the intended repository outcome**. Agree on scope, units and
 missing-evidence rules before examining results.
 
 For Daily File Diet, the goal is smaller production files without broken
-behavior. Its primary function counts non-test Go files under `pkg/` with at
-least 800 lines; lower is better. Tests and other quality checks remain required
+behavior. The saved retrospective measure counts non-test Go files under `pkg/`
+with at least 800 lines; lower is better. This is distinct from the original
+1,000-line issue-creation trigger. Tests and other quality checks remain required
 for full acceptance.
 
 ```mermaid
@@ -80,13 +81,21 @@ In the [saved File Diet report](https://raw.githack.com/githubnext/gh-aw-cao/ref
 - **Diagnostic:** verified reductions at linked merges. There are 48 over the
   workflow's lifetime. Useful repairs can coexist with a growing problem.
 
-The skill's report leads with the repository outcome and its history, then
-separates recent results from lifetime contribution. Unverified quality checks
-stay visible. Select a headline number for its exact period or implementations;
+The skill's report follows **workflow intent → safe outputs → accepted changes
+→ measured result**, with source links for the consolidated intent. It separates
+retained proposals from receipt-confirmed creation and linked implementations:
+closing an issue alone is not acceptance. Repository state includes everyone's
+work; recent results remain separate from historical contribution. Unverified
+quality checks stay visible. Select a headline number for its exact evidence;
 chart points reveal the counted files with links at the measured Git revision.
 **Explore evidence** links each result to its issue, merged change, before/after
 files and measurement rules. Historical reductions
 do not mean that many fewer files remain today.
+
+**Review results** asks for inspection, not retirement. **Check evidence** means
+the comparison is not established; **No review triggered** is not an all-clear.
+Future alerts must distinguish worsening outcomes, overdue acceptance and
+missing evidence rather than treating every quiet period as failure.
 
 **Lineage plus time-aligned measurements connect outputs to observed outcomes;
 timing alone does not prove causation.** A merge is not proof of every quality

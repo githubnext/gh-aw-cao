@@ -44,12 +44,19 @@ try {
           assert.match(await page.locator('#measurement-rules a').first().textContent(), /source \(current\)/);
           assert.match(await page.locator(".report-date").innerText(), /Saved report/);
           assert.ok((await page.locator(".report-date").getAttribute("title")).includes(model.observedAt));
-          assert.match(await page.locator("main").innerText(), /Goal: Identify oversized production Go files/);
+          assert.match(await page.locator(".goal").innerText(), /Workflow intent.*Identify oversized production Go files/s);
           assert.equal(await page.locator(".signal h2").innerText(), "No recent net progress");
           assert.match(await page.locator("main").innerText(), /not verified/i);
-          assert.equal(await page.locator(".facts > div").count(), 3);
-          assert.equal(await page.locator('.fact-icon[aria-hidden="true"]').count(), 3);
-          assert.equal(await page.locator(".fact-unit").count(), model.repositoryState ? 3 : 2);
+          assert.equal(await page.locator(".facts > div").count(), 2);
+          assert.equal(await page.locator('.facts .fact-icon[aria-hidden="true"]').count(), 2);
+          assert.equal(await page.locator(".fact-unit").count(), model.repositoryState ? 2 : 1);
+          assert.deepEqual(await page.locator(".workflow-trail .trail-value").allTextContents(), [
+            model.outputs ? String(model.outputs.retainedCount) : "Unknown",
+            model.outputs ? String(model.outputs.implementationCount) : "Unknown",
+            String(model.metrics[0].completeTotal ?? model.metrics[0].observedTotal),
+          ]);
+          assert.match(await page.locator(".trail-scope").innerText(), /Output creation is not acceptance/);
+          assert.equal(await page.locator(".attention-label").innerText(), "Review results");
           assert.equal(await page.locator("details:visible").count(), 1, "Only one evidence disclosure belongs in the default view.");
           const disclosure = page.locator(".evidence > summary");
           assert.ok((await disclosure.boundingBox()).height >= 44, "Evidence must have an obvious touch-sized target.");
@@ -59,7 +66,7 @@ try {
           const words = (await page.locator("main").innerText()).trim().split(/\s+/).length;
           assert.ok(words <= 150, `Default File Diet view is too verbose: ${words} words.`);
           const height = await page.locator("main").evaluate(element => element.getBoundingClientRect().height);
-          assert.ok(height <= (width >= 1000 ? 800 : 1000), `At-a-glance view is too tall: ${height}px at ${width}px.`);
+          assert.ok(height <= (width >= 1000 ? 900 : 1100), `At-a-glance view is too tall: ${height}px at ${width}px.`);
           assert.ok(await page.locator(".facts > div").first().evaluate(element => element.classList.contains("repository-fact")),
             "The independent repository outcome must lead, not the contribution total.");
           assert.ok(await page.locator(".repository-fact .snapshot-chart").count() === (model.repositoryState ? 1 : 0),
@@ -89,8 +96,32 @@ try {
           } else assert.match(await page.locator(".facts").innerText(), /Not measured here/);
           if (model.resultLabel) {
             assert.equal(await page.locator(".recent-fact dt").innerText(), `Recent ${model.resultLabel}`);
-            assert.equal(await page.locator(".historical-fact dt").innerText(), `Historical ${model.resultLabel}`);
+            assert.equal(await page.locator(".workflow-trail .trail-detail").last().innerText(), model.resultLabel);
           }
+          await page.locator('.goal a[href="#workflow-intent"]').click();
+          assert.equal(await page.locator("#workflow-intent").evaluate(element => element.open && element === document.activeElement), true);
+          assert.deepEqual(await page.locator("#workflow-intent .evidence-links a").evaluateAll(links => links.map(link => ({
+            label: link.textContent, url: link.href,
+          }))), model.intent.sources ?? []);
+          await page.locator(".attention-label").click();
+          assert.equal(await page.locator("#attention-signal").evaluate(element => element.open && element === document.activeElement), true);
+          assert.match(await page.locator("#attention-signal").innerText(), /not a failure verdict/);
+          await page.locator('.workflow-trail a[href="#outputs-created"]').click();
+          assert.equal(await page.locator("#outputs-created").evaluate(element => element.open && element === document.activeElement), true);
+          if (model.outputs) {
+            assert.equal(await page.locator("#outputs-created .result-list > li").count(), model.outputs.retainedCount);
+            assert.match(await page.locator("#outputs-created").innerText(), /Closed issues alone are not accepted/);
+            const firstLinkedIndex = model.outputs.items.findIndex(item => item.implementationIds.length);
+            const source = page.locator("#outputs-created .result-list > li").nth(firstLinkedIndex).locator("details");
+            await source.locator("summary").click();
+            assert.equal(await source.locator(".evidence-links a").first().getAttribute("href"),
+              model.outputs.items[firstLinkedIndex].url);
+            const target = source.locator('a[href^="#result-"]').first();
+            const destination = await target.getAttribute("href");
+            await target.focus();
+            await target.press("Enter");
+            assert.equal(await page.locator(destination).evaluate(element => element.open && element === document.activeElement), true);
+          } else assert.match(await page.locator("#outputs-created").innerText(), /lifecycle was not retained/);
           await page.locator('.quality-note a').click();
           assert.equal(await page.locator("#goal-checks").evaluate(element => element === document.activeElement), true);
           assert.ok(await page.locator("#goal-checks").isVisible(), "Unknown quality must have an obvious, actionable explanation.");
@@ -113,9 +144,9 @@ try {
           for (const period of ["current", "previous"]) {
             assert.equal(await page.locator(`[data-period="${period}"] a`).count(), model.metrics[0][`${period}EventIds`].length);
           }
-          await page.locator('.facts a[href="#accepted-results"]').click();
+          await page.locator('.workflow-trail a[href="#accepted-results"]').first().click();
           assert.equal(await page.locator("#accepted-results").evaluate(element => element.open && element === document.activeElement), true);
-          assert.equal(await page.locator(".result-list > li").count(), model.metrics[0].events.length);
+          assert.equal(await page.locator("#accepted-results .result-list > li").count(), model.metrics[0].events.length);
           if (model.repositoryState) {
             const index = model.repositoryState.observations.length - 1;
             await page.locator(`.facts strong a[href="#snapshot-${index}"]`).click();
@@ -240,11 +271,13 @@ try {
         }
         const partial = structuredClone(ledger);
         partial.coverage.forEach(interval => { interval.status = "partial"; });
+        if (partial.outputs) partial.outputs.coverage = "partial";
         writePulse(partial, output);
         await page.goto(pathToFileURL(output).href);
         await page.locator(".signal h2").waitFor();
         assert.match(await page.locator(".signal").innerText(), /Not enough evidence/);
-        assert.match(await page.locator(".facts").innerText(), /Known subtotal only; coverage is incomplete/);
+        assert.match(await page.locator(".workflow-trail").innerText(), /Known subtotal; incomplete coverage/);
+        assert.equal(await page.locator(".attention-label").innerText(), "Check evidence");
         assert.match(await page.locator(".facts").innerText(), /Unknown files/);
         await page.locator('.facts a[href="#recent-results"]').click();
         assert.match(await page.locator('[data-period="current"]').innerText(), /Coverage is incomplete/);
@@ -254,6 +287,7 @@ try {
         negative.events.push({ ...structuredClone(negative.events.at(-1)), id: "negative-example",
           at, observedAt: ledger.observedAt, value: -3, lineage: [],
           acceptance: { state: "accepted", at, ref: "negative-native-example" } });
+        if (negative.outputs) negative.outputs.items[0].implementationIds.push("negative-example");
         writePulse(negative, output);
         await page.goto(pathToFileURL(output).href);
         await page.locator(".signal h2").waitFor();
@@ -264,13 +298,24 @@ try {
         noWork.opportunities = 0;
         delete noWork.repositoryState;
         delete noWork.checks;
+        delete noWork.outputs;
         writePulse(noWork, output);
         await page.goto(pathToFileURL(output).href);
         await page.locator(".signal h2").waitFor();
         assert.match(await page.locator(".signal").innerText(), /No eligible work observed/);
+        assert.equal(await page.locator(".attention-label").innerText(), "No review triggered");
         assert.match(await page.locator("main").innerText(), /Full quality checks not verified/);
         await page.locator(".evidence > summary").click();
         assert.match(await page.locator("main").innerText(), /does not establish workflow failure/);
+        const independent = structuredClone(ledger);
+        independent.basis = "repository-outcome";
+        delete independent.outputs;
+        writePulse(independent, output);
+        await page.goto(pathToFileURL(output).href);
+        await page.reload();
+        assert.equal(await page.locator(".workflow-trail").count(), 0,
+          "Actor-independent outcomes must not be presented as a workflow output funnel.");
+        assert.equal(await page.locator(".historical-fact dt").innerText(), "Historical outcomes");
         const metrics = [
           { id: "outcome", name: "Verified problem resolution", role: "primary", unit: "percent", direction: "increase" },
           { id: "linked", name: "Linked repairs", role: "diagnostic", unit: "defects", direction: "increase" },

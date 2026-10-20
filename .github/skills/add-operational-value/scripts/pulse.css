@@ -46,16 +46,34 @@ p { margin: 8px 0; }
 .report-date { font-size: .75rem; margin: 0; align-self: center; }
 .report-header h1, .report-header .goal { grid-column: 1 / -1; }
 .goal { max-width: 80ch; margin: 0; font-size: .875rem; }
+.intent-label { display: block; margin-bottom: 4px; font-size: .75rem; font-weight: var(--base-text-weight-semibold); }
+.intent-link { display: inline-block; margin-left: 8px; min-height: 24px; font-size: .75rem; }
+.workflow-trail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; padding: 0; margin: 16px 0 0; gap: 24px; }
+.workflow-trail li { position: relative; margin: 0; min-width: 0; }
+.workflow-trail li + li::before { content: ""; position: absolute; left: -18px; top: 42px; width: 7px; height: 7px; border: solid var(--fgColor-muted); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); }
+.trail-label { display: flex; align-items: center; gap: 6px; font-size: .8125rem; font-weight: var(--base-text-weight-semibold); }
+.trail-quantity { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 6px; }
+.trail-value { display: inline-flex; align-items: center; min-height: 44px; font-size: 1.75rem; font-weight: var(--base-text-weight-semibold); font-variant-numeric: tabular-nums; text-decoration: none; border-bottom: 1px dotted var(--fgColor-muted); color: var(--fgColor-default); }
+.trail-value:hover { color: var(--fgColor-accent); border-bottom-style: solid; }
+.trail-unit, .trail-detail, .trail-scope { font-size: .75rem; }
+.trail-detail { display: block; }
+.trail-scope { padding-bottom: 12px; border-bottom: 1px solid var(--borderColor-default); margin: 12px 0 0; }
+.attention-label { display: inline-flex; align-items: center; min-height: 24px; margin-right: 12px; font-size: .75rem; font-weight: var(--base-text-weight-semibold); }
+.signal.review .attention-label, .signal.evidence-needed .attention-label { color: var(--fgColor-attention); }
+.workflow-facts .recent-fact { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.workflow-facts .recent-fact dd { margin: 0; }
+.workflow-facts .recent-fact .fact-body { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.workflow-facts .recent-fact .fact-detail { margin-top: 0; }
 .muted { color: var(--fgColor-muted); }
 .metric-picker { display: block; margin: 24px 0 16px; }
 .metric-picker[hidden] { display: none; }
 select { font: inherit; color: inherit; background: var(--bgColor-muted); border: 1px solid var(--borderColor-default); border-radius: 6px; padding: 8px; max-width: 100%; }
-.signal { padding-top: 16px; }
+.signal { padding-top: 12px; }
 .signal-period { font-size: .75rem; display: inline-flex; align-items: center; gap: 8px; }
 .signal-period::before { content: ""; width: 8px; height: 8px; background: var(--fgColor-muted); border-radius: 50%; }
 .signal.review .signal-period::before, .signal.evidence-needed .signal-period::before { background: var(--fgColor-attention); }
 .signal h2 { margin: 8px 0 0; font-size: 1.75rem; line-height: 1.25; letter-spacing: -.02em; }
-.facts { display: grid; grid-template-columns: 1fr 1fr; margin: 20px 0 0; border: 1px solid var(--borderColor-default); border-radius: 6px; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; margin: 16px 0 0; border: 1px solid var(--borderColor-default); border-radius: 6px; }
 .facts > div { min-width: 0; padding: 16px 20px; }
 .facts dt { display: flex; align-items: center; gap: 8px; font-size: .875rem; font-weight: var(--base-text-weight-semibold); }
 .fact-icon { width: 16px; height: 16px; flex-shrink: 0; fill: var(--fgColor-muted); }
@@ -146,6 +164,16 @@ summary:focus-visible, a:focus-visible, [tabindex="-1"]:focus { outline: 2px sol
   .snapshot-chart .axis, .snapshot-chart .snapshot-value { font-size: 1.5rem; }
   .snapshot-chart .chart-caption { font-size: .6875rem; }
   .facts > div { padding: 12px 16px; }
+  .workflow-trail { gap: 16px; }
+  .workflow-trail li + li::before { left: -12px; width: 5px; height: 5px; }
+  .trail-label { font-size: .75rem; align-items: start; min-height: 3em; }
+  .trail-label .fact-icon { display: none; }
+  .trail-unit, .trail-detail { font-size: .6875rem; }
+  .trail-value { font-size: 1.5rem; }
+  .trail-quantity { display: block; }
+  .trail-unit { display: block; }
+  .workflow-facts .recent-fact dd, .workflow-facts .recent-fact .fact-body { display: contents; }
+  .workflow-facts .recent-fact { display: grid; }
 }
 @media (max-width: 480px) { details:not(.evidence) { padding: 12px; } .evidence[open] { padding: 0 12px 12px; } .evidence[open] > summary { margin: 0 -12px 16px; } }
 @media (prefers-reduced-motion: reduce) { .evidence > summary, .evidence > summary::after { transition: none; } }

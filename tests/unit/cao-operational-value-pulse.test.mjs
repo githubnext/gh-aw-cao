@@ -108,6 +108,66 @@ test("optional result labels describe the native measure without changing any va
     assert.throws(() => eventPulse(input), /Invalid report result label/);
   }
 });
+
+test("safe-output trails keep output, accepted-implementation and native-result populations distinct", () => {
+  const input = ledger();
+  const before = eventPulse(input);
+  const output = id => ({ id, label: `Proposal ${id}`, title: "A proposed repair",
+    url: `https://github.com/octo/example/issues/${id}`, createdAt: input.window.startAt,
+    state: "closed", origin: "corroborated", implementationIds: ["a", "b"], evidence: [] });
+  input.outputs = { scope: "Retained proposals, not deleted outputs", coverage: "complete",
+    items: [output("1"), output("2"), { ...output("3"), state: "open", origin: "receipt-verified", implementationIds: [] }] };
+  const model = eventPulse(input);
+  assert.deepEqual(model.metrics, before.metrics, "Presentation cohorts must not alter native measurements.");
+  assert.deepEqual([model.outputs.retainedCount, model.outputs.implementationCount,
+    model.outputs.implementedOutputCount, model.outputs.receiptCount], [3, 2, 2, 1]);
+  assert.equal(before.outputs, null, "An accepted-event ledger alone cannot reconstruct output creation.");
+  input.outputs.items = [];
+  assert.throws(() => eventPulse(input), /accepted contribution lacks its output trail/);
+  input.events = [];
+  assert.equal(eventPulse(input).outputs.retainedCount, 0, "A retained empty cohort differs from missing evidence.");
+});
+
+test("timeline intent references use the same safe historical-source contract", () => {
+  const input = timeline();
+  input.valueFunction.definition.intent = { goal: "Resolve defects.",
+    sources: [{ label: "Unsafe source", url: "javascript:alert(1)" }] };
+  assert.throws(() => timelinePulse(input), /Invalid extracted intent/);
+});
+
+test("output and intent context fails closed on unsafe links, duplicate identities and impossible trails", () => {
+  const input = ledger();
+  input.intent.sources = [{ label: "Workflow at adoption", url: "https://github.com/octo/example/blob/adopted/workflow.md" }];
+  input.intent.requirements = ["Preserve behavior."];
+  input.outputs = { scope: "Retained issues", coverage: "partial", items: [
+    { id: "1", label: "Issue 1", title: "Proposal", url: "https://github.com/octo/example/issues/1",
+      createdAt: input.window.startAt, state: "closed", origin: "corroborated", implementationIds: ["a", "b"], evidence: [] },
+  ] };
+  assert.equal(eventPulse(input).outputs.coverage, "partial");
+  for (const change of [
+    value => { value.intent.sources[0].url = "javascript:alert(1)"; },
+    value => { value.intent.sources = []; },
+    value => { value.intent.requirements = [" "]; },
+    value => { value.outputs = null; },
+    value => { value.outputs.scope = ""; },
+    value => { value.outputs.coverage = "healthy"; },
+    value => { value.outputs.unit = ""; },
+    value => { value.outputs.implementationUnit = 1; },
+    value => { value.outputs.items.push(structuredClone(value.outputs.items[0])); },
+    value => { value.outputs.items[0].createdAt = value.window.endAt; },
+    value => { value.outputs.items[0].createdAt = "2026-04-01T00:00:00Z"; },
+    value => { value.outputs.items[0].state = "accepted"; },
+    value => { value.outputs.items[0].origin = "title-match"; },
+    value => { value.outputs.items[0].url = "https://secret@github.com/octo/example/issues/1"; },
+    value => { value.outputs.items[0].implementationIds = ["not-retained"]; },
+    value => { value.outputs.items[0].implementationIds = ["a", "a"]; },
+    value => { value.outputs.items[0].evidence = [{ label: "Run", url: "javascript:alert(1)" }]; },
+  ]) {
+    const altered = structuredClone(input);
+    change(altered);
+    assert.throws(() => eventPulse(altered), /Invalid extracted intent|Invalid safe-output/);
+  }
+});
 test("independent snapshot context and explicit quality checks survive without becoming contribution", () => {
   const input = ledger();
   input.repositoryState = {

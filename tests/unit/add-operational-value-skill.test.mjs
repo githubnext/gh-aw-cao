@@ -22,6 +22,11 @@ test("skill connects frozen intent, final acceptance, dated lineage and reusable
   assert.match(skill, /examples\/acquire-file-diet.mjs/);
   assert.match(skill, /gh-aw-execution/);
   assert.match(skill, /Tracking IDs locate outputs, not accepted/);
+  assert.match(skill, /closed issues are not automatically accepted implementations/i);
+  assert.match(skill, /Missing lifecycle data is unknown, not zero/);
+  assert.match(skill, /No review triggered/);
+  assert.match(skill, /Overdue acceptance/);
+  assert.match(skill, /Do not invent alert thresholds/);
   assert.match(skill, /not.*a current-evidence/);
   const events = JSON.parse(readFileSync(path.join(root, "tests/fixtures/operational-value/file-diet-events.json"), "utf8")).events;
   assert.equal(events.filter(event => !event.lineage.some(edge => edge.relation === "connected")

@@ -74,7 +74,11 @@ export function mountPulse(document, model) {
   stamp.title = `Cutoff: ${model.window.endAt}${model.observedAt ? `; evidence captured ${model.observedAt}` : ""}. Not live.`;
   node("h1", model.workflowName, header);
   if (typeof model.intent?.goal === "string" && model.intent.goal) {
-    node("p", `Goal: ${model.intent.goal}`, header, "goal muted");
+    const goal = node("p", null, header, "goal");
+    node("span", "Workflow intent", goal, "intent-label muted");
+    node("span", model.intent.goal, goal);
+    goal.append(document.createTextNode(" "));
+    internalLink(node("a", "Sources and checks", goal, "intent-link"), "workflow-intent");
   } else node("p", "Goal not recorded. Inspect the workflow Markdown before judging its purpose.", header, "notice");
   const label = node("label", "Explore a measure ", main, "metric-picker");
   label.hidden = model.metrics.length === 1;
@@ -98,7 +102,41 @@ export function mountPulse(document, model) {
     const events = metric.kind === "events";
     const status = metric.signal;
     const contribution = metric.basis === "workflow-contribution";
+    const outputs = events ? model.outputs : null;
+    if (events && contribution) {
+      const trail = node("ol", null, content, "workflow-trail");
+      trail.setAttribute("aria-label", "Safe outputs to accepted implementation and measured result");
+      for (const [name, value, unit, detail, target, iconIndex] of [
+        ["Safe outputs", outputs ? format(outputs.retainedCount) : "Unknown", outputs?.unit ?? "outputs",
+          outputs ? `${format(outputs.receiptCount)} receipt-confirmed` : "Lifecycle not retained", "outputs-created", 2],
+        ["Accepted changes", outputs ? format(outputs.implementationCount) : "Unknown", outputs?.implementationUnit ?? "changes",
+          "Linked to outputs", "accepted-results", 1],
+        ["Measured result", format(metric.completeTotal ?? metric.observedTotal), metric.unit,
+          metric.completeTotal == null ? "Known subtotal; incomplete coverage"
+            : model.resultLabel ?? "Net at accepted changes", "accepted-results", 0],
+      ]) {
+        const stage = node("li", null, trail);
+        const title = node("span", null, stage, "trail-label");
+        const icon = svgNode("svg", { viewBox: "0 0 16 16", class: "fact-icon",
+          "aria-hidden": "true", focusable: "false" }, title);
+        svgNode("path", { d: icons[iconIndex] }, icon);
+        node("span", name, title);
+        const quantity = node("span", null, stage, "trail-quantity");
+        internalLink(node("a", value, quantity, "trail-value"), target)
+          .setAttribute("aria-label", `${name}: ${value} ${unit}. Explore the evidence trail.`);
+        node("span", unit, quantity, "trail-unit muted");
+        node("span", detail, stage, "trail-detail muted");
+      }
+      node("p", `Retained cohort since ${date(model.window.startAt)} · Output creation is not acceptance`,
+        content, "trail-scope muted");
+      if (outputs && outputs.coverage !== "complete") node("p",
+        "Output or relationship coverage is incomplete; counts describe retained evidence only.", content, "notice");
+    }
     const heading = node("div", null, content, `signal ${status.attention}`);
+    const attentionLabels = { review: "Review results", "evidence-needed": "Check evidence",
+      "not-indicated": "No review triggered" };
+    internalLink(node("a", attentionLabels[status.attention], heading, "attention-label"), "attention-signal");
+    heading.append(document.createTextNode(" "));
     node("span", events ? `Last ${metric.shortDays} days` : "Recent results", heading, "signal-period muted");
     node("h2", metric.reader.displayTitle, heading);
     heading.title = metric.reader.title;
@@ -141,18 +179,23 @@ export function mountPulse(document, model) {
       ? format(metric.currentTotal) : format(status.directionAwareGain), metric.unit,
     events ? `Net in ${metric.shortDays} days · ${format(metric.previousTotal)} in the previous ${metric.shortDays}`
       : "Direction-aware change; unknown is not zero.", events ? "recent-results" : "measurement-rules", 0, "recent-fact");
-    fact(events ? model.resultLabel ? `Historical ${model.resultLabel}` : contribution ? "Historical linked results" : "Historical outcomes" : "Latest measure", events
-      ? format(metric.completeTotal ?? metric.observedTotal) : format(status.current), metric.unit,
-    events ? `${metric.completeTotal == null ? "Known subtotal only; coverage is incomplete. " : ""}Net at linked changes since ${date(model.window.startAt)}`
-      : `${metric.name}. ${status.status === "insufficient-evidence" ? "Recent comparison is not verified." : ""}`,
-    events ? "accepted-results" : `observations-${metric.id}`, 1, "historical-fact");
+    if (!events) fact("Latest measure",
+      format(status.current), metric.unit,
+    `${metric.name}. ${status.status === "insufficient-evidence" ? "Recent comparison is not verified." : ""}`,
+    `observations-${metric.id}`, 1, "historical-fact");
+    if (events && !contribution) fact("Historical outcomes",
+      format(metric.completeTotal ?? metric.observedTotal), metric.unit,
+      metric.completeTotal == null ? "Known subtotal only; coverage is incomplete."
+        : `Net repository outcomes since ${date(model.window.startAt)}`,
+      "accepted-results", 1, "historical-fact");
+    if (events && contribution) facts.classList.add("workflow-facts");
     const unknownChecks = model.checks?.filter(check => check.status !== "verified") ?? [];
     const caveat = node("p", null, content, "quality-note");
     internalLink(node("a", unknownChecks.length || !model.checks?.length
       ? "Full quality checks not verified" : "Inspect verified quality checks", caveat), "goal-checks");
     if (status.status === "insufficient-evidence") node("p", status.reason, content, "notice");
     const evidence = disclosure("Explore evidence", content, "evidence");
-    node("span", "Files, changes and checks", evidence.querySelector("summary"), "disclosure-hint");
+    node("span", "Outputs, accepted changes and Git evidence", evidence.querySelector("summary"), "disclosure-hint");
     node("p", metric.reader.caution, evidence, "muted");
     const eventPositions = new Map(metric.events.map((event, index) => [event.id, index]));
     const eventLinks = (ids, parent) => {
@@ -164,6 +207,48 @@ export function mountPulse(document, model) {
           node("li", null, list)), `result-${index}`);
       }
     };
+    const intent = disclosure("Extracted workflow intent", evidence);
+    intent.id = "workflow-intent";
+    node("p", model.intent?.goal ?? "Goal not recorded.", intent);
+    if (model.intent?.requirements?.length) {
+      const requirements = node("ul", null, intent);
+      for (const requirement of model.intent.requirements) node("li", requirement, requirements);
+    }
+    if (model.intent?.sources?.length) {
+      const sources = node("p", null, intent, "evidence-links");
+      for (const source of model.intent.sources) link(source, sources);
+    } else node("p", "Historical intent source references were not retained. The current workflow is not evidence of its past instructions.", intent, "muted");
+    if (model.intent?.acceptance) node("p", `What this report verifies: ${model.intent.acceptance}`, intent);
+    if (events) {
+      const created = disclosure("Safe outputs and their implementation trails", evidence);
+      created.id = "outputs-created";
+      if (outputs) {
+        node("p", outputs.scope, created);
+        node("p", `${format(outputs.retainedCount)} retained outputs; ${format(outputs.receiptCount)} have applied creation receipts. `
+          + `${format(outputs.implementedOutputCount)} outputs link to ${format(outputs.implementationCount)} distinct accepted implementations. `
+          + "These are different populations, not a conversion rate. Closed issues alone are not accepted implementations.", created);
+        const list = node("ul", null, created, "result-list");
+        for (const output of outputs.items) {
+          const item = disclosure(`${output.label}: ${output.title}`, node("li", null, list));
+          node("p", `Created ${date(output.createdAt)} · Issue state: ${output.state}.`, item, "muted");
+          const sources = node("p", null, item, "evidence-links");
+          link(output, sources);
+          for (const ref of output.evidence) link(ref, sources);
+          node("p", output.origin === "receipt-verified"
+            ? "Applied safe-output creation receipt preserved."
+            : "Origin corroborated by tracking/producer evidence; an applied creation receipt is not retained.", item);
+          if (output.implementationIds.length) eventLinks(output.implementationIds, item);
+          else node("p", "No linked accepted implementation retained. This is not a rejection or a failed outcome.", item);
+        }
+        if (!outputs.items.length) node("p", "The retained cohort is empty; this does not establish that no outputs ever existed.", created);
+      } else node("p", "Safe-output lifecycle was not retained. Accepted-event measurements cannot establish how many outputs were created, pending or rejected.", created);
+    }
+    const attention = disclosure("Attention signal and evidence", evidence);
+    attention.id = "attention-signal";
+    node("p", `${attentionLabels[status.attention]}: ${metric.reader.title}.`, attention);
+    node("p", `Signal basis: ${contribution ? "linked contribution" : metric.basis}. ${status.reason}`, attention);
+    node("p", metric.reader.next, attention);
+    node("p", "This requests inspection, not a failure verdict. No review triggered does not mean the workflow is healthy. Missing quality checks are a separate evidence gap; no pending-work timeout or automatic retirement rule is applied.", attention, "muted");
     if (events) {
       const recent = disclosure("Recent results", evidence);
       recent.id = "recent-results";

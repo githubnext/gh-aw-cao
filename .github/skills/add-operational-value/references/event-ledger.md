@@ -88,13 +88,16 @@ delay. Evidence observation must follow acceptance by that interval.
 
 ### Beginner-facing context
 
-The default report has one deterministic plain-language assessment and an
-outcome-first hierarchy, not three equal-weight audit rows. The independent
-repository measure leads with its change since the first snapshot and a compact
-snapshot chart beside it. Recent results and historical contribution sit below
-with separate time scopes. A linked quality caveat leads to the named checks.
+The default report follows familiar workflow concepts: **intent → safe outputs
+→ accepted changes → measured result**. Consolidate the goal and requirements
+from immutable workflow sources, with clickable source references. Use a compact
+data trail rather than an instructional diagram: retained output count, distinct
+accepted implementation count, and native measured result. Then show the
+independent repository measure with its first-snapshot change and compact chart,
+plus a separately scoped recent result. A linked quality caveat leads to checks.
 Aim for at most 150 visible words; keep technical detail out of the first read.
-Historical contribution is not the repository's current
+Output counts are not value. Creation receipts, accepted implementations and
+verified goal attainment are separate claims. Historical contribution is not the repository's current
 state or exclusive workflow credit. A quiet period does not diagnose its cause.
 Goal-check details, example changes, detailed charts, formulas, receipt
 distinctions and raw IDs remain behind one **Explore evidence** disclosure,
@@ -115,6 +118,35 @@ An event may add `title` and a short `summary`; both are untrusted display text,
 not measurements or acceptance evidence. Preserve full native facts in `detail`.
 The ledger may additionally supply:
 
+- `intent.sources`: nonempty `{label, url}[]` of credential-free HTTPS references
+  to the immutable Markdown, imports, precomputes or compiled source used to
+  extract intent. `intent.requirements` is a nonempty array of consolidated
+  requirement strings. Both are untrusted display context, not a replacement
+  for the frozen goal or acceptance rule. Missing references must be explicit;
+  a current source link is not historical extraction evidence.
+- `outputs`: `{scope, coverage, items}` for an independently acquired retained
+  cohort. `scope` describes inclusion and retention limits; `coverage` is
+  `complete`, `partial` or `unknown`, relative only to that cohort.
+  Optional nonempty `unit` and `implementationUnit` supply display nouns such
+  as "issues" and "merged PRs"; these do not change native measurement units.
+  Each item contains unique `id`, `label`, `title`, `url`, `createdAt`,
+  `state` (`open`, `closed`, `unknown`), `origin` (`receipt-verified`,
+  `corroborated`), `implementationIds` and `evidence: {label, url}[]`.
+  Creation is within the report's end-exclusive window. State is reconstructed
+  at cutoff when complete lifecycle history permits; later closure or reopening
+  must not leak into that state. Each implementation ID names an existing
+  accepted event no earlier than output creation; the collector must join the
+  actual explicit relationships, not guess them from titles.
+  When a contribution ledger supplies this cohort, every accepted contribution
+  must retain at least one originating output trail; an empty cohort cannot
+  coexist with supposedly linked deliveries.
+  The model projects distinct retained outputs, receipt-confirmed outputs,
+  outputs with implementations, and implementing-event counts. Many-to-many
+  links never multiply native results. A closed issue is not proof of
+  implementation, no retained implementation is not rejection, and a merged
+  PR is not full quality acceptance. Missing `outputs` differs from an explicitly
+  empty retained cohort. Do not label the unimplemented remainder pending,
+  overdue or failed without the required lifecycle and follow-up evidence.
 - `resultLabel`: a short, nonempty display noun phrase such as "file reductions"
   or "verified fixes". It clarifies what recent and historical result figures
   represent; it does not replace the native metric name, unit, formula, evidence
@@ -144,6 +176,20 @@ Omitted repository state is **not measured here**; omitted quality evidence is
 **not verified here**. Do not infer either from output counts, contribution,
 acceptance text or an observed merge. These optional projections expose acquired
 facts; they do not change the frozen function or reclassify historical evidence.
+
+### Future attention surfaces
+
+The saved report exposes the existing descriptive signal as **Review results**,
+**Check evidence** or **No review triggered**, linked to its basis and reason.
+These are not health ratings or new alert policies. Keep evidence sufficiency
+and quality verification separate from outcome movement. A future alerts
+dashboard should present a workflow-specific exception and its output-to-Git
+trail: repository deterioration, ineffective accepted changes, overdue
+acceptance or missing evidence. These require different evidence and must not
+be inferred from each other. Acceptance delays require a predefined follow-up
+horizon and equal-age cohorts including unresolved opportunities, not a timeout
+chosen from completed cases. Persistence, notification and resolution policies
+need a separate reviewed design; the report adds no automatic actions.
 
 ## Frozen-module evaluation
 

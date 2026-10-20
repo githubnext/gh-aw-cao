@@ -93,6 +93,7 @@ export function fileDietEvents({ proof, inventories }) {
     && issue.receipt?.status !== "not-applied-to-output");
   const receipts = new Set(eligibleIssues.filter(receiptVerified).map(issue => issue.number));
   const events = [];
+  const implementations = new Map(eligibleIssues.map(issue => [issue.id, []]));
   let undatedClosingLinks = 0;
   for (const pull of proof.pulls) {
     if (!pull.mergedAt || Date.parse(pull.mergedAt) >= Date.parse(proof.until)) continue;
@@ -122,6 +123,7 @@ export function fileDietEvents({ proof, inventories }) {
       return closing || connected;
     });
     if (!linked.length) continue;
+    for (const issue of linked) implementations.get(issue.id).push(pull.id);
     const before = inventory(pull.preMergeSha);
     const after = inventory(pull.mergeSha);
     const targetPaths = [...new Set(linked.map(issue => issue.targetPath).filter(Boolean))];
@@ -174,12 +176,24 @@ export function fileDietEvents({ proof, inventories }) {
     && proof.issues.every(issue => issue.timeline.complete === true && issue.graph?.historyComplete !== false)
     && proof.pulls.filter(pull => pull.mergedAt).every(pull =>
       pull.graph.closingLinksComplete === true && pull.graph.historyComplete !== false);
+  const adoptedSource = `${root}/blob/${proof.adoption.commit}/.github/workflows`;
   return {
     schemaVersion: 1, kind: "operational-value-events",
     repository, workflowSlug: "daily-file-diet", workflowName: "Daily File Diet", sourcePath,
     intent: {
       goal: "Identify oversized production Go files and promote behavior-preserving decomposition.",
       acceptance: "This named structural facet measures net 800+ file reductions at linked merges; full behavior-preserving acceptance remains unknown.",
+      requirements: [
+        "Inspect the largest non-test Go source file under pkg/ and propose a focused refactoring issue when the workflow's size threshold is met.",
+        "Preserve behavior and public API; keep every new file under 500 lines and require at least 80% test coverage for new files.",
+        "Require passing tests, lint and build. Creating the proposal is not the same as implementing it.",
+      ],
+      sources: [
+        { label: "Workflow Markdown at adoption", url: `${adoptedSource}/daily-file-diet.md` },
+        { label: "Compiled workflow at adoption", url: `${adoptedSource}/daily-file-diet.lock.yml` },
+        { label: "Reporting import at adoption", url: `${adoptedSource}/shared/reporting.md` },
+        { label: "Serena import at adoption", url: `${adoptedSource}/shared/mcp/serena.md` },
+      ],
     },
     provenance: [{ sourceRevision, proofDigest: digest(proof),
       kind: proof.acquisition?.kind ?? "preserved-retrospective-proof",
@@ -192,6 +206,24 @@ export function fileDietEvents({ proof, inventories }) {
       formula: "Count regular non-test Go files under pkg/ with at least 800 newline characters before the merge, minus the same count after it, including replacements." },
     basis: "workflow-contribution", window, coverage: [{ ...window, status: complete ? "complete" : "partial" }],
     opportunities: oversized(last.commit), events,
+    outputs: {
+      scope: "Retained eligible File Diet proposal issues discovered through tracking markers and named producer references. Deleted or undiscovered outputs are not reconstructed.",
+      coverage: complete ? "complete" : "partial",
+      unit: "issues", implementationUnit: "merged PRs",
+      items: eligibleIssues.map(issue => {
+        const transitions = issue.graph?.historyComplete === true
+          ? issue.graph.events.filter(event => ["closed", "reopened"].includes(event.type)
+            && Date.parse(event.at) < Date.parse(proof.until))
+            .sort((left, right) => Date.parse(left.at) - Date.parse(right.at)) : null;
+        return { id: issue.id, label: `${repository}#${issue.number}`, title: issue.title,
+          url: `${root}/issues/${issue.number}`, createdAt: issue.createdAt,
+          state: transitions ? transitions.at(-1)?.type === "closed" ? "closed" : "open" : "unknown",
+          origin: receipts.has(issue.number) ? "receipt-verified" : "corroborated",
+          implementationIds: implementations.get(issue.id),
+          evidence: issue.run?.validation?.url
+            ? [{ label: "Referenced producer run", url: issue.run.validation.url }] : [] };
+      }),
+    },
     repositoryState: {
       metric: { id: "oversized-files", name: "Oversized production Go files", unit: "files",
         direction: "decrease", version: "observed-800-line-snapshot-v1",
@@ -213,6 +245,7 @@ export function fileDietEvents({ proof, inventories }) {
     ],
     limitations: [
       "Coverage is the surviving discovered File Diet issue cohort and its explicit merge links, not deleted outputs or an exclusive causal effect.",
+      "Intent is consolidated from the adoption-time Markdown and imports. Its original issue-creation threshold was 1000 lines; the preserved retrospective instrument measures the separately named 800+ structural facet, not unchanged full acceptance.",
       ...(proof.issues.some(issue => issue.eligible === false || issue.receipt?.status === "not-applied-to-output")
         ? ["Tracked auxiliary outputs and artifacts naming a different created output remain in the lifecycle proof but are not credited as eligible File Diet deliveries."] : []),
       ...(!complete ? ["Discovery or relationship history is incomplete; observed events do not establish complete-period totals."] : []),

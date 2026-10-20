@@ -220,17 +220,27 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   curve is context, not a pre-adoption baseline. Without an agreed decision bar
   or matched costs, report **not rated** and **not measured**.
 
-  Lead reports with the goal and a deterministic plain-language assessment,
-  then an outcome-first composition: the independent repository state is the
-  dominant fact, with its first-snapshot change and a compact, directly labelled
-  snapshot chart beside it. Put recent results and historical contribution
-  beneath it as two subordinate facts with explicit, different time scopes.
+  Use the GitHub Agentic Workflows reader's vocabulary: consolidated workflow
+  intent, safe outputs, accepted implementation and measured repository change.
+  Link the extracted intent to immutable Markdown, imports and compiled sources,
+  with the original requirements available on demand. Keep any separately named
+  partial measurement distinct from the workflow's full acceptance criteria.
+  Show a compact evidence trail of retained outputs, distinct linked accepted
+  implementations and their native measured result, all with an explicit scope
+  and clickable drilldowns. Do not reconstruct output creation from accepted
+  events. Distinguish applied creation receipts from corroborated tracking;
+  closed issues are not automatically accepted implementations. Output counts,
+  implementation counts and native results are different populations, not an
+  implicit conversion rate. Missing lifecycle data is unknown, not zero.
+  Follow with a deterministic plain-language assessment and the independent
+  repository state, its first-snapshot change and a compact, directly labelled
+  snapshot chart. Keep recent results separate from the trail's historical scope.
   Use a short human result label, such as "file reductions", when supplied by
   the collector; never make readers infer what identical units mean.
   Keep the default view to roughly 150 words, not an equal-weight audit table
   or a wall of cards. Show one linked unknown-quality caveat.
   Do not make the default
-  report a tutorial: avoid card grids, a workflow walkthrough and repeated
+  report a tutorial: avoid card grids, a lengthy workflow walkthrough and repeated
   disclaimers. Keep missing coverage visible. Put goal-check details,
   investigation guidance, example implementations, elapsed times, rates,
   formulas, receipts and raw IDs behind one **Explore evidence** disclosure,
@@ -239,6 +249,17 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   reason for inactivity or keep/retire recommendation. Optional structured
   repository snapshots and verification checks follow the event-ledger
   contract; absence must say **not measured** or **not verified**.
+
+  Treat attention as an inspectable exception, not a workflow health score:
+  **Review results**, **Check evidence** or **No review triggered**. Show its
+  measured basis and why it fired; no review triggered is not an all-clear.
+  Keep evidence completeness and unverified quality separate from observed
+  outcome movement. A future alerts dashboard may distinguish repository
+  deterioration, ineffective accepted changes, overdue acceptance and missing
+  evidence, but must not infer those reasons interchangeably. Overdue acceptance
+  requires an agreed follow-up horizon and equal-age opportunity cohorts,
+  including right-censored pending work. Do not invent alert thresholds,
+  persistence windows, causal claims, notifications or automatic actions here.
 
   Follow GitHub Primer product foundations: functional light/dark color tokens,
   the system-fallback font stack, Octicons, restrained borders and clear link

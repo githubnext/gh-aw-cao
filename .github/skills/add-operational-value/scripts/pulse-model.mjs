@@ -11,6 +11,14 @@ const safeEvidenceUrl = value => {
   return url?.protocol === "https:" && !url.username && !url.password;
 };
 const validEvidenceReference = ref => typeof ref?.label === "string" && !!ref.label && safeEvidenceUrl(ref.url);
+function validateIntentContext(intent) {
+  if ((intent?.sources !== undefined && (!Array.isArray(intent.sources) || !intent.sources.length
+    || !intent.sources.every(validEvidenceReference)))
+    || (intent?.requirements !== undefined && (!Array.isArray(intent.requirements) || !intent.requirements.length
+      || intent.requirements.some(item => typeof item !== "string" || !item.trim())))) {
+    throw new Error("Invalid extracted intent sources or requirements");
+  }
+}
 const gain = (metric, before, after) => {
   const delta = metric.direction === "increase" ? after - before
     : metric.direction === "decrease" ? before - after
@@ -104,6 +112,7 @@ function ticks(start, end) {
 
 export function timelinePulse(timeline) {
   const definition = timeline.valueFunction.definition;
+  validateIntentContext(definition.intent);
   const policy = signalPolicy(definition);
   const review = reviewValue(timeline);
   const kind = definition.evidence.measurementKind;
@@ -160,6 +169,7 @@ export function timelinePulse(timeline) {
 }
 
 function reportContext(ledger) {
+  validateIntentContext(ledger.intent);
   if (ledger.resultLabel !== undefined && (typeof ledger.resultLabel !== "string" || !ledger.resultLabel.trim())) {
     throw new Error("Invalid report result label");
   }
@@ -192,6 +202,40 @@ function reportContext(ledger) {
     }
   }
   return { checks, repositoryState: state ?? null, resultLabel: ledger.resultLabel ?? null };
+}
+
+function outputContext(ledger, events) {
+  if (ledger.outputs === undefined) return null;
+  const { scope, coverage, items, unit, implementationUnit } = ledger.outputs ?? {};
+  if (typeof scope !== "string" || !scope.trim() || !["complete", "partial", "unknown"].includes(coverage)
+    || !Array.isArray(items) || [unit, implementationUnit].some(value =>
+      value !== undefined && (typeof value !== "string" || !value.trim()))) throw new Error("Invalid safe-output cohort");
+  const identities = new Set();
+  const accepted = new Map(events.map(event => [event.id, event]));
+  const implementations = new Set();
+  for (const item of items) {
+    if (!item || typeof item.id !== "string" || !item.id || identities.has(item.id)
+      || !validEvidenceReference(item) || typeof item.title !== "string" || !item.title.trim()
+      || !finite(time(item.createdAt)) || time(item.createdAt) < time(ledger.window.startAt)
+      || time(item.createdAt) >= time(ledger.window.endAt) || time(item.createdAt) > time(ledger.observedAt)
+      || !["open", "closed", "unknown"].includes(item.state)
+      || !["receipt-verified", "corroborated"].includes(item.origin)
+      || !Array.isArray(item.implementationIds) || new Set(item.implementationIds).size !== item.implementationIds.length
+      || item.implementationIds.some(id => !accepted.has(id) || time(accepted.get(id).at) < time(item.createdAt))
+      || !Array.isArray(item.evidence) || !item.evidence.every(validEvidenceReference)) {
+      throw new Error("Invalid safe-output identity, lifecycle or implementation trail");
+    }
+    identities.add(item.id);
+    for (const id of item.implementationIds) implementations.add(id);
+  }
+  if (ledger.basis === "workflow-contribution" && events.some(event => !implementations.has(event.id))) {
+    throw new Error("Invalid safe-output cohort: accepted contribution lacks its output trail");
+  }
+  return { scope, coverage, items, unit: unit ?? "outputs", implementationUnit: implementationUnit ?? "changes",
+    retainedCount: items.length,
+    receiptCount: items.filter(item => item.origin === "receipt-verified").length,
+    implementedOutputCount: items.filter(item => item.implementationIds.length).length,
+    implementationCount: implementations.size };
 }
 
 function validateLedger(ledger) {
@@ -266,6 +310,7 @@ function validateLedger(ledger) {
 export function eventPulse(ledger) {
   const events = validateLedger(ledger);
   const context = reportContext(ledger);
+  const outputs = outputContext(ledger, events);
   const start = time(ledger.window.startAt), end = time(ledger.window.endAt);
   const complete = (left, right) => {
     if (left < start || right > end || left >= right) return false;
@@ -349,7 +394,7 @@ export function eventPulse(ledger) {
   metric.reader = readerSummary(metric);
   return { schemaVersion: 1, repository: ledger.repository, workflowSlug: ledger.workflowSlug,
     workflowName: ledger.workflowName, sourcePath: ledger.sourcePath, observedAt: ledger.observedAt,
-    intent: ledger.intent, provenance: ledger.provenance ?? [], ...context,
+    intent: ledger.intent, provenance: ledger.provenance ?? [], ...context, outputs,
     valueFunctionSha256: ledger.valueFunctionSha256 ?? null,
     window: ledger.window, ticks: ticks(start, end), selectedMetricId: metric.id,
     signal: headline(metric), metrics: [metric],
