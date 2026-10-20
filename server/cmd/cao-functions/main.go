@@ -29,6 +29,7 @@ func main() {
 // functionsConfig holds the resolved configuration used to start the Azure
 // Functions custom handler.
 type functionsConfig struct {
+	host          string
 	port          string
 	siteDirectory string
 	queriesPath   string
@@ -46,6 +47,7 @@ func resolveFunctionsConfig(getenv func(string) string) (functionsConfig, error)
 	siteDirectory := envOrDefault(getenv, "CAO_AZURE_SITE_DIRECTORY", "site")
 	queriesPath := envOrDefault(getenv, "CAO_AZURE_DASHBOARD_QUERIES", filepath.Join(siteDirectory, "dashboard.json"))
 	return functionsConfig{
+		host:          envOrDefault(getenv, "FUNCTIONS_CUSTOMHANDLER_HOST", "127.0.0.1"),
 		port:          port,
 		siteDirectory: siteDirectory,
 		queriesPath:   queriesPath,
@@ -73,7 +75,7 @@ func run() error {
 		return err
 	}
 	var listenConfig net.ListenConfig
-	listener, err := listenConfig.Listen(ctx, "tcp", net.JoinHostPort("127.0.0.1", config.port))
+	listener, err := listenConfig.Listen(ctx, "tcp", net.JoinHostPort(config.host, config.port))
 	if err != nil {
 		return err
 	}

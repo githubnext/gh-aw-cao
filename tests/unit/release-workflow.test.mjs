@@ -57,16 +57,39 @@ test("release attaches an exact-SHA attested runtime before publishing", () => {
   assert.match(attach, /\.draft == true[\s\S]*\.prerelease == false/);
   assert.match(attach, /target_commitish == \$revision/);
   assert.match(attach, /gh release upload/);
-  assert.match(attach, /length == 9/);
+  assert.match(attach, /length == 11/);
   assert.match(attach, /sha256sum --check --strict checksums\.txt/);
   assert.match(attach, /actual_checksums.*expected_checksums/);
-  assert.match(attach, /"\$\{archive\}" "\$\{checksum\}" "\$\{binary_paths\[@\]\}"/);
+  assert.match(attach, /"\$\{archive\}" "\$\{checksum\}" "\$\{azure_archive\}" "\$\{azure_checksum\}" "\$\{binary_paths\[@\]\}"/);
   assert.match(attach, /binary_paths\+=\("\$\{binary_dir\}\/\$\{asset\}"\)/);
   for (const asset of extensionAssets) {
     assert.ok(attach.includes(`"${asset}"`), `release must require ${asset}`);
   }
   assert.deepEqual(jobs.get("attach-runtime-assets")?.needs, ["build-extension", "prepare-release"]);
   assert.ok(jobs.get("publish-release")?.needs.includes("attach-runtime-assets"));
+});
+
+test("release verifies the attested Azure deployment assets before uploading them beside the runtime", () => {
+  const attach = stepBlock(workflow("release.md"), "Attach verified runtime assets to draft release");
+  const download = attach.indexOf('--name "${azure_name}"');
+  const checksum = attach.indexOf('sha256sum --check "${azure_name}.tgz.sha256"');
+  const verify = attach.indexOf('gh attestation verify "${azure_archive}"');
+  const upload = attach.indexOf("gh release upload");
+  assert.match(attach, /azure_name="cao-azure-\$\{REVISION\}"/);
+  assert.ok(download > 0 && download < checksum && checksum < verify && verify < upload,
+    "Azure assets must be downloaded, checksummed, and attestation-verified before upload");
+  const verification = attach.slice(verify, attach.indexOf("\n\n", verify));
+  for (const flag of [
+    '--repo "${GITHUB_REPOSITORY}"',
+    '--signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/cao-runtime.yml"',
+    '--source-digest "${REVISION}"',
+    '--signer-digest "${REVISION}"',
+    "--deny-self-hosted-runners",
+  ]) assert.ok(verification.includes(flag), `Azure attestation verification requires ${flag}`);
+  assert.match(attach, /\[\[ "\$\(find "\$\{azure_dir\}" -maxdepth 1 -type f \| wc -l\)" -eq 2 \]\]/);
+  assert.match(attach, /--arg azure_archive "\$\{azure_name\}\.tgz"/);
+  assert.match(attach, /\$azure_archive, \$azure_checksum/);
+  assert.match(attach, /echo "azure_archive=\$\{azure_name\}\.tgz"/);
 });
 
 test("release builds versioned binaries read-only from the exact authorized source without caches", () => {
@@ -163,19 +186,28 @@ test("agent consumes and verifies the published prerelease identity", () => {
 });
 
 test("release uploads all verified binaries as individual release assets, not only Actions artifacts", async (t) => {
-  for (const scenario of ["complete", "missing", "empty", "symlink", "corrupt", "unexpected", "bad manifest"]) {
+  for (const scenario of [
+    "complete", "missing", "empty", "symlink", "corrupt", "unexpected", "bad manifest",
+    "azure missing", "azure corrupt", "azure unattested",
+  ]) {
     await t.test(scenario, (t) => {
       const directory = mkdtempSync(join(tmpdir(), "cao-release-assets-"));
       t.after(() => rmSync(directory, { recursive: true, force: true }));
       const revision = "a".repeat(40);
       const archive = `cao-runtime-${revision}.tgz`;
+      const azureArchive = `cao-azure-${revision}.tgz`;
       const bin = join(directory, "bin");
       const binaries = join(directory, "release-binaries");
       const runtime = join(directory, "release-runtime");
-      for (const path of [bin, binaries, runtime]) mkdirSync(path);
+      const azure = join(directory, "release-azure");
+      for (const path of [bin, binaries, runtime, azure]) mkdirSync(path);
       const digest = (content) => createHash("sha256").update(content).digest("hex");
       writeFileSync(join(runtime, archive), "runtime archive");
       writeFileSync(join(runtime, `${archive}.sha256`), `${digest("runtime archive")}  ${archive}\n`);
+      writeFileSync(join(azure, azureArchive), "azure archive");
+      writeFileSync(join(azure, `${azureArchive}.sha256`), `${digest("azure archive")}  ${azureArchive}\n`);
+      if (scenario === "azure missing") rmSync(join(azure, azureArchive));
+      if (scenario === "azure corrupt") writeFileSync(join(azure, azureArchive), "tampered");
       for (const asset of extensionAssets.slice(0, -1)) writeFileSync(join(binaries, asset), asset);
       writeFileSync(join(binaries, "checksums.txt"), extensionAssets.slice(0, -1)
         .map((asset) => `${digest(asset)}  ${asset}\n`).join(""));
@@ -198,7 +230,7 @@ test("release uploads all verified binaries as individual release assets, not on
 import { basename } from "node:path";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 const args = process.argv.slice(2);
-const { REVISION, RELEASE_TAG, TEST_UPLOADS } = process.env;
+const { REVISION, RELEASE_TAG, TEST_UPLOADS, TEST_REJECT_ATTESTATION } = process.env;
 if (args[0] === "api") {
   const endpoint = args[1];
   if (endpoint.includes("/actions/workflows/")) console.log("42");
@@ -212,7 +244,9 @@ if (args[0] === "api") {
 } else if (args[0] === "release" && args[1] === "upload") {
   if (args[2] !== RELEASE_TAG || args[3] !== "--repo" || args[4] !== "acme/gh-cao") throw new Error("Unexpected upload");
   writeFileSync(TEST_UPLOADS, JSON.stringify(args.slice(5)));
-} else if (!(args[0] === "run" && args[1] === "download") && !(args[0] === "attestation" && args[1] === "verify")) {
+} else if (args[0] === "attestation" && args[1] === "verify") {
+  if (TEST_REJECT_ATTESTATION && basename(args[2]) === TEST_REJECT_ATTESTATION) process.exit(1);
+} else if (!(args[0] === "run" && args[1] === "download")) {
   throw new Error("Unexpected gh command: " + args.join(" "));
 }
 `, { mode: 0o755 });
@@ -232,6 +266,7 @@ if (args[0] === "api") {
           RELEASE_TAG: "v1.2.3",
           RELEASE_ID: "123",
           TEST_UPLOADS: uploads,
+          TEST_REJECT_ATTESTATION: scenario === "azure unattested" ? azureArchive : "",
         },
       });
       if (scenario !== "complete") {
@@ -242,9 +277,12 @@ if (args[0] === "api") {
       assert.equal(result.status, 0, result.stderr);
       assert.deepEqual(
         JSON.parse(readFileSync(uploads, "utf8")).map((path) => basename(path)).sort(),
-        [archive, `${archive}.sha256`, ...extensionAssets].sort(),
+        [archive, `${archive}.sha256`, azureArchive, `${azureArchive}.sha256`, ...extensionAssets].sort(),
       );
-      assert.equal(readFileSync(join(directory, "outputs"), "utf8"), `runtime_archive=${archive}\n`);
+      assert.equal(
+        readFileSync(join(directory, "outputs"), "utf8"),
+        `runtime_archive=${archive}\nazure_archive=${azureArchive}\n`,
+      );
     });
   }
 });
@@ -252,7 +290,8 @@ if (args[0] === "api") {
 test("publication refuses incomplete or unusable extension release assets", async (t) => {
   const revision = "a".repeat(40);
   const archive = `cao-runtime-${revision}.tgz`;
-  const expectedAssets = [archive, `${archive}.sha256`, ...extensionAssets]
+  const azureArchive = `cao-azure-${revision}.tgz`;
+  const expectedAssets = [archive, `${archive}.sha256`, azureArchive, `${azureArchive}.sha256`, ...extensionAssets]
     .map((name) => ({ name, state: "uploaded", size: 123 }));
   const step = releaseConfig.jobs["publish-release"].steps.find(({ id }) => id === "publish");
   const release = {
@@ -262,7 +301,8 @@ test("publication refuses incomplete or unusable extension release assets", asyn
   const ref = { object: { type: "commit", sha: revision } };
   const scenarios = [
     ["complete", expectedAssets],
-    ...extensionAssets.map((asset) => [`missing ${asset}`, expectedAssets.filter(({ name }) => name !== asset)]),
+    ...[azureArchive, `${azureArchive}.sha256`, ...extensionAssets]
+      .map((asset) => [`missing ${asset}`, expectedAssets.filter(({ name }) => name !== asset)]),
     ["legacy filenames", expectedAssets.map((asset) => ({ ...asset, name: asset.name.replace(/^gh-cao-/, "") }))],
     ["empty binary", expectedAssets.map((asset) => ({ ...asset, size: asset.name === extensionAssets[0] ? 0 : asset.size }))],
     ["incomplete upload", expectedAssets.map((asset) => ({ ...asset, state: asset.name === extensionAssets[0] ? "new" : asset.state }))],
@@ -272,7 +312,7 @@ test("publication refuses incomplete or unusable extension release assets", asyn
       const updates = [];
       const published = { ...release, draft: false, prerelease: true, immutable: true };
       const execute = () => runInNewContext(`(async () => { ${step.with.script} })()`, {
-        process: { env: { RELEASE_ID: "123", RELEASE_TAG: "v1.2.3", RUNTIME_ARCHIVE: archive, REVISION: revision } },
+        process: { env: { RELEASE_ID: "123", RELEASE_TAG: "v1.2.3", RUNTIME_ARCHIVE: archive, AZURE_ARCHIVE: azureArchive, REVISION: revision } },
         context: { repo: { owner: "acme", repo: "gh-cao" } },
         github: {
           paginate: async () => assets,

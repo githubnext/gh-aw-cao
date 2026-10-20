@@ -118,8 +118,8 @@ func TestOAuthCallbackTelemetryExcludesCredentialsAndIdentifiers(t *testing.T) {
 		!strings.Contains(unauthorized.Header().Get("Content-Security-Policy"), "script-src 'sha256-") {
 		t.Fatalf("callback failure missing safe response headers: %#v", unauthorized.Header())
 	}
-	if !strings.Contains(unauthorized.Body.String(), "active member of an organization or team") ||
-		!strings.Contains(unauthorized.Body.String(), "check your membership") ||
+	if !strings.Contains(unauthorized.Body.String(), "account, organization, or team approved") ||
+		!strings.Contains(unauthorized.Body.String(), "allowed users, organizations, and teams") ||
 		!strings.Contains(unauthorized.Body.String(), "profile menu to add or switch") ||
 		!strings.Contains(unauthorized.Body.String(), `href="https://github.com/" target="_blank" rel="noreferrer noopener"`) ||
 		!strings.Contains(unauthorized.Body.String(), "Request ID:") {

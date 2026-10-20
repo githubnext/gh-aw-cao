@@ -48,6 +48,7 @@
     "test:runtime-producer": "node scripts/validate-cao-runtime.mjs",
     "test:runtime-install": "node --test tests/integration/cao-runtime-installation.test.mjs",
     "runtime:pack": "node scripts/build-cao-runtime.mjs",
+    "build:azure-assets": "node scripts/build-cao-azure-assets.mjs",
     "test:load": "node --test tests/load/*.test.mjs",
     "check:svg": "node scripts/check-svg-visual-language.mjs",
     "compile": "gh aw compile --strict --no-emit --no-check-update --schedule-seed githubnext/gh-cao",

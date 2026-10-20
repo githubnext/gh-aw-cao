@@ -64,5 +64,6 @@ Help, version, and catalog discovery work offline.`,
 	addPolicyCommands(root, gh)
 	root.AddCommand(repositoryCommands(runtime))
 	addOperatorCommands(root, runtime)
+	root.AddCommand(deployCommand(defaultDeployAzureDeps()))
 	return root
 }

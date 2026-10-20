@@ -1,0 +1,11 @@
+# Builds and pushes only. Start the private Container Apps ingestion job separately.
+version: v1.1.0
+steps:
+  - build: >-
+      --target azure-empty-ingest-runtime
+      --build-arg CAO_PROFILE=cao.azure.json
+      --file server/Dockerfile
+      --tag {{.Run.Registry}}/cao-ingest:{{.Values.tag}}
+      .
+  - push:
+      - {{.Run.Registry}}/cao-ingest:{{.Values.tag}}
