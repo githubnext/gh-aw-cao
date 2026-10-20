@@ -1,35 +1,7 @@
 {
-  "source_sha": "85966fcfa511fdbe1d1027ad0a5464f8228a322a",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "177260add1f8d0181967fe3785f95c4ca5d7139c",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-20T07:31:54Z",
-      "worker_run_id": "39386801365",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39386887878,
-        39386513324,
-        39383844471,
-        39381458818,
-        39381197975,
-        39378144737,
-        39376963126,
-        39376153086,
-        39375999551,
-        39375801479,
-        39374762521,
-        39372664779,
-        39371749392,
-        39370827216,
-        39369620161,
-        39369423241,
-        39367420475,
-        39366749142,
-        39365869604,
-        39364416816
-      ],
-      "outcome": "incomplete: during the 2026-10-20T03:27:50Z to 2026-10-20T07:30:06Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 15 successful runs were schedule freshness checks that skipped both jobs. The sole build had no queue delay, ran for 97 seconds end to end, restored the dashboard cache, installed dependencies in 14 seconds, built documentation in 9 seconds, completed the build job in 70 seconds, and completed deployment in 18 seconds. One sample cannot establish required median/p90 timings or repeated cache effectiveness. Fewer than five comparable successful build samples were available, so the category remains next."
-    },
     {
       "evaluated_at": "2026-10-20T07:47:05Z",
       "worker_run_id": "39389597536",
@@ -820,6 +792,34 @@
       "category": "artifact transfer and Pages packaging",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T19:37:07Z",
+      "worker_run_id": "39484526296",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        39484498653,
+        39484331843,
+        39483522398,
+        39482760104,
+        39482357411,
+        39479892762,
+        39477603930,
+        39475085157,
+        39474674500,
+        39471268585,
+        39469112454,
+        39467160399,
+        39465724868,
+        39465386739,
+        39462547132,
+        39461123850,
+        39461104891,
+        39460801866,
+        39459216524,
+        39458834966
+      ],
+      "outcome": "no-op: the 2026-10-20T16:35:49Z to 2026-10-20T19:34:49Z latest-20 window contained 14 successful, five skipped, and one cancelled completed docs.yml run; the cancelled push was excluded. Five successful builds were comparable (three schedule, one push, and one workflow_run, across four source SHAs): median/p90 end-to-end 134/180.4 seconds, initial queue 4/6.4 seconds, queue-excluded execution 131/176.4 seconds, build job 93/106.4 seconds, deploy job 20/29.4 seconds, and Pages artifact upload 13/14 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. Trusted bounded logs verified five of five npm package-cache hits (about 308 MiB) and five of five reusable dashboard-cache hits (about 57-58 MiB); every dashboard artifact lookup/download fallback was skipped. Packaging was only 9.9% of median queue-excluded execution, and even eliminating the 13-second median upload would save neither 60 seconds nor 15%. No correctness-preserving artifact-transfer or Pages-packaging change met the actionability threshold, so the category advanced. Deployment-service and job-queue variance were disclosed rather than attributed to packaging."
     }
   ]
 }
