@@ -151,16 +151,6 @@
       "txn_id": "refiner-37156057344-2"
     },
     {
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "readiness_for_target": "not-applicable",
-      "target_commit": "97b70090f01eab67204b05d8d897506c1c657d2d",
-      "target_repo": "github/gh-aw",
-      "txn_id": "refiner-37835259305-4",
-      "reason": "Searched all *.test.ts/*.test.js/*.test.cjs/*.test.mjs files under github/gh-aw for assert.match/toMatch/toContain assertions against hex color literals or color-mix() expressions copied from an actively-tuned themed source: zero hits. Not applicable here regardless of the rule's central deprecated status."
-    },
-    {
       "txn_id": "refiner-38434456740-2",
       "readiness_for_target": "needs-work",
       "true_positive_count": 0,
@@ -169,6 +159,24 @@
       "target_commit": "dda6e4ad3194da3253b9b944f447aa590aa4e377",
       "target_repo": "githubnext/gh-aw-cao",
       "reason": "Re-confirmed on HEAD dda6e4a: 15 prior false positives in tests/unit/landing-page-diagram.test.mjs and tests/unit/docs-accessibility.test.mjs unchanged, plus 2 newly surveyed false positives in dashboard/site/test/unit/scaffold.test.js and tests/unit/svg-visual-language.test.mjs asserting literal hex theme/SVG tokens. All brittle structural-equivalent-to-literal assertions against tunable design tokens, no suppression convention available. 0 true positives."
+    },
+    {
+      "readiness_for_target": "not-applicable",
+      "true_positive_count": 0,
+      "false_positive_count": 0,
+      "false_negative_count": 0,
+      "classification_counts": {
+        "false_positive": 0,
+        "false_negative": 0,
+        "unclear_diagnostic": 0,
+        "unsafe_or_incomplete_autofix": 0,
+        "missing_suppression_or_configuration_behaviour": 0,
+        "performance_regression": 0
+      },
+      "target_commit": "70e15c7ff659c05c2f4466aa172bb910d28847a2",
+      "reason": "Searched expect() assertions in all test sources of github/gh-aw: only matches are #NNN issue-number strings, no hex/rgb color literals in assertions.",
+      "target_repo": "github/gh-aw",
+      "txn_id": "refiner-39516012272-1"
     }
   ],
   "normalization": {
