@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"reflect"
@@ -12,12 +13,55 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func TestSetupAdmissionSharesConfiguration(t *testing.T) {
+	for _, dryRun := range []bool{false, true} {
+		calls := 0
+		root, stdout, _ := testCommand(t, func(_ context.Context, args ...string) (string, string, error) {
+			calls++
+			if calls == 1 {
+				return "[]", "", nil
+			}
+			if args[0] != "api" || strings.Contains(strings.Join(args, " "), "secret") {
+				t.Fatal("admission attempted credential provisioning")
+			}
+			return "", "", nil
+		}, nil)
+		args := []string{"setup", "admission", "--repo", "acme/project", "--url", "https://cao.example/api/admission", "--json"}
+		if dryRun {
+			args = append(args, "--dry-run")
+		}
+		root.SetArgs(args)
+		if err := root.ExecuteContext(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		var report admissionCLIReport
+		if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+			t.Fatal(err)
+		}
+		expectedCalls := 4
+		if dryRun {
+			expectedCalls = 1
+		}
+		if report.Applied == dryRun || report.Settings.OnOutage != "block" || calls != expectedCalls {
+			t.Fatalf("setup admission diverged: %+v calls=%d", report, calls)
+		}
+	}
+	root, stdout, _ := testCommand(t, nil, nil)
+	root.SetArgs([]string{"setup", "admission", "--help"})
+	if err := root.ExecuteContext(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "No PAT") || !strings.Contains(stdout.String(), "--dry-run") {
+		t.Fatal("setup admission help omits secret boundary or preview flag")
+	}
+}
+
 func TestSetupCommandHierarchy(t *testing.T) {
 	root, _, _ := testCommand(t, nil, nil)
 	for _, tt := range []struct {
 		path, want []string
 	}{
-		{[]string{"setup"}, []string{"auth"}},
+		{[]string{"setup"}, []string{"admission", "auth"}},
 		{[]string{"setup", "auth"}, []string{"enterprise-app", "github-app", "token"}},
 	} {
 		cmd, remaining, err := root.Find(tt.path)

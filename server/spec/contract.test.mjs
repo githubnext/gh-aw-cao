@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.6.0')
+  assert.equal(openapi.info.version, '2.7.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -104,6 +104,48 @@ test('the generated contract describes the implemented security and wire formats
     },
     { type: 'string', format: 'date-time' }
   )
+})
+
+test('activation admission has its own OIDC-only, empty-denial contract', () => {
+  const operation = openapi.paths['/api/admission'].post
+  assert.deepEqual(operation.security, [{ BearerAuth: [] }])
+  assert.equal(operation.parameters.some(parameter => parameter.name === 'X-CSRF-Token'), false)
+  assert.ok(operation.requestBody.content['application/json'])
+  assert.equal(operation.responses['200'].content['application/json'].schema.$ref, '#/components/schemas/AdmissionAllowances')
+  for (const status of ['200', '403', '429', '503']) {
+    assert.deepEqual(operation.responses[status].headers['cache-control'].schema.enum, ['no-store'])
+    if (status !== '200') assert.equal(operation.responses[status].content, undefined)
+  }
+  const allowances = openapi.components.schemas.AdmissionAllowances
+  assert.deepEqual(allowances.required, ['max_ai_credits'])
+  assert.deepEqual(Object.keys(allowances.properties).sort(), [
+    'max_ai_credits', 'max_ai_credits_evals', 'max_ai_credits_threat_detection'
+  ])
+  for (const property of Object.values(allowances.properties)) {
+    assert.equal(property.minimum, 1)
+    assert.equal(property.maximum, 2147483647)
+  }
+  const request = openapi.components.schemas.AdmissionRequest
+  assert.equal(request.required.length, 10)
+  assert.ok(Object.values(request.properties).every(property => property.type === 'string'))
+  for (const name of ['AdmissionRequest', 'AdmissionAllowances']) {
+    const schema = openapi.components.schemas[name]
+    assert.deepEqual(schema.unevaluatedProperties, { not: {} })
+    const emitted = JSON.parse(readFileSync(join(directory, `generated/schemas/${name}.json`), 'utf8'))
+    const portableProperties = Object.fromEntries(Object.entries(schema.properties).map(([key, property]) => {
+      const { format, ...portable } = property
+      return [key, format === 'int32' ? portable : property]
+    }))
+    assert.deepEqual(emitted.properties, portableProperties)
+    assert.deepEqual(emitted.unevaluatedProperties, { not: {} })
+    assert.deepEqual(emitted.examples, schema.examples)
+  }
+  for (const name of ['run_id', 'run_attempt']) {
+    assert.equal(request.properties[name].pattern, '^[1-9][0-9]*$')
+    assert.equal(request.properties[name].maxLength, 128)
+  }
+  assert.equal(request.properties.workflow_hash.pattern, '^[0-9a-f]{64}:[0-9a-f]{64}$')
+  assert.equal(operation.parameters.find(parameter => parameter.name === 'traceparent').required, false)
 })
 
 test('GitHub resource operations describe authenticated conditional reads and graceful unavailability', () => {
@@ -159,6 +201,8 @@ test('local OAuth is an explicit single-user exception rather than a hosted poli
 
 test('structured payload fields stay in sync with Go JSON tags', () => {
   const pairs = [
+    ['../internal/admission/protocol.go', 'Request', 'AdmissionRequest'],
+    ['../internal/admission/protocol.go', 'Allowances', 'AdmissionAllowances'],
     ['../internal/server/server.go', 'queryRequest', 'QueryRequest'],
     ['../internal/server/server.go', 'queryResponse', 'QueryResponse'],
     ['../internal/query/types.go', 'Definition', 'QueryDefinition'],
@@ -255,14 +299,14 @@ test('the server-only MCP logs tool matches the HTTP snapshot contract', () => {
 })
 
 test('selected JSON Schemas and nullable responses are emitted', () => {
-  for (const schema of ['QueryRequest', 'QueryResponse', 'QueryDefinition', 'RevisionEvent', 'WebhookAcknowledgement']) {
+  for (const schema of ['AdmissionRequest', 'AdmissionAllowances', 'QueryRequest', 'QueryResponse', 'QueryDefinition', 'RevisionEvent', 'WebhookAcknowledgement']) {
     const document = JSON.parse(readFileSync(join(directory, 'generated/schemas', `${schema}.json`), 'utf8'))
     assert.equal(document.$schema, 'https://json-schema.org/draft/2020-12/schema')
     assert.ok(document.properties)
   }
   assert.deepEqual(
     readdirSync(join(directory, 'generated/schemas')).sort(),
-    ['QueryDefinition.json', 'QueryRequest.json', 'QueryResponse.json', 'RevisionEvent.json', 'WebhookAcknowledgement.json']
+    ['AdmissionAllowances.json', 'AdmissionRequest.json', 'QueryDefinition.json', 'QueryRequest.json', 'QueryResponse.json', 'RevisionEvent.json', 'WebhookAcknowledgement.json']
   )
   const campaign = openapi.paths['/api/v1/memory/{campaign}'].get.responses['200'].content['application/json'].schema
   assert.ok(campaign.anyOf.some(branch => branch.type === 'null'))

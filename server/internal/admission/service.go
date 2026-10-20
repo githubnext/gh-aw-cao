@@ -1,0 +1,130 @@
+package admission
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"mime"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/githubnext/gh-cao/server/internal/logger"
+)
+
+var admissionLog = logger.New("cao:admission")
+
+// Decisions atomically preserves the first decision. A nil proposal revokes an
+// invocation permanently. Expired/revoked records are never treated as misses.
+// Implementations must be durable and deployment-scoped, with bounded capacity.
+type Decisions interface {
+	ResolveAdmission(context.Context, string, *Allowances) (Allowances, error)
+	CheckAdmission(context.Context, string) error
+}
+
+type Service struct {
+	Verifier  *Verifier
+	Policies  PolicySource
+	Decisions Decisions
+}
+
+func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	status := http.StatusForbidden
+	defer func() {
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+		}
+	}()
+	if r.Method != http.MethodPost || r.URL.RawQuery != "" || r.URL.ForceQuery ||
+		len(r.Header.Values("Authorization")) != 1 || len(r.Header.Values("Content-Type")) != 1 ||
+		len(r.Header.Get("Authorization")) > (16<<10)+7 || r.ContentLength > 8192 {
+		return
+	}
+	headerBytes := 0
+	for name, values := range r.Header {
+		if strings.EqualFold(name, "traceparent") || strings.EqualFold(name, "tracestate") || strings.EqualFold(name, "baggage") {
+			continue
+		}
+		for _, value := range values {
+			headerBytes += len(name) + len(value)
+		}
+	}
+	if headerBytes > 32<<10 {
+		return
+	}
+	contentType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || contentType != "application/json" || len(params) > 1 ||
+		(len(params) == 1 && !strings.EqualFold(params["charset"], "utf-8")) {
+		return
+	}
+	auth := strings.Fields(r.Header.Get("Authorization"))
+	if len(auth) != 2 || !strings.EqualFold(auth[0], "bearer") {
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	identity, err := s.Verifier.Verify(ctx, auth[1])
+	if err != nil {
+		if errors.Is(err, ErrUnavailable) {
+			status = http.StatusServiceUnavailable
+		}
+		return
+	}
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
+	if err != nil {
+		return
+	}
+	input, err := decodeRequest(data)
+	if err != nil ||
+		input.Repo != identity.Repository || input.WorkflowID != identity.WorkflowRef ||
+		input.RunID != identity.RunID || input.RunAttempt != identity.RunAttempt ||
+		input.Ref != identity.Ref || input.EventType != identity.Event || input.Actor != identity.Actor {
+		return
+	}
+	// triggering_actor is informational only. This profile authorizes exclusively
+	// with the signed original actor_id, never the rerun initiator's privileges.
+	proposal, err := s.Policies.Evaluate(ctx, identity)
+	if err != nil && !errors.Is(err, ErrDenied) {
+		status = http.StatusServiceUnavailable
+		if errors.Is(s.Decisions.CheckAdmission(ctx, identity.Key()), ErrDenied) {
+			status = http.StatusForbidden
+		}
+		return
+	}
+	var candidate *Allowances
+	if err == nil {
+		if !proposal.valid() {
+			status = http.StatusServiceUnavailable
+			return
+		}
+		candidate = &proposal
+	}
+	decision, err := s.Decisions.ResolveAdmission(ctx, identity.Key(), candidate)
+	if candidate == nil {
+		if err != nil && !errors.Is(err, ErrDenied) {
+			admissionLog.Printf("decision revocation could not be persisted")
+		}
+		return
+	}
+	if err != nil {
+		if !errors.Is(err, ErrDenied) {
+			status = http.StatusServiceUnavailable
+		}
+		return
+	}
+	if !decision.valid() || ctx.Err() != nil {
+		status = http.StatusServiceUnavailable
+		return
+	}
+	body, err := json.Marshal(decision)
+	if err != nil {
+		status = http.StatusServiceUnavailable
+		return
+	}
+	status = http.StatusOK
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_, _ = w.Write(body)
+}

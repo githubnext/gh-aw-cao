@@ -62,7 +62,8 @@ Help, version, and catalog discovery work offline.`,
 		doctorCommand(ghVersion, gh),
 	)
 	addPolicyCommands(root, gh)
+	root.AddCommand(admissionCommands(gh))
 	root.AddCommand(repositoryCommands(runtime))
-	addOperatorCommands(root, runtime)
+	addOperatorCommands(root, runtime, gh)
 	return root
 }

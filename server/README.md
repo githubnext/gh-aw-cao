@@ -32,6 +32,14 @@ the focused contracts.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
+The optional [cooperative activation-admission service](ADMISSION.md) exposes
+the gh-aw OIDC-only `POST /api/admission` protocol on that same hosted origin.
+It requires explicit enrollment, fresh protected accounting input, and durable
+PostgreSQL replay records; it is disabled by default and does not replace CAO
+control-policy authorization.
+The [operator walkthrough](../docs/admission-gate.md) covers local
+`cao-dashboard admission validate`, canary setup, bulk rollout, and recovery.
+
 **Hosted mode serves the dashboard from Go, not from GitHub Pages.** The Go
 handler owns the built HTML and assets as well as OAuth, query APIs, and revision
 events on the same origin. A reverse proxy or platform listener must forward

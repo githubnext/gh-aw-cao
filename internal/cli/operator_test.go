@@ -47,7 +47,7 @@ func TestOperatorCommandInventory(t *testing.T) {
 	}
 	slices.Sort(names)
 	want := []string{
-		"campaigns", "computation", "doctor", "download", "gh", "init",
+		"admission", "campaigns", "computation", "doctor", "download", "gh", "init",
 		"mcp", "pages", "prompt", "queries", "query", "query-info",
 		"quickstart", "repos", "setup", "update", "upgrade-gh-aw", "version",
 	}

@@ -28,7 +28,7 @@ var (
 	paramFlag     = operatorFlag{name: "param", description: "Query parameter NAME=VALUE (repeatable)", repeat: true}
 )
 
-func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
+func addOperatorCommands(root *cobra.Command, execute runtimeExecutor, github ghExecutor) {
 	quickstart := operatorCommand("quickstart", "Install, run, collect, or inspect a bounded first review", cobra.NoArgs, []operatorFlag{
 		textFlag("step", "install (default), run, collect, or dashboard"),
 		textFlag("target", "Explicit public target OWNER/REPO for installation"),
@@ -100,7 +100,7 @@ func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
 		return nil
 	}
 	computation.AddCommand(intelligence, health)
-	root.AddCommand(setupCommand(execute), quickstart, download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
+	root.AddCommand(setupCommand(execute, github), quickstart, download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
 		passthroughCommand("update [REF] [GH_AW_OPTIONS...]", "Update installed CAO packages without widening rollout", execute),
 	)
 }

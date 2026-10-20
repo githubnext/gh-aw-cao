@@ -1,0 +1,91 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "AdmissionRequest.json",
+    "type": "object",
+    "properties": {
+        "repo": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 140,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"
+        },
+        "workflow_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+        },
+        "workflow_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}:[0-9a-f]{64}$"
+        },
+        "workflow_call_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1400,
+            "description": "Exactly run_id + \"-\" + run_attempt + \":\" + workflow_id."
+        },
+        "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$"
+        },
+        "run_attempt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$"
+        },
+        "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+        },
+        "event_type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+        },
+        "actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+        },
+        "triggering_actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Informational only; the initial server profile never authorizes or attributes spend from this unsigned value."
+        }
+    },
+    "required": [
+        "repo",
+        "workflow_id",
+        "workflow_hash",
+        "workflow_call_id",
+        "run_id",
+        "run_attempt",
+        "ref",
+        "event_type",
+        "actor",
+        "triggering_actor"
+    ],
+    "unevaluatedProperties": {
+        "not": {}
+    },
+    "examples": [
+        {
+            "repo": "acme/project",
+            "workflow_id": "acme/project/.github/workflows/triage.lock.yml@refs/heads/main",
+            "workflow_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "workflow_call_id": "1234-2:acme/project/.github/workflows/triage.lock.yml@refs/heads/main",
+            "run_id": "1234",
+            "run_attempt": "2",
+            "ref": "refs/heads/main",
+            "event_type": "workflow_dispatch",
+            "actor": "octocat",
+            "triggering_actor": "hubot"
+        }
+    ],
+    "description": "Activation-only gh-aw admission metadata. All identifiers are exact decoded strings; run numbers use canonical positive ASCII decimal spelling. Unknown or duplicate fields, invalid Unicode, query parameters and bodies over 8192 bytes are denied. workflow_hash is an untrusted cache hint, never authority."
+}

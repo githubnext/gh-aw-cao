@@ -199,6 +199,13 @@ gh aw run dependabot --ref main \
 | `gh cao quickstart --wait --target OWNER/REPO` | Explicitly select the target and opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
 | `gh cao setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `gh cao init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
+| `gh cao setup admission --repo OWNER/REPO --url HTTPS_URL [--dry-run]` | Configure non-secret admission variables (OIDC requires no workflow secret); `--dry-run` previews changes. |
+| `gh cao admission setup --repo OWNER/REPO --url HTTPS_URL [--dry-run]` | Configure repository admission variables for an already deployed authority; default audience is the URL and outage policy is `block`. |
+| `gh cao admission status --repo OWNER/REPO [--json]` | Read effective admission settings, including repository overrides of inherited organization variables. |
+| `gh cao admission disable --repo OWNER/REPO [--dry-run]` | Disable the cooperative gate by setting an empty repository URL, without deleting the override and reactivating organization defaults; `--dry-run` previews changes. |
+| `gh cao setup admission --all-repos --url HTTPS_URL [--dry-run]` | Configure all repositories selected by the current control repository's validated global CAO scope. |
+| `gh cao setup admission --org ORG [--org ORG...] --url HTTPS_URL [--dry-run]` | Configure organization defaults with visibility all, including future repositories; preserve repository overrides. |
+| `gh cao setup admission --enterprise SLUG --url HTTPS_URL [--dry-run]` | Enumerate enterprise organizations and configure their organization variables, with enterprise read and per-organization Variables write access. |
 | `gh cao setup auth github-app ...` | Configure organization-owned read and write Apps. |
 | `gh cao setup auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
 | `node activity/cao.mjs setup-auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
