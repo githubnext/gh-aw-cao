@@ -326,7 +326,17 @@ func (w Worker) projectionLoop(ctx context.Context) {
 		case <-ticker.C:
 		}
 		pending, err := w.Projector.PendingProjection(ctx)
-		if err != nil || !pending {
+		if err != nil {
+			continue
+		}
+		if !pending {
+			revision, err := w.Projector.CollectWorkflowValues(ctx)
+			if revision > 0 && w.OnProjection != nil {
+				w.OnProjection(revision)
+			}
+			if err != nil && !errors.Is(err, ErrProjectionBusy) {
+				workerLog.Printf("opted-in workflow Value collection failed")
+			}
 			continue
 		}
 		result, err := w.Projector.Project(ctx)

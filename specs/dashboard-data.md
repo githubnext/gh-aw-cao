@@ -2731,6 +2731,40 @@ evidence does not make existing phase envelopes invalid.
 The retained source path and workflow name SHALL materialize only observed
 Workflow identity with unknown state, never registration or live activation.
 
+Explicit hosted publication SHALL use administrator-authenticated
+`POST /api/v1/value` with one original schema-v2 envelope, bounded to 8 MiB.
+It SHALL require PostgreSQL and already observed repository/workflow parents;
+it SHALL NOT enroll targets, execute uploaded code or register a collector.
+Hosted mutations SHALL require current administrator OAuth assurance and CSRF;
+local PostgreSQL SHALL retain its existing loopback bearer boundary.
+SQLite and static Pages SHALL NOT silently substitute for this write endpoint.
+Publication and snapshot replacement SHALL share the namespace writer lock.
+Typed ownership metadata SHALL preserve directly published packets, their
+fact children and required structural parents across snapshot replacement,
+without storing a second canonical document. Exact retries SHALL preserve the
+revision. Stale/conflicting captures, changed frozen contracts and rewritten
+immutable measurements SHALL fail without partial publication.
+New committed captures SHALL advance the revision consumed by subscriptions.
+Queries transitively reading this collection SHALL include the current
+canonical revision in their bounded result-cache identity; ordinary query
+cache lifetime and isolation SHALL remain unchanged.
+
+Recurring acquisition SHALL require reviewed registration for an exact
+repository/workflow under `control-plane.campaigns.activity.workflow-values`,
+with a confined repository-local deterministic collector deployed together
+with policy. The skill SHALL stage registration automatically only after the
+frozen function and bounded collector pass verification, preserving existing
+registrations and explicit `enabled: false` disables. Function presence alone
+SHALL NOT grant execution authority or enroll a repository.
+The existing Activity or hosted collection cycle SHALL intersect
+that selection with effective repository collection scope and the frozen
+cadence. It SHALL preserve reusable immutable proof and actual capture/cutoff
+timestamps. Collection failure SHALL retain the previous accepted evidence,
+not advance freshness or fabricate zero. Disable SHALL stop future acquisition
+without deleting retained history. Navigation, report publication and workflow
+discovery SHALL NOT infer opt-in. No per-workflow schedule or model assessment
+is required for continued measurement.
+
 The single logical source `operational-value-evidence` SHALL purely normalize
 these originals. Every row SHALL expose `report-id`, `organization`,
 `repository`, `workflow` (filename stem), `workflow-path` (the validated original

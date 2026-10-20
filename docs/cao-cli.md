@@ -64,6 +64,7 @@ to invoke it as `gh cao`.
 | Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Native Go, preserving separate read/write credentials and explicit repository scope. |
 | Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
+| Workflow value | `value publish`, `value enable`, `value disable` | Publish prepared evidence to a hosted dashboard, or edit reviewed local policy for recurring collection of one workflow. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
 | Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
@@ -130,6 +131,59 @@ not `gh cao campaigns add`; review and commit generated workflows and policy tog
 `gh cao doctor` is deliberately **not** `node activity/cao.mjs doctor`: use the latter for
 the existing SQLite snapshot check/repair operation. Neither Activity nor
 Dashboard Actions is switched to the Go executable.
+
+### Publish and refresh workflow value
+
+Run the [operational-value skill](operational-value-how-to.md) first. It defines
+the measurement contract and produces validated `*-evidence.jsonl`; publishing
+does not collect evidence, run an evaluator or enable recurring work.
+
+```bash
+gh cao value publish github/gh-aw daily-file-diet \
+  --server https://dashboard.example.com \
+  --input daily-file-diet-pulse-evidence.jsonl
+```
+
+The server must support value publication and already contain the observed
+repository and workflow. Hosted publication requires an authorized
+administrator's current, stepped-up OAuth session: supply its cookie value in
+`CAO_SERVER_SESSION` and its session-bound CSRF value in `CAO_SERVER_CSRF` through
+your private credential environment. These are credentials; never put their
+values in policy, report files, URLs, commits or shared command history.
+`CAO_SERVER_TOKEN` is accepted only for a loopback server with PostgreSQL, not
+as a remote PAT or hosted authentication fallback.
+
+One original schema-v2 envelope is accepted, up to 8 MiB. The response confirms
+its identity, original capture time and database revision. Exact retries leave
+the revision unchanged. Stale captures, changed frozen contracts and rewritten
+immutable measurements fail rather than replace accepted evidence.
+Evidence timestamps use UTC and at most microsecond precision; finer nonzero
+fractions are rejected rather than silently rounded.
+Activity replacement retains directly published evidence. Local SQLite and
+static Pages have no direct-publication endpoint; Pages uses Activity transport.
+
+**Collection is wired automatically by the skill** once its frozen function and
+repository-local recurring collector pass verification. It stages the exact
+pair with `value enable ... --if-absent`, preserving existing registrations and
+explicit disables. Review, commit and deploy those files to start collection.
+For manual registration or an intentional re-enable, replace `COLLECTOR_PATH.mjs`
+with that collector's actual path; an evidence file or renderer is not a
+collector:
+
+```bash
+gh cao value enable github/gh-aw daily-file-diet --collector COLLECTOR_PATH.mjs
+gh cao value disable github/gh-aw daily-file-diet
+```
+
+These commands edit local `.github/workflows/cao.json`; review, commit and deploy
+that policy and collector together. They do not enable the measured workflow,
+enroll repositories, upload executable code or immediately start a collection.
+The existing Activity/hosted collection cycle refreshes only registered,
+in-scope pairs when their frozen cadence is due. No new schedule or model call
+is needed. A failed refresh retains the last accepted capture without changing
+its timestamp or inventing a zero. Disable stops future collection, not history.
+An explicit disable persists even if the skill is used again.
+See the [collector contract](operational-value.md#recurring-collection-after-opt-in).
 
 ### Diagnose the installation
 

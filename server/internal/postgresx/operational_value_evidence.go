@@ -38,7 +38,14 @@ func evidenceTime(value any) (time.Time, error) {
 	if !strings.HasSuffix(text, "Z") {
 		return time.Time{}, errors.New("evidence timestamps require UTC")
 	}
-	return time.Parse(time.RFC3339Nano, text)
+	instant, err := time.Parse(time.RFC3339Nano, text)
+	if separator := strings.IndexAny(text, ".,"); err == nil && separator >= 0 {
+		fraction := text[separator+1 : len(text)-1]
+		if len(fraction) > 6 && strings.Trim(fraction[6:], "0") != "" {
+			return time.Time{}, errors.New("evidence timestamps require microsecond precision or coarser")
+		}
+	}
+	return instant, err
 }
 
 func validateOperationalValueEvidence(row model.Row) error {

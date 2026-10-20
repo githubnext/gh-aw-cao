@@ -36,7 +36,8 @@ flowchart TD
   accTitle: Track repository state regularly and measure linked contributions at acceptance
   accDescr: Markdown intent defines a fixed value function. Repository snapshots track the problem at a fixed cadence regardless of delivery. Applied output is linked to an accepted implementation whose merge locates before and after Git revisions for a separate contribution measurement.
   G["Markdown + precomputes: intent"] --> V["Fixed value function: what to measure"]
-  V --> S["Fixed-cadence repository snapshots: primary outcome"]
+  V -->|"Verified collector + reviewed registration"| C["Existing collection cycle: fixed cadence"]
+  C --> S["Repository snapshots: primary outcome"]
   G --> O["Applied safe output: issue"]
   O -->|"Explicit implementation link"| A["Accepted implementation: merged PR"]
   A -->|"Delivery time"| M["Merge commit: after"]
@@ -108,6 +109,15 @@ Use `/add-operational-value OWNER/REPO WORKFLOW` to design and verify a measure
 with the skill. It gathers tracked outputs, verifies available producer
 evidence, follows dated implementation links and measures the accepted Git
 revisions. Reuse that fixed definition for subsequent evaluations.
+
+To keep it current, the skill automatically stages its exact registration after the frozen function
+and bounded collector pass verification; no separate enable step is needed.
+Review, commit and deploy the policy and collector together. The existing collection cycle
+refreshes only opted-in, in-scope workflows at their fixed cadence. Failures
+keep the last capture; disabling collection keeps history. For a one-time
+hosted upload, use `gh cao value publish ... --server URL --input REPORT-evidence.jsonl`;
+uploading alone does not enable collection.
+See [publication and recurring collection](operational-value.md#recurring-collection-after-opt-in).
 
 > [!IMPORTANT]
 > A current report requires fresh evidence collection, not just rerendering.

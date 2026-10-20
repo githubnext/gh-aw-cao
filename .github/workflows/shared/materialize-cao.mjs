@@ -518,6 +518,8 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
   const required = {
     activity: [
       'activity/cao.mjs',
+      'activity/workflow-values.mjs',
+      'dashboard/site/src/data/model/operational-value-evidence.js',
       'activity/cli/activity-stats.mjs',
       'activity/cli/authentication.mjs',
       'activity/cli/cache.mjs',

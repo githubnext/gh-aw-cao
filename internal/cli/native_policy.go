@@ -246,7 +246,8 @@ func nativeValidatePolicy(document map[string]any) error {
 		"workflow": nativePolicyString(slugPattern), "enabled": nativePolicyBool, "max-mode": mode,
 	}, "workflow")
 	campaign := map[string]nativePolicyRule{
-		"enabled": nativePolicyBool, "deploy": nativePolicyBool,
+		"workflow-values": nativeWorkflowValuesRule,
+		"enabled":         nativePolicyBool, "deploy": nativePolicyBool,
 		"icon":    nativeEnum("mark-github", "code", "repo", "server", "issue", "pull-request", "play", "eye", "shield", "meter", "graph", "codescan", "dependabot", "key", "beaker", "rocket", "workflow", "gear", "check-circle", "campaign", "external-link"),
 		"targets": nativeMapping(repositoryPattern, nativePolicyObject(map[string]nativePolicyRule{"mode": mode}, "mode")),
 		"workers": nativeMapping(slugPattern, worker),
@@ -324,6 +325,11 @@ func nativeValidatePolicy(document map[string]any) error {
 	}
 	campaigns, _ := c["campaigns"].(map[string]any)
 	for name, value := range campaigns {
+		if name != "activity" {
+			if _, exists := value.(map[string]any)["workflow-values"]; exists {
+				return errors.New("workflow-values is only supported for the activity campaign")
+			}
+		}
 		policy := value.(map[string]any)
 		targets, _ := policy["targets"].(map[string]any)
 		for repository := range targets {

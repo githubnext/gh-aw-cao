@@ -12,7 +12,7 @@ For the short intent → output → Git evidence flow, see
 Research and replay details are in the
 [blog article](/gh-cao/blog/measuring-agent-work-value/).
 
-The dashboard's **Operational Value** view starts with repositories. Select a repository to see its retained outcome measurements across campaigns and standalone workflows; campaign registration is not required. Each repository appears once in the overview, while workflow, measure, native unit, direction, and evaluator boundaries remain separate in history and comparisons. **Evidence** lists repository coverage and the latest native values. Missing measurements are not zero value. Native run-scoped gh-aw operational-grader results are separate evidence and are not included in this repository-outcome view.
+The dashboard's **Repository measurements** view starts with repositories. Select a repository to see its retained outcome measurements across campaigns and standalone workflows; campaign registration is not required. Each repository appears once in the overview, while workflow, measure, native unit, direction, and evaluator boundaries remain separate in history and comparisons. **Evidence** lists repository coverage and the latest native values. Missing measurements are not zero value. Native run-scoped gh-aw operational-grader results are separate evidence and are not included in this repository-outcome view.
 
 Open **Value** in the sidebar (the trophy icon) to see evidence-backed workflow
 result cards. **Repository measurements** preserves the existing repository-first
@@ -30,6 +30,62 @@ measurements. Each workflow still needs a frozen measurement contract and
 published evidence; no packet produces an explicit unconfigured state.
 These evidence routes keep their declared cohort and cutoff when the dashboard's
 global display horizon changes; they are not new evaluations of that horizon.
+
+## Publish a report once
+
+After the skill has collected and validated fresh evidence, use
+`gh cao value publish OWNER/REPO WORKFLOW --server URL --input REPORT-evidence.jsonl`.
+This writes original facts through an administrator-authenticated API into the
+hosted PostgreSQL canonical database. It does not upload HTML, execute evaluator
+code or enable recurring collection. Exact retries are idempotent; conflicts
+fail closed. Activity replacement preserves these publications and their
+structural parents. The dashboard's active subscriptions see the new revision;
+value-dependent query caches are revision-keyed so an old cached card cannot
+hide the new evidence.
+
+See [authentication and command details](cao-cli.md#publish-and-refresh-workflow-value).
+Static dashboards receive the same envelope through Activity publication,
+not a direct database connection.
+
+## Recurring collection after opt-in
+
+The skill designs the measurement once. **Once the frozen function and bounded
+collector pass verification, the skill stages registration automatically for
+that exact repository and workflow.** There is no separate enable step in the
+normal skill flow. A report upload alone is not registration.
+Unconfigured workflows are never discovered or evaluated automatically.
+
+The skill uses `gh cao value enable ... --collector PATH --if-absent` to record
+the selection under
+`control-plane.campaigns.activity.workflow-values` in the control repository's
+reviewed policy. The collector and policy must be committed and deployed
+together; the repository must also be in the effective Activity collection scope.
+`gh cao value disable ...` persists `enabled: false` without deleting
+measurements. Automatic registration preserves existing selections and explicit
+disables; use `value enable` without `--if-absent` to deliberately re-enable.
+Without an enrolled control repository or a verified collector, a function file
+alone does not start collection.
+
+The repository-local ECMAScript collector exports its frozen `definition` and
+`collectValueEvidence({repository, workflow, observedAt, database, previous, workspace})`.
+It returns the original schema-v2 `operational_value_evidence` envelope.
+It may acquire bounded, read-only evidence missing from the canonical database;
+measurement uses the same fixed rules, never a new model-generated assessment.
+Keep immutable measurements and receipts in the supplied per-workflow workspace
+for reuse. Uploaded report packets cannot register or execute collector code.
+
+The existing Activity cycle or hosted collector invokes only due, opted-in
+collectors at the frozen cadence. It follows new safe-output lifecycle and
+acceptance evidence, measures the independent repository state, and publishes
+a validated capture into the same canonical facts consumed by **Value**.
+Opening a report does not trigger collection. Fast/recycle-only runs do not
+silently request fresh measurements. A failed acquisition, insufficient budget
+or invalid packet leaves the previous evidence and capture timestamp intact;
+it is not a fresh success or zero. Collection timing is bounded by the existing
+cycle and available credentials, not a guarantee of an observation at every
+wall-clock instant.
+
+## Existing compact repository measurements
 
 CAO uses one shared campaign module for both collection paths:
 

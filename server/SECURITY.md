@@ -437,12 +437,27 @@ and revalidation never extend either value.
 
 GitHub OAuth cannot force password or 2FA re-entry. Step-up therefore proves
 a recent completed authorization, not a new second-factor challenge.
+
 `read:user` exposes 2FA enrollment, and `prompt=select_account` selects an
 account; neither proves a fresh MFA ceremony. Operators who require a fresh
 second-factor or SSO challenge need a provider/session policy that enforces
 it; organization 2FA enrollment alone is insufficient. This server does not
 verify a provider MFA ceremony timestamp. The local loopback profile has no
 OAuth and is unaffected.
+
+Operational-value publication (`POST /api/v1/value`) is also an administrator
+mutation with the same step-up and session-bound CSRF requirements. Local
+PostgreSQL accepts only the existing loopback bearer capability; hosted
+publication has no PAT or Actions-token bypass. The bounded request contains
+one original evidence envelope, never evaluator code or a database credential.
+The target repository/workflow must already be observed. Publication validates
+contract identity, evidence relationships, immutable history and capture order
+before atomic namespace-scoped writes; Activity replacement cannot erase owned
+publications. Publishing does not grant collection or workflow execution
+authority. Recurring acquisition requires a separately reviewed, confined local
+collector and exact policy opt-in intersected with the existing Activity scope.
+Disabling collection retains history. Collection failures never advance the
+reported evidence timestamp.
 
 Session cookies are `Secure`, `HttpOnly`, and `SameSite=Lax`. Mutating
 endpoints require the session-bound `X-CSRF-Token` header. The injected

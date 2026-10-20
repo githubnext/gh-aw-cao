@@ -249,6 +249,9 @@ test('fragment merging moves authoritative shards and removes superseded restore
   const fragments = path.join(root, 'fragments');
   const first = await fragment(fragments, 'octo', 'one.jsonl', [run(1)]);
   const second = await fragment(fragments, 'other', 'two.jsonl', [run(2)]);
+  const proof = path.join(fragments, 'octo', 'workflow-value-workspaces', 'octo', 'identity');
+  await mkdir(proof, { recursive: true });
+  await writeFile(path.join(proof, 'proof.json'), '{"original":true}\n');
   const inodes = [(await stat(first)).ino, (await stat(second)).ino];
   await writeFile(path.join(shards, 'superseded.jsonl'), jsonl([run(3)]));
   const result = await mergeActivityFragments(fragments, root);
@@ -261,6 +264,7 @@ test('fragment merging moves authoritative shards and removes superseded restore
   assert.deepEqual(await readdir(path.dirname(second)), []);
   const inventory = JSON.parse(await readFile(path.join(root, 'inventory-sources.json'), 'utf8'));
   assert.equal(inventory.repositories.rows.length, 2);
+  assert.equal(await readFile(path.join(root, 'workflow-value-workspaces', 'octo', 'identity', 'proof.json'), 'utf8'), '{"original":true}\n');
 });
 
 test('fragment merging accepts a direct single-owner layout and an explicitly empty snapshot', async (t) => {

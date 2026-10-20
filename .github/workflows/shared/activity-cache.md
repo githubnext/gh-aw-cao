@@ -16,6 +16,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
+            ${{ runner.temp }}/cao-activity/workflow-value-workspaces
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
           restore-keys: |
             cao-activity-v5-
@@ -36,6 +37,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
+            ${{ runner.temp }}/cao-activity/workflow-value-workspaces
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
           restore-keys: |
             cao-activity-v5-

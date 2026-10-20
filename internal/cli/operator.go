@@ -100,7 +100,40 @@ func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
 		return nil
 	}
 	computation.AddCommand(intelligence, health)
+	value := &cobra.Command{
+		Use: "value", Short: "Publish evidence or manage reviewed recurring Value collection", Args: cobra.NoArgs,
+		RunE: func(*cobra.Command, []string) error {
+			return fmt.Errorf("value requires publish, enable, or disable")
+		},
+	}
+	publish := operatorCommand("publish OWNER/REPO WORKFLOW", "Publish already measured evidence to a CAO server", cobra.ExactArgs(2), []operatorFlag{
+		textFlag("server", "CAO server base URL (HTTPS except loopback)"),
+		textFlag("input", "Prepared schema-v2 Operational Value JSONL envelope (maximum 8 MiB)"),
+	}, execute)
+	publish.Long = `Publish one already measured Operational Value evidence envelope unchanged.
+
+This opt-in command does not evaluate, acquire, discover, or schedule evidence.
+Prepare the measurement separately after defining its contract with the skill.
+WORKFLOW is the exact lowercase workflow filename stem, not a path.
+
+Hosted publication requires an administrator OAuth session with server step-up:
+set CAO_SERVER_SESSION to the cao_session cookie value and CAO_SERVER_CSRF to
+its CSRF token. CAO_SERVER_TOKEN bearer authentication is allowed only for a
+local numeric loopback or localhost server. Never pass credentials as arguments.
+Success is JSON; stale or conflicting captures fail without retrying.`
+	_ = publish.MarkFlagRequired("server")
+	_ = publish.MarkFlagRequired("input")
+	enable := operatorCommand("enable OWNER/REPO WORKFLOW", "Stage an exact recurring Value collector opt-in in local policy", cobra.ExactArgs(2), []operatorFlag{
+		textFlag("collector", "Existing reviewed repository-relative .mjs collector (no symlinks)"),
+		boolFlag("if-absent", "Register only when absent; preserve existing registrations and explicit disables"),
+	}, execute)
+	enable.Long = "Stage local reviewed policy only. The repository must already be explicitly enrolled in Activity. Review and commit the collector and cao.json, then deploy/push to enable scheduled collection. Never pushes, enrolls repositories, activates target workflows, or uploads executable code."
+	_ = enable.MarkFlagRequired("collector")
+	disable := operatorCommand("disable OWNER/REPO WORKFLOW", "Stage local revocation of recurring Value collection; retain history", cobra.ExactArgs(2), nil, execute)
+	disable.Long = "Persist an explicit disable for the exact workflow without deleting evidence. Automatic skill registration respects it. Review, commit, and deploy/push cao.json before scheduled collection stops."
+	value.AddCommand(publish, enable, disable)
 	root.AddCommand(setupCommand(execute), quickstart, download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
+		value,
 		passthroughCommand("update [REF] [GH_AW_OPTIONS...]", "Update installed CAO packages without widening rollout", execute),
 	)
 }

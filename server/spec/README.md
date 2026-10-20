@@ -3,7 +3,8 @@
 `server/spec/` is the editable TypeSpec contract for the Go dashboard server.
 `main.tsp` imports independent domains: shared response/auth types, Dashboard
 Language queries and SSE, health, agent discovery, hosted sessions, canonical
-entities, repository memory, ingestion/administration, and the optional MCP HTTP
+entities, repository memory, ingestion/administration, explicit workflow-value
+publication, and the optional MCP HTTP
 transport. MCP protocol messages and tool schemas, and static dashboard assets,
 are intentionally out of scope.
 
@@ -30,6 +31,13 @@ The canonical packet and all its facts publish in one transaction;
 packet identity, source path, contract digest and capture/cutoff timestamps.
 It never stores report HTML, counts, deltas, movement or attention labels.
 Changing this physical contract requires a fresh PostgreSQL schema.
+
+`value.tsp` describes the bounded administrator publication endpoint, not a
+collector execution API. `cao_value_publications` holds typed packet ownership
+metadata only; original facts remain in the canonical entity and child tables.
+Snapshot replacement and direct publication share the namespace writer lock,
+preserving owned evidence and structural parents. Recurring collection is
+separately selected by reviewed policy and invokes only trusted local code.
 
 The `Storage` namespace describes the current source metadata, auxiliary
 sources, revision, and diagnostics scaffolding, separately from entity models.

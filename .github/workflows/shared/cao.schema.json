@@ -91,6 +91,25 @@
     "campaignPolicy": {
       "type": "object",
       "properties": {
+        "workflow-values": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["repository", "workflow"],
+            "allOf": [{
+              "if": { "properties": { "enabled": { "const": false } }, "required": ["enabled"] },
+              "else": { "required": ["collector"] }
+            }],
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "repository": { "$ref": "#/$defs/repository" },
+              "workflow": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+              "collector": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9._/-]+\\.mjs$" }
+            }
+          }
+        },
         "enabled": { "type": "boolean" },
         "mode": { "$ref": "#/$defs/mode" },
         "max-repositories": { "$ref": "#/$defs/maxRepositories" },
@@ -118,7 +137,13 @@
       "propertyNames": {
         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
       },
-      "additionalProperties": { "$ref": "#/$defs/campaignPolicy" }
+      "properties": { "activity": { "$ref": "#/$defs/campaignPolicy" } },
+      "additionalProperties": {
+        "allOf": [
+          { "$ref": "#/$defs/campaignPolicy" },
+          { "not": { "required": ["workflow-values"] } }
+        ]
+      }
     },
     "workflowPolicy": {
       "type": "object",

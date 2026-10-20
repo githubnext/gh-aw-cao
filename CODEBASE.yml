@@ -188,7 +188,7 @@ components:
     responsibility: provide local single-host hosted-CLI queues, token cleanup journal and audit history; explicit database bootstrap provisions state, runtime opens existing state without DDL or implicit audit retention, database retain-audit removes a bounded expired prefix, and audit deliver uses read-only deferred verification while audit verify appends its outcome; never replace canonical dashboard storage or claim PostgreSQL database-role isolation
   dashboard_query_result_cache:
     path: server/internal/redisx/query_cache.go and server/internal/server/query_cache.go
-    responsibility: cache expensive compact HTTP and MCP query results by SHA-256 query identity for five minutes through the operational contract, with atomic expiry, Redis allocator or memory accounting limits and bounded eviction
+    responsibility: cache expensive compact HTTP and MCP query results by SHA-256 query identity for five minutes through the operational contract, with atomic expiry, Redis allocator or memory accounting limits and bounded eviction; key value-evidence-dependent queries by canonical revision so publication refreshes active reports
   dashboard_https_server:
     path: server/
     responsibility: serve hosted dashboard HTML and assets, OAuth, APIs and revision events on one origin; require a readable non-empty built index.html and inject the server-http bootstrap; independently resolve compiled app-target and operational-backend modules from non-secret cao.json, default to durable PostgreSQL operational storage without Redis while preserving explicit Redis and bounded single-process volatile memory alternatives, ingest deployed artifacts into Postgres, execute hosted Dashboard Language plans through the PostgreSQL SQL engine with registered runtime sources, and serve bounded query results
@@ -249,6 +249,12 @@ components:
   package_operational_value:
     path: <operation>/operational-value.mjs
     responsibility: compute timestamped repository-scoped metrics for installed packages through the cao operational-value command
+  workflow_value_publication:
+    path: server/internal/server/value.go
+    responsibility: authenticate explicit administrator publication of original bounded evidence through POST /api/v1/value, with PostgreSQL namespace-locked atomic packet/fact ownership preserved across snapshot replacement, idempotent exact retries, frozen contracts and immutable historical measurements; never register or execute uploaded code
+  workflow_value_collection:
+    path: activity/workflow-values.mjs
+    responsibility: refresh exact repository/workflow registrations from reviewed local source on existing Activity and hosted collection cycles; the skill stages registration after frozen function and bounded collector verification, preserving existing selections and explicit disables; intersect effective collection scope, preserve frozen cadence and reusable proof, retain prior capture on failure and history on disable
   package_problem_clustering:
     path: <operation>/problem-clustering.mjs
     responsibility: compute bounded package problem rows from a private Activity SQLite snapshot through the cao cluster-problems command
@@ -515,6 +521,8 @@ invariants:
   - "Browsers and external clients MUST NOT receive Redis or Postgres endpoints, credentials, keys, or storage-specific representations."
   - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
   - "Operational Value evidence MUST retain one bounded current packet per target repository, workflow and frozen contribution metric/version, with acquired contract, output, acceptance, lineage, independent snapshot, quality and coverage facts as typed relational children. Atomic packet replacement MUST preserve one coherent evidence revision independently of seven-day Run-detail retention. Retained source identity MUST materialize observed Repository and Workflow parents without inferring registration or activation. Packet cutoff/capture provenance MUST supply metadata without asserting complete coverage or current freshness. The operational-value-evidence logical source MUST only normalize facts; counts, comparisons, movement and report presentation belong to declarative queries. Import MUST NOT grant target authority and navigation MUST NOT acquire evidence."
+  - "Direct value publication MUST require PostgreSQL, existing observed parents, hosted administrator step-up and CSRF or local loopback bearer. Publication MUST atomically preserve owned packet/fact rows and required structural parents across Activity replacement, reject stale/conflicting captures, frozen-contract drift and immutable-history rewrites, and leave exact retries revision-neutral. No uploaded evaluator code, PAT fallback, enrollment or implicit collection is permitted."
+  - "Recurring workflow-value collection MUST require exact reviewed opt-in under control-plane.campaigns.activity.workflow-values and a confined local collector deployed with policy. Existing Activity and hosted collection cycles MUST intersect effective collection scope and frozen cadence; failed refreshes MUST retain the original accepted capture without invented freshness or zeros. Disable MUST stop future collection without deleting history. Navigation, upload and discovery MUST NOT enable collection or introduce a new schedule or model call."
   - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."
   - "Successful-Run value computations MUST report produced outputs, native operational-grader measurements, and efficiency as separate axes; operational value is reserved for package-defined repository campaign metrics, output creation MUST NOT imply acceptance or value, and no composite score may be invented."
   - "Overview counters MUST use IndexedDB-native counts or request-scoped declarative queries; no daily aggregate or computation-result projection is persisted. Clustering and audit diagnosis execute in bounded selected-partition queries."

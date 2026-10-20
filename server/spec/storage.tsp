@@ -441,6 +441,7 @@ model issues {
 }
 
 /** Current bounded acquired evidence packet; replaced as one coherent revision. */
+/** UTC evidence clocks must be exactly representable at PostgreSQL microsecond precision; sub-microsecond instants are rejected, never rounded. */
 model operationalValueEvidence {
   id: string;
   schemaVersion: int64;
@@ -921,6 +922,14 @@ namespace Storage {
     dataRevision: string;
     evaluatedAt: utcDateTime;
     schemaVersion: int64;
+  }
+
+  /** Ownership and retry identity only; measured evidence remains in the typed canonical tables. */
+  model caoValuePublications {
+    `namespace`: string;
+    packetId: string;
+    digest: string;
+    publishedAt: utcDateTime;
   }
 
   model caoQuality {

@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { lstat, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, lstat, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -223,6 +223,20 @@ export async function mergeActivityFragments(fragmentDirectory, outputDirectory)
   const incoming = new Map();
   for (const fragment of roots) {
     inventories.push(JSON.parse(await readFile(path.join(fragment, 'inventory-sources.json'), 'utf8')));
+    const proofs = path.join(fragment, 'workflow-value-workspaces');
+    try {
+      if ((await lstat(proofs)).isSymbolicLink()) throw new Error('Workflow evidence workspaces must not be symlinks');
+      await mkdir(path.join(outputDirectory, 'workflow-value-workspaces'), { recursive: true });
+      await cp(proofs, path.join(outputDirectory, 'workflow-value-workspaces'), {
+        recursive: true,
+        filter: async (source) => {
+          if ((await lstat(source)).isSymbolicLink()) throw new Error('Workflow evidence proofs must not be symlinks');
+          return true;
+        },
+      });
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
     for (const file of await shardPaths(path.join(fragment, 'gh-aw-logs-shards'))) {
       const name = path.basename(file);
       if (incoming.has(name)) throw new Error(`Duplicate owner-scoped shard: ${name}`);

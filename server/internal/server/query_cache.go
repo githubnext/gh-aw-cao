@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"time"
 
@@ -21,6 +22,8 @@ import (
 )
 
 const queryCacheTimeout = 2 * time.Second
+
+var errValueRevisionUnavailable = errors.New("value evidence revision is unavailable")
 
 // Zero values select bounded production defaults; Disabled bypasses the cache.
 type QueryCacheConfig struct {
@@ -93,6 +96,40 @@ func (a *App) queryCacheIdentity(input queryRequest, admin bool) (string, error)
 		return "", fmt.Errorf("encode query cache identity: %w", err)
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func (a *App) queryResultCacheIdentity(ctx context.Context, input queryRequest, admin bool) (string, error) {
+	key, err := a.queryCacheIdentity(input, admin)
+	if err != nil {
+		return "", err
+	}
+	definitions, requested := a.queryPlan(input)
+	dependencies, err := query.Dependencies(definitions, requested)
+	if err != nil {
+		return "", err
+	}
+	readsValue := slices.Contains(dependencies, "$operationalValueEvidence")
+	for _, definition := range definitions {
+		if !slices.Contains(dependencies, definition.Name) {
+			continue
+		}
+		readsValue = readsValue || definition.From == "$operationalValueEvidence" ||
+			slices.Contains(definition.Union, "$operationalValueEvidence")
+		for _, join := range definition.Joins {
+			readsValue = readsValue || join.Source == "$operationalValueEvidence"
+		}
+	}
+	if !readsValue {
+		return key, nil
+	}
+	// Value publications must be visible after the revision event, not after
+	// the ordinary five-minute cache lifetime.
+	active, err := a.database.State(ctx)
+	if err != nil {
+		return "", errValueRevisionUnavailable
+	}
+	hash := sha256.Sum256([]byte(key + ":" + strconv.FormatInt(active.Revision, 10)))
+	return hex.EncodeToString(hash[:]), nil
 }
 
 func (a *App) loadCachedQuery(ctx context.Context, key string, config QueryCacheConfig) (response queryResponse, hit bool, err error) {

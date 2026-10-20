@@ -1437,6 +1437,25 @@ administrators may call `POST /api/admin/rebuild`; it validates input and
 atomically replaces current Postgres sources and state. A failed replacement
 leaves the previous committed state intact.
 
+`POST /api/v1/value` publishes one prepared operational-value evidence envelope
+(JSON or one JSONL record, at most 8 MiB). It requires PostgreSQL and an already
+observed repository/workflow; it neither enrolls targets nor runs uploaded code.
+Hosted calls require a listed administrator with current step-up assurance and
+the session's `X-CSRF-Token`. Local PostgreSQL uses the existing loopback bearer
+capability; local SQLite and static Pages do not support this write.
+Use `gh cao value publish OWNER/REPO WORKFLOW --server URL --input FILE`.
+The receipt preserves `id` and `observedAt` and returns `revision` and `updated`.
+An exact retry is a no-op; stale/conflicting captures, contract drift and
+immutable-history rewrites fail. Namespace-scoped publication and snapshot
+replacement share the writer lock; directly published packets, facts and
+required observed parents survive replacement. Only a new committed capture
+advances the revision. Value-dependent queries key their bounded result cache
+by that revision; other query caches retain their existing fixed lifetime.
+This endpoint does not activate ongoing collection: explicitly register a
+reviewed collector in policy through `gh cao value enable`, then deploy policy
+and collector together. Recurring work uses the existing collector's enrolled
+repository credentials, not an administrator's browser session.
+
 The hosted dashboard shows a user icon at the lower left of the navigation.
 It appears only after the server confirms an authenticated GitHub session and
 opens a user view with account switching and logout. Logout remains on a

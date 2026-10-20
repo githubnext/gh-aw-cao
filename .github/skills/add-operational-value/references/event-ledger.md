@@ -227,6 +227,34 @@ enrollment or permission to collect from another target. Publish the generated
 normalized shards and SQLite through the normal Activity publication; do not
 make browsers fetch the report file. No new workflow dispatch is required.
 
+For a hosted PostgreSQL dashboard, explicitly publish the original adjacent
+packet instead of staging a whole Activity snapshot:
+
+```bash
+gh cao value publish OWNER/REPO WORKFLOW \
+  --server https://dashboard.example.com --input REPORT-evidence.jsonl
+```
+
+The server requires an already observed repository/workflow and an authorized
+administrator's current OAuth session plus CSRF (loopback bearer is local-only).
+It validates the original bounded envelope, frozen contract and immutable
+history. Exact retries do not advance the revision; stale or conflicting
+captures fail. Publication retains the real evidence clocks and survives
+subsequent Activity replacement. No database credential or executable evaluator
+is uploaded. Static Pages still requires the Activity transport above.
+
+Publication alone does not arrange future acquisition. Once the frozen function
+and repository-local recurring collector pass verification, the skill
+automatically stages the exact registration with
+`gh cao value enable OWNER/REPO WORKFLOW --collector PATH --if-absent`. Commit/deploy
+collector and policy together. Only that registered, in-scope pair becomes
+eligible for collection at its existing cadence on the ordinary Activity or
+hosted collection cycle. Failed refreshes keep the old capture, not a fake new
+timestamp; `value disable` stops collection without deleting evidence.
+It persists an explicit disable that automatic skill registration respects.
+Function presence alone, without reviewed policy and existing repository
+enrollment, never authorizes collection.
+
 The transport kind is `operational_value_evidence` at `schema_version: 2`;
 `operational_value_evidence` holds a schema-version-1 bounded fact packet.
 Its stable identity names repository, workflow and frozen contribution

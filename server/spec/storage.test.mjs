@@ -163,6 +163,17 @@ test('operational value evidence projects exactly the typed fact and common pack
   assert.match(sql, /FOREIGN KEY \(namespace, packet_id\) REFERENCES operational_value_evidence/);
 });
 
+test('direct publication metadata owns canonical packets without copying report content', () => {
+  const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  const publication = sql.match(/CREATE TABLE IF NOT EXISTS cao_value_publications \(\n([\s\S]*?)\n\);/);
+  assert.ok(publication);
+  assert.match(publication[1], /PRIMARY KEY \(namespace, packet_id\)/);
+  assert.match(publication[1], /FOREIGN KEY \(namespace\) REFERENCES cao_state\(namespace\) ON DELETE CASCADE/);
+  assert.deepEqual([...publication[1].matchAll(/^  (\w+) (?:TEXT|TIMESTAMPTZ) NOT NULL/gm)].map((match) => match[1]),
+    ['namespace', 'packet_id', 'digest', 'published_at']);
+  assert.match(publication[1], /CHECK \(digest ~ '\^\[a-f0-9\]\{64\}\$'\)/);
+});
+
 test('TypeSpec excludes pruned payload copies and lifecycle aliases', () => {
   for (const [collection, fields] of Object.entries(PRUNED_CANONICAL_FIELDS)) {
     const table = tables.get(`$${collection}`);

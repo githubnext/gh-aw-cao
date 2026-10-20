@@ -36,7 +36,7 @@ const OCTICONS = [
   "shield", "meter", "graph", "codescan", "dependabot", "key", "beaker", "rocket",
   "workflow", "gear", "check-circle", "campaign", "external-link",
 ];
-const CAMPAIGN_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "deploy", "targets", "workers"];
+const CAMPAIGN_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "deploy", "targets", "workers", "workflow-values"];
 const WORKFLOW_KEYS = ["enabled", ...DEFAULT_KEYS, "max-mode", "targets"];
 const TARGET_POLICY_KEYS = ["mode"];
 const WORKER_KEYS = ["workflow", "enabled", "max-mode"];
@@ -577,6 +577,29 @@ function validateOperationPolicies(campaigns, collection = "campaigns") {
     assertString(campaignName, path, SLUG_PATTERN);
     assertMapping(campaignPolicy, path);
     assertKeys(campaignPolicy, collection === "workflows" ? WORKFLOW_KEYS : CAMPAIGN_KEYS, path);
+    if ("workflow-values" in campaignPolicy) {
+      if (collection !== "campaigns" || campaignName !== "activity" || !Array.isArray(campaignPolicy["workflow-values"])
+        || campaignPolicy["workflow-values"].length > 1000) {
+        throw new PolicyError(`${path}.workflow-values is only supported for Activity`);
+      }
+      const identities = new Set();
+      for (const entry of campaignPolicy["workflow-values"]) {
+        assertMapping(entry, `${path}.workflow-values`);
+        assertKeys(entry, ["repository", "workflow", "collector", "enabled"], `${path}.workflow-values`);
+        assertString(entry.repository, `${path}.repository`, REPOSITORY_PATTERN);
+        assertString(entry.workflow, `${path}.workflow`, SLUG_PATTERN);
+        if ("enabled" in entry) assertBoolean(entry.enabled, `${path}.enabled`);
+        if (entry.enabled !== false || "collector" in entry) {
+          assertString(entry.collector, `${path}.collector`, /^(?!\/)(?!.*(?:^|\/)\.\.?\/)[A-Za-z0-9._/-]+\.mjs$/);
+          if (entry.collector.split("/").some((part) => !part || part === "." || part === "..")) {
+            throw new PolicyError(`${path}.collector must be a confined repository-relative .mjs path`);
+          }
+        }
+        const identity = `${entry.repository.toLowerCase()}:${entry.workflow}`;
+        if (identities.has(identity)) throw new PolicyError(`${path}.workflow-values has duplicate identities`);
+        identities.add(identity);
+      }
+    }
     if ("enabled" in campaignPolicy) assertBoolean(campaignPolicy.enabled, `${path}.enabled`);
     if ("icon" in campaignPolicy) assertOcticon(campaignPolicy.icon, `${path}.icon`);
     if ("deploy" in campaignPolicy) assertBoolean(campaignPolicy.deploy, `${path}.deploy`);

@@ -46,6 +46,16 @@ CREATE TABLE IF NOT EXISTS cao_state (
   PRIMARY KEY (namespace)
 );
 
+CREATE TABLE IF NOT EXISTS cao_value_publications (
+  namespace TEXT NOT NULL,
+  packet_id TEXT NOT NULL,
+  digest TEXT NOT NULL,
+  published_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (namespace, packet_id),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  CHECK (digest ~ '^[a-f0-9]{64}$')
+);
+
 CREATE TABLE IF NOT EXISTS cao_quality (
   namespace TEXT NOT NULL,
   collection TEXT NOT NULL,

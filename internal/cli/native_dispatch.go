@@ -38,6 +38,11 @@ func nativeOperator(gh ghExecutor) runtimeExecutor {
 			return nativeComputation(cmd)
 		case "mcp":
 			return nativeMCP(cmd)
+		case "value":
+			if cmd.Name() == "enable" || cmd.Name() == "disable" {
+				return nativeValueConfigure(cmd, cmd.Flags().Args(), cmd.Name() == "enable")
+			}
+			return nativeValuePublish(cmd, cmd.Flags().Args())
 		default:
 			return fmt.Errorf("unknown native operator command: %s", args[0])
 		}

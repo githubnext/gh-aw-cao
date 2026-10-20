@@ -22,6 +22,7 @@ const cachePaths = [
 const repositoryMemoryCachePaths = [
   ...cachePaths,
   "${{ runner.temp }}/cao-activity/memory",
+  "${{ runner.temp }}/cao-activity/workflow-value-workspaces",
 ];
 
 const legacyCachePaths = [

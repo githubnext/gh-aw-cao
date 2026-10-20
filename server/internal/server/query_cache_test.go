@@ -19,10 +19,63 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
 	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
+
+type valueRevisionCacheStore struct {
+	dashboardstore.Store
+	revision int64
+	err      error
+	reads    int
+}
+
+func (store *valueRevisionCacheStore) State(context.Context) (dashboardstore.State, error) {
+	store.reads++
+	return dashboardstore.State{Revision: store.revision}, store.err
+}
+
+func TestValueQueryCacheTracksCommittedRevisionTransitively(t *testing.T) {
+	store := &valueRevisionCacheStore{revision: 1}
+	app := &App{database: store, databaseQueries: []query.Definition{
+		{Name: "operational-value-evidence", From: "$operationalValueEvidence"},
+	}}
+	app.config.DashboardQueries = []query.Definition{
+		{Name: "card", From: "operational-value-evidence"},
+		{Name: "joined", From: "$workflows", Joins: []query.Join{{Source: "card"}}},
+		{Name: "union", Union: []string{"card", "$workflows"}},
+	}
+	for _, name := range []string{"operational-value-evidence", "card", "joined", "union"} {
+		input := queryRequest{SourceNames: []string{name}}
+		before, err := app.queryResultCacheIdentity(t.Context(), input, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		store.revision++
+		after, err := app.queryResultCacheIdentity(t.Context(), input, false)
+		if err != nil || before == after {
+			t.Fatalf("%s reused a previous value revision: %v", name, err)
+		}
+	}
+	store.reads = 0
+	input := queryRequest{SourceNames: []string{"$workflows"}}
+	before, err := app.queryResultCacheIdentity(t.Context(), input, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.revision++
+	after, err := app.queryResultCacheIdentity(t.Context(), input, false)
+	if err != nil || before != after || store.reads != 0 {
+		t.Fatalf("ordinary cache behavior changed: reads=%d err=%v", store.reads, err)
+	}
+	store.err = errors.New("private connection string")
+	_, err = app.queryResultCacheIdentity(t.Context(), queryRequest{SourceNames: []string{"card"}}, false)
+	if !errors.Is(err, errValueRevisionUnavailable) || strings.Contains(err.Error(), "private") {
+		t.Fatalf("revision failure was hidden or leaked: %v", err)
+	}
+}
 
 type queryCacheClient struct {
 	value    any

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -29,6 +29,9 @@
     },
     {
       "name": "Ingestion and administration"
+    },
+    {
+      "name": "Operational value"
     },
     {
       "name": "MCP transport"
@@ -2500,6 +2503,212 @@
         ]
       }
     },
+    "/api/v1/value": {
+      "post": {
+        "operationId": "Value_publish",
+        "description": "Explicitly publish one skill-generated evidence packet (maximum 8 MiB) to\nPostgreSQL. No workflow discovery, acquisition, evaluator execution or\nscheduled evaluation is performed. Requires a hosted administrator OAuth\nsession with current step-up assurance and CSRF, or a local bearer\ncapability backed by PostgreSQL; local SQLite is read-only.\n\nRepository and workflow must already be observed. Publication is atomic,\nnamespace-scoped and survives Activity snapshot replacement. Exact retries\ndo not advance the revision. Older/conflicting captures, changed frozen\ncontracts and rewritten immutable history are rejected. A new publication\nadvances the query revision and notifies active dashboard subscriptions.\nEvidence capture/cutoff timestamps are retained, never replaced with upload\ntime. All evidence timestamps must be representable at PostgreSQL\nmicrosecond precision; finer nonzero fractions are rejected, not rounded.\nThe body is the original single schema-v2 JSONL transport envelope.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuePublication"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Operational value"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValuePublicationRequest"
+              }
+            },
+            "application/x-ndjson": {
+              "schema": {
+                "$ref": "#/components/schemas/ValuePublicationRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/api/workflows/{id}/runs": {
       "get": {
         "operationId": "Canonical_workflowRuns",
@@ -4900,6 +5109,138 @@
         "properties": {
           "direction": {
             "type": "string"
+          }
+        }
+      },
+      "ValueEvidencePacket": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "id",
+          "repository",
+          "workflow",
+          "sourcePath",
+          "observedAt",
+          "windowStart",
+          "windowEnd",
+          "contractDigest",
+          "facts"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "workflow": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contractDigest": {
+            "type": "string"
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "unevaluatedProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            },
+            "maxItems": 20000
+          },
+          "repositoryId": {
+            "type": "string"
+          },
+          "workflowId": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "description": "Original bounded facts from a validated operational-value skill report, not HTML or computed dashboard labels."
+      },
+      "ValuePublication": {
+        "type": "object",
+        "required": [
+          "id",
+          "revision",
+          "updated",
+          "observedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updated": {
+            "type": "boolean"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ValuePublicationRequest": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "kind",
+          "operational_value_evidence"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "number",
+            "enum": [
+              2
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "operational_value_evidence"
+            ]
+          },
+          "operational_value_evidence": {
+            "$ref": "#/components/schemas/ValueEvidencePacket"
           }
         }
       },

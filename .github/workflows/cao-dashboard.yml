@@ -88,6 +88,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
+            ${{ runner.temp }}/cao-activity/workflow-value-workspaces
           key: >-
             ${{ github.event_name == 'workflow_run'
               && format('cao-activity-v5-{0}-{1}', github.event.workflow_run.id, github.event.workflow_run.run_attempt)

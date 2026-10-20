@@ -159,6 +159,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
+            ${{ runner.temp }}/cao-activity/workflow-value-workspaces
           key: ${{ needs.plan.outputs.cache-key }}
           restore-keys: |
             cao-activity-v5-
@@ -340,6 +341,7 @@ jobs:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/collection.sqlite
           ACTIVITY_OWNER: ${{ matrix.owner }}
           CAO_OPERATIONAL_VALUE_GH_TOKEN: ${{ steps.activity-credential.outputs.token }}
+          GH_TOKEN: ${{ steps.activity-credential.outputs.token }}
           REPORT_MAX_GITHUB_API_RATE_LIMIT: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-2000' }}
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/gh-aw-logs-shards
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/inventory-sources.json
@@ -347,6 +349,13 @@ jobs:
           REPORT_FAST_MODE: ${{ inputs.fast == true }}
           REPORT_RATE_LIMITED: ${{ steps.activity-logs.outputs.rate-limited }}
         run: |
+          rich_seed="$REPORT_VALUE_SEED_SHARDS/workflow-values-$ACTIVITY_ARTIFACT.jsonl"
+          rich_output="$REPORT_GH_AW_LOGS_SHARDS/workflow-values-$ACTIVITY_ARTIFACT.jsonl"
+          if [[ -f "$rich_seed" ]]; then cp "$rich_seed" "$rich_output"; fi
+          proof_seed="$RUNNER_TEMP/cao-activity/workflow-value-workspaces/$ACTIVITY_ARTIFACT"
+          proof_output="$RUNNER_TEMP/cao-activity-partial/$ACTIVITY_ARTIFACT/workflow-value-workspaces/$ACTIVITY_ARTIFACT"
+          mkdir -p "$proof_output"
+          if [[ -d "$proof_seed" ]]; then cp -R "$proof_seed/." "$proof_output/"; fi
           retained_values="$REPORT_VALUE_SEED_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
           value_output="$REPORT_GH_AW_LOGS_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
           if [[ -f "$retained_values" ]]; then
@@ -377,6 +386,12 @@ jobs:
               "${repository_args[@]}" \
               --max-github-api-rate-limit "$REPORT_MAX_GITHUB_API_RATE_LIMIT"; then
             echo "::warning::Operational value collection failed for $ACTIVITY_OWNER; continuing activity indexing."
+          fi
+          if ! node activity/workflow-values.mjs \
+              --root . --policy .github/workflows/cao.json \
+              --database "$ACTIVITY_DATABASE" --output "$rich_output" \
+              --workspace "$proof_output" "${repository_args[@]}"; then
+            echo "::warning::Opted-in workflow Value collection failed; retaining accepted history."
           fi
 
       - name: Upload owner-scoped activity fragment
@@ -432,6 +447,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
+            ${{ runner.temp }}/cao-activity/workflow-value-workspaces
           key: ${{ needs.plan.outputs.cache-key }}
           restore-keys: |
             cao-activity-v5-
@@ -614,6 +630,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
+            ${{ runner.temp }}/cao-activity/workflow-value-workspaces
 
   cache:
     needs: index
@@ -662,6 +679,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/agent-summary.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
             ${{ runner.temp }}/cao-activity/memory
+            ${{ runner.temp }}/cao-activity/workflow-value-workspaces
           key: ${{ needs.index.outputs.cache-key }}
 
   notify-failure:

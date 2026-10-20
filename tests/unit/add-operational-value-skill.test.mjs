@@ -27,6 +27,9 @@ test("skill connects frozen intent, final acceptance, dated lineage and reusable
   assert.match(skill, /No review triggered/);
   assert.match(skill, /Overdue acceptance/);
   assert.match(skill, /Do not invent alert thresholds/);
+  assert.match(skill, /automatically stage registration/);
+  assert.match(skill, /--collector PATH --if-absent/);
+  assert.match(skill, /Preserve existing registrations and explicit disables/);
   assert.match(skill, /not.*a current-evidence/);
   const events = JSON.parse(readFileSync(path.join(root, "tests/fixtures/operational-value/file-diet-events.json"), "utf8")).events;
   assert.equal(events.filter(event => !event.lineage.some(edge => edge.relation === "connected")

@@ -154,6 +154,20 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   - For a campaign, run `.github/skills/add-operational-value/scripts/wire-campaign.mjs CAMPAIGN-SLUG WORKFLOW-NAME`. It creates the standard adapter only when absent, refuses to overwrite a nonstandard adapter, and idempotently includes the adapter and selected module in `aw.yml`. Resolve a nonstandard existing adapter deliberately; never replace it automatically.
   - Without a campaign manifest, create the standard adapter beside the module but do not create or enroll a campaign solely to host an evaluation example.
   - Run `.github/skills/add-operational-value/scripts/verify-value-function.mjs --collector --cao-adapter <adapter> <path>` and do not report success unless it passes.
+  - For ongoing native Value reports, implement and test the bounded
+    `collectValueEvidence` interface described below using the same frozen
+    definition and acquired originals. Once both function and collector pass
+    verification, automatically stage registration for the selected pair with
+    `gh cao value enable OWNER/REPO WORKFLOW --collector PATH --if-absent`.
+    This is part of implementing the confirmed design, not a separate enable
+    question. Use it only in a control repository with an existing reviewed
+    policy and that repository already enrolled in Activity. Otherwise state
+    that deployment/registration remains a prerequisite; never widen scope.
+    Preserve existing registrations and explicit disables. Review, commit and
+    deploy the collector and policy together before collection starts.
+    When reusing an existing verified design at step 2, apply this registration
+    only if its recurring collector already exists and passes verification;
+    do not rewrite the design or invent a collector from an old report.
   - Report the outcome contract, evidence shape, metrics and roles, agreement or disagreement, rejected metrics, limitations, selected model, generated module and adapter, and successful verification command. Do not create evaluation artifacts yet.
   - For an acceptance-anchored contribution report, implement a deterministic
     projection of the acquired evidence into the
@@ -206,6 +220,26 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   mutable discovery and lifecycle state. Do not move the evidence-capture
   timestamp or extend complete coverage merely by rerendering an old ledger.
   Publish only after acquisition, validation and measurement succeed.
+  For direct hosted publication, run
+  `gh cao value publish OWNER/REPO WORKFLOW --server URL --input REPORT-evidence.jsonl`
+  with the original generated envelope and the administrator's private session
+  credentials. It publishes existing evidence; it does not acquire facts or
+  register executable code. Local SQLite and static Pages have no such endpoint.
+  Ongoing collection uses the reviewed local
+  collector exporting the same frozen `definition` and
+  `collectValueEvidence({repository, workflow, observedAt, database, previous, workspace})`,
+  returning an original schema-v2 evidence envelope after bounded acquisition
+  and validation. The automatic registration in step 6 records only the selected
+  pair; function files alone are not runtime authority. Have the policy
+  and collector reviewed, committed and deployed together. Do not widen Activity
+  scope or enable the measured workflow. Existing collection cycles invoke
+  registered collectors at their frozen cadence; a failed refresh must retain
+  the prior accepted evidence and timestamps. `value disable` revokes future
+  collection without removing history and persists an explicit disable that
+  automatic registration must respect. Re-enabling requires explicit
+  `gh cao value enable ...` without `--if-absent`. Never opt every workflow in, infer
+  opt-in from an uploaded packet, redesign the contract during collection or
+  add a separate per-workflow schedule.
   The renderer can also replay either input directly:
 
   ```bash

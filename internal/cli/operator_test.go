@@ -49,7 +49,7 @@ func TestOperatorCommandInventory(t *testing.T) {
 	want := []string{
 		"campaigns", "computation", "doctor", "download", "gh", "init",
 		"mcp", "pages", "prompt", "queries", "query", "query-info",
-		"quickstart", "repos", "setup", "update", "upgrade-gh-aw", "version",
+		"quickstart", "repos", "setup", "update", "upgrade-gh-aw", "value", "version",
 	}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("command inventory = %v, want %v", names, want)

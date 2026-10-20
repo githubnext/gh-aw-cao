@@ -114,6 +114,10 @@ export async function $onEmit(context) {
       'PRIMARY KEY (namespace, id)',
       'CHECK (octet_length(id) <= 512)',
       'CHECK (octet_length(etag) <= 4096 AND octet_length(upstream_etag) <= 4096)'
+    ] : table.name === 'cao_value_publications' ? [
+      'PRIMARY KEY (namespace, packet_id)',
+      'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',
+      "CHECK (digest ~ '^[a-f0-9]{64}$')"
     ] : table.name === 'cao_contract' ? ['PRIMARY KEY (digest)'] : table.name === 'cao_state' ? ['PRIMARY KEY (namespace)'] : table.name === 'cao_repository_lifecycle' ? [
       'PRIMARY KEY (namespace, id)',
       'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',

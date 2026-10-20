@@ -194,6 +194,13 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 		return ingest.Result{}, err
 	}
 	projectorLog.Printf("activated dashboard data revision=%d sources=%d", result.Revision, len(result.Counts))
+	revision, err := p.refreshWorkflowValues(ctx)
+	if revision > result.Revision {
+		result.Revision = revision
+	}
+	if err != nil {
+		projectorLog.Printf("opted-in workflow Value collection failed; retaining accepted evidence")
+	}
 	return result, nil
 }
 

@@ -41,6 +41,7 @@ test('fast collection preserves the history restore and exits before operational
     cwd: root, encoding: 'utf8',
     env: {
       ...process.env, REPORT_FAST_MODE: 'true', ACTIVITY_ARTIFACT: 'example',
+      RUNNER_TEMP: directory,
       REPORT_VALUE_SEED_SHARDS: directory, REPORT_GH_AW_LOGS_SHARDS: directory
     }
   });

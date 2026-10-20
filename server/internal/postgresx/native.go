@@ -151,6 +151,7 @@ type Writer struct {
 	evaluatedAt          time.Time
 	ingestedAt           time.Time
 	staged               map[string]bool
+	preserveValues       bool
 }
 
 func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
@@ -181,6 +182,10 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
 		return fail(err)
 	}
+	if err := writer.preserveValuePublications(ctx); err != nil {
+		return fail(err)
+	}
+	writer.preserveValues = true
 	for _, source := range tableNames() {
 		statement, args, err := sqlbuilder.Build("DELETE FROM {} WHERE namespace={}", sqlbuilder.Identifier(entityTables[source].name), s.namespace)
 		if err != nil {
@@ -232,6 +237,19 @@ func (w *Writer) AppendInventory(ctx context.Context, source string, row model.R
 
 func (w *Writer) append(ctx context.Context, source string, row model.Row, inventory bool) error {
 	if source == "$operationalValueEvidence" {
+		if w.preserveValues {
+			var previous time.Time
+			err := w.tx.QueryRow(ctx, `SELECT e.observed_at FROM cao_value_publications p
+				LEFT JOIN operational_value_evidence_value_preserved e ON e.namespace=p.namespace AND e.id=p.packet_id
+				WHERE p.namespace=$1 AND p.packet_id=$2`,
+				w.store.namespace, evidenceText(row["id"])).Scan(&previous)
+			if err == nil {
+				return validateValueSnapshotCapture(previous, row)
+			}
+			if !errors.Is(err, pgx.ErrNoRows) {
+				return err
+			}
+		}
 		if err := validateOperationalValueEvidence(row); err != nil {
 			return err
 		}
@@ -518,6 +536,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		if _, err := w.tx.Exec(ctx, statement, args...); err != nil {
 			return State{}, fmt.Errorf("publish typed inventory %s: %w", source, err)
 		}
+	}
+	if err := w.restoreValuePublications(ctx); err != nil {
+		return State{}, err
 	}
 	// Autovacuum cannot analyze uncommitted replacement rows or partitioned parents.
 	// Refresh estimates before integrity joins can choose quadratic cold-start plans.
