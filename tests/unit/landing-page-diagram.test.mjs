@@ -56,11 +56,18 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
-  assert.match(terminalText, /gh cao campaigns mode preview dependabot/);
+  assert.match(terminalText, /jq '.&quot;control-plane&quot;.workflows' \.github\/workflows\/cao\.json/);
   assert.match(terminalText, /CAO runtime materialized and verified/);
   assert.match(terminalText, /Next: gh cao doctor/);
   assert.match(terminalText, /Then review git diff and git status, commit, and push the installed files/);
-  assert.match(terminal, /"command": "mode",\s+"mode": "preview",\s+"policy": "\.github\/workflows\/cao\.json"/);
+  const reviewPolicy = terminal.match(/data-terminal-output="rollout">\{`([\s\S]*?)`\}/)?.[1];
+  assert.ok(reviewPolicy);
+  assert.deepEqual(JSON.parse(reviewPolicy), {
+    "daily-team-status": {
+      enabled: true, mode: "review", "max-mode": "review", "max-repositories": 1,
+    },
+  });
+  assert.doesNotMatch(terminalText, /campaign|dependabot/i);
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
   assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field/);

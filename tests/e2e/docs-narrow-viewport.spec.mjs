@@ -727,6 +727,8 @@ for (const { name, viewport } of [
         await rolloutStory.scrollIntoViewIfNeeded();
         await expect(rolloutStory).toContainText("Start with one CAO-integrated workflow, such as daily team status.");
         await expect(rolloutStory).toContainText("In review mode, inspect its proposed report in a review repository");
+        await expect(rolloutStory.locator(".terminal")).not.toContainText(/campaign|dependabot/i);
+        await expect(rolloutStory.locator('[data-terminal-output="rollout"]')).toContainText('"daily-team-status"');
         await expect(rolloutStory).toHaveCSS("opacity", "1");
         const rolloutScreenshot = testInfo.outputPath(`rollout-story-${name}-${colorScheme}.png`);
         await rolloutStory.screenshot({ path: rolloutScreenshot });
@@ -783,7 +785,7 @@ for (const { name, viewport } of [
       await expect(page.locator(".terminal code")).toHaveText([
         "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
         "gh cao setup",
-        "gh cao campaigns mode preview dependabot",
+        "jq '.\"control-plane\".workflows' .github/workflows/cao.json",
       ]);
       await expect(page.locator(".terminal a")).toHaveCount(0);
       await expect(page.locator('[data-terminal-output="install"]')).toHaveText("==> CAO runtime materialized and verified.");
@@ -791,7 +793,9 @@ for (const { name, viewport } of [
         "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.",
       );
       expect(JSON.parse(await page.locator('[data-terminal-output="rollout"]').textContent())).toEqual({
-        campaigns: ["dependabot"], command: "mode", mode: "preview", policy: ".github/workflows/cao.json",
+        "daily-team-status": {
+          enabled: true, mode: "review", "max-mode": "review", "max-repositories": 1,
+        },
       });
       await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);
       await expect(page.locator(".product-shot-mobile")).toHaveCount(2);
