@@ -13,6 +13,7 @@ import {
   deployedDashboardUrl,
   deployedStorageContext,
   populatedDashboardPages,
+  populatedOverviewStations,
   scrollRenderedViewsIntoView,
   shouldIgnoreRequestFailure,
 } from "../e2e/dashboard-deployed-refresh-helpers.mjs";
@@ -119,6 +120,26 @@ test("deployed dashboard check targets declared navigation pages", () => {
     assert.ok(navigationPageIds.has(pageId), `expected '${pageId}' to be a declared navigation page`);
     assert.ok(ENTITY_STORES.includes(storeName), `expected '${storeName}' to be a canonical entity store`);
   }
+});
+
+test("overview inventory checks allow zero health or reach but reject missing denominators", () => {
+  const navigationPageIds = new Set(authoritativeDashboard.dashboard.navigation.flatMap(({ pages }) => pages));
+  for (const { href, detail } of populatedOverviewStations) {
+    assert.ok(navigationPageIds.has(href.replace("#page-", "")));
+    const suffix = href === "#page-workflows" ? "healthy workflows" : "repositories reached";
+    for (const counts of ["0/7", "0/748", "707/748", "1,000/1,234"]) {
+      assert.match(`${counts} ${suffix}`, detail);
+    }
+    for (const counts of ["0/0", "7/0", "0/", "/7", "NaN/7"]) {
+      assert.doesNotMatch(`${counts} ${suffix}`, detail);
+    }
+    assert.doesNotMatch("Unavailable", detail);
+    assert.doesNotMatch("", detail);
+  }
+  const deployedTest = readFileSync(resolve(repositoryRoot, "tests/e2e/dashboard-deployed-refresh.spec.mjs"), "utf8");
+  assert.match(deployedTest, /of populatedOverviewStations/);
+  assert.match(deployedTest, /toHaveText\(detail\)/);
+  assert.doesNotMatch(deployedTest, /\.factory-station-empty/);
 });
 
 test("deployed dashboard scrolling uses a stable view snapshot", async () => {

@@ -8,6 +8,7 @@ import {
   deployedDashboardUrl as dashboardUrl,
   deployedStorageContext,
   populatedDashboardPages,
+  populatedOverviewStations,
   scrollRenderedViewsIntoView,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
@@ -78,10 +79,9 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true");
     await expect(page.locator(".dashboard-stale, .source-refresh-error")).toHaveCount(0);
 
-    // Overview is the landing page and has no single canonical store, so it is
-    // checked separately from populatedDashboardPages: it must finish rendering
-    // and must not get stuck showing the all-zero "no data" placeholder that a
-    // stalled or failed ingestion would otherwise leave in place indefinitely.
+    // Overview has no single canonical store. Check populated inventory
+    // denominators, not positive health or reach: either
+    // percentage can legitimately be zero after successful ingestion.
     const overviewPage = page.locator('[data-page-id="overview"]');
     await expect(overviewPage).toBeVisible({ timeout: 120_000 });
     await page.waitForFunction(() =>
@@ -92,10 +92,13 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
         && detail?.status === "completed"
       ), null, { timeout: 120_000 });
     await expect(overviewPage.locator('[aria-busy="true"]')).toHaveCount(0);
-    await expect(
-      overviewPage.locator(".factory-station-empty"),
-      "Overview should not show empty campaign/repository stations once data has loaded"
-    ).toHaveCount(0);
+    for (const { href, detail } of populatedOverviewStations) {
+      const station = overviewPage.locator(".factory-station").filter({
+        has: page.locator(`a[href="${href}"]`),
+      });
+      await expect(station.locator("small"), "Overview should show a populated inventory denominator")
+        .toHaveText(detail);
+    }
 
     for (const { pageId } of populatedDashboardPages) {
       await page.evaluate((nextPageId) => {
