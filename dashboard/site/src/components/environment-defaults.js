@@ -6,6 +6,9 @@ import { declaredCliActionCommand, executeDeclaredCliAction } from './cli-action
 import { createFactoryScope } from './factory-elements.js';
 import { createModalDialog, renderLiveRegion } from './ui-primitives.js';
 import { publishNotification } from '../notification-service.js';
+import { createDebug, diagnosticErrorName } from '../debug.js';
+
+const debugDefaults = createDebug('components:environment-defaults');
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderEnvironmentDefaults(context) {
@@ -59,11 +62,14 @@ export function renderEnvironmentDefaults(context) {
     if (busy.get() || !available || !validTarget() || lifetime.signal.aborted) return;
     if (update && !loaded.get()) return;
     if (update && !dryRun && previewed.get() !== snapshot()) return;
+    let startedAt = 0;
     try {
       if (update) parseEnvironmentDefaults(draft.get());
       const text = command(update, dryRun);
       const reviewed = snapshot();
       busy.set(true);
+      startedAt = Date.now();
+      debugDefaults({ event: 'execute-started', operation: update ? 'update' : 'get', scope: scope.get(), dryRun: update ? dryRun : null });
       output.set(`$ ${text}\n`);
       previewed.set('');
       status.set(update ? dryRun ? 'Previewing changes...' : 'Applying defaults...' : 'Loading current defaults...');
@@ -79,6 +85,7 @@ export function renderEnvironmentDefaults(context) {
         }
       });
       if (lifetime.signal.aborted) return;
+      debugDefaults({ event: 'execute-finished', operation: update ? 'update' : 'get', ok: Boolean(result.ok), durationMs: Date.now() - startedAt });
       if (!result.ok) throw new Error(result.error || 'Compiler defaults command failed. Review the command output.');
       if (!update) {
         parseEnvironmentDefaults(yaml);
@@ -93,6 +100,7 @@ export function renderEnvironmentDefaults(context) {
         publishNotification({ message: 'Compiler defaults updated.', tone: 'success' });
       }
     } catch (error) {
+      debugDefaults({ event: 'execute-failed', operation: update ? 'update' : 'get', errorName: diagnosticErrorName(error) });
       if (!update) loaded.set(false);
       fail(error);
     } finally {
