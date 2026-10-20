@@ -56,17 +56,15 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
-  assert.match(terminalText, /jq '.&quot;control-plane&quot;.workflows' \.github\/workflows\/cao\.json/);
+  assert.match(terminalText, /Use integrate-cao-workflow for Daily Repo Status/);
   assert.match(terminalText, /CAO runtime materialized and verified/);
   assert.match(terminalText, /Next: gh cao doctor/);
   assert.match(terminalText, /Then review git diff and git status, commit, and push the installed files/);
-  const reviewPolicy = terminal.match(/data-terminal-output="rollout">\{`([\s\S]*?)`\}/)?.[1];
-  assert.ok(reviewPolicy);
-  assert.deepEqual(JSON.parse(reviewPolicy), {
-    "repo-status": {
-      enabled: true, mode: "review", "max-mode": "review", "max-repositories": 1,
-    },
-  });
+  assert.match(terminalText, /Agent with CAO skills — integration request/);
+  assert.match(terminal, /data-terminal-request="integration"/);
+  assert.match(terminalText, /Keep policy disabled, review-only, and scoped to one repo/);
+  assert.match(terminalText, /Leave upstream files unchanged\. Do not enable or run/);
+  assert.doesNotMatch(terminal, /data-terminal-output="rollout"|\bjq\b/);
   assert.doesNotMatch(terminalText, /campaign|dependabot/i);
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
@@ -106,6 +104,10 @@ test("terminal output excerpts remain grounded in the production installer and C
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
   assert.ok(installer.includes('"CAO runtime materialized and verified."'));
   assert.ok(setup.includes("Next: gh cao doctor\\nThen review git diff and git status, commit, and push the installed files."));
+  const integration = readFileSync("skills/integrate-cao-workflow/SKILL.md", "utf8");
+  for (const requirement of [
+    "repo-status-cao", "role: standalone", "enabled: false", "max-mode: review", "max-repositories: 1",
+  ]) assert.ok(integration.includes(requirement));
   assert.match(hero, /Add campaigns\s+when you're ready to scale\./);
 });
 

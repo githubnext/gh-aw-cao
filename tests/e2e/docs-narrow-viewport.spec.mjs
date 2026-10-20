@@ -728,7 +728,8 @@ for (const { name, viewport } of [
         await expect(rolloutStory).toContainText("Start with a CAO-integrated workflow, such as Daily Repo Status from Agentics.");
         await expect(rolloutStory).toContainText("In review mode, inspect its proposed report in a review repository");
         await expect(rolloutStory.locator(".terminal")).not.toContainText(/campaign|dependabot/i);
-        await expect(rolloutStory.locator('[data-terminal-output="rollout"]')).toContainText('"repo-status"');
+        await expect(rolloutStory.locator(".terminal code").last()).toHaveText("Use integrate-cao-workflow for Daily Repo Status");
+        await expect(rolloutStory.locator('[data-terminal-request="integration"]')).toContainText("Keep policy disabled, review-only");
         await expect(rolloutStory).toHaveCSS("opacity", "1");
         const rolloutScreenshot = testInfo.outputPath(`rollout-story-${name}-${colorScheme}.png`);
         await rolloutStory.screenshot({ path: rolloutScreenshot });
@@ -785,18 +786,18 @@ for (const { name, viewport } of [
       await expect(page.locator(".terminal code")).toHaveText([
         "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
         "gh cao setup",
-        "jq '.\"control-plane\".workflows' .github/workflows/cao.json",
+        "Use integrate-cao-workflow for Daily Repo Status",
       ]);
       await expect(page.locator(".terminal a")).toHaveCount(0);
       await expect(page.locator('[data-terminal-output="install"]')).toHaveText("==> CAO runtime materialized and verified.");
       await expect(page.locator('[data-terminal-output="setup"]')).toHaveText(
         "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.",
       );
-      expect(JSON.parse(await page.locator('[data-terminal-output="rollout"]').textContent())).toEqual({
-        "repo-status": {
-          enabled: true, mode: "review", "max-mode": "review", "max-repositories": 1,
-        },
-      });
+      await expect(page.locator(".terminal-label")).toHaveText("Agent with CAO skills — integration request");
+      await expect(page.locator('[data-terminal-request="integration"]')).toHaveText(
+        "Create a local repo-status-cao variant.\nAdd standalone control and review-output routing.\nKeep policy disabled, review-only, and scoped to one repo.\nLeave upstream files unchanged. Do not enable or run.",
+      );
+      await expect(page.locator('[data-terminal-output="rollout"]')).toHaveCount(0);
       await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);
       await expect(page.locator(".product-shot-mobile")).toHaveCount(2);
       await page.locator(".product-shot").last().scrollIntoViewIfNeeded();
