@@ -11,11 +11,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-cao/server/internal/operational/sqlite"
 	"github.com/githubnext/gh-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-cao/server/internal/server"
 )
+
+var databaseLog = debuglogger.New("cao:dashboard:database")
 
 // Database commands take an explicit store and PostgreSQL namespace or local
 // SQLite file, never administrator credentials from runtime policy.
@@ -38,28 +41,18 @@ func newDatabaseAction(action string) *cobra.Command {
 		}
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
+		scope := databaseScope{
+			action: action, store: *storeKind, sqlitePath: *sqlitePath, namespace: *namespace,
+			sqliteSet: cmd.Flags().Changed("sqlite"), namespaceSet: cmd.Flags().Changed("namespace"),
+		}
+		backend, err := scope.validate()
+		if err != nil {
+			return err
+		}
 		var removed int64
-		var err error
-		backend := "postgres"
-		if cmd.Flags().Changed("sqlite") {
-			if strings.TrimSpace(*sqlitePath) == "" {
-				return errors.New("--sqlite requires a local database file path")
-			}
-			if *storeKind != "operational" || action == "maintain" {
-				return errors.New("--sqlite supports operational bootstrap and retain-audit only; canonical storage requires PostgreSQL")
-			}
-			if cmd.Flags().Changed("namespace") {
-				return errors.New("--namespace is not supported with --sqlite; use a separate file for each local deployment")
-			}
-			backend = "sqlite"
+		if backend == "sqlite" {
 			removed, err = runSQLiteDatabaseAction(ctx, *sqlitePath, action)
 		} else {
-			if strings.TrimSpace(*namespace) == "" {
-				return errors.New("--namespace is required")
-			}
-			if (action == "maintain" && *storeKind != "canonical") || (action == "retain-audit" && *storeKind != "operational") {
-				return errors.New("maintain requires canonical storage; retain-audit requires operational storage")
-			}
 			dsn := strings.TrimSpace(os.Getenv("CAO_DATABASE_ADMIN_URL"))
 			if dsn == "" {
 				return errors.New("CAO_DATABASE_ADMIN_URL is required; do not mount it in runtime processes")
@@ -69,9 +62,45 @@ func newDatabaseAction(action string) *cobra.Command {
 		if err != nil {
 			return err
 		}
+		databaseLog.Printf("database action completed: action=%s store=%s backend=%s removed=%d", action, *storeKind, backend, removed)
 		return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{"action": action, "store": *storeKind, "backend": backend, "audit_events_removed": removed})
 	}
 	return cmd
+}
+
+// databaseScope is the validated-before-I/O flag set of a database action.
+type databaseScope struct {
+	action, store, sqlitePath, namespace string
+	sqliteSet, namespaceSet              bool
+}
+
+// validate selects the backend ("sqlite" or "postgres") or rejects flag
+// combinations the chosen backend does not support.
+func (s databaseScope) validate() (string, error) {
+	if s.store != "canonical" && s.store != "operational" {
+		return "", errors.New("--store must be canonical or operational")
+	}
+	if s.sqliteSet {
+		if strings.TrimSpace(s.sqlitePath) == "" {
+			return "", errors.New("--sqlite requires a local database file path")
+		}
+		if s.store != "operational" || s.action == "maintain" {
+			return "", errors.New("--sqlite supports operational bootstrap and retain-audit only; canonical storage requires PostgreSQL")
+		}
+		if s.namespaceSet {
+			return "", errors.New("--namespace is not supported with --sqlite; use a separate file for each local deployment")
+		}
+		databaseLog.Printf("database scope selected: action=%s store=%s backend=sqlite", s.action, s.store)
+		return "sqlite", nil
+	}
+	if strings.TrimSpace(s.namespace) == "" {
+		return "", errors.New("--namespace is required")
+	}
+	if (s.action == "maintain" && s.store != "canonical") || (s.action == "retain-audit" && s.store != "operational") {
+		return "", errors.New("maintain requires canonical storage; retain-audit requires operational storage")
+	}
+	databaseLog.Printf("database scope selected: action=%s store=%s backend=postgres", s.action, s.store)
+	return "postgres", nil
 }
 
 func runSQLiteDatabaseAction(ctx context.Context, path, action string) (int64, error) {

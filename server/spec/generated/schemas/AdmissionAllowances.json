@@ -1,0 +1,36 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "AdmissionAllowances.json",
+    "type": "object",
+    "properties": {
+        "max_ai_credits": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+        },
+        "max_ai_credits_threat_detection": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+        },
+        "max_ai_credits_evals": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+        }
+    },
+    "required": [
+        "max_ai_credits"
+    ],
+    "unevaluatedProperties": {
+        "not": {}
+    },
+    "examples": [
+        {
+            "max_ai_credits": 1000,
+            "max_ai_credits_threat_detection": 100,
+            "max_ai_credits_evals": 50
+        }
+    ],
+    "description": "Independent policy allowances, not remaining spend or reservations. The gh-aw client applies validated values to the corresponding runtime caps; omitted optional allowances preserve component policy. Wire numbers are plain positive decimal integers. Approval also idempotently publishes a sparse canonical Run with status admitted before returning 200; denied/blocked attempts publish no run. Publication failure is transient and preserves the original decision for retry."
+}

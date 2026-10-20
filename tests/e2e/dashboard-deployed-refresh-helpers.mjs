@@ -9,6 +9,10 @@ export const populatedDashboardPages = [
   { pageId: "workflows", storeName: "workflows" },
   { pageId: "runs", storeName: "runs" },
 ];
+export const populatedOverviewStations = [
+  { href: "#page-workflows", detail: /^\d[\d,]*\/[1-9][\d,]* healthy workflows$/ },
+  { href: "#page-repositories", detail: /^\d[\d,]*\/[1-9][\d,]* repositories reached$/ },
+];
 const deployedDashboardBase = new URL(deployedDashboardUrl);
 const deployedActivityShardDirectories = new Set(["gh-aw-logs-runs", "gh-aw-logs-records"]);
 

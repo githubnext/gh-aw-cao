@@ -137,7 +137,13 @@ func newHostedAppWithPolicy(
 		_ = database.Close()
 		return nil, err
 	}
+	admissionConfig, err := admissionConfigFromEnv()
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
 	config := Config{
+		Admission:              admissionConfig,
 		Database:               database,
 		Audit:                  auditLog,
 		HostProfile:            host.Profile,

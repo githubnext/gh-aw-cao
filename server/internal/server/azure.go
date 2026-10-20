@@ -305,7 +305,13 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		_ = database.Close()
 		return nil, err
 	}
+	admissionConfig, err := admissionConfigFromEnv()
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
 	app, err := New(ctx, store, Config{
+		Admission:              admissionConfig,
 		Database:               database,
 		Audit:                  auditLog,
 		DatabaseQueriesPath:    databaseQueries,

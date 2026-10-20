@@ -5,6 +5,57 @@ description: Understand what Central Agentic Ops checks before activation and wh
 
 Central Agentic Ops admits a run only when its checked-in control policy authorizes the workflow identity and requested limits. Admission happens in the gh-aw pre-activation job, before activation and before any agent executes.
 
+The hosted Go server also supports the separate
+[gh-aw cooperative activation-admission protocol](admission-gate.md)
+at `POST /api/admission`. That optional OIDC-authenticated cost gate does not
+replace the control-policy checks described here and cannot enable campaigns,
+widen target scope, or grant writes.
+
+Once that authority is deployed and the repository is explicitly enrolled,
+configure the participating workflow's repository variables with the native CLI:
+
+```sh
+# Preview without changing variables.
+gh cao setup admission --repo OWNER/REPO --url https://cao.example.org/api/admission --dry-run
+gh cao admission setup --repo OWNER/REPO --url https://cao.example.org/api/admission
+gh cao admission status --repo OWNER/REPO --json
+gh cao admission disable --repo OWNER/REPO --dry-run
+```
+
+`gh cao setup admission` and `gh cao admission setup` configure the same
+non-secret variables; no workflow secret is needed for OIDC authentication.
+Setup and disable apply changes unless `--dry-run` is supplied.
+Setup uses the URL as the default audience and defaults outages to `block`.
+After initial setup, omit `--url` to reuse the target's configured server or
+the current control repository's configured server for fleet rollout/recovery.
+See [Set up the admission gate](admission-gate.md) for authority preparation,
+local readiness checks, a live canary, rollout, and troubleshooting.
+`--audience` and `--on-outage ignore` are explicit overrides. Status includes
+inherited organization settings; disable shadows them with an empty repository
+URL instead of deleting the override. These commands neither deploy the
+authority nor enroll repositories, compile workflows, or alter CAO policy.
+
+For bulk rollout, replace `--repo` with one of these mutually exclusive selectors:
+
+```sh
+gh cao setup admission --all-repos --url https://cao.example.org/api/admission --dry-run
+gh cao setup admission --org acme --org engineering --url https://cao.example.org/api/admission --dry-run
+gh cao setup admission --enterprise company --url https://cao.example.org/api/admission --dry-run
+```
+
+Remove `--dry-run` to apply. `--all-repos` uses the validated local CAO global
+scope: exact repository allowlists, or the visible repository inventory of each
+allowed organization. Personal owners require exact repository lists.
+`--org` provisions variables with visibility **all**, including future
+repositories. Enterprise rollout enumerates organizations and configures each
+organization's variables; there is no enterprise variable scope. Existing
+repository overrides still take precedence. Enterprise read access does not
+substitute for organization Variables write permissions.
+
+`status` and `disable` accept the same selectors. Bulk preflight reads all
+targets before mutation; write failures report completed targets and stop
+without automatic retry or rollback. The limit is 1000 targets per command.
+
 ```text
 trigger -> pre-activation admission -> authorized-run precompute -> activation -> agent
                  | denied              | blocked

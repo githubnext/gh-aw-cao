@@ -13,6 +13,7 @@ import "./memory.tsp";
 import "./operations.tsp";
 import "./value.tsp";
 import "./mcp.tsp";
+import "./admission.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;

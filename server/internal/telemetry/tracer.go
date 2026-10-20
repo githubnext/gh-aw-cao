@@ -19,13 +19,19 @@ const tracerName = "github.com/githubnext/gh-cao/server"
 // low-cardinality name. HTTP request attributes and metrics are supplied by
 // otelhttp's OpenTelemetry semantic-convention instrumentation.
 const (
-	SpanHTTPServer       = ServiceName
-	SpanIngestRun        = "cao_dashboard.ingest.run"
-	SpanQueryExecute     = "cao_dashboard.query.execute"
-	SpanPostgresQuery    = "cao_dashboard.postgres.query"
-	SpanQueryCacheLookup = "cao_dashboard.query.cache.lookup"
-	SpanQueryCacheStore  = "cao_dashboard.query.cache.store"
-	SpanBackfillRun      = "cao_dashboard.collection.backfill"
+	SpanHTTPServer        = ServiceName
+	SpanIngestRun         = "cao_dashboard.ingest.run"
+	SpanQueryExecute      = "cao_dashboard.query.execute"
+	SpanPostgresQuery     = "cao_dashboard.postgres.query"
+	SpanQueryCacheLookup  = "cao_dashboard.query.cache.lookup"
+	SpanQueryCacheStore   = "cao_dashboard.query.cache.store"
+	SpanBackfillRun       = "cao_dashboard.collection.backfill"
+	SpanAdmissionIdentity = "cao_dashboard.admission.identity.verify"
+	SpanAdmissionPolicy   = "cao_dashboard.admission.policy.evaluate"
+	SpanAdmissionDecision = "cao_dashboard.admission.decision.resolve"
+	SpanAdmissionReplay   = "cao_dashboard.admission.replay.check"
+	SpanAdmissionKeys     = "cao_dashboard.admission.keys.refresh"
+	SpanAdmissionRun      = "cao_dashboard.admission.run.publish"
 )
 
 // Tracer returns the dashboard server's instrumentation-scoped tracer. It

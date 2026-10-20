@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -28,15 +27,7 @@ var (
 	paramFlag     = operatorFlag{name: "param", description: "Query parameter NAME=VALUE (repeatable)", repeat: true}
 )
 
-func addOperatorCommands(root *cobra.Command, execute runtimeExecutor) {
-	quickstart := operatorCommand("quickstart", "Install, run, collect, or inspect a bounded first review", cobra.NoArgs, []operatorFlag{
-		textFlag("step", "install (default), run, collect, or dashboard"),
-		textFlag("target", "Explicit public target OWNER/REPO for installation"),
-		textFlag("campaign", "CAO campaign package for installation"),
-		boolFlag("wait", "Install and wait for the complete end-to-end journey"),
-		jsonFlag,
-	}, execute)
-	quickstart.PreRunE = validateQuickstart
+func addOperatorCommands(root *cobra.Command, execute runtimeExecutor, github ghExecutor) {
 	download := operatorCommand("download", "Download the deployed CAO evidence snapshot", cobra.NoArgs, []operatorFlag{
 		textFlag("url", "Dashboard payload-hashes.json URL"),
 		textFlag("output", "Local output directory (default .cao)"),
@@ -132,7 +123,7 @@ Success is JSON; stale or conflicting captures fail without retrying.`
 	disable := operatorCommand("disable OWNER/REPO WORKFLOW", "Stage local revocation of recurring Value collection; retain history", cobra.ExactArgs(2), nil, execute)
 	disable.Long = "Persist an explicit disable for the exact workflow without deleting evidence. Automatic skill registration respects it. Review, commit, and deploy/push cao.json before scheduled collection stops."
 	value.AddCommand(publish, enable, disable)
-	root.AddCommand(setupCommand(execute), quickstart, download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
+	root.AddCommand(setupCommand(execute, github), download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
 		value,
 		passthroughCommand("update [REF] [GH_AW_OPTIONS...]", "Update installed CAO packages without widening rollout", execute),
 	)
@@ -147,10 +138,6 @@ func operatorCommand(use, short string, args cobra.PositionalArgs, flags []opera
 	for _, flag := range flags {
 		if flag.boolean {
 			cmd.Flags().BoolP(flag.name, flag.short, false, flag.description)
-			if flag.name == "wait" {
-				value := cmd.Flags().Lookup(flag.name)
-				value.Value = &singleValue{Value: value.Value, name: flag.name}
-			}
 		} else if flag.repeat {
 			cmd.Flags().StringArrayP(flag.name, flag.short, nil, flag.description)
 		} else {
@@ -223,27 +210,4 @@ func (v *singleValue) Set(value string) error {
 	}
 	v.set = true
 	return v.Value.Set(value)
-}
-
-func validateQuickstart(cmd *cobra.Command, _ []string) error {
-	step, _ := cmd.Flags().GetString("step")
-	wait, _ := cmd.Flags().GetBool("wait")
-	target, _ := cmd.Flags().GetString("target")
-	campaign, _ := cmd.Flags().GetString("campaign")
-	if cmd.Flags().Changed("step") && step != "install" && step != "run" && step != "collect" && step != "dashboard" {
-		return fmt.Errorf("--step requires install, run, collect, or dashboard")
-	}
-	if wait && cmd.Flags().Changed("step") {
-		return fmt.Errorf("--wait cannot be combined with --step")
-	}
-	if step != "" && step != "install" && (cmd.Flags().Changed("target") || cmd.Flags().Changed("campaign")) {
-		return fmt.Errorf("--target and --campaign are only valid for install or --wait")
-	}
-	if (step == "" || step == "install") && !repositoryPattern.MatchString(target) {
-		return fmt.Errorf("quickstart install and --wait require explicit --target OWNER/REPO")
-	}
-	if cmd.Flags().Changed("campaign") && (campaign == "" || strings.HasPrefix(campaign, "-")) {
-		return fmt.Errorf("--campaign requires a CAO campaign package")
-	}
-	return nil
 }

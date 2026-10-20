@@ -62,7 +62,7 @@ to invoke it as `gh cao`.
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
 | Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Native Go, preserving separate read/write credentials and explicit repository scope. |
-| Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
+| Lifecycle | `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Workflow value | `value publish`, `value enable`, `value disable` | Publish prepared evidence to a hosted dashboard, or edit reviewed local policy for recurring collection of one workflow. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
@@ -100,7 +100,7 @@ gh cao pages --json
 gh cao query campaign-runs --param campaign=dependabot
 ```
 
-All help works offline, including `gh cao quickstart --help` and
+All help works offline, including `gh cao setup --help` and
 `gh cao campaigns --help`. Campaign controls are available only under
 `campaigns` in the extension.
 Repository enrollment uses `gh cao repos add OWNER/REPO`; the extension has no
@@ -246,13 +246,15 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
-| `gh cao quickstart --target OWNER/REPO` | Explicitly select the public target, install and commit the review-only control plane, and leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
-| `gh cao quickstart --step run` | Dispatch one bounded Repo Assist review using existing policy, then pause the orchestrator and return an Actions link. |
-| `gh cao quickstart --step collect` | Dispatch Activity collection and return without waiting. Use after the maintenance outcome is available. |
-| `gh cao quickstart --step dashboard` | Check Activity evidence and dashboard deployment read-only; repeat if pending. |
-| `gh cao quickstart --wait --target OWNER/REPO` | Explicitly select the target and opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
 | `gh cao setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `gh cao init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
+| `gh cao setup admission --repo OWNER/REPO --url HTTPS_URL [--dry-run]` | Configure non-secret admission variables (OIDC requires no workflow secret); `--dry-run` previews changes. |
+| `gh cao admission setup --repo OWNER/REPO --url HTTPS_URL [--dry-run]` | Configure repository admission variables for an already deployed authority; default audience is the URL and outage policy is `block`. |
+| `gh cao admission status --repo OWNER/REPO [--json]` | Read effective admission settings, including repository overrides of inherited organization variables. |
+| `gh cao admission disable --repo OWNER/REPO [--dry-run]` | Disable the cooperative gate by setting an empty repository URL, without deleting the override and reactivating organization defaults; `--dry-run` previews changes. |
+| `gh cao setup admission --all-repos --url HTTPS_URL [--dry-run]` | Configure all repositories selected by the current control repository's validated global CAO scope. |
+| `gh cao setup admission --org ORG [--org ORG...] --url HTTPS_URL [--dry-run]` | Configure organization defaults with visibility all, including future repositories; preserve repository overrides. |
+| `gh cao setup admission --enterprise SLUG --url HTTPS_URL [--dry-run]` | Enumerate enterprise organizations and configure their organization variables, with enterprise read and per-organization Variables write access. |
 | `gh cao setup auth github-app ...` | Configure organization-owned read and write Apps. |
 | `gh cao setup auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
 | `node activity/cao.mjs setup-auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
@@ -262,6 +264,8 @@ gh aw run dependabot --ref main \
 | `gh cao update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
 | `gh cao update --campaign SLUG` | Update exactly one installed campaign, retaining runtime materialization and worker-declaration refresh. Use `root` for the CAO root package. |
 | `gh cao upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
+
+### Update and enrollment details
 
 Omit `--campaign` to update all installed CAO packages. Selection also works with
 refs and update options, for example `gh cao update main --campaign dependabot`.
@@ -280,25 +284,12 @@ commits nor pushes, enables campaigns, changes rollout limits, configures
 credentials, nor expands an explicitly narrowed Activity scope. Review and commit
 the policy before activation at a reviewed workflow SHA.
 
-Use `gh cao quickstart --target OWNER/REPO` only immediately after verified installation in a
-clean public or private control repository on its default branch. Existing
-commits are allowed; the install stage adds one bounded CAO commit and pauses
-Repo Assist without dispatching it. Continue with `--step run`, inspect its
-outcome in Actions, then use `--step collect` and `--step dashboard`.
-The command prints persistent, numbered explanations of the selected repositories
-and package, installed components, policy, authentication, public Pages visibility,
-and commit/push effects before applying each phase. Each stage ends with a
-**Before continuing** inspection checkpoint, not just the next command.
-`--json` suppresses progress; installation returns the same `guide` details and
-`checkpoint` as structured data without adding interactive prompts.
-Only the read-only dashboard step is a repeatable status check; repeating run
-or collect requests new work. The run stage can consume
-up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
-+ 400 output checking; configured output-check limits may differ),
-with each stage owning only its documented effects in the
-[Repo Assist walkthrough](repo-assist-quickstart.md). Use `gh cao setup` for
-review-before-apply configuration. The individual `setup-auth` commands remain
-available for manual and non-interactive administration.
+### Setup and manual campaign execution
+
+Use `gh cao setup` for review-before-apply configuration. Setup installs no
+campaign, runs no workflow, and never commits or pushes. To add automation
+afterward, follow the manual [Repo Assist walkthrough](repo-assist-quickstart.md)
+using `gh cao campaigns add` and `gh aw run`.
 
 Without an interactive terminal or when `CI` is set, `gh cao setup` applies
 only the agent-safe public profile: exact current-repository read and Activity
@@ -309,20 +300,6 @@ control repositories, broader existing policy, or installed campaigns.
 `"nonInteractive": true`. Bare installation remains usable before setup with
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
-Explicit quickstart is also terminal-independent. Installation and `--wait`
-require `--target OWNER/REPO`; no owner or repository is suggested or selected
-for you. Later stages reuse the target in committed policy.
-The public target receives one validated maintenance proposal or no-op,
-not a readiness or eligibility grade. Applying the proposal
-is never required for using CAO. Existing Agentic Workflows, Actions
-history, or telemetry are not required.
-Only the existing maintenance worker is enabled. The normal orchestrator is
-paused after installation; the run step enables it only for its dispatch and
-pauses it again through `gh workflow disable`. Re-enable
-it explicitly for further runs; doing so also resumes its six-hour schedule.
-`--target OWNER/REPO` selects another existing public repository. The checkout,
-target-visibility and default-branch preflight remain
-fail-closed.
 
 ## Control Campaigns
 
@@ -452,6 +429,11 @@ gh cao download --url https://OWNER.github.io/CONTROL_REPO/cao/payload-hashes.js
 ```
 
 The download remains local under `.cao/`. It is derived evidence, not rollout authority.
+Use a trusted HTTPS source; redirects cannot downgrade HTTPS to HTTP.
+For independent manifest integrity, pass `--manifest-sha256 SHA256` (or set
+`DASHBOARD_MANIFEST_SHA256`) with a digest obtained through a separate trusted channel.
+Checksums fetched alongside the snapshot detect corruption, not a compromised publisher
+or TLS trust authority.
 
 Use the gh-like query surface for common questions:
 

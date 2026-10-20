@@ -108,7 +108,7 @@ The explicit `generic` HTTP target with `listener: external` that lets a separat
 
 ## gh cao
 
-The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All operator commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot doctor, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All extension commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot doctor, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
 
 ## GitHub quota service
 
@@ -125,6 +125,10 @@ An experimental hosted-server mode, enabled with `serve-hosted --experimental --
 ## Live authority
 
 The control repository's exclusive right to admit a `live` worker for a campaign and target, decided solely from `.github/workflows/cao.json` at the exact workflow SHA. A target repository's files cannot widen, narrow, or veto this decision.
+
+## Maintenance Governance
+
+The dashboard page for editing gh-aw compiler defaults at organization, enterprise, or repository scope. It is visible only in local server `--admin` mode or to an authorized hosted administrator with a current, assured session, and applies changes through the approved CLI-action queue. It does not change CAO rollout policy or control-plane authority.
 
 ## Marketplace
 
@@ -158,10 +162,6 @@ The provider-neutral storage contract in `server/internal/operational/` that exp
 
 A control repository whose own visibility is public, so its policy, workflow runs, operational metadata, dashboard data, and review outputs are also public. Activity and Server Ingestion both fail closed and refuse to collect evidence when a public control repository's credentials can reach any non-public repository, reporting only a rejected-repository count. See [Control Repository Visibility](authentication.md#control-repository-visibility).
 
-## Quickstart
-
-The explicit staged guide run by `gh cao quickstart`, distinct from ordinary install or `gh cao setup`. Installation requires an explicit public `--target OWNER/REPO` and a selected control repository; no owner or repository is suggested. It configures Repo Assist maintenance in review mode, commits and pushes bounded CAO paths, and stops with the orchestrator paused. Separate `--step run`, `--step collect`, and read-only `--step dashboard` commands reuse committed policy to introduce campaign execution, Activity evidence, and verified public dashboard publication without a long terminal wait. The campaign never modifies the target. Explicit `--wait` retains the end-to-end flow for unattended use immediately after bare installation, not for resuming stages. This optional campaign walkthrough is not required for monitoring. See [Try a Repo Assist review](repo-assist-quickstart.md), [Set Up CAO](setup-quickstarts.md), and [Repository Layout and Installation §4.3-4.4](https://github.com/githubnext/gh-cao/blob/main/specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
-
 ## Repo memory
 
 The canonical gh-aw capability that persists files with unlimited retention in a dedicated `memory/<campaign-slug>` Git branch, distinct from the 7-day `cache-memory`. CAO campaigns configure it with `repo-memory.branch-name` so a coordinator can read and update bounded, advisory cross-run state through `$GH_AW_MEMORY_DIR` before dispatch selection; workers share the branch only when their work benefits from that shared history. Repo memory is never policy, target authority, credential storage, or a substitute for current repository evidence. See the canonical gh-aw definition of [Repo Memory](https://github.github.com/gh-aw/reference/glossary/#repo-memory).
@@ -181,6 +181,10 @@ The effective mode in which a campaign runs for an admitted target: `review`, `l
 ## Safe output
 
 A declared, bounded way for a workflow to produce an external effect, such as creating an issue or dispatching a worker. See the canonical gh-aw definition of [Safe Outputs](https://github.github.com/gh-aw/reference/glossary/#safe-outputs).
+
+## Standalone workflow
+
+An agentic workflow that participates directly in CAO without a campaign, orchestrator, or worker. It imports shared control with the `standalone` role, declares its exact compiled workflow slug, and runs only when `control-plane.workflows.<slug>` admits it. It receives the same policy validation, bounded repository admission, and per-target mode and output routing as an orchestrator.
 
 ## Target repository
 

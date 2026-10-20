@@ -19,14 +19,11 @@ Workers are independently dispatchable and handle exactly one authorized target 
 
 ## First run
 
-The CAO quickstart uses **Repo Assist**, not a separate repository assessment.
-It enables only the existing maintenance worker, in review mode, for one exact
-public target. Issue triage, issue fix, and PR upkeep remain disabled.
-There is no special worker, snapshot helper, or reduced assessment profile.
-Quickstart installation requires `--target OWNER/REPOSITORY` to select your
-existing public target explicitly; no owner or repository is suggested.
-The normal worker checkout is used. No demo repository is created, and existing
-automations are not prerequisites for your repository.
+After [setting up the control repository](../docs/setup-quickstarts.md), install
+the campaign with `gh cao campaigns add githubnext/gh-cao/repo-assist`.
+For a first review, explicitly select one existing target in policy and enable
+only the existing maintenance worker in review mode. Issue triage, issue fix,
+and PR upkeep remain disabled. No demo repository or special worker is created.
 
 Maintenance proposes **one small validated patch** in a control-repository
 review issue and downloadable review bundle, or records a **no-op** if nothing
@@ -41,18 +38,13 @@ default, configurable in gh-aw). The default total is **1,250 AI credits**,
 not expected consumption or a measured token count. Normal validation and
 review-bundle behavior are unchanged.
 
-Quickstart installs and commits the control plane, then stops with the
-orchestrator paused. Continue with `gh cao quickstart --step run` when ready
-to request one review; inspect its outcome in Actions, then use
-`gh cao quickstart --step collect` and `gh cao quickstart --step dashboard`.
-These separate stages do not wait for remote completion. See the
-[Repo Assist walkthrough](../docs/repo-assist-quickstart.md) for component explanations
-and checkpoints.
+Review and commit workflows and policy together, push, and check CAO validation
+before requesting work. See the manual
+[Repo Assist walkthrough](../docs/repo-assist-quickstart.md) for installation,
+dispatch, Activity collection, and dashboard checks.
 
-The run stage pauses the orchestrator through `gh workflow disable` immediately
-after requesting its run. The requested run can finish, but the six-hour
-schedule will not keep spending credits. Re-enable it explicitly for further
-manual runs or scheduled operation:
+Enabling the orchestrator also resumes its six-hour schedule. For one manual
+run, disable it immediately after dispatch, including if dispatch fails:
 
 ```bash
 gh workflow enable repo-assist.lock.yml
@@ -61,6 +53,7 @@ gh aw run repo-assist --ref main \
   --raw-field safe_output_repo="OWNER/CONTROL_REPOSITORY" \
   --raw-field max_repos="1" \
   --raw-field safe_output_mode="review"
+gh workflow disable repo-assist.lock.yml
 ```
 
 Re-enabling also resumes the six-hour schedule. Disable the orchestrator again
@@ -90,7 +83,7 @@ be automatically closed and workflow artifacts may expire; closure alone is
 not acceptance. Inspect the report's evidence and originating run rather than
 equating workflow success with an applied improvement.
 
-The showcase does not enable more workers in quickstart. Issue triage, issue
+Reading the showcase does not enable workers. Issue triage, issue
 fix, PR upkeep, recurring operation, and live authority remain explicit,
 separately reviewed choices. Keeping the repository unchanged is valid.
 
@@ -99,7 +92,7 @@ separately reviewed choices. Keeping the repository unchanged is valid.
 Install from a reviewed catalog release into a Central Agentic Ops control repository:
 
 ```bash
-gh aw add githubnext/gh-cao/repo-assist
+gh cao campaigns add githubnext/gh-cao/repo-assist
 ```
 
 Configure the campaign in `.github/workflows/cao.json`:

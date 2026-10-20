@@ -92,6 +92,7 @@ export default defineConfig({
           exclude: [
             "activity*",
             "admission",
+            "admission-gate",
             "agent-*",
             "agentic-*",
             "architecture",
@@ -265,6 +266,7 @@ export default defineConfig({
           items: [
             { label: "Control plane status", link: "/cao/" },
             { label: "Admission gates", link: "/admission/" },
+            { label: "Set up the admission gate", link: "/admission-gate/" },
             { label: "Roll out a campaign", link: "/rollout-and-routing/" },
             { label: "Monitor and recover", link: "/operations/" },
             { label: "Emergency stop", link: "/operations/#emergency-stop" },

@@ -1,38 +1,31 @@
-<div class="terminal" aria-label="Example CAO setup commands">
+<div class="terminal" aria-label="Example CAO setup commands followed by a workflow integration request to an agent">
   <div class="terminal-bar" aria-hidden="true">
     <span class="terminal-dot red"></span>
     <span class="terminal-dot yellow"></span>
     <span class="terminal-dot green"></span>
-    <span class="terminal-title">control-repo — setup</span>
+    <span class="terminal-title">CAO — setup + agent request</span>
   </div>
   <div class="terminal-body">
     <div class="terminal-line command" style="--line-delay: 0ms">
       <span class="prompt">$</span>
       <code><span class="syntax-command">curl</span> <span class="syntax-option">-fsSL</span> <span class="syntax-url">https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh</span> <span class="syntax-operator">|</span> <span class="syntax-command">bash</span></code>
     </div>
-    <div class="terminal-line result" style="--line-delay: 550ms">
-      <span class="result-mark">✓</span>
-      <span>CAO installed · no campaign added</span>
-    </div>
-    <div class="terminal-line command" style="--line-delay: 1100ms">
+    <pre class="terminal-output" data-terminal-output="install">==&gt; CAO runtime materialized and verified.</pre>
+    <div class="terminal-line command" style="--line-delay: 550ms">
       <span class="prompt">$</span>
       <code><span class="syntax-command">gh cao</span> setup</code>
     </div>
-    <div class="terminal-line result" style="--line-delay: 1650ms">
-      <span class="result-mark">✓</span>
-      <span>Repository scope and authentication configured</span>
+    <pre class="terminal-output" data-terminal-output="setup">Next: gh cao doctor
+Then review git diff and git status, commit, and push the installed files.</pre>
+    <div class="terminal-label">Example agent request — not a CLI command</div>
+    <div class="terminal-line command" style="--line-delay: 1100ms">
+      <span class="prompt" aria-hidden="true">&gt;</span>
+      <code>Adapt Daily Repo Status for CAO<span class="cursor" aria-hidden="true"></span></code>
     </div>
-    <div class="terminal-line command" style="--line-delay: 2200ms">
-      <span class="prompt">$</span>
-      <code><span class="syntax-command">gh cao</span> doctor<span class="cursor" aria-hidden="true"></span></code>
-    </div>
-    <div class="terminal-line result" style="--line-delay: 2750ms">
-      <span class="result-mark">✓</span>
-      <span>Ready to review and publish · no agentic work started</span>
-    </div>
-    <div class="terminal-line result" style="--line-delay: 3300ms">
-      <a href="/gh-cao/setup-quickstarts/#3-publish-your-configuration">Next: publish and open your dashboard →</a>
-    </div>
+    <pre class="terminal-output" data-terminal-request="integration">Import shared/control.md as standalone.
+Bind reads and review outputs to admitted targets.
+Keep policy disabled, review-only, and scoped to one repo.
+Preserve upstream ownership. Do not enable or run.</pre>
   </div>
 </div>
 
@@ -44,7 +37,6 @@
     --terminal-fg: #1f2328;
     --terminal-muted: #59636e;
     --terminal-prompt: #1a7f37;
-    --terminal-success: #1a7f37;
     --terminal-cursor: #1f2328;
     --terminal-red: #cf222e;
     --terminal-yellow: #9a6700;
@@ -72,7 +64,6 @@
     --terminal-fg: #f0f6fc;
     --terminal-muted: #d7e0ea;
     --terminal-prompt: #98f5a2;
-    --terminal-success: #98f5a2;
     --terminal-cursor: #f0f6fc;
     --terminal-red: #ff7b72;
     --terminal-yellow: #e3b341;
@@ -129,6 +120,24 @@
     line-height: 1.55;
   }
 
+  .terminal-label {
+    color: var(--terminal-muted);
+    font-size: 0.75em;
+  }
+
+  .terminal-output {
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 0 1.5rem;
+    border: 0;
+    background: none;
+    color: var(--terminal-muted);
+    font: inherit;
+    font-size: 0.85em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   .terminal-line {
     display: flex;
     min-width: 0;
@@ -149,15 +158,6 @@
     flex: 0 0 auto;
     color: var(--terminal-prompt);
     font-weight: 700;
-  }
-
-  .result {
-    padding-inline-start: 1.5rem;
-    color: var(--terminal-muted);
-  }
-
-  .result-mark {
-    color: var(--terminal-success);
   }
 
   .terminal-line code .syntax-command {

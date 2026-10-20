@@ -27,9 +27,11 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/githubnext/gh-cao/server/internal/admission"
 	"github.com/githubnext/gh-cao/server/internal/audit"
 	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
 	"github.com/githubnext/gh-cao/server/internal/githubapp"
@@ -87,7 +89,8 @@ type Config struct {
 	Logger               *log.Logger
 	// Audit records security audit events for administrator and hosted CLI
 	// operations; nil disables them (local mode and tests).
-	Audit *audit.Logger
+	Audit     *audit.Logger
+	Admission *AdmissionConfig
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
 	RateLimits RateLimitConfig
@@ -132,6 +135,7 @@ type App struct {
 	githubResources  githubResourceCache
 	hostedCLI        *hostedCLI
 	valuePublisher   operationalValuePublisher
+	admission        *admission.Service
 }
 
 func New(ctx context.Context, store operational.Store, config Config) (*App, error) {
@@ -216,6 +220,10 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	profile := config.HostProfile
 	serverLog.Printf("initializing host_profile=%s", profile.Name)
 	if err := validateHostedMode(store, &config); err != nil {
+		return nil, err
+	}
+	activationAdmission, err := newActivationAdmission(store, config)
+	if err != nil {
 		return nil, err
 	}
 	info, err := os.Stat(config.SiteDirectory)
@@ -310,8 +318,9 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
-		services: services,
-		database: config.Database, databaseQueries: databaseQueries, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
+		admission: activationAdmission,
+		services:  services,
+		database:  config.Database, databaseQueries: databaseQueries, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: config.Database, definitions: databaseQueries}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota, drain: make(chan struct{}),
@@ -672,6 +681,7 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
 	register("POST /api/v1/value", a.publishValue)
+	register("POST /api/admission", a.activationAdmission)
 	if a.mcp != nil {
 		register("POST /mcp", a.mcp.ServeHTTP)
 	}
@@ -704,6 +714,18 @@ func (a *App) Handler() http.Handler {
 		handler = a.requireNotDraining(handler)
 	case HostListenerPlatform:
 	}
+	dashboardHandler := handler
+	handler = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/api/admission" {
+			route := semconv.HTTPRoute("/api/admission")
+			trace.SpanFromContext(request.Context()).SetAttributes(route)
+			labeler, _ := otelhttp.LabelerFromContext(request.Context())
+			labeler.Add(route)
+			a.activationAdmission(response, request)
+			return
+		}
+		dashboardHandler.ServeHTTP(response, request)
+	})
 	tracedHandler := withResponseTraceHeaders(handler)
 	instrumented := otelhttp.NewHandler(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		original := request.Context().Value(originalHTTPRequestKey{}).(*http.Request)
@@ -713,6 +735,9 @@ func (a *App) Handler() http.Handler {
 	}), telemetry.SpanHTTPServer,
 		// Sanitized parents are non-recording contexts, not SDK providers.
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
+		// Traceparent is extracted and sanitized below. Never let a global
+		// propagator reintroduce baggage, tracestate or a different parent.
+		otelhttp.WithPropagators(propagation.NewCompositeTextMapPropagator()),
 		otelhttp.WithFilter(func(request *http.Request) bool {
 			// OAuth callbacks use a dedicated, allowlisted server span instead
 			// of the generic HTTP instrumentation.
@@ -730,13 +755,26 @@ func (a *App) Handler() http.Handler {
 		}),
 	)
 	safeTelemetry := http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		ctx := telemetry.ExtractTraceparent(request.Context(), request.Header.Get("Traceparent"))
+		traceparent := request.Header.Get("Traceparent")
+		if request.URL.Path == "/api/admission" && len(request.Header.Values("Traceparent")) != 1 {
+			traceparent = ""
+		}
+		parentContext := request.Context()
+		if request.URL.Path == "/api/admission" {
+			parentContext = trace.ContextWithSpanContext(parentContext, trace.SpanContext{})
+		}
+		ctx := telemetry.ExtractTraceparent(parentContext, traceparent)
+		if request.URL.Path == "/api/admission" {
+			parent := trace.SpanContextFromContext(ctx)
+			// Use one local sampling choice, not the remote caller's sampled flag.
+			ctx = trace.ContextWithRemoteSpanContext(ctx, parent.WithTraceFlags(trace.FlagsSampled))
+		}
 		safe := request.Clone(context.WithValue(ctx, originalHTTPRequestKey{}, request))
 		safe.RemoteAddr = ""
 		safe.Host = ""
 		safe.RequestURI = ""
 		safe.Header = make(http.Header)
-		if traceparent := request.Header.Get("Traceparent"); traceparent != "" {
+		if traceparent != "" && request.URL.Path != "/api/admission" {
 			safe.Header.Set("Traceparent", traceparent)
 		}
 		path := ""
@@ -763,7 +801,9 @@ type originalHTTPRequestKey struct{}
 // the client to send its own traceparent header.
 func withResponseTraceHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		telemetry.SetResponseTraceHeaders(response, trace.SpanContextFromContext(request.Context()))
+		if request.URL.Path != "/api/admission" {
+			telemetry.SetResponseTraceHeaders(response, trace.SpanContextFromContext(request.Context()))
+		}
 		next.ServeHTTP(response, request)
 	})
 }

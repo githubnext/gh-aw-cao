@@ -60,7 +60,9 @@ func TestConnectionTransport(t *testing.T) {
 		{"postgres://127.0.0.1/postgres?sslmode=disable", true},
 		{"postgres://localhost/postgres?sslmode=disable", true},
 		{"postgres://db.example.com/postgres?sslmode=disable", false},
-		{"postgres://db.example.com/postgres?sslmode=require", true},
+		{"postgres://db.example.com/postgres?sslmode=require", false},
+		{"postgres://db.example.com/postgres?sslmode=verify-ca", false},
+		{"postgres://db.example.com/postgres?sslmode=verify-full", true},
 	} {
 		config, err := pgx.ParseConfig(test.endpoint)
 		if err != nil {

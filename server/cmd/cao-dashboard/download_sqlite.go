@@ -135,17 +135,9 @@ func downloadSQLiteAttempt(ctx context.Context, client *http.Client, manifestURL
 			return err
 		}
 	}
-	var hashes map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(manifest.String()), &hashes); err != nil {
-		return errors.New("SQLite snapshot manifest must contain a JSON object")
-	}
-	var expected string
-	if err := json.Unmarshal(hashes["gh-aw-logs.sqlite"], &expected); err != nil {
-		return errors.New("SQLite snapshot manifest contains no valid SQLite SHA-256 checksum")
-	}
-	digest, err := hex.DecodeString(expected)
-	if err != nil || len(digest) != sha256.Size {
-		return errors.New("SQLite snapshot manifest contains no valid SQLite SHA-256 checksum")
+	expected, err := parseSQLiteChecksum([]byte(manifest.String()))
+	if err != nil {
+		return err
 	}
 	staging, err := os.MkdirTemp(filepath.Dir(destination), ".cao-snapshot-")
 	if err != nil {
@@ -165,7 +157,8 @@ func downloadSQLiteAttempt(ctx context.Context, client *http.Client, manifestURL
 		if _, err := fetchSQLitePayload(ctx, client, location, "image", io.MultiWriter(temporary, hash), maxSQLiteDownloadBytes); err != nil {
 			return err
 		}
-		if hex.EncodeToString(hash.Sum(nil)) != strings.ToLower(expected) {
+		if hex.EncodeToString(hash.Sum(nil)) != expected {
+			commandLog.Printf("SQLite snapshot checksum mismatch")
 			return &sqliteDownloadError{message: "SQLite snapshot checksum mismatch; the Pages deployment may be changing", retry: true}
 		}
 		return temporary.Sync()
@@ -188,7 +181,32 @@ func downloadSQLiteAttempt(ctx context.Context, client *http.Client, manifestURL
 	if err := os.Rename(temporary.Name(), destination); err != nil {
 		return fmt.Errorf("publish downloaded SQLite snapshot: %w", err)
 	}
+	commandLog.Printf("published SQLite snapshot")
 	return nil
+}
+
+// parseSQLiteChecksum extracts the lowercase hex SHA-256 recorded for the
+// SQLite image in a payload-hashes manifest.
+func parseSQLiteChecksum(manifest []byte) (string, error) {
+	var hashes map[string]json.RawMessage
+	if err := json.Unmarshal(manifest, &hashes); err != nil {
+		return "", errors.New("SQLite snapshot manifest must contain a JSON object")
+	}
+	var expected string
+	if err := json.Unmarshal(hashes["gh-aw-logs.sqlite"], &expected); err != nil {
+		return "", errors.New("SQLite snapshot manifest contains no valid SQLite SHA-256 checksum")
+	}
+	digest, err := hex.DecodeString(expected)
+	if err != nil || len(digest) != sha256.Size {
+		return "", errors.New("SQLite snapshot manifest contains no valid SQLite SHA-256 checksum")
+	}
+	return hex.EncodeToString(digest), nil
+}
+
+// retryableSQLiteStatus reports whether an HTTP status is a transient failure.
+func retryableSQLiteStatus(status int) bool {
+	return status == http.StatusRequestTimeout || status == http.StatusTooEarly ||
+		status == http.StatusTooManyRequests || status >= 500
 }
 
 func fetchSQLitePayload(ctx context.Context, client *http.Client, location *url.URL, resource string, destination io.Writer, limit int64) (_ *url.URL, err error) {
@@ -208,8 +226,7 @@ func fetchSQLitePayload(ctx context.Context, client *http.Client, location *url.
 	}
 	defer func() { err = errors.Join(err, response.Body.Close()) }()
 	if response.StatusCode != http.StatusOK {
-		retry := response.StatusCode == 408 || response.StatusCode == 425 ||
-			response.StatusCode == 429 || response.StatusCode >= 500
+		retry := retryableSQLiteStatus(response.StatusCode)
 		return nil, &sqliteDownloadError{message: fmt.Sprintf("download SQLite %s: HTTP %d", resource, response.StatusCode), retry: retry, status: response.StatusCode}
 	}
 	if response.ContentLength > limit {

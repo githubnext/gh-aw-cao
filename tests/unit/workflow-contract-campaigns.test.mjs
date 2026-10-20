@@ -454,9 +454,10 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(quickstart, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.match(quickstart, /gh cao setup/);
   assert.match(quickstart, /installs no campaign and runs no workflow/);
-  const campaignQuickstart = readFileSync(join(root, "docs", "repo-assist-quickstart.md"), "utf8");
-  assert.match(campaignQuickstart, /latest published CAO `vX\.Y\.Z`\s+release, including prereleases but excluding drafts/);
-  assert.match(campaignQuickstart, /development build by passing `githubnext\/gh-cao@main`/);
+  const campaignWalkthrough = readFileSync(join(root, "docs", "repo-assist-quickstart.md"), "utf8");
+  assert.match(campaignWalkthrough, /gh cao campaigns add githubnext\/gh-cao\/repo-assist/);
+  assert.match(campaignWalkthrough, /gh aw run repo-assist/);
+  assert.doesNotMatch(campaignWalkthrough, /--quickstart|node activity\/cao\.mjs quickstart/);
   assert.doesNotMatch(quickstart, /commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(updateSection, /gh cao update --major --cool-down 0/);
@@ -636,7 +637,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /references\/public-control-repositories\.md/);
   assert.match(setupSkill, /references\/implementation-details\.md/);
   assert.match(setupSkill, /Preferred human flow/i);
-  assert.match(setupSkill, /setup quickstart/);
+  assert.match(setupSkill, /setup guide/);
   assert.match(setupSkill, /gh cao setup/);
   assert.match(setupSkill, /offers authentication choices\s+based on that scope/);
   assert.match(setupSkill, /setup fails after approved mutations[\s\S]*credential configuration metadata/);

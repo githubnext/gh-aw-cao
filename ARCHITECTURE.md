@@ -301,6 +301,67 @@ state and available history, not every missed event or expired artifact. There
 is no memory disk journal, automatic failover, or dual-write path.
 `specs/server-operational-storage.md` specifies these guarantees.
 
+The optional hosted activation-admission service (`server/internal/admission/`)
+implements gh-aw's separate OIDC-only `POST /api/admission` contract, never CAO
+rollout authority. Explicit server configuration selects a protected, atomically
+published policy/accounting snapshot; immutable signed repository, workflow
+revision and original-actor identities gate exact enrollment. Accounting must
+be fresh and expressed in AI Credits; missing evidence is an outage, not zero.
+The initial GitHub.com/string-audience profile denies ambiguous reusable calls
+and never authorizes from an unverified triggering actor or workflow hash.
+The service receives a narrow durable decision contract; the PostgreSQL
+operational adapter atomically retains the first primary/optional allowances,
+a non-sliding five-minute authorization window and permanent expiry/revocation
+tombstones within protected capacity. Every retry revalidates policy and usage;
+transient failures preserve retained decisions. No cache eviction, financial
+mutation, dashboard-session authentication, trace-response identifier or CAO
+scope widening is permitted. Redis, memory and local modes cannot enable it.
+`server/ADMISSION.md` documents the trust profile, publisher requirements,
+capacity/retention lifecycle and cooperative fail-open limitations.
+The HTTP contract is pinned to merged gh-aw `be70cb4ec4317135a1ab21d5b830b6fae7d5be4a`.
+Its isolated admission job relays caller-owned tracing through activation.
+Valid incoming traceparent parents the server HTTP span and dependencies;
+HTTP instrumentation must consume the sanitized context without re-extracting
+global baggage/tracestate or another parent. Invalid/duplicate context starts
+a fresh trace without changing authorization, and responses expose no trace ID.
+Admission reuses the hosted OTLP providers and bounded shutdown flush, emits
+fixed-name identity/JWKS/policy/decision/replay spans, and labels HTTP
+duration/status metrics with the fixed admission route even across its separate
+authentication path. Raw errors, credentials, identities, allowance values and
+denial reasons never enter those signals; exporter failures do not change
+operation results.
+Verified successful admission publishes a sparse canonical Run in admitted
+state before returning approval; blocked attempts publish nothing. Publication
+uses existing canonical IDs, inserts only missing parent identity facts,
+advances revision once and never downgrades collected evidence. Namespace
+ingestion locks serialize publication with replacement; replacement temporarily
+preserves missing admitted runs/parents but authoritative incoming Run evidence
+wins. Sparse quality stays partial and no start/completion/spend is inferred.
+Canonical publication failure is transient without changing the first durable
+decision; retry repairs the idempotent projection, not a financial commitment.
+Native `gh cao admission setup/status/disable` commands configure the
+selected scope's three managed non-secret variables. `gh cao setup admission`
+reuses admission setup without introducing workflow secrets. Setup/disable apply
+unless `--dry-run` is supplied; setup defaults to outage block, publishes the URL
+last and preserves unrelated defaults. Status resolves available organization
+variables beneath repository overrides; disable writes an empty repository URL
+rather than deleting an override that could reactivate inheritance. These
+commands neither deploy/enroll an authority nor change CAO rollout policy.
+Bulk `--all-repos` selects exact repositories from validated global CAO scope
+or enumerates allowed organization inventories when no exact list exists.
+Explicit repeatable `--org` and `--enterprise` select organization variables
+with visibility all; enterprise rollout enumerates organizations, never invents
+an enterprise Actions-variable scope. Repository overrides remain authoritative.
+Discovery and all variable preflight reads precede mutations; bounded sequential
+writes report partial progress and stop without automatic retries or rollback.
+Setup reuses an existing target endpoint/audience, or the current control
+repository's effective configuration for bulk rollout and disabled-target
+recovery, when `--url` is omitted; missing configuration is an error.
+The server's read-only `admission validate` command checks protected policy and
+current accounting without network calls, mutations or fabricated evidence;
+it does not attest live deployment readiness. `docs/admission-gate.md` covers
+the operator journey and the independent trusted-publisher requirement.
+
 Hosted CLI actions are an experimental opt-in
 `serve-hosted --experimental --hosted-cli-actions` mode. Step-up administrators
 enqueue catalog-declared actions into the PostgreSQL CLI command queue after the
@@ -640,7 +701,7 @@ depends on `internal/ghcli/` and the declarative assets embedded by
 `dashboard/catalog.go`. Shared logging comes from
 `github.com/github/gh-aw/pkg/logger`; GitHub CLI execution uses
 `github.com/cli/go-gh/v2`, the same helper used by gh-aw. The Go command layer
-owns all operator implementation, argument validation and help. Campaign installation, policy
+owns all extension implementation, argument validation and help. Campaign installation, policy
 initialization, campaign mode changes, and workflow enablement run natively in Go.
 `gh cao campaigns add` delegates package ownership and workflow generation to
 `gh aw add`, preserves its option vector, then materializes only the selected
@@ -679,11 +740,11 @@ or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
 `node activity/cao.mjs <command>` explicitly, including SQLite snapshot `doctor`
 and the unmigrated `setup-auth hosted-cli` profile. There is no shell launcher.
 Internal Node implementations remain available for Actions and parity tests,
-not as an alternative operator surface. Root runtime upgrades remove only
+not as an alternative operator surface.
+Root runtime upgrades remove only
 content-verified retired launchers; consumer-owned files, links, and directories
 are preserved. Verified older archives may contain the retired launcher but
-never install it. Quickstart stages its deletion only when present, never a
-nonexistent launcher on a fresh installation.
+never install it.
 User-facing commands belong in the Go extension; Actions execution support
 belongs in the shipped JavaScript runtime under `activity/` and `dashboard/`.
 Agentic workflow execution and agent evidence preparation must not build,
@@ -726,8 +787,8 @@ mixing names or retrying another asset after verification failure.
 For a newly initialized policy only, it aligns the former catalog's schema URI
 from an older extension with the installed catalog's canonical schema URI,
 rejecting unknown mismatches without rewriting authority fields or existing policy.
-Initialization, setup and quickstart invoke `gh cao`;
-Node.js remains an installation/pipeline prerequisite, not an operator dependency.
+Initialization and setup invoke `gh cao`. Node.js remains an installation/pipeline
+prerequisite, not a dependency of Go extension commands.
 
 Campaign manifests are the catalog's source of truth for installed workflows and
 the trusted materializer bootstrap. The materializer copies executable resources
@@ -831,15 +892,6 @@ authentication. Private/internal repositories, broader existing policy, or
 installed campaigns fail closed. Headless repository creation still requires
 an exact `--create-repo OWNER/NAME`, and missing prerequisites fail rather than
 appearing successful. Streamed bootstrap children otherwise retain null stdin.
-An implicit `--quickstart` resolves the latest published CAO `vX.Y.Z` release,
-including prereleases but excluding drafts,
-after prerequisite and checkout validation but before repository creation or
-file installation, then installs or refreshes the owned catalog resources and
-verified runtime at that release's immutable commit. Missing, inaccessible, or invalid release
-resolution fails without mutation or fallback to `main`. Any explicit catalog
-source, including `@main`, a tag, a SHA, or a local directory, is preserved.
-Bare installation and guided setup retain their existing unversioned source
-behavior.
 
 `activity/setup.mjs` owns scope resolution and authentication orchestration.
 `activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
@@ -864,93 +916,23 @@ Private/internal repositories and incompatible existing policy fail before
 Pages or authentication changes. A fresh bare installation remains scoped to
 the exact control repository with no campaigns before setup.
 
-`activity/quickstart.mjs` owns a distinct explicit, staged first-success guide. It
-uses a clean public, private, or internal control repository on its checked-out
-default branch, preserving any existing commits. Outside a connected checkout,
-repository creation requires an explicitly chosen owner and name through
-`--create-repo OWNER/NAME`, or manual interactive entry with no defaults.
-No owner, control-repository name, or target is suggested or inferred. Blank
-interactive input selects nothing. Occupied coordinates and lookup failures
-stop without mutation; there is no generated fallback name.
-Existing repositories and clone paths are never reused or overwritten.
-In-place connection of a checkout without remotes checks only
-remote-name availability because no clone directory is created.
-Unless the operator supplies a catalog source, the installer pins quickstart to
-the latest published CAO release, including prereleases, before this flow begins; Repo Assist is
-then pinned to the same installed CAO commit.
-Quickstart installation and explicit `--wait` require `--target OWNER/REPO`
-to select an existing public repository before any mutation; later stages reuse
-the sole target from committed policy. Repo Assist works without existing Agentic Workflows,
-Actions history, or telemetry. Quickstart runs ordinary Repo Assist, enabling
-only its existing maintenance worker in review mode and explicitly disabling
-issue triage, issue fix, and PR upkeep. It does not define a custom worker,
-source snapshot, starter input, or separate assessment contract. Normal source
-checkout, duplicate checks, implementation, focused validation, and review
-bundles are preserved. The worker records its actual base SHA.
-Installed quickstart workflows are recompiled with the catalog schedule seed
-`githubnext/gh-cao` before committing, matching lock-file validation.
-The existing budgets are 250 AI credits for orchestration and 600 for
-maintenance, plus the model-based output check, whose default is 400 credits
-and may be configured differently in gh-aw. Quickstart discloses the 1,250-credit
-default total without presenting it as measured usage or expected cost.
-One validated low-risk maintenance proposal and review bundle, or an honest
-no-op, is the first useful result. Proposals are not requirements for using CAO;
-there are no readiness grades,
-required practices, or source-convention admission gates. CAO admission depends
-on policy and access, not tests, CI, agent instructions, or recommendation adoption.
-The default install stage configures and commits the control plane, disables
-the orchestrator, and returns without dispatching Repo Assist or Activity or
-waiting for remote completion. Normal Activity push and schedule triggers remain
-active independently and can publish a baseline after installation.
-Explicit `--step run` uses the installed,
-validated policy without rewriting scope, enables the normal orchestrator for
-one dispatch, then disables it
-with `gh workflow disable`, including when dispatch fails, to prevent six-hour
-reruns without changing workflow sources or policy semantics. Disabling does
-not cancel the requested run. Pause failures are surfaced explicitly.
-Validation records a manually paused orchestrator with active workers as a
-pause note, not a recommendation to restart the schedule.
-Further runs require explicit re-enablement, which also resumes the normal
-schedule. Other workers and live authority require a reviewed policy decision.
-A successful run does not imply a patch, applied change, or
-operational value.
-Quickstart validates target access and public visibility and never
-creates or copies a target repository. Quickstart installs Repo Assist
-at the selected catalog revision, configures exact
-review-only authority for the selected target, requires public Pages, commits
-and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and
-`.vscode/settings.json` project settings. The guide separates installation,
-`--step run`, `--step collect`, and the read-only `--step dashboard` readiness
-check. Run and collect return Actions links without waiting; repeating them
-requests new work. Operators inspect the maintenance outcome before requesting
-Activity. The dashboard check verifies data-bearing Activity and a subsequent
-successful Pages deployment job, not just workflow success, returning pending rather than polling when either is
-unfinished. No local checkpoint file grants authority; stages revalidate the
-installed policy. Explicit `--wait`, immediately after bare installation,
-retains the original end-to-end flow, dispatching one orchestrator and at most
-one worker, collecting Activity, and waiting for dashboard deployment; it is
-not a resume or status command. Campaign execution never modifies the target. Quickstart
-reports Repo Assist blocked, incomplete, and failed outcomes without
-converting unknowns into findings, and does not report dashboard readiness until the
-Activity artifact contains at least one unique run and the dashboard
-deployment succeeds. Installer handoff preserves the controlling terminal when
-present and otherwise uses plain headless progress, uses elapsed progress for
-each long operation, and suppresses Node's experimental-runtime diagnostic
-rather than mixing it into user progress. `--quickstart` authorizes installation
-effects; separate stage commands authorize their dispatches, while `--wait`
-explicitly authorizes the whole flow in interactive and headless use. Ordinary install
-and `cao setup` retain their non-effectful boundaries.
+Campaign installation and execution are separate operator actions through
+`gh cao campaigns add` and `gh aw run`. Operators review and commit workflows
+and bounded review-mode policy together before dispatching work. Installation
+and setup do not commit, push, or dispatch campaigns. Enabling an orchestrator
+also resumes its schedule; operators may pause it with `gh workflow disable`
+without cancelling requested work. Validation records a manually paused
+orchestrator with active workers as a pause note rather than recommending
+scheduled re-enablement. Runtime success is not proof of a proposal, applied
+change, or operational value.
 
 The policy may declare `control-plane.activity.repositories` as an exact,
 nonempty subset of globally allowed repositories. This separates evidence
 collection scope from campaign rollout authority without silently narrowing
 either. Authentication planning uses the declared subset when present and
-otherwise preserves its existing fail-closed behavior. The public quickstart
-uses this contract to admit the public Repo Assist target while collecting
-workflow evidence only from the selected control repository with its
-repository-provided token. A public control repository is safe for this exact
-path because the selected target, evidence, dashboard, and review outputs are
-all public; that does not authorize non-public targets or other campaigns.
+otherwise preserves its existing fail-closed behavior. Repository-local
+workflow-token collection remains bounded to the control repository and does
+not authorize cross-repository evidence access.
 
 ## Architectural boundaries
 

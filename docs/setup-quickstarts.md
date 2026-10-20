@@ -143,7 +143,7 @@ together before enabling or running it. Start in **review** mode with **one
 repository**; model access and AI credits are separate prerequisites.
 See [Roll out a campaign](rollout-and-routing.md) for the execution steps.
 
-Want a guided campaign example instead? The separate
-[Repo Assist walkthrough](repo-assist-quickstart.md) starts from a fresh control
-repository and requests one review-only maintenance proposal. It is optional,
+Want a manual campaign example instead? The separate
+[Repo Assist walkthrough](repo-assist-quickstart.md) starts from a configured control
+repository and shows how to request one review-only maintenance proposal. It is optional,
 not a prerequisite for monitoring.

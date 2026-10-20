@@ -1,6 +1,6 @@
 module github.com/githubnext/gh-cao
 
-go 1.26.9
+go 1.27.3
 
 require (
 	github.com/cli/go-gh/v2 v2.16.1

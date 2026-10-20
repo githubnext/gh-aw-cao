@@ -1,5 +1,5 @@
 ---
-import DispatchIllustration from "./DispatchIllustration.astro";
+import WorkflowEcosystem from "./WorkflowEcosystem.astro";
 import HeroIntro from "./HeroIntro.astro";
 import LandingSlideshow from "./LandingSlideshow.astro";
 import TerminalDemo from "./TerminalDemo.astro";
@@ -50,27 +50,33 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 </div>
 
 <section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal data-slideshow-slide>
-  <p class="section-eyebrow">Execution policy</p>
-  <h2 id="dispatch-title">Control where workflows run.</h2>
+  <p class="section-eyebrow">One workflow ecosystem</p>
+  <h2 id="dispatch-title">Shared work. Clear ownership.</h2>
   <p>
-    Run workflows centrally across enrolled repositories and organizations. Reviewed policy sets the scope;
-    each worker handles one authorized target.
+    Enterprise teams, organizations, and repository maintainers own their workflows. Shared work reaches enrolled
+    repositories alongside local automation, with explicit scope and ownership.
   </p>
   <figure class="dispatch-illustration" aria-describedby="dispatch-description">
     <figcaption id="dispatch-description" class="visually-hidden">
-      Central Agentic Ops configures workflows, runs dispatchers followed by namespaced workers in GitHub Actions,
-      and sends each worker to one explicitly enrolled external repository.
+      Connectors group organizations within the enterprise and repositories within their organization.
+      Enterprise and organization workflows run in their owning control repositories and send declared safe outputs
+      directly to enrolled repositories. Repository-owned workflows run locally and produce their own safe outputs alongside shared outputs.
+      Labels and layout identify ownership; green marks delivery and completed outputs.
+      Reviewed policy governs shared work, not the visual hierarchy.
     </figcaption>
-    <DispatchIllustration />
+    <WorkflowEcosystem />
   </figure>
 </section>
 
 <section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
-    <p class="section-eyebrow">Reusable workflows, central Ops</p>
-    <h2 id="terminal-title">Reuse what works.</h2>
+    <p class="section-eyebrow">Setup, authentication, and rollout</p>
+    <h2 id="terminal-title">Roll out with confidence.</h2>
     <p>
-      Start by monitoring one repository. Add versioned workflows when you're ready. Reuse the definition; decide separately where it may run.
+      Bring an existing workflow, such as Daily Repo Status from Agentics, under central control.
+      Set repository scope and separate read/write credentials. Review proposed reports before authorizing live delivery.
+      Keep rollout policy and steering in your control repository, and reuse the workflow across enrolled repositories.
+      Add campaigns when you need coordinated work.
     </p>
   </div>
   <TerminalDemo />
