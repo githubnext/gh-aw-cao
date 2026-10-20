@@ -421,6 +421,34 @@
         39388787873
       ],
       "outcome": "incomplete: during the 2026-10-20T07:46:50Z to 2026-10-20T11:34:32Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39409078842 executed successful build and deploy jobs; the other 15 successful runs were schedule freshness checks that skipped build and deploy. Trusted job metadata for the newest schedule run 39415907323 confirms a 7-second initial queue, a 6-second schedule-freshness job with a 4-second freshness check, and skipped build and deploy jobs. The sole comparable build queued for 4 seconds, completed in 111 seconds end to end, ran build for 84 seconds and deploy for 18 seconds, installed dependencies in 30 seconds, built documentation in 11 seconds, restored the dashboard cache, and uploaded the Pages artifact in 10 seconds. One build sample cannot establish required median/p90 build and deploy timings or repeated cache effectiveness; docs.yml has no dashboard job. Fewer than five comparable successful build samples were available, so the evaluation is incomplete and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T11:54:05Z",
+      "worker_run_id": "39417952522",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39417494838,
+        39415907323,
+        39414590932,
+        39414237559,
+        39412052909,
+        39410478515,
+        39409078842,
+        39408919999,
+        39407527074,
+        39407194981,
+        39404935529,
+        39403590816,
+        39402236283,
+        39400711523,
+        39398865390,
+        39397756747,
+        39396576266,
+        39394069863,
+        39393719815,
+        39390537827
+      ],
+      "outcome": "incomplete: during the 2026-10-20T08:02:17Z to 2026-10-20T11:47:53Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39409078842 executed successful build and deploy jobs; the other 15 successful runs were schedule freshness checks that skipped build and deploy. The sole comparable build queued for 4 seconds, completed in 111 seconds end to end, ran build for 84 seconds and deploy for 18 seconds, installed dependencies in 30 seconds, built documentation in 11 seconds, restored the dashboard cache (cache-miss lookup and artifact download were skipped), and uploaded the Pages artifact in 10 seconds. One build sample cannot establish required median/p90 build and deploy timings or repeated dependency-cache effectiveness; docs.yml has no dashboard job. Fewer than five comparable successful build samples were available, so the evaluation is incomplete and the category remains next."
     }
   ]
 }
