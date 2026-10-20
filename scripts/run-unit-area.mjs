@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const unitDirectory = join(root, "tests", "unit");
 
 export const unitTestAreas = {
-  activity: [/^activity-/, /^actions-log\./, /^github-telemetry\./],
+  activity: [/^activity-/, /^workflow-values-recurring\./, /^actions-log\./, /^github-telemetry\./],
   dashboard: [/^dashboard-/, /^cli-action-/, /^server-azure-/],
   workflows: [
     /^workflow-contract-/, /^control-/, /^campaign-/, /^contoso-/,

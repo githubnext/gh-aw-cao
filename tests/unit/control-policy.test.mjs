@@ -131,7 +131,11 @@ test("control policy schema accepts config-defined campaign and worker catalogs"
     type: "pat",
     secret: "GH_TOKEN",
   });
-  assert.equal(schema.$defs.controlCampaigns.additionalProperties.$ref, "#/$defs/campaignPolicy");
+  assert.equal(schema.$defs.controlCampaigns.properties.activity.$ref, "#/$defs/campaignPolicy");
+  assert.deepEqual(schema.$defs.controlCampaigns.additionalProperties.allOf, [
+    { $ref: "#/$defs/campaignPolicy" },
+    { not: { required: ["workflow-values"] } },
+  ]);
   assert.equal(schema.$defs.targetCampaigns.additionalProperties.$ref, "#/$defs/targetCampaign");
   for (const campaignPolicy of Object.values(policy["control-plane"].campaigns)) {
     for (const workerPolicy of Object.values(campaignPolicy.workers ?? {})) {
