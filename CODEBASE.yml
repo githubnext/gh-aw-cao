@@ -119,7 +119,7 @@ components:
     responsibility: dependency-free keyboard-driven terminal presentation and plain-terminal fallback without owning authority decisions
   dashboard:
     path: dashboard/
-    responsibility: publish evidence and provide a static operational dashboard
+    responsibility: publish evidence and build the shared operational dashboard UI for either Pages or the hosted Go server
   dashboard_data:
     path: dashboard/site/src/data/
     responsibility: normalize, persist, and declaratively query canonical browser data in a Web Worker, including separately keyed run-linked experiment assignments, grader observations, and eval observations
@@ -191,7 +191,7 @@ components:
     responsibility: cache expensive compact HTTP and MCP query results by SHA-256 query identity for five minutes through the operational contract, with atomic expiry, Redis allocator or memory accounting limits and bounded eviction
   dashboard_https_server:
     path: server/
-    responsibility: independently resolve compiled app-target and operational-backend modules from non-secret cao.json, default to durable PostgreSQL operational storage without Redis while preserving explicit Redis and bounded single-process volatile memory alternatives, ingest deployed artifacts into Postgres, execute hosted Dashboard Language plans through the PostgreSQL SQL engine with registered runtime sources, and serve bounded query results
+    responsibility: serve hosted dashboard HTML and assets, OAuth, APIs and revision events on one origin; require a readable non-empty built index.html and inject the server-http bootstrap; independently resolve compiled app-target and operational-backend modules from non-secret cao.json, default to durable PostgreSQL operational storage without Redis while preserving explicit Redis and bounded single-process volatile memory alternatives, ingest deployed artifacts into Postgres, execute hosted Dashboard Language plans through the PostgreSQL SQL engine with registered runtime sources, and serve bounded query results
   dashboard_http_contract:
     path: server/spec/
     responsibility: specify public HTTP/SSE and fresh Postgres storage contracts in TypeSpec; generate checked OpenAPI, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; enforce query-field coverage and column minimization
@@ -471,6 +471,7 @@ invariants:
   - "Normalized Activity shards MUST be JSONL and browser consumers MUST stream bounded record batches without buffering a complete shard."
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute outside the browser main thread: in the data Web Worker for static deployment or in the Go HTTP(S) server over current Postgres sources."
+  - "Hosted container, Azure Functions and external-listener deployments MUST serve the built dashboard and assets through the complete same-origin Go handler with OAuth, query APIs and revision events, never through a separate Pages/static frontend. Startup MUST reject a missing, unreadable or empty built index.html. Hosted bootstrap selects server-http; failures MUST NOT fall back to static shard ingestion, IndexedDB execution or Pages."
   - "Redis is operational-only: it stores sessions, rate limits, queues, deduplication, coordination, quota state, revocation retries, and bounded caches; it MUST NOT store dashboard entity rows, canonical source documents, query indexes, persistent query projections, or execute dashboard data queries."
   - "The hosted server MUST NOT fall back from Postgres to Redis for dashboard data; Postgres unavailability makes dashboard data unavailable even when Redis is healthy."
   - "Hosted Redis stores operational caches, queues, and sessions; it MUST NOT store or query dashboard entity sources."

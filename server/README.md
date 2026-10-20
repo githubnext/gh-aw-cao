@@ -32,6 +32,13 @@ the focused contracts.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
+**Hosted mode serves the dashboard from Go, not from GitHub Pages.** The Go
+handler owns the built HTML and assets as well as OAuth, query APIs, and revision
+events on the same origin. A reverse proxy or platform listener must forward
+the complete application, not just `/api/`. Do not deploy the frontend separately
+to Pages, a static website host, or an object-storage website endpoint.
+Pages is a different deployment mode whose browser owns ingestion and queries.
+
 ## Local SQLite snapshot serving
 
 Build the dashboard once, then run the local server without PostgreSQL, Redis,
@@ -692,6 +699,21 @@ memory in the embedding deployment; CAO's Redis token buckets bound request
 arrival, not the lifetime of an accepted stream.
 
 ## Hosted service profile
+
+The configured `--site` directory must contain a readable, non-empty built
+`index.html`; hosted startup rejects an API-only or unbuilt deployment. The
+container supplies its bundled UI at `/app/site`. Source-built deployments
+must build `dashboard/site/` first and pass that build directory when using a
+different location. This requirement also applies to Azure Functions and the
+`server/hosting` external-listener facade.
+
+The Go handler injects `dashboard-data-backend=server-http`,
+`dashboard-storage-backend=postgres`, and the GitHub authentication bootstrap
+into the dashboard HTML. Those session-specific responses use `Cache-Control:
+no-store`. The shared browser UI selects the same-origin query API and disables
+static-dashboard PWA state; hosted queries do not ingest static shards or run
+against IndexedDB. PostgreSQL or API failures remain visible rather than
+switching the browser to the Pages data path.
 
 `serve-hosted` runs the same stateless Go service on a container, VM,
 Kubernetes workload, or comparable host. It defaults to

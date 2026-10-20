@@ -21,7 +21,7 @@ func localOAuthConfig(t *testing.T, githubURL string) Config {
 	oauth.AllowedOrganizations = nil
 	oauth.RedirectURL = "https://127.0.0.1:8443/auth/callback"
 	return Config{
-		Database: constructorDatabase(), SiteDirectory: t.TempDir(), HostProfile: profile,
+		Database: constructorDatabase(), SiteDirectory: hostedTestSite(t), HostProfile: profile,
 		Listen: "127.0.0.1:8443", CertFile: "certificate.pem", KeyFile: "key.pem",
 		SingleReplicaConfirmed: true, AllowVolatile: true,
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"127.0.0.1"}, RequireHTTPS: true},
