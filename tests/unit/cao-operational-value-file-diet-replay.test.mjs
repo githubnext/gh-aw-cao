@@ -80,7 +80,7 @@ test("File Diet measures actual merge-parent inventories and replacement files, 
   assert.equal(ledger.events[0].value, 1);
   assert.equal(ledger.events[0].at, input.proof.pulls[0].mergedAt);
   assert.equal(ledger.events[0].acceptance.ref, merged);
-  assert.match(ledger.events[0].evidence[1].url, new RegExp(`${parent}$`));
+  assert.match(ledger.events[0].evidence.find(ref => ref.label === "Before revision").url, new RegExp(`${parent}$`));
   assert.equal(eventPulse(ledger).metrics[0].receiptTotal, 0);
   assert.match(ledger.intent.acceptance, /full behavior-preserving acceptance remains unknown/);
   assert.deepEqual(ledger.repositoryState.observations.map(row => row.value), [1, 1]);
@@ -89,6 +89,44 @@ test("File Diet measures actual merge-parent inventories and replacement files, 
   assert.equal(ledger.checks.find(check => check.name === "Structural change measured").status, "verified");
   delete input.proof.pulls[0].preMergeSha;
   assert.throws(() => fileDietEvents(input), /Missing immutable inventory/);
+});
+
+test("snapshot counts expose the exact oversized files and accepted changes link directly to measured files", () => {
+  const input = example();
+  const ledger = fileDietEvents(input);
+  for (const row of ledger.repositoryState.observations) {
+    const files = input.inventories.get(row.ref).filter(file => file.lines >= 800);
+    assert.equal(row.items.length, row.value);
+    assert.deepEqual(row.items, files.map(file => ({
+      label: `${file.path} (${file.lines} lines)`,
+      url: `https://github.com/github/gh-aw/blob/${row.ref}/${file.path}#L800`,
+    })));
+  }
+  const sources = ledger.events[0].evidence;
+  assert.deepEqual(sources.filter(ref => ref.url.includes("/blob/")), [
+    { label: "Before: pkg/a.go (1129 lines)", url: `https://github.com/github/gh-aw/blob/${parent}/pkg/a.go#L800` },
+    { label: "After: pkg/a.go (248 lines)", url: `https://github.com/github/gh-aw/blob/${merged}/pkg/a.go#L1` },
+    { label: "Added/renamed: pkg/replacement.go (850 lines)", url: `https://github.com/github/gh-aw/blob/${merged}/pkg/replacement.go#L800` },
+  ]);
+  assert.equal(sources.find(ref => ref.label === "Accepted change diff").url,
+    `https://github.com/github/gh-aw/compare/${parent}...${merged}`);
+  input.inventories.set(merged, input.inventories.get(merged).filter(file => file.path !== "pkg/a.go"));
+  const removed = fileDietEvents(input);
+  assert.ok(!removed.events[0].evidence.some(ref => ref.label.startsWith("After: pkg/a.go")),
+    "A removed file must not acquire an invented after-file link.");
+});
+
+test("file permalinks encode real Git paths and reject traversal instead of linking to a different item", () => {
+  const input = example();
+  for (const files of input.inventories.values()) {
+    for (const file of files) if (file.path === "pkg/a.go") file.path = "pkg/a #.go";
+  }
+  input.proof.issues[0].targetPath = "pkg/a #.go";
+  const ledger = fileDietEvents(input);
+  assert.equal(ledger.repositoryState.observations[0].items[0].url,
+    `https://github.com/github/gh-aw/blob/${adopted}/pkg/a%20%23.go#L800`);
+  input.inventories.get(adopted)[0].path = "pkg/../a.go";
+  assert.throws(() => fileDietEvents(input), /Invalid immutable file reference/);
 });
 
 test("tracked auxiliary outputs and receipts for another object are not credited as deliveries", () => {

@@ -82,8 +82,9 @@ In the [saved File Diet report](https://raw.githack.com/githubnext/gh-aw-cao/ref
 
 The skill's report puts these beside recent progress and flags unverified
 goal checks. Select a headline number for its exact period or implementations;
-chart points link to immutable Git revisions. **Explore evidence** links each
-result to its issue, merged change and measurement rules. Historical reductions
+chart points reveal the counted files with links at the measured Git revision.
+**Explore evidence** links each result to its issue, merged change, before/after
+files and measurement rules. Historical reductions
 do not mean that many fewer files remain today.
 
 **Lineage plus time-aligned measurements connect outputs to observed outcomes;

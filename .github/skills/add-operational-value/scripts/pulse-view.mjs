@@ -132,7 +132,7 @@ export function mountPulse(document, model) {
     state?.metric.unit ?? primary?.unit ?? null,
     state ? `${state.metric.name} on ${date(lastState.at)}; ${format(firstState.value)} at the first snapshot. ${state.metric.direction === "decrease" ? "Lower" : "Higher"} is better. Includes everyone's work.`
       : primary ? `${primary.name}. Includes everyone's work.` : "Linked contribution does not establish overall repository health.",
-    state ? "repository-snapshots" : primary ? `observations-${primary.id}` : null);
+    state ? `snapshot-${state.observations.length - 1}` : primary ? `observations-${primary.id}` : null);
     const unknownChecks = model.checks?.filter(check => check.status !== "verified") ?? [];
     node("p", unknownChecks.length
       ? `Not verified: ${unknownChecks.map(check => check.name).join("; ")}.`
@@ -232,14 +232,14 @@ export function mountPulse(document, model) {
       const panel = document.createElement("section");
       panel.className = "snapshot-chart";
       content.insertBefore(panel, evidence);
-      const plot = chart(state.metric.name, "Open a point's Git revision. Snapshots only; changes between points are unknown.",
+      const plot = chart(state.metric.name, "Select a point to inspect its measured items. Changes between snapshots are unknown.",
         state.observations.map(row => row.value), 190, panel,
         [{ at: firstState.at, label: date(firstState.at) }, { at: lastState.at, label: date(lastState.at) }], 500);
-      for (const row of state.observations) {
-        const source = svgNode("a", { href: row.url, target: "_blank", rel: "noopener noreferrer",
-          "aria-label": `${date(row.at)}: ${format(row.value)} ${state.metric.unit}. Open Git revision ${row.ref}.`,
-          "data-snapshot": row.ref }, plot.svg);
-        svgNode("title", {}, source, `${date(row.at)}: ${format(row.value)} ${state.metric.unit}. Open Git revision.`);
+      for (const [index, row] of state.observations.entries()) {
+        const source = internalLink(svgNode("a", {
+          "aria-label": `${date(row.at)}: ${format(row.value)} ${state.metric.unit}. Inspect measured items.`,
+          "data-snapshot": row.ref }, plot.svg), `snapshot-${index}`);
+        svgNode("title", {}, source, `${date(row.at)}: ${format(row.value)} ${state.metric.unit}. Inspect measured items.`);
         svgNode("circle", { cx: plot.x(row.at), cy: plot.y(row.value), r: 5,
           class: row === lastState ? "point latest" : "point" }, source);
         if (row === firstState || row === lastState) svgNode("text", {
@@ -250,11 +250,16 @@ export function mountPulse(document, model) {
       }
       const snapshots = disclosure("Inspect the repository snapshots", evidence);
       snapshots.id = "repository-snapshots";
-      node("p", "Each link opens the repository at the retained immutable Git revision, not a live file count.", snapshots, "muted");
       const list = node("ul", null, snapshots, "snapshot-list");
-      for (const row of state.observations) {
-        const item = node("li", null, list);
-        link({ label: `${date(row.at)}: ${format(row.value)} ${state.metric.unit}`, url: row.url }, item);
+      for (const [index, row] of state.observations.entries()) {
+        const item = disclosure(`${date(row.at)}: ${format(row.value)} ${state.metric.unit}`, node("li", null, list));
+        item.id = `snapshot-${index}`;
+        if (row.items !== undefined) {
+          const sources = node("ul", null, item, "snapshot-items");
+          for (const ref of row.items) link(ref, node("li", null, sources));
+          if (!row.items.length) node("p", "The retained item list is empty.", item);
+        } else node("p", "Item-level evidence was not retained for this snapshot. The revision alone does not identify the measured items.", item, "notice");
+        link({ label: "Full repository at this revision (context)", url: row.url }, node("p", null, item, "muted"));
       }
     }
     const history = disclosure("Measurements over time", evidence, "history");

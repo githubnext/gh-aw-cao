@@ -88,6 +88,9 @@ a { color: var(--fgColor-accent); text-decoration: underline; text-underline-off
 li { margin-bottom: 6px; }
 .result-list { list-style: none; padding: 0; }
 .result-list summary, .snapshot-list a { display: block; min-height: 44px; padding-block: 8px; }
+.snapshot-list { list-style: none; padding: 0; }
+.snapshot-list summary { min-height: 44px; padding-block: 8px; }
+.snapshot-items { padding-left: 20px; }
 details { border: 1px solid var(--borderColor-default); border-radius: 6px; padding: 16px; margin-top: 16px; overflow-wrap: anywhere; }
 summary { cursor: pointer; font-weight: var(--base-text-weight-semibold); }
 .evidence { padding: 0; margin-top: 24px; }

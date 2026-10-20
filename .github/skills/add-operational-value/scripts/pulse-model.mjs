@@ -6,6 +6,11 @@ const WEEK = 7 * DAY;
 const finite = value => typeof value === "number" && Number.isFinite(value);
 const time = value => typeof value === "string" ? Date.parse(value) : NaN;
 const iso = value => new Date(value).toISOString();
+const safeEvidenceUrl = value => {
+  const url = typeof value === "string" && URL.canParse(value) ? new URL(value) : null;
+  return url?.protocol === "https:" && !url.username && !url.password;
+};
+const validEvidenceReference = ref => typeof ref?.label === "string" && !!ref.label && safeEvidenceUrl(ref.url);
 const gain = (metric, before, after) => {
   const delta = metric.direction === "increase" ? after - before
     : metric.direction === "decrease" ? before - after
@@ -170,12 +175,12 @@ function reportContext(ledger) {
     }
     let previous = -Infinity;
     for (const row of state.observations) {
-      const url = typeof row?.url === "string" && URL.canParse(row.url) ? new URL(row.url) : null;
       if (!row || !finite(time(row.at)) || time(row.at) <= previous
         || time(row.at) < time(ledger.window.startAt) || time(row.at) > time(ledger.window.endAt)
         || time(row.at) > time(ledger.observedAt)
         || !finite(row.value) || typeof row.ref !== "string" || !row.ref
-        || !url || url.protocol !== "https:" || url.username || url.password) {
+        || !safeEvidenceUrl(row.url)
+        || (row.items !== undefined && (!Array.isArray(row.items) || !row.items.every(validEvidenceReference)))) {
         throw new Error("Invalid repository-state observation or immutable evidence reference");
       }
       previous = time(row.at);
@@ -240,12 +245,7 @@ function validateLedger(ledger) {
       || (event.title !== undefined && (typeof event.title !== "string" || !event.title))
       || (event.summary !== undefined && (typeof event.summary !== "string" || !event.summary))
       || !Array.isArray(event.evidence) || !event.evidence.length
-      || event.evidence.some(ref => {
-        try {
-          const url = new URL(ref.url);
-          return !ref.label || url.protocol !== "https:" || !!url.username || !!url.password;
-        } catch { return true; }
-      })) throw new Error(`Invalid event or incompatible metric boundary: ${event.id}`);
+      || !event.evidence.every(validEvidenceReference)) throw new Error(`Invalid event or incompatible metric boundary: ${event.id}`);
     const prior = unique.get(event.id);
     if (prior && (time(prior.at) !== time(event.at) || prior.value !== event.value
       || prior.acceptance.ref !== event.acceptance.ref)) {

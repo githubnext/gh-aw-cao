@@ -79,8 +79,16 @@ export function fileDietEvents({ proof, inventories }) {
     assert.ok(sha(commit) && inventories.has(commit), "Missing immutable inventory");
     return inventories.get(commit);
   };
-  const oversized = commit => inventory(commit).filter(file => file.lines >= 800).length;
+  const oversizedFiles = commit => inventory(commit).filter(file => file.lines >= 800);
+  const oversized = commit => oversizedFiles(commit).length;
   const root = `https://github.com/${repository}`;
+  const fileReference = (file, commit, prefix = "") => {
+    assert.ok(sha(commit) && eligible(file.path)
+      && file.path.split("/").every(segment => segment && segment !== "." && segment !== ".."),
+    "Invalid immutable file reference");
+    return { label: `${prefix}${file.path} (${file.lines} lines)`,
+      url: `${root}/blob/${commit}/${file.path.split("/").map(encodeURIComponent).join("/")}#L${file.lines >= 800 ? 800 : 1}` };
+  };
   const eligibleIssues = proof.issues.filter(issue => issue.eligible !== false
     && issue.receipt?.status !== "not-applied-to-output");
   const receipts = new Set(eligibleIssues.filter(receiptVerified).map(issue => issue.number));
@@ -116,11 +124,24 @@ export function fileDietEvents({ proof, inventories }) {
     if (!linked.length) continue;
     const before = inventory(pull.preMergeSha);
     const after = inventory(pull.mergeSha);
-    const targets = [...new Set(linked.map(issue => issue.targetPath).filter(Boolean))].map(target =>
+    const targetPaths = [...new Set(linked.map(issue => issue.targetPath).filter(Boolean))];
+    const targets = targetPaths.map(target =>
       `${target}: ${before.find(file => file.path === target)?.lines ?? "absent"} -> `
       + `${after.find(file => file.path === target)?.lines ?? "absent"} lines`);
-    const additions = pull.files.filter(file => ["added", "renamed"].includes(file.status) && eligible(file.path))
+    const replacements = pull.files.filter(file => ["added", "renamed"].includes(file.status) && eligible(file.path));
+    const additions = replacements
       .map(file => `${file.path} (${after.find(item => item.path === file.path)?.lines ?? "absent"})`);
+    const files = [];
+    for (const target of targetPaths) {
+      const previous = before.find(file => file.path === target);
+      const accepted = after.find(file => file.path === target);
+      if (previous) files.push(fileReference(previous, pull.preMergeSha, "Before: "));
+      if (accepted) files.push(fileReference(accepted, pull.mergeSha, "After: "));
+    }
+    for (const replacement of replacements) {
+      const accepted = after.find(file => file.path === replacement.path);
+      if (accepted && !targetPaths.includes(accepted.path)) files.push(fileReference(accepted, pull.mergeSha, "Added/renamed: "));
+    }
     events.push({
       id: pull.id, at: pull.mergedAt,
       lineage,
@@ -136,9 +157,11 @@ export function fileDietEvents({ proof, inventories }) {
         + "Net change includes replacement oversized files. Behavior preservation and full acceptance remain unverified. Shared workflow-enabled contribution.",
       evidence: [
         { label: "Merged PR", url: `${root}/pull/${pull.number}` },
+        { label: "Accepted change diff", url: `${root}/compare/${pull.preMergeSha}...${pull.mergeSha}` },
+        ...files,
+        ...linked.map(issue => ({ label: `Origin issue #${issue.number}`, url: `${root}/issues/${issue.number}` })),
         { label: "Before revision", url: `${root}/tree/${pull.preMergeSha}` },
         { label: "Merge revision", url: `${root}/tree/${pull.mergeSha}` },
-        ...linked.map(issue => ({ label: `Origin issue #${issue.number}`, url: `${root}/issues/${issue.number}` })),
       ],
     });
   }
@@ -173,7 +196,8 @@ export function fileDietEvents({ proof, inventories }) {
         direction: "decrease", version: "observed-800-line-snapshot-v1",
         formula: "Count regular non-test Go files under pkg/ with at least 800 newline characters at the snapshot revision." },
       observations: proof.snapshots.map(snapshot => ({ at: snapshot.at, value: oversized(snapshot.commit),
-        ref: snapshot.commit, url: `${root}/tree/${snapshot.commit}` })),
+        ref: snapshot.commit, url: `${root}/tree/${snapshot.commit}`,
+        items: oversizedFiles(snapshot.commit).map(file => fileReference(file, snapshot.commit)) })),
       limitation: "These snapshots include everyone's changes. They are sparse observations, not continuous monitoring; changes between cutoffs and their causes are unknown.",
     },
     checks: [

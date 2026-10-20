@@ -120,6 +120,15 @@ The ledger may additionally supply:
   Observations are strictly ordered within the report interval and no later
   than evidence capture. They never enter contribution totals. Sparse
   observations are dots, not an interpolated continuous series.
+  An observation may include `items: {label, url}[]`: precomputed item-level
+  evidence with nonempty display labels and credential-free HTTPS permalinks.
+  For an item-count measure, include the actual counted population from the
+  same inventory and revision, not a live listing or a guessed example.
+  Chart points open these retained items; each item opens its specific file,
+  issue or other record. Keep the full repository revision as secondary
+  context. Missing `items` explicitly means item-level evidence was not
+  retained, not an empty population. For File Diet, the labels retain measured
+  line counts and blob links identify each file at the exact commit.
 - `checks`: `{name, status, detail}[]`, where status is explicitly `verified`
   or `not-verified`. Verification applies only to the named check. A measured
   structural change does not verify behavior preservation or every safeguard.

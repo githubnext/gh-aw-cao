@@ -245,6 +245,12 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   honest evidence drilldowns, not invented results. Label current workflow
   source separately from immutable measurement evidence; never construct a
   target-repository URL from an unrelated implementation-source revision.
+  Do not stop at a repository tree when item evidence is available. A snapshot
+  point must reveal the actual counted files or records, with immutable
+  per-item links and native measurements. Link accepted implementations to
+  their PR or diff and the measured before/after files, including replacements;
+  do not invent links for deleted or unretained files. Keep whole-repository
+  revisions as context and explicitly flag missing item-level evidence.
   Use restrained visual hierarchy, decorative icons and clear native units
   rather than more panels. Make evidence actions obviously interactive,
   keyboard-visible and touch-sized; respect reduced-motion preferences.

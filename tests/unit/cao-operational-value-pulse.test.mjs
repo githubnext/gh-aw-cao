@@ -97,7 +97,8 @@ test("independent snapshot context and explicit quality checks survive without b
   input.repositoryState = {
     metric: { ...metric, id: "remaining", name: "Unresolved defects", direction: "decrease" },
     observations: [
-      { at: input.window.startAt, value: 2, ref: "start", url: "https://github.com/octo/example/commit/start" },
+      { at: input.window.startAt, value: 2, ref: "start", url: "https://github.com/octo/example/commit/start",
+        items: [{ label: "Retained item", url: "https://github.com/octo/example/blob/start/defect.go#L1" }] },
       { at: input.window.endAt, value: 8, ref: "end", url: "https://github.com/octo/example/commit/end" },
     ],
     limitation: "Sparse snapshots include changes by every actor.",
@@ -115,6 +116,11 @@ test("independent snapshot context and explicit quality checks survive without b
     value => { value.repositoryState.observations[0].url = "javascript:alert(1)"; },
     value => { value.repositoryState.observations[0].url = "https://token@example.com/"; },
     value => { value.repositoryState.observations[0].ref = ""; },
+    value => { value.repositoryState.observations[0].items = {}; },
+    value => { value.repositoryState.observations[0].items[0] = null; },
+    value => { value.repositoryState.observations[0].items[0].label = ""; },
+    value => { value.repositoryState.observations[0].items[0].url = "javascript:alert(1)"; },
+    value => { value.repositoryState.observations[0].items[0].url = "https://token@example.com/"; },
     value => { value.repositoryState.observations[0] = null; },
     value => { value.repositoryState.metric.formula = ""; },
     value => { value.checks[0].status = "probably-passed"; },

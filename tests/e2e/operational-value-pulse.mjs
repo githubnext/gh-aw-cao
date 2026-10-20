@@ -68,11 +68,8 @@ try {
               [model.repositoryState.observations[0].value, model.repositoryState.observations.at(-1).value].map(String));
             assert.match(await page.locator(".facts").innerText(),
               new RegExp(`${model.repositoryState.observations.at(-1).value} files`));
-            assert.deepEqual(await page.locator(".snapshot-chart a").evaluateAll(links => links.map(link => ({
-              url: link.getAttribute("href"), rel: link.getAttribute("rel"), target: link.getAttribute("target"),
-            }))), model.repositoryState.observations.map(row => ({
-              url: row.url, rel: "noopener noreferrer", target: "_blank",
-            })));
+            assert.deepEqual(await page.locator(".snapshot-chart a").evaluateAll(links => links.map(link => link.getAttribute("href"))),
+              model.repositoryState.observations.map((_, index) => `#snapshot-${index}`));
             assert.equal(await page.locator(".snapshot-chart").getByRole("link").count(), model.repositoryState.observations.length,
               "Snapshot links must be exposed to assistive technology.");
           } else assert.match(await page.locator(".facts").innerText(), /Not measured here/);
@@ -98,8 +95,14 @@ try {
           assert.equal(await page.locator("#accepted-results").evaluate(element => element.open && element === document.activeElement), true);
           assert.equal(await page.locator(".result-list > li").count(), model.metrics[0].events.length);
           if (model.repositoryState) {
-            await page.locator('.facts a[href="#repository-snapshots"]').click();
+            const index = model.repositoryState.observations.length - 1;
+            await page.locator(`.facts a[href="#snapshot-${index}"]`).click();
             assert.equal(await page.locator("#repository-snapshots").evaluate(element => element.open), true);
+            assert.equal(await page.locator(`#snapshot-${index}`).evaluate(element => element.open && element === document.activeElement), true);
+            const retained = model.repositoryState.observations[index].items ?? [];
+            assert.deepEqual(await page.locator(`#snapshot-${index} .snapshot-items a`).evaluateAll(links => links.map(link => ({
+              label: link.textContent, url: link.href,
+            }))), retained);
           }
           await page.locator(".evidence").evaluate(element => { element.open = false; });
           await page.locator(".evidence > summary").focus();
@@ -151,16 +154,28 @@ try {
             }));
             const point = page.locator(".snapshot-chart a").first();
             await point.focus();
-            const popupPromise = page.waitForEvent("popup");
             await point.press("Enter");
-            const popup = await popupPromise;
-            try {
-              await popup.waitForURL(model.repositoryState.observations[0].url);
-              assert.equal(popup.url(), model.repositoryState.observations[0].url,
-                "Activating a snapshot must open that exact retained Git revision.");
-            } finally {
-              await popup.close();
+            assert.equal(await page.locator("#snapshot-0").evaluate(element => element.open && element === document.activeElement), true,
+              "A chart point must reveal the measured items, not jump straight to a repository tree.");
+            const retained = model.repositoryState.observations[0].items;
+            if (retained?.length) {
+              const item = page.locator("#snapshot-0 .snapshot-items a").first();
+              await item.focus();
+              const popupPromise = page.waitForEvent("popup");
+              await item.press("Enter");
+              const popup = await popupPromise;
+              try {
+                await popup.waitForURL(retained[0].url);
+                assert.equal(popup.url(), retained[0].url, "The item link must open the exact retained file permalink.");
+                assert.ok(new URL(popup.url()).pathname.includes(`/blob/${model.repositoryState.observations[0].ref}/`));
+              } finally {
+                await popup.close();
+              }
+            } else if (retained === undefined) {
+              assert.match(await page.locator("#snapshot-0").innerText(), /Item-level evidence was not retained/);
             }
+            await page.reload();
+            assert.equal(await page.locator("#snapshot-0").evaluate(element => element.open && element === document.activeElement), true);
           }
           assert.deepEqual(errors, []);
           assert.deepEqual(requests, []);
@@ -170,6 +185,21 @@ try {
       }
       const page = await browser.newPage({ colorScheme, viewport: { width: 320, height: 900 } });
       try {
+        if (ledger.repositoryState) {
+          const missingItems = structuredClone(ledger);
+          for (const row of missingItems.repositoryState.observations) delete row.items;
+          writePulse(missingItems, output);
+          await page.goto(`${pathToFileURL(output).href}#snapshot-0`);
+          assert.match(await page.locator("#snapshot-0").innerText(), /Item-level evidence was not retained/);
+          assert.equal(await page.locator("#snapshot-0 .snapshot-items a").count(), 0);
+          missingItems.repositoryState.observations[0].items = [];
+          missingItems.repositoryState.observations[0].value = 0;
+          writePulse(missingItems, output);
+          await page.reload();
+          assert.match(await page.locator("#snapshot-0").innerText(), /retained item list is empty/);
+          assert.doesNotMatch(await page.locator("#snapshot-0").innerText(), /Item-level evidence was not retained/);
+          await page.goto("about:blank");
+        }
         const partial = structuredClone(ledger);
         partial.coverage.forEach(interval => { interval.status = "partial"; });
         writePulse(partial, output);
