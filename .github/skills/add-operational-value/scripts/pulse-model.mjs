@@ -305,7 +305,8 @@ export function eventPulse(ledger) {
     left = right, right = Math.min(end, right + WEEK)) {
     weekly.push({ startAt: iso(left), endAt: iso(right), partial: right - left !== WEEK,
       value: complete(left, right) ? total(left, right) : null,
-      rate: complete(left, right) ? total(left, right) * WEEK / (right - left) : null });
+      rate: complete(left, right) ? total(left, right) * WEEK / (right - left) : null,
+      eventIds: events.slice(index(left), index(right)).map(event => event.id) });
   }
   let sum = 0, receipt = 0;
   const cumulative = [{ at: iso(start), value: 0, receipt: 0 }];
@@ -325,6 +326,8 @@ export function eventPulse(ledger) {
         : "Evidence is stale relative to the report endpoint." }),
     currentWindow: { startAt: iso(end - shortDays * DAY), endAt: iso(end) },
     previousWindow: { startAt: iso(end - 2 * shortDays * DAY), endAt: iso(end - shortDays * DAY) },
+    currentEventIds: events.slice(index(end - shortDays * DAY), index(end)).map(event => event.id),
+    previousEventIds: events.slice(index(end - 2 * shortDays * DAY), index(end - shortDays * DAY)).map(event => event.id),
     series, weekly, cumulative, events, shortDays, baselineDays,
     currentTotal: finite(current) ? total(end - shortDays * DAY, end) : null,
     previousTotal: finite(previous) ? total(end - 2 * shortDays * DAY, end - shortDays * DAY) : null,

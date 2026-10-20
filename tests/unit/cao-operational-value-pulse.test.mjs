@@ -206,6 +206,7 @@ test("negative native effects survive without clamping, smoothing or weighted at
 test("half-open windows, true calendar exposure and cumulative steps agree exactly", () => {
   const input = ledger();
   input.events.push(event("boundary", "2026-04-03T00:00:00Z", 4));
+  input.events.push(event("week-boundary", "2026-03-30T00:00:00Z", 0));
   const model = focus(input);
   assert.equal(model.signal.previous, .25);
   assert.equal(model.signal.current, 1.5);
@@ -215,6 +216,19 @@ test("half-open windows, true calendar exposure and cumulative steps agree exact
   assert.equal(model.cumulative.at(-1).value, 7);
   assert.equal(model.cumulative.find(point => point.at === input.events[2].at).value, 5);
   assert.equal(model.series[0].value, null);
+  assert.deepEqual(model.currentEventIds, ["boundary", "b"]);
+  assert.deepEqual(model.previousEventIds, ["a", "week-boundary"]);
+  const byId = new Map(model.events.map(event => [event.id, event]));
+  assert.deepEqual(model.weekly.flatMap(bucket => bucket.eventIds), model.events.map(event => event.id));
+  for (const bucket of model.weekly) {
+    assert.equal(bucket.eventIds.reduce((sum, id) => sum + byId.get(id).value, 0), bucket.value);
+    assert.ok(bucket.eventIds.every(id => Date.parse(byId.get(id).at) >= Date.parse(bucket.startAt)
+      && Date.parse(byId.get(id).at) < Date.parse(bucket.endAt)));
+  }
+  input.coverage[0].status = "partial";
+  const partial = focus(input);
+  assert.equal(partial.currentTotal, null);
+  assert.deepEqual(partial.currentEventIds, model.currentEventIds, "Incomplete coverage must not erase known evidence.");
 });
 
 test("mixed versions/units, conflicting corrections, unsafe evidence and coverage overlap fail closed", () => {

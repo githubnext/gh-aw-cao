@@ -233,6 +233,18 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   reason for inactivity or keep/retire recommendation. Optional structured
   repository snapshots and verification checks follow the event-ledger
   contract; absence must say **not measured** or **not verified**.
+
+  Follow GitHub Primer product foundations: functional light/dark color tokens,
+  the system-fallback font stack, Octicons, restrained borders and clear link
+  affordances. Keep charts consistent with that palette and typography; do not
+  rely on color alone. Embed styles and icons locally, without remote fonts or
+  runtime assets. Headline quantities must open the exact periods, retained
+  implementations or independent snapshots behind them. Link chart marks to
+  their retained evidence and Git revisions, with native keyboard-accessible
+  links and working saved-report fragments. Unknown and zero periods need
+  honest evidence drilldowns, not invented results. Label current workflow
+  source separately from immutable measurement evidence; never construct a
+  target-repository URL from an unrelated implementation-source revision.
   Use restrained visual hierarchy, decorative icons and clear native units
   rather than more panels. Make evidence actions obviously interactive,
   keyboard-visible and touch-sized; respect reduced-motion preferences.

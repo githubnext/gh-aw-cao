@@ -27,14 +27,48 @@ export function mountPulse(document, model) {
     element.href = ref.url;
     element.target = "_blank";
     element.rel = "noopener noreferrer";
+    return element;
+  };
+  const reveal = id => {
+    let target = document.getElementById(id);
+    if (!target) {
+      const metricId = observationMetrics.get(id);
+      if (metricId) {
+        select.value = metricId;
+        draw();
+        target = document.getElementById(id);
+      }
+    }
+    if (!target) return;
+    for (let ancestor = target; ancestor; ancestor = ancestor.parentElement) {
+      if (ancestor.tagName === "DETAILS") ancestor.open = true;
+    }
+    target.setAttribute("tabindex", "-1");
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: "start" });
+  };
+  const internalLink = (element, id) => {
+    element.setAttribute("href", `#${id}`);
+    element.addEventListener("click", event => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      if (document.defaultView.location.hash !== `#${id}`) document.defaultView.history.pushState(null, "", `#${id}`);
+      reveal(id);
+    });
+    return element;
   };
   const icons = [
-    "M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM7.25 4h1.5v3.25H11v1.5H7.25Z",
+    "M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.751.751 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z",
     "M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0 0 .005V3.25Z",
     "M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z",
   ];
   const main = document.querySelector("main");
-  node("p", `${model.repository} / ${model.workflowSlug}`, main, "eyebrow");
+  const identity = node("p", null, main, "eyebrow");
+  const repositoryUrl = `https://github.com/${model.repository}`;
+  const workflowUrl = `${repositoryUrl}/blob/HEAD/${model.sourcePath.split("/").map(encodeURIComponent).join("/")}`;
+  link({ label: model.repository, url: repositoryUrl }, identity);
+  node("span", "/", identity);
+  link({ label: `${model.workflowSlug} source (current)`, url: workflowUrl }, identity);
   node("h1", model.workflowName, main);
   if (typeof model.intent?.goal === "string" && model.intent.goal) {
     node("p", `Goal: ${model.intent.goal}`, main, "goal");
@@ -49,6 +83,12 @@ export function mountPulse(document, model) {
     option.value = metric.id;
   }
   select.value = model.selectedMetricId;
+  const observationMetrics = new Map();
+  for (const metric of model.metrics) {
+    if (metric.kind === "events") continue;
+    observationMetrics.set(`observations-${metric.id}`, metric.id);
+    metric.series.forEach((_, index) => observationMetrics.set(`observation-${metric.id}-${index}`, metric.id));
+  }
   const content = node("section", null, main);
   const draw = () => {
     content.replaceChildren();
@@ -59,7 +99,7 @@ export function mountPulse(document, model) {
     const heading = node("div", null, content, `signal ${status.attention}`);
     node("h2", metric.reader.title, heading);
     const facts = node("dl", null, content, "facts");
-    const fact = (name, value, unit, detail) => {
+    const fact = (name, value, unit, detail, destination) => {
       const row = node("div", null, facts);
       const label = node("dt", null, row);
       const icon = svgNode("svg", { viewBox: "0 0 16 16", class: "fact-icon",
@@ -67,7 +107,11 @@ export function mountPulse(document, model) {
       svgNode("path", { d: icons[facts.children.length - 1] }, icon);
       node("span", name, label);
       const description = node("dd", null, row);
-      node("strong", value, description);
+      const amount = node("strong", destination ? null : value, description);
+      if (destination) {
+        const anchor = internalLink(node("a", value, amount), destination);
+        anchor.setAttribute("aria-label", `${name}: ${value}${unit ? ` ${unit}` : ""}. Explore evidence.`);
+      }
       if (unit) node("span", ` ${unit}`, description, "fact-unit");
       node("span", detail, description, "fact-detail muted");
     };
@@ -77,16 +121,18 @@ export function mountPulse(document, model) {
     fact(events ? `Last ${metric.shortDays} days` : "Recent change", events
       ? format(metric.currentTotal) : format(status.directionAwareGain), metric.unit,
     events ? `${format(metric.previousTotal)} in the previous ${metric.shortDays} days; net measured change.`
-      : "Direction-aware change; unknown is not zero.");
+      : "Direction-aware change; unknown is not zero.", events ? "recent-results" : "measurement-rules");
     fact(events ? contribution ? "Linked contribution" : "Measured outcomes" : "Latest measure", events
       ? format(metric.completeTotal ?? metric.observedTotal) : format(status.current), metric.unit,
     events ? `${metric.completeTotal == null ? "Known subtotal only; coverage is incomplete. " : ""}${metric.name} since ${date(model.window.startAt)}; not the number remaining today.`
-      : `${metric.name}. ${status.status === "insufficient-evidence" ? "Recent comparison is not verified." : ""}`);
+      : `${metric.name}. ${status.status === "insufficient-evidence" ? "Recent comparison is not verified." : ""}`,
+    events ? "accepted-results" : `observations-${metric.id}`);
     fact("Repository state", state
       ? format(lastState.value) : primary ? format(primary.signal.current) : "Not measured here",
     state?.metric.unit ?? primary?.unit ?? null,
     state ? `${state.metric.name} on ${date(lastState.at)}; ${format(firstState.value)} at the first snapshot. ${state.metric.direction === "decrease" ? "Lower" : "Higher"} is better. Includes everyone's work.`
-      : primary ? `${primary.name}. Includes everyone's work.` : "Linked contribution does not establish overall repository health.");
+      : primary ? `${primary.name}. Includes everyone's work.` : "Linked contribution does not establish overall repository health.",
+    state ? "repository-snapshots" : primary ? `observations-${primary.id}` : null);
     const unknownChecks = model.checks?.filter(check => check.status !== "verified") ?? [];
     node("p", unknownChecks.length
       ? `Not verified: ${unknownChecks.map(check => check.name).join("; ")}.`
@@ -96,6 +142,46 @@ export function mountPulse(document, model) {
     const evidence = disclosure("Explore evidence", content, "evidence");
     node("span", "Linked changes, checks and measurement rules", evidence.querySelector("summary"), "disclosure-hint");
     node("p", metric.reader.caution, evidence, "muted");
+    const eventPositions = new Map(metric.events.map((event, index) => [event.id, index]));
+    const eventLinks = (ids, parent) => {
+      const list = node("ul", null, parent);
+      for (const id of ids) {
+        const index = eventPositions.get(id);
+        const event = metric.events[index];
+        internalLink(node("a", `${date(event.at)}: ${event.title ?? event.label} (${format(event.value)} ${metric.unit})`,
+          node("li", null, list)), `result-${index}`);
+      }
+    };
+    if (events) {
+      const recent = disclosure("Recent results", evidence);
+      recent.id = "recent-results";
+      for (const [name, window, total, ids] of [
+        ["Latest period", metric.currentWindow, metric.currentTotal, metric.currentEventIds],
+        ["Previous period", metric.previousWindow, metric.previousTotal, metric.previousEventIds],
+      ]) {
+        const period = node("section", null, recent);
+        period.dataset.period = name === "Latest period" ? "current" : "previous";
+        node("h3", name, period);
+        node("p", `${window.startAt} to ${window.endAt} (UTC, end exclusive).`, period, "muted");
+        node("p", total == null ? "Coverage is incomplete. These retained events do not establish a complete total."
+          : `Net measured change: ${format(total)} ${metric.unit}.`, period);
+        eventLinks(ids, period);
+        if (!ids.length) node("p", "No accepted implementation events retained in this period. This does not establish an absence of workflow activity.", period);
+      }
+      const accepted = disclosure("Accepted implementations", evidence);
+      accepted.id = "accepted-results";
+      const list = node("ul", null, accepted, "result-list");
+      metric.events.forEach((event, index) => {
+        const result = disclosure(`${date(event.at)}: ${event.title ?? event.label} (${format(event.value)} ${metric.unit})`,
+          node("li", null, list));
+        result.id = `result-${index}`;
+        node("p", event.summary ?? event.detail, result);
+        node("p", `Acceptance: ${event.acceptance.at}. Attribution: ${event.attribution}.`, result, "muted");
+        const sources = node("p", null, result, "evidence-links");
+        for (const ref of event.evidence) link(ref, sources);
+      });
+      if (!metric.events.length) node("p", "No accepted implementation events retained; inspect coverage before interpreting zero.", accepted);
+    }
     if (events) node("p", metric.daysSincePositive == null
       ? "No positive contribution observed; this is not proof that none occurred."
       : `Last positive contribution: ${date(metric.lastPositiveAt)}, about ${Math.round(metric.daysSincePositive)} days before this report's cutoff.`, evidence);
@@ -122,8 +208,8 @@ export function mountPulse(document, model) {
       wrap.setAttribute("tabindex", "0");
       wrap.setAttribute("role", "region");
       wrap.setAttribute("aria-label", title);
-      const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height + 45}`, role: "img", "aria-label": title }, wrap);
-      svgNode("title", {}, svg, `${title}: ${metric.name}`);
+      const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height + 45}`, role: "group", "aria-label": title }, wrap);
+      svgNode("title", {}, svg, title);
       const position = at => 66 + (Date.parse(at) - start) / (end - start) * (width - 110);
       const { low, high } = values.reduce((range, value) => value == null ? range
         : { low: Math.min(range.low, value), high: Math.max(range.high, value) }, { low: 0, high: 1 });
@@ -146,20 +232,26 @@ export function mountPulse(document, model) {
       const panel = document.createElement("section");
       panel.className = "snapshot-chart";
       content.insertBefore(panel, evidence);
-      const plot = chart(state.metric.name, "Snapshots only; changes between points are unknown.",
+      const plot = chart(state.metric.name, "Open a point's Git revision. Snapshots only; changes between points are unknown.",
         state.observations.map(row => row.value), 190, panel,
         [{ at: firstState.at, label: date(firstState.at) }, { at: lastState.at, label: date(lastState.at) }], 500);
       for (const row of state.observations) {
-        const dot = svgNode("circle", { cx: plot.x(row.at), cy: plot.y(row.value), r: 5, class: "point" }, plot.svg);
-        svgNode("title", {}, dot, `${date(row.at)}: ${format(row.value)} ${state.metric.unit}`);
+        const source = svgNode("a", { href: row.url, target: "_blank", rel: "noopener noreferrer",
+          "aria-label": `${date(row.at)}: ${format(row.value)} ${state.metric.unit}. Open Git revision ${row.ref}.`,
+          "data-snapshot": row.ref }, plot.svg);
+        svgNode("title", {}, source, `${date(row.at)}: ${format(row.value)} ${state.metric.unit}. Open Git revision.`);
+        svgNode("circle", { cx: plot.x(row.at), cy: plot.y(row.value), r: 5,
+          class: row === lastState ? "point latest" : "point" }, source);
         if (row === firstState || row === lastState) svgNode("text", {
           x: plot.x(row.at) + (row === lastState ? -12 : 12),
           y: Math.max(30, plot.y(row.value) - 12),
           "text-anchor": row === lastState ? "end" : "start", class: "snapshot-value",
-        }, plot.svg, format(row.value));
+        }, source, format(row.value));
       }
       const snapshots = disclosure("Inspect the repository snapshots", evidence);
-      const list = node("ul", null, snapshots);
+      snapshots.id = "repository-snapshots";
+      node("p", "Each link opens the repository at the retained immutable Git revision, not a live file count.", snapshots, "muted");
+      const list = node("ul", null, snapshots, "snapshot-list");
       for (const row of state.observations) {
         const item = node("li", null, list);
         link({ label: `${date(row.at)}: ${format(row.value)} ${state.metric.unit}`, url: row.url }, item);
@@ -175,26 +267,41 @@ export function mountPulse(document, model) {
           : step ? `H${x(point.at)}V${plot.y(point[field])}` : `L${x(point.at)},${plot.y(point[field])}`;
         connected = true;
       }
-      svgNode("path", { d, class: className }, plot.svg);
+      if (!d) return;
+      const source = internalLink(svgNode("a", {
+        "aria-label": step ? "Inspect accepted implementations" : "Inspect the measurement rules and comparison periods",
+      }, plot.svg), step ? "accepted-results" : "measurement-rules");
+      svgNode("path", { d, class: className }, source);
     };
     const top = chart(events ? `${metric.basis === "workflow-contribution" ? "Delivery" : "Outcome"} pulse (${metric.unit}/week)` : `${metric.name} (${metric.unit})`,
       events ? "Calendar-week bars; solid: trailing 28 days; dashed: trailing 91 days. Faded bars are partial weeks. Blank rates mean insufficient coverage."
         : "Native observations, not cumulative delivery. Gaps remain unknown; overlapping intervals are not added.",
       [...metric.series.flatMap(point => [point.value, point.baseline]), ...metric.weekly.map(point => point.rate)], 235, history);
-    for (const bucket of metric.weekly) {
+    for (const [index, bucket] of metric.weekly.entries()) {
       if (bucket.rate == null) continue;
+      const source = internalLink(svgNode("a", {
+        "aria-label": `${date(bucket.startAt)} to ${date(bucket.endAt)}: ${format(bucket.value)} ${metric.unit}. Inspect this week's evidence.`,
+      }, top.svg), `week-${index}`);
       const bar = svgNode("rect", { x: x(bucket.startAt) + 1, width: Math.max(1, x(bucket.endAt) - x(bucket.startAt) - 2),
         y: Math.min(top.y(0), top.y(bucket.rate)), height: Math.max(1, Math.abs(top.y(0) - top.y(bucket.rate))),
-        class: bucket.partial ? "bar partial" : "bar" }, top.svg);
+        class: bucket.partial ? "bar partial" : "bar" }, source);
       svgNode("title", {}, bar,
         `${date(bucket.startAt)} - ${date(bucket.endAt)}: ${format(bucket.value)} ${metric.unit}; ${format(bucket.rate)}/week${bucket.partial ? " (partial week, actual exposure)" : ""}`);
     }
     path(metric.series, "baseline", top, "baseline");
     path(metric.series, "value", top, "primary");
     if (!events) {
-      for (const point of metric.series) {
+      const observations = disclosure("Retained observations", evidence);
+      observations.id = `observations-${metric.id}`;
+      const list = node("ul", null, observations);
+      for (const [index, point] of metric.series.entries()) {
+        const item = node("li", `${date(point.at)}: ${format(point.value)} ${metric.unit}; ${point.status}. Evidence observed ${point.observedAt}.`, list);
+        item.id = `observation-${metric.id}-${index}`;
         if (point.value == null) continue;
-        const circle = svgNode("circle", { cx: x(point.at), cy: top.y(point.value), r: 3, class: "point" }, top.svg);
+        const source = internalLink(svgNode("a", {
+          "aria-label": `${date(point.at)}: ${format(point.value)} ${metric.unit}. Inspect retained observation.`,
+        }, top.svg), item.id);
+        const circle = svgNode("circle", { cx: x(point.at), cy: top.y(point.value), r: 3, class: "point" }, source);
         svgNode("title", {}, circle, `${date(point.at)}: ${format(point.value)} ${metric.unit}; ${point.status}`);
       }
     }
@@ -230,25 +337,35 @@ export function mountPulse(document, model) {
         }
       };
       metric.events.forEach((event, index) => {
-        const mark = svgNode("circle", { cx: x(event.at), cy: bottom.height + 24,
-          r: event.value === 0 ? 3 : 4, tabindex: 0, role: "button",
+        const mark = internalLink(svgNode("a", {
           "aria-label": `${event.label}: ${format(event.value)} ${metric.unit}, ${date(event.at)}`,
+          "data-event": index }, bottom.svg), `result-${index}`);
+        svgNode("circle", { cx: x(event.at), cy: bottom.height + 24,
+          r: event.value === 0 ? 3 : 4,
           class: event.attribution === "receipt-verified" ? "event receipt-event" : "event",
-          "data-event": index }, bottom.svg);
+        }, mark);
         svgNode("title", {}, mark, `${event.label}: ${format(event.value)} ${metric.unit}`);
         mark.addEventListener("click", () => show(event));
         mark.addEventListener("focus", () => show(event));
-        mark.addEventListener("keydown", key => {
-          if (key.key === "Enter" || key.key === " ") { key.preventDefault(); show(event); }
-        });
       });
       const latest = metric.events.at(-1);
       if (latest) show(latest);
       else node("p", "No delivery events observed; inspect coverage before interpreting zero.", detail);
+      const weeks = disclosure("Weekly results", history);
+      const list = node("ul", null, weeks);
+      for (const [index, bucket] of metric.weekly.entries()) {
+        const item = node("li", null, list);
+        item.id = `week-${index}`;
+        node("p", `${bucket.startAt} to ${bucket.endAt} (UTC, end exclusive): ${format(bucket.value)} ${metric.unit}; ${bucket.partial ? "partial calendar week" : "full calendar week"}.`, item);
+        if (bucket.value == null) node("p", "Coverage is incomplete; unknown is not zero.", item, "muted");
+        eventLinks(bucket.eventIds, item);
+      }
     }
     evidence.append(history);
     const rules = disclosure("Measurement rules and evidence limits", evidence);
-    node("p", `Source: ${model.sourcePath}`, rules, "muted");
+    rules.id = "measurement-rules";
+    link({ label: `Workflow source (current): ${model.sourcePath}`, url: workflowUrl }, node("p", null, rules));
+    node("p", "The current Markdown may have changed. This saved measurement uses its fixed rule and retained revisions, not the current source.", rules, "muted");
     if (typeof model.intent?.acceptance === "string" && model.intent.acceptance) node("p", `Acceptance: ${model.intent.acceptance}`, rules);
     node("p", `Measured movement: ${status.status.replaceAll("-", " ")}. Attention: ${status.attention.replaceAll("-", " ")}.`, rules);
     node("p", status.reason, rules);
@@ -266,4 +383,6 @@ export function mountPulse(document, model) {
   };
   select.addEventListener("change", draw);
   draw();
+  document.defaultView.addEventListener("hashchange", () => reveal(document.defaultView.location.hash.slice(1)));
+  if (document.defaultView.location.hash) reveal(document.defaultView.location.hash.slice(1));
 }

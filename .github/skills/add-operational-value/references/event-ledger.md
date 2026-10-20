@@ -97,6 +97,17 @@ Goal-check details, example changes, detailed charts, formulas, receipt
 distinctions and raw IDs remain behind one **Explore evidence** disclosure,
 with keyboard-accessible details inside. The report is not a workflow tutorial.
 
+Use [Primer color foundations](https://primer.style/product/getting-started/foundations/color-usage/)
+and [typography](https://primer.style/product/getting-started/foundations/typography/)
+for the offline report's light/dark palette, system-fallback fonts, controls and
+chart styling. Source icons from [Octicons](https://primer.style/octicons/).
+Keep local styles and SVGs self-contained; do not load assets from those sites.
+Headline quantities drill into their precise periods, implementations or
+snapshot evidence. Chart points and evidence links expose retained source URLs;
+fragment links open the enclosing disclosures and support keyboard navigation
+and saved deep links. Current workflow Markdown is explicitly labelled current,
+not presented as the historical measurement source.
+
 An event may add `title` and a short `summary`; both are untrusted display text,
 not measurements or acceptance evidence. Preserve full native facts in `detail`.
 The ledger may additionally supply:
