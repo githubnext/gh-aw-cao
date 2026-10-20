@@ -46,10 +46,11 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /ThemeImage/);
   assert.match(hero, /@media \(max-width: 42rem\) \{[\s\S]*?\.hero-callout \{[\s\S]*?display: flex/);
   assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
-  assert.match(hero, /Reusable workflows, central Ops/);
+  assert.match(hero, /Central control, explicit authority/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(hero, /Reuse what works\./);
-  assert.match(hero, /Reuse the definition; decide separately where it may run/);
+  assert.match(hero, /Your workflows\. Your rules\./);
+  assert.match(hero, /Configure repository scope and separate read\/write credentials with the CAO CLI/);
+  assert.match(hero, /Govern execution through reviewed\s+policy, and steer priorities without expanding permissions/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.match(terminalText, /gh cao setup/);
   assert.match(terminalText, /gh cao doctor/);
