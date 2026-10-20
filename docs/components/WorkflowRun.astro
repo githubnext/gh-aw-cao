@@ -1,0 +1,114 @@
+---
+import { checkPath, clockPath } from "./workflow-illustration-icons.mjs";
+
+interface Props {
+  name: string;
+  phase: "supply-chain" | "optimization" | "organization" | "local";
+  compact?: boolean;
+}
+const { name, phase, compact = false } = Astro.props;
+---
+
+<div class={`workflow-run ${phase}`} data-compact={compact || undefined} role="group" aria-label={`${name}: illustrative workflow run`}>
+  <span class="status-stack" aria-hidden="true">
+    <svg class="status queued" viewBox="0 0 16 16"><path d={clockPath}></path></svg>
+    <svg class="status running action-progress" viewBox="0 0 16 16">
+      <circle class="progress-track" cx="8" cy="8" r="6.25"></circle>
+      <circle class="progress-ring" cx="8" cy="8" r="6.25"></circle>
+      <circle class="progress-dot" cx="8" cy="8" r="3.15"></circle>
+    </svg>
+    <svg class="status complete" viewBox="0 0 16 16"><path d={checkPath}></path></svg>
+  </span>
+  <span class="run-copy">
+    <strong>{name}</strong>
+    <small class="run-state" aria-hidden="true">
+      <span class="queued">Queued</span>
+      <span class="running">In progress</span>
+      <span class="complete">Done</span>
+    </small>
+  </span>
+  <span class="branch">main</span>
+</div>
+
+<style>
+  .workflow-run {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    box-sizing: border-box;
+    min-width: 0;
+    height: 58px;
+    padding: 0 11px;
+    border: 1px solid var(--node-border);
+    border-radius: 8px;
+    background: var(--run-bg);
+    color: var(--node-text);
+  }
+
+  .workflow-run[data-compact] { height: 36px; padding-inline: 8px; gap: 6px; }
+
+  .status-stack { position: relative; width: 12px; height: 12px; }
+  .status { position: absolute; inset: 0; width: 12px; height: 12px; }
+  .queued { opacity: 1; }
+  .running, .complete { opacity: 0; }
+  .status.queued { fill: var(--node-muted); }
+  .status.complete { fill: var(--success); }
+  .action-progress { overflow: visible; }
+  .progress-track, .progress-ring { fill: none; stroke: var(--attention); stroke-width: 2; }
+  .progress-track { opacity: 0.35; }
+  .progress-ring {
+    stroke-dasharray: 22 18;
+    stroke-linecap: round;
+    transform-origin: center;
+    animation: spin 1.05s linear infinite;
+  }
+  .progress-dot { fill: var(--attention); }
+
+  .run-copy { min-width: 0; }
+  strong {
+    display: block;
+    overflow: hidden;
+    font-size: 0.74rem;
+    font-weight: 620;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .run-state { position: relative; display: block; height: 0.8rem; margin-top: 2px; color: var(--node-muted); font-size: 0.61rem; }
+  .run-state span { position: absolute; inset: 0; }
+  .branch { color: var(--node-muted); font-family: ui-monospace, monospace; font-size: 0.6rem; }
+
+  .supply-chain .queued { animation: dep-queued 14s linear infinite; }
+  .supply-chain .running { animation: dep-running 14s linear infinite; }
+  .supply-chain .complete { animation: dep-complete 14s linear infinite; }
+  .optimization .queued { animation: opt-queued 14s linear infinite; }
+  .optimization .running { animation: opt-running 14s linear infinite; }
+  .optimization .complete { animation: opt-complete 14s linear infinite; }
+  .organization .queued { animation: org-queued 14s linear infinite; }
+  .organization .running { animation: org-running 14s linear infinite; }
+  .organization .complete { animation: org-complete 14s linear infinite; }
+  .local .queued { animation: local-queued 14s linear infinite; }
+  .local .running { animation: local-running 14s linear infinite; }
+  .local .complete { animation: local-complete 14s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes dep-queued { 0%, 13% { opacity: 1; } 14%, 100% { opacity: 0; } }
+  @keyframes dep-running { 0%, 13%, 40%, 100% { opacity: 0; } 14%, 39% { opacity: 1; } }
+  @keyframes dep-complete { 0%, 39% { opacity: 0; } 40%, 100% { opacity: 1; } }
+  @keyframes opt-queued { 0%, 13% { opacity: 1; } 14%, 100% { opacity: 0; } }
+  @keyframes opt-running { 0%, 13%, 52%, 100% { opacity: 0; } 14%, 51% { opacity: 1; } }
+  @keyframes opt-complete { 0%, 51% { opacity: 0; } 52%, 100% { opacity: 1; } }
+  @keyframes org-queued { 0%, 27% { opacity: 1; } 28%, 100% { opacity: 0; } }
+  @keyframes org-running { 0%, 27%, 64%, 100% { opacity: 0; } 28%, 63% { opacity: 1; } }
+  @keyframes org-complete { 0%, 63% { opacity: 0; } 64%, 100% { opacity: 1; } }
+  @keyframes local-queued { 0%, 13% { opacity: 1; } 14%, 100% { opacity: 0; } }
+  @keyframes local-running { 0%, 13%, 76%, 100% { opacity: 0; } 14%, 75% { opacity: 1; } }
+  @keyframes local-complete { 0%, 75% { opacity: 0; } 76%, 100% { opacity: 1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workflow-run * { animation: none !important; }
+    .queued, .running { opacity: 0; }
+    .complete { opacity: 1; }
+  }
+</style>

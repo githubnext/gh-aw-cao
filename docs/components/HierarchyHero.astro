@@ -1,5 +1,5 @@
 ---
-import DispatchIllustration from "./DispatchIllustration.astro";
+import WorkflowEcosystem from "./WorkflowEcosystem.astro";
 import HeroIntro from "./HeroIntro.astro";
 import LandingSlideshow from "./LandingSlideshow.astro";
 import TerminalDemo from "./TerminalDemo.astro";
@@ -50,18 +50,20 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 </div>
 
 <section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal data-slideshow-slide>
-  <p class="section-eyebrow">Execution policy</p>
-  <h2 id="dispatch-title">Control where workflows run.</h2>
+  <p class="section-eyebrow">One workflow ecosystem</p>
+  <h2 id="dispatch-title">Shared work. Clear ownership.</h2>
   <p>
-    Run workflows centrally across enrolled repositories and organizations. Reviewed policy sets the scope;
-    each worker handles one authorized target.
+    Enterprise teams, organizations, and repository maintainers own their workflows. Shared work reaches enrolled
+    repositories alongside local automation, with explicit scope and ownership.
   </p>
   <figure class="dispatch-illustration" aria-describedby="dispatch-description">
     <figcaption id="dispatch-description" class="visually-hidden">
-      Central Agentic Ops configures workflows, runs dispatchers followed by namespaced workers in GitHub Actions,
-      and sends each worker to one explicitly enrolled external repository.
+      Connectors group organizations within the enterprise and repositories within their organization.
+      Enterprise and organization workflows run in their owning control repositories and send declared safe outputs
+      directly to enrolled repositories. Repository-owned workflows run locally and produce their own safe outputs alongside shared outputs.
+      Colors identify ownership, not an authority hierarchy; reviewed policy governs shared work.
     </figcaption>
-    <DispatchIllustration />
+    <WorkflowEcosystem />
   </figure>
 </section>
 

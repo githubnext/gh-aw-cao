@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { issueOpenedPaths, safeOutputPaths } from "../../docs/components/workflow-illustration-icons.mjs";
 
 const paths = [
   "./",
@@ -181,6 +182,252 @@ test("legacy getting-started route redirects to interactive setup", async ({ pag
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Set Up CAO");
 });
 
+for (const colorScheme of ["light", "dark"]) {
+  for (const width of [320, 390, 1280, 1920]) {
+    test(`workflow ecosystem and campaign animation at ${width}px in ${colorScheme} mode`, async ({ page }, testInfo) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      await page.setViewportSize({ width, height: 900 });
+      expect((await page.goto("./"))?.ok()).toBe(true);
+      const ecosystem = page.locator(".workflow-ecosystem");
+      await ecosystem.scrollIntoViewIfNeeded();
+      await expect(ecosystem).toBeVisible();
+      await expect(ecosystem.locator(".ecosystem-legend")).toHaveCount(0);
+      const ownershipColors = colorScheme === "light"
+        ? ["rgb(9, 105, 218)", "rgb(130, 80, 223)", "rgb(26, 127, 55)"]
+        : ["rgb(121, 192, 255)", "rgb(210, 168, 255)", "rgb(126, 231, 135)"];
+      for (const [index, ownership] of ["enterprise", "organization", "repository"].entries()) {
+        const color = ownershipColors[index];
+        for (const header of await ecosystem.locator(`.${ownership}-node header`).all()) {
+          await expect(header.locator("strong")).toHaveCSS("color", color);
+          await expect(header.locator(".octicon")).toHaveCSS("fill", color);
+        }
+        if (ownership !== "enterprise") await expect(ecosystem.locator(`.${ownership}-continuation`)).toHaveCSS("color", color);
+      }
+      await expect(page.locator(".control-plane")).toHaveCount(0);
+      await expect(ecosystem.getByText("Owner: Enterprise automation team", { exact: true })).toBeVisible();
+      await expect(ecosystem.locator(".organization-node header strong")).toHaveText(["Org 1", "Org 2", "Org N"]);
+      await expect(ecosystem.locator(".repository-node header strong")).toHaveText(["Repo 1", "Repo 2", "Repo 3", "Repo N"]);
+      await expect(ecosystem.getByText("Org 2", { exact: true })).toBeVisible();
+      await expect(ecosystem.locator(".enterprise-node .workflow-run strong")).toHaveText(["Supply chain", "Optimization"]);
+      await expect(ecosystem.locator(".enterprise-node .managed-workflows .management-label")).toHaveText("Centrally managed");
+      await expect(ecosystem.locator(".organization-node .managed-workflows .management-label")).toHaveText([
+        "Centrally managed", "Centrally managed", "Centrally managed",
+      ]);
+      for (const badge of await ecosystem.locator(".management-label").all()) {
+        expect(await badge.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+      }
+      await expect(ecosystem.getByText("Org N", { exact: true })).toBeVisible();
+      await expect(ecosystem.getByText("Repo N", { exact: true })).toBeVisible();
+      await expect(ecosystem.getByRole("img", { name: "More organizations", exact: true })).toBeVisible();
+      await expect(ecosystem.getByRole("img", { name: "More repositories", exact: true })).toBeVisible();
+      for (const repository of await ecosystem.locator(".repository-node").all()) {
+        const order = await repository.evaluate((element) => {
+          const workflow = element.querySelector(".local-workflows");
+          const outputs = element.querySelector(".workflow-outputs");
+          return {
+            follows: Boolean(workflow.compareDocumentPosition(outputs) & Node.DOCUMENT_POSITION_FOLLOWING),
+            gap: outputs.getBoundingClientRect().top - workflow.getBoundingClientRect().bottom,
+          };
+        });
+        expect(order.follows).toBe(true);
+        expect(order.gap).toBeGreaterThanOrEqual(0);
+        await expect(repository.locator(".local-workflows > .management-label")).toHaveText("Repository-managed \u00b7 monitored");
+        await expect(repository.locator(".workflow-outputs .management-label")).toHaveCount(0);
+        await expect(repository.locator(".workflow-outputs .safe-output-icon")).toHaveCount(4);
+        const workflowName = await repository.locator(".local-workflows .workflow-run strong").textContent();
+        const outputType = workflowName === "Daily team status" ? "discussion" : workflowName === "Test coverage" ? "pull request" : "issue";
+        await expect(repository.locator(".workflow-outputs small")).toHaveText([
+          "Supply chain", "Optimization", /^(Issue triage|Release readiness|Organization standards)$/, workflowName,
+        ]);
+        await expect(repository.getByRole("img", { name: `Repository ${outputType} safe output`, exact: true })).toBeVisible();
+        await expect(repository.locator(".safe-output-icon.repository")).toHaveCSS("color", ownershipColors[2]);
+        const labels = await repository.locator(".workflow-outputs small").evaluateAll((elements) => elements.map((element) => ({
+          text: element.textContent,
+          title: element.title,
+          height: element.getBoundingClientRect().height,
+          lineHeight: Number.parseFloat(getComputedStyle(element).lineHeight),
+          fits: element.clientWidth <= element.parentElement.clientWidth,
+        })));
+        for (const label of labels) {
+          expect(label.title).toBe(label.text);
+          expect(label.height).toBeLessThanOrEqual(label.lineHeight + 1);
+          expect(label.fits).toBe(true);
+        }
+        await expect(repository.locator(".workflow-outputs .workflow-chip")).toHaveCount(0);
+        await expect(repository.getByRole("img", { name: "Enterprise open issue safe output", exact: true })).toHaveCount(2);
+        await expect(repository.getByRole("img", { name: "Organization open issue safe output", exact: true })).toBeVisible();
+        expect(await repository.locator(".safe-output-icon svg").evaluateAll(
+          (icons) => icons.map((icon) => [...icon.querySelectorAll("path")].map((path) => path.getAttribute("d"))),
+        )).toEqual([issueOpenedPaths, issueOpenedPaths, issueOpenedPaths, safeOutputPaths[outputType]]);
+        await expect(repository.locator(".workflow-run")).toHaveCount(1);
+        await expect(repository.locator(".local-workflows .workflow-run")).toHaveCount(1);
+        await expect(repository.locator(".local-workflows .workflow-run")).toHaveCSS("height", "36px");
+        const outputRows = await repository.locator(".safe-output-icon").evaluateAll(
+          (icons) => icons.map((icon) => icon.getBoundingClientRect().top),
+        );
+        expect(Math.max(...outputRows) - Math.min(...outputRows)).toBeLessThan(1);
+        if (width >= 1280) await expect(repository).toHaveCSS("height", "208px");
+        await expect(repository.locator(".local-workflows .status.complete")).toHaveCSS("opacity", "1");
+      }
+      expect(await page.locator("html").evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(width);
+      for (const node of await ecosystem.locator(".ecosystem-node").all()) {
+        expect(await node.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+      }
+      if (width >= 1280) {
+        await expect(ecosystem.locator(".ecosystem-routes")).toBeVisible();
+        await expect(ecosystem.locator(".ecosystem-routes")).toHaveCSS("animation-name", "none");
+        const portDistances = await ecosystem.evaluate((element) => {
+          const svg = element.querySelector(".ecosystem-routes");
+          const segments = [...svg.querySelectorAll("path")].flatMap((path) => (
+            path.getAttribute("d").match(/M[^M]+/g).map((subpath) => {
+              const geometry = document.createElementNS("http://www.w3.org/2000/svg", "path");
+              geometry.setAttribute("d", subpath);
+              const start = geometry.getPointAtLength(0).matrixTransform(svg.getScreenCTM());
+              const end = geometry.getPointAtLength(geometry.getTotalLength()).matrixTransform(svg.getScreenCTM());
+              return { start, end };
+            })
+          ));
+          return [...element.querySelectorAll("[data-node]")].flatMap((node) => {
+            const box = node.getBoundingClientRect();
+            const edges = node.classList.contains("enterprise-node") ? ["bottom"]
+              : node.classList.contains("repository-node") ? ["top"] : ["top", "bottom"];
+            return edges.map((edge) => {
+              const x = (box.left + box.right) / 2;
+              const y = box[edge];
+              return Math.min(...segments.map(({ start, end }) => Math.hypot(
+                x - Math.max(Math.min(start.x, end.x), Math.min(x, Math.max(start.x, end.x))),
+                y - Math.max(Math.min(start.y, end.y), Math.min(y, Math.max(start.y, end.y))),
+              )));
+            });
+          });
+        });
+        expect(portDistances).toHaveLength(11);
+        for (const distance of portDistances) expect(distance).toBeLessThan(1);
+        await page.emulateMedia({ reducedMotion: "no-preference" });
+        await expect(ecosystem.locator(".route-pulse.supply-chain").first()).toHaveCSS("animation-duration", "14s");
+        await page.emulateMedia({ reducedMotion: "reduce" });
+      }
+      const heroScreenshot = testInfo.outputPath(`ecosystem-${width}-${colorScheme}.png`);
+      await page.locator(".dispatch-story").screenshot({ path: heroScreenshot });
+      await testInfo.attach("Workflow ecosystem", { path: heroScreenshot, contentType: "image/png" });
+
+      expect((await page.goto("catalog/"))?.ok()).toBe(true);
+      await page.getByRole("heading", { name: "How campaigns run", exact: true }).scrollIntoViewIfNeeded();
+      const flow = page.locator(".campaign-flow");
+      await expect(flow.locator(".mobile-flow")).toBeVisible();
+      await expect(flow.locator(".flow-layout")).toBeHidden();
+      await expect(flow).toContainText("Their workflow definitions stay in the control repository");
+      await expect(flow.locator(".mobile-campaign")).toHaveCount(2);
+      expect(await page.locator("html").evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(width);
+      const campaignScreenshot = testInfo.outputPath(`campaign-flow-${width}-${colorScheme}.png`);
+      await flow.screenshot({ path: campaignScreenshot });
+      await testInfo.attach("Campaign execution", { path: campaignScreenshot, contentType: "image/png" });
+    });
+  }
+}
+
+test("workflow ecosystem shared connector stems have the same paint weight as single branches", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const colorScheme of ["light", "dark"]) {
+    await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+    await page.goto("./");
+    const coverage = await page.locator(".ecosystem-routes").evaluate(async (svg) => {
+      const copy = svg.cloneNode(true);
+      copy.querySelectorAll("circle").forEach((circle) => circle.remove());
+      const { width, height } = svg.viewBox.baseVal;
+      copy.setAttribute("width", width);
+      copy.setAttribute("height", height);
+      copy.style.cssText = `width:${width}px;height:${height}px`;
+      const paths = [...svg.querySelectorAll("path")];
+      copy.querySelectorAll("path").forEach((path, index) => {
+        const style = getComputedStyle(paths[index]);
+        path.style.cssText = `fill:none;stroke:${style.stroke};stroke-width:${style.strokeWidth};opacity:${style.opacity};vector-effect:non-scaling-stroke`;
+      });
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copy)], { type: "image/svg+xml" }));
+      try {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0);
+        const root = svg.parentElement.querySelector('[data-node="enterprise"]').getBoundingClientRect();
+        const middle = svg.parentElement.querySelector('[data-node="org-2"]').getBoundingClientRect();
+        const bounds = svg.getBoundingClientRect();
+        const x = Math.round(((root.left + root.right) / 2 - bounds.left) / bounds.width * width);
+        const top = (root.bottom - bounds.top) / bounds.height * height;
+        const gap = (middle.top - root.bottom) / bounds.height * height;
+        const sample = (y) => [...context.getImageData(x - 2, Math.round(y), 5, 1).data].filter((_, index) => index % 4 === 3);
+        return { shared: sample(top + gap / 4), single: sample(top + gap * 3 / 4) };
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    });
+    expect(coverage.shared.some((alpha) => alpha > 0)).toBe(true);
+    expect(coverage.shared).toEqual(coverage.single);
+    await expect(page.locator(".ecosystem-routes > path")).toHaveCount(2);
+  }
+});
+
+for (const width of [390, 1280]) {
+  test(`workflow ecosystem animates runs before delivering safe outputs at ${width}px`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("./");
+    const ecosystem = page.locator(".workflow-ecosystem");
+    await ecosystem.scrollIntoViewIfNeeded();
+    const seek = (time) => ecosystem.evaluate((element, time) => {
+      for (const animation of element.getAnimations({ subtree: true })) {
+        animation.pause();
+        animation.currentTime = time;
+      }
+      const routes = element.querySelector(".ecosystem-routes");
+      routes.pauseAnimations();
+      routes.setCurrentTime(time / 1000);
+    }, time);
+    const supplyChain = ecosystem.locator(".workflow-run.supply-chain");
+    const outputs = ecosystem.locator(".repository-node").first().locator(".safe-output");
+    await seek(1000);
+    await expect(supplyChain.locator(".status.queued")).toHaveCSS("opacity", "1");
+    for (const output of await outputs.all()) await expect(output).toHaveCSS("opacity", "0");
+    await seek(4000);
+    await expect(supplyChain.locator(".status.running")).toHaveCSS("opacity", "1");
+    await expect(supplyChain.locator(".status.complete")).toHaveCSS("opacity", "0");
+    await seek(6200);
+    await expect(supplyChain.locator(".status.complete")).toHaveCSS("opacity", "1");
+    await expect(outputs.nth(0)).toHaveCSS("opacity", "0");
+    const delivery = width === 1280
+      ? ecosystem.locator(".route-pulse.supply-chain").first()
+      : ecosystem.locator(".enterprise-delivery .supply-chain").first();
+    await expect(delivery).toHaveCSS("opacity", "1");
+    await seek(7000);
+    await expect(outputs.nth(0)).toHaveCSS("opacity", "1");
+    await expect(outputs.nth(1)).toHaveCSS("opacity", "0");
+    await expect(ecosystem.locator(".workflow-run.local .status.running").first()).toHaveCSS("opacity", "1");
+    await seek(9000);
+    await expect(outputs.nth(1)).toHaveCSS("opacity", "1");
+    await expect(outputs.nth(2)).toHaveCSS("opacity", "0");
+    await seek(11000);
+    for (let index = 0; index < 3; index++) await expect(outputs.nth(index)).toHaveCSS("opacity", "1");
+    await expect(ecosystem.locator(".workflow-run.local .status.complete").first()).toHaveCSS("opacity", "1");
+    await expect(outputs.nth(3)).toHaveCSS("opacity", "0");
+    await seek(12000);
+    for (const output of await outputs.all()) await expect(output).toHaveCSS("opacity", "1");
+    await seek(14100);
+    await expect(supplyChain.locator(".status.queued")).toHaveCSS("opacity", "1");
+    for (const output of await outputs.all()) await expect(output).toHaveCSS("opacity", "0");
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    for (const output of await outputs.all()) await expect(output).toHaveCSS("opacity", "1");
+    for (const status of await ecosystem.locator(".workflow-run .status.complete").all()) {
+      await expect(status).toHaveCSS("opacity", "1");
+    }
+    await expect(delivery).toBeHidden();
+  });
+}
+
 test("legacy authentication profile route redirects to the consolidated guide", async ({ page }) => {
   await page.goto("control-plane-authentication/");
   await expect(page).toHaveURL(/\/authentication\/$/);
@@ -337,7 +584,7 @@ for (const { name, viewport } of [
       const tagline = page.locator(".docs-hero-intro .tagline");
       await expect(tagline).toBeVisible();
       await expect(tagline).toHaveText("Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy.");
-      await expect(page.getByRole("heading", { name: "Control where workflows run.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Shared work. Clear ownership.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Reuse what works.", exact: true })).toBeAttached();
