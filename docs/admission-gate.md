@@ -4,7 +4,7 @@ description: Deploy and operate the optional OIDC-authenticated workflow cost ga
 ---
 
 The admission gate decides whether a participating gh-aw execution may start.
-It authenticates the activation job with GitHub Actions OIDC, checks reviewed
+It authenticates the isolated admission job with GitHub Actions OIDC, checks reviewed
 workflow enrollment and fresh accounting, and returns policy-defined AI Credit
 allowances. It is an optional **cooperative start-time check**, not a billing
 API, a reservation system, or an unbypassable organization policy.
@@ -17,9 +17,9 @@ reviewed policy.
 ## Before you begin
 
 :::caution[Use a matching client revision]
-The server supports the v1.2 draft wire contract from
+The server supports the v1.2 wire contract merged in
 [github/gh-aw#70429](https://github.com/github/gh-aw/pull/70429), checked at
-`5cbb791cb9f4e05b119a01e2a69da8311e916837`. It does **not** implement the older
+`be70cb4ec4317135a1ab21d5b830b6fae7d5be4a`. It does **not** implement the older
 nine-field/correlation-ID protocol merged in
 [github/gh-aw#70286](https://github.com/github/gh-aw/pull/70286) at
 `d9abaf92a50fd8778f12fa122138b30c75daf8f2`. Confirm the client's actual protocol,
@@ -93,6 +93,14 @@ as `cao-dashboard serve-hosted` in the configured process deployment. The public
 service route is exactly `POST /api/admission`. Authentication and trace
 handling do not depend on dashboard cookies.
 
+With server OTLP export configured, the client's valid `traceparent` parents
+the server HTTP span and its request-scoped dependencies. The merged client
+relays its caller-owned trace context through activation, allowing the
+workflow and server sessions to be correlated by trace ID. The response never
+returns a trace/correlation ID. Missing, malformed or duplicate context starts
+a fresh trace without changing the decision; baggage and tracestate are
+discarded, and sampling is controlled locally.
+
 ## 2. Configure one canary repository
 
 Preview the exact endpoint and audience:
@@ -148,7 +156,7 @@ the client applies the supplied allowances to the corresponding runtime caps.
 Omitted optional detection/evals allowances preserve existing component policy.
 
 Do not use a PAT, dashboard capability, or fabricated OIDC token with `curl`
-as a positive admission test. Identity must come from the real activation job.
+as a positive admission test. Identity must come from the real admission job.
 `status` verifies managed settings, not workflow compilation, enrollment, or an
 admission decision. A successful workflow run alone is not proof of admission:
 check whether the helper was skipped or used outage `ignore`.

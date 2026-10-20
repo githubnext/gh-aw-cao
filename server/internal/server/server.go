@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
@@ -725,6 +726,9 @@ func (a *App) Handler() http.Handler {
 	}), telemetry.SpanHTTPServer,
 		// Sanitized parents are non-recording contexts, not SDK providers.
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
+		// Traceparent is extracted and sanitized below. Never let a global
+		// propagator reintroduce baggage, tracestate or a different parent.
+		otelhttp.WithPropagators(propagation.NewCompositeTextMapPropagator()),
 		otelhttp.WithFilter(func(request *http.Request) bool {
 			// OAuth callbacks use a dedicated, allowlisted server span instead
 			// of the generic HTTP instrumentation.

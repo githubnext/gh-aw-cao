@@ -1,9 +1,9 @@
 # Cooperative workflow admission
 
 The hosted server optionally implements `POST /api/admission` from the
-[gh-aw admission specification](https://github.com/github/gh-aw/blob/534c41f256149eb5be01efad8dc26a08391a33a3/docs/src/content/docs/specs/admission-service-specification.md).
+[gh-aw admission specification](https://github.com/github/gh-aw/blob/be70cb4ec4317135a1ab21d5b830b6fae7d5be4a/docs/src/content/docs/specs/admission-service-specification.md).
 Its safety contract follows the
-[activation TLA+ model](https://github.com/github/gh-aw/blob/534c41f256149eb5be01efad8dc26a08391a33a3/specs/workflow-security/ActivationAdmission.tla):
+[activation TLA+ model](https://github.com/github/gh-aw/blob/be70cb4ec4317135a1ab21d5b830b6fae7d5be4a/specs/workflow-security/ActivationAdmission.tla):
 verified invocation identity, stable retry allowances, private denial reasons,
 and no financial side effects. The model is a reference, not proof of the Go
 implementation. The gh-aw client owns activation and downstream allowance
@@ -20,17 +20,22 @@ variables, or omitting the helper can bypass it.
 
 ## Protocol revision and compatibility
 
-This implementation supports the v1.2 draft wire contract published in
+This implementation supports the v1.2 wire contract merged in
 [github/gh-aw#70429](https://github.com/github/gh-aw/pull/70429), checked against
-commit `5cbb791cb9f4e05b119a01e2a69da8311e916837`. It preserves the explicit
+commit `be70cb4ec4317135a1ab21d5b830b6fae7d5be4a`. The upstream document retains
+its draft version label; this pin identifies the actual merged implementation.
+It preserves the explicit
 requirements for ten request fields (including `workflow_hash`), required primary
 and independently optional component allowances, and **no response correlation
-identifier**. The earlier pinned `534c41f256149eb5be01efad8dc26a08391a33a3`
-specification/model linked above describes those same server wire requirements.
-The checked client revision uses a compiler-owned `activation_admission` job
-and records a structured `guardrail.admission` session event. Those are
-client-owned orchestration/evidence surfaces; this server neither implements
-them nor assumes that OIDC identifies which step requested the token.
+identifier**. The merged client's protocol parser is unchanged from the earlier
+verified draft (Git blob `a8ea9216b6c946352288332fce48405d1317e915`, SHA-256
+`96ff134b1597e839702e5df389ab52a48fb5f35bcc5bada7a4bbc61751490ae4`).
+The merged client uses an isolated compiler-owned `admission` job, relays its
+validated allowances and caller-owned trace context through activation, and
+records a structured `guardrail.admission` session event with admission
+provenance. Those are client-owned orchestration/evidence surfaces; this server
+neither implements them nor assumes OIDC identifies which helper requested the
+token. Independent OIDC grants elsewhere do not attest this helper ran.
 
 It is **not wire-compatible** with the original merged
 [github/gh-aw#70286](https://github.com/github/gh-aw/pull/70286) specification at
@@ -314,6 +319,13 @@ timeout still applies when per-request transport deadlines are unavailable.
 The service does not claim constant-time networking.
 
 Only a single valid incoming `traceparent` is retained for server correlation.
+Its trace ID is the server HTTP span's trace ID, and its client span ID is that
+server span's remote parent. Request-scoped dependencies receive the server
+span context, so their spans remain on the same trace. Correlate this trace
+with the caller-owned context the merged gh-aw client relays to activation and
+subsequent workflow telemetry; no server-issued correlation identifier is
+necessary. HTTP instrumentation consumes only the sanitized context, not a
+second global propagator that could inject another parent or private metadata.
 Missing, invalid or duplicate context starts a fresh context; baggage and
 tracestate are discarded. The inbound sampled flag is replaced with a local
 choice and the configured server exporter/sampler still owns export. No trace
@@ -335,3 +347,23 @@ owner-accessible local PostgreSQL database and run
 `go -C server test ./internal/operational/postgres -run ActivationAdmission`
 for real cross-replica retry, revocation, expiry, outage recovery and capacity
 checks. All credentials and accounting in these tests are synthetic.
+
+`TestAdmissionClientTraceparentExportedThroughFullHandler` inspects exported
+server and dependency spans for sampled/unsampled callers, retries, malformed,
+missing, zero, oversized and duplicate context, including metadata stripping
+and absent response identifiers. To reproduce the actual merged client parser
+check, download `actions/setup/js/admission_protocol.cjs` and its sibling
+`error_codes.cjs` from the pinned merge using the GitHub contents API's
+base64-decoded bytes, then run:
+
+```sh
+GH_AW_ADMISSION_PROTOCOL_PATH=/absolute/path/admission_protocol.cjs \
+  go -C server test ./internal/admission -run TestMergedGhAWClientConformance
+```
+
+The test verifies the parser's SHA-256, builds the request using the real
+client, sends it through the production service with synthetic signed OIDC, and
+parses every allowance combination and integer boundaries using that client.
+Without the explicit fixture path it skips; ordinary Go tests need no Node
+runtime or network fetch. Do not use sanitized `gh api` raw-terminal output as
+parser source: decode the contents API's `content` field and verify its bytes.

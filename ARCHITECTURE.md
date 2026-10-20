@@ -282,6 +282,12 @@ mutation, dashboard-session authentication, trace-response identifier or CAO
 scope widening is permitted. Redis, memory and local modes cannot enable it.
 `server/ADMISSION.md` documents the trust profile, publisher requirements,
 capacity/retention lifecycle and cooperative fail-open limitations.
+The HTTP contract is pinned to merged gh-aw `be70cb4ec4317135a1ab21d5b830b6fae7d5be4a`.
+Its isolated admission job relays caller-owned tracing through activation.
+Valid incoming traceparent parents the server HTTP span and dependencies;
+HTTP instrumentation must consume the sanitized context without re-extracting
+global baggage/tracestate or another parent. Invalid/duplicate context starts
+a fresh trace without changing authorization, and responses expose no trace ID.
 Native `gh cao admission setup/status/disable` commands configure the
 selected scope's three managed non-secret variables. `gh cao setup admission`
 reuses admission setup without introducing workflow secrets. Setup/disable apply
