@@ -183,7 +183,7 @@ test("legacy getting-started route redirects to interactive setup", async ({ pag
 });
 
 for (const colorScheme of ["light", "dark"]) {
-  for (const width of [320, 390, 1280, 1920]) {
+  for (const width of [320, 390, 1153, 1280, 1920]) {
     test(`workflow ecosystem and campaign animation at ${width}px in ${colorScheme} mode`, async ({ page }, testInfo) => {
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
       await page.setViewportSize({ width, height: 900 });
@@ -191,24 +191,40 @@ for (const colorScheme of ["light", "dark"]) {
       const ecosystem = page.locator(".workflow-ecosystem");
       await ecosystem.scrollIntoViewIfNeeded();
       await expect(ecosystem).toBeVisible();
+      await expect(ecosystem.locator(".animation-toggle")).toBeHidden();
       await expect(ecosystem.locator(".ecosystem-legend")).toHaveCount(0);
-      const ownershipColors = colorScheme === "light"
-        ? ["rgb(9, 105, 218)", "rgb(130, 80, 223)", "rgb(26, 127, 55)"]
-        : ["rgb(121, 192, 255)", "rgb(210, 168, 255)", "rgb(126, 231, 135)"];
-      for (const [index, ownership] of ["enterprise", "organization", "repository"].entries()) {
-        const color = ownershipColors[index];
-        for (const header of await ecosystem.locator(`.${ownership}-node header`).all()) {
-          await expect(header.locator("strong")).toHaveCSS("color", color);
-          await expect(header.locator(".octicon")).toHaveCSS("fill", color);
-        }
-        if (ownership !== "enterprise") await expect(ecosystem.locator(`.${ownership}-continuation`)).toHaveCSS("color", color);
+      const successColor = colorScheme === "light" ? "rgb(45, 164, 78)" : "rgb(63, 185, 80)";
+      const runningColor = colorScheme === "light" ? "rgb(191, 135, 0)" : "rgb(210, 153, 34)";
+      const neutralColor = await ecosystem.locator(".ecosystem-node").first().evaluate((element) => getComputedStyle(element).color);
+      const borderColor = await ecosystem.locator(".ecosystem-node").first().evaluate((element) => getComputedStyle(element).borderTopColor);
+      const mutedColor = await ecosystem.locator(".management-label").first().evaluate((element) => getComputedStyle(element).color);
+      for (const node of await ecosystem.locator(".ecosystem-node").all()) {
+        await expect(node).toHaveCSS("border-top-color", borderColor);
+        await expect(node.locator("header strong")).toHaveCSS("color", neutralColor);
+        await expect(node.locator("header .octicon")).toHaveCSS("fill", neutralColor);
+      }
+      for (const continuation of await ecosystem.locator(".continuation-point").all()) {
+        await expect(continuation).toHaveCSS("color", mutedColor);
+      }
+      for (const run of await ecosystem.locator(".workflow-run").all()) {
+        await expect(run.locator(".progress-ring")).toHaveCSS("stroke", runningColor);
+        await expect(run.locator(".status.complete")).toHaveCSS("fill", successColor);
+      }
+      for (const pulse of await ecosystem.locator(".route-pulse").all()) {
+        await expect(pulse).toHaveCSS("fill", successColor);
       }
       await expect(page.locator(".control-plane")).toHaveCount(0);
-      await expect(ecosystem.getByText("Owner: Enterprise automation team", { exact: true })).toBeVisible();
+      await expect(ecosystem.locator(".node-owner")).toHaveCount(0);
+      await expect(ecosystem.getByText(/Enterprise automation team|Platform team|Engineering team|Organization team|Maintainers/)).toHaveCount(0);
+      await expect(ecosystem.locator(".branch")).toHaveCount(0);
+      for (const title of await ecosystem.locator(".workflow-run strong").all()) {
+        expect(await title.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+      }
       await expect(ecosystem.locator(".organization-node header strong")).toHaveText(["Org 1", "Org 2", "Org N"]);
       await expect(ecosystem.locator(".repository-node header strong")).toHaveText(["Repo 1", "Repo 2", "Repo 3", "Repo N"]);
       await expect(ecosystem.getByText("Org 2", { exact: true })).toBeVisible();
-      await expect(ecosystem.locator(".enterprise-node .workflow-run strong")).toHaveText(["Supply chain", "Optimization"]);
+      await expect(ecosystem.locator(".enterprise-node .workflow-run strong")).toHaveText(["Optimization"]);
+      await expect(ecosystem.getByText("Supply chain", { exact: true })).toHaveCount(0);
       await expect(ecosystem.locator(".enterprise-node .managed-workflows .management-label")).toHaveText("Centrally managed");
       await expect(ecosystem.locator(".organization-node .managed-workflows .management-label")).toHaveText([
         "Centrally managed", "Centrally managed", "Centrally managed",
@@ -231,34 +247,54 @@ for (const colorScheme of ["light", "dark"]) {
         });
         expect(order.follows).toBe(true);
         expect(order.gap).toBeGreaterThanOrEqual(0);
-        await expect(repository.locator(".local-workflows > .management-label")).toHaveText("Repository-managed \u00b7 monitored");
+        await expect(repository.locator(".local-workflows > .management-label")).toHaveText("Repo-managed \u00b7 monitored");
         await expect(repository.locator(".workflow-outputs .management-label")).toHaveCount(0);
-        await expect(repository.locator(".workflow-outputs .safe-output-icon")).toHaveCount(4);
+        await expect(repository.locator(".workflow-outputs .safe-output-icon")).toHaveCount(3);
         const workflowName = await repository.locator(".local-workflows .workflow-run strong").textContent();
         const outputType = workflowName === "Daily team status" ? "discussion" : workflowName === "Test coverage" ? "pull request" : "issue";
+        const localCaption = {
+          "Daily team status": "Status", "Test coverage": "Tests", "Release checks": "Checks", "Project health": "Health",
+        }[workflowName];
         await expect(repository.locator(".workflow-outputs small")).toHaveText([
-          "Supply chain", "Optimization", /^(Issue triage|Release readiness|Organization standards)$/, workflowName,
+          localCaption, "Optimize", /^(Triage|Readiness|Standardize)$/,
         ]);
-        await expect(repository.getByRole("img", { name: `Repository ${outputType} safe output`, exact: true })).toBeVisible();
-        await expect(repository.locator(".safe-output-icon.repository")).toHaveCSS("color", ownershipColors[2]);
+        await expect(repository.getByRole("img", { name: `${workflowName}: Repository ${outputType} safe output`, exact: true })).toBeVisible();
+        for (const output of await repository.locator(".safe-output-icon").all()) {
+          await expect(output).toHaveCSS("color", successColor);
+        }
         const labels = await repository.locator(".workflow-outputs small").evaluateAll((elements) => elements.map((element) => ({
           text: element.textContent,
-          title: element.title,
+          hasFullTitle: element.title.length >= element.textContent.length,
           height: element.getBoundingClientRect().height,
           lineHeight: Number.parseFloat(getComputedStyle(element).lineHeight),
-          fits: element.clientWidth <= element.parentElement.clientWidth,
+          fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+          fits: element.scrollWidth <= element.clientWidth && element.clientWidth <= element.parentElement.clientWidth,
         })));
         for (const label of labels) {
-          expect(label.title).toBe(label.text);
+          expect(label.hasFullTitle).toBe(true);
           expect(label.height).toBeLessThanOrEqual(label.lineHeight + 1);
+          expect(label.fontSize).toBeGreaterThanOrEqual(12);
           expect(label.fits).toBe(true);
         }
         await expect(repository.locator(".workflow-outputs .workflow-chip")).toHaveCount(0);
-        await expect(repository.getByRole("img", { name: "Enterprise open issue safe output", exact: true })).toHaveCount(2);
-        await expect(repository.getByRole("img", { name: "Organization open issue safe output", exact: true })).toBeVisible();
+        await expect(repository.getByRole("img", { name: "Optimization: Enterprise open issue safe output", exact: true })).toBeVisible();
+        await expect(repository.getByRole("img", { name: /: Organization open issue safe output$/ })).toBeVisible();
         expect(await repository.locator(".safe-output-icon svg").evaluateAll(
           (icons) => icons.map((icon) => [...icon.querySelectorAll("path")].map((path) => path.getAttribute("d"))),
-        )).toEqual([issueOpenedPaths, issueOpenedPaths, issueOpenedPaths, safeOutputPaths[outputType]]);
+        )).toEqual([safeOutputPaths[outputType], issueOpenedPaths, issueOpenedPaths]);
+        await expect(repository.locator(".safe-output.local")).toBeVisible();
+        expect(await repository.locator(".safe-output.local").evaluate((element) => ({
+          link: getComputedStyle(element, "::before").height,
+          separation: getComputedStyle(element).borderRightWidth,
+        }))).toEqual({ link: "12px", separation: "0px" });
+        expect(await repository.locator(".workflow-outputs").evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          const outputs = [...element.querySelectorAll(".safe-output")].map((output) => output.getBoundingClientRect());
+          return outputs.every((output, index) => (
+            output.left >= bounds.left && output.right <= bounds.right + 0.1
+            && (index === 0 || output.left - outputs[index - 1].right >= 2.9)
+          ));
+        })).toBe(true);
         await expect(repository.locator(".workflow-run")).toHaveCount(1);
         await expect(repository.locator(".local-workflows .workflow-run")).toHaveCount(1);
         await expect(repository.locator(".local-workflows .workflow-run")).toHaveCSS("height", "36px");
@@ -266,14 +302,32 @@ for (const colorScheme of ["light", "dark"]) {
           (icons) => icons.map((icon) => icon.getBoundingClientRect().top),
         );
         expect(Math.max(...outputRows) - Math.min(...outputRows)).toBeLessThan(1);
-        if (width >= 1280) await expect(repository).toHaveCSS("height", "208px");
+        if (width >= 1280) await expect(repository).toHaveCSS("height", "184px");
         await expect(repository.locator(".local-workflows .status.complete")).toHaveCSS("opacity", "1");
       }
       expect(await page.locator("html").evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(width);
       for (const node of await ecosystem.locator(".ecosystem-node").all()) {
         expect(await node.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
       }
-      if (width >= 1280) {
+      if (width <= 1152) {
+        const alignment = await ecosystem.locator(".organization-node, .repository-node").evaluateAll((nodes) => nodes.map((node) => {
+          const box = node.getBoundingClientRect();
+          const header = node.querySelector("header").getBoundingClientRect();
+          const link = getComputedStyle(node, "::before");
+          const border = Number.parseFloat(getComputedStyle(node).borderTopWidth);
+          return {
+            header: (header.top + header.bottom) / 2 - box.top,
+            connector: border + Number.parseFloat(link.top) + Number.parseFloat(link.borderTopWidth) / 2,
+            pulses: [...node.querySelectorAll(".mobile-delivery")].map((pulse) => (
+              border + Number.parseFloat(getComputedStyle(pulse).top) + 2.5
+            )),
+          };
+        }));
+        for (const node of alignment) {
+          expect(Math.abs(node.connector - node.header)).toBeLessThan(0.1);
+          for (const pulse of node.pulses) expect(Math.abs(pulse - node.header)).toBeLessThan(0.1);
+        }
+      } else {
         await expect(ecosystem.locator(".ecosystem-routes")).toBeVisible();
         await expect(ecosystem.locator(".ecosystem-routes")).toHaveCSS("animation-name", "none");
         const portDistances = await ecosystem.evaluate((element) => {
@@ -304,7 +358,7 @@ for (const colorScheme of ["light", "dark"]) {
         expect(portDistances).toHaveLength(11);
         for (const distance of portDistances) expect(distance).toBeLessThan(1);
         await page.emulateMedia({ reducedMotion: "no-preference" });
-        await expect(ecosystem.locator(".route-pulse.supply-chain").first()).toHaveCSS("animation-duration", "14s");
+        await expect(ecosystem.locator(".route-pulse.optimization").first()).toHaveCSS("animation-duration", "14s");
         await page.emulateMedia({ reducedMotion: "reduce" });
       }
       const heroScreenshot = testInfo.outputPath(`ecosystem-${width}-${colorScheme}.png`);
@@ -372,6 +426,45 @@ test("workflow ecosystem shared connector stems have the same paint weight as si
 });
 
 for (const width of [390, 1280]) {
+  test(`workflow ecosystem can pause and resume every animation with the keyboard at ${width}px`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("./");
+    const ecosystem = page.locator(".workflow-ecosystem");
+    const pause = ecosystem.getByRole("button", { name: "Pause animation", exact: true });
+    await pause.focus();
+    await page.keyboard.press("Enter");
+    const resume = ecosystem.getByRole("button", { name: "Resume animation", exact: true });
+    await expect(resume).toBeFocused();
+    const sample = () => ecosystem.evaluate(async (element) => {
+      const animations = element.getAnimations({ subtree: true });
+      await Promise.all(animations.map((animation) => animation.ready));
+      const routes = element.querySelector(".ecosystem-routes");
+      return {
+        motionPaused: routes.animationsPaused(),
+        motionTime: routes.getCurrentTime(),
+        states: animations.map((animation) => animation.playState),
+        times: animations.map((animation) => animation.currentTime),
+      };
+    });
+    const paused = await sample();
+    expect(paused.motionPaused).toBe(true);
+    expect(paused.states.length).toBeGreaterThan(0);
+    expect(paused.states.every((state) => state === "paused")).toBe(true);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const stillPaused = await sample();
+    expect(stillPaused.motionTime).toBe(paused.motionTime);
+    expect(stillPaused.times).toEqual(paused.times);
+    await page.keyboard.press("Space");
+    await expect(pause).toBeFocused();
+    const resumed = await sample();
+    expect(resumed.motionPaused).toBe(false);
+    expect(resumed.states.every((state) => state === "running")).toBe(true);
+    await expect.poll(async () => (await sample()).motionTime).toBeGreaterThan(paused.motionTime);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(pause).toBeHidden();
+  });
+
   test(`workflow ecosystem animates runs before delivering safe outputs at ${width}px`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.setViewportSize({ width, height: 900 });
@@ -387,40 +480,67 @@ for (const width of [390, 1280]) {
       routes.pauseAnimations();
       routes.setCurrentTime(time / 1000);
     }, time);
-    const supplyChain = ecosystem.locator(".workflow-run.supply-chain");
-    const outputs = ecosystem.locator(".repository-node").first().locator(".safe-output");
-    await seek(1000);
-    await expect(supplyChain.locator(".status.queued")).toHaveCSS("opacity", "1");
-    for (const output of await outputs.all()) await expect(output).toHaveCSS("opacity", "0");
-    await seek(4000);
-    await expect(supplyChain.locator(".status.running")).toHaveCSS("opacity", "1");
-    await expect(supplyChain.locator(".status.complete")).toHaveCSS("opacity", "0");
-    await seek(6200);
-    await expect(supplyChain.locator(".status.complete")).toHaveCSS("opacity", "1");
-    await expect(outputs.nth(0)).toHaveCSS("opacity", "0");
+    const optimization = ecosystem.locator(".workflow-run.optimization");
+    const successColor = await optimization.locator(".status.complete").evaluate((element) => getComputedStyle(element).fill);
+    const mutedColor = await ecosystem.locator(".management-label").first().evaluate((element) => getComputedStyle(element).color);
+    const repository = ecosystem.locator(".repository-node").first();
+    const outputs = repository.locator(".safe-output-icon");
+    const optimizationOutput = repository.locator(".safe-output.optimization .safe-output-icon");
+    const organizationOutput = repository.locator(".safe-output.organization .safe-output-icon");
+    const localOutput = repository.locator(".safe-output.local .safe-output-icon");
+    await seek(500);
+    await expect(optimization.locator(".status.queued")).toHaveCSS("opacity", "1");
+    for (const output of await outputs.all()) {
+      await expect(output).toHaveCSS("opacity", "0.35");
+      await expect(output).toHaveCSS("color", mutedColor);
+    }
+    for (const label of await repository.locator(".safe-output small").all()) await expect(label).toHaveCSS("opacity", "1");
+    await seek(1500);
+    await expect(optimization.locator(".status.running")).toHaveCSS("opacity", "1");
+    await expect(optimization.locator(".status.complete")).toHaveCSS("opacity", "0");
+    await seek(4500);
+    await expect(optimization.locator(".status.complete")).toHaveCSS("opacity", "1");
+    await expect(optimizationOutput).toHaveCSS("opacity", "0.35");
+    await expect(optimizationOutput).toHaveCSS("color", mutedColor);
     const delivery = width === 1280
-      ? ecosystem.locator(".route-pulse.supply-chain").first()
-      : ecosystem.locator(".enterprise-delivery .supply-chain").first();
+      ? ecosystem.locator(".route-pulse.optimization").first()
+      : ecosystem.locator(".enterprise-delivery .optimization").first();
     await expect(delivery).toHaveCSS("opacity", "1");
-    await seek(7000);
-    await expect(outputs.nth(0)).toHaveCSS("opacity", "1");
-    await expect(outputs.nth(1)).toHaveCSS("opacity", "0");
+    await expect(delivery).toHaveCSS(width === 1280 ? "fill" : "background-color", successColor);
     await expect(ecosystem.locator(".workflow-run.local .status.running").first()).toHaveCSS("opacity", "1");
-    await seek(9000);
-    await expect(outputs.nth(1)).toHaveCSS("opacity", "1");
-    await expect(outputs.nth(2)).toHaveCSS("opacity", "0");
-    await seek(11000);
-    for (let index = 0; index < 3; index++) await expect(outputs.nth(index)).toHaveCSS("opacity", "1");
+    await seek(5000);
+    await expect(optimizationOutput).toHaveCSS("opacity", "1");
+    await expect(optimizationOutput).toHaveCSS("color", successColor);
+    await expect(organizationOutput).toHaveCSS("opacity", "0.35");
+    await expect(organizationOutput).toHaveCSS("color", mutedColor);
+    await seek(6000);
+    await expect(organizationOutput).toHaveCSS("opacity", "1");
+    await expect(organizationOutput).toHaveCSS("color", successColor);
+    await expect(ecosystem.locator(".workflow-run.local .status.running").first()).toHaveCSS("opacity", "1");
+    await seek(6500);
     await expect(ecosystem.locator(".workflow-run.local .status.complete").first()).toHaveCSS("opacity", "1");
-    await expect(outputs.nth(3)).toHaveCSS("opacity", "0");
-    await seek(12000);
-    for (const output of await outputs.all()) await expect(output).toHaveCSS("opacity", "1");
+    await expect(localOutput).toHaveCSS("opacity", "0.35");
+    expect(await repository.locator(".safe-output.local").evaluate((element) => getComputedStyle(element, "::after").opacity)).toBe("1");
+    for (const time of [7100, 10000, 13500]) {
+      await seek(time);
+      for (const output of await outputs.all()) {
+        await expect(output).toHaveCSS("opacity", "1");
+        await expect(output).toHaveCSS("color", successColor);
+      }
+      for (const status of await ecosystem.locator(".workflow-run .status.complete").all()) await expect(status).toHaveCSS("opacity", "1");
+    }
     await seek(14100);
-    await expect(supplyChain.locator(".status.queued")).toHaveCSS("opacity", "1");
-    for (const output of await outputs.all()) await expect(output).toHaveCSS("opacity", "0");
+    await expect(optimization.locator(".status.queued")).toHaveCSS("opacity", "1");
+    for (const output of await outputs.all()) {
+      await expect(output).toHaveCSS("opacity", "0.35");
+      await expect(output).toHaveCSS("color", mutedColor);
+    }
 
     await page.emulateMedia({ reducedMotion: "reduce" });
-    for (const output of await outputs.all()) await expect(output).toHaveCSS("opacity", "1");
+    for (const output of await outputs.all()) {
+      await expect(output).toHaveCSS("opacity", "1");
+      await expect(output).toHaveCSS("color", successColor);
+    }
     for (const status of await ecosystem.locator(".workflow-run .status.complete").all()) {
       await expect(status).toHaveCSS("opacity", "1");
     }

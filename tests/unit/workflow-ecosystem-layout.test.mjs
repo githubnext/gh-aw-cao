@@ -9,11 +9,13 @@ const epsilon = 0.000001;
 
 test("repository workflows illustrate their own discussion, pull request, and issue safe outputs", () => {
   assert.deepEqual(new Set(repositories.map((repository) => repository.output)), new Set(["discussion", "pull request", "issue"]));
+  assert.deepEqual(repositories.map((repository) => repository.caption), ["Status", "Tests", "Checks", "Health"]);
   for (const repository of repositories) assert.ok(safeOutputPaths[repository.output]?.length);
 });
 
 test("workflow ecosystem expands from enterprise to three organizations and four repositories", () => {
   assert.deepEqual(organizations.map((organization) => organization.name), ["Org 1", "Org 2", "Org N"]);
+  assert.deepEqual(organizations.map((organization) => organization.caption), ["Triage", "Readiness", "Standardize"]);
   assert.deepEqual(repositories.map((repository) => repository.name), ["Repo 1", "Repo 2", "Repo 3", "Repo N"]);
   const enterprise = nodes.find((node) => node.id === "enterprise");
   const organizationNodes = organizations.map(({ id }) => nodes.find((node) => node.id === id));
@@ -25,7 +27,8 @@ test("workflow ecosystem expands from enterprise to three organizations and four
   assert.ok(repositoryNodes.at(-1).x + repositoryNodes.at(-1).width - repositoryNodes[0].x
     > organizationNodes.at(-1).x + organizationNodes.at(-1).width - organizationNodes[0].x);
   assert.equal(edges.length, 7);
-  assert.equal(routes.length, 12);
+  assert.equal(routes.length, 8);
+  assert.deepEqual(new Set(routes.map(({ phase }) => phase)), new Set(["optimization", "organization"]));
 });
 
 test("connectors and delivery pulses follow enterprise, organization, repository hierarchy", () => {
@@ -36,9 +39,8 @@ test("connectors and delivery pulses follow enterprise, organization, repository
   for (const [index, repository] of repositories.entries()) {
     const parent = connections.find((connection) => connection.target === repository.organization);
     const child = connections.find((connection) => connection.target === repository.id);
-    assert.equal(routes[index * 3].path, `${parent.path} ${child.path}`);
-    assert.equal(routes[index * 3 + 1].path, `${parent.path} ${child.path}`);
-    assert.equal(routes[index * 3 + 2].path, child.path);
+    assert.equal(routes[index * 2].path, `${parent.path} ${child.path}`);
+    assert.equal(routes[index * 2 + 1].path, child.path);
   }
 });
 
@@ -53,7 +55,7 @@ test("parents are centered over their children with evenly spaced organizations"
     assert.equal(center(parent), (Math.min(...children) + Math.max(...children)) / 2);
   }
   for (const { id } of repositories) {
-    assert.equal(nodes.find((node) => node.id === id).height, 208);
+    assert.equal(nodes.find((node) => node.id === id).height, 184);
   }
 });
 

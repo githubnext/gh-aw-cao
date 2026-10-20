@@ -3,9 +3,8 @@ import WorkflowRun from "./WorkflowRun.astro";
 import { globePath, issueOpenedPaths, organizationPath, repoPath, safeOutputPaths } from "./workflow-illustration-icons.mjs";
 import { connectorLayers, ecosystemLayout, nodeStyle, organizations, repositories, routes } from "../lib/workflow-ecosystem.mjs";
 const safeOutputs = [
-  { owner: "enterprise", source: "Supply chain", phase: "supply-chain", label: "Enterprise open issue safe output", paths: issueOpenedPaths },
-  { owner: "enterprise", source: "Optimization", phase: "optimization", label: "Enterprise open issue safe output", paths: issueOpenedPaths },
-  { owner: "organization", source: null, phase: "organization", label: "Organization open issue safe output", paths: issueOpenedPaths },
+  { owner: "enterprise", source: "Optimization", caption: "Optimize", phase: "optimization", label: "Enterprise open issue safe output", paths: issueOpenedPaths },
+  { owner: "organization", source: null, caption: null, phase: "organization", label: "Organization open issue safe output", paths: issueOpenedPaths },
 ];
 ---
 
@@ -27,11 +26,9 @@ const safeOutputs = [
         <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path d={globePath}></path></svg>
         <strong>Enterprise</strong>
       </header>
-      <p class="node-owner">Owner: Enterprise automation team</p>
       <div class="managed-workflows" role="group" aria-label="Centrally managed workflows">
         <p class="management-label">Centrally managed</p>
         <div class="workflow-runs">
-          <WorkflowRun name="Supply chain" phase="supply-chain" />
           <WorkflowRun name="Optimization" phase="optimization" />
         </div>
       </div>
@@ -43,13 +40,12 @@ const safeOutputs = [
         <div class="ecosystem-branch">
           <section class="ecosystem-node organization-node" data-node={organization.id} style={nodeStyle(organization.id)} aria-label={`${organization.name} workflows`}>
             <span class="mobile-delivery enterprise-delivery enterprise" aria-hidden="true">
-              <i class="supply-chain"></i><i class="optimization"></i>
+              <i class="optimization"></i>
             </span>
             <header>
               <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path d={organizationPath}></path></svg>
               <strong>{organization.name}</strong>
             </header>
-            <p class="node-owner">Owner: {organization.owner}</p>
             <div class="managed-workflows" role="group" aria-label="Centrally managed workflows">
               <p class="management-label">Centrally managed</p>
               <div class="workflow-runs">
@@ -62,29 +58,28 @@ const safeOutputs = [
           <section class="ecosystem-node repository-node" data-node={repository.id} style={nodeStyle(repository.id)} aria-label={`${repository.name} workflow ecosystem`}>
             <span class="mobile-delivery organization-delivery organization" aria-hidden="true"><i></i></span>
             <span class="mobile-delivery enterprise-delivery enterprise" aria-hidden="true">
-              <i class="supply-chain"></i><i class="optimization"></i>
+              <i class="optimization"></i>
             </span>
             <header>
               <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path d={repoPath}></path></svg>
               <strong>{repository.name}</strong>
             </header>
-            <p class="node-owner">Owner: Maintainers</p>
             <div class="local-workflows" aria-label="Repository-owned workflow" role="group">
-              <p class="management-label">Repository-managed &middot; monitored</p>
+              <p class="management-label">Repo-managed &middot; monitored</p>
               <div class="workflow-runs"><WorkflowRun name={repository.local} phase="local" compact /></div>
             </div>
             <div class="safe-output-icons workflow-outputs" aria-label="Workflow safe outputs">
-              {[...safeOutputs, {
-                owner: "repository", source: repository.local, phase: "local",
+              {[{
+                owner: "repository", source: repository.local, caption: repository.caption, phase: "local",
                 label: `Repository ${repository.output} safe output`, paths: safeOutputPaths[repository.output],
-              }].map((output) => (
+              }, ...safeOutputs].map((output) => (
                 <span class={`safe-output ${output.phase}`}>
-                  <span class={`safe-output-icon ${output.owner}`} role="img" aria-label={output.label} title={output.label}>
+                  <span class={`safe-output-icon ${output.owner}`} role="img" aria-label={`${output.source ?? organization.workflow}: ${output.label}`} title={`${output.source ?? organization.workflow}: ${output.label}`}>
                     <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true">
                       {output.paths.map((path) => <path d={path}></path>)}
                     </svg>
                   </span>
-                  <small title={output.source ?? organization.workflow}>{output.source ?? organization.workflow}</small>
+                  <small title={output.source ?? organization.workflow}>{output.caption ?? organization.caption}</small>
                 </span>
               ))}
             </div>
@@ -106,14 +101,34 @@ const safeOutputs = [
       ))}
     </div>
   </div>
-
+  <button class="animation-toggle" type="button" hidden>Pause animation</button>
 </div>
+
+<script>
+  function initEcosystemAnimationControls() {
+    for (const ecosystem of document.querySelectorAll<HTMLElement>(".workflow-ecosystem")) {
+      if (ecosystem.dataset.animationReady === "true") continue;
+      const toggle = ecosystem.querySelector<HTMLButtonElement>(".animation-toggle");
+      const routes = ecosystem.querySelector<SVGSVGElement>(".ecosystem-routes");
+      if (!toggle || !routes) throw new Error("Workflow ecosystem animation controls are incomplete.");
+
+      toggle.addEventListener("click", () => {
+        const paused = ecosystem.toggleAttribute("data-paused");
+        if (paused) routes.pauseAnimations();
+        else routes.unpauseAnimations();
+        toggle.textContent = paused ? "Resume animation" : "Pause animation";
+      });
+      ecosystem.dataset.animationReady = "true";
+      toggle.hidden = false;
+    }
+  }
+
+  initEcosystemAnimationControls();
+  document.addEventListener("astro:page-load", initEcosystemAnimationControls);
+</script>
 
 <style>
   .workflow-ecosystem {
-    --enterprise: #0969da;
-    --organization: #8250df;
-    --repository: #1a7f37;
     --node-bg: color-mix(in srgb, var(--sl-color-bg) 97%, var(--sl-color-gray-6));
     --node-border: color-mix(in srgb, var(--sl-color-gray-4) 72%, transparent);
     --node-text: var(--sl-color-white);
@@ -127,9 +142,6 @@ const safeOutputs = [
   }
 
   :global(:root[data-theme="dark"]) .workflow-ecosystem {
-    --enterprise: #79c0ff;
-    --organization: #d2a8ff;
-    --repository: #7ee787;
     --node-muted: #d0d7de;
     --success: #3fb950;
     --attention: #d29922;
@@ -140,6 +152,29 @@ const safeOutputs = [
     height: var(--diagram-height);
   }
 
+  .animation-toggle {
+    display: block;
+    min-height: 44px;
+    margin: 12px 0 0 auto;
+    padding: 8px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--node-muted);
+    font: inherit;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+
+  .animation-toggle[hidden] { display: none; }
+  .animation-toggle:hover { color: var(--node-text); text-decoration: underline; }
+  .animation-toggle:focus-visible { outline: 2px solid var(--success); outline-offset: 2px; }
+
+  .workflow-ecosystem[data-paused] :global(*),
+  .workflow-ecosystem[data-paused] :global(*::before),
+  .workflow-ecosystem[data-paused] :global(*::after) { animation-play-state: paused !important; }
+
   .ecosystem-routes {
     position: absolute;
     inset: 0;
@@ -149,17 +184,13 @@ const safeOutputs = [
     stroke-width: 1;
   }
 
-  .enterprise-route { stroke: var(--enterprise); }
-  .organization-route { stroke: var(--organization); }
-  .enterprise { color: var(--enterprise); }
-  .organization { color: var(--organization); }
-  .repository { color: var(--repository); }
+  .enterprise-route,
+  .organization-route { stroke: var(--node-muted); }
   .ecosystem-routes path { opacity: 0.45; vector-effect: non-scaling-stroke; }
-  .route-pulse { fill: currentColor; opacity: 0; }
-  .route-pulse.supply-chain { animation: dep-delivery 14s linear infinite; }
+  .route-pulse { fill: var(--success); opacity: 0; }
   .route-pulse.optimization { animation: opt-delivery 14s linear infinite; }
   .route-pulse.organization { animation: org-delivery 14s linear infinite; }
-  .mobile-delivery { display: none; }
+  .mobile-delivery { display: none; color: var(--success); }
 
   .ecosystem-node,
   .continuation-point {
@@ -201,21 +232,6 @@ const safeOutputs = [
 
   header .octicon { fill: currentColor; stroke: none; width: 16px; height: 16px; }
 
-  .enterprise-node header { color: var(--enterprise); }
-  .organization-node header { color: var(--organization); }
-  .repository-node header { color: var(--repository); }
-
-  .node-owner {
-    margin: 6px 0 0;
-    color: var(--node-muted);
-    font-size: 0.75rem;
-    line-height: 1.4;
-  }
-
-  .enterprise-node {
-    border-color: color-mix(in srgb, var(--enterprise) 45%, var(--node-border));
-  }
-
   .ecosystem-branches,
   .ecosystem-branch,
   .organization-repositories {
@@ -231,43 +247,34 @@ const safeOutputs = [
   }
 
   .continuation-point small { display: none; }
-  .organization-continuation { color: var(--organization); }
-  .repository-continuation { color: var(--repository); }
 
   .organization-node {
-    border-color: color-mix(in srgb, var(--organization) 45%, var(--node-border));
+    padding-inline: 16px;
   }
 
   .repository-node {
     padding: 12px;
-    border-color: color-mix(in srgb, var(--repository) 45%, var(--node-border));
   }
 
   .safe-output-icons {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 8px;
+    grid-template-columns: repeat(3, minmax(max-content, 1fr));
+    gap: 3px;
+    margin-top: 12px;
   }
 
   .workflow-runs {
     display: grid;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
   .management-label {
     box-sizing: border-box;
-    width: fit-content;
-    max-width: 100%;
-    margin: 6px 0 0;
-    padding: 1px 5px;
-    border: 1px solid var(--node-border);
-    border-radius: 4px;
-    background: var(--run-bg);
+    margin: 8px 0 0;
     color: var(--node-muted);
-    font-size: 0.625rem;
-    line-height: 1.3;
+    font-size: 0.6875rem;
+    line-height: 1.4;
     white-space: nowrap;
   }
 
@@ -279,31 +286,53 @@ const safeOutputs = [
     gap: 3px;
   }
 
-  .safe-output.supply-chain { animation: dep-output 14s steps(1, end) infinite; }
-  .safe-output.optimization { animation: opt-output 14s steps(1, end) infinite; }
-  .safe-output.organization { animation: org-output 14s steps(1, end) infinite; }
-  .safe-output.local { animation: local-output 14s steps(1, end) infinite; }
+  .safe-output.optimization .safe-output-icon { animation: opt-output 14s steps(1, end) infinite; }
+  .safe-output.organization .safe-output-icon { animation: org-output 14s steps(1, end) infinite; }
+  .safe-output.local .safe-output-icon { animation: local-output 14s steps(1, end) infinite; }
+
+  .safe-output.local {
+    position: relative;
+  }
+
+  .safe-output.local::before {
+    position: absolute;
+    left: calc(50% - 0.5px);
+    top: -12px;
+    height: 12px;
+    border-left: 1px solid var(--node-muted);
+    opacity: 0.45;
+    content: "";
+  }
+
+  .safe-output.local::after {
+    position: absolute;
+    left: calc(50% - 1.5px);
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--success);
+    opacity: 0;
+    animation: local-delivery 14s linear infinite;
+    content: "";
+  }
 
   .safe-output small {
     color: var(--node-muted);
     min-width: 0;
     max-width: 100%;
-    font-size: 0.625rem;
-    line-height: 1.3;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 0.75rem;
+    line-height: 1.4;
     white-space: nowrap;
     text-align: center;
   }
 
   .safe-output-icon {
     display: inline-grid;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     place-items: center;
-    border: 1px solid var(--node-border);
-    border-radius: 8px;
-    background: var(--run-bg);
+    color: var(--node-muted);
+    opacity: 0.35;
   }
 
   .safe-output-icon svg {
@@ -313,21 +342,23 @@ const safeOutputs = [
     stroke: none;
   }
 
-  .workflow-outputs {
-    border-top: 1px solid var(--node-border);
-    padding-top: 8px;
+  @keyframes opt-delivery { 0%, 27%, 34%, 100% { opacity: 0; } 28%, 33% { opacity: 1; } }
+  @keyframes org-delivery { 0%, 35%, 42%, 100% { opacity: 0; } 36%, 41% { opacity: 1; } }
+  @keyframes opt-output { 0%, 33% { color: var(--node-muted); opacity: 0.35; } 34%, 100% { color: var(--success); opacity: 1; } }
+  @keyframes org-output { 0%, 41% { color: var(--node-muted); opacity: 0.35; } 42%, 100% { color: var(--success); opacity: 1; } }
+  @keyframes local-output { 0%, 49% { color: var(--node-muted); opacity: 0.35; } 50%, 100% { color: var(--success); opacity: 1; } }
+  @keyframes local-delivery {
+    0%, 43% { top: -12px; opacity: 0; }
+    44% { top: -12px; opacity: 1; }
+    49% { top: 0; opacity: 1; }
+    50%, 100% { top: 0; opacity: 0; }
   }
-
-  @keyframes dep-delivery { 0%, 39%, 48%, 100% { opacity: 0; } 40%, 47% { opacity: 1; } }
-  @keyframes opt-delivery { 0%, 51%, 60%, 100% { opacity: 0; } 52%, 59% { opacity: 1; } }
-  @keyframes org-delivery { 0%, 63%, 72%, 100% { opacity: 0; } 64%, 71% { opacity: 1; } }
-  @keyframes dep-output { 0%, 47% { opacity: 0; } 48%, 100% { opacity: 1; } }
-  @keyframes opt-output { 0%, 59% { opacity: 0; } 60%, 100% { opacity: 1; } }
-  @keyframes org-output { 0%, 71% { opacity: 0; } 72%, 100% { opacity: 1; } }
-  @keyframes local-output { 0%, 83% { opacity: 0; } 84%, 100% { opacity: 1; } }
 
   @media (max-width: 72rem) {
     .ecosystem-routes { display: none; }
+
+    .ecosystem-node { --branch-y: calc(17px + 0.715rem); }
+    .repository-node { --branch-y: calc(11px + 0.715rem); }
 
     .ecosystem-board {
       height: auto;
@@ -338,7 +369,7 @@ const safeOutputs = [
       gap: 32px;
       margin-top: 24px;
       margin-left: 8px;
-      border-left: 2px dashed var(--enterprise);
+      border-left: 2px dashed var(--node-border);
       padding-left: 16px;
     }
 
@@ -351,7 +382,7 @@ const safeOutputs = [
     .organization-repositories {
       position: relative;
       margin-left: 8px;
-      border-left: 2px dashed var(--organization);
+      border-left: 2px dashed var(--node-border);
       padding-left: 16px;
     }
 
@@ -360,7 +391,7 @@ const safeOutputs = [
       bottom: 100%;
       left: -2px;
       height: 24px;
-      border-left: 2px dashed var(--organization);
+      border-left: 2px dashed var(--node-border);
       content: "";
     }
 
@@ -387,46 +418,38 @@ const safeOutputs = [
     .organization-node::before,
     .repository-node::before {
       position: absolute;
-      top: 64px;
+      top: var(--branch-y);
       right: 100%;
       width: 18px;
-      border-top: 2px dashed var(--organization);
+      border-top: 2px dashed var(--node-border);
       content: "";
     }
 
-    .organization-node::before { border-color: var(--enterprise); }
-
     .mobile-delivery { display: block; position: absolute; pointer-events: none; }
     .mobile-delivery i { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0; }
-    .organization-delivery { top: 62px; right: 100%; width: 18px; }
-    .enterprise-delivery { top: 62px; right: 100%; width: 18px; }
+    .organization-delivery,
+    .enterprise-delivery { top: calc(var(--branch-y) - 1.5px); right: 100%; width: 18px; }
     .organization-delivery i { animation: mobile-org-delivery 14s linear infinite; }
-    .enterprise-delivery .supply-chain { animation: mobile-dep-delivery 14s linear infinite; }
     .enterprise-delivery .optimization { animation: mobile-opt-delivery 14s linear infinite; }
   }
 
-  @keyframes mobile-dep-delivery {
-    0%, 39% { left: 0; opacity: 0; }
-    40% { left: 0; opacity: 1; }
-    47% { left: 100%; opacity: 1; }
-    48%, 100% { left: 100%; opacity: 0; }
-  }
   @keyframes mobile-opt-delivery {
-    0%, 51% { left: 0; opacity: 0; }
-    52% { left: 0; opacity: 1; }
-    59% { left: 100%; opacity: 1; }
-    60%, 100% { left: 100%; opacity: 0; }
+    0%, 27% { left: 0; opacity: 0; }
+    28% { left: 0; opacity: 1; }
+    33% { left: 100%; opacity: 1; }
+    34%, 100% { left: 100%; opacity: 0; }
   }
   @keyframes mobile-org-delivery {
-    0%, 63% { left: 0; opacity: 0; }
-    64% { left: 0; opacity: 1; }
-    71% { left: 100%; opacity: 1; }
-    72%, 100% { left: 100%; opacity: 0; }
+    0%, 35% { left: 0; opacity: 0; }
+    36% { left: 0; opacity: 1; }
+    41% { left: 100%; opacity: 1; }
+    42%, 100% { left: 100%; opacity: 0; }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .workflow-ecosystem *, .workflow-ecosystem *::before, .workflow-ecosystem *::after { animation: none !important; }
-    .safe-output { opacity: 1; }
-    .route-pulse, .mobile-delivery { display: none; }
+    .safe-output-icon { color: var(--success); opacity: 1; }
+    .safe-output.local::after { display: none; }
+    .route-pulse, .mobile-delivery, .animation-toggle { display: none; }
   }
 </style>

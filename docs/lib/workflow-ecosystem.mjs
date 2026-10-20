@@ -1,21 +1,21 @@
 import ELK from "elkjs/lib/elk.bundled.js";
 
 export const organizations = [
-  { id: "org-1", name: "Org 1", owner: "Platform team", workflow: "Issue triage" },
-  { id: "org-2", name: "Org 2", owner: "Engineering team", workflow: "Release readiness" },
-  { id: "org-n", name: "Org N", owner: "Organization team", workflow: "Organization standards" },
+  { id: "org-1", name: "Org 1", workflow: "Issue triage", caption: "Triage" },
+  { id: "org-2", name: "Org 2", workflow: "Release readiness", caption: "Readiness" },
+  { id: "org-n", name: "Org N", workflow: "Organization standards", caption: "Standardize" },
 ];
 
 export const repositories = [
-  { id: "repo-1", name: "Repo 1", organization: "org-1", local: "Daily team status", output: "discussion" },
-  { id: "repo-2", name: "Repo 2", organization: "org-1", local: "Test coverage", output: "pull request" },
-  { id: "repo-3", name: "Repo 3", organization: "org-2", local: "Release checks", output: "issue" },
-  { id: "repo-n", name: "Repo N", organization: "org-n", local: "Project health", output: "issue" },
+  { id: "repo-1", name: "Repo 1", organization: "org-1", local: "Daily team status", caption: "Status", output: "discussion" },
+  { id: "repo-2", name: "Repo 2", organization: "org-1", local: "Test coverage", caption: "Tests", output: "pull request" },
+  { id: "repo-3", name: "Repo 3", organization: "org-2", local: "Release checks", caption: "Checks", output: "issue" },
+  { id: "repo-n", name: "Repo N", organization: "org-n", local: "Project health", caption: "Health", output: "issue" },
 ];
 
 const port = (id, side) => ({ id, width: 0, height: 0, layoutOptions: { "elk.port.side": side } });
 const repositoryWidth = 280;
-const organizationWidth = 300;
+const organizationWidth = 320;
 const nodeGap = 40;
 const branchWidths = organizations.map((organization) => {
   const count = repositories.filter((repository) => repository.organization === organization.id).length;
@@ -60,18 +60,18 @@ export const ecosystemLayout = await new ELK().layout({
     "elk.padding": "[top=0,left=24,bottom=0,right=24]",
   },
   children: [
-    node("enterprise", 420, 240, 0, [
+    node("enterprise", 420, 144, 0, [
       port("enterprise-scope", "SOUTH"),
     ]),
     ...organizations.flatMap((organization, index) => [
       ...(index === 2 ? [node("more-orgs", 24, 24, 1, [port("more-orgs-in", "NORTH"), port("more-orgs-out", "SOUTH")])] : []),
-      node(organization.id, organizationWidth, 176, 1, [
+      node(organization.id, organizationWidth, 144, 1, [
         port(`${organization.id}-in`, "NORTH"), port(`${organization.id}-out`, "SOUTH"),
       ]),
     ]),
     ...repositories.flatMap((repository, index) => [
       ...(index === 3 ? [node("more-repos", 24, 24, 2, [port("more-repos-in", "NORTH")])] : []),
-      node(repository.id, repositoryWidth, 208, 2, [
+      node(repository.id, repositoryWidth, 184, 2, [
         port(`${repository.id}-org`, "NORTH"),
       ]),
     ]),
@@ -163,8 +163,7 @@ export const routes = repositories.flatMap((repository) => {
   // Separate subpaths keep delivery pulses off the organization card between connectors.
   const path = `${enterprise.path} ${organization.path}`;
   return [
-    { path, owner: "enterprise", phase: "supply-chain", times: "0;0.40;0.48;1" },
-    { path, owner: "enterprise", phase: "optimization", times: "0;0.52;0.60;1" },
-    { path: organization.path, owner: "organization", phase: "organization", times: "0;0.64;0.72;1" },
+    { path, owner: "enterprise", phase: "optimization", times: "0;0.28;0.34;1" },
+    { path: organization.path, owner: "organization", phase: "organization", times: "0;0.36;0.42;1" },
   ];
 });
