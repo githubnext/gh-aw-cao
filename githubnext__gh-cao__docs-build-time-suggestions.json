@@ -1,0 +1,34 @@
+{
+  "source_sha": "72c268ee799d74f97d06c92cf15d757dfe9c1011",
+  "next_category": "dependency installation and caching",
+  "evaluations": [
+    {
+      "evaluated_at": "2026-10-20T06:34:25Z",
+      "worker_run_id": "39380749156",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39378144737,
+        39376963126,
+        39376153086,
+        39375999551,
+        39375801479,
+        39374762521,
+        39372664779,
+        39371749392,
+        39370827216,
+        39369620161,
+        39369423241,
+        39367420475,
+        39366749142,
+        39365869604,
+        39364416816,
+        39364240691,
+        39362154443,
+        39361281893,
+        39359389535,
+        39359167383
+      ],
+      "outcome": "incomplete: the latest 20 completed docs.yml runs contained 16 successes, but only one successful run executed the build and deploy jobs; the other 15 successful runs were freshness checks that skipped build and deploy. Fewer than five comparable successful build samples were available, so cache effectiveness and build-job median/p90 timing could not be evaluated reliably. Four workflow_run entries were skipped. The category remains next because this was not a complete evaluation."
+    }
+  ]
+}
