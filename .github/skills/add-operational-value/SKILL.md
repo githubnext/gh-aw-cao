@@ -233,6 +233,9 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   reason for inactivity or keep/retire recommendation. Optional structured
   repository snapshots and verification checks follow the event-ledger
   contract; absence must say **not measured** or **not verified**.
+  Use restrained visual hierarchy, decorative icons and clear native units
+  rather than more panels. Make evidence actions obviously interactive,
+  keyboard-visible and touch-sized; respect reduced-motion preferences.
 
 ## Collect and report Daily File Diet
 

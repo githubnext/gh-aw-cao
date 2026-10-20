@@ -31,7 +31,13 @@ try {
           assert.match(await page.locator(".signal").innerText(), /No net improvement in the last 28 days/);
           assert.match(await page.locator("main").innerText(), /not verified/i);
           assert.equal(await page.locator(".facts > div").count(), 3);
+          assert.equal(await page.locator('.fact-icon[aria-hidden="true"]').count(), 3);
+          assert.equal(await page.locator(".fact-unit").count(), model.repositoryState ? 3 : 2);
           assert.equal(await page.locator("details:visible").count(), 1, "Only one evidence disclosure belongs in the default view.");
+          const disclosure = page.locator(".evidence > summary");
+          assert.ok((await disclosure.boundingBox()).height >= 44, "Evidence must have an obvious touch-sized target.");
+          assert.equal(await disclosure.evaluate(element => getComputedStyle(element).cursor), "pointer");
+          assert.ok(await page.locator(".disclosure-hint").isVisible());
           assert.equal(await page.locator(".chart:visible").count(), model.repositoryState ? 1 : 0);
           const words = (await page.locator("main").innerText()).trim().split(/\s+/).length;
           assert.ok(words <= 220, `Default File Diet view is too verbose: ${words} words.`);
@@ -44,11 +50,15 @@ try {
           if (model.repositoryState) {
             assert.equal(await page.locator(".snapshot-chart circle").count(), model.repositoryState.observations.length);
             assert.equal(await page.locator(".snapshot-chart path").count(), 0, "Sparse snapshots must not imply continuous change.");
+            assert.deepEqual(await page.locator(".snapshot-value").allTextContents(),
+              [model.repositoryState.observations[0].value, model.repositoryState.observations.at(-1).value].map(String));
             assert.match(await page.locator(".facts").innerText(),
               new RegExp(`${model.repositoryState.observations.at(-1).value} files`));
           } else assert.match(await page.locator(".facts").innerText(), /Not measured here/);
           await page.locator(".evidence > summary").focus();
           await page.locator(".evidence > summary").press("Enter");
+          assert.notEqual(await page.locator(".evidence").getAttribute("open"), null);
+          assert.notEqual(await disclosure.evaluate(element => getComputedStyle(element).outlineStyle), "none");
           if (model.repositoryState) assert.equal(await page.locator(".checks li").count(), 3);
           await page.locator(".history > summary").click();
           const first = page.locator('[data-event]').first();
@@ -70,6 +80,9 @@ try {
           assert.ok(await page.locator("html").evaluate(element => element.scrollWidth <= window.innerWidth));
           assert.deepEqual(errors, []);
           assert.deepEqual(requests, [], "The standalone report must not require hosted assets or APIs.");
+          await page.emulateMedia({ reducedMotion: "reduce" });
+          assert.equal(await disclosure.evaluate(element => getComputedStyle(element).transitionDuration), "0s");
+          assert.equal(await disclosure.evaluate(element => getComputedStyle(element, "::after").transitionDuration), "0s");
         } finally {
           await page.close();
         }

@@ -28,11 +28,16 @@ export function mountPulse(document, model) {
     element.target = "_blank";
     element.rel = "noopener noreferrer";
   };
+  const icons = [
+    "M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM7.25 4h1.5v3.25H11v1.5H7.25Z",
+    "M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0 0 .005V3.25Z",
+    "M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z",
+  ];
   const main = document.querySelector("main");
   node("p", `${model.repository} / ${model.workflowSlug}`, main, "eyebrow");
   node("h1", model.workflowName, main);
   if (typeof model.intent?.goal === "string" && model.intent.goal) {
-    node("p", `Goal: ${model.intent.goal}`, main);
+    node("p", `Goal: ${model.intent.goal}`, main, "goal");
   } else node("p", "Goal not recorded in this report. Inspect the workflow Markdown before judging its purpose.", main, "notice");
   node("p", `As of ${date(model.window.endAt)}${model.observedAt ? `; evidence captured ${date(model.observedAt)}` : ""}. Saved report, not live.`, main, "muted");
   const label = node("label", "Explore a measure ", main, "metric-picker");
@@ -54,26 +59,32 @@ export function mountPulse(document, model) {
     const heading = node("div", null, content, `signal ${status.attention}`);
     node("h2", metric.reader.title, heading);
     const facts = node("dl", null, content, "facts");
-    const fact = (name, value, detail) => {
+    const fact = (name, value, unit, detail) => {
       const row = node("div", null, facts);
-      node("dt", name, row);
+      const label = node("dt", null, row);
+      const icon = svgNode("svg", { viewBox: "0 0 16 16", class: "fact-icon",
+        "aria-hidden": "true", focusable: "false" }, label);
+      svgNode("path", { d: icons[facts.children.length - 1] }, icon);
+      node("span", name, label);
       const description = node("dd", null, row);
       node("strong", value, description);
-      node("span", detail, description, "muted");
+      if (unit) node("span", ` ${unit}`, description, "fact-unit");
+      node("span", detail, description, "fact-detail muted");
     };
     const state = model.repositoryState;
     const firstState = state?.observations[0], lastState = state?.observations.at(-1);
     const primary = model.metrics.find(item => item.basis === "repository-outcome");
     fact(events ? `Last ${metric.shortDays} days` : "Recent change", events
-      ? `${format(metric.currentTotal)} ${metric.unit}` : `${format(status.directionAwareGain)} ${metric.unit}`,
+      ? format(metric.currentTotal) : format(status.directionAwareGain), metric.unit,
     events ? `${format(metric.previousTotal)} in the previous ${metric.shortDays} days; net measured change.`
       : "Direction-aware change; unknown is not zero.");
     fact(events ? contribution ? "Linked contribution" : "Measured outcomes" : "Latest measure", events
-      ? `${format(metric.completeTotal ?? metric.observedTotal)} ${metric.unit}` : `${format(status.current)} ${metric.unit}`,
+      ? format(metric.completeTotal ?? metric.observedTotal) : format(status.current), metric.unit,
     events ? `${metric.completeTotal == null ? "Known subtotal only; coverage is incomplete. " : ""}${metric.name} since ${date(model.window.startAt)}; not the number remaining today.`
       : `${metric.name}. ${status.status === "insufficient-evidence" ? "Recent comparison is not verified." : ""}`);
     fact("Repository state", state
-      ? `${format(lastState.value)} ${state.metric.unit}` : primary ? `${format(primary.signal.current)} ${primary.unit}` : "Not measured here",
+      ? format(lastState.value) : primary ? format(primary.signal.current) : "Not measured here",
+    state?.metric.unit ?? primary?.unit ?? null,
     state ? `${state.metric.name} on ${date(lastState.at)}; ${format(firstState.value)} at the first snapshot. ${state.metric.direction === "decrease" ? "Lower" : "Higher"} is better. Includes everyone's work.`
       : primary ? `${primary.name}. Includes everyone's work.` : "Linked contribution does not establish overall repository health.");
     const unknownChecks = model.checks?.filter(check => check.status !== "verified") ?? [];
@@ -83,6 +94,7 @@ export function mountPulse(document, model) {
         : "Whole-goal acceptance is not verified here.", content, "notice");
     if (status.status === "insufficient-evidence") node("p", status.reason, content, "notice");
     const evidence = disclosure("Explore evidence", content, "evidence");
+    node("span", "Linked changes, checks and measurement rules", evidence.querySelector("summary"), "disclosure-hint");
     node("p", metric.reader.caution, evidence, "muted");
     if (events) node("p", metric.daysSincePositive == null
       ? "No positive contribution observed; this is not proof that none occurred."
@@ -140,6 +152,11 @@ export function mountPulse(document, model) {
       for (const row of state.observations) {
         const dot = svgNode("circle", { cx: plot.x(row.at), cy: plot.y(row.value), r: 5, class: "point" }, plot.svg);
         svgNode("title", {}, dot, `${date(row.at)}: ${format(row.value)} ${state.metric.unit}`);
+        if (row === firstState || row === lastState) svgNode("text", {
+          x: plot.x(row.at) + (row === lastState ? -12 : 12),
+          y: Math.max(30, plot.y(row.value) - 12),
+          "text-anchor": row === lastState ? "end" : "start", class: "snapshot-value",
+        }, plot.svg, format(row.value));
       }
       const snapshots = disclosure("Inspect the repository snapshots", evidence);
       const list = node("ul", null, snapshots);
