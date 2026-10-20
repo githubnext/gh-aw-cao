@@ -1,5 +1,5 @@
 {
-  "source_sha": "1bae3e7a0f9b65f281096d9d05ee2b0646b17400",
+  "source_sha": "85966fcfa511fdbe1d1027ad0a5464f8228a322a",
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
@@ -701,6 +701,34 @@
         39430500899
       ],
       "outcome": "no-op: the 2026-10-20T13:27:10Z to 2026-10-20T16:40:38Z window contained 17 successful and three skipped completed docs.yml runs. Five successful builds were compared (one push, three schedule, and one workflow_run, across three source SHAs): median/p90 end-to-end 135/309 seconds, initial queue or concurrency wait 4/84 seconds, queue-excluded execution 130/268 seconds, build job 85/93 seconds, and deploy job 21/163 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. Trusted step metadata showed all five builds restored the shared dashboard cache in 2-4 seconds and skipped dashboard run lookup and artifact download; bounded logs explicitly confirmed 57 MiB cache hits for four samples. The shared cache therefore kept dashboard reuse at a 2-second median, so even eliminating restoration entirely would save neither 60 seconds nor 15% of median execution. No correctness- and freshness-preserving reusable-dashboard change met the actionability threshold, so the category advanced. One push waited behind an overlapping schedule run, the 251-second deploy outlier was disclosed, and an additional log/list query was stopped after the runner hit an OS-thread resource limit."
+    },
+    {
+      "evaluated_at": "2026-10-20T16:55:00Z",
+      "worker_run_id": "39461388245",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        39461123850,
+        39461104891,
+        39460801866,
+        39459216524,
+        39458834966,
+        39457478091,
+        39457473301,
+        39455317461,
+        39453828481,
+        39451796799,
+        39449842682,
+        39448017239,
+        39447662756,
+        39444611896,
+        39442826835,
+        39440727596,
+        39438956620,
+        39438578838,
+        39435558939,
+        39433804572
+      ],
+      "outcome": "incomplete: the 2026-10-20T13:49:53Z to 2026-10-20T16:51:49Z latest-20 window contained 16 successful, three skipped, and one cancelled completed docs.yml run. The cancelled run was excluded. Five apparently comparable successful builds were identified, but bounded trusted job/step metadata collection hit the runner OS-thread resource limit (failed to create a new OS thread) before timings and cache evidence could be retrieved. Per resource-limit policy, further API and model work stopped. Median/p90 workflow, build, deploy, dashboard, and Pages-packaging measurements could not be completed, so no actionable recommendation was made and the category remains next."
     }
   ]
 }
