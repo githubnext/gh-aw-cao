@@ -1,9 +1,9 @@
-<div class="terminal" aria-label="Example CAO install, download, and query commands">
+<div class="terminal" aria-label="Example CAO installation, setup, and review-mode commands">
   <div class="terminal-bar" aria-hidden="true">
     <span class="terminal-dot red"></span>
     <span class="terminal-dot yellow"></span>
     <span class="terminal-dot green"></span>
-    <span class="terminal-title">CAO — install · download · query</span>
+    <span class="terminal-title">CAO — setup · auth · rollout</span>
   </div>
   <div class="terminal-body">
     <div class="terminal-line command" style="--line-delay: 0ms">
@@ -12,14 +12,15 @@
     </div>
     <div class="terminal-line command" style="--line-delay: 550ms">
       <span class="prompt">$</span>
-      <code><span class="syntax-command">gh cao</span> download <span class="syntax-option">--url</span> <span class="syntax-url">https://githubnext.github.io/gh-cao/cao/payload-hashes.json</span></code>
+      <code><span class="syntax-command">gh cao</span> setup</code>
     </div>
+    <p class="terminal-note">For an <a href="/gh-cao/setup-quickstarts/#optional-add-automation-later">installed campaign</a>:</p>
     <div class="terminal-line command" style="--line-delay: 1100ms">
       <span class="prompt">$</span>
-      <code><span class="syntax-command">gh cao</span> query cost-by-repository<span class="cursor" aria-hidden="true"></span></code>
+      <code><span class="syntax-command">gh cao</span> campaigns mode preview dependabot<span class="cursor" aria-hidden="true"></span></code>
     </div>
-    <p class="terminal-note">Example uses public sample data. Use your deployment's manifest URL for your own evidence.</p>
-    <p class="terminal-note"><a href="/gh-cao/cao-cli/#inspect-activity">Explore CAO commands →</a></p>
+    <p class="terminal-note">Preview sets review mode, not execution. Review and commit workflows and policy before running.</p>
+    <p class="terminal-note"><a href="/gh-cao/setup-quickstarts/">Setup guide</a> · <a href="/gh-cao/authentication/">Authentication</a> · <a href="/gh-cao/rollout-and-routing/">Rollout controls</a></p>
   </div>
 </div>
 

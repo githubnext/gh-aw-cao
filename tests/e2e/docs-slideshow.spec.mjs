@@ -6,7 +6,7 @@ const slideTitles = [
   "Central Agentic Ops",
   "Monitor and control GitHub Agentic Workflows at scale.",
   "Shared work. Clear ownership.",
-  "Ask more of your workflow data.",
+  "Set the boundaries. Scale with confidence.",
   "Monitor what runs.",
   "Roll out safely.",
 ];
@@ -136,7 +136,7 @@ test("expands and edits code locally without changing the original commands or n
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");
   await expectSlide(page, 3);
-  const snippet = presentation(page).getByRole("button", { name: "Expand gh cao query cost-by-repository", exact: true });
+  const snippet = presentation(page).getByRole("button", { name: "Expand gh cao setup", exact: true });
   await snippet.focus();
   await page.keyboard.press("Enter");
   const expanded = page.getByRole("dialog", { name: "Expanded snippet", exact: true });
@@ -150,7 +150,7 @@ test("expands and edits code locally without changing the original commands or n
   await expect(snippet).toBeFocused();
   expect(await page.locator(".terminal code").allTextContents()).toEqual(original);
   await snippet.click();
-  await expect(editor).toHaveText("gh cao query cost-by-repository");
+  await expect(editor).toHaveText("gh cao setup");
   await page.getByRole("button", { name: "Close expanded snippet", exact: true }).click();
   await page.keyboard.press("ArrowRight");
   await expectSlide(page, 4);
