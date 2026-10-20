@@ -14,8 +14,8 @@ For where the dashboard is served, see [Deployment options](deployment.md).
 Agentic workflows produce Actions logs. The Activity workflow collects a bounded snapshot into published JSONL. Consumers apply the shared model rules to build two separate projections: SQLite supports agents and command-line tools, while IndexedDB supports the browser dashboard.
 
 <div class="docs-theme-diagram">
-  <img class="docs-theme-diagram-light" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-aw-cao/assets/dashboard-data-flow-light.svg">
-  <img class="docs-theme-diagram-dark" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-aw-cao/assets/dashboard-data-flow-dark.svg">
+  <img class="docs-theme-diagram-light" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-cao/assets/dashboard-data-flow-light.svg">
+  <img class="docs-theme-diagram-dark" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-cao/assets/dashboard-data-flow-dark.svg">
 </div>
 
 SQLite and IndexedDB are rebuildable projections. Neither is the source for the
@@ -26,7 +26,7 @@ in the published JSONL. SQLite keeps Run and Operational Value records for
 30 days by default and expires run-linked detail after seven days unless a
 separate full-detail SQLite archive is requested.
 
-See [Data model](/gh-aw-cao/dashboard-data-model/) for the canonical entities, identities, and relationships produced by ingestion.
+See [Data model](/gh-cao/dashboard-data-model/) for the canonical entities, identities, and relationships produced by ingestion.
 
 ## Before the first Activity snapshot
 
@@ -177,9 +177,10 @@ role with the event engine, role, configured model, resolved model, provider,
 status (`resolved`, `exact` or `failed`) and cause (`model_unavailable` or
 `catalog_unavailable`). Configured and resolved models keep their recorded value,
 including provider prefixes; unsafe or missing values stay unknown, and a failed
-resolution keeps its resolved model unknown. The events have no timestamp, so the
-Model resolution section orders alias history by the recorded session clock and
-counts distinct runs separately from role records. Routed sessions are expected
+resolution keeps its resolved model unknown. The events have no timestamp, so
+failed resolutions appear in the Model routing Problems view once per run, with
+an unknown time unless the session clock is recorded, and per-run resolution roles
+stay on the run page. Routed sessions are expected
 to lack these events, and legacy sessions report no resolution evidence rather
 than failure. Canonical schema 32 / IndexedDB version 42 rebuild older browser
 projections; hosted PostgreSQL needs a fresh generated schema with the new
@@ -187,7 +188,7 @@ Audit columns.
 
 The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic Domain, Tool, Audit, and Issue records owned directly by those Runs. `github_api_rate_limit` envelopes create Audits only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
-The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
+The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
 The canonical model is version 32. The browser database is
 `gh-aw-cao-dashboard-data`, IndexedDB version 42. Its canonical stores are
@@ -202,7 +203,9 @@ Overview aggregates are computed by request-scoped queries over canonical runs
 rather than stored separately. Because the database is derived state, physical schema
 upgrades rebuild every store from authoritative dashboard inputs.
 
-Experiment assignments and eval observations come from the unified session when it contains them. Otherwise, ingestion accepts gh-aw's explicit current-run `assignments.json` artifact (including the compact `usage/experiment/` layout and prefixed artifact directories) and a supplied `evals.jsonl`. Collection requests the `usage,experiment` artifact sets without widening repository scope or collection budgets. Before retaining either artifact, collection verifies repository, run ID, and attempt against `aw_info.json`; a mismatch skips that evidence. Unified assignments, including an explicitly empty map, take precedence, and cumulative experiment state counts never infer a run's variant. The Experiments page shows retained assignment variants with run evidence links, and the Evals ledger shows `YES`, `NO`, and `UNKNOWN` answers distinctly; `UNKNOWN` is not a failed eval.
+Experiment assignments and eval observations come from the unified session when it contains them. Otherwise, ingestion accepts gh-aw's explicit current-run `assignments.json` artifact (including the compact `usage/experiment/` layout and prefixed artifact directories) and a supplied `evals.jsonl`. Collection requests the `usage,experiment,graders` artifact sets without widening repository scope or collection budgets. Before retaining these artifacts, collection verifies repository, run ID, and attempt against `aw_info.json`; a mismatch skips that evidence. Unified assignments, including an explicitly empty map, take precedence, and cumulative experiment state counts never infer a run's variant. The Experiments page shows retained assignment variants with run evidence links, and the Evals ledger shows `YES`, `NO`, and `UNKNOWN` answers distinctly; `UNKNOWN` is not a failed eval.
+
+gh-aw v0.92.6 publishes built-in graders in the unified session and `usage/graders/`, with custom grader results in a separate `graders` artifact. Ingestion accepts version-1 and version-2 result documents, uses the adjacent `grader_manifest.json` for definition metadata, and retains session results in preference to duplicate built-ins. The separate artifact may add custom results not already present in the session. Native metric order, finite values, explicit `null` values, and evaluator digests survive projection; scripts, messages, error bodies, and raw session payloads do not. Historical repository-owned shell evaluators remain retired and are not executed during collection.
 
 Normalized shards are written in bounded transactions, with a separate receipt
 recorded after each complete shard. A stopped import can reuse those receipts on
@@ -385,4 +388,4 @@ npm run dashboard:local -- --data-backend sqlite --repo OWNER/REPOSITORY
 
 SQLite initialization failures stop startup; the preview does not silently fall back to IndexedDB. The canvas open input accepts `dataBackend: "sqlite"` or `"indexeddb"`.
 
-For normative requirements and failure behavior, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).
+For normative requirements and failure behavior, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md).

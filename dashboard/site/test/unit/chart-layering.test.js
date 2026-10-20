@@ -105,7 +105,7 @@ dashboard:
   it('retains accessible safe SVG links and rejects unbounded bar output', () => {
     const widget = renderLayeredChartWidget([layer('dot', [{
       ...point('2026-10-01', 2),
-      link: { href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42', label: 'Run 42' }
+      link: { href: 'https://github.com/githubnext/gh-cao/actions/runs/42', label: 'Run 42' }
     }])], true);
     const link = widget.querySelector('a');
     expect(link?.namespaceURI).toBe('http://www.w3.org/2000/svg');

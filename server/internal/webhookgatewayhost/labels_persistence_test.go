@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func TestLabelConsumptionPostgresReceiptsSurviveRestart(t *testing.T) {

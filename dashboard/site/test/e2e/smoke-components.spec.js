@@ -2,6 +2,41 @@ import { DATABASE_NAME, authoritativeDashboard, buildPresenterModuleUrl, devices
 
 registerSmokeRoutes();
 
+for (const width of [320, 390, 412, 1440]) {
+  test(`notification links have accessible hit areas at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(async (url) => {
+      const { publishNotification } = await import(url);
+      publishNotification({
+        id: 'stale', message: 'Dashboard data may be stale.',
+        description: 'Check ingestion and shard details before relying on these results.',
+        href: '#page-indexing', linkLabel: 'View Ingestion', duration: 0
+      });
+      publishNotification({ id: 'inline', message: 'Go', href: '#page-runs', duration: 0 });
+    }, 'http://dashboard.test/src/notification-service.js');
+
+    const region = page.getByRole('region', { name: 'Notifications' });
+    for (const name of ['View Ingestion', 'Go']) {
+      const link = region.getByRole('link', { name, exact: true });
+      await expect(link).toBeVisible();
+      const bounds = await link.boundingBox();
+      if (!bounds) throw new Error('Notification link must have visible bounds.');
+      expect(bounds.width).toBeGreaterThanOrEqual(24);
+      expect(bounds.height).toBeGreaterThanOrEqual(width <= 700 ? 44 : 24);
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      await link.focus();
+      await expect(link).toBeFocused();
+      await expect(link).toHaveCSS('outline-style', 'solid');
+    }
+
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#page-runs$/);
+    await region.getByRole('link', { name: 'View Ingestion' }).click({ position: { x: 1, y: 1 } });
+    await expect(page).toHaveURL(/#page-indexing$/);
+  });
+}
+
 test('managed notices follow explicit dashboard themes rather than the browser theme', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.evaluate(async ({ themeUrl, notificationUrl, stylesUrl }) => {

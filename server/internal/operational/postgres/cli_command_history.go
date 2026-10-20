@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 func (q *cliCommandQueue) detail(t *transaction, id int64) (operational.CLICommand, error) {

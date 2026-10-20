@@ -28,7 +28,7 @@ for (const { name, fixture, panels, theme } of scenarios) {
         sources: { usage: { source: 'usage', metadata, rows: [
           { engine: 'alpha', 'observed-at': '2026-10-01', aic: 2, 'estimated-usd': 5 },
           { engine: 'beta', 'observed-at': '2026-10-02', aic: 4, 'estimated-usd': 5,
-            'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42', label: 'Run 42' } },
+            'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/42', label: 'Run 42' } },
           { engine: 'alpha', 'observed-at': '2026-10-11', aic: 10, 'estimated-usd': 5 }
         ] } }
       });
@@ -45,7 +45,7 @@ for (const { name, fixture, panels, theme } of scenarios) {
     await expect(view.locator('.chart-legend li')).toHaveCount(2 * panels);
     const links = view.locator('[data-chart-layer-type="dot"] a');
     await expect(links).toHaveCount(1);
-    await expect(links).toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+    await expect(links).toHaveAttribute('href', 'https://github.com/githubnext/gh-cao/actions/runs/42');
     await links.focus();
     await expect(links).toBeFocused();
     await expect(links).toHaveAccessibleName(/4.*AI credits.*Run 42/);

@@ -441,29 +441,29 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 800, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'campaign-aic-allowance': 1250, 'campaign-inventory-warnings': 1 }
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 800, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'campaign-aic-allowance': 1250, 'campaign-inventory-warnings': 1 }
           ],
           metadata
         },
         runs: {
           source: 'runs',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '3', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T14:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/3', label: 'Run 3' } },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '5', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T13:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/5', label: 'Run 5' } },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '6', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T12:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/6', label: 'Run 6' } },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '7', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T11:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/7', label: 'Run 7' } },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '8', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T10:00:00Z', 'run-conclusion': 'failure', 'failure-job': 'pre_activation', 'failure-message': 'Target authority missing: add .github/workflows/cao.json to the target default branch for live mode', 'failure-step': 'Run CAO control precompute', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/8', label: 'Run 8' } },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/aw-doctor.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review', 'aic-total': 23.9 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/aw-doctor.md', run: '2', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'live' }
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '3', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T14:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/3', label: 'Run 3' } },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '5', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T13:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/5', label: 'Run 5' } },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '6', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T12:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/6', label: 'Run 6' } },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '7', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T11:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/7', label: 'Run 7' } },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '8', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T10:00:00Z', 'run-conclusion': 'failure', 'failure-job': 'pre_activation', 'failure-message': 'Target authority missing: add .github/workflows/cao.json to the target default branch for live mode', 'failure-step': 'Run CAO control precompute', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-cao/actions/runs/8', label: 'Run 8' } },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/aw-doctor.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review', 'aic-total': 23.9 },
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/aw-doctor.md', run: '2', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'live' }
           ],
           metadata
         },
         usage: {
           source: 'usage',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/aw-doctor.md', run: '1', invocation: 'a', aic: 23.9, 'rollout-mode': 'review' }
+            { organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/aw-doctor.md', run: '1', invocation: 'a', aic: 23.9, 'rollout-mode': 'review' }
           ],
           metadata: { ...metadata, completeness: 'partial' }
         },
@@ -487,9 +487,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
         outcomes: {
           source: 'outcomes',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', run: '3', 'run-conclusion': 'success', 'safe-output': 'ambient-review', 'outcome-title': 'Review ambient context proposal', 'outcome-summary': 'A review proposal is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-29T18:00:00Z', 'observed-at': '2026-08-29T18:05:00Z' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-worker-issue', 'outcome-title': 'Review worker finding', 'outcome-summary': 'A worker finding is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-28T19:00:00Z', 'observed-at': '2026-08-28T19:05:00Z' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-live', 'outcome-title': 'Reconcile ambient context', 'outcome-summary': 'Updated durable guidance.', 'outcome-category': 'pull-request', 'outcome-status': 'closed', 'outcome-state': 'lifecycle-close', 'rollout-mode': 'live', 'published-at': '2026-08-28T18:00:00Z', 'observed-at': '2026-08-28T18:05:00Z' },
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', run: '3', 'run-conclusion': 'success', 'safe-output': 'ambient-review', 'outcome-title': 'Review ambient context proposal', 'outcome-summary': 'A review proposal is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-29T18:00:00Z', 'observed-at': '2026-08-29T18:05:00Z' },
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-worker-issue', 'outcome-title': 'Review worker finding', 'outcome-summary': 'A worker finding is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-28T19:00:00Z', 'observed-at': '2026-08-28T19:05:00Z' },
+            { organization: 'githubnext', repository: 'gh-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-live', 'outcome-title': 'Reconcile ambient context', 'outcome-summary': 'Updated durable guidance.', 'outcome-category': 'pull-request', 'outcome-status': 'closed', 'outcome-state': 'lifecycle-close', 'rollout-mode': 'live', 'published-at': '2026-08-28T18:00:00Z', 'observed-at': '2026-08-28T18:05:00Z' },
             { campaign: 'aw-doctor', workflow: '.github/workflows/aw-doctor.md', run: '1', 'run-conclusion': 'success', 'safe-output': 'maintenance-review', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' },
             { campaign: 'aw-doctor', workflow: '.github/workflows/aw-doctor.md', run: '2', 'run-conclusion': 'failure', 'safe-output': 'maintenance-live', 'rollout-mode': 'live', 'published-at': '2026-08-29T10:00:00Z', 'observed-at': '2026-08-29T10:00:00Z' }
           ],
@@ -499,7 +499,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
           source: 'operational-values',
           rows: [
             {
-              campaign: 'ambient-context', organization: 'githubnext', repository: 'gh-aw-cao', 'operational-value': 0.5,
+              campaign: 'ambient-context', organization: 'githubnext', repository: 'gh-cao', 'operational-value': 0.5,
               'operational-value-definition': 'ambient-context.repository-value',
               'operational-value-role': 'primary',
               'operational-value-name': 'Repository value',
@@ -511,7 +511,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders dispatches, inve
               'observed-at': '2026-09-14T14:00:00Z'
             },
             {
-              campaign: 'ambient-context', organization: 'githubnext', repository: 'gh-aw-cao', 'operational-value': 1,
+              campaign: 'ambient-context', organization: 'githubnext', repository: 'gh-cao', 'operational-value': 1,
               'operational-value-definition': 'ambient-context.repository-value',
               'operational-value-role': 'primary',
               'operational-value-name': 'Repository value',
@@ -742,7 +742,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 custom findings table 
         dashboard: {
           id: 'security-dashboard',
           title: 'Security Dashboard',
-          repository: 'githubnext/gh-aw-cao',
+          repository: 'githubnext/gh-cao',
           pages: [
             {
               id: 'finding-review',
@@ -775,7 +775,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 custom findings table 
               'finding-severity': 'critical',
               'finding-status': 'open',
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/daily.yml',
               'observed-at': '2026-08-29T12:00:00Z',
               'issue-link': {
@@ -868,7 +868,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
                   data: {
                     source: 'findings',
                     scope: {
-                      repositories: ['gh-aw-cao']
+                      repositories: ['gh-cao']
                     },
                     time: {
                       start: '2026-08-29T00:00:00Z',
@@ -952,8 +952,8 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
         usage: {
           source: 'usage',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', engine: 'actions', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'live', aic: 2, 'observed-at': '2026-08-29T10:00:00Z' },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1002', engine: 'actions', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'review', aic: 3, 'observed-at': '2026-08-29T11:00:00Z' }
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/daily.yml', run: '1001', engine: 'actions', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'live', aic: 2, 'observed-at': '2026-08-29T10:00:00Z' },
+            { organization: 'github', repository: 'gh-cao', workflow: '.github/workflows/daily.yml', run: '1002', engine: 'actions', 'requested-model': 'gpt-4o', 'resolved-model': 'gpt-4.1', 'rollout-mode': 'review', aic: 3, 'observed-at': '2026-08-29T11:00:00Z' }
           ],
           metadata: {
             'source-id': 'usage-fixture',
@@ -971,7 +971,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
             {
               code: 'finding-1',
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               'observed-at': '2026-08-29T12:00:00Z',
               'finding-summary': 'Unsafe dependency',
               'finding-severity': 'high',
@@ -999,7 +999,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
             {
               code: 'finding-3',
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               'observed-at': '2026-08-30T01:00:00Z',
               'finding-summary': 'Out of range finding',
               'finding-severity': 'low',
@@ -1135,7 +1135,7 @@ test('DLS-SAFE-007 DLS-SAFE-008 keyboard navigation moves across labeled page se
           rows: [
             {
               organization: 'github',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/daily.yml',
               run: '1001',
               'run-status': 'completed',
@@ -1275,7 +1275,7 @@ test('repository page template follows its JSON-declared hash query route in bro
 
 test('workflow page template follows its JSON-declared route and renders attributed reports', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const workflowRoute = 'githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md';
+  const workflowRoute = 'githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fambient-context.md';
   await page.goto(`http://dashboard.test/#page-workflow-detail?workflow=${workflowRoute}`);
   await page.setContent(`
     <div id="root"></div>
@@ -1296,7 +1296,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
         dashboard: {
           id: 'workflow-route',
           title: 'Central Agentic Ops',
-          repository: 'githubnext/gh-aw-cao',
+          repository: 'githubnext/gh-cao',
           pages: [
             {
               id: 'repositories',
@@ -1406,7 +1406,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
           metadata,
           rows: [{
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             campaign: 'ambient-context',
             'campaign-name': 'Ambient Context',
             workflow: '.github/workflows/ambient-context.md',
@@ -1421,8 +1421,8 @@ test('workflow page template follows its JSON-declared route and renders attribu
           rows: [{
             organization: 'customer',
             repository: 'target',
-            'runtime-repository': 'githubnext/gh-aw-cao',
-            'workflow-route': 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md',
+            'runtime-repository': 'githubnext/gh-cao',
+            'workflow-route': 'githubnext/gh-cao:.github/workflows/ambient-context.md',
             workflow: '.github/workflows/ambient-context.md',
             'workflow-name': 'Ambient Context',
             'safe-output': 'report-1',
@@ -1440,9 +1440,9 @@ test('workflow page template follows its JSON-declared route and renders attribu
           rows: [
             {
               organization: 'githubnext',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/ambient-context.md',
-              'workflow-route': 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md',
+              'workflow-route': 'githubnext/gh-cao:.github/workflows/ambient-context.md',
               run: '102',
               'run-title': 'Scheduled review',
               event: 'schedule',
@@ -1451,15 +1451,15 @@ test('workflow page template follows its JSON-declared route and renders attribu
               'started-at': '2026-08-31T20:00:00Z',
               'run-link': {
                 relation: 'run',
-                href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/102',
+                href: 'https://github.com/githubnext/gh-cao/actions/runs/102',
                 label: 'View run 102'
               }
             },
             {
               organization: 'githubnext',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/ambient-context.md',
-              'workflow-route': 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md',
+              'workflow-route': 'githubnext/gh-cao:.github/workflows/ambient-context.md',
               run: '101',
               'run-title': 'Manual review',
               event: 'workflow_dispatch',
@@ -1477,7 +1477,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
         { queryContext: options.queryContext, routeParameters: options.routeParameters }
       );
       const routeParameters = {
-        workflow: 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md'
+        workflow: 'githubnext/gh-cao:.github/workflows/ambient-context.md'
       };
       const viewSources = await loadPageSources('workflow-detail', { routeParameters });
       document.querySelector('#root').append(renderDashboard({
@@ -1511,7 +1511,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
         dashboard: {
           id: 'workflow-route',
           title: 'Central Agentic Ops',
-          repository: 'githubnext/gh-aw-cao',
+          repository: 'githubnext/gh-cao',
           pages: [
             {
               id: 'repositories',
@@ -1621,7 +1621,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
           metadata,
           rows: [{
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             campaign: 'ambient-context',
             'campaign-name': 'Ambient Context',
             workflow: '.github/workflows/ambient-context.md',
@@ -1636,7 +1636,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
           rows: [{
             organization: 'customer',
             repository: 'target',
-            'runtime-repository': 'githubnext/gh-aw-cao',
+            'runtime-repository': 'githubnext/gh-cao',
             workflow: '.github/workflows/ambient-context.md',
             'workflow-name': 'Ambient Context',
             'safe-output': 'report-1',
@@ -1654,7 +1654,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
           rows: [
             {
               organization: 'githubnext',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/ambient-context.md',
               run: '102',
               'run-title': 'Scheduled review',
@@ -1664,13 +1664,13 @@ test('workflow page template follows its JSON-declared route and renders attribu
               'started-at': '2026-08-31T20:00:00Z',
               'run-link': {
                 relation: 'run',
-                href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/102',
+                href: 'https://github.com/githubnext/gh-cao/actions/runs/102',
                 label: 'View run 102'
               }
             },
             {
               organization: 'githubnext',
-              repository: 'gh-aw-cao',
+              repository: 'gh-cao',
               workflow: '.github/workflows/ambient-context.md',
               run: '101',
               'run-title': 'Manual review',
@@ -1693,7 +1693,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'workflow-runtime'
   );
   assert(runtimePage, 'Missing workflow runtime page');
-  await page.goto('http://dashboard.test/#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md');
+  await page.goto('http://dashboard.test/#page-workflow-runtime?workflow=githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md');
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -1716,7 +1716,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
         dashboard: {
           id: 'workflow-runtime-route',
           title: 'Workflow runtime route',
-          repository: 'githubnext/gh-aw-cao',
+          repository: 'githubnext/gh-cao',
           queries: ${JSON.stringify(authoritativeDashboard.dashboard.queries)},
           pages: [${JSON.stringify(runtimePage)}]
         }
@@ -1727,7 +1727,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
           metadata,
           rows: [{
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow,
             'workflow-name': 'Multi-Device Docs Tester',
             'workflow-role': 'standalone',
@@ -1737,7 +1737,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             'rollout-mode': 'review',
             'workflow-link': {
               relation: 'workflow',
-              href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
+              href: 'https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
               label: 'View authored workflow'
             }
           }]
@@ -1747,7 +1747,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
           metadata,
           rows: [{
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow,
             run: '45',
             'run-status': 'completed',
@@ -1759,7 +1759,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
           metadata: { ...metadata, completeness: 'partial' },
           rows: [{
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow,
             run: '45',
             aic: 962.7
@@ -1767,7 +1767,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
         },
       };
       const routeParameters = {
-        workflow: 'githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md'
+        workflow: 'githubnext/gh-cao:.github/workflows/multi-device-docs-tester.md'
       };
       const viewSources = await prepareDashboardViewSources(
         dashboardDocument,
@@ -1791,7 +1791,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
   ]);
   await expect(page.getByRole('link', { name: 'View authored workflow' })).toHaveAttribute(
     'href',
-    'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md'
+    'https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md'
   );
   await expect(page.locator('.workflow-runtime-metrics')).toContainText('1');
   await expect(page.locator('.workflow-runtime-metrics')).toContainText('962.7');
@@ -1855,7 +1855,7 @@ test('outcome page template follows its JSON-declared hash query route in browse
             'observed-at': '2026-08-31T01:49:00Z',
             'external-link': {
               relation: 'external',
-              href: 'https://github.com/githubnext/gh-aw-cao/issues/403',
+              href: 'https://github.com/githubnext/gh-cao/issues/403',
               label: 'View output'
             }
           }]
@@ -1867,7 +1867,7 @@ test('outcome page template follows its JSON-declared hash query route in browse
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Parity verification sweep');
   await expect(page.locator('[data-page-title-link]')).toHaveText('Open #403 on GitHub');
-  await expect(page.locator('[data-page-title-link]')).toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao/issues/403');
+  await expect(page.locator('[data-page-title-link]')).toHaveAttribute('href', 'https://github.com/githubnext/gh-cao/issues/403');
   await expect(page.locator('.overview-header [data-page-description]')).toHaveText('Daily review · Pull Request · Closed');
   await page.locator('.horizon-toggle').click();
   await expect(page.getByRole('searchbox', { name: 'Current filters' })).toHaveValue('');

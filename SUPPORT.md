@@ -2,7 +2,7 @@
 
 ## How to get help
 
-Central Agentic Ops uses [GitHub issues](https://github.com/githubnext/gh-aw-cao/issues)
+Central Agentic Ops uses [GitHub issues](https://github.com/githubnext/gh-cao/issues)
 to track bugs, feature requests, and usage questions. Search existing issues
 before opening a new one, and do not include credentials or sensitive data.
 

@@ -417,6 +417,17 @@ func (api nativeSetupAppAPI) covers(ctx context.Context, app nativeSetupApp, tar
 	return installation, nil
 }
 
+func nativeSetupPause(ctx context.Context, duration time.Duration) error {
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
 func nativeSetupEnsureInstallations(cmd *cobra.Command, gh ghExecutor, api nativeSetupAppAPI, app nativeSetupApp, targets []nativeSetupOwnerGroup, noOpen, firstOpen bool) error {
 	server, err := nativeSetupServerURL()
 	if err != nil {
@@ -460,7 +471,7 @@ func nativeSetupEnsureInstallations(cmd *cobra.Command, gh ghExecutor, api nativ
 			if installation != nil && lastErr == nil {
 				break
 			}
-			if err := nativeQuickstartPause(ctx, 5*time.Second); err != nil {
+			if err := nativeSetupPause(ctx, 5*time.Second); err != nil {
 				cancel()
 				if lastErr != nil {
 					return fmt.Errorf("timed out waiting for GitHub App installation on %s: %w", target.Owner, lastErr)

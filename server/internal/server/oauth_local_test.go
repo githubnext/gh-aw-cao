@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-cao/server/internal/operational/memory"
 )
 
 func localOAuthConfig(t *testing.T, githubURL string) Config {
@@ -21,7 +21,7 @@ func localOAuthConfig(t *testing.T, githubURL string) Config {
 	oauth.AllowedOrganizations = nil
 	oauth.RedirectURL = "https://127.0.0.1:8443/auth/callback"
 	return Config{
-		Database: constructorDatabase(), SiteDirectory: t.TempDir(), HostProfile: profile,
+		Database: constructorDatabase(), SiteDirectory: hostedTestSite(t), HostProfile: profile,
 		Listen: "127.0.0.1:8443", CertFile: "certificate.pem", KeyFile: "key.pem",
 		SingleReplicaConfirmed: true, AllowVolatile: true,
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"127.0.0.1"}, RequireHTTPS: true},
@@ -283,6 +283,7 @@ func TestLocalOAuthConfigurationFailsClosed(t *testing.T) {
 	for name, mutate := range map[string]func(*GitHubOAuthConfig){
 		"multiple users":  func(c *GitHubOAuthConfig) { c.LocalDevelopmentUser = "octocat,another-user" },
 		"wildcard":        func(c *GitHubOAuthConfig) { c.LocalDevelopmentUser = "*" },
+		"user policy":     func(c *GitHubOAuthConfig) { c.AllowedUsers = []string{"another-user"} },
 		"org policy":      func(c *GitHubOAuthConfig) { c.AllowedOrganizations = []string{"example"} },
 		"team policy":     func(c *GitHubOAuthConfig) { c.AllowedTeams = []string{"example/team"} },
 		"SSO attestation": func(c *GitHubOAuthConfig) { c.SSOOrganizations = []string{"example"} },

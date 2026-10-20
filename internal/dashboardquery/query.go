@@ -4,6 +4,7 @@ package dashboardquery
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -21,6 +22,19 @@ func NewEvaluator(ctx context.Context) *Evaluator {
 	return &Evaluator{budget: &engineBudget{
 		ctx: ctx, deadline: time.Now().Add(60 * time.Second), outputRows: engineMaxInputRows,
 	}}
+}
+
+// NewEvaluatorWithLimits admits larger local snapshots without changing the
+// default CLI limits or the caller's independent wire and memory budgets.
+func NewEvaluatorWithLimits(ctx context.Context, inputRows int, operations int64) (*Evaluator, error) {
+	if inputRows <= 0 || inputRows > 1_000_000 || operations <= 0 || operations > 100_000_000 {
+		return nil, errors.New("local evaluator limits must be positive and at most 1,000,000 input rows and 100,000,000 operations")
+	}
+	evaluator := NewEvaluator(ctx)
+	evaluator.budget.inputRows = inputRows
+	evaluator.budget.outputRows = inputRows
+	evaluator.budget.maxOperations = operations
+	return evaluator, nil
 }
 
 func (e *Evaluator) Execute(definition map[string]any, load func(string) ([]map[string]any, error)) ([]map[string]any, error) {

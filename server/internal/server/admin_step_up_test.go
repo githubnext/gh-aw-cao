@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/audit"
+	"github.com/githubnext/gh-cao/server/internal/audit"
 )
 
 func storedSession(t *testing.T, app *App, cookie *http.Cookie) oauthSession {

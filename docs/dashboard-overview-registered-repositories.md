@@ -10,6 +10,12 @@ scope, not how many repositories received work during the selected period.
 
 Select the count to open the Repositories view and inspect the inventory.
 
+The Repositories run-volume chart reads repository identities and distinct
+retained run IDs directly. It does not wait for workflow health, outcome reports,
+AI Credit totals, or imported event coverage. It ranks up to 100 repositories
+with drill-down links; the Table view retains the full inventory and its
+execution-health and import-coverage metrics.
+
 ## Data it uses
 
 `overview-registered-repository-summary` reads `repositories` and counts

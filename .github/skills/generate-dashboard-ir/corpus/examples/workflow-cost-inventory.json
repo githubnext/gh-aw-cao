@@ -3,10 +3,10 @@
   "id": "workflow-cost-inventory",
   "task": {
     "actor": "Repository operator",
-    "subject": "The declared workflows of the githubnext/gh-aw-cao repository and their observed AI Credit consumption",
+    "subject": "The declared workflows of the githubnext/gh-cao repository and their observed AI Credit consumption",
     "intent": "Let an operator see, without any view-specific code, which declared workflows consume the most observed AI Credits by declaring one derived query that joins the workflow inventory with observed usage totals.",
     "activationConditions": [
-      "A repository operator declares one or more workflows in githubnext/gh-aw-cao.",
+      "A repository operator declares one or more workflows in githubnext/gh-cao.",
       "Model invocations for those workflows are observed in the dashboard horizon.",
       "The dashboard declares a derived query that joins the declared workflows with the observed usage totals."
     ],
@@ -47,7 +47,7 @@
       "rows": [
         {
           "organization": "githubnext",
-          "repository": "gh-aw-cao",
+          "repository": "gh-cao",
           "workflow": ".github/workflows/cao-evolution.md",
           "workflow-name": "CAO Evolution",
           "workflow-role": "orchestrator",
@@ -57,13 +57,13 @@
           "observed-at": "2026-09-01T00:00:00Z",
           "workflow-link": {
             "relation": "workflow",
-            "href": "https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/cao-evolution.md",
+            "href": "https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/cao-evolution.md",
             "label": "CAO Evolution"
           }
         },
         {
           "organization": "githubnext",
-          "repository": "gh-aw-cao",
+          "repository": "gh-cao",
           "workflow": ".github/workflows/dashboard.md",
           "workflow-name": "Dashboard",
           "workflow-role": "standalone",
@@ -72,7 +72,7 @@
           "observed-at": "2026-09-01T00:00:00Z",
           "workflow-link": {
             "relation": "workflow",
-            "href": "https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/dashboard.md",
+            "href": "https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/dashboard.md",
             "label": "Dashboard"
           }
         }
@@ -82,7 +82,7 @@
       "rows": [
         {
           "organization": "githubnext",
-          "repository": "gh-aw-cao",
+          "repository": "gh-cao",
           "workflow": ".github/workflows/cao-evolution.md",
           "run": "9001",
           "invocation": "9001-1",
@@ -92,7 +92,7 @@
         },
         {
           "organization": "githubnext",
-          "repository": "gh-aw-cao",
+          "repository": "gh-cao",
           "workflow": ".github/workflows/cao-evolution.md",
           "run": "9002",
           "invocation": "9002-1",

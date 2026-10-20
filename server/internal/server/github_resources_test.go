@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/collect"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/collect"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
 )
 
 type resourceTestStore struct {

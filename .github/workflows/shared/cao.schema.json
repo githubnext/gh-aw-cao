@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
+  "$id": "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json",
   "title": "Central Agentic Ops Policy",
   "description": "Versioned non-secret policy for Central Agentic Ops control and target repositories.",
   "type": "object",
@@ -18,7 +18,7 @@
   ],
   "properties": {
     "$schema": {
-      "const": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json"
+      "const": "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json"
     },
     "version": { "const": 1 },
     "gh-aw-version": {
@@ -119,6 +119,28 @@
         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
       },
       "additionalProperties": { "$ref": "#/$defs/campaignPolicy" }
+    },
+    "workflowPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "max-mode": { "$ref": "#/$defs/mode" },
+        "max-repositories": { "$ref": "#/$defs/maxRepositories" },
+        "rollout-percent": { "$ref": "#/$defs/rolloutPercent" },
+        "monthly-ai-credit-budget": { "$ref": "#/$defs/monthlyAiCreditBudget" },
+        "targets": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/repository" },
+          "additionalProperties": { "$ref": "#/$defs/targetPolicy" }
+        }
+      }
+    },
+    "controlWorkflows": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+      "additionalProperties": { "$ref": "#/$defs/workflowPolicy" }
     },
     "scope": {
       "type": "object",
@@ -592,6 +614,7 @@
         "web": { "$ref": "#/$defs/web" },
         "defaults": { "$ref": "#/$defs/defaults" },
         "campaigns": { "$ref": "#/$defs/controlCampaigns" },
+        "workflows": { "$ref": "#/$defs/controlWorkflows" },
         "publishing": { "$ref": "#/$defs/publishing" },
         "marketplace": { "$ref": "#/$defs/marketplace" },
         "webhook-gateway": { "$ref": "#/$defs/webhookGateway" }

@@ -13,8 +13,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/testutil"
 )
 
 // TestEvidenceShardPipelineParity compares both consumers of the same phased

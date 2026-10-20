@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/collect"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/collect"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 func TestSignedRepositoryLifecycleQueuesEveryTransition(t *testing.T) {

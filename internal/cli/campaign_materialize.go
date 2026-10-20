@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-const catalogRepository = "githubnext/gh-aw-cao"
+const catalogRepository = "githubnext/gh-cao"
 
 var commitPattern = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 

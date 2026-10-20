@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/collect"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
+	"github.com/githubnext/gh-cao/server/internal/collect"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/simulator"
 )
 
 const syntheticRunPath = "/repos/simulator/repo-00001/actions/runs"

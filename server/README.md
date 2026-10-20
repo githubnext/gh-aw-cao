@@ -9,8 +9,10 @@ same compacted data published with the deployed dashboard, stores current
 native entity rows in PostgreSQL and executes hosted Dashboard Language plans
 as SQL through the bounded PostgreSQL query engine,
 and serves the built dashboard either over loopback HTTP or through an
-authenticated host-neutral service profile. PostgreSQL is also the default
-operational adapter, so the default deployment requires no Redis service.
+authenticated host-neutral service profile. Local `serve` defaults to a cached
+SQLite snapshot, downloading deployed data only when the file is missing.
+PostgreSQL is the hosted default operational adapter, so the default deployment
+requires no Redis service.
 Explicit Redis configuration remains supported; an acknowledged single-process memory adapter supports the
 same OAuth, signed-webhook, collection, quota, and backfill services with volatile
 state. The PostgreSQL operational adapter supports durable,
@@ -30,12 +32,76 @@ the focused contracts.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
+The optional [cooperative activation-admission service](ADMISSION.md) exposes
+the gh-aw OIDC-only `POST /api/admission` protocol on that same hosted origin.
+It requires explicit enrollment, fresh protected accounting input, and durable
+PostgreSQL replay records; it is disabled by default and does not replace CAO
+control-policy authorization.
+The [operator walkthrough](../docs/admission-gate.md) covers local
+`cao-dashboard admission validate`, canary setup, bulk rollout, and recovery.
+
+**Hosted mode serves the dashboard from Go, not from GitHub Pages.** The Go
+handler owns the built HTML and assets as well as OAuth, query APIs, and revision
+events on the same origin. A reverse proxy or platform listener must forward
+the complete application, not just `/api/`. Do not deploy the frontend separately
+to Pages, a static website host, or an object-storage website endpoint.
+Pages is a different deployment mode whose browser owns ingestion and queries.
+
 ## Local SQLite snapshot serving
 
-Serve an existing canonical dashboard snapshot without PostgreSQL or Redis:
+Build the dashboard once, then run the local server without PostgreSQL, Redis,
+`gh`, or a separate download command:
 
 ```bash
-# From the repository root, after downloading data and building the dashboard:
+# From the repository root:
+npm ci
+npm --prefix dashboard/site ci
+npm --prefix dashboard/site run build
+go -C server run ./cmd/cao-dashboard serve
+```
+
+Plain `serve` reuses `.cao/gh-aw-logs.sqlite` in this checkout without network
+access. If that cache is missing, startup downloads the public CAO Pages snapshot,
+or `DASHBOARD_DATA_URL` when set. `--sqlite PATH` selects another cache and has the
+same download-if-missing behavior. Database service environment variables alone
+do not change this local default.
+
+Use `--download-sqlite` to explicitly refresh the cache, even when it exists.
+Its optional URL overrides `DASHBOARD_DATA_URL` and accepts any GitHub Pages site,
+including project sites and custom domains:
+
+```bash
+go -C server run ./cmd/cao-dashboard serve \
+  --download-sqlite https://OWNER.github.io/REPOSITORY/
+
+# A dashboard directory or direct payload-hashes.json URL also works.
+go -C server run ./cmd/cao-dashboard serve \
+  --download-sqlite=https://dashboard.example.org/cao/ \
+  --sqlite ../.cao/custom.sqlite
+```
+
+For a site URL, the downloader looks for `payload-hashes.json` in that directory,
+then under `cao/` if the first location returns HTTP 404. The image is fetched
+beside the discovered manifest; the hostname is not restricted to
+`githubnext.github.io`. URLs must use HTTP or HTTPS without embedded credentials
+or fragments. HTTPS redirects cannot downgrade to HTTP.
+
+The download streams only the SQLite image, not inventory or JSONL shards.
+It verifies the manifest's SHA-256 checksum and canonical database version
+before atomically replacing the selected cache. Transient failures and
+deployment-time checksum mismatches retry up to three times with fresh manifest
+requests; failures leave an existing cache unchanged and do not start a server
+against stale data. Requests have a five-minute timeout within a ten-minute
+overall deadline; manifests are limited to 8 MiB and images to 2 GiB.
+An unbuilt `--site` fails before downloading. Stop any existing snapshot users
+before refreshing; symlink destinations and existing SQLite journal sidecars
+are rejected rather than risking corruption. Checkpoint a locally modified
+snapshot with its owning tool, or select a different `--sqlite` path.
+
+For offline startup, use plain `serve` with an existing default cache, or select
+another existing snapshot:
+
+```bash
 go -C server run ./cmd/cao-dashboard serve \
   --sqlite ../.cao/gh-aw-logs.sqlite \
   --listen 127.0.0.1:8443
@@ -46,12 +112,16 @@ build directory and `--mcp-enabled` to expose the existing read-only MCP endpoin
 Paths in this example resolve from `server/` because of `go -C server`.
 `gh cao download` prepares the default CAO snapshot; use `--url` with another
 dashboard's `payload-hashes.json` URL to select different data.
-`npm --prefix dashboard/site run build` builds the site. The snapshot must use
+The snapshot must use
 the canonical IndexedDB-compatible SQLite layout and database version 42.
-Missing files, unsupported versions, and missing requested stores fail closed;
-startup never creates, repairs, migrates, or ingests SQLite data.
+Only a genuinely missing cache triggers automatic acquisition. Unreadable or
+invalid existing files, dangling symlinks, unsupported versions, and missing
+requested stores fail closed without a repair download. Startup never creates
+an empty database, repairs, migrates, or ingests SQLite data. Acquisition installs
+a verified file before the read-only server opens it; it is not ingestion or a
+fallback from a failed database connection.
 
-This is an explicitly selected **local bearer-only, read-only** profile.
+This is the default **local bearer-only, read-only** profile.
 Only loopback listeners are accepted; HTTP is supported locally, with optional
 `--cert` and `--key` for HTTPS. Existing access-token authentication and the HTTP
 query, canonical API, diagnostics, revision events, and optional MCP protocols
@@ -59,26 +129,60 @@ remain in use. Queries execute in Go against one consistent SQLite read
 transaction, using the same bounded local Dashboard Language evaluator as
 `gh cao`. Both storage paths share the server's query validation, dependency
 traversal, generated runtime-source registry, and source-quality propagation;
-only storage reads and query execution differ. Intermediate results are bounded to 200,000 rows and wire results to
-100,000 rows per source; ordinary continuation pagination remains available. Snapshot
+only storage reads and query execution differ. The local snapshot profile admits
+500,000 input/intermediate rows and 50 million operations per query plan, with
+1 GiB per working source and 2 GiB / 2 million rows of simultaneously retained
+results. Completed dependency inputs are released after their final consumer.
+The planner traces live fields across consumers, prunes unused row-local
+computations, and projects only required properties inside SQLite. Requested
+raw sources and unknown result shapes keep full documents; original-record byte
+limits, JSON types, missing fields, and canonical UTF-16 key order are preserved.
+Read-only SQLite memory mapping is capped at 1 GiB to reduce page-read overhead.
+These are bounded accounting limits, not an RSS guarantee; large snapshots can
+require several GiB of developer-machine memory. Hosted PostgreSQL and CLI
+defaults are unchanged. Wire results remain bounded to 100,000 rows per source;
+ordinary continuation pagination remains available. Local query admission has
+a 300-unit/minute token bucket so expensive snapshot plans do not exhaust the
+hosted 30-unit burst during ordinary page navigation; per-plan cost accounting,
+other request limits, and explicit embedding overrides remain enforced. Snapshot
 quality is reported as unknown rather than verified complete or current.
 In-place SQLite commits update revisions and active subscriptions without a
 server restart. Restart after replacing the snapshot file itself.
 
+After building the site, profile the production Repositories query against an
+existing snapshot without modifying it:
+
+```sh
+CAO_SQLITE_SNAPSHOT=/absolute/path/to/gh-aw-logs.sqlite \
+  go -C server test ./internal/sqlitex -run '^$' \
+  -bench '^BenchmarkSnapshotRepositoryActivity$' -benchtime=1x -benchmem
+```
+
+Repository queries reduce row-local counts and positive recorded AIC before
+repository-grain joins, and carry only run-attempt keys into import matching.
+PostgreSQL compiles the declarative plan to SQL; IndexedDB and the Node SQLite
+facade use bounded native storage scans and exact streaming reductions where
+eligible. The local Go SQLite server pushes field projection into SQL and runs
+the remaining bounded declarative operators in its shared Go evaluator.
+
 Operational request services are bounded, process-local, and volatile. Query
 result caching is disabled so a changed snapshot cannot serve stale results.
 OAuth, collection, ingestion, rebuilds, webhooks, and persisted GitHub-resource
-caching are unavailable in this profile. `--sqlite` cannot be combined with
+caching are unavailable in this profile. Neither `--sqlite` nor `--download-sqlite` can be combined with
 `--postgres-url`, `--redis-url`, or `--source`; database service environment
 variables are not used to select its storage. Reviewed hosted operational-store
 selection still requires `serve-hosted` and cannot be overridden by local serving.
-The default `serve` PostgreSQL path, hosted deployments, and PostgreSQL SQL
-execution remain unchanged; SQLite is never an automatic fallback.
+To select PostgreSQL locally, pass `--postgres-url="$CAO_POSTGRES_URL"`; an
+explicit empty `--postgres-url=` reads that environment variable instead.
+The existing PostgreSQL-specific `--source` and `--redis-url` flags also select
+the PostgreSQL profile and require its configured database. Hosted deployments
+and PostgreSQL SQL execution remain unchanged; SQLite is never a fallback from
+a failed PostgreSQL connection.
 
 ## Single-process memory operational storage
 
-PostgreSQL remains the default. To select memory in reviewed
-`control-plane.web.host` configuration, replace legacy `host.redis` with:
+PostgreSQL remains the hosted operational-storage default. To select memory in
+reviewed `control-plane.web.host` configuration, replace legacy `host.redis` with:
 
 ```json
 {
@@ -173,11 +277,15 @@ volatile-memory acknowledgement is required:
 
 Omit `postgres.url-env` to use `CAO_POSTGRES_URL`, allowing both adapters to use
 the same database without sharing tables or lifecycle. Keep connection strings
-in server-side secrets, not policy. TLS is required for non-loopback TCP
-connections, including every configured fallback. The canonical namespace
+in server-side secrets, not policy. Verified TLS (`sslmode=verify-full`) is required
+for non-loopback TCP connections, including every configured fallback. Encryption
+without certificate and hostname verification (`require` or `verify-ca`) is rejected.
+Use `sslrootcert` for a private CA rather than disabling verification. The canonical namespace
 remains the existing `REDIS_NAMESPACE`; changing the operational namespace
-does not move canonical data. Local bearer `serve` also defaults to PostgreSQL operational
-storage; supplying `--redis-url` explicitly opts in to Redis instead. Hosted
+does not move canonical data. The explicit PostgreSQL profile of local bearer
+`serve` also defaults to PostgreSQL operational storage; supplying `--redis-url`
+opts in to Redis instead. Plain `serve` uses SQLite with bounded volatile
+request services and requires neither database service. Hosted
 `serve-hosted`, external/platform hosts, collection roles, and `doctor` resolve
 the reviewed policy; the presence of a Redis credential never overrides it.
 
@@ -903,6 +1011,14 @@ row evaluator: unsupported definitions and unregistered sources fail closed.
 Generated TypeSpec identifiers are used, values and namespace are
 parameterized, missing values remain distinct from explicit null, and SQL
 resource checks enforce operation, output, retained-row, and memory budgets.
+Full-plan cardinality and byte accounting share one materialized SQL execution
+with join-key uniqueness checks, so validation does not rerun the upstream
+dependency graph for every join. These checks cover all rows before returning
+the requested result page. Read transactions prefer hash/merge joins by disabling
+nested-loop plans locally: PostgreSQL 16 can estimate window-filtered intermediate
+relations as one row and otherwise rescan thousands of derived rows per match.
+This planner preference, like disabled JIT, is reset on commit or rollback and
+does not change query semantics or resource budgets.
 Explicitly registered operational sources are provided at the server boundary
 and participate as bounded SQL input relations.
 
@@ -1264,6 +1380,21 @@ memory in the embedding deployment; CAO's Redis token buckets bound request
 arrival, not the lifetime of an accepted stream.
 
 ## Hosted service profile
+
+The configured `--site` directory must contain a readable, non-empty built
+`index.html`; hosted startup rejects an API-only or unbuilt deployment. The
+container supplies its bundled UI at `/app/site`. Source-built deployments
+must build `dashboard/site/` first and pass that build directory when using a
+different location. This requirement also applies to Azure Functions and the
+`server/hosting` external-listener facade.
+
+The Go handler injects `dashboard-data-backend=server-http`,
+`dashboard-storage-backend=postgres`, and the GitHub authentication bootstrap
+into the dashboard HTML. Those session-specific responses use `Cache-Control:
+no-store`. The shared browser UI selects the same-origin query API and disables
+static-dashboard PWA state; hosted queries do not ingest static shards or run
+against IndexedDB. PostgreSQL or API failures remain visible rather than
+switching the browser to the Pages data path.
 
 `serve-hosted` runs the same stateless Go service on a container, VM,
 Kubernetes workload, or comparable host. It defaults to
@@ -1893,7 +2024,7 @@ Server-side collection and standalone collection roles are rejected. Policy
 validation requires `target.replicas: 1`, and operators must set the hosting
 platform itself to the same replica count. Do not configure the Upstash REST URL
 or REST token. For the operator procedure, see [Deploying the dashboard with Upstash
-Redis](https://github.com/githubnext/gh-aw-cao/blob/main/docs/deployment-upstash.md).
+Redis](https://github.com/githubnext/gh-cao/blob/main/docs/deployment-upstash.md).
 
 ### Container image
 
@@ -1914,7 +2045,7 @@ docker build -f server/Dockerfile \
 ```
 
 The official `.github/workflows/cao-package.yml` workflow publishes the same
-image as `ghcr.io/githubnext/gh-aw-cao/cao-server`. Pushes to `main` receive an
+image as `ghcr.io/githubnext/gh-cao/cao-server`. Pushes to `main` receive an
 immutable `sha-<full-commit>` identity; published releases receive their exact
 Docker-safe semantic version tag. Use the resulting digest in downstream
 Compose files. Multiple services can share that digest and select
@@ -2923,7 +3054,7 @@ guidance, limitations, and private vulnerability-reporting process.
 
 ## Run locally
 
-The module targets and pins Go 1.27.2.
+The module targets and pins Go 1.27.3.
 
 On a MacBook, install Homebrew first and run the idempotent project setup:
 
@@ -2932,22 +3063,32 @@ npm run dashboard:server:setup:macos
 ```
 
 The command installs Homebrew Go, Node.js 24, the Docker CLI, Docker Compose,
-Colima, and the dashboard npm dependencies. Plain Redis runs only through
-`server/docker-compose.yml`; the setup does not install or start a native Redis
+Colima, and the dashboard npm dependencies. Docker and the optional
+PostgreSQL/Redis stack in `server/docker-compose.yml` are not required for the
+default SQLite profile; the setup does not install or start a native Redis
 service.
 
-From the repository root:
+From the repository root, start with the default SQLite cache:
 
 ```bash
-docker-compose -f server/docker-compose.yml up -d
-
 npm --prefix dashboard/site ci
 npm run dashboard:server:build
+
+go -C server run ./cmd/cao-dashboard serve
+```
+
+The server downloads the deployed snapshot if missing and reuses it offline on
+later starts. To exercise PostgreSQL instead, start the optional database stack,
+configure `CAO_POSTGRES_URL`, and provision storage as described in
+[`POSTGRES.md`](POSTGRES.md) before ingesting:
+
+```bash
+docker compose -f server/docker-compose.yml up -d
 
 go -C server run ./cmd/cao-dashboard ingest \
   --source /absolute/path/to/deployed-dashboard
 
-go -C server run ./cmd/cao-dashboard serve
+go -C server run ./cmd/cao-dashboard serve --postgres-url="$CAO_POSTGRES_URL"
 ```
 
 To inspect local traces and metrics, start the optional
@@ -3111,7 +3252,8 @@ initializing origin-scoped browser local storage. Refreshes continue to work
 without restoring the token in the URL. Use `--access-token` with a
 value of at least 32 characters only when deterministic automation requires it.
 
-Ingest and serve in one process:
+To ingest into PostgreSQL and serve in one process, configure and provision
+`CAO_POSTGRES_URL` first; `--source` explicitly selects that profile:
 
 ```bash
 go -C server run ./cmd/cao-dashboard serve \
@@ -3261,7 +3403,7 @@ npm run test:e2e:dashboard-server
 `.github/workflows/cgo.yml` keeps server validation separate from the static
 dashboard CI:
 
-- **Go format, lint, and tests** runs Go 1.27.2, golangci-lint v2.14.0, and the
+- **Go format, lint, and tests** runs Go 1.27.3, golangci-lint v2.14.0, and the
   server unit suite.
 - **Redis dashboard integration** starts Redis, runs the Redis integration
   tests, builds the dashboard and server, ingests the deployed shard subset,

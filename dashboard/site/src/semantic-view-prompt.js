@@ -6,7 +6,7 @@ const debugViewSemantics = createDebug('view-semantics');
 
 /** @typedef {{ id?: string, intent?: string, subject?: string, objective?: string, acceptance?: string }} PageAnalysisContract */
 
-const CONTEXT_ROOT = 'https://github.com/githubnext/gh-aw-cao';
+const CONTEXT_ROOT = 'https://github.com/githubnext/gh-cao';
 const ANALYSIS_CONTEXT = [
   `Analysis skill: ${CONTEXT_ROOT}/blob/main/skills/analyze-cao/SKILL.md`,
   `CLI installation and command reference: ${CONTEXT_ROOT}/blob/main/skills/cao-cli/SKILL.md`,

@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	_ "modernc.org/sqlite"
 
-	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
+	"github.com/githubnext/gh-cao/internal/dashboardquery"
 )
 
 const nativeDatabasePath = ".cao/gh-aw-logs.sqlite"

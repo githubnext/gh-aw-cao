@@ -18,13 +18,13 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
-	"github.com/githubnext/gh-aw-cao/server/internal/webhookgatewayhost"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/webhookgatewayhost"
 )
 
 var version = "dev"

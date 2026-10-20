@@ -201,7 +201,7 @@ test('hash-payloads bounds reusable caches without changing published hashes or 
   await writeFile(path.join(shards, 'raw.jsonl'),
     await readFile(path.resolve('dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl'), 'utf8') + jsonl([{
       kind: 'safe_output_item', schema_version: 2,
-      safe_output: { run_id: 303, type: 'create_issue', url: 'https://github.com/githubnext/gh-aw-cao/issues/7' }
+      safe_output: { run_id: 303, type: 'create_issue', url: 'https://github.com/githubnext/gh-cao/issues/7' }
     }]));
   const options = {
     shardDirectory: shards, runsDirectory: path.join(root, 'runs'), recordsDirectory: path.join(root, 'records')

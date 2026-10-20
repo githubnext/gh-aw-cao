@@ -6,12 +6,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func setupCommand(execute runtimeExecutor) *cobra.Command {
+func setupCommand(execute runtimeExecutor, gh ghExecutor) *cobra.Command {
 	setup := operatorCommand("setup", "Configure repository scope and authentication", cobra.NoArgs, []operatorFlag{jsonFlag}, execute)
 	setup.Long = `Configure the control plane's repository scope, dashboard Pages, and authentication.
 
-Run without a subcommand for guided setup, or use auth to configure credentials
-independently. Non-interactive setup applies only the bounded public profile.
+Run without a subcommand for guided setup, use auth to configure credentials,
+or admission to configure the cooperative OIDC gate's non-secret variables.
+Admission does not require a workflow secret. Non-interactive setup applies only the bounded public profile.
 Setup and authentication run natively in Go; help works offline.`
 	auth := &cobra.Command{
 		Use: "auth", Short: "Configure read and write authentication", Args: cobra.NoArgs,
@@ -45,5 +46,38 @@ Setup and authentication run natively in Go; help works offline.`
 	token.MarkFlagsMutuallyExclusive("keep-existing", "replace-existing")
 	auth.AddCommand(app, enterprise, token)
 	setup.AddCommand(auth)
+	admission := admissionCommands(gh)
+	for _, command := range admission.Commands() {
+		if command.Name() != "setup" {
+			continue
+		}
+		admission.RemoveCommand(command)
+		command.Use = "admission"
+		command.Long = `Configure the cooperative OIDC admission gate for an explicit scope.
+
+Equivalent to gh cao admission setup; --dry-run previews without changing settings.
+Writes only GH_AW_DEFAULT_ADMISSION_URL, GH_AW_DEFAULT_ADMISSION_AUDIENCE and
+GH_AW_DEFAULT_ADMISSION_ON_OUTAGE as non-secret Actions variables.
+Select --repo OWNER/REPO, --all-repos from local CAO policy, repeatable --org,
+or --enterprise for each enterprise organization's defaults. Organization
+variables use visibility all, including future repositories; repository
+overrides are preserved and still take precedence.
+
+Admission authenticates with a job-issued GitHub Actions OIDC token. No PAT,
+GitHub App private key, installation token or shared admission secret is needed
+or uploaded. Never put credentials in the endpoint URL or audience. Any optional
+authority backend credentials belong in the server's protected secret storage,
+not workflow secrets.
+
+Deploy the authority and configure reviewed enrollment and trusted fresh
+accounting separately before applying these settings. Omit --url after setup
+to reuse the target's effective endpoint or the current control repository's
+configured server for bulk rollout/recovery. Setup defaults outages to block
+and the audience to the endpoint URL. It does not deploy the server,
+grant enrollment, modify CAO policy, or compile workflows. Use gh cao admission
+status --repo OWNER/REPO to inspect effective settings after configuration.`
+		setup.AddCommand(command)
+		break
+	}
 	return setup
 }

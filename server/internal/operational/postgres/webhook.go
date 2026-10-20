@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 type webhookQueue struct {

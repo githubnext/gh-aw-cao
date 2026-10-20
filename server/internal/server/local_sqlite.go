@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
-	"github.com/githubnext/gh-aw-cao/server/internal/sqlitex"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-cao/server/internal/sqlitex"
 )
 
 // NewLocalSQLiteApp owns a read-only snapshot and bounded process-local request
@@ -29,6 +29,9 @@ func NewLocalSQLiteApp(ctx context.Context, path string, config Config) (*App, e
 	}
 	store := localSQLiteOperationalStore{Store: services}
 	config.Database = database
+	if config.RateLimits.Query.Capacity == 0 {
+		config.RateLimits.Query.Capacity = 300
+	}
 	app, err := New(ctx, store, config)
 	if err != nil {
 		_ = store.Close()

@@ -255,6 +255,10 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
       animation-delay: 240ms;
     }
 
+    :global(#landing-slideshow[open]) :is(h1, .tagline, .actions) {
+      animation: none;
+    }
+
     @keyframes hero-item-enter {
       from { opacity: 0; transform: translateY(0.75rem); }
       to { opacity: 1; transform: translateY(0); }

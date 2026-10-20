@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -205,6 +206,43 @@ func mustNativeDownloadURL(t *testing.T, source string) *url.URL {
 		t.Fatal(err)
 	}
 	return value
+}
+
+func TestNativeDownloadRejectsHTTPSDowngrade(t *testing.T) {
+	for _, resource := range []string{"payload-hashes.json", "gh-aw-logs.sqlite"} {
+		t.Run(resource, func(t *testing.T) {
+			payloads, _ := nativeDownloadFixture(t, true)
+			var plaintextRequests atomic.Int64
+			plaintext := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				plaintextRequests.Add(1)
+				_, _ = w.Write([]byte(payloads[strings.TrimPrefix(r.URL.Path, "/data/")]))
+			}))
+			defer plaintext.Close()
+			secure := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasSuffix(r.URL.Path, "/"+resource) {
+					http.Redirect(w, r, plaintext.URL+r.URL.Path, http.StatusFound)
+					return
+				}
+				_, _ = w.Write([]byte(payloads[strings.TrimPrefix(r.URL.Path, "/data/")]))
+			}))
+			defer secure.Close()
+			client := secure.Client()
+			// A caller's permissive policy must not override the downgrade guard.
+			client.CheckRedirect = func(*http.Request, []*http.Request) error { return nil }
+			directory := t.TempDir()
+			database := filepath.Join(directory, "gh-aw-logs.sqlite")
+			writeTestFile(t, database, "previous snapshot")
+			if _, err := nativeDownloadSnapshot(t.Context(), secure.URL+"/data/payload-hashes.json", directory, "", client); !errors.Is(err, errNativeDownloadDowngrade) {
+				t.Fatalf("expected explicit HTTPS downgrade rejection, got %v", err)
+			}
+			if plaintextRequests.Load() != 0 {
+				t.Fatal("plaintext destination received a request")
+			}
+			if content, err := os.ReadFile(database); err != nil || string(content) != "previous snapshot" {
+				t.Fatalf("downgrade changed previous snapshot: %q, %v", content, err)
+			}
+		})
+	}
 }
 
 func TestNativeDownloadPublicationRejectsExternalSymlink(t *testing.T) {

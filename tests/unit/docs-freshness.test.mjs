@@ -4,17 +4,27 @@ import { runInNewContext } from "node:vm";
 import { parse } from "yaml";
 import { workflow } from "./workflow-contract.helpers.mjs";
 
-const jobs = parse(workflow("docs.yml")).jobs;
+const documentationWorkflow = parse(workflow("docs.yml"));
+const jobs = documentationWorkflow.jobs;
 const freshness = jobs["schedule-freshness"];
 
-function jobEnabled(expression, eventName, shouldBuild, { conclusion = "success", branch = "main", failed = false, cancelled = false } = {}) {
+function jobEnabled(expression, eventName, shouldBuild, {
+  conclusion = "success", branch = "main", failed = false, cancelled = false,
+  forceDeploy = false, buildResult = "success", skippedAncestor = false,
+} = {}) {
+  if (!/\b(?:always|cancelled|failure|success)\(\)/.test(expression) && (failed || cancelled || skippedAncestor)) {
+    return false;
+  }
   return runInNewContext(
-    expression.replaceAll("needs.schedule-freshness.outputs.should-build", "shouldBuild"),
+    expression.replace(/^\$\{\{\s*|\s*\}\}$/g, "")
+      .replaceAll("needs.schedule-freshness.outputs.should-build", "shouldBuild"),
     {
       github: {
         event_name: eventName,
         event: { workflow_run: { conclusion, head_branch: branch }, repository: { default_branch: "main" } },
       },
+      inputs: { force_deploy: forceDeploy },
+      needs: { build: { result: buildResult } },
       shouldBuild,
       failure: () => failed,
       cancelled: () => cancelled,
@@ -22,7 +32,7 @@ function jobEnabled(expression, eventName, shouldBuild, { conclusion = "success"
   );
 }
 
-for (const eventName of ["schedule", "workflow_run"]) {
+for (const eventName of ["schedule", "workflow_run", "workflow_dispatch"]) {
   test(`${eventName} uses freshness and only builds when stale`, () => {
     assert.equal(jobEnabled(freshness.if, eventName), true);
     assert.equal(jobEnabled(jobs.build.if, eventName, "false"), false);
@@ -33,10 +43,36 @@ for (const eventName of ["schedule", "workflow_run"]) {
   });
 }
 
-test("push and manual runs bypass freshness", () => {
-  for (const eventName of ["push", "workflow_dispatch"]) {
-    assert.equal(jobEnabled(freshness.if, eventName), false);
-    assert.equal(jobEnabled(jobs.build.if, eventName, undefined), true);
+test("manual force deployment is an opt-in boolean", () => {
+  const input = documentationWorkflow.on.workflow_dispatch.inputs.force_deploy;
+  assert.equal(input.type, "boolean");
+  assert.equal(input.default, false);
+});
+
+test("push and forced manual runs bypass freshness", () => {
+  for (const [eventName, forceDeploy] of [["push", false], ["workflow_dispatch", true]]) {
+    const options = { forceDeploy, skippedAncestor: true };
+    assert.equal(jobEnabled(freshness.if, eventName, undefined, { forceDeploy }), false);
+    assert.equal(jobEnabled(jobs.build.if, eventName, undefined, options), true);
+    assert.equal(jobEnabled(jobs.build.if, eventName, "false", options), true);
+    assert.equal(jobEnabled(jobs.build.if, eventName, undefined, { ...options, failed: true }), false);
+    assert.equal(jobEnabled(jobs.build.if, eventName, undefined, { ...options, cancelled: true }), false);
+  }
+});
+
+test("Pages deployment runs after a successful build even with skipped ancestors", () => {
+  assert.equal(jobs.deploy.needs, "build");
+  assert.equal(typeof jobs.deploy.if, "string");
+  for (const eventName of ["push", "workflow_dispatch", "schedule", "workflow_run"]) {
+    for (const forceDeploy of [false, true]) {
+      const options = { forceDeploy, skippedAncestor: true };
+      assert.equal(jobEnabled(jobs.deploy.if, eventName, undefined, options), true);
+      for (const buildResult of ["failure", "cancelled", "skipped", ""]) {
+        assert.equal(jobEnabled(jobs.deploy.if, eventName, undefined, { ...options, buildResult }), false);
+      }
+      assert.equal(jobEnabled(jobs.deploy.if, eventName, undefined, { ...options, failed: true }), false);
+      assert.equal(jobEnabled(jobs.deploy.if, eventName, undefined, { ...options, cancelled: true }), false);
+    }
   }
 });
 
@@ -44,6 +80,7 @@ test("dashboard completions must succeed on the default branch", () => {
   for (const options of [{ conclusion: "failure" }, { conclusion: "cancelled" }, { branch: "feature" }]) {
     assert.equal(jobEnabled(freshness.if, "workflow_run", undefined, options), false);
     assert.equal(jobEnabled(jobs.build.if, "workflow_run", "true", options), false);
+    assert.equal(jobEnabled(jobs.build.if, "workflow_run", "true", { ...options, forceDeploy: true }), false);
   }
 });
 

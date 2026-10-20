@@ -18,7 +18,7 @@ const testCampaignSHA = "1234567890abcdef1234567890abcdef12345678"
 func campaignRecord(t *testing.T, directory, revision string) {
 	t.Helper()
 	writeTestFile(t, filepath.Join(".github", "aw", directory, "demo.json"),
-		`{"package":"githubnext/gh-aw-cao/demo","resolvedCommit":"`+revision+`"}`)
+		`{"package":"githubnext/gh-cao/demo","resolvedCommit":"`+revision+`"}`)
 }
 
 func campaignGH(t *testing.T, archive string, calls *[][]string) ghExecutor {
@@ -66,7 +66,7 @@ func TestAddCampaignNative(t *testing.T) {
 	})
 	var calls [][]string
 	root, stdout, stderr := testCommand(t, campaignGH(t, archive, &calls), nil)
-	args := []string{"campaigns", "add", "githubnext/gh-aw-cao/demo@feature/config", "--engine", "copilot", "--unknown-future-flag"}
+	args := []string{"campaigns", "add", "githubnext/gh-cao/demo@feature/config", "--engine", "copilot", "--unknown-future-flag"}
 	root.SetArgs(args)
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
@@ -136,7 +136,7 @@ func TestAddCampaignCreatesBoundedPolicy(t *testing.T) {
 	archive := campaignArchive(t, map[string]string{"catalog/demo/cao.json": testCampaignDeclaration})
 	var calls [][]string
 	root, _, _ := testCommand(t, campaignGH(t, archive, &calls), nil)
-	root.SetArgs([]string{"campaigns", "add", "githubnext/gh-aw-cao/demo@v1.2.3"})
+	root.SetArgs([]string{"campaigns", "add", "githubnext/gh-cao/demo@v1.2.3"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +232,7 @@ func TestAddCampaignFailuresPreservePolicy(t *testing.T) {
 				}
 			}
 			root, stdout, _ := testCommand(t, gh, nil)
-			root.SetArgs([]string{"campaigns", "add", "githubnext/gh-aw-cao/demo"})
+			root.SetArgs([]string{"campaigns", "add", "githubnext/gh-cao/demo"})
 			if err := root.Execute(); err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("error = %v, want %s", err, tt.want)
 			}
@@ -249,7 +249,7 @@ func TestAddCampaignFailuresPreservePolicy(t *testing.T) {
 }
 
 func TestAddRejectsRootAndInvalidSpecsBeforeExecution(t *testing.T) {
-	for _, spec := range []string{"githubnext/gh-aw-cao", "githubnext/gh-aw-cao@v1", "../Bad_Name", "--force", "githubnext/gh-aw-cao/../"} {
+	for _, spec := range []string{"githubnext/gh-cao", "githubnext/gh-cao@v1", "../Bad_Name", "--force", "githubnext/gh-cao/../"} {
 		t.Run(spec, func(t *testing.T) {
 			root, _, _ := testCommand(t, nil, nil)
 			root.SetArgs([]string{"campaigns", "add", spec})

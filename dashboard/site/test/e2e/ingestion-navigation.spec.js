@@ -17,13 +17,13 @@ const pageDefinitions = [
 ];
 const inventory = {
   repositories: {
-    rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+    rows: [{ organization: 'githubnext', repository: 'gh-cao' }],
     metadata: { 'as-of': asOf }
   },
   workflows: {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       'workflow-name': 'Dashboard'
     }],
@@ -42,6 +42,10 @@ async function expectRunsLoadOnScroll(page, expectedTotal) {
   const loadBoundary = view.locator('[data-table-more]');
   await expect(rows).toHaveCount(25);
   await expect(view.locator('.table-filter-result')).toHaveText(`Showing 25 of ${expectedTotal} results`);
+  const storageNotice = page.locator('[data-notification-id="dashboard:browser-storage"]');
+  if (await storageNotice.isVisible()) {
+    await storageNotice.getByRole('button', { name: /^Dismiss / }).click();
+  }
   await scroll.hover();
   await page.mouse.wheel(0, 10_000);
   await scroll.evaluate((element) => {
@@ -153,7 +157,7 @@ async function exerciseFirstImport({ context, page }, mobile, upgrade = false, c
             run_id: 1000 + (run - 1) * runsPerShard + index + 1,
             run_attempt: 1,
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow_name: 'Dashboard',
             workflow_path: '.github/workflows/dashboard.md',
             display_title: `Ingested run ${run}-${index + 1}`,

@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var corsLog = logger.New("cao:server:cors")

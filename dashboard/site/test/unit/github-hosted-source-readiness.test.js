@@ -18,7 +18,7 @@ it('waits for hosted canonical dependencies before publishing a mixed GitHub que
     addEventListener: (/** @type {string} */ _type, /** @type {typeof onMessage} */ listener) => { onMessage = listener; },
     postMessage
   });
-  const fetch = vi.fn(async () => Response.json({ full_name: 'githubnext/gh-aw-cao', stargazers_count: 42 }));
+  const fetch = vi.fn(async () => Response.json({ full_name: 'githubnext/gh-cao', stargazers_count: 42 }));
   vi.stubGlobal('fetch', fetch);
   await import('../../src/data-worker.js');
   const subscriptionId = 'hosted-readiness';
@@ -27,7 +27,7 @@ it('waits for hosted canonical dependencies before publishing a mixed GitHub que
     sourceNames: ['joined'], hostedSources: {},
     githubConfiguration: { baseUrl: 'https://dashboard.example/api/v1/github/' },
     context: {
-      pages: [], dashboardRepository: 'githubnext/gh-aw-cao',
+      pages: [], dashboardRepository: 'githubnext/gh-cao',
       queries: [{
         name: 'joined', from: 'repositories',
         joins: [{
@@ -46,7 +46,7 @@ it('waits for hosted canonical dependencies before publishing a mixed GitHub que
       operation: 'update-github-dashboard-sources', subscriptionId,
       sources: {
         repositories: {
-          source: 'repositories', rows: [{ repository: 'githubnext/gh-aw-cao' }],
+          source: 'repositories', rows: [{ repository: 'githubnext/gh-cao' }],
           metadata: {
             'source-id': 'repositories', 'source-kind': 'database', 'as-of': '', 'retrieved-at': '',
             availability: 'available', completeness: 'complete', freshness: 'fresh'
@@ -57,7 +57,7 @@ it('waits for hosted canonical dependencies before publishing a mixed GitHub que
     await vi.waitFor(() => expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
       subscriptionId,
       data: expect.objectContaining({
-        joined: expect.objectContaining({ rows: [{ repository: 'githubnext/gh-aw-cao', stars: 42 }] })
+        joined: expect.objectContaining({ rows: [{ repository: 'githubnext/gh-cao', stars: 42 }] })
       })
     })));
   } finally {

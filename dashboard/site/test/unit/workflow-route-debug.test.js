@@ -6,7 +6,7 @@ afterEach(() => {
   vi.resetModules();
 });
 
-const VALID_ROUTE = 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md';
+const VALID_ROUTE = 'githubnext/gh-cao:.github/workflows/ambient-context.md';
 
 /** @param {{ search: string, output: { debug: import('vitest').Mock } }} options */
 async function importWorkflowRouteWithDebug({ search, output }) {
@@ -30,7 +30,7 @@ describe('workflow-route debug logging', () => {
 
     module.parseWorkflowRoute(VALID_ROUTE);
     module.parseWorkflowRoute('invalid');
-    module.workflowRouteValue('githubnext/gh-aw-cao', '.github/workflows/ambient-context.md');
+    module.workflowRouteValue('githubnext/gh-cao', '.github/workflows/ambient-context.md');
 
     expect(output.debug).not.toHaveBeenCalled();
   });
@@ -49,7 +49,7 @@ describe('workflow-route debug logging', () => {
     const module = await importWorkflowRouteWithDebug({ search: '?debug=workflow-route', output });
 
     const route = module.parseWorkflowRoute(VALID_ROUTE);
-    expect(route).toEqual({ repository: 'githubnext/gh-aw-cao', workflow: '.github/workflows/ambient-context.md' });
+    expect(route).toEqual({ repository: 'githubnext/gh-cao', workflow: '.github/workflows/ambient-context.md' });
     expect(output.debug).toHaveBeenCalledWith('[cao:workflow-route]', {
       operation: 'parse',
       status: 'valid',
@@ -66,7 +66,7 @@ describe('workflow-route debug logging', () => {
     });
 
     output.debug.mockClear();
-    const formatted = module.workflowRouteValue('githubnext/gh-aw-cao', '.github/workflows/ambient-context.md');
+    const formatted = module.workflowRouteValue('githubnext/gh-cao', '.github/workflows/ambient-context.md');
     expect(formatted).toBe(VALID_ROUTE);
     expect(output.debug).toHaveBeenCalledWith('[cao:workflow-route]', {
       operation: 'format',
@@ -81,7 +81,7 @@ describe('workflow-route debug logging', () => {
 
     module.parseWorkflowRoute(VALID_ROUTE);
     module.parseWorkflowRoute('<invalid>');
-    module.workflowRouteValue('githubnext/gh-aw-cao', '.github/workflows/ambient-context.md');
+    module.workflowRouteValue('githubnext/gh-cao', '.github/workflows/ambient-context.md');
 
     expect(output.debug.mock.calls.length).toBeGreaterThan(0);
     for (const call of output.debug.mock.calls) {

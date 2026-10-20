@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
 )
 
 func TestWebhookGatewayPreflightQuotaFailurePreventsDispatch(t *testing.T) {

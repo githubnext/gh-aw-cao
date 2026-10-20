@@ -424,7 +424,7 @@ describe('Measure history', () => {
       'workflow-name': 'Optimization / Token Optimizer',
       series: [
         { id: 'github/gh-aw', label: 'github/gh-aw', points: [{ x: '2026-09-24T00:00:00Z', y: 0.5, key: 'gh-aw' }] },
-        { id: 'githubnext/gh-aw-cao', label: 'githubnext/gh-aw-cao', points: [{ x: '2026-09-24T00:00:00Z', y: 1, key: 'gh-aw-cao' }] }
+        { id: 'githubnext/gh-cao', label: 'githubnext/gh-cao', points: [{ x: '2026-09-24T00:00:00Z', y: 1, key: 'gh-cao' }] }
       ]
     }];
     const rendered = renderMeasureHistory({
@@ -452,7 +452,7 @@ describe('Measure history', () => {
     expect(rendered.querySelectorAll('.temporal-plot-point')).toHaveLength(2);
     expect(rendered.querySelector('.chart-legend')?.textContent).toContain('github/gh-aw');
     expect(rendered.querySelector('.chart-legend-dot')).not.toBeNull();
-    expect(rendered.querySelector('.chart-legend')?.textContent).toContain('githubnext/gh-aw-cao');
+    expect(rendered.querySelector('.chart-legend')?.textContent).toContain('githubnext/gh-cao');
     expect(rendered.textContent).toContain('2repositories');
     expect(rendered.textContent).toContain('campaign rollups are omitted');
   });
@@ -466,9 +466,9 @@ describe('Measure history', () => {
       'maturity-status': 'matured',
       'evaluation-mode': 'attainment-only',
       'workflow-name': 'Optimization / Token Optimizer',
-      series: [{ id: 'githubnext/gh-aw-cao', label: 'githubnext/gh-aw-cao', points: [
-        { x: '2026-09-23T00:00:00Z', y: 16.25, color: 'githubnext/gh-aw-cao' },
-        { x: '2026-09-24T00:00:00Z', y: 14.75, color: 'githubnext/gh-aw-cao' }
+      series: [{ id: 'githubnext/gh-cao', label: 'githubnext/gh-cao', points: [
+        { x: '2026-09-23T00:00:00Z', y: 16.25, color: 'githubnext/gh-cao' },
+        { x: '2026-09-24T00:00:00Z', y: 14.75, color: 'githubnext/gh-cao' }
       ] }]
     }, {
       metric: 'optimization-token-optimizer.failure-rate-percent',
@@ -478,9 +478,9 @@ describe('Measure history', () => {
       'maturity-status': 'matured',
       'evaluation-mode': 'attainment-only',
       'workflow-name': 'Optimization / Token Optimizer',
-      series: [{ id: 'githubnext/gh-aw-cao', label: 'githubnext/gh-aw-cao', points: [
-        { x: '2026-09-23T00:00:00Z', y: 4.5, color: 'githubnext/gh-aw-cao' },
-        { x: '2026-09-24T00:00:00Z', y: 3.5, color: 'githubnext/gh-aw-cao' }
+      series: [{ id: 'githubnext/gh-cao', label: 'githubnext/gh-cao', points: [
+        { x: '2026-09-23T00:00:00Z', y: 4.5, color: 'githubnext/gh-cao' },
+        { x: '2026-09-24T00:00:00Z', y: 3.5, color: 'githubnext/gh-cao' }
       ] }]
     }];
     const rendered = renderMeasureHistory({

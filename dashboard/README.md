@@ -36,8 +36,8 @@ canonical runtime files from the exact revision recorded by gh-aw:
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- githubnext/gh-aw-cao
+  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
+  bash -s -- githubnext/gh-cao
 ```
 
 Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
@@ -54,8 +54,8 @@ latest campaign release automatically:
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
-  bash -s -- githubnext/gh-aw-cao
+  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
+  bash -s -- githubnext/gh-cao
 ```
 
 Use `gh cao update` to move installed campaigns to a newer reviewed

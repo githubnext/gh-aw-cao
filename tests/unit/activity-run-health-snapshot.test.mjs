@@ -11,7 +11,7 @@ const context = {
   repositoryScope: "allowlist",
   includePrivate: false,
   runWindowHours: 168,
-  allowedRepositories: ["githubnext/gh-aw-cao"],
+  allowedRepositories: ["githubnext/gh-cao"],
 };
 
 function previousIndex(overrides = {}) {
@@ -20,7 +20,7 @@ function previousIndex(overrides = {}) {
     generatedAt: "2026-09-04T12:00:00Z",
     organization: "githubnext",
     repositoryScope: "allowlist",
-    allowedRepositories: ["githubnext/gh-aw-cao"],
+    allowedRepositories: ["githubnext/gh-cao"],
     includePrivate: false,
     runHealth: {
       available: true,
@@ -47,7 +47,7 @@ test("partial run snapshots are retained without enabling incremental refresh", 
 test("retained run records stay bounded and require a current workflow registration", () => {
   const snapshot = previousIndex({
     workflows: [{
-      repository: "githubnext/gh-aw-cao",
+      repository: "githubnext/gh-cao",
       id: 17,
       runHealth: {
         runRecords: [
@@ -56,7 +56,7 @@ test("retained run records stay bounded and require a current workflow registrat
         ],
       },
     }, {
-      repository: "githubnext/gh-aw-cao",
+      repository: "githubnext/gh-cao",
       id: 18,
       runHealth: {
         runRecords: [{ runId: 99, createdAt: "2026-09-04T10:00:00Z" }],
@@ -64,7 +64,7 @@ test("retained run records stay bounded and require a current workflow registrat
     }],
   });
   const registry = new Map([[
-    "githubnext/gh-aw-cao",
+    "githubnext/gh-cao",
     new Map([["workflow", { id: 17 }]]),
   ]]);
 

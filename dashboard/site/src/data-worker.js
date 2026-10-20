@@ -24,7 +24,7 @@ import {
   recordTransaction,
   subscribeCanonicalDatabaseUpgrade
 } from './data/storage/indexeddb.js';
-import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
+import { compileDashboardViewPayloadQueries, dashboardPartialViewSources } from './data/queries/view-payload-compiler.js';
 import { normalizeViewFilters } from './view-filter-contract.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
@@ -168,7 +168,7 @@ let hasCompleteDashboardSnapshot = false;
  */
 let publicationPhase = 'complete';
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, controller?: AbortController, githubController?: AbortController, githubSources?: Record<string, import('./presenter.js').LogicalSourceInput>, hostedSources?: Record<string, import('./presenter.js').LogicalSourceInput>, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, previewedViews?: Set<string>, controller?: AbortController, githubController?: AbortController, githubSources?: Record<string, import('./presenter.js').LogicalSourceInput>, hostedSources?: Record<string, import('./presenter.js').LogicalSourceInput>, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: import('./data/queries/view-payload-compiler.js').GlobalQueryContext }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -473,25 +473,19 @@ function subscriptionDatabaseSources(subscription, sourceNames = subscription.so
     .filter((name) => !queryNames.has(name) && !isGitHubQuerySource(name));
 }
 
-/** @param {DashboardSubscription} subscription */
-function subscriptionPartialSource(subscription) {
-  if (subscription.sourceNames.length !== 1) return null;
-  const page = /** @type {{ kind?: string, definition?: { views?: unknown[] }, views?: unknown[] } | undefined} */ (
-    subscription.context.pages.find((candidate) => candidate?.id === subscription.pageId)
-  );
-  const views = page?.kind === 'built-in' ? page.definition?.views : page?.views;
-  const candidate = Array.isArray(views) ? views.find((view) => view && typeof view === 'object'
-    && 'id' in view && view.id === subscription.viewId) : undefined;
-  const view = /** @type {{ data?: { source?: string, ['partial-source']?: string } } | undefined} */ (candidate);
-  const partialSource = view?.data?.['partial-source'];
-  if (view?.data?.source !== subscription.sourceNames[0] || typeof partialSource !== 'string') return null;
+/** @param {DashboardSubscription} subscription @param {'inventory' | 'runs' | 'complete'} [phase] */
+function subscriptionPartialViews(subscription, phase = publicationPhase) {
   const interactive = subscription.queryContext;
-  return !Object.keys(interactive?.filters ?? {}).length
-    && !Object.keys(interactive?.viewFilters ?? {}).length
-    && !interactive?.search?.query
-    && !interactive?.orderBy?.length
-    && !Object.keys(subscription.routeParameters ?? {}).length
-    ? partialSource : null;
+  if (Object.keys(interactive?.filters ?? {}).length
+      || Object.keys(interactive?.viewFilters ?? {}).length
+      || interactive?.search?.query
+      || interactive?.orderBy?.length
+      || Object.keys(subscription.routeParameters ?? {}).length) return [];
+  const page = subscription.context.pages.find((candidate) => candidate?.id === subscription.pageId);
+  return dashboardPartialViewSources(page, {
+    views: subscription.context.views, viewId: subscription.viewId, sourceNames: subscription.sourceNames,
+    backend: subscription.hostedSources !== undefined || liveDashboard?.hosted ? 'hosted' : 'static'
+  }).filter(({ partialSource }) => isPhaseSubscription(subscription, phase, [partialSource]));
 }
 
 /**
@@ -526,6 +520,8 @@ function pageScopedSources(sources, requested) {
  * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} [queryContext]
  * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
+ * @param {boolean} [partial]
+ * @param {string[]} [partialViewIds]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 async function queryLiveDashboard(
@@ -539,18 +535,19 @@ async function queryLiveDashboard(
   queryContext,
   viewId,
   dashboard = liveDashboard,
-  partial = false
+  partial = false,
+  partialViewIds
 ) {
   return withQueryProgress(() => executeLiveDashboardQuery(
     requested, context, requestContext, signal, pagination, pageId,
-    routeParameters, queryContext, viewId, dashboard, partial
+    routeParameters, queryContext, viewId, dashboard, partial, partialViewIds
   ));
 }
 
 /** @type {typeof queryLiveDashboard} */
 async function executeLiveDashboardQuery(
   requested, context, requestContext, signal, pagination = {}, pageId,
-  routeParameters, queryContext, viewId, dashboard = liveDashboard, partial = false
+  routeParameters, queryContext, viewId, dashboard = liveDashboard, partial = false, partialViewIds
 ) {
   dashboard ??= await loadActiveDashboard();
   if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
@@ -577,6 +574,7 @@ async function executeLiveDashboardQuery(
           views: context.views,
           backend: dashboard.hosted ? 'hosted' : 'static',
           viewId,
+          viewIds: partialViewIds,
           sourceNames: requested,
           partial
         })
@@ -733,11 +731,11 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
           const pagination = subscription.revision === dashboard.revision
             ? subscription.pagination
             : resetPagination(subscription.pagination);
-          const partialSource = subscriptionPartialSource(subscription);
-          if (partialSource && !subscription.emitted && publicationPhase !== 'complete'
-              && isPhaseSubscription(subscription, publicationPhase, [partialSource])) {
+          const partialViews = subscriptionPartialViews(subscription);
+          if (publicationPhase !== 'complete'
+              && partialViews.some(({ viewId }) => !subscription.previewedViews?.has(viewId))) {
             const partial = await queryLiveDashboard(
-              new Set(subscription.sourceNames),
+              new Set(partialViews.map(({ source }) => source)),
               subscription.context,
               subscription.requestContext,
               controller.signal,
@@ -747,9 +745,11 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
               subscription.queryContext,
               subscription.viewId,
               queryDashboard,
-              true
+              true,
+              partialViews.map(({ viewId }) => viewId)
             );
             if (dashboardSubscriptions.get(id) !== subscription || liveDashboard !== dashboard) continue;
+            subscription.previewedViews = new Set(partialViews.map(({ viewId }) => viewId));
             workerScope?.postMessage({
               subscriptionId: id, revision: dashboard.revision, data: partial, partial: true,
               ...(subscription.githubSources ? { githubEpoch: githubAuthenticationEpoch } : {})
@@ -843,9 +843,8 @@ function refreshDashboardSubscriptions(logicalSources, phase) {
     ? [...dashboardSubscriptions.keys()]
     : [...dashboardSubscriptions]
       .filter(([, subscription]) => {
-        const partialSource = subscriptionPartialSource(subscription);
         return isPhaseSubscription(subscription, publication)
-          || (partialSource !== null && isPhaseSubscription(subscription, publication, [partialSource]));
+          || subscriptionPartialViews(subscription, publication).length > 0;
       })
       .map(([id]) => id);
   debugIngestion('publishing canonical phase', {
@@ -1580,9 +1579,8 @@ if (typeof document === 'undefined' && workerScope) {
           });
         }
         if (liveDashboard && event.data.emitCurrent !== false) {
-          const partialSource = subscriptionPartialSource(subscription);
           if (isPhaseSubscription(subscription, publicationPhase)
-              || (partialSource && isPhaseSubscription(subscription, publicationPhase, [partialSource]))) {
+              || subscriptionPartialViews(subscription).length > 0) {
             scheduleDashboardSubscriptions([subscriptionId]);
           }
         }

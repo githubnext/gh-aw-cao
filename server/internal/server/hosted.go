@@ -11,10 +11,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/audit"
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/audit"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
 )
 
 var hostedLog = logger.New("cao:server:hosted")
@@ -137,7 +137,13 @@ func newHostedAppWithPolicy(
 		_ = database.Close()
 		return nil, err
 	}
+	admissionConfig, err := admissionConfigFromEnv()
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
 	config := Config{
+		Admission:              admissionConfig,
 		Database:               database,
 		Audit:                  auditLog,
 		HostProfile:            host.Profile,
@@ -170,6 +176,7 @@ func newHostedAppWithPolicy(
 			RedirectURL:                 os.Getenv("CAO_GITHUB_REDIRECT_URL"),
 			SessionSecret:               os.Getenv("CAO_SESSION_SECRET"),
 			PreviousSessionSecret:       os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
+			AllowedUsers:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_USERS")),
 			AllowedOrganizations:        splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
 			AllowedTeams:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
 			LocalDevelopmentUser:        os.Getenv("CAO_GITHUB_LOCAL_USER"),

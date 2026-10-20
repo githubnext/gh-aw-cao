@@ -105,7 +105,7 @@ safe-outputs:
     expires: 14d
 pre-agent-steps:
   - name: Configure Playwright CLI launch options
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       EXPR_GITHUB_WORKSPACE: ${{ github.workspace }}
     run: |
@@ -121,7 +121,7 @@ pre-agent-steps:
       }
       EOF
   - name: Playwright browser launch preflight
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       EXPR_GITHUB_WORKSPACE: ${{ github.workspace }}
       PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/gh-aw/playwright-browsers
@@ -138,13 +138,13 @@ pre-agent-steps:
         echo "Playwright preflight failed; agent will report the infrastructure blocker."
       fi
   - name: Build expected control-plane inventory
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' }}
     run: |
       mkdir -p /tmp/gh-aw/agent/self-care-dashboard-review
       REPORT_INVENTORY=/tmp/gh-aw/agent/self-care-dashboard-review/expected-inventory.json \
         node activity/inventory.mjs
   - name: Download and grade the live dashboard artifact
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' }}
     env:
       GH_TOKEN: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE != 'pat' && secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
     run: |
@@ -189,12 +189,12 @@ pre-agent-steps:
 
 Review the control-plane dashboard deployed from this repository through deterministic checks and three stakeholder perspectives.
 
-Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without auditing or publishing findings.
+Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without auditing or publishing findings.
 
 ## Context
 
 - Repository: `${{ inputs.target_repo }}`
-- Dashboard: `https://githubnext.github.io/gh-aw-cao/cao/`
+- Dashboard: `https://githubnext.github.io/gh-cao/cao/`
 - Expected inventory: `/tmp/gh-aw/agent/self-care-dashboard-review/expected-inventory.json`
 - Live dashboard artifact: `/tmp/gh-aw/agent/self-care-dashboard-review/dashboard-artifact`
 - Deterministic view grades: `/tmp/gh-aw/agent/self-care-dashboard-review/view-grades.json`

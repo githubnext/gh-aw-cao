@@ -66,7 +66,7 @@ export function resolveUpdateCommit(ref, execute, failureMessage, compareVersion
   if (ref === 'main' || ref === 'master') {
     const repository = execute('gh', [
       'api', '--hostname', 'github.com',
-      '/repos/githubnext/gh-aw-cao', '--jq', '.default_branch'
+      '/repos/githubnext/gh-cao', '--jq', '.default_branch'
     ], { encoding: 'utf8' });
     if (repository.error || repository.status !== 0) {
       throw new Error(`Unable to resolve CAO default branch: ${failureMessage(repository, 'gh api failed')}`);
@@ -78,7 +78,7 @@ export function resolveUpdateCommit(ref, execute, failureMessage, compareVersion
   } else if (ref === 'latest') {
     const releases = execute('gh', [
       'api', '--hostname', 'github.com',
-      '/repos/githubnext/gh-aw-cao/releases?per_page=100', '--paginate', '--jq',
+      '/repos/githubnext/gh-cao/releases?per_page=100', '--paginate', '--jq',
       '.[] | select(.draft == false and .prerelease == false) | .tag_name'
     ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
     if (releases.error || releases.status !== 0) {
@@ -93,7 +93,7 @@ export function resolveUpdateCommit(ref, execute, failureMessage, compareVersion
   }
   const result = execute('gh', [
     'api', '--hostname', 'github.com',
-    `/repos/githubnext/gh-aw-cao/commits/${encodeURIComponent(sourceRef)}`, '--jq', '.sha'
+    `/repos/githubnext/gh-cao/commits/${encodeURIComponent(sourceRef)}`, '--jq', '.sha'
   ], { encoding: 'utf8' });
   if (result.error || result.status !== 0) {
     throw new Error(`Unable to resolve CAO ref ${ref}: ${failureMessage(result, 'gh api failed')}`);

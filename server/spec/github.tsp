@@ -5,9 +5,9 @@ namespace Cao;
 
 /** Safe repository metadata; upstream credentials and unrestricted GitHub payloads are never returned. */
 @example(#{
-  full_name: "githubnext/gh-aw-cao",
+  full_name: "githubnext/gh-cao",
   description: "Central Agentic Ops",
-  html_url: "https://github.com/githubnext/gh-aw-cao",
+  html_url: "https://github.com/githubnext/gh-cao",
   default_branch: "main",
   stargazers_count: 10,
   forks_count: 2,
@@ -31,7 +31,7 @@ model GitHubRepository {
 @example(#{
   tag_name: "v1.0.0",
   name: "Version 1",
-  html_url: "https://github.com/githubnext/gh-aw-cao/releases/tag/v1.0.0",
+  html_url: "https://github.com/githubnext/gh-cao/releases/tag/v1.0.0",
   published_at: "2026-10-01T00:00:00Z",
   draft: false,
   prerelease: false

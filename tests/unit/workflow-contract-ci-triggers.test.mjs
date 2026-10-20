@@ -82,7 +82,7 @@ test("service integration harnesses provision canonical storage before starting 
   assert.ok(parity.indexOf('execFileSync(binary, [') < parity.indexOf('const child = spawn(binary, ['));
 
   const azure = readFileSync(join(root, "scripts/azure-local/azure-local.sh"), "utf8");
-  assert.match(azure, /CAO_DATABASE_ADMIN_URL="\$CAO_POSTGRES_URL" "\$APP_DIR\/cao-dashboard" database bootstrap \\\n\s+--store canonical --namespace "\$namespace"/);
+  assert.match(azure, /CAO_DATABASE_ADMIN_URL="\$CAO_POSTGRES_URL" run_logged "canonical database bootstrap" database-bootstrap\.log \\\n\s+"\$APP_DIR\/cao-dashboard" database bootstrap --store canonical --namespace "\$namespace"/);
   assert.ok(azure.indexOf('"$APP_DIR/cao-dashboard" database bootstrap') < azure.indexOf('"$APP_DIR/cao-dashboard" ingest'));
   assert.doesNotMatch(azure, /export CAO_DATABASE_ADMIN_URL/);
 });

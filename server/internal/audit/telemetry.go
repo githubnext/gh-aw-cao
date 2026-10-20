@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	instrumentationName = "github.com/githubnext/gh-aw-cao/server/audit"
+	instrumentationName = "github.com/githubnext/gh-cao/server/audit"
 	metricEventCount    = "cao_audit.event.count"
 	metricAppendTime    = "cao_audit.append.duration"
 	metricMirrorCount   = "cao_audit.mirror.count"

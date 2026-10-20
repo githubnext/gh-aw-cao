@@ -13,7 +13,7 @@ test("SVG visual audit covers every tracked SVG in both color schemes", () => {
   assert.match(source, /set-color-scheme light/);
   assert.match(source, /set-color-scheme dark/);
   assert.match(source, /\bid: pi\b/);
-  assert.match(source, /\bmodel: copilot\/gpt-5\.4\b/);
+  assert.match(source, /\bmodel: copilot\/gpt-5\.6-sol\b/);
   assert.match(source, /cli-proxy: true/);
   assert.match(source, /playwright:/);
   assert.match(source, /version: "0\.1\.\d+"/);
@@ -124,13 +124,26 @@ test("SelfCare runs every 20 minutes", () => {
   assert.doesNotMatch(compiled, /GH_AW_INFO_MODEL: "copilot\/gpt-5\.4"/);
 });
 
+test("SelfCare confirms safe-output requests before claiming dispatches", () => {
+  const source = workflow("self-care.md");
+
+  assert.match(source, /safeoutputs <tool_name> '<JSON>'/);
+  assert.match(source, /wait for the complete result/);
+  assert.match(source, /Never pipe `safeoutputs` output to `head` or another truncating consumer/);
+  assert.match(source, /Count a dispatch only after the tool confirms that its safe-output request was recorded/);
+  assert.match(source, /this confirms dispatch intent, not downstream worker completion/);
+  assert.match(source, /unconfirmed, record that worker as deferred and call the configured `report_incomplete` safe-output tool without retrying/);
+  assert.match(source, /If no workers are eligible, call the configured `noop` safe-output tool/);
+  assert.match(source, /A prose report alone is not a terminal safe output/);
+});
+
 test("SelfCare documentation discoverability audits the public agent entry point", () => {
   const source = workflow("self-care-documentation-discoverability.md");
 
   assert.match(source, /^name: "SelfCare \/ Documentation Discoverability"$/m);
   assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: documentation-discoverability/);
   assert.match(source, /safe_output_mode` is `live`/);
-  assert.match(source, /githubnext\.github\.io\/gh-aw-cao\/llms\.txt/);
+  assert.match(source, /githubnext\.github\.io\/gh-cao\/llms\.txt/);
   assert.match(source, /llms-small\.txt/);
   assert.match(source, /agent\/resources\.json/);
   assert.match(source, /resource\.json/);
@@ -154,7 +167,7 @@ test("SelfCare documentation discoverability audits the public agent entry point
 test("SelfCare accessibility checker audits the served docs site with axe-core evidence", () => {
   const source = workflow("self-care-accessibility-checker.md");
   const compiled = workflow("self-care-accessibility-checker.lock.yml");
-  const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
+  const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
 
   assert.match(source, /^name: "SelfCare \/ Accessibility"$/m);
   assert.match(source, /workflow_dispatch:/);
@@ -164,7 +177,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /read_pull_requests: read/);
   assert.match(source, /pull-requests: read/);
   assert.doesNotMatch(source, /^\s+(contents|issues|pull-requests): write$/m);
-  assert.match(source, /engine:\n\s+id: pi\n\s+model: copilot\/gpt-5\.4/);
+  assert.match(source, /engine:\n\s+id: pi\n\s+model: copilot\/gpt-5\.6-sol/);
   assert.match(source, /cli-proxy: true/);
   assert.match(source, /playwright:\n\s+version: "0\.1\.18"/);
   assert.match(source, /npm pack axe-core@4\.13\.0/);
@@ -286,7 +299,7 @@ test("SelfCare docs build-time investigator rotates evidenced recommendations", 
   assert.match(source, /at most the latest 20 completed `docs\.yml` runs from the last 14 days/);
   assert.match(source, /median and p90 durations/);
   assert.match(source, /repo-memory:\n\s+branch-name: memory\/self-care-docs-build-time/);
-  assert.match(source, /githubnext__gh-aw-cao__docs-build-time-suggestions\.json/);
+  assert.match(source, /githubnext__gh-cao__docs-build-time-suggestions\.json/);
   assert.match(source, /Advance `next_category` after every complete evaluation/);
   assert.match(source, /noop cap is two only to tolerate one accidental placeholder call/);
   assert.match(source, /Call `create_issue` exactly once/);

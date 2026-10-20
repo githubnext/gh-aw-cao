@@ -1,6 +1,7 @@
 ---
-import DispatchIllustration from "./DispatchIllustration.astro";
+import WorkflowEcosystem from "./WorkflowEcosystem.astro";
 import HeroIntro from "./HeroIntro.astro";
+import LandingSlideshow from "./LandingSlideshow.astro";
 import TerminalDemo from "./TerminalDemo.astro";
 import ThemeImage from "./ThemeImage.astro";
 import dashboardCampaignValue from "../assets/product/cao-dashboard-campaign-value-mobile.png";
@@ -11,7 +12,12 @@ import dashboardRunHistory from "../assets/product/cao-dashboard-run-history-mob
 import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-history-mobile-light.png";
 ---
 
-<div class="hierarchy-hero">
+<div data-slideshow-slides>
+<section class="cao-title-slide" data-slideshow-slide aria-label="Presentation title">
+  <p>Monitor. Govern. Scale.</p>
+  <h1>Central Agentic Ops</h1>
+</section>
+<div class="hierarchy-hero" data-slideshow-slide>
   <HeroIntro />
 
   <div class="hero-visual">
@@ -43,34 +49,40 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   </div>
 </div>
 
-<section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal>
-  <p class="section-eyebrow">Execution policy</p>
-  <h2 id="dispatch-title">Control where workflows run.</h2>
+<section class="product-story dispatch-story" aria-labelledby="dispatch-title" data-reveal data-slideshow-slide>
+  <p class="section-eyebrow">One workflow ecosystem</p>
+  <h2 id="dispatch-title">Shared work. Clear ownership.</h2>
   <p>
-    Run workflows centrally across enrolled repositories and organizations. Reviewed policy sets the scope;
-    each worker handles one authorized target.
+    Enterprise teams, organizations, and repository maintainers own their workflows. Shared work reaches enrolled
+    repositories alongside local automation, with explicit scope and ownership.
   </p>
   <figure class="dispatch-illustration" aria-describedby="dispatch-description">
     <figcaption id="dispatch-description" class="visually-hidden">
-      Central Agentic Ops configures workflows, runs dispatchers followed by namespaced workers in GitHub Actions,
-      and sends each worker to one explicitly enrolled external repository.
+      Connectors group organizations within the enterprise and repositories within their organization.
+      Enterprise and organization workflows run in their owning control repositories and send declared safe outputs
+      directly to enrolled repositories. Repository-owned workflows run locally and produce their own safe outputs alongside shared outputs.
+      Labels and layout identify ownership; green marks delivery and completed outputs.
+      Reviewed policy governs shared work, not the visual hierarchy.
     </figcaption>
-    <DispatchIllustration />
+    <WorkflowEcosystem />
   </figure>
 </section>
 
-<section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal>
+<section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
-    <p class="section-eyebrow">Reusable workflows, central Ops</p>
-    <h2 id="terminal-title">Reuse what works.</h2>
+    <p class="section-eyebrow">Setup, authentication, and rollout</p>
+    <h2 id="terminal-title">Roll out with confidence.</h2>
     <p>
-      Start by monitoring one repository. Add versioned workflows when you're ready. Reuse the definition; decide separately where it may run.
+      Bring an existing workflow, such as Daily Repo Status from Agentics, under central control.
+      Set repository scope and separate read/write credentials. Review proposed reports before authorizing live delivery.
+      Keep rollout policy and steering in your control repository, and reuse the workflow across enrolled repositories.
+      Add campaigns when you need coordinated work.
     </p>
   </div>
   <TerminalDemo />
 </section>
 
-<section class="product-story runs-story" aria-labelledby="runs-title" data-reveal>
+<section class="product-story runs-story" aria-labelledby="runs-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
     <p class="section-eyebrow">Local workflows, central visibility</p>
     <h2 id="runs-title">Monitor what runs.</h2>
@@ -79,7 +91,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       and its evidence.
     </p>
   </div>
-  <figure class="product-frame product-shot product-shot-mobile product-shot-runs">
+  <figure class="product-frame product-shot product-shot-mobile product-shot-runs" data-slideshow-snippet="Workflow run history">
     <ThemeImage
       dark={dashboardRunHistory}
       light={dashboardRunHistoryLight}
@@ -92,7 +104,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   </figure>
 </section>
 
-<section class="product-story value-story reverse" aria-labelledby="value-title" data-reveal>
+<section class="product-story value-story reverse" aria-labelledby="value-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
     <p class="section-eyebrow">Earn trust before expanding autonomy</p>
     <h2 id="value-title">Roll out safely.</h2>
@@ -101,11 +113,11 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       not just successful runs: execution success is not an accepted outcome.
     </p>
   </div>
-  <figure class="product-frame product-shot product-shot-mobile product-shot-value">
+  <figure class="product-frame product-shot product-shot-mobile product-shot-value" data-slideshow-snippet="Operational value">
     <ThemeImage
       dark={dashboardCampaignValue}
       light={dashboardCampaignValueLight}
-      alt="Mobile Operational Value view for githubnext/gh-aw-cao showing AI credit per successful optimization-token-optimizer run over time."
+      alt="Mobile Operational Value view for githubnext/gh-cao showing AI credit per successful optimization-token-optimizer run over time."
       widths={[390, 780]}
       sizes="(max-width: 42rem) calc(100vw - 3rem), 22rem"
       loading="lazy"
@@ -113,6 +125,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     />
   </figure>
 </section>
+</div>
+<LandingSlideshow />
 
 <script>
   const revealTargets = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -138,6 +152,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
 
 <style>
   @layer starlight.core {
+    .cao-title-slide { display: none; }
+
     :global(.content-panel:has(.hierarchy-hero)) {
       --cao-page-bg: #f7faf8;
       --cao-page-grid-minor: rgba(26, 127, 55, 0.025);
@@ -178,11 +194,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     }
 
     :global(:root[data-theme="dark"] .content-panel:has(.hierarchy-hero)) {
-      --cao-page-bg: #030705;
-      --cao-page-grid-minor: rgba(63, 185, 80, 0.045);
-      --cao-page-grid-major: rgba(63, 185, 80, 0.1);
-      --cao-page-glow: rgba(63, 185, 80, 0.14);
-      --cao-page-secondary-glow: rgba(63, 185, 80, 0.08);
+      --cao-page-bg: #000000;
       --cao-signal-bg: rgba(13, 17, 23, 0.92);
       --cao-signal-border: rgba(240, 246, 252, 0.18);
       --cao-phone-bg: #21262d;
@@ -193,9 +205,6 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       --cao-section-bg: rgba(13, 17, 23, 0.84);
       --cao-section-border: rgba(240, 246, 252, 0.15);
       --cao-section-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.18);
-      --cao-section-accent-start: 16%;
-      --cao-section-accent-end: 7%;
-      --cao-section-glow-strength: 30%;
       --cao-story-heading: #f0f6fc;
       --cao-story-text: #b1bac4;
       --cao-story-eyebrow: #b1bac4;
@@ -203,16 +212,10 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       --cao-loop-text: #f0f6fc;
       --cao-loop-muted: #b1bac4;
       --cao-loop-border: #30363d;
-      background-image:
-        radial-gradient(ellipse 58rem 42rem at 76% 8%, var(--cao-page-glow), transparent 72%),
-        radial-gradient(ellipse 54rem 46rem at 16% 48%, var(--cao-page-secondary-glow), transparent 74%),
-        linear-gradient(var(--cao-page-grid-major) 1px, transparent 1px),
-        linear-gradient(90deg, var(--cao-page-grid-major) 1px, transparent 1px),
-        linear-gradient(var(--cao-page-grid-minor) 1px, transparent 1px),
-        linear-gradient(90deg, var(--cao-page-grid-minor) 1px, transparent 1px);
+      background-image: none;
     }
 
-    :global(.sl-container:has(> .hierarchy-hero)) {
+    :global(.sl-container:has(> [data-slideshow-slides])) {
       width: 100%;
       max-width: none;
       padding-inline: 0;
@@ -257,7 +260,7 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       --cao-secondary-bg-hover: #30363d;
       --cao-secondary-border: #30363d;
       --cao-secondary-border-hover: #8c959f;
-      --cao-hero-glow: rgba(63, 185, 80, 0.13);
+      background-image: none;
     }
 
     .visually-hidden {
@@ -529,12 +532,17 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       border: 1px solid var(--cao-section-border);
       border-radius: 1rem;
       background:
-        linear-gradient(
-          135deg,
-          color-mix(in srgb, var(--section-accent) var(--cao-section-accent-start), var(--cao-section-bg)),
-          var(--cao-section-bg) 48%,
-          color-mix(in srgb, var(--section-accent) var(--cao-section-accent-end), var(--cao-section-bg))
-        );
+        radial-gradient(
+          ellipse 80% 120% at 0% 0%,
+          color-mix(in srgb, var(--section-accent) var(--cao-section-accent-start), transparent),
+          transparent 70%
+        ),
+        radial-gradient(
+          ellipse 80% 120% at 100% 100%,
+          color-mix(in srgb, var(--section-accent) var(--cao-section-accent-end), transparent),
+          transparent 72%
+        ),
+        var(--cao-section-bg);
       box-shadow: var(--cao-section-shadow);
       backdrop-filter: blur(12px);
     }

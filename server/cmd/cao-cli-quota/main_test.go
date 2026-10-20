@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/operational/memory"
 )
 
 func testBridge(t *testing.T, remaining int) (*bridge, *snapshot) {

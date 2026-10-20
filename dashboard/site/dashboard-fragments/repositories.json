@@ -374,16 +374,25 @@
       }
     },
     {
-      "name": "repository-run-totals",
-      "subject": "Summarize distinct runs, failures, and approval-required runs by repository.",
-      "objective": "Aggregate retained run volume, conclusions, and import coverage without materializing enriched run rows.",
-      "acceptance": "Group by organization and repository; preserve distinct run IDs, configured failure/action-required conclusion counts, and imported-run sums. Missing enrichment or run history must not be treated as complete coverage.",
-      "description": "Distinct run and conclusion totals for each repository.",
+      "name": "repository-run-identities",
+      "subject": "Project the run-attempt identities needed to match imported evidence.",
+      "objective": "Keep import-coverage joins narrow without carrying run details, links, or costs.",
+      "acceptance": "Preserve each selected run attempt and its organization, repository, workflow, run, and attempt keys. Do not deduplicate attempts or change selected-horizon semantics.",
       "from": "runs",
+      "select": [
+        { "field": "organization" }, { "field": "repository" }, { "field": "workflow" },
+        { "field": "run" }, { "field": "run-attempt" }
+      ]
+    },
+    {
+      "name": "repository-import-totals",
+      "subject": "Count selected run attempts with matching retained imported records.",
+      "objective": "Join compact run identities to already reduced event evidence, then reduce import coverage by repository.",
+      "acceptance": "Match all five run-attempt keys and count each selected run row once when events are positive. Preserve optional-evidence quality and horizon filters; records for unselected runs do not establish coverage.",
+      "from": "repository-run-identities",
       "joins": [
         {
-          "source": "event-runs",
-          "type": "left",
+          "source": "event-runs", "type": "left",
           "on": [
             { "left": "organization", "right": "organization" },
             { "left": "repository", "right": "repository" },
@@ -391,69 +400,44 @@
             { "left": "run", "right": "run" },
             { "left": "run-attempt", "right": "run-attempt" }
           ],
-          "fields": [
-            { "field": "events", "as": "imported-events" }
-          ]
+          "fields": [{ "field": "events", "as": "imported-events" }]
         }
       ],
       "compute": [
         {
-          "as": "imported",
-          "function": "greater-than",
-          "args": [
-            { "field": "imported-events" },
-            { "value": 0 }
-          ]
+          "as": "imported", "function": "greater-than",
+          "args": [{ "field": "imported-events" }, { "value": 0 }]
         }
       ],
       "aggregate": {
-        "by": [
-          "organization",
-          "repository"
-        ],
-        "values": [
-          {
-            "field": "run",
-            "as": "runs",
-            "reducer": "distinct-count"
-          },
-          {
-            "field": "run-conclusion",
-            "as": "failed",
-            "reducer": "count",
-            "filter": {
-              "predicates": [
-                {
-                  "field": "run-conclusion",
-                  "in": [
-                    "failure",
-                    "startup-failure",
-                    "timed-out"
-                  ]
-                }
-              ]
-            }
-          },
-          {
-            "field": "run-conclusion",
-            "as": "action-required",
-            "reducer": "count",
-            "filter": {
-              "predicates": [
-                {
-                  "field": "run-conclusion",
-                  "equals": "action-required"
-                }
-              ]
-            }
-          },
-          {
-            "field": "imported",
-            "as": "imported-runs",
-            "reducer": "sum"
-          }
-        ]
+        "by": ["organization", "repository"],
+        "values": [{ "field": "imported", "as": "imported-runs", "reducer": "sum" }]
       }
+    },
+    {
+      "name": "repository-run-totals",
+      "subject": "Summarize distinct runs, failures, and approval-required runs by repository.",
+      "objective": "Join already reduced run statistics and import coverage at repository grain.",
+      "acceptance": "Group by organization and repository; preserve distinct run IDs, configured failure/action-required conclusion counts, and imported-run sums. Missing enrichment or run history must not be treated as complete coverage.",
+      "description": "Distinct run and conclusion totals for each repository.",
+      "from": "repository-run-statistics",
+      "joins": [
+        {
+          "source": "repository-import-totals",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" }
+          ],
+          "fields": [
+            { "field": "imported-runs", "as": "imported-runs" }
+          ]
+        }
+      ],
+      "select": [
+        { "field": "organization" }, { "field": "repository" }, { "field": "runs" },
+        { "field": "failed" }, { "field": "action-required" }, { "field": "imported-runs" }
+      ]
     },
     {
       "name": "repository-activity-preview",
@@ -1071,11 +1055,51 @@
       ]
     },
     {
+      "name": "repository-observed-run-counts",
+      "subject": "Count distinct retained run IDs by repository without importing event evidence.",
+      "objective": "Supply the run-volume chart without computing activity health, ingestion coverage, or workflow costs.",
+      "acceptance": "Group by organization and repository coordinate and count distinct retained run IDs, not attempts; missing runs remain missing evidence and global scope and time filters still apply.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [
+            { "field": "organization" },
+            { "value": "/" },
+            { "field": "repository" }
+          ]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository-coordinate"],
+        "values": [{ "field": "run", "as": "runs", "reducer": "distinct-count" }]
+      }
+    },
+    {
       "name": "repository-run-inventory",
       "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
       "objective": "Compare repository execution volume and choose repositories for drill-down.",
       "acceptance": "Keep up to 100 repository identities and drill links, ordered by run count descending with repository tie-breaks. Zero means no retained runs, not proof of inactivity; preserve unavailable and partial evidence. The Table view retains the full inventory.",
-      "from": "repository-activity",
+      "from": "repository-activity-preview",
+      "joins": [
+        {
+          "source": "repository-observed-run-counts",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository-coordinate" }
+          ],
+          "fields": [{ "field": "runs", "as": "observed-runs" }]
+        }
+      ],
+      "compute": [
+        {
+          "as": "runs",
+          "function": "coalesce",
+          "args": [{ "field": "observed-runs" }, { "value": 0 }]
+        }
+      ],
       "select": [
         { "field": "organization" },
         { "field": "repository" },
@@ -1202,7 +1226,7 @@
             "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
             "objective": "Compare repository execution volume and choose repositories for drill-down.",
             "acceptance": "Show up to 100 repositories by run count descending with stable repository tie-breaks and drill links. Include zero retained runs without claiming inactivity; distinguish empty, partial, and unavailable evidence.",
-            "description": "Distinct retained runs per repository in the selected horizon, ranked by count. Shows up to 100 repositories; the Table view lists the full inventory. Zero means no retained runs, not confirmed inactivity.",
+            "description": "Distinct retained runs per repository in the selected horizon, ranked by count directly from inventory and run evidence without waiting for imported event coverage. Shows up to 100 repositories; the Table view lists the full inventory. Zero means no retained runs, not confirmed inactivity.",
             "data": {
               "source": "repository-run-inventory",
               "order-by": [
@@ -1251,7 +1275,10 @@
           {
             "id": "repositories-activity",
             "title": "Repositories",
-            "description": "Repository-local execution health and all attributed campaign or local-workflow outcomes.",
+            "subject": "Repository execution health, retained outcomes, and AI Credit usage.",
+            "objective": "Compare repository-grain totals reduced before enrichment and choose drill-down targets.",
+            "acceptance": "Preserve repository identity, counts, links, filters, and evidence quality; unavailable activity is not a healthy or idle repository.",
+            "description": "Repository-local execution health and attributed outcomes, reduced before inventory enrichment.",
             "data": {
               "source": "repository-activity",
               "partial-source": "repository-activity-preview"
@@ -1340,6 +1367,7 @@
       "description": "Choose the next operational investigation for the selected repository.",
       "icon": "repo",
       "class-name": "repository-detail-page",
+      "query-binding": "page",
       "route": {
         "hash-query-parameter": "repository",
         "navigation-page": "repositories",

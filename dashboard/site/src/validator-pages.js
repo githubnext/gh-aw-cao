@@ -168,9 +168,9 @@ export function validatePage(page, pageNode, path, pageIds, errors) {
       errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'page requires must be a mapping.', requiresPath));
     } else {
       validateObjectKeys(getValueNodeByKey(pageNode, 'requires'), ['capability'], requiresPath, errors);
-      if (page.requires.capability !== 'cli-queue') {
+      if (page.requires.capability !== 'cli-queue' && page.requires.capability !== 'admin') {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'page requires capability must be cli-queue.', `${requiresPath}.capability`));
+          'page requires capability must be cli-queue or admin.', `${requiresPath}.capability`));
       }
     }
   }
@@ -242,6 +242,13 @@ export function validatePage(page, pageNode, path, pageIds, errors) {
     ));
   }
   validatePageForm(page.form, getValueNodeByKey(pageNode, 'form'), `${path}.form`, errors);
+  if (page['query-binding'] !== undefined && page['query-binding'] !== 'view' && page['query-binding'] !== 'page') {
+    errors.push(createError(
+      ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+      'query-binding must be "view" or "page" when present.',
+      `${path}.query-binding`
+    ));
+  }
   if (page.icon !== undefined) {
     validateStringField(page.icon, `${path}.icon`, true, errors);
     if (typeof page.icon === 'string' && !PAGE_ICON_VALUES.includes(page.icon)) {

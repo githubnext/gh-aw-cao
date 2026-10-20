@@ -112,6 +112,10 @@ test("producer artifact binds its production inventory to an immutable revision"
     "dashboard/cli-terminal-child.mjs",
     "dashboard/site/scripts/prepare-terminal.mjs",
   ]) assert.ok(metadata.files[file], `missing terminal runtime file: ${file}`);
+  for (const file of [
+    "dashboard/environment-defaults.mjs",
+    "dashboard/site/src/environment-defaults.js",
+  ]) assert.ok(metadata.files[file], `missing Governance runtime file: ${file}`);
   const dashboardManifest = JSON.parse(readFileSync(path.join(root, "dashboard/site/package.json"), "utf8"));
   const dashboardLock = JSON.parse(readFileSync(path.join(root, "dashboard/site/package-lock.json"), "utf8"));
   assert.ok(dashboardManifest.dependencies["node-pty"]);
@@ -125,8 +129,26 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.doesNotMatch(prompt, /Bundled dependency:|@clack\/|fast-string-width|fast-wrap-ansi|sisteransi/);
   assert.equal(existsSync(path.join(root, "node_modules")), false);
   assert.match(readFileSync(path.join(root, "dashboard/site/src/validator-dashboard.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
+  assert.match(readFileSync(path.join(root, "dashboard/site/src/environment-defaults.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
   assert.equal(existsSync(path.join(root, "dashboard/site/node_modules")), false);
   assert.throws(() => validateCaoRuntimeArtifact(root, "2".repeat(40)), /provenance does not match/);
+});
+
+test("the prebuilt archive loads the Governance CLI transport and its bundled YAML parser", async (t) => {
+  const root = unpack(t);
+  const { executeDashboardCommand } = await import(pathToFileURL(path.join(root, "dashboard/cli-actions.mjs")));
+  const yaml = 'default_max_turns: "20"\n';
+  const result = await executeDashboardCommand({
+    command: "gh aw env get cao-governance.yml --scope org --org acme",
+    workingDirectory: root,
+    githubToken: "test-fixture",
+    execute: async (_executable, args, options) => {
+      if (!args.includes("--help")) writeFileSync(path.join(options.cwd, "cao-governance.yml"), yaml);
+      return { stdout: "", stderr: "" };
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.stdout, yaml);
 });
 
 test("producer archives are reproducible across temporary build directories", () => {
@@ -145,7 +167,7 @@ test("verified older inventories may include a retired launcher without making i
   writeFileSync(metadataPath, JSON.stringify(metadata));
   validateCaoRuntimeArtifact(root, revision);
   const [plan] = planCaoMaterialization([{
-    name: "githubnext/gh-aw-cao", record: { resolvedCommit: revision },
+    name: "githubnext/gh-cao", record: { resolvedCommit: revision },
   }], "root");
   assert.equal(plan.resources.includes("cao.sh"), false);
   writeFileSync(filename, "tampered");
@@ -189,7 +211,7 @@ for (const [description, ref, downloadCommand] of [
   test(`${description} acquisition verifies the archive, workflow and both exact source digests`, (t) => {
     const { root, commands } = fakeGithub(t);
     const archive = downloadCaoRuntimeArtifact({
-      source: `githubnext/gh-aw-cao@${ref}`, resolvedCommit: revision,
+      source: `githubnext/gh-cao@${ref}`, resolvedCommit: revision,
     }, path.join(root, "download"));
     assert.deepEqual(readFileSync(archive), readFileSync(artifact.archive));
     const calls = commands();
@@ -197,9 +219,9 @@ for (const [description, ref, downloadCommand] of [
     if (downloadCommand === "run") assert.equal(calls.find((args) => args[0] === "run")[2], "9");
     const verification = calls.find((args) => args[0] === "attestation");
     for (const [flag, value] of [
-      ["--repo", "githubnext/gh-aw-cao"],
+      ["--repo", "githubnext/gh-cao"],
       ["--hostname", "github.com"],
-      ["--signer-workflow", "githubnext/gh-aw-cao/.github/workflows/cao-runtime.yml"],
+      ["--signer-workflow", "githubnext/gh-cao/.github/workflows/cao-runtime.yml"],
       ["--source-digest", revision], ["--signer-digest", revision],
     ]) assert.equal(verification[verification.indexOf(flag) + 1], value);
     assert.ok(verification.includes("--deny-self-hosted-runners"));
@@ -210,7 +232,7 @@ test("main/SHA acquisition waits for the active exact runtime build", (t) => {
   const { root, commands } = fakeGithub(t, { pendingBeforeSuccess: 2 });
   const waits = [];
   const archive = downloadCaoRuntimeArtifact({
-    source: `githubnext/gh-aw-cao@${revision}`, resolvedCommit: revision,
+    source: `githubnext/gh-cao@${revision}`, resolvedCommit: revision,
   }, path.join(root, "download"), {
     attempts: 2,
     intervalMs: 5_000,
@@ -231,7 +253,7 @@ for (const [description, options] of [
     const consumer = path.join(root, "consumer");
     mkdirSync(path.join(consumer, ".github/aw/packages"), { recursive: true });
     writeFileSync(path.join(consumer, ".github/aw/packages/cao.json"), JSON.stringify({
-      package: "githubnext/gh-aw-cao", source: `githubnext/gh-aw-cao@${revision}`, resolvedCommit: revision,
+      package: "githubnext/gh-cao", source: `githubnext/gh-cao@${revision}`, resolvedCommit: revision,
     }));
     mkdirSync(path.join(consumer, "activity"));
     const existing = path.join(consumer, "activity/existing.mjs");
@@ -251,7 +273,7 @@ test("a missing focused revision leaves an already validated root runtime untouc
   mkdirSync(records, { recursive: true });
   for (const [name, sha] of [["root", revision], ["activity", "3".repeat(40)]]) {
     writeFileSync(path.join(records, `${name}.json`), JSON.stringify({
-      package: `githubnext/gh-aw-cao${name === "root" ? "" : `/${name}`}`, resolvedCommit: sha,
+      package: `githubnext/gh-cao${name === "root" ? "" : `/${name}`}`, resolvedCommit: sha,
     }));
   }
   mkdirSync(path.join(consumer, "activity"));
@@ -269,7 +291,7 @@ test("remote materialization consumes the prebuilt package and does not invoke n
   const consumer = path.join(root, "consumer");
   mkdirSync(path.join(consumer, ".github/aw/packages"), { recursive: true });
   writeFileSync(path.join(consumer, ".github/aw/packages/cao.json"), JSON.stringify({
-    package: "githubnext/gh-aw-cao", resolvedCommit: revision,
+    package: "githubnext/gh-cao", resolvedCommit: revision,
   }));
   const npm = path.join(root, "npm");
   writeFileSync(npm, "#!/bin/sh\nexit 99\n");
@@ -299,11 +321,27 @@ test("the trusted runtime pipeline separates building and attestation from draft
   assert.equal(setupNode.with["package-manager-cache"], false);
   assert.equal(workflow.jobs.attest.permissions["id-token"], "write");
   assert.equal(workflow.jobs.publish, undefined);
-  assert.match(source, /github\.repository == 'githubnext\/gh-aw-cao'/);
+  assert.match(source, /github\.repository == 'githubnext\/gh-cao'/);
   assert.match(source, /retention-days: 90/);
   assert.doesNotMatch(source, /gh release upload|--clobber|npm publish/);
   const attest = workflow.jobs.attest;
   assert.ok(!attest.steps.some((step) => step.uses?.startsWith("actions/checkout")));
   assert.doesNotMatch(attest.steps.map((step) => step.run ?? "").join("\n"), /npm|node |tar |bash .*\.sh/);
   for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) assert.match(match[1], /^[0-9a-f]{40}$/);
+});
+
+test("the trusted runtime pipeline seals and attests the Azure deployment assets at the exact SHA", () => {
+  const workflow = parse(readFileSync(path.join(catalog, ".github/workflows/cao-runtime.yml"), "utf8"));
+  const build = workflow.jobs.build.steps;
+  const azureBuild = build.findIndex((step) => step.run === 'npm run build:azure-assets -- "${RUNNER_TEMP}/azure" "${REVISION}"');
+  assert.ok(azureBuild > 0);
+  assert.equal(build[azureBuild].env.REVISION, "${{ github.sha }}");
+  assert.equal(build[azureBuild + 1].with.name, "cao-azure-${{ github.sha }}");
+  assert.equal(build[azureBuild + 1].with["if-no-files-found"], "error");
+  const attest = workflow.jobs.attest.steps;
+  const download = attest.findIndex((step) => step.with?.name === "cao-azure-${{ github.sha }}");
+  assert.ok(download > 0);
+  assert.equal(attest[download + 1].run, 'sha256sum --check "cao-azure-${REVISION}.tgz.sha256"');
+  assert.match(attest[download + 2].uses, /^actions\/attest@[0-9a-f]{40}$/);
+  assert.equal(attest[download + 2].with["subject-path"], "${{ runner.temp }}/azure/cao-azure-${{ github.sha }}.tgz");
 });

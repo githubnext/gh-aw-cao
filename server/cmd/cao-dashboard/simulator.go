@@ -15,8 +15,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/simulator"
 )
 
 const maxScenarioBytes = 1 << 20

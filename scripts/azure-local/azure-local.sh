@@ -7,10 +7,9 @@ LOG_DIR="$STATE_DIR/logs"
 APP_DIR="$STATE_DIR/function-app"
 RUNTIME_ENV="$STATE_DIR/runtime.env"
 RUNTIME_JSON="$STATE_DIR/runtime.json"
-HARNESS_VERSION=2
+HARNESS_VERSION=3
 CORE_TOOLS_VERSION=4.15.1
 CORE_TOOLS_SHA256=9b982efb4047c717c9b1c26beb2269c2ac41b29bf8d21f4df1130c1586cc81cd
-REDIS_IMAGE=redis:8.2-alpine@sha256:b51665e66f00759be7c3152ad5ac3c66fb2f619c13ef62dea7cc1f9914524635
 POSTGRES_IMAGE=postgres:16-alpine
 AZURITE_IMAGE=mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5
 AZURITE_ACCOUNT=caoazurelocal
@@ -194,10 +193,8 @@ stop_internal() {
     fi
   fi
   capture_container_logs "${AZURITE_CONTAINER_ID:-}" azurite
-  capture_container_logs "${REDIS_CONTAINER_ID:-}" redis
   capture_container_logs "${POSTGRES_CONTAINER_ID:-}" postgres
   [[ -z "${AZURITE_CONTAINER_ID:-}" ]] || docker rm -f "$AZURITE_CONTAINER_ID" >/dev/null 2>&1 || true
-  [[ -z "${REDIS_CONTAINER_ID:-}" ]] || docker rm -f "$REDIS_CONTAINER_ID" >/dev/null 2>&1 || true
   [[ -z "${POSTGRES_CONTAINER_ID:-}" ]] || docker rm -f "$POSTGRES_CONTAINER_ID" >/dev/null 2>&1 || true
   rm -rf "$APP_DIR"
   rm -f "$RUNTIME_ENV" "$RUNTIME_JSON"
@@ -219,10 +216,6 @@ poll() {
   return 1
 }
 
-redis_ready() {
-  docker exec "$1" redis-cli ping | grep -qx PONG
-}
-
 postgres_ready() {
   docker exec "$1" pg_isready -U postgres -d cao
 }
@@ -237,30 +230,30 @@ functions_ready() {
   curl -fsS "$1/api/readiness"
 }
 
+run_logged() {
+  local label log_file status
+  label="$1"
+  log_file="$LOG_DIR/$2"
+  shift 2
+  if "$@" >"$log_file" 2>&1; then
+    return 0
+  else
+    status=$?
+  fi
+  printf 'azure-local: %s failed (exit %s); log: %s\n' "$label" "$status" "$log_file" >&2
+  cat "$log_file" >&2
+  return "$status"
+}
+
 prepare_application() {
   mkdir -p "$APP_DIR/site" "$APP_DIR/.github/workflows" "$LOG_DIR"
   printf '<!doctype html><title>CAO local Azure simulation</title>\n' >"$APP_DIR/site/index.html"
   cp "$ROOT/.github/workflows/cao.json" "$APP_DIR/.github/workflows/cao.json"
-  node - "$APP_DIR/.github/workflows/cao.json" <<'NODE'
-const fs = require("node:fs");
-const path = process.argv[2];
-const policy = JSON.parse(fs.readFileSync(path, "utf8"));
-policy["control-plane"].web.host = {
-  target: { module: "azure-functions" },
-  redis: {
-    module: "local",
-    "url-env": "CAO_REDIS_URL",
-    "namespace-env": "CAO_REDIS_NAMESPACE",
-    "allow-private-plaintext": true,
-    tls: { mode: "disabled" },
-  },
-};
-fs.writeFileSync(path, `${JSON.stringify(policy, null, 2)}\n`, { mode: 0o600 });
-NODE
-  go -C "$ROOT/server" build -o "$APP_DIR/cao-functions" ./cmd/cao-functions \
-    >"$LOG_DIR/functions-build.log" 2>&1
-  go -C "$ROOT/server" build -o "$APP_DIR/cao-dashboard" ./cmd/cao-dashboard \
-    >"$LOG_DIR/server-build.log" 2>&1
+  cp "$ROOT/.github/workflows/cao.azure.json" "$APP_DIR/.github/workflows/cao.azure.json"
+  run_logged "Azure Functions handler build" functions-build.log \
+    go -C "$ROOT/server" build -o "$APP_DIR/cao-functions" ./cmd/cao-functions
+  run_logged "dashboard server build" server-build.log \
+    go -C "$ROOT/server" build -o "$APP_DIR/cao-dashboard" ./cmd/cao-dashboard
   cat >"$APP_DIR/host.json" <<'JSON'
 {
   "version": "2.0",
@@ -319,22 +312,18 @@ start() {
   local previous_exit_trap
   previous_exit_trap="$(trap -p EXIT || true)"
   trap 'stop_internal' EXIT
-  local run_id path_hash redis_name postgres_name azurite_name function_port redis_port postgres_port blob_port queue_port table_port namespace
+  local run_id path_hash postgres_name azurite_name function_port postgres_port blob_port queue_port table_port namespace
   local azurite_key
   run_id="$(basename "$STATE_DIR" | tr -cd 'a-zA-Z0-9_.-' | cut -c1-40)"
   [[ -n "$run_id" ]] || run_id="run-$$"
   path_hash="$(printf '%s' "$STATE_DIR" | sha256sum | cut -c1-12)"
   run_id="$(printf '%s' "$run_id" | cut -c1-20)-$path_hash"
-  redis_name="cao-azure-local-$run_id-redis"
   postgres_name="cao-azure-local-$run_id-postgres"
   azurite_name="cao-azure-local-$run_id-azurite"
   namespace="azure-local-$path_hash"
   azurite_key="$(python3 -c 'import base64,hashlib; print(base64.b64encode(hashlib.sha256(b"cao-azure-local").digest()).decode())')"
 
-  REDIS_CONTAINER_ID="$(docker run -d --name "$redis_name" -p 127.0.0.1::6379 "$REDIS_IMAGE")"
   write_env_value STATE_HARNESS_VERSION "$HARNESS_VERSION"
-  write_env_value REDIS_CONTAINER_ID "$REDIS_CONTAINER_ID"
-  redis_port="$(container_port "$REDIS_CONTAINER_ID" 6379)"
 
   POSTGRES_CONTAINER_ID="$(docker run -d --name "$postgres_name" -p 127.0.0.1::5432 \
     -e POSTGRES_DB=cao -e POSTGRES_HOST_AUTH_METHOD=trust "$POSTGRES_IMAGE")"
@@ -352,7 +341,6 @@ start() {
   table_port="$(container_port "$AZURITE_CONTAINER_ID" 10002)"
   function_port="$(free_port)"
 
-  write_env_value REDIS_PORT "$redis_port"
   write_env_value POSTGRES_PORT "$postgres_port"
   write_env_value AZURITE_BLOB_PORT "$blob_port"
   write_env_value AZURITE_QUEUE_PORT "$queue_port"
@@ -365,20 +353,16 @@ start() {
   prepare_application
   install_core_tools
   write_env_value FUNC_BIN "$FUNC_BIN"
-  poll Redis redis_ready "$REDIS_CONTAINER_ID"
   poll Postgres postgres_ready "$POSTGRES_CONTAINER_ID"
   poll Azurite azurite_ready "http://127.0.0.1:$blob_port/$AZURITE_ACCOUNT?comp=list"
 
-  CAO_DATABASE_ADMIN_URL="$CAO_POSTGRES_URL" "$APP_DIR/cao-dashboard" database bootstrap \
-    --store canonical --namespace "$namespace" \
-    >"$LOG_DIR/database-bootstrap.log" 2>&1
+  CAO_DATABASE_ADMIN_URL="$CAO_POSTGRES_URL" run_logged "canonical database bootstrap" database-bootstrap.log \
+    "$APP_DIR/cao-dashboard" database bootstrap --store canonical --namespace "$namespace"
 
-  "$APP_DIR/cao-dashboard" ingest \
+  run_logged "fixture ingestion" ingest.log "$APP_DIR/cao-dashboard" ingest \
     --source "$ROOT/server/testdata/deployed-subset" \
-    --redis-url "redis://127.0.0.1:$redis_port/0" \
     --redis-namespace "$namespace" \
-    --database-queries "$ROOT/dashboard/site/src/data/queries/database.json" \
-    >"$LOG_DIR/ingest.log" 2>&1
+    --database-queries "$ROOT/dashboard/site/src/data/queries/database.json"
 
   local storage_connection
   storage_connection="DefaultEndpointsProtocol=http;AccountName=$AZURITE_ACCOUNT;AccountKey=$azurite_key;BlobEndpoint=http://127.0.0.1:$blob_port/$AZURITE_ACCOUNT;QueueEndpoint=http://127.0.0.1:$queue_port/$AZURITE_ACCOUNT;TableEndpoint=http://127.0.0.1:$table_port/$AZURITE_ACCOUNT;"
@@ -392,12 +376,13 @@ start() {
     "CAO_AZURE_DASHBOARD_QUERIES": "$ROOT/dashboard/site/dashboard.json",
     "CAO_DATABASE_QUERIES": "$ROOT/dashboard/site/src/data/queries/database.json",
     "CAO_AZURE_LOCAL_SIMULATION": "1",
+    "CAO_POLICY_PATH": "$APP_DIR/.github/workflows/cao.azure.json",
     "CAO_GITHUB_ALLOWED_ORGS": "example",
     "CAO_GITHUB_CLIENT_ID": "local-client",
     "CAO_GITHUB_CLIENT_SECRET": "local-client-secret",
     "CAO_GITHUB_REDIRECT_URL": "http://127.0.0.1:$function_port/auth/callback",
-    "CAO_REDIS_NAMESPACE": "$namespace",
-    "CAO_REDIS_URL": "redis://127.0.0.1:$redis_port/0",
+    "REDIS_NAMESPACE": "$namespace",
+    "CAO_OPERATIONAL_NAMESPACE": "${namespace}-operational",
     "CAO_POSTGRES_URL": "$CAO_POSTGRES_URL",
     "CAO_SESSION_SECRET": "local-simulation-session-secret-0000000000000000",
     "OTEL_SDK_DISABLED": "true"
@@ -408,9 +393,7 @@ JSON
 {
   "stateDirectory": "$STATE_DIR",
   "applicationDirectory": "$APP_DIR",
-  "baseUrl": "http://127.0.0.1:$function_port",
-  "redisContainerId": "$REDIS_CONTAINER_ID",
-  "redisNamespace": "$namespace"
+  "baseUrl": "http://127.0.0.1:$function_port"
 }
 JSON
 
@@ -436,7 +419,6 @@ JSON
 
 wait_for_stack() {
   load_runtime
-  poll Redis redis_ready "$REDIS_CONTAINER_ID"
   poll Postgres postgres_ready "$POSTGRES_CONTAINER_ID"
   poll Azurite azurite_ready "http://127.0.0.1:$AZURITE_BLOB_PORT/$AZURITE_ACCOUNT?comp=list"
   poll "Azure Functions host" functions_ready "http://127.0.0.1:$FUNCTIONS_PORT"
@@ -459,7 +441,6 @@ logs() {
     # shellcheck disable=SC1090
     source "$RUNTIME_ENV"
     capture_container_logs "${AZURITE_CONTAINER_ID:-}" azurite
-    capture_container_logs "${REDIS_CONTAINER_ID:-}" redis
     capture_container_logs "${POSTGRES_CONTAINER_ID:-}" postgres
   fi
   local file

@@ -11,7 +11,7 @@ definition() {
 {
   "schemaVersion": 4,
   "grader": "operational-value",
-  "repository": "githubnext/gh-aw-cao",
+  "repository": "githubnext/gh-cao",
   "workflowName": "CAO Evolution / AW Compiler Security",
   "sourcePath": ".github/workflows/cao-evolution-compiler-security.md",
   "adoption": {
@@ -23,7 +23,7 @@ definition() {
     "opportunity": "The agentic-workflow validation and security posture of the exact target repository revision assigned to the worker run.",
     "assignment": "Bind the dispatched target repository to the checked-out target commit and the deterministic full-scan result; key aw-compiler-security:<targetRepo>:<targetSha> so duplicate runs of one revision share an opportunity.",
     "accepted": "The worker's deterministic compile step completed the full strict validation and security command for the assigned target revision and exited successfully.",
-    "repositories": ["githubnext/gh-aw-cao"],
+    "repositories": ["githubnext/gh-cao"],
     "collection": "Read the bounded result.json emitted by the deterministic compile step in the worker run; retain the target commit, completion classification, exit code, and report digest in the replayable case.",
     "maturation": "One hour after the worker run starts, covering its configured execution horizon.",
     "zeroRule": "A completed full scan with compiler, validation, lint, vulnerability, license, or security findings scores 0.",
@@ -141,7 +141,7 @@ grade_run() {
         return
     fi
     run_id=$(jq -r .run.id "$request_file")
-    provenance=$(jq -cn --arg repository "githubnext/gh-aw-cao" --arg runId "$run_id" \
+    provenance=$(jq -cn --arg repository "githubnext/gh-cao" --arg runId "$run_id" \
       --arg targetRepo "$target_repo" --arg targetSha "$target_sha" '
       [{repository: $repository, kind: "actions-run", ref: $runId},
        {repository: $targetRepo, kind: "commit", ref: $targetSha}]')

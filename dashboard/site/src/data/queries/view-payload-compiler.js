@@ -46,7 +46,7 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
 /**
  * @param {unknown} page
  * @param {string} pageId
- * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, sourceNames?: Iterable<string>, backend?: import('../../view-availability.js').DashboardDataBackend, partial?: boolean }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, viewIds?: Iterable<string>, sourceNames?: Iterable<string>, backend?: import('../../view-availability.js').DashboardDataBackend, partial?: boolean }} [options]
  * @returns {{ aliases: string[], queries: Array<Record<string, unknown>>, replacedSources: string[] }}
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
@@ -56,10 +56,13 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     ...(options.queryContext?.formValues ?? {})
   };
   const views = Array.isArray(payload.views) ? payload.views : [];
+  const viewMode = payload['query-binding'] === 'page' ? undefined : options.queryContext?.viewMode;
+  const selectedViewIds = options.viewIds ? new Set(options.viewIds) : null;
   const activeViews = views.filter((view, index) => {
     if (options.backend && !viewBackendAvailable(view, options.backend)) return false;
+    if (selectedViewIds && (!isPlainObject(view) || !selectedViewIds.has(String(view.id ?? `view-${index + 1}`)))) return false;
     if (options.viewId) return isPlainObject(view) && (view.id ?? `view-${index + 1}`) === options.viewId;
-    return !options.queryContext?.viewMode || viewMatchesMode(view, options.queryContext.viewMode);
+    return !viewMode || viewMatchesMode(view, viewMode);
   });
   const requestedSources = options.sourceNames ? new Set(options.sourceNames) : null;
   const relevantSources = activeViews.flatMap((view) => getViewSources(view)
@@ -87,12 +90,16 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   /** @type {Array<Record<string, unknown>>} */
   const queries = [];
   const replacedSources = new Set();
+  const unaliasedSources = new Set();
+  /** @type {Map<string, { replacesSource: boolean, dependencies: Array<Record<string, unknown>>, query: Record<string, unknown> }>} */
+  const scopedGraphs = new Map();
 
   views.forEach((view, viewIndex) => {
     if (options.backend && !viewBackendAvailable(view, options.backend)) return;
+    if (selectedViewIds && (!isPlainObject(view) || !selectedViewIds.has(String(view.id ?? `view-${viewIndex + 1}`)))) return;
     if (options.viewId && (!isPlainObject(view)
       || (view.id ?? `view-${viewIndex + 1}`) !== options.viewId)) return;
-    if (!options.viewId && options.queryContext?.viewMode && !viewMatchesMode(view, options.queryContext.viewMode)) return;
+    if (!options.viewId && viewMode && !viewMatchesMode(view, viewMode)) return;
     const sources = getViewSources(view);
     if (sources.length === 0) return;
     const viewData = isPlainObject(view) && isPlainObject(view.data)
@@ -128,10 +135,20 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileRoutePredicates(routeField, routeValue),
         ...localPredicates
       ];
-      if (usesNativeSource(view, sourceName, predicates, useQueryContext ? options.queryContext : undefined, resolvedQueries)) return;
+      if (usesNativeSource(view, sourceName, predicates, useQueryContext ? options.queryContext : undefined, resolvedQueries)) {
+        unaliasedSources.add(sourceName);
+        return;
+      }
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
-      const compiled = compileAliasedQuery(querySource, alias, predicates, useQueryContext && !isOptions ? options.queryContext?.search : undefined, useQueryContext && !isOptions ? options.queryContext?.orderBy : undefined, options.evaluatedAt, resolvedQueries, isOptions);
+      const search = useQueryContext && !isOptions ? options.queryContext?.search : undefined;
+      const orderBy = useQueryContext && !isOptions ? options.queryContext?.orderBy : undefined;
+      const graphKey = JSON.stringify([querySource, predicates, search, orderBy, isOptions]);
+      const shared = scopedGraphs.get(graphKey);
+      const compiled = shared
+        ? { ...shared, dependencies: [], query: { ...shared.query, name: alias } }
+        : compileAliasedQuery(querySource, alias, predicates, search, orderBy, options.evaluatedAt, resolvedQueries, isOptions);
+      if (!shared) scopedGraphs.set(graphKey, { ...compiled, query: { ...compiled.query } });
       /** @type {Record<string, unknown>} */
       const query = compiled.query;
       if (isPlainObject(view) && view.mark === 'element' && Number.isSafeInteger(viewData?.limit)) {
@@ -165,6 +182,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
     });
   });
 
+  for (const source of unaliasedSources) replacedSources.delete(source);
   debugViewPayloadCompiler({
     event: 'compiled',
     pageId,
@@ -176,6 +194,27 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   });
 
   return { aliases, queries, replacedSources: [...replacedSources] };
+}
+
+/**
+ * @param {unknown} page
+ * @param {{ views?: unknown, viewId?: string, sourceNames: string[], backend?: import('../../view-availability.js').DashboardDataBackend }} options
+ */
+export function dashboardPartialViewSources(page, options) {
+  const payload = pagePayload(page, options.views);
+  if (!options.viewId && payload['query-binding'] !== 'page') return [];
+  if (options.viewId && options.sourceNames.length !== 1) return [];
+  return (payload.views ?? []).flatMap((view, index) => {
+    if (options.backend && !viewBackendAvailable(view, options.backend)) return [];
+    if (!isPlainObject(view) || !isPlainObject(view.data)) return [];
+    const viewId = typeof view.id === 'string' ? view.id : `view-${index + 1}`;
+    if (options.viewId && options.viewId !== viewId) return [];
+    const source = view.data.source;
+    const partialSource = view.data['partial-source'];
+    return typeof source === 'string' && options.sourceNames.includes(source)
+      && getViewSources(view).length === 1 && typeof partialSource === 'string'
+      ? [{ viewId, source, partialSource }] : [];
+  });
 }
 
 /** @param {unknown} form */
@@ -562,7 +601,7 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const compiledJoins = Array.isArray(definition.joins)
       ? definition.joins.map((join) => (
           isPlainObject(join) && typeof join.source === 'string'
-            ? { ...join, source: compile(join.source, [], inputTime, includeHistory) }
+            ? { ...join, source: compile(join.source, joinKeyPredicates(join, inputPredicates), inputTime, includeHistory) }
             : join
         ))
       : undefined;
@@ -630,13 +669,18 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
  */
 function predicatesBeforeQuery(definition, predicates) {
   if (definition.limit !== undefined
-      || (Array.isArray(definition.window) && definition.window.length > 0)
       || definition['temporal-series']
-      || (Array.isArray(definition.predict) && definition.predict.length > 0)
-      || (Array.isArray(definition.joins) && definition.joins.length > 0)) return [];
-  const computed = new Set(Array.isArray(definition.compute)
-    ? definition.compute.filter(isPlainObject).map((value) => value.as)
+      || definition.facet
+      || (Array.isArray(definition.predict) && definition.predict.length > 0)) return [];
+  const computed = new Set(['compute', 'window'].flatMap((clause) => (
+    Array.isArray(definition[clause]) ? definition[clause].filter(isPlainObject).map((value) => value.as) : []
+  )));
+  const joined = new Set(Array.isArray(definition.joins)
+    ? definition.joins.filter(isPlainObject).flatMap((join) => (
+        Array.isArray(join.fields) ? join.fields.filter(isPlainObject).map((value) => value.as ?? value.field) : []
+      ))
     : []);
+  const windows = Array.isArray(definition.window) ? definition.window.filter(isPlainObject) : [];
   const groups = isPlainObject(definition.aggregate)
     ? new Set(Array.isArray(definition.aggregate.by) ? definition.aggregate.by : [])
     : null;
@@ -645,8 +689,28 @@ function predicatesBeforeQuery(definition, predicates) {
     : null;
   return predicates.flatMap((predicate) => {
     const field = selected ? selected.get(predicate.field) : predicate.field;
-    if (typeof field !== 'string' || computed.has(field) || (groups && !groups.has(field))) return [];
+    if (typeof field !== 'string' || computed.has(field) || joined.has(field)
+        || (groups && !groups.has(field))
+        || windows.some((window) => !Array.isArray(window.groupby) || !window.groupby.includes(field))) return [];
     return [{ ...predicate, field }];
+  });
+}
+
+/**
+ * Only mandatory equality on a preserved left key can narrow a join's right
+ * input. Other right-side evidence (including cross-run baselines) stays intact.
+ * @param {Record<string, unknown>} join
+ * @param {Array<Record<string, unknown>>} predicates
+ */
+function joinKeyPredicates(join, predicates) {
+  if (!Array.isArray(join.on)) return [];
+  const keys = join.on;
+  return predicates.flatMap((predicate) => {
+    if (predicate.optional || !Object.hasOwn(predicate, 'equals')) return [];
+    const key = keys.find((pair) => isPlainObject(pair) && pair.left === predicate.field);
+    return isPlainObject(key) && typeof key.right === 'string'
+      ? [{ ...predicate, field: key.right }]
+      : [];
   });
 }
 
@@ -832,6 +896,7 @@ function pagePayload(page, reusableViews) {
     builtInDefinition?.views ?? (Array.isArray(configured.views) ? configured.views : [])
   );
   return {
+    'query-binding': configured['query-binding'],
     views: views.map((view) => typeof view === 'string' ? viewsById.get(view) ?? view : view),
     route: isPlainObject(configured.route) ? configured.route : null,
     form: isPlainObject(configured.form) ? configured.form : null

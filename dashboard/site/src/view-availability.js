@@ -13,7 +13,9 @@ export function pageCapabilityAvailable(page) {
   const requirement = /** @type {Record<string, unknown>} */ (page).requires;
   if (requirement === undefined) return true;
   if (typeof requirement !== 'object' || requirement === null || Array.isArray(requirement)) return false;
-  return /** @type {{ capability?: unknown }} */ (requirement).capability === 'cli-queue' && cliQueueAvailable();
+  const capability = /** @type {{ capability?: unknown }} */ (requirement).capability;
+  if (capability === 'admin') return Reflect.get(globalThis, '__DASHBOARD_ADMIN__') === true;
+  return capability === 'cli-queue' && cliQueueAvailable();
 }
 
 /** @param {Document} [document] @returns {DashboardDataBackend} */

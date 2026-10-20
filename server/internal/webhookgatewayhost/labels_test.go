@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/operational/memory"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 type labelPolicy struct{ policy *gateway.PolicySnapshot }

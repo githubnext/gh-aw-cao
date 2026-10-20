@@ -72,7 +72,7 @@ describe('CLI actions', () => {
       expect(autoMerge.checked).toBe(false);
       expect(root.querySelector('.cli-action-command')?.textContent).not.toContain('--auto-merge');
       const expectedPrefix = id.startsWith('update')
-        ? 'gh aw update https://github.com/githubnext/gh-aw-cao/activity --repo acme/control'
+        ? 'gh aw update https://github.com/githubnext/gh-cao/activity --repo acme/control'
         : 'gh aw upgrade --repo octo/example';
       expect(root.querySelector('.cli-action-command')?.textContent?.startsWith(`${expectedPrefix} --pr-message `)).toBe(true);
       expect(root.querySelector('.cli-action-command')?.textContent).toContain(

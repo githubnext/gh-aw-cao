@@ -1,6 +1,6 @@
 # SelfCare
 
-SelfCare runs repository-local maintenance for `githubnext/gh-aw-cao`. Its orchestrator dispatches up to twenty live-only workers, including:
+SelfCare runs repository-local maintenance for `githubnext/gh-cao`. Its orchestrator dispatches up to twenty live-only workers, including:
 
 - **Accessibility Checker** audits the rendered documentation site and publishes one prioritized accessibility issue.
 - **Code Improvement** extracts one evidenced duplicated dashboard UI construct into a tested reusable component and opens one focused draft pull request.
@@ -20,7 +20,7 @@ SelfCare runs repository-local maintenance for `githubnext/gh-aw-cao`. Its orche
 - **Release Blogger** describes the release or pre-release published in the preceding 24 hours in a GitHub Blog-style post under the documentation site's blog directory and opens one focused draft pull request. The orchestrator dispatches this worker at most once per rolling 24 hours.
 - **Server Go Logging** refactors one server Go subsystem with privacy-preserving internal logging and focused unit tests that exercise real code without mocks.
 
-The checked-in control policy admits only `githubnext/gh-aw-cao` as a live target, and the target-authority declaration grants this repository's control plane authority for the campaign. The orchestrator rejects every other repository and every non-live candidate; all workers repeat those checks before performing their mission. Open Source Failures selects public project records only from the dashboard's validated activity snapshot; it does not discover or access repositories independently.
+The checked-in control policy admits only `githubnext/gh-cao` as a live target, and the target-authority declaration grants this repository's control plane authority for the campaign. The orchestrator rejects every other repository and every non-live candidate; all workers repeat those checks before performing their mission. Open Source Failures selects public project records only from the dashboard's validated activity snapshot; it does not discover or access repositories independently.
 
 The campaign uses `shared/control.md` for policy resolution, target authority, dispatch envelopes, safe-output routing, and correlation. It dispatches at most twenty workflows for its single target.
 

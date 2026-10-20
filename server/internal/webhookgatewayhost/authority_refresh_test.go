@@ -6,8 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
 )
 
 type interruptedAuthorityAPI struct {

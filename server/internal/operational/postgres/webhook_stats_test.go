@@ -3,7 +3,7 @@ package postgres
 import (
 	"testing"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func TestWebhookQueueStatsMatchRetainedBudgetsAndLiveLeases(t *testing.T) {

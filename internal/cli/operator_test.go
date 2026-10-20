@@ -47,9 +47,9 @@ func TestOperatorCommandInventory(t *testing.T) {
 	}
 	slices.Sort(names)
 	want := []string{
-		"campaigns", "computation", "doctor", "download", "gh", "init",
+		"admission", "campaigns", "computation", "deploy", "doctor", "download", "gh", "init",
 		"mcp", "pages", "prompt", "queries", "query", "query-info",
-		"quickstart", "repos", "setup", "update", "upgrade-gh-aw", "version",
+		"repos", "setup", "update", "upgrade-gh-aw", "version",
 	}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("command inventory = %v, want %v", names, want)
@@ -69,6 +69,30 @@ func TestCampaignCommandInventory(t *testing.T) {
 	slices.Sort(names)
 	if want := []string{"add", "disable", "enable", "mode"}; !reflect.DeepEqual(names, want) {
 		t.Fatalf("campaign command inventory = %v, want %v", names, want)
+	}
+}
+
+func TestQuickstartIsNotAnExtensionCommand(t *testing.T) {
+	for _, args := range [][]string{
+		{"quickstart"}, {"quickstart", "--target", "owner/repo"},
+		{"quickstart", "--step", "run"}, {"quickstart", "--step", "collect"},
+		{"quickstart", "--step", "dashboard"}, {"quickstart", "--wait", "--target", "owner/repo"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			root, stdout, stderr := testCommand(t, nil, nil)
+			root.SetArgs(args)
+			if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "unknown") {
+				t.Fatalf("expected unknown quickstart command, got %v", err)
+			}
+			if stdout.Len() != 0 || stderr.Len() != 0 {
+				t.Fatalf("unexpected output: stdout=%q stderr=%q", stdout, stderr)
+			}
+		})
+	}
+	root, stdout, _ := testCommand(t, nil, nil)
+	root.SetArgs([]string{"--help"})
+	if err := root.Execute(); err != nil || strings.Contains(stdout.String(), "quickstart") {
+		t.Fatalf("removed quickstart command advertised in help: %v\n%s", err, stdout)
 	}
 }
 
@@ -97,7 +121,7 @@ func TestActionsValidationIsNotAnOperatorCommand(t *testing.T) {
 func TestCampaignControlsAreNotRootCommands(t *testing.T) {
 	for _, args := range [][]string{
 		{"mode", "preview", "one"}, {"enable", "one"}, {"disable", "one"},
-		{"add", "githubnext/gh-aw-cao/demo"},
+		{"add", "githubnext/gh-cao/demo"},
 	} {
 		t.Run(args[0], func(t *testing.T) {
 			root, stdout, stderr := testCommand(t, nil, nil)
@@ -147,9 +171,6 @@ func TestOperatorRuntimeArguments(t *testing.T) {
 	}{
 		{[]string{"setup", "--json"}, []string{"setup", "--json"}},
 		{[]string{"setup", "--json=false"}, []string{"setup"}},
-		{[]string{"quickstart", "--step=run", "--json"}, []string{"quickstart", "--json", "--step", "run"}},
-		{[]string{"quickstart", "--target", "owner/repo"}, []string{"quickstart", "--target", "owner/repo"}},
-		{[]string{"quickstart", "--target", "owner/repo", "--wait"}, []string{"quickstart", "--target", "owner/repo", "--wait"}},
 		{[]string{"download", "--url=https://example.test/cao/payload-hashes.json", "--output", "space dir"}, []string{"download", "--output", "space dir", "--url", "https://example.test/cao/payload-hashes.json"}},
 		{[]string{"pages", "--json", "overview"}, []string{"pages", "overview", "--json"}},
 		{[]string{"queries", "--dashboard", "custom.json"}, []string{"queries", "--dashboard", "custom.json"}},
@@ -197,12 +218,6 @@ func TestOperatorInvalidInputDoesNotExecute(t *testing.T) {
 		{"setup", "extra"}, {"setup", "--unknown"}, {"query-info"}, {"prompt"},
 		{"download", "--url", "one", "--url", "two"}, {"query", "--stdin", "--collection", "runs"},
 		{"query", "--stdin", "--where", "x=y"}, {"query", "--stdin", "--limit", "5"},
-		{"quickstart"}, {"quickstart", "--target", "*/repo"}, {"quickstart", "--step", "bad"},
-		{"quickstart", "--step", ""}, {"quickstart", "--step", "run", "--target", "owner/repo"},
-		{"quickstart", "--step", "dashboard", "--campaign", "repo-assist"},
-		{"quickstart", "--wait", "--step", "install", "--target", "owner/repo"},
-		{"quickstart", "--wait", "--wait", "--target", "owner/repo"},
-		{"quickstart", "--target", "owner/repo", "--target", "other/repo"},
 		{"gh", "runs", "extra"}, {"gh", "issues", "--status", "open"},
 		{"computation", "runtime-health", "--diagnose"}, {"computation", "intelligence", "--diagnose"},
 		{"setup", "auth"}, {"setup", "auth", "unknown"}, {"setup", "unknown"},
@@ -218,7 +233,7 @@ func TestOperatorInvalidInputDoesNotExecute(t *testing.T) {
 		{"campaigns", "mode", "debug", "one"}, {"campaigns", "enable", "../one"},
 		{"setup-auth"}, {"gh"}, {"computation"}, {"add"}, {"add", "--repository"},
 		{"add", "--repository", "owner/*"}, {"add", "--repository", "owner/repo", "extra"},
-		{"add", "githubnext/gh-aw-cao/demo"}, {"add", "githubnext/gh-aw-cao/demo", "--force"},
+		{"add", "githubnext/gh-cao/demo"}, {"add", "githubnext/gh-cao/demo", "--force"},
 		{"campaigns", "add"}, {"campaigns", "add", "--repository", "owner/repo"},
 		{"repos"}, {"repos", "unknown"}, {"repos", "add"}, {"repos", "add", "owner/*"},
 		{"repos", "add", "owner/repo", "extra"}, {"repos", "add", "--repository", "owner/repo"},

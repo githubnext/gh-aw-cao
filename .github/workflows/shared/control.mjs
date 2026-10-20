@@ -34,8 +34,8 @@ const ADMISSION_CHECKS = [
   ["Runtime revision", "The control and policy modules are read from the exact `github.workflow_sha` commit."],
   ["Policy document", "The checked-in policy is parsed and validated for supported keys, types, ranges, unique names, and expressions."],
   ["Control plane", "The `control-plane` declaration is present."],
-  ["Workflow identity", "The campaign, role, and (for workers) exact worker identity are authorized."],
-  ["Campaign", "The requested campaign is declared and enabled."],
+  ["Workflow identity", "The standalone workflow or campaign role and exact worker identity are authorized."],
+  ["Campaign", "The requested campaign or standalone workflow is declared and enabled."],
   ["Worker", "For worker runs, the requested worker is declared and enabled."],
   ["Target input", "Any supplied `target_repo` uses the exact `owner/repository` form."],
   ["Mode input", "Any supplied `safe_output_mode` does not exceed the checked-in mode ceiling; debug requires a manual, human-authorized worker with staged outputs."],
@@ -53,6 +53,11 @@ export function setActionsGlobals(actions = {}) {
 
 function environment(name, fallback = "") {
   return process.env[name] ?? fallback;
+}
+
+function importIdentity(name) {
+  const value = environment(name);
+  return value === "__none__" ? "" : value;
 }
 
 function parseInteger(value, fallback) {
@@ -223,11 +228,13 @@ function failedAdmissionCheckIndex(reason) {
   if (reason === "control policy validation failed") return 1; // Policy document
   if (reason === "control-plane-absent") return 2; // Control plane
   if (
-    reason === "role must be orchestrator or worker"
+    reason === "role must be orchestrator, worker, or standalone"
     || reason === "worker identity is required"
     || reason === "worker identity is forbidden for orchestrators"
   ) return 3; // Workflow identity
+  if (reason.startsWith("standalone ") || reason.startsWith("workflow identity")) return 3;
   if (reason === "campaign-undeclared" || reason === "campaign-disabled") return 4; // Campaign
+  if (reason === "workflow-undeclared" || reason === "workflow-disabled") return 4;
   if (reason === "worker-disabled" || reason.startsWith("unknown worker:")) return 5; // Worker
   if (reason.startsWith("target_repo ")) return 6; // Target input
   if (reason === "safe_output_mode exceeds checked-in policy" || reason === "safe_output_mode must be review or live") return 7; // Mode input
@@ -248,13 +255,14 @@ function admissionCheckHeading(title, index, authorized, failedIndex) {
 function writeAdmissionSummary({ authorized, campaignName, role, reason, apiCapacity }) {
   const summaryPath = environment("GITHUB_STEP_SUMMARY");
   if (!summaryPath) return;
+  const identity = role === "standalone" ? `workflow \`${environment("CAO_WORKFLOW")}\`` : `campaign \`${campaignName}\``;
   const status = apiCapacity?.status === "limited"
-    ? `Blocked campaign \`${campaignName}\` as \`${role}\` before activation: insufficient GitHub REST API capacity.`
+    ? `Blocked ${identity} as \`${role}\` before activation: insufficient GitHub REST API capacity.`
     : apiCapacity?.status === "unavailable"
-      ? `Blocked campaign \`${campaignName}\` as \`${role}\` before activation: GitHub REST API capacity is unavailable.`
+      ? `Blocked ${identity} as \`${role}\` before activation: GitHub REST API capacity is unavailable.`
       : authorized
-    ? `Authorized campaign \`${campaignName}\` as \`${role}\`.`
-    : `Skipped campaign \`${campaignName}\` as \`${role}\`: ${reason}`;
+    ? `Authorized ${identity} as \`${role}\`.`
+    : `Skipped ${identity} as \`${role}\`: ${reason}`;
   const failedIndex = authorized ? -1 : failedAdmissionCheckIndex(reason);
   const checks = ADMISSION_CHECKS.map(([title, description], index) => (
     `- ${admissionCheckHeading(title, index, authorized, failedIndex)} — ${description}`
@@ -268,7 +276,7 @@ function writeAdmissionSummary({ authorized, campaignName, role, reason, apiCapa
 
 function githubApiRequestRequirement(policy, options) {
   let estimated = options.role === "orchestrator" ? 2 : 0;
-  if (options.role === "orchestrator") {
+  if (options.role === "orchestrator" || options.role === "standalone") {
     estimated += options.targetRepository
       ? 1
       : policy.allowed_repositories.length > 0
@@ -347,9 +355,11 @@ async function applyGithubApiAdmission(result, options) {
 function policyOptions({ normalizeOrchestrator = false } = {}) {
   const role = environment("CAO_ROLE");
   return {
-    campaignName: environment("CAO_CAMPAIGN"),
+    campaignName: importIdentity("CAO_CAMPAIGN"),
+    workflowName: importIdentity("CAO_WORKFLOW"),
     role,
-    workerName: normalizeOrchestrator && role === "orchestrator" ? "" : environment("CAO_WORKER"),
+    workerName: (normalizeOrchestrator && role === "orchestrator")
+      || (role === "standalone" && environment("CAO_WORKER") === "__none__") ? "" : environment("CAO_WORKER"),
     controlRepository: environment("GITHUB_REPOSITORY"),
     requestedMode: environment("CAO_REQUESTED_MODE"),
     requestedMaxRepositories: environment("CAO_REQUESTED_MAX_REPOSITORIES"),
@@ -432,6 +442,7 @@ function writeAdmissionRecord(result, options, workflowSha) {
     run_id: environment("GITHUB_RUN_ID"),
     run_attempt: parseInteger(environment("GITHUB_RUN_ATTEMPT"), 1),
     campaign: options.campaignName,
+    ...(options.role === "standalone" ? { workflow_id: options.workflowName } : {}),
     role: options.role,
     worker: options.workerName,
     target_repository: options.targetRepository,
@@ -454,10 +465,14 @@ async function admit() {
   let result = { authorized: false, reason: "control policy admission did not complete" };
 
   try {
-    if (!options.campaignName || !options.role) throw new ControlError("admission requires a campaign and control role");
+    if ((!options.campaignName && !options.workflowName) || !options.role) {
+      throw new ControlError("admission requires a workflow or campaign identity and control role");
+    }
+    if (options.role === "standalone") validateStandaloneIdentity(options.workflowName);
     if (!SHA_PATTERN.test(workflowSha)) throw new ControlError("github.workflow_sha must be an exact commit SHA");
     logDecision("admission-inputs", "accepted", {
       campaign: options.campaignName,
+      ...(options.role === "standalone" ? { workflow: options.workflowName } : {}),
       role: options.role,
       worker: options.workerName || "none",
       target_requested: Boolean(options.targetRepository),
@@ -616,6 +631,14 @@ function controlSourcePath() {
     : workflowPath.replace(/\.yml$/, ".md");
 }
 
+function validateStandaloneIdentity(workflow) {
+  const reference = `${environment("GITHUB_REPOSITORY")}/.github/workflows/${workflow}.lock.yml@`;
+  if (!environment("GITHUB_WORKFLOW_REF").startsWith(reference)
+    || environment("GITHUB_WORKFLOW_REF").length === reference.length) {
+    throw new ControlError("standalone workflow identity must match GITHUB_WORKFLOW_REF");
+  }
+}
+
 async function loadWorkflowInventory(repository) {
   const workflows = [];
   for (let page = 1; page <= 101; page += 1) {
@@ -682,12 +705,13 @@ async function validateOutputDestination({ mode, role, safeOutputRepository, tar
     return;
   }
   if (mode === "live") {
-    if (role === "worker" && !repositoryEqual(safeOutputRepository, targetRepository)) {
-      throw new ControlError("live worker safe_output_repo must equal target_repo");
+    const targetBound = role === "worker" || role === "standalone";
+    if (targetBound && !repositoryEqual(safeOutputRepository, targetRepository)) {
+      throw new ControlError(`live ${role} safe_output_repo must equal target_repo`);
     }
     logDecision("safe-output-destination", "accepted", {
       mode,
-      validation: role === "worker" ? "target-bound" : "live-orchestrator",
+      validation: targetBound ? "target-bound" : "live-orchestrator",
     });
     return;
   }
@@ -742,15 +766,18 @@ function validateWorkerDispatch(context) {
 }
 
 function createContext(policy) {
-  const campaignName = environment("CAO_CAMPAIGN");
+  const campaignName = importIdentity("CAO_CAMPAIGN");
+  const workflowName = importIdentity("CAO_WORKFLOW");
   const role = environment("CAO_ROLE");
-  const worker = role === "orchestrator" ? "" : environment("CAO_WORKER");
-  if (!campaignName || !role) throw new ControlError("precompute requires campaign and role inputs");
+  const worker = role === "orchestrator" || (role === "standalone" && environment("CAO_WORKER") === "__none__")
+    ? "" : environment("CAO_WORKER");
+  if ((!campaignName && !workflowName) || !role) throw new ControlError("precompute requires workflow or campaign and role inputs");
   const workerPolicy = Object.values(policy.worker_policies ?? {}).find((entry) => entry.worker === worker);
   const debug = policy.safe_output_mode === "debug";
   return {
     policy,
     campaignName,
+    workflowName,
     role,
     worker,
     targetRepository: environment("CAO_TARGET_REPOSITORY"),
@@ -773,12 +800,13 @@ function createContext(policy) {
 
 function writeDeniedPrecompute(policy) {
   const role = environment("CAO_ROLE");
-  const worker = role === "orchestrator" ? "" : environment("CAO_WORKER");
+  const worker = role === "orchestrator" || role === "standalone" ? "" : environment("CAO_WORKER");
   writeJson(OUTPUT_PATH, {
     authorized: false,
     reason: policy.reason ?? "control policy denied this run",
     control_role: role,
-    campaign: environment("CAO_CAMPAIGN"),
+    campaign: importIdentity("CAO_CAMPAIGN"),
+    ...(role === "standalone" ? { workflow: importIdentity("CAO_WORKFLOW") } : {}),
     worker,
     enabled: false,
     effective_max_repos: 0,
@@ -879,7 +907,9 @@ function createInventory(context, repositories) {
   }
   requirePositiveInteger(batchSize, 100_000, "batch_size must be an integer from 1 through 100000");
   requireNonNegativeInteger(batchIndex, "batch_index must be a non-negative integer");
-  requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
+  if (context.role === "orchestrator") {
+    requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
+  }
   requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
   const uniqueRepositories = new Map();
   for (const repository of repositories) {
@@ -922,21 +952,7 @@ function createInventory(context, repositories) {
   };
 }
 
-async function writeOrchestratorPrecompute(context) {
-  requirePositiveInteger(context.policy.max_repositories, 1000, "max_repos must be an integer from 1 through 1000");
-  requirePositiveInteger(context.policy.inventory["max-scan-repositories"], 100_000, "max_scan_repos must be an integer from 1 through 100000");
-  requirePositiveInteger(context.policy.inventory["cell-count"], 1000, "cell_count must be an integer from 1 through 1000");
-  requirePositiveInteger(context.policy.inventory["batch-size"], 100_000, "batch_size must be an integer from 1 through 100000");
-  requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
-  requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
-  if (!SHA_PATTERN.test(context.workflowSha)) throw new ControlError("github.workflow_sha must be an exact commit SHA");
-  const sourcePath = controlSourcePath();
-  const source = await decodeRepositoryFile(context.controlRepository, sourcePath, context.workflowSha);
-  const configuredWorkers = parseFrontmatterWorkers(source);
-  if (configuredWorkers.length === 0) {
-    throw new ControlError("shared/control.md role orchestrator requires safe-outputs.dispatch-workflow.workflows");
-  }
-  const workflows = await loadWorkflowInventory(context.controlRepository);
+async function resolveTargetInventory(context) {
   const maximumScanRepositories = context.policy.inventory["max-scan-repositories"];
 
   if (context.policy.allowed_repositories.length > maximumScanRepositories) {
@@ -953,6 +969,83 @@ async function writeOrchestratorPrecompute(context) {
     ...repository,
     safe_output_mode: context.policy.target_policies?.[repository.full_name.toLowerCase()]?.mode ?? context.mode,
   }));
+  return { maximumScanRepositories, selected, metadata, resolvedCandidates };
+}
+
+async function writeStandalonePrecompute(context) {
+  validateStandaloneIdentity(context.workflowName);
+  if (context.policy.control_role !== "standalone" || context.policy.workflow !== context.workflowName
+    || context.campaignName || context.worker) {
+    throw new ControlError("standalone precompute identity must match admitted policy");
+  }
+  if (context.correlationId || context.centralRepository || context.controlPlaneRunUrl) {
+    throw new ControlError("standalone workflows must not carry a dispatcher envelope");
+  }
+  if (!SHA_PATTERN.test(context.workflowSha)) throw new ControlError("github.workflow_sha must be an exact commit SHA");
+  const { selected, metadata, resolvedCandidates } = await resolveTargetInventory(context);
+  if (selected.error) throw new ControlError(`standalone inventory unavailable: ${selected.error}`);
+  const candidates = resolvedCandidates.filter(({ archived, disabled }) => !archived && !disabled);
+  const percentCap = candidates.length === 0
+    ? 0 : Math.max(1, Math.ceil(candidates.length * context.policy.rollout_percent / 100));
+  const maximum = Math.min(context.policy.max_repositories, percentCap);
+  const admitted = candidates.slice(0, maximum).map((repository) => ({
+    ...repository,
+    safe_output_repo: repository.safe_output_mode === "live" ? repository.full_name : context.safeOutputRepository,
+  }));
+  for (const repository of admitted) {
+    validateRepositoryOwner("target_repo", repository.full_name, context.policy.allowed_owners);
+    if (context.policy.allowed_repositories.length > 0
+      && !context.policy.allowed_repositories.some((allowed) => repositoryEqual(allowed, repository.full_name))) {
+      throw new ControlError("standalone target_repo is not allowed");
+    }
+    await validateOutputDestination({
+      ...context,
+      mode: repository.safe_output_mode,
+      safeOutputRepository: repository.safe_output_repo,
+      targetRepository: repository.full_name,
+    });
+  }
+  writeJson(OUTPUT_PATH, {
+    authorized: true,
+    reason: "authorized",
+    control_role: "standalone",
+    workflow: context.workflowName,
+    campaign: "",
+    bundle: "",
+    worker: "",
+    enabled: true,
+    target_repo: context.targetRepository,
+    safe_output_mode: context.mode,
+    safe_output_repo: context.safeOutputRepository,
+    max_repos: context.policy.max_repositories,
+    rollout_percent: context.policy.rollout_percent,
+    effective_max_repos: maximum,
+    repo_source: selected.source,
+    repo_error: "",
+    ...metadata,
+    total_repositories_scanned: metadata.inventory_repository_count,
+    candidate_repositories: admitted,
+    worker_workflows: [],
+    policy_source: { repository: context.controlRepository, path: POLICY_PATH, sha: context.workflowSha },
+  });
+}
+
+async function writeOrchestratorPrecompute(context) {
+  requirePositiveInteger(context.policy.max_repositories, 1000, "max_repos must be an integer from 1 through 1000");
+  requirePositiveInteger(context.policy.inventory["max-scan-repositories"], 100_000, "max_scan_repos must be an integer from 1 through 100000");
+  requirePositiveInteger(context.policy.inventory["cell-count"], 1000, "cell_count must be an integer from 1 through 1000");
+  requirePositiveInteger(context.policy.inventory["batch-size"], 100_000, "batch_size must be an integer from 1 through 100000");
+  requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
+  requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
+  if (!SHA_PATTERN.test(context.workflowSha)) throw new ControlError("github.workflow_sha must be an exact commit SHA");
+  const sourcePath = controlSourcePath();
+  const source = await decodeRepositoryFile(context.controlRepository, sourcePath, context.workflowSha);
+  const configuredWorkers = parseFrontmatterWorkers(source);
+  if (configuredWorkers.length === 0) {
+    throw new ControlError("shared/control.md role orchestrator requires safe-outputs.dispatch-workflow.workflows");
+  }
+  const workflows = await loadWorkflowInventory(context.controlRepository);
+  const { maximumScanRepositories, selected, metadata, resolvedCandidates } = await resolveTargetInventory(context);
   const workerWorkflows = configuredWorkers.map((configured) => {
     const match = workflows.find(({ path }) => path === `.github/workflows/${configured}.lock.yml`);
     const policy = context.policy.worker_policies?.[configured];
@@ -1067,6 +1160,12 @@ async function precompute() {
     }
     validateRepositoryOwner("target_repo", context.targetRepository, policy.allowed_owners);
     validateRepositoryOwner("safe_output_repo", context.safeOutputRepository, policy.allowed_owners);
+    if (context.role === "standalone") {
+      await writeStandalonePrecompute(context);
+      writeActionsOutputs({ authorized: true, reason: "authorized" });
+      logDecision("precompute", "prepared", { role: "standalone" });
+      return;
+    }
     await validateOutputDestination(context);
 
     if (context.role === "worker") {

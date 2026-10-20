@@ -150,7 +150,7 @@ describe('gh-aw logs adapter', () => {
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect([...batch.domains, ...batch.tools, ...batch.audits]
-      .every((record) => record.runId === 'github:run:githubnext/gh-aw-cao:303')).toBe(true);
+      .every((record) => record.runId === 'github:run:githubnext/gh-cao:303')).toBe(true);
     expect(batch.domains.map((record) => record.type)).toEqual(['firewall.http_access']);
     expect(batch.tools.map((record) => record.type)).toEqual([
       'mcp.tool_call', 'tool.execution_start', 'tool.execution_complete'
@@ -182,7 +182,7 @@ describe('gh-aw logs adapter', () => {
         kind: 'workflow_runs',
         request: {
           host: 'github.com',
-          repository: 'githubnext/gh-aw-cao',
+          repository: 'githubnext/gh-cao',
           args: ['run', 'list']
         },
         payload: [{
@@ -199,7 +199,7 @@ describe('gh-aw logs adapter', () => {
           createdAt: '2026-09-09T03:59:00Z',
           startedAt: '2026-09-09T04:00:00Z',
           updatedAt: '2026-09-09T04:01:00Z',
-          url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303'
+          url: 'https://github.com/githubnext/gh-cao/actions/runs/303'
         }]
       },
       {
@@ -209,7 +209,7 @@ describe('gh-aw logs adapter', () => {
           run_id: 303,
           run_attempt: '1',
           organization: 'githubnext',
-          repository: 'githubnext/gh-aw-cao',
+          repository: 'githubnext/gh-cao',
           workflow_name: 'Dashboard',
           workflow_path: '.github/workflows/dashboard.md',
           display_title: 'Dashboard worker · github/gh-aw · live',
@@ -262,7 +262,7 @@ describe('gh-aw logs adapter', () => {
           run_id: 303,
           run_attempt: '1',
           organization: 'githubnext',
-          repository: 'githubnext/gh-aw-cao',
+          repository: 'githubnext/gh-cao',
           workflow_name: 'Dashboard',
           workflow_path: '.github/workflows/dashboard.md',
           display_title: 'Build dashboard',
@@ -326,9 +326,9 @@ describe('gh-aw logs adapter', () => {
             ],
             created_items: [{
               type: 'create_issue',
-              url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
+              url: 'https://github.com/githubnext/gh-cao/issues/42',
               number: 42,
-              repo: 'githubnext/gh-aw-cao',
+              repo: 'githubnext/gh-cao',
               timestamp: '2026-09-09T04:00:45Z'
             }]
           },
@@ -381,9 +381,9 @@ describe('gh-aw logs adapter', () => {
         safe_output: {
           run_id: 303,
           type: 'create_pull_request',
-          url: 'https://github.com/githubnext/gh-aw-cao/pull/43',
+          url: 'https://github.com/githubnext/gh-cao/pull/43',
           number: 43,
-          repo: 'githubnext/gh-aw-cao',
+          repo: 'githubnext/gh-cao',
           timestamp: '2026-09-09T04:00:50Z'
         }
       },
@@ -437,7 +437,7 @@ describe('gh-aw logs adapter', () => {
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch.runs).toEqual([
       expect.objectContaining({
-        id: 'github:run:githubnext/gh-aw-cao:303',
+        id: 'github:run:githubnext/gh-cao:303',
         workflowPath: '.github/workflows/dashboard.md',
         targetRepository: 'github/gh-aw',
         rolloutMode: 'live',
@@ -534,8 +534,8 @@ describe('gh-aw logs adapter', () => {
         type: 'safe_output.result',
         safeOutputType: 'create_pull_request',
         githubEntityType: 'pull_request',
-        correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
-        runId: 'github:run:githubnext/gh-aw-cao:303',
+        correlationId: 'https://github.com/githubnext/gh-cao/pull/43',
+        runId: 'github:run:githubnext/gh-cao:303',
         payloadRef: 'gh-aw-logs-shards#L4',
         isPullRequest: true
       })
@@ -580,7 +580,7 @@ describe('gh-aw logs adapter', () => {
         run_id: 404,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'githubnext/gh-aw-cao',
+        repository: 'githubnext/gh-cao',
         workflow_name: 'Optimization / Token Optimizer',
         workflow_path: '.github/workflows/optimization-token-optimizer.md',
         status: 'completed',
@@ -627,7 +627,7 @@ describe('gh-aw logs adapter', () => {
     const content = JSON.stringify({
       schema_version: 2,
       kind: 'workflow_runs',
-      request: { repository: 'githubnext/gh-aw-cao' },
+      request: { repository: 'githubnext/gh-cao' },
       payload: [{
         databaseId: 303,
         attempt: 1,
@@ -645,7 +645,7 @@ describe('gh-aw logs adapter', () => {
     const batch = normalize(adaptCachedGhAwJsonl(content, {
       workflowHints: [{
         owner: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         name: 'Dashboard',
         path: '.github/workflows/dashboard.md'
       }]
@@ -653,7 +653,7 @@ describe('gh-aw logs adapter', () => {
 
     expect(batch.workflows).toEqual([
       expect.objectContaining({
-        id: 'workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdashboard.md',
+        id: 'workflow:githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fdashboard.md',
         path: '.github/workflows/dashboard.md'
       })
     ]);
@@ -671,7 +671,7 @@ describe('gh-aw logs adapter', () => {
     const content = JSON.stringify({
       schema_version: 2,
       kind: 'workflow_runs',
-      request: { repository: 'githubnext/gh-aw-cao' },
+      request: { repository: 'githubnext/gh-cao' },
       payload: [
         {
           databaseId: 304,
@@ -701,7 +701,7 @@ describe('gh-aw logs adapter', () => {
     const batch = normalize(adaptCachedGhAwJsonl(content, {
       workflowHints: [{
         owner: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         name: 'Dashboard',
         path: '.github/workflows/dashboard.md'
       }]
@@ -756,7 +756,7 @@ describe('gh-aw logs adapter', () => {
         run_id: 1186001,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'githubnext/gh-aw-cao',
+        repository: 'githubnext/gh-cao',
         workflow_name: 'Optimization / Token Optimizer',
         workflow_path: '.github/workflows/optimization-token-optimizer.md',
         status: 'completed',
@@ -772,7 +772,7 @@ describe('gh-aw logs adapter', () => {
         schemaVersion: 1,
         lifecycleObservationId: 'token-lifecycle:retained',
         observedAt: '2026-10-17T00:00:00Z',
-        controlRepository: 'githubnext/gh-aw-cao',
+        controlRepository: 'githubnext/gh-cao',
         claimRunId: '1189002',
         claimRunAttempt: 1,
         actor: 'maintainer',
@@ -789,11 +789,11 @@ describe('gh-aw logs adapter', () => {
         previousRecommendationDisposition: 'unapplied',
         recommendationDisposition: 'applied',
         evidenceState: 'complete',
-        safeOutputId: 'github:issue:githubnext/gh-aw-cao:11861',
-        safeOutputUrl: 'https://github.com/githubnext/gh-aw-cao/issues/11861',
+        safeOutputId: 'github:issue:githubnext/gh-cao:11861',
+        safeOutputUrl: 'https://github.com/githubnext/gh-cao/issues/11861',
         sourceProvenance: {
           kind: 'workflow-dispatch-claim',
-          sourceId: 'github-actions-run:githubnext/gh-aw-cao:1189002:attempt:1'
+          sourceId: 'github-actions-run:githubnext/gh-cao:1189002:attempt:1'
         }
       }
     };
@@ -832,7 +832,7 @@ describe('gh-aw logs adapter', () => {
       kind: 'run',
       run: {
         run_id: 607, run_attempt: 1,
-        organization: 'githubnext', repository: 'gh-aw-cao',
+        organization: 'githubnext', repository: 'gh-cao',
         workflow_name: 'Worker', workflow_path: '.github/workflows/worker.md',
         created_at: '2026-09-17T00:00:00Z',
         evals: [{ id: 'unverified', answer: 'MAYBE' }],
@@ -858,7 +858,7 @@ describe('gh-aw logs adapter', () => {
       kind: 'run',
       run: {
         run_id: 608, run_attempt: 1,
-        organization: 'githubnext', repository: 'gh-aw-cao',
+        organization: 'githubnext', repository: 'gh-cao',
         workflow_name: 'Worker', workflow_path: '.github/workflows/worker.md',
         created_at: '2026-09-17T00:00:00Z',
         evals: [
@@ -922,7 +922,7 @@ describe('gh-aw logs adapter', () => {
         run_id: 303,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow_name: 'Activity',
         workflow_path: '.github/workflows/cao-activity.yml',
         status: 'completed',
@@ -992,7 +992,7 @@ describe('gh-aw logs adapter', () => {
         run_id: 304,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow_name: 'Activity',
         workflow_path: '.github/workflows/cao-activity.yml',
         status: 'completed',
@@ -1023,7 +1023,7 @@ describe('gh-aw logs adapter', () => {
         run_id: 305,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow_name: 'Activity',
         workflow_path: '.github/workflows/cao-activity.yml',
         status: 'completed',

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/model"
 )
 
 var queryLog = logger.New("cao:query")
@@ -299,7 +299,7 @@ func estimateRowsBytes(rows []model.Row, remaining int64) int64 {
 	for _, row := range rows {
 		total += 64
 		for key, value := range row {
-			total += int64(len(key)) + 48 + estimateValueBytes(value, 0)
+			total += int64(len(key)) + 48 + estimateValueBytes(value, 0, remaining)
 			if total > remaining {
 				return total
 			}
@@ -312,9 +312,13 @@ func EstimateRowsBytes(rows []model.Row) int64 {
 	return estimateRowsBytes(rows, MaxRetainedBytes)
 }
 
-func estimateValueBytes(value any, depth int) int64 {
+func EstimateRowsBytesWithLimit(rows []model.Row, limit int64) int64 {
+	return estimateRowsBytes(rows, limit)
+}
+
+func estimateValueBytes(value any, depth int, limit int64) int64 {
 	if depth > 32 {
-		return MaxWorkingBytes + 1
+		return limit + 1
 	}
 	switch typed := value.(type) {
 	case nil:
@@ -332,13 +336,19 @@ func estimateValueBytes(value any, depth int) int64 {
 	case []any:
 		total := int64(24)
 		for _, item := range typed {
-			total += 16 + estimateValueBytes(item, depth+1)
+			total += 16 + estimateValueBytes(item, depth+1, limit)
+			if total > limit {
+				return total
+			}
 		}
 		return total
 	case map[string]any:
 		total := int64(48)
 		for key, item := range typed {
-			total += int64(len(key)) + 32 + estimateValueBytes(item, depth+1)
+			total += int64(len(key)) + 32 + estimateValueBytes(item, depth+1, limit)
+			if total > limit {
+				return total
+			}
 		}
 		return total
 	default:

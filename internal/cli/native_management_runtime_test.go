@@ -126,7 +126,7 @@ func TestNativeManagementRuntimeAttestationAndHashChecks(t *testing.T) {
 		t.Run(failure, func(t *testing.T) {
 			nativeManagementDirectory(t)
 			revision := strings.Repeat("c", 40)
-			writeTestFile(t, ".github/aw/packages/root.json", `{"package":"githubnext/gh-aw-cao","source":"githubnext/gh-aw-cao@v1.2.3","resolvedCommit":"`+revision+`"}`)
+			writeTestFile(t, ".github/aw/packages/root.json", `{"package":"githubnext/gh-cao","source":"githubnext/gh-cao@v1.2.3","resolvedCommit":"`+revision+`"}`)
 			writeTestFile(t, "activity/existing", "operator original")
 			writeTestFile(t, "cao.sh", nativeRetiredLauncherFixture)
 			archive := nativeRuntimeArchiveFixture(t, revision, failure == "hash")

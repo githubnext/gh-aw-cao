@@ -7,11 +7,11 @@ import { WORKFLOW_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_PAGE_BODY_VALUES } from '../
 
 describe('workflow-route helpers', () => {
   it('formats and parses valid workflow routes', () => {
-    const value = workflowRouteValue('githubnext/gh-aw-cao', '.github/workflows/ambient-context.md');
+    const value = workflowRouteValue('githubnext/gh-cao', '.github/workflows/ambient-context.md');
 
-    expect(value).toBe('githubnext/gh-aw-cao:.github/workflows/ambient-context.md');
+    expect(value).toBe('githubnext/gh-cao:.github/workflows/ambient-context.md');
     expect(parseWorkflowRoute(value)).toEqual({
-      repository: 'githubnext/gh-aw-cao',
+      repository: 'githubnext/gh-cao',
       workflow: '.github/workflows/ambient-context.md'
     });
   });
@@ -19,11 +19,11 @@ describe('workflow-route helpers', () => {
   it('rejects invalid, missing, and unavailable workflow route inputs', () => {
     expect(parseWorkflowRoute(null)).toBeNull();
     expect(parseWorkflowRoute('')).toBeNull();
-    expect(parseWorkflowRoute('githubnext/gh-aw-cao')).toBeNull();
+    expect(parseWorkflowRoute('githubnext/gh-cao')).toBeNull();
     expect(parseWorkflowRoute('<invalid>')).toBeNull();
-    expect(parseWorkflowRoute('githubnext/gh-aw-cao:.github/workflows/../ambient-context.md')).toBeNull();
-    expect(parseWorkflowRoute('githubnext/gh-aw-cao:.github/workflows/ambient-context.yml')).toBeNull();
-    expect(parseWorkflowRoute(`githubnext/gh-aw-cao:.github/workflows/ambient-context.md${String.fromCharCode(10)}`)).toBeNull();
+    expect(parseWorkflowRoute('githubnext/gh-cao:.github/workflows/../ambient-context.md')).toBeNull();
+    expect(parseWorkflowRoute('githubnext/gh-cao:.github/workflows/ambient-context.yml')).toBeNull();
+    expect(parseWorkflowRoute(`githubnext/gh-cao:.github/workflows/ambient-context.md${String.fromCharCode(10)}`)).toBeNull();
   });
 
   it('normalizes declarative workflow route bodies with a shared fallback contract', () => {

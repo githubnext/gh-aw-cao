@@ -18,11 +18,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
-	"github.com/githubnext/gh-aw-cao/server/internal/server"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/server"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 func TestServeWithExistingPostgresOperationalTables(t *testing.T) {
@@ -79,7 +79,7 @@ func TestServeWithExistingPostgresOperationalTables(t *testing.T) {
 	cmd := newServeCommand()
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
-	cmd.SetArgs([]string{"--dashboard-queries", filepath.Join(t.TempDir(), "missing-dashboard-queries.json")})
+	cmd.SetArgs([]string{"--postgres-url=", "--dashboard-queries", filepath.Join(t.TempDir(), "missing-dashboard-queries.json")})
 	err = cmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "missing-dashboard-queries.json") {
 		t.Fatalf("serve must reach dashboard query loading after both stores initialize: %v", err)
@@ -839,7 +839,7 @@ func TestActionsEnvironmentPresentReportsPresenceNotValues(t *testing.T) {
 }
 
 func TestRootCommandRegistersEverySubcommand(t *testing.T) {
-	want := []string{"audit", "backfill", "benchmark-queries", "collect", "compile-queries", "database", "doctor", "execute-cli", "hosted-cli", "ingest", "otel-smoke", "serve", "serve-hosted", "simulate-api", "simulate-webhooks"}
+	want := []string{"admission", "audit", "backfill", "benchmark-queries", "collect", "compile-queries", "database", "doctor", "execute-cli", "hosted-cli", "ingest", "otel-smoke", "serve", "serve-hosted", "simulate-api", "simulate-webhooks"}
 	root := newRootCommand()
 
 	got := make([]string, 0, len(want))

@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
+	"github.com/githubnext/gh-cao/internal/dashboardquery"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/model"
 )
 
 func (r *reader) Diagnostics(ctx context.Context) (model.Diagnostics, error) {

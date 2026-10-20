@@ -8,12 +8,12 @@ const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
 export default defineConfig({
   testDir: "../../e2e",
-  testMatch: ["**/docs-narrow-viewport.spec.mjs"],
+  testMatch: ["**/docs-narrow-viewport.spec.mjs", "**/docs-slideshow.spec.mjs"],
   outputDir: "../../../test-results",
   timeout: 30_000,
   workers: 1,
   use: {
-    baseURL: "http://127.0.0.1:4321/gh-aw-cao/",
+    baseURL: "http://127.0.0.1:4321/gh-cao/",
     headless: true,
     launchOptions: {
       args: ["--no-sandbox"],
@@ -23,7 +23,7 @@ export default defineConfig({
   webServer: {
     command: "npx astro preview --host 127.0.0.1 --port 4321",
     cwd: repositoryRoot,
-    url: "http://127.0.0.1:4321/gh-aw-cao/",
+    url: "http://127.0.0.1:4321/gh-cao/",
     reuseExistingServer: !process.env.CI,
     timeout: 15_000,
   },

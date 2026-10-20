@@ -40,10 +40,10 @@ test('activity-stats reports download duration, payload sizes, and hash files fo
   const runs = [
     { databaseId: 111, status: 'completed', conclusion: 'success', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:05:00Z', url: 'https://example.test/111' }
   ];
-  const stats = await activityWorkflowStats({ repo: 'githubnext/gh-aw-cao', limit: 1 }, fakeGh(runs));
+  const stats = await activityWorkflowStats({ repo: 'githubnext/gh-cao', limit: 1 }, fakeGh(runs));
 
   assert.equal(stats.command, 'activity-stats');
-  assert.equal(stats.summary.repository, 'githubnext/gh-aw-cao');
+  assert.equal(stats.summary.repository, 'githubnext/gh-cao');
   assert.equal(stats.summary.workflow, 'cao-activity.yml');
   assert.equal(stats.summary.runsInspected, 1);
   assert.equal(stats.summary.runsWithArtifact, 1);
@@ -90,7 +90,7 @@ test('activity-stats records a per-run error when the artifact download fails', 
   const runs = [
     { databaseId: 222, status: 'completed', conclusion: 'success', missingArtifact: true }
   ];
-  const stats = await activityWorkflowStats({ repo: 'githubnext/gh-aw-cao', limit: 1 }, fakeGh(runs));
+  const stats = await activityWorkflowStats({ repo: 'githubnext/gh-cao', limit: 1 }, fakeGh(runs));
 
   assert.equal(stats.summary.runsWithArtifact, 0);
   assert.equal(stats.summary.runsMissingArtifact, 1);
@@ -114,7 +114,7 @@ test('activity-stats requires a repository', async () => {
 
 test('activity-stats rejects a non-positive limit', async () => {
   await assert.rejects(
-    () => activityWorkflowStats({ repo: 'githubnext/gh-aw-cao', limit: 0 }, fakeGh([])),
+    () => activityWorkflowStats({ repo: 'githubnext/gh-cao', limit: 0 }, fakeGh([])),
     /--limit must be a positive integer/
   );
 });

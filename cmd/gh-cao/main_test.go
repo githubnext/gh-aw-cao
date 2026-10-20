@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/internal/cli"
+	"github.com/githubnext/gh-cao/internal/cli"
 )
 
 func TestReportError(t *testing.T) {

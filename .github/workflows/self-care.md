@@ -94,14 +94,14 @@ safe-outputs:
     max: 20
   threat-detection: false
 
-source: githubnext/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
+source: githubnext/gh-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
 ---
 
 # SelfCare
 
 ## Discovery
 
-This operation is exclusively for `githubnext/gh-aw-cao`. Select that repository only when its precomputed candidate mode is `live`. Treat every other repository and every non-live candidate as ineligible, regardless of apparent need, and record the skip reason in the standard report. Never promote a `review` candidate to `live`.
+This operation is exclusively for `githubnext/gh-cao`. Select that repository only when its precomputed candidate mode is `live`. Treat every other repository and every non-live candidate as ineligible, regardless of apparent need, and record the skip reason in the standard report. Never promote a `review` candidate to `live`.
 
 The single eligible repository contains the documentation site and dashboard maintained by the SelfCare workers. Do not discover, rank, or dispatch work to any other repository.
 
@@ -129,6 +129,12 @@ The single eligible repository contains the documentation site and dashboard mai
 - `self-care-specs-maintainer`: scans recently merged pull requests for behavior changes missing from the normative specifications and opens one focused draft pull request that fixes them in W3C specification style.
 
 For a selected `live` target, dispatch every non-cadence-limited worker. Dispatch `self-care-agent-discoverability`, `self-care-dashboard-data-schema`, `self-care-data-acquisition-audit`, `self-care-docs-maintainer`, `self-care-glossary`, `self-care-release-blogger`, and `self-care-specs-maintainer` only when no run of the respective workflow is in progress or started during the preceding 24 hours. Inspect at most the ten most recent runs of each workflow to make this decision. Dispatch `self-care-documentation-discoverability` only when no run of that workflow is queued, in progress, or started during the preceding seven days. Inspect at most its ten most recent runs. Dispatch `self-care-pages-health` only when no run of that workflow is queued, in progress, or started during the preceding six hours. Inspect at most the 20 most recent Pages Health workflow runs to make this decision. If any run history is unavailable or ambiguous, fail closed by not dispatching the affected cadence-limited worker and record the incomplete cadence check. Never dispatch any worker in review mode or for another repository.
+
+## Dispatch execution
+
+Submit each dispatch through its configured safe-output tool and wait for the complete result. When using the supported CLI transport, pass the standard dispatch envelope as one inline JSON argument: `safeoutputs <tool_name> '<JSON>'`. Never pipe `safeoutputs` output to `head` or another truncating consumer, run dispatch calls in the background, or treat bridge startup logs as confirmation. Count a dispatch only after the tool confirms that its safe-output request was recorded; this confirms dispatch intent, not downstream worker completion.
+
+If a dispatch fails or its result is unconfirmed, record that worker as deferred and call the configured `report_incomplete` safe-output tool without retrying the dispatch. If no workers are eligible, call the configured `noop` safe-output tool. A prose report alone is not a terminal safe output, and must not claim that an unconfirmed worker was dispatched.
 
 ## Completion
 

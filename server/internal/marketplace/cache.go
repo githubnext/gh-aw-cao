@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var cacheLog = logger.New("cao:marketplace:cache")

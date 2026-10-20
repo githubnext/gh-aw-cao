@@ -28,7 +28,7 @@ it('wires resource subscriptions through the existing worker message listener wi
   vi.stubGlobal('fetch', fetch);
   await import('../../src/data-worker.js');
   const request = {
-    operation: 'subscribe-github-resource', resource: { owner: 'githubnext', repo: 'gh-aw-cao' },
+    operation: 'subscribe-github-resource', resource: { owner: 'githubnext', repo: 'gh-cao' },
     configuration: { baseUrl: 'https://dashboard.example/api/v1/github/' }
   };
   onMessage?.({ data: { ...request, subscriptionId: 'one' } });
@@ -36,7 +36,7 @@ it('wires resource subscriptions through the existing worker message listener wi
   await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
   onMessage?.({ data: { operation: 'unsubscribe-github-resource', subscriptionId: 'one' } });
   expect(requestSignal?.aborted).toBe(false);
-  release(Response.json({ full_name: 'githubnext/gh-aw-cao' }));
+  release(Response.json({ full_name: 'githubnext/gh-cao' }));
   await vi.waitFor(() => expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
     type: 'github-resource', subscriptionId: 'two', snapshot: expect.objectContaining({ source: 'network' })
   })));

@@ -17,7 +17,7 @@ const metadata = {
 const rows = [
   {
     organization: 'githubnext',
-    repository: 'gh-aw-cao',
+    repository: 'gh-cao',
     workflow: '.github/workflows/dashboard.md',
     run: '102',
     'event-timestamp': '2026-09-28T11:00:00Z',
@@ -28,11 +28,11 @@ const rows = [
     'counted-occurrences': 3,
     'suppressed-occurrences': 1,
     'unattributed-occurrences': 0,
-    'run-link': { href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/102' }
+    'run-link': { href: 'https://github.com/githubnext/gh-cao/actions/runs/102' }
   },
   {
     organization: 'githubnext',
-    repository: 'gh-aw-cao',
+    repository: 'gh-cao',
     workflow: '.github/workflows/dashboard.md',
     run: '101',
     'event-timestamp': '2026-09-28T10:00:00Z',
@@ -102,8 +102,8 @@ describe('Friction dashboard view', () => {
 
     expect(result['friction-by-workflow'].rows).toEqual([
       {
-        'workflow-coordinate': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
-        'repository-coordinate': 'githubnext/gh-aw-cao',
+        'workflow-coordinate': 'githubnext/gh-cao:.github/workflows/dashboard.md',
+        'repository-coordinate': 'githubnext/gh-cao',
         workflow: '.github/workflows/dashboard.md',
         'friction-aic': 2,
         runs: 2

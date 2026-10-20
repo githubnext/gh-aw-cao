@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
@@ -57,6 +57,23 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "authorization requires") {
 		t.Fatalf("expected explicit authorization policy rejection, got %v", err)
+	}
+}
+
+func TestGitHubOAuthAllowsExplicitUserWithoutMembershipLookup(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "inactive"})
+	config := validOAuthConfig(github.URL)
+	config.AllowedOrganizations = nil
+	config.AllowedUsers = []string{"OCTOCAT"}
+	if err := config.validate(); err != nil {
+		t.Fatal(err)
+	}
+	account, err := newGitHubOAuth(*config, nil, nil, nil).authorizedAccount(t.Context(), "access")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if account.Login != "octocat" {
+		t.Fatalf("authorized account = %q, want octocat", account.Login)
 	}
 }
 

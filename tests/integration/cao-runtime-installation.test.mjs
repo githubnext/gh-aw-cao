@@ -54,7 +54,7 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
       path.join(installed, ".github/workflows/aw.json"),
     );
     const [{ resources }] = planCaoMaterialization([{
-      name: "githubnext/gh-aw-cao", record: { resolvedCommit: revision },
+      name: "githubnext/gh-cao", record: { resolvedCommit: revision },
     }], "root");
     for (const resource of resources) {
       const target = path.join(installed, resource);

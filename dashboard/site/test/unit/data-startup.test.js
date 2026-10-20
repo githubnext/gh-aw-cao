@@ -604,7 +604,7 @@ describe("dashboard data startup", () => {
     expect(updates.startAutomaticDashboardDataUpdates).not.toHaveBeenCalled();
   });
 
-  it("paginates view aliases and reloads only the originating view", async () => {
+  it.each([false, true])("preserves the initial compilation scope for continuation loads (view binding: %s)", async (viewBinding) => {
     const alias = "view:runs:timeline:runs-table";
     const page = {
       source: alias,
@@ -612,7 +612,7 @@ describe("dashboard data startup", () => {
       continuationToken: "next",
       metadata: { "total-row-count": 2 },
     };
-    /** @type {((pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<Record<string, import('../../src/presenter.js').LogicalSourceInput>>) | undefined} */
+    /** @type {import('../../src/presenter.js').PageSourceLoader | undefined} */
     let loadPageSources;
     dataProcessor.subscribeCanonicalDashboardView.mockImplementation(
       (_id, _sources, _context, listener) => {
@@ -629,14 +629,14 @@ describe("dashboard data startup", () => {
     });
 
     await startDashboardData(options({
-      pageSourceNames: () => ["runs-table"],
+      pageSourceNames: () => ["runs-table", "navigation-summary"],
       pagePaginatedSourceBindings: () => ({
         [alias]: { sourceName: "runs-table", viewId: "timeline" },
       }),
       render: (
         /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
         /** @type {'ready' | 'loading' | 'cached' | 'stale'} */ state,
-        /** @type {(pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<Record<string, import('../../src/presenter.js').LogicalSourceInput>>} */ loader,
+        /** @type {import('../../src/presenter.js').PageSourceLoader} */ loader,
       ) => {
         calls.push(`render:${state}`);
         loadPageSources = loader;
@@ -645,27 +645,30 @@ describe("dashboard data startup", () => {
 
     const loader = loadPageSources;
     if (!loader) throw new Error("Page source loader was not registered.");
-    const sources = await loader("runs", {
+    const pageOptions = {
       signal: new AbortController().signal,
       onUpdate: () => {},
-    });
+    };
+    const sources = await (viewBinding && loader.subscribeViewSources
+      ? loader.subscribeViewSources("runs", "timeline", ["runs-table"], pageOptions)
+      : loader("runs", pageOptions));
     const loadContinuation = sources[alias]?.loadContinuation;
     if (!loadContinuation) throw new Error("Continuation loader was not bound.");
     await loadContinuation("next");
 
     expect(dataProcessor.subscribeCanonicalDashboardView).toHaveBeenCalledWith(
-      "page:runs",
-      ["runs-table"],
+      viewBinding ? "page:runs:view:timeline:1" : "page:runs",
+      viewBinding ? ["runs-table"] : ["runs-table", "navigation-summary"],
       expect.anything(),
       expect.any(Function),
       { [alias]: { limit: 25 } },
       expect.objectContaining({ pageId: "runs" }),
     );
     expect(dataProcessor.loadCanonicalDashboardPage).toHaveBeenLastCalledWith(
-      ["runs-table"],
+      viewBinding ? ["runs-table"] : ["runs-table", "navigation-summary"],
       expect.anything(),
       { [alias]: { limit: 25, continuationToken: "next" } },
-      expect.objectContaining({ pageId: "runs", viewId: "timeline" }),
+      expect.objectContaining({ pageId: "runs", viewId: viewBinding ? "timeline" : undefined }),
     );
   });
 });

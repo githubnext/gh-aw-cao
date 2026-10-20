@@ -13,7 +13,7 @@ import {
 } from "../e2e/dashboard-deployed-refresh-helpers.mjs";
 
 const deployedManifestUrl = process.env.DASHBOARD_DATA_URL
-  || "https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json";
+  || "https://githubnext.github.io/gh-cao/cao/payload-hashes.json";
 const transientDownloadStatuses = new Set([408, 429, 500, 502, 503, 504]);
 
 async function fetchDeployedData(url) {

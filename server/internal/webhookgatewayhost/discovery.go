@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 var discoveryLog = logger.New("cao:webhook-gateway:discovery")

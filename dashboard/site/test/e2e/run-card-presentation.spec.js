@@ -28,7 +28,7 @@ for (const theme of ['light', 'dark']) {
         'started-at': '2026-09-14T22:00:00Z',
         'run-link': {
           relation: 'run',
-          href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${index + 1}`,
+          href: `https://github.com/githubnext/gh-cao/actions/runs/${index + 1}`,
           label: `Run ${index + 1}`
         }
       }));

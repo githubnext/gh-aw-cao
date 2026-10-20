@@ -7,7 +7,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func (q *Queue) BeginDispatchBatch(ctx context.Context, fences []wg.Fence, authorizations []wg.Authorization) ([]wg.Job, error) {

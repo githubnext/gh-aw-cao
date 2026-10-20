@@ -1,5 +1,5 @@
 {
-  "description": "Minimized metadata-only unified-session envelopes for configured-model resolution (githubnext/gh-aw-cao#18626).",
+  "description": "Minimized metadata-only unified-session envelopes for configured-model resolution (githubnext/gh-cao#18626).",
   "provenance": {
     "producer": "github/gh-aw unified_session.cjs at 10f9281950798beb307862f81caf03807d48e89e (T-UAS-074, specification 1.11.0, session format version 1)",
     "source": "Successful pre-merge smoke runs of github/gh-aw at head SHA 2ba9099602d4b03301f48363aebf902abe2606c0, attempt 1, started 2026-10-18 UTC. Artifact `usage`, file usage/aw_session.jsonl.",

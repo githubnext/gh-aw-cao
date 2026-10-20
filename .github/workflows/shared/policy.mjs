@@ -3,9 +3,9 @@ import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 export class PolicyError extends Error {}
 
-const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
+const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
-const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "publishing", "marketplace", "webhook-gateway"];
+const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "workflows", "publishing", "marketplace", "webhook-gateway"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const ACTIVITY_KEYS = ["repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
@@ -37,6 +37,7 @@ const OCTICONS = [
   "workflow", "gear", "check-circle", "campaign", "external-link",
 ];
 const CAMPAIGN_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "deploy", "targets", "workers"];
+const WORKFLOW_KEYS = ["enabled", ...DEFAULT_KEYS, "max-mode", "targets"];
 const TARGET_POLICY_KEYS = ["mode"];
 const WORKER_KEYS = ["workflow", "enabled", "max-mode"];
 const PUBLISHING_KEYS = ["enabled", "control-repositories", "reviewers"];
@@ -269,8 +270,12 @@ function validateControlPlane(control) {
   if ("web" in control) validateWeb(control.web);
   if ("defaults" in control) validateDefaults(control.defaults, "control-plane.defaults");
   if ("campaigns" in control) {
-    validateCampaigns(control.campaigns);
+    validateOperationPolicies(control.campaigns);
     validateCampaignRepositoryScopes(control);
+  }
+  if ("workflows" in control) {
+    validateOperationPolicies(control.workflows, "workflows");
+    validateCampaignRepositoryScopes(control, "workflows");
   }
   if ("publishing" in control) validatePublishing(control.publishing);
   if ("marketplace" in control) validateMarketplace(control.marketplace);
@@ -752,16 +757,17 @@ function validateDefaults(defaults, path) {
   }
 }
 
-function validateCampaigns(campaigns) {
-  assertMapping(campaigns, "control-plane.campaigns");
+function validateOperationPolicies(campaigns, collection = "campaigns") {
+  assertMapping(campaigns, `control-plane.${collection}`);
   for (const [campaignName, campaignPolicy] of Object.entries(campaigns)) {
-    const path = `control-plane.campaigns.${campaignName}`;
+    const path = `control-plane.${collection}.${campaignName}`;
     assertString(campaignName, path, SLUG_PATTERN);
     assertMapping(campaignPolicy, path);
-    assertKeys(campaignPolicy, CAMPAIGN_KEYS, path);
+    assertKeys(campaignPolicy, collection === "workflows" ? WORKFLOW_KEYS : CAMPAIGN_KEYS, path);
     if ("enabled" in campaignPolicy) assertBoolean(campaignPolicy.enabled, `${path}.enabled`);
     if ("icon" in campaignPolicy) assertOcticon(campaignPolicy.icon, `${path}.icon`);
     if ("deploy" in campaignPolicy) assertBoolean(campaignPolicy.deploy, `${path}.deploy`);
+    if ("max-mode" in campaignPolicy) assertMode(campaignPolicy["max-mode"], `${path}.max-mode`);
     validateDefaults(pick(campaignPolicy, DEFAULT_KEYS), path);
     if ("targets" in campaignPolicy) {
       const targets = campaignPolicy.targets;
@@ -797,20 +803,20 @@ function validateCampaigns(campaigns) {
   }
 }
 
-function validateCampaignRepositoryScopes(control) {
+function validateCampaignRepositoryScopes(control, collection = "campaigns") {
   const allowedRepositories = control.scope?.["allowed-repositories"];
   const allowedOwners = control.scope?.["allowed-owners"];
   const repositorySet = allowedRepositories && new Set(allowedRepositories.map((repository) => repository.toLowerCase()));
   const ownerSet = allowedOwners && new Set(allowedOwners.map((owner) => owner.toLowerCase()));
 
-  for (const campaignPolicy of Object.values(control.campaigns ?? {})) {
+  for (const campaignPolicy of Object.values(control[collection] ?? {})) {
     for (const repository of Object.keys(campaignPolicy.targets ?? {})) {
       const normalized = repository.toLowerCase();
       if (repositorySet && !repositorySet.has(normalized)) {
-        throw new PolicyError(`campaign target ${repository} is outside control-plane.scope.allowed-repositories`);
+        throw new PolicyError(`${collection === "campaigns" ? "campaign" : "workflow"} target ${repository} is outside control-plane.scope.allowed-repositories`);
       }
       if (ownerSet && !ownerSet.has(normalized.split("/", 1)[0])) {
-        throw new PolicyError(`campaign target ${repository} is outside control-plane.scope.allowed-owners`);
+        throw new PolicyError(`${collection === "campaigns" ? "campaign" : "workflow"} target ${repository} is outside control-plane.scope.allowed-owners`);
       }
     }
   }
@@ -858,7 +864,8 @@ function rejectExpressions(value, path = "policy") {
 export function effectivePolicy(
   document,
   {
-    campaignName,
+    campaignName = "",
+    workflowName = "",
     role,
     workerName = "",
     controlRepository,
@@ -870,16 +877,30 @@ export function effectivePolicy(
   },
 ) {
   log("Resolving effective policy.");
-  if (!["orchestrator", "worker"].includes(role)) throw new PolicyError("role must be orchestrator or worker");
+  if (!["orchestrator", "worker", "standalone"].includes(role)) throw new PolicyError("role must be orchestrator, worker, or standalone");
+  const standalone = role === "standalone";
+  if (standalone) {
+    assertString(workflowName, "workflow identity", SLUG_PATTERN);
+    if (campaignName || workerName) throw new PolicyError("standalone workflows must not specify a campaign or worker identity");
+  } else if (workflowName) {
+    throw new PolicyError("standalone workflow identity is forbidden for campaign roles");
+  }
   if (role === "worker" && !workerName) throw new PolicyError("worker identity is required");
   if (role === "orchestrator" && workerName) throw new PolicyError("worker identity is forbidden for orchestrators");
 
+  const deny = (reason) => ({
+    ...denied(reason, campaignName, role, workerName),
+    ...(standalone ? { workflow: workflowName } : {}),
+  });
   const control = document["control-plane"];
-  if (!control) return denied("control-plane-absent", campaignName, role, workerName);
+  if (!control) return deny("control-plane-absent");
 
-  const campaignPolicy = (control.campaigns ?? {})[campaignName];
-  if (!campaignPolicy) return denied("campaign-undeclared", campaignName, role, workerName);
-  if (!(campaignPolicy.enabled ?? true)) return denied("campaign-disabled", campaignName, role, workerName);
+  const campaignPolicy = standalone
+    ? (Object.hasOwn(control.workflows ?? {}, workflowName) ? control.workflows[workflowName] : undefined)
+    : (control.campaigns ?? {})[campaignName];
+  const kind = standalone ? "workflow" : "campaign";
+  if (!campaignPolicy) return deny(`${kind}-undeclared`);
+  if (!(campaignPolicy.enabled ?? true)) return deny(`${kind}-disabled`);
   const workers = campaignPolicy.workers ?? {};
   if (role === "worker" && !(workerName in workers)) {
     throw new PolicyError(`unknown worker: ${campaignName}/${workerName}`);
@@ -929,6 +950,15 @@ export function effectivePolicy(
       );
     }
   }
+  if (standalone && "max-mode" in campaignPolicy) {
+    effective.mode = lesserMode(effective.mode, campaignPolicy["max-mode"]);
+    targetPolicies = Object.fromEntries(
+      Object.entries(targetPolicies).map(([repository, targetPolicy]) => [
+        repository,
+        { mode: lesserMode(targetPolicy.mode, campaignPolicy["max-mode"]) },
+      ]),
+    );
+  }
 
   if (requestedMode === "debug") {
     if (role !== "worker" || eventName !== "workflow_dispatch") {
@@ -969,6 +999,7 @@ export function effectivePolicy(
     reason: "authorized",
     control_role: role,
     campaign: campaignName,
+    ...(standalone ? { workflow: workflowName } : {}),
     worker: workerName,
     enabled: true,
     safe_output_mode: effective.mode,

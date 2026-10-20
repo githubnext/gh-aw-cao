@@ -36,7 +36,7 @@ it('publishes run subscriptions during ingestion and permits an explicit full sy
       run_id: 303,
       run_attempt: 1,
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow_name: 'Dashboard',
       workflow_path: '.github/workflows/dashboard.md',
       status: 'completed',

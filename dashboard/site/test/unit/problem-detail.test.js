@@ -46,7 +46,7 @@ function problem() {
     workflow: '.github/workflows/dependabot.md',
     'workflow-name': 'Dependabot / Update Planner',
     'workflow-role': 'orchestrator',
-    'runtime-repository': 'githubnext/gh-aw-cao',
+    'runtime-repository': 'githubnext/gh-cao',
     'target-repository': 'github/gh-aw',
     'rollout-mode': 'live',
     'problem-kind': 'failure',
@@ -72,8 +72,8 @@ function problem() {
       label: 'View run'
     },
     'runtime-repository-link': {
-      'dashboard-href': '#page-repository-detail?repository=githubnext%2Fgh-aw-cao',
-      'dashboard-label': 'githubnext/gh-aw-cao'
+      'dashboard-href': '#page-repository-detail?repository=githubnext%2Fgh-cao',
+      'dashboard-label': 'githubnext/gh-cao'
     },
     'workflow-source-link': {
       relation: 'workflow',
@@ -107,7 +107,7 @@ describe('problem detail', () => {
     expect(runAnchor?.textContent).toBe('https://github.com/github/gh-aw/actions/runs/1');
     expect(runAnchor?.getAttribute('rel')).toBe('noopener noreferrer');
     expect(runAnchor?.querySelector('svg')).toBeNull();
-    expect(rendered.querySelector('a[href="#page-repository-detail?repository=githubnext%2Fgh-aw-cao"]')?.textContent).toBe('githubnext/gh-aw-cao');
+    expect(rendered.querySelector('a[href="#page-repository-detail?repository=githubnext%2Fgh-cao"]')?.textContent).toBe('githubnext/gh-cao');
     expect(rendered.querySelector('a[href*="/actions/workflows/dependabot.lock.yml"]')?.textContent).toBe('Dependabot / Update Planner');
     expect(rendered.querySelector('a[href="#page-repository-detail?repository=github%2Fgh-aw"]')?.textContent).toBe('github/gh-aw');
     expect(rendered.querySelector('.problem-view-log')?.textContent).toContain('##[error]dependency update failed');

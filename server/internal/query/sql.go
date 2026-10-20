@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
+	"github.com/githubnext/gh-cao/server/internal/sqlbuilder"
 )
 
 type SQLKind string

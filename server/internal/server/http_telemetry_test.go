@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 func TestHTTPServerTelemetryUsesRouteTemplatesAndHeadMethods(t *testing.T) {

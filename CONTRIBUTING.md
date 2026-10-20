@@ -146,8 +146,7 @@ CI provisions gh-aw and a read-only token only in the separate authenticated
 integration job; unit tests and ordinary smoke tests do not need them.
 
 Use the Go version declared in `go.mod` or newer, GitHub CLI, and Make. For local
-extension installation, the checkout directory must be named `gh-cao`, even
-before the repository is renamed:
+extension installation, the checkout directory must be named `gh-cao`:
 
 ```bash
 make check
@@ -160,12 +159,11 @@ gh cao doctor
 
 Build before installing locally: GitHub CLI links to the root `gh-cao`
 executable, and rebuilding updates that local installation. The extension is
-named `gh cao`; the Go module path and repository URLs remain
-`github.com/githubnext/gh-aw-cao` until the repository is renamed.
+named `gh cao`; the Go module path is `github.com/githubnext/gh-cao`.
 In a differently named worktree, run `./gh-cao` directly instead.
 The root installer downloads verified release assets directly into GitHub CLI's
 extension data directory under `gh-cao`, so released installs use `gh cao`
-without renaming the repository. It refuses to overwrite local linked/source
+without requiring a local checkout. It refuses to overwrite local linked/source
 installations.
 On Windows, build `gh-cao.exe` with
 `go build -o gh-cao.exe ./cmd/gh-cao`.

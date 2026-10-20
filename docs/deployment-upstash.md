@@ -81,7 +81,7 @@ The application host needs outbound access to PostgreSQL, the Upstash Redis endp
    configure the application host to run exactly the one replica declared by
    `target.replicas`.
 1. Configure `CAO_POSTGRES_URL` with the PostgreSQL connection URL.
-1. Configure the remaining `serve-hosted` settings, including the allowed host, trusted proxy boundary, GitHub OAuth app, authorization policy, session secret, administrators, webhook secret, and source directory. For the complete list, see the [hosted service profile](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#hosted-service-profile).
+1. Configure the remaining `serve-hosted` settings, including the allowed host, trusted proxy boundary, GitHub OAuth app, authorization policy, session secret, administrators, webhook secret, and source directory. For the complete list, see the [hosted service profile](https://github.com/githubnext/gh-cao/blob/main/server/README.md#hosted-service-profile).
 1. Build or select the CAO container image and provide the verified dashboard artifact to the container as read-only input.
 
 1. Start the container. On startup, `serve-hosted` verifies the artifact and transactionally replaces the current dashboard dataset in PostgreSQL.
@@ -165,5 +165,5 @@ To roll back the application, redeploy the last known-good image digest through 
 - [Data ingestion](dashboard-data-ingestion.md)
 - [Data model](dashboard-data-model.md)
 - [Monitor and recover](operations.md)
-- [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md)
-- [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md)
+- [`server/README.md`](https://github.com/githubnext/gh-cao/blob/main/server/README.md)
+- [`server/SECURITY.md`](https://github.com/githubnext/gh-cao/blob/main/server/SECURITY.md)

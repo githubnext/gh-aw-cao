@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const gatewayInstrumentation = "github.com/githubnext/gh-aw-cao/server"
+const gatewayInstrumentation = "github.com/githubnext/gh-cao/server"
 
 // Values used as metric labels are classified here, never copied from a webhook.
 func eventFamily(event string) string {

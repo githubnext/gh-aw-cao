@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func TestExternalCompilerDispatchRechecksDestinationWithoutGitHubSourceInference(t *testing.T) {

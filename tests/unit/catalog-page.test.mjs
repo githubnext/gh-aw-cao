@@ -20,7 +20,7 @@ test("campaign detail keeps the embedded README title out of the page heading ou
 test("campaign detail installs the latest release without a version placeholder", () => {
   assert.match(
     campaignDetail,
-    /const installCommand = `gh aw add githubnext\/gh-aw-cao\/\$\{entry\.slug\}`;/,
+    /const installCommand = `gh aw add githubnext\/gh-cao\/\$\{entry\.slug\}`;/,
   );
   assert.doesNotMatch(campaignDetail, /catalog-release/);
 });

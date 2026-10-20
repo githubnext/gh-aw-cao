@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var registryLog = logger.New("cao:githubquota:registry")

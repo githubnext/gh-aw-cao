@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func TestCompilerMultiRepositoryDispatchRechecksSource(t *testing.T) {

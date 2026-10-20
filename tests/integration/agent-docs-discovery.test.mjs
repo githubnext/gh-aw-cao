@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const dist = path.join(root, "dist");
-const publicBase = new URL("https://githubnext.github.io/gh-aw-cao/");
+const publicBase = new URL("https://githubnext.github.io/gh-cao/");
 
 function hrefForRel(html, rel, type) {
   const tags = html.match(/<link\b[^>]*>/g) ?? [];
@@ -55,7 +55,7 @@ test("an external agent can traverse static discovery and resource metadata", as
   assert.ok(related, "resource metadata must expose a related resource");
   const relatedResource = JSON.parse(await readFile(fileForPublicUrl(related.href), "utf8"));
 
-  assert.equal(resource.provenance.repository, "githubnext/gh-aw-cao");
+  assert.equal(resource.provenance.repository, "githubnext/gh-cao");
   assert.match(resource.provenance.commit, /^[0-9a-f]{40}$/);
   assert.equal(resource.provenance.commit, process.env.PUBLIC_PAGES_BUILD_COMMIT
     || execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim());

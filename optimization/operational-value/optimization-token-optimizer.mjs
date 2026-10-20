@@ -27,7 +27,7 @@ export const definition = {
   schemaVersion: 3,
   slug: "optimization-token-optimizer",
   sourcePath: ".github/workflows/optimization-token-optimizer.md",
-  repository: "githubnext/gh-aw-cao",
+  repository: "githubnext/gh-cao",
   workflowName: "Optimization / Token Optimizer",
   adoption: {
     commit: "dc1e91886790cdac1bcfba3e8984186ad7f4a5e7",
@@ -45,7 +45,7 @@ export const definition = {
       "github/gh-aw-firewall",
       "github/gh-aw-mcpg",
       "github/gh-aw-threat-detection",
-      "githubnext/gh-aw-cao",
+      "githubnext/gh-cao",
     ],
     opportunity: "A declared non-Optimization agentic workflow in the authorized target repository with at least three completed runs, at least one successful run, and complete successful-run AI Credit coverage in the observation window.",
     filters: [

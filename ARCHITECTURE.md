@@ -1,9 +1,9 @@
 # Architecture
 
-Central Agentic Ops (CAO) campaigns agentic operations and runs them from a
+Central Agentic Ops (CAO) governs agentic workflows and runs them from a
 central GitHub repository against an explicitly bounded repository fleet. This
 repository is both the public campaign catalog and a source-managed control plane
-used to develop and exercise those campaigns.
+used to develop and exercise campaigns and standalone workflows.
 
 This document is a map of the stable system boundaries and source tree. The
 normative contracts live under `specs/`; operator-facing explanations live
@@ -61,6 +61,24 @@ compiled by gh-aw. No one input can widen another.
 
 Orchestrators decide rollout and selection; workers are independent,
 single-target enforcement points.
+
+A standalone agentic workflow may instead import shared control with
+`role: standalone` and its exact `workflow` slug. It declares no campaign or
+worker and needs no campaign record. `control-plane.workflows.<workflow>` owns
+its enablement, mode, optional `max-mode` ceiling, target modes, repository cap,
+and rollout percentage. Admission verifies that identity against the actual
+compiled workflow reference, loads policy at the exact workflow SHA, and checks
+API capacity through the same admission path as campaigns. Precompute reuses
+bounded inventory, deterministic cells and batches, excludes archived/disabled
+repositories, and admits a deterministic subset capped by repository count and
+rollout percentage. Each admitted repository carries its own effective mode and
+output destination. The workflow performs its mission directly on that set;
+it cannot discover extra targets or dispatch more work. No orchestrator or
+downstream workflow inventory is required. Missing inventory evidence fails
+closed. Credential reach and safe-output capabilities remain declared by gh-aw;
+CAO does not expand them for fleet execution.
+Bare setup rejects policies with declared standalone workflows before changing
+scope or authentication, just as it rejects declared operational campaigns.
 
 A local debugger may manually launch one worker in request-only `debug` mode.
 Admission verifies a human `workflow_dispatch` sender with current write access
@@ -247,6 +265,67 @@ state and available history, not every missed event or expired artifact. There
 is no memory disk journal, automatic failover, or dual-write path.
 `specs/server-operational-storage.md` specifies these guarantees.
 
+The optional hosted activation-admission service (`server/internal/admission/`)
+implements gh-aw's separate OIDC-only `POST /api/admission` contract, never CAO
+rollout authority. Explicit server configuration selects a protected, atomically
+published policy/accounting snapshot; immutable signed repository, workflow
+revision and original-actor identities gate exact enrollment. Accounting must
+be fresh and expressed in AI Credits; missing evidence is an outage, not zero.
+The initial GitHub.com/string-audience profile denies ambiguous reusable calls
+and never authorizes from an unverified triggering actor or workflow hash.
+The service receives a narrow durable decision contract; the PostgreSQL
+operational adapter atomically retains the first primary/optional allowances,
+a non-sliding five-minute authorization window and permanent expiry/revocation
+tombstones within protected capacity. Every retry revalidates policy and usage;
+transient failures preserve retained decisions. No cache eviction, financial
+mutation, dashboard-session authentication, trace-response identifier or CAO
+scope widening is permitted. Redis, memory and local modes cannot enable it.
+`server/ADMISSION.md` documents the trust profile, publisher requirements,
+capacity/retention lifecycle and cooperative fail-open limitations.
+The HTTP contract is pinned to merged gh-aw `be70cb4ec4317135a1ab21d5b830b6fae7d5be4a`.
+Its isolated admission job relays caller-owned tracing through activation.
+Valid incoming traceparent parents the server HTTP span and dependencies;
+HTTP instrumentation must consume the sanitized context without re-extracting
+global baggage/tracestate or another parent. Invalid/duplicate context starts
+a fresh trace without changing authorization, and responses expose no trace ID.
+Admission reuses the hosted OTLP providers and bounded shutdown flush, emits
+fixed-name identity/JWKS/policy/decision/replay spans, and labels HTTP
+duration/status metrics with the fixed admission route even across its separate
+authentication path. Raw errors, credentials, identities, allowance values and
+denial reasons never enter those signals; exporter failures do not change
+operation results.
+Verified successful admission publishes a sparse canonical Run in admitted
+state before returning approval; blocked attempts publish nothing. Publication
+uses existing canonical IDs, inserts only missing parent identity facts,
+advances revision once and never downgrades collected evidence. Namespace
+ingestion locks serialize publication with replacement; replacement temporarily
+preserves missing admitted runs/parents but authoritative incoming Run evidence
+wins. Sparse quality stays partial and no start/completion/spend is inferred.
+Canonical publication failure is transient without changing the first durable
+decision; retry repairs the idempotent projection, not a financial commitment.
+Native `gh cao admission setup/status/disable` commands configure the
+selected scope's three managed non-secret variables. `gh cao setup admission`
+reuses admission setup without introducing workflow secrets. Setup/disable apply
+unless `--dry-run` is supplied; setup defaults to outage block, publishes the URL
+last and preserves unrelated defaults. Status resolves available organization
+variables beneath repository overrides; disable writes an empty repository URL
+rather than deleting an override that could reactivate inheritance. These
+commands neither deploy/enroll an authority nor change CAO rollout policy.
+Bulk `--all-repos` selects exact repositories from validated global CAO scope
+or enumerates allowed organization inventories when no exact list exists.
+Explicit repeatable `--org` and `--enterprise` select organization variables
+with visibility all; enterprise rollout enumerates organizations, never invents
+an enterprise Actions-variable scope. Repository overrides remain authoritative.
+Discovery and all variable preflight reads precede mutations; bounded sequential
+writes report partial progress and stop without automatic retries or rollback.
+Setup reuses an existing target endpoint/audience, or the current control
+repository's effective configuration for bulk rollout and disabled-target
+recovery, when `--url` is omitted; missing configuration is an error.
+The server's read-only `admission validate` command checks protected policy and
+current accounting without network calls, mutations or fabricated evidence;
+it does not attest live deployment readiness. `docs/admission-gate.md` covers
+the operator journey and the independent trusted-publisher requirement.
+
 Hosted CLI actions are an experimental opt-in
 `serve-hosted --experimental --hosted-cli-actions` mode. Step-up administrators
 enqueue catalog-declared actions into the PostgreSQL CLI command queue after the
@@ -368,12 +447,28 @@ dashboard data authority, policy, or rollout authority.
 
 #### Local canonical snapshot serving
 
-The Go server may explicitly select `serve --sqlite PATH` to serve an existing
-canonical SQLite projection through the ordinary HTTP query, canonical API,
-diagnostics, revision subscriptions, and optional read-only MCP boundary.
+The local Go `serve` command defaults to a cached canonical SQLite projection
+through the ordinary HTTP query, canonical API, diagnostics, revision
+subscriptions, and optional read-only MCP boundary.
+It reuses `.cao/gh-aw-logs.sqlite` in the checkout without network access, or
+downloads deployed data on demand when the cache is missing. `--sqlite PATH`
+selects another cache with the same behavior. An explicit `--postgres-url`,
+`--source`, or `--redis-url` selects the PostgreSQL profile; database service
+environment variables alone do not override the SQLite default.
 `server/internal/sqlitex/` implements the existing canonical storage reader
 contract behind `server/internal/dashboardstore/`; PostgreSQL's SQL executor,
 ingestion, and hosted defaults remain unchanged.
+
+Automatic acquisition uses `DASHBOARD_DATA_URL` or the public CAO Pages snapshot.
+`serve --download-sqlite[=URL]` explicitly refreshes even an existing cache before
+opening it. Any Pages site or custom-domain directory, dashboard directory, or
+direct manifest URL may supply the snapshot; directory
+discovery checks its root and then `cao/` on HTTP 404. Bounded streaming,
+manifest SHA-256 verification, and canonical-version validation precede atomic
+replacement; failed acquisition preserves the old file and fails startup.
+This acquisition path does not ingest shards or relax read-only serving.
+Invalid or unreadable existing caches and dangling symlinks fail closed rather
+than triggering automatic repair downloads.
 
 This profile is loopback-only and bearer-authenticated, with no PostgreSQL or
 Redis service requirement. It opens the existing versioned snapshot read-only,
@@ -384,8 +479,21 @@ by the root extension and server; neither module acquires the other's dependency
 graph. Request services use bounded volatile memory without OAuth, collection,
 webhook, or hosted execution capabilities. Query result caching is disabled;
 in-place commits change the revision and notify active subscriptions. Snapshot
-quality remains unknown without stronger evidence. This explicit local mode
+quality remains unknown without stronger evidence. This default local mode
 does not introduce a hosted SQLite backend or a fallback from PostgreSQL.
+Its fixed local evaluator profile admits 500,000 input/intermediate rows and
+50 million operations with 1 GiB working-source and 2 GiB / 2 million live
+retained-row budgets; final-consumer release discards completed DAG inputs.
+Backward field liveness narrows row-local projections and removes unused pure
+computations. SQLite executes root field selection natively while retaining full
+stored-record byte checks, JSON types, missing-value semantics and IndexedDB
+UTF-16 key ordering; unknown shapes and requested raw sources remain complete.
+Read-only memory mapping is capped at 1 GiB. Remaining local operators execute
+in the shared Go evaluator, not a claimed SQLite SQL-plan compiler.
+Wire output remains bounded to 100,000 rows. The shared engine's default CLI
+limits and hosted PostgreSQL limits remain unchanged. This local-only profile
+defaults to a 300-unit/minute weighted query-admission bucket while preserving
+explicit embedding overrides and all other request policies.
 
 #### Hosted storage boundary
 
@@ -397,6 +505,16 @@ The hosted dashboard has one strict storage split:
 | PostgreSQL operational adapter (default) | Deployment-scoped durable operational services in separate `cao_operational_*` tables and namespace | Canonical entities, canonical schema changes, Dashboard Language execution, automatic migration, or fallback |
 | Redis | Sessions, rate limits, webhook and collection queues, delivery deduplication, distributed coordination, GitHub quota state, pending token revocations, and bounded runtime caches | Dashboard entity rows, canonical source documents, query indexes, persistent query projections, or dashboard query execution |
 | In-process memory (explicit opt-in) | The same operational contracts within one owning process, with bounded volatile state and restart recovery limitations | Dashboard entity storage, query execution, cross-process coordination, restart durability, or fallback for a failed Redis deployment |
+
+The Go HTTP(S) server serves the hosted dashboard itself, including its built
+HTML, JavaScript and other assets, OAuth routes, query API, and revision events
+on one origin. Container, Azure Functions, and externally owned listeners all
+expose the complete CAO handler, not an API behind a separately hosted Pages
+application. Hosted startup requires a readable, non-empty built `index.html`.
+The server injects the `server-http` backend bootstrap into dashboard entry
+responses; the browser uses server-side PostgreSQL queries rather than static
+shard ingestion or IndexedDB query execution. Hosted failures do not fall back
+to the separate Pages deployment.
 
 The browser communicates only with the Go HTTP(S) server. It never connects to
 either store. Artifact ingestion and rebuilds transactionally replace the
@@ -779,7 +897,7 @@ and removal remain authenticated and never hydrate notification payloads.
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Independent, entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds the dashboard's authoritative JSON contracts. Actions pipeline commands remain Node-owned. |
 | `internal/dashboardquery/` | Small independent Go module sharing the bounded local Dashboard Language evaluator and read-only canonical SQLite reader between the extension and explicit local server profile; never a hosted PostgreSQL fallback. |
-| `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
+| `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and shared browser UI built for either Pages or the hosted Go server. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, container image, and Azure Functions deployment profile. |
 | `server/cmd/cao-webhook-gateway/`, `server/internal/webhookgateway/`, `server/internal/webhookgatewayhost/` | Optional isolated gateway entry point, consumer contracts and pure decisions, and host adapters; durable state extends the existing PostgreSQL operational adapter. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
@@ -806,7 +924,7 @@ depends on `internal/ghcli/` and the declarative assets embedded by
 `dashboard/catalog.go`. Shared logging comes from
 `github.com/github/gh-aw/pkg/logger`; GitHub CLI execution uses
 `github.com/cli/go-gh/v2`, the same helper used by gh-aw. The Go command layer
-owns all operator implementation, argument validation and help. Campaign installation, policy
+owns all extension implementation, argument validation and help. Campaign installation, policy
 initialization, campaign mode changes, and workflow enablement run natively in Go.
 `gh cao campaigns add` delegates package ownership and workflow generation to
 `gh aw add`, preserves its option vector, then materializes only the selected
@@ -845,13 +963,18 @@ or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
 `node activity/cao.mjs <command>` explicitly, including SQLite snapshot `doctor`
 and the unmigrated `setup-auth hosted-cli` profile. There is no shell launcher.
 Internal Node implementations remain available for Actions and parity tests,
-not as an alternative operator surface. Root runtime upgrades remove only
+not as an alternative operator surface.
+Root runtime upgrades remove only
 content-verified retired launchers; consumer-owned files, links, and directories
 are preserved. Verified older archives may contain the retired launcher but
-never install it. Quickstart stages its deletion only when present, never a
-nonexistent launcher on a fresh installation.
+never install it.
 User-facing commands belong in the Go extension; Actions execution support
-belongs in the shipped JavaScript runtime. Control-plane validation is
+belongs in the shipped JavaScript runtime under `activity/` and `dashboard/`.
+Agentic workflow execution and agent evidence preparation must not build,
+install, or invoke the native extension. Copilot setup stages dashboard evidence
+with `node activity/cao.mjs download`. Dedicated extension build, release, and
+operator-installer compatibility tests remain separate from agent runtime.
+Control-plane validation is
 Actions-only, with one implementation invoked directly as
 `node activity/cao.mjs validate --json`, using the installed runtime revision
 and production policy resolver. The extension exposes no `validate` command.
@@ -878,9 +1001,17 @@ atomically replaces the binary in GitHub CLI's `gh-cao` extension data directory
 It honors `XDG_DATA_HOME` and Windows `LOCALAPPDATA`, refuses linked/source
 installations, and never replaces a working binary on download or verification
 failure. An explicit stable-format catalog tag selects the same extension
-release; other catalog refs use the latest stable extension independently of
-the runtime revision. Initialization, setup and quickstart invoke `gh cao`;
-Node.js remains an installation/pipeline prerequisite, not an operator dependency.
+release; other catalog refs use the latest published version-tagged extension,
+including prereleases but excluding drafts, independently of the runtime
+revision. Before changing tools or CAO files, the installer requires a complete
+six-platform asset set and checksums. It accepts the legacy `OS-ARCH` naming set
+as well as `gh-cao-OS-ARCH`, preferring the latter when both are complete, without
+mixing names or retrying another asset after verification failure.
+For a newly initialized policy only, it aligns the former catalog's schema URI
+from an older extension with the installed catalog's canonical schema URI,
+rejecting unknown mismatches without rewriting authority fields or existing policy.
+Initialization and setup invoke `gh cao`. Node.js remains an installation/pipeline
+prerequisite, not a dependency of Go extension commands.
 
 Campaign manifests are the catalog's source of truth for installed workflows and
 the trusted materializer bootstrap. The materializer copies executable resources
@@ -908,12 +1039,17 @@ The conventional `cao-runtime.yml` pipeline builds on main pushes. Read-only
 build/test and source-free attestation use separate jobs, producing exact-SHA
 Actions artifacts retained for 90 days. The Release workflow creates a draft
 stable tag at an exact main SHA, waits for that SHA's successful runtime push
-run, verifies its checksum and signed provenance, and attaches the archive and
-checksum together with the six extension binaries and their checksum manifest.
+run, verifies the checksum and signed provenance of both the runtime archive
+and the Azure deployment-asset bundle (`cao-azure-<sha>.tgz`: an allowlisted
+Docker build context for the Azure image targets, the compiled ARM template,
+and a per-file SHA-256 manifest, with no adopter policy, which builds supply
+through the `cao-policy` and `cao-ingest-source` named contexts), and attaches
+both archives and checksums together with the six extension binaries and their
+checksum manifest.
 The extension build runs in a separate read-only job at the exact release SHA
 with Go caching disabled, runs extension checks, and verifies the embedded tag.
 The source-free attachment job checks the complete binary checksum manifest;
-publication requires the exact nine-asset set before publishing the completed
+publication requires the exact eleven-asset set before publishing the completed
 draft as an immutable prerelease. A maintainer reviews the completed notes and
 promotes the prerelease to stable. Publication locks
 the tag and assets through immutable releases; no workflow mutates release
@@ -984,14 +1120,6 @@ authentication. Private/internal repositories, broader existing policy, or
 installed campaigns fail closed. Headless repository creation still requires
 an exact `--create-repo OWNER/NAME`, and missing prerequisites fail rather than
 appearing successful. Streamed bootstrap children otherwise retain null stdin.
-An implicit `--quickstart` resolves the latest stable CAO `vX.Y.Z` release
-after prerequisite and checkout validation but before repository creation or
-file installation, then installs or refreshes the owned catalog resources and
-verified runtime at that release's immutable commit. Missing, inaccessible, or non-stable release
-resolution fails without mutation or fallback to `main`. Any explicit catalog
-source, including `@main`, a tag, a SHA, or a local directory, is preserved.
-Bare installation and guided setup retain their existing unversioned source
-behavior.
 
 `activity/setup.mjs` owns scope resolution and authentication orchestration.
 `activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
@@ -1016,93 +1144,23 @@ Private/internal repositories and incompatible existing policy fail before
 Pages or authentication changes. A fresh bare installation remains scoped to
 the exact control repository with no campaigns before setup.
 
-`activity/quickstart.mjs` owns a distinct explicit, staged first-success guide. It
-uses a clean public, private, or internal control repository on its checked-out
-default branch, preserving any existing commits. Outside a connected checkout,
-repository creation requires an explicitly chosen owner and name through
-`--create-repo OWNER/NAME`, or manual interactive entry with no defaults.
-No owner, control-repository name, or target is suggested or inferred. Blank
-interactive input selects nothing. Occupied coordinates and lookup failures
-stop without mutation; there is no generated fallback name.
-Existing repositories and clone paths are never reused or overwritten.
-In-place connection of a checkout without remotes checks only
-remote-name availability because no clone directory is created.
-Unless the operator supplies a catalog source, the installer pins quickstart to
-the latest stable CAO release before this flow begins; Repo Assist is
-then pinned to the same installed CAO commit.
-Quickstart installation and explicit `--wait` require `--target OWNER/REPO`
-to select an existing public repository before any mutation; later stages reuse
-the sole target from committed policy. Repo Assist works without existing Agentic Workflows,
-Actions history, or telemetry. Quickstart runs ordinary Repo Assist, enabling
-only its existing maintenance worker in review mode and explicitly disabling
-issue triage, issue fix, and PR upkeep. It does not define a custom worker,
-source snapshot, starter input, or separate assessment contract. Normal source
-checkout, duplicate checks, implementation, focused validation, and review
-bundles are preserved. The worker records its actual base SHA.
-Installed quickstart workflows are recompiled with the catalog schedule seed
-`githubnext/gh-aw-cao` before committing, matching lock-file validation.
-The existing budgets are 250 AI credits for orchestration and 600 for
-maintenance, plus the model-based output check, whose default is 400 credits
-and may be configured differently in gh-aw. Quickstart discloses the 1,250-credit
-default total without presenting it as measured usage or expected cost.
-One validated low-risk maintenance proposal and review bundle, or an honest
-no-op, is the first useful result. Proposals are not requirements for using CAO;
-there are no readiness grades,
-required practices, or source-convention admission gates. CAO admission depends
-on policy and access, not tests, CI, agent instructions, or recommendation adoption.
-The default install stage configures and commits the control plane, disables
-the orchestrator, and returns without dispatching Repo Assist or Activity or
-waiting for remote completion. Normal Activity push and schedule triggers remain
-active independently and can publish a baseline after installation.
-Explicit `--step run` uses the installed,
-validated policy without rewriting scope, enables the normal orchestrator for
-one dispatch, then disables it
-with `gh workflow disable`, including when dispatch fails, to prevent six-hour
-reruns without changing workflow sources or policy semantics. Disabling does
-not cancel the requested run. Pause failures are surfaced explicitly.
-Validation records a manually paused orchestrator with active workers as a
-pause note, not a recommendation to restart the schedule.
-Further runs require explicit re-enablement, which also resumes the normal
-schedule. Other workers and live authority require a reviewed policy decision.
-A successful run does not imply a patch, applied change, or
-operational value.
-Quickstart validates target access and public visibility and never
-creates or copies a target repository. Quickstart installs Repo Assist
-at the selected catalog revision, configures exact
-review-only authority for the selected target, requires public Pages, commits
-and pushes only the bounded CAO paths plus gh-aw's root `.gitattributes` and
-`.vscode/settings.json` project settings. The guide separates installation,
-`--step run`, `--step collect`, and the read-only `--step dashboard` readiness
-check. Run and collect return Actions links without waiting; repeating them
-requests new work. Operators inspect the maintenance outcome before requesting
-Activity. The dashboard check verifies data-bearing Activity and a subsequent
-successful Pages deployment job, not just workflow success, returning pending rather than polling when either is
-unfinished. No local checkpoint file grants authority; stages revalidate the
-installed policy. Explicit `--wait`, immediately after bare installation,
-retains the original end-to-end flow, dispatching one orchestrator and at most
-one worker, collecting Activity, and waiting for dashboard deployment; it is
-not a resume or status command. Campaign execution never modifies the target. Quickstart
-reports Repo Assist blocked, incomplete, and failed outcomes without
-converting unknowns into findings, and does not report dashboard readiness until the
-Activity artifact contains at least one unique run and the dashboard
-deployment succeeds. Installer handoff preserves the controlling terminal when
-present and otherwise uses plain headless progress, uses elapsed progress for
-each long operation, and suppresses Node's experimental-runtime diagnostic
-rather than mixing it into user progress. `--quickstart` authorizes installation
-effects; separate stage commands authorize their dispatches, while `--wait`
-explicitly authorizes the whole flow in interactive and headless use. Ordinary install
-and `cao setup` retain their non-effectful boundaries.
+Campaign installation and execution are separate operator actions through
+`gh cao campaigns add` and `gh aw run`. Operators review and commit workflows
+and bounded review-mode policy together before dispatching work. Installation
+and setup do not commit, push, or dispatch campaigns. Enabling an orchestrator
+also resumes its schedule; operators may pause it with `gh workflow disable`
+without cancelling requested work. Validation records a manually paused
+orchestrator with active workers as a pause note rather than recommending
+scheduled re-enablement. Runtime success is not proof of a proposal, applied
+change, or operational value.
 
 The policy may declare `control-plane.activity.repositories` as an exact,
 nonempty subset of globally allowed repositories. This separates evidence
 collection scope from campaign rollout authority without silently narrowing
 either. Authentication planning uses the declared subset when present and
-otherwise preserves its existing fail-closed behavior. The public quickstart
-uses this contract to admit the public Repo Assist target while collecting
-workflow evidence only from the selected control repository with its
-repository-provided token. A public control repository is safe for this exact
-path because the selected target, evidence, dashboard, and review outputs are
-all public; that does not authorize non-public targets or other campaigns.
+otherwise preserves its existing fail-closed behavior. Repository-local
+workflow-token collection remains bounded to the control repository and does
+not authorize cross-repository evidence access.
 
 ## Architectural boundaries
 
@@ -1112,8 +1170,8 @@ all public; that does not authorize non-public targets or other campaigns.
   the admitted workflow runs.
 - `.github/workflows/cao.json` is policy, not a credential store. Credentials
   stay in GitHub Actions secrets and are resolved inside a run.
-- Review mode is the default. Live operation requires explicit campaign, worker,
-  scope, and target authority.
+- Review mode is the default. Live operation requires explicit standalone
+  workflow or campaign/worker policy, scope, and target authority.
 - Target repository files cannot grant, narrow, or revoke control-plane
   authority.
 - GitHub tools available to agents are read-only. Repository changes use only
@@ -1129,6 +1187,8 @@ all public; that does not authorize non-public targets or other campaigns.
   targets or dispatch more work, and cannot widen its mode.
 - Dispatch envelopes carry repository identity, mode, review destination, and
   provenance. They never carry credentials.
+- Standalone workflows use their own policy identity and bounded precomputed
+  targets, not synthetic campaigns, workers, or dispatcher envelopes.
 
 ### Evidence and presentation
 
@@ -1158,14 +1218,14 @@ all public; that does not authorize non-public targets or other campaigns.
 - The local Redis profile binds to loopback and serves HTTP for local debugging
   or HTTPS only with operator-supplied certificate files.
 - The hosted Redis profile runs behind an explicitly trusted HTTPS proxy,
-  authenticates users through GitHub OAuth plus explicit organization or team
+  authenticates users through GitHub OAuth plus explicit user, organization, or team
   authorization, limits rebuild control to explicit administrators, verifies
   webhook signatures, deduplicates deliveries, and coordinates bounded
   request-independent rebuilds through Redis so multiple stateless replicas
   cannot replace the projection concurrently. Its client exposes the active
   GitHub login and supports explicit account switching through a fresh OAuth
   account-selection flow without combining account authority. Hosted transport
-  is fail-closed: Redis uses TLS by default and always in Azure; a deployment-managed
+  is fail-closed: Redis uses TLS by default when selected and always in Azure; a deployment-managed
   Redis service may use private plaintext only through an explicit opt-in and a
   private address. A public listener terminates TLS directly, while a private
   container listener may rely on proxy TLS only when the direct proxy peer belongs
@@ -1178,13 +1238,20 @@ all public; that does not authorize non-public targets or other campaigns.
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
+- The Azure deployment baseline provisions private PostgreSQL for both canonical
+  and operational storage, without Redis. One Log Analytics workspace and one
+  workspace-backed Application Insights component are shared by the deployment.
+  A private manual ingestion job publishes explicitly selected adopter snapshots
+  or an explicit empty dataset; builds never download a catalog-owned dataset
+  implicitly. Instance policy, credentials, and target enrollment remain
+  adopter-owned inputs, not public deployment defaults.
 - Explicit `CAO_GITHUB_LOCAL_USER` development OAuth replaces membership
   authorization with one configured GitHub login and a valid numeric account
   ID. Classic login requests `read:user` without `read:org`; GitHub App clients
   retain `offline_access`. It requires a process-owned loopback TLS listener,
   one matching allowed host and exact callback authority/path, and loopback
   request peers. Proxy trust, external/platform hosting, CORS, and simultaneous
-  organization/team/SSO policy are rejected. Sessions are bound to the mode and
+  user/organization/team/SSO policy are rejected. Sessions are bound to the mode and
   developer and cannot cross into ordinary hosted authorization. Administrator
   allowlisting, recent OAuth assurance, CSRF, explicit classic `repo` consent,
   and live target writer checks are unchanged. Operators must not expose this
@@ -1237,7 +1304,7 @@ all public; that does not authorize non-public targets or other campaigns.
   together, runs as a non-root user, and mounts the authoritative artifact
   read-only from an externally populated named volume whose complete payload is
   hash-verified and atomically installed. Its workflow publishes
-  `ghcr.io/githubnext/gh-aw-cao/cao-server` on pushes to `main` and published
+  `ghcr.io/githubnext/gh-cao/cao-server` on pushes to `main` and published
   releases after protected-main ancestry validation, source tests, Dockerfile
   and workflow security linting, independent Trivy and Grype high/critical CVE
   gates, a Dockle hardening check, and Syft SPDX SBOM generation. Lint, test,
@@ -1317,13 +1384,14 @@ all public; that does not authorize non-public targets or other campaigns.
   an explicit alternative operational adapter for caches, queues, coordination, rate limits,
   and sessions, with bounded volatile memory available only for an explicitly
   acknowledged single-process hosted deployment.
-- **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
-  rebuild, and query service, plus the independent native GitHub CLI extension
-  scaffold.
+- **Go** serves the hosted dashboard HTML and assets with its same-origin
+  authentication, ingestion, reconciliation, rebuild, query, and revision-event
+  service, plus the independent native GitHub CLI extension scaffold.
 - **Dashboard Language** keeps data operations declarative and off the browser
   main thread.
 - **Astro/Starlight** builds the documentation site. The operational dashboard
-  is a separately bundled static application published through GitHub Pages.
+  has a separately bundled browser UI. Only the static deployment publishes it
+  through GitHub Pages; hosted deployments serve it through the Go handler.
 
 ## Where to read next
 

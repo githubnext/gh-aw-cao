@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func TestWebhookPersistsOnlyCompiledPayloadAndTrustedIdentity(t *testing.T) {

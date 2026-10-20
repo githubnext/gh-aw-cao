@@ -14,7 +14,7 @@ definition() {
 {
   "schemaVersion": 4,
   "grader": "operational-value",
-  "repository": "githubnext/gh-aw-cao",
+  "repository": "githubnext/gh-cao",
   "workflowName": "Dependabot / Update Planner",
   "sourcePath": ".github/workflows/dependabot-update-planner.md",
   "adoption": {"commit": "eee5133bfe88654948f63ce6380a9b1bf8f60de3", "adoptedAt": "2026-09-17T00:00:00Z"},
@@ -23,7 +23,7 @@ definition() {
     "opportunity": "One durable Dependabot plan with at most twelve PR-sized child tasks created or refreshed for a dispatched target repository.",
     "assignment": "Bind the safe-output repository, target repository, and exact plan issue number; key dependabot-plan:<safeOutputRepo>:<issueNumber> so refreshes share one opportunity.",
     "accepted": "Within fourteen days of publication, at least one child task is assigned, receives participation from someone other than the publishing automation, is cross-referenced by a pull request, or is closed as completed.",
-    "repositories": ["githubnext/gh-aw-cao"],
+    "repositories": ["githubnext/gh-cao"],
     "collection": "Read the bound parent and its native sub-issue list, then at most 100 comments and 100 timeline events for each of at most twelve children. Do not use GitHub search.",
     "maturation": "Fourteen days after the plan issue was created.",
     "zeroRule": "Complete mature evidence showing no consumed child task scores 0; assigning only the parent does not count.",

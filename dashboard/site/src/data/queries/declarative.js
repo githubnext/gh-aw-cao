@@ -11,7 +11,7 @@
  * `select` -> `order-by` -> `limit`.
  */
 
-import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
+import { computeRows, PREDICTION_METHODS, tidy } from '../../data-operations.js';
 import { createDebug } from '../../debug.js';
 import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 import { validFacetDefinition } from './facet.js';
@@ -890,7 +890,17 @@ function runDashboardQuery(definition, sources, budget) {
       joinedRows: joinedRows.length
     });
   }
-  for (const operator of operators) {
+  for (let index = 0; index < operators.length; index++) {
+    const operator = operators[index];
+    const next = operators[index + 1];
+    if (operator.op === 'compute' && next?.op === 'select') {
+      rows = timeQueryStage(definition.name, 'compute-select', rows.length, budget, () => {
+        budget.spend(rows.length);
+        return computeRows(rows, operator, next);
+      });
+      index++;
+      continue;
+    }
     rows = timeQueryStage(
       definition.name,
       queryOperatorStage(operator),

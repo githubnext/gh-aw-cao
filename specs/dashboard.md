@@ -11,7 +11,7 @@ editors:
 
 **Version:** 2.0.0
 **Status:** Working Draft  
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard.md  
+**Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/dashboard.md
 **Editors:** GitHub Next
 
 ## Abstract

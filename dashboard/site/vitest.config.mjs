@@ -14,7 +14,8 @@ export default defineConfig({
           include: ['test/unit/**/*.test.js'],
           exclude: [
             'test/unit/audit-curation.test.js', 'test/unit/dashboard-navigation.test.js',
-            'test/unit/data-storage-shards.test.js', 'test/unit/detail-query-scale.test.js'
+            'test/unit/data-storage-shards.test.js', 'test/unit/detail-query-scale.test.js',
+            'test/unit/native-streaming-aggregate.test.js'
           ]
         }
       },
@@ -34,7 +35,7 @@ export default defineConfig({
           name: 'audit-curation',
           include: [
             'test/unit/audit-curation.test.js', 'test/unit/data-storage-shards.test.js',
-            'test/unit/detail-query-scale.test.js'
+            'test/unit/detail-query-scale.test.js', 'test/unit/native-streaming-aggregate.test.js'
           ],
           // Large fake-indexeddb scans and indexed shard mutations are slower in VM workers.
           pool: 'forks'

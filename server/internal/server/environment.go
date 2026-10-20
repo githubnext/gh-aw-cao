@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
 )
 
 var environmentLog = logger.New("cao:server:environment")

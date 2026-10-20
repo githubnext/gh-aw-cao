@@ -18,11 +18,11 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/githubnext/gh-aw-cao/internal/dashboardquery"
+	"github.com/githubnext/gh-cao/internal/dashboardquery"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/dashboardstore"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
 )
 
 type Store struct {
@@ -47,7 +47,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	info, err := os.Stat(absolute)
+	info, err := os.Stat(absolute) // #nosec G703 -- operator-selected local snapshot, intentionally not confined to a directory.
 	if err != nil {
 		return nil, fmt.Errorf("open canonical SQLite snapshot: %w", err)
 	}
@@ -55,7 +55,9 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, errors.New("canonical SQLite snapshot must be a regular file")
 	}
 	location := &url.URL{Scheme: "file", Path: filepath.ToSlash(absolute)}
-	parameters := url.Values{"mode": {"ro"}, "_pragma": {"busy_timeout(5000)", "query_only(1)", "trusted_schema(0)"}}
+	parameters := url.Values{"mode": {"ro"}, "_pragma": {
+		"busy_timeout(5000)", "query_only(1)", "trusted_schema(0)", "mmap_size(1073741824)",
+	}}
 	location.RawQuery = parameters.Encode()
 	db, err := sql.Open("sqlite", location.String())
 	if err != nil {

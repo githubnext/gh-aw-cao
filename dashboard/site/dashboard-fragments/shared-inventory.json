@@ -312,16 +312,52 @@
       "limit": 10
     },
     {
+      "name": "campaign-import-audit-count",
+      "subject": "Count retained audit identities for campaign inventory source quality.",
+      "objective": "Retain audit provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical audit IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "from": "audits",
+      "aggregate": { "values": [{ "field": "id", "as": "records", "reducer": "count" }] }
+    },
+    {
+      "name": "campaign-import-domain-count",
+      "subject": "Count retained domain identities for campaign inventory source quality.",
+      "objective": "Retain domain provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical domain IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "from": "domains",
+      "aggregate": { "values": [{ "field": "id", "as": "records", "reducer": "count" }] }
+    },
+    {
+      "name": "campaign-import-tool-count",
+      "subject": "Count retained tool identities for campaign inventory source quality.",
+      "objective": "Retain tool provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical tool IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "from": "tools",
+      "aggregate": { "values": [{ "field": "id", "as": "records", "reducer": "count" }] }
+    },
+    {
+      "name": "campaign-import-issue-count",
+      "subject": "Count retained issue identities for campaign inventory source quality.",
+      "objective": "Retain issue provenance without reconstructing run coverage.",
+      "acceptance": "Count canonical issue IDs; missing evidence stays unavailable and the count is not displayed as import coverage.",
+      "from": "issues",
+      "aggregate": { "values": [{ "field": "id", "as": "records", "reducer": "count" }] }
+    },
+    {
       "name": "campaign-workflow-import-evidence",
-      "subject": "Summarize retained import evidence at workflow grain for campaign inventory quality.",
-      "objective": "Preserve import-evidence provenance without materializing per-run ingestion indicators.",
-      "acceptance": "Compose all four retained event sources with the same availability, freshness, and completeness as event-runs; counts describe retained records, not executions or outcomes.",
-      "from": "audit-event-runs",
-      "union": ["domain-event-runs", "tool-event-runs", "issue-event-runs"],
+      "subject": "Compose retained import-source quality for campaign workflow execution totals.",
+      "objective": "Preserve all four import dependencies without counting unused per-run or per-workflow coverage.",
+      "acceptance": "Compose audit, domain, tool, and issue availability, freshness, and completeness exactly as event-runs. The retained-record count carries source quality only; it is not displayed or used as horizon-specific import coverage, executions, or outcomes. Run and AI Credit totals retain their selected horizon.",
+      "from": "campaign-import-audit-count",
+      "union": ["campaign-import-domain-count", "campaign-import-tool-count", "campaign-import-issue-count"],
+      "time": { "range": "all" },
+      "compute": [
+        { "as": "import-scope", "function": "literal", "args": [{ "value": "retained" }] }
+      ],
       "aggregate": {
-        "by": ["organization", "repository", "workflow"],
+        "by": ["import-scope"],
         "values": [
-          { "field": "events", "as": "events", "reducer": "sum" }
+          { "field": "records", "as": "events", "reducer": "sum" }
         ]
       }
     },
@@ -332,6 +368,11 @@
       "acceptance": "Count distinct run-attempt identities and sum aic-total per organization, repository, and workflow; missing retained evidence is not proof of no execution or cost.",
       "from": "runs",
       "compute": [
+        {
+          "as": "import-scope",
+          "function": "literal",
+          "args": [{ "value": "retained" }]
+        },
         {
           "as": "run-attempt-identity",
           "function": "concat",
@@ -344,7 +385,7 @@
         }
       ],
       "aggregate": {
-        "by": ["organization", "repository", "workflow"],
+        "by": ["organization", "repository", "workflow", "import-scope"],
         "values": [
           { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
           { "field": "aic-total", "as": "aic", "reducer": "sum", "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] } }
@@ -356,16 +397,14 @@
       "subject": "Attach retained import-evidence quality to compact workflow execution totals.",
       "objective": "Preserve the public inventory's run and import availability composition after aggregating run evidence.",
       "acceptance": "Keep runs and AI Credits unchanged; unavailable run evidence fails closed and optional import evidence degrades quality exactly as in run-import-status.",
-      "description": "The import-evidence join preserves inventory provenance without per-run ingestion indicators. It follows run aggregation so unavailable run evidence retains the original failure-quality semantics.",
+      "description": "Only source quality is consumed from import evidence. Join its compact retained-source summary after run aggregation; do not build unused run-level import coverage or change horizon-specific execution totals.",
       "from": "campaign-workflow-execution-base",
       "joins": [
         {
           "source": "campaign-workflow-import-evidence",
           "type": "left",
           "on": [
-            { "left": "organization", "right": "organization" },
-            { "left": "repository", "right": "repository" },
-            { "left": "workflow", "right": "workflow" }
+            { "left": "import-scope", "right": "import-scope" }
           ],
           "fields": [{ "field": "events", "as": "imported-events" }]
         }
@@ -379,27 +418,11 @@
       ]
     },
     {
-      "name": "campaign-workflow-inventory",
-      "subject": "Project declared campaign workflows with lean execution and configuration evidence.",
-      "objective": "Provide campaign totals and lists without unused ingestion, failure, or dashboard-link computations.",
-      "acceptance": "Keep all declared orchestrators and workers, including inactive and unobserved entries; preserve inventory ordering, configuration defaults, execution totals, and import-evidence quality.",
-      "description": "Lean campaign inventory with execution totals that retain the public workflow inventory's evidence-quality dependencies.",
+      "name": "campaign-workflow-declarations",
+      "subject": "Project reusable campaign workflow declarations without execution evidence.",
+      "objective": "Share declaration display fields between structural topology and execution inventory without joining runs or import evidence.",
+      "acceptance": "Preserve raw organization, repository, workflow and declaration fields for joins. Select orchestrator and worker roles once, retaining inactive and unknown declarations; only list consumers select active entries. Display defaults and repository links do not establish execution, enrollment or authority.",
       "from": "workflows",
-      "joins": [
-        {
-          "source": "campaign-workflow-execution-totals",
-          "type": "left",
-          "on": [
-            { "left": "organization", "right": "organization" },
-            { "left": "repository", "right": "repository" },
-            { "left": "workflow", "right": "workflow" }
-          ],
-          "fields": [
-            { "field": "runs", "as": "observed-runs" },
-            { "field": "aic", "as": "observed-aic" }
-          ]
-        }
-      ],
       "filter": {
         "predicates": [
           { "field": "workflow-role", "in": ["orchestrator", "worker"] }
@@ -421,6 +444,88 @@
           "function": "coalesce",
           "args": [{ "field": "workflow-active" }, { "value": "unknown" }]
         },
+        {
+          "as": "campaign-title",
+          "function": "title-case",
+          "args": [{ "field": "campaign" }]
+        },
+        {
+          "as": "campaign-display-name",
+          "function": "coalesce",
+          "args": [{ "field": "campaign-name" }, { "field": "campaign-title" }, { "value": "Repository-owned" }]
+        },
+        {
+          "as": "workflow-display-name",
+          "function": "coalesce",
+          "args": [{ "field": "workflow-name" }, { "field": "workflow" }]
+        },
+        {
+          "as": "encoded-repository",
+          "function": "url-encode",
+          "args": [{ "field": "repository-slug" }]
+        },
+        {
+          "as": "repository-dashboard-href",
+          "function": "concat",
+          "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
+        },
+        {
+          "as": "repository-dashboard-label",
+          "function": "concat",
+          "args": [{ "value": "View " }, { "field": "repository-slug" }, { "value": " repository dashboard" }]
+        },
+        {
+          "as": "repository-dashboard-link",
+          "function": "dashboard-link",
+          "args": [
+            { "field": "repository-link" }, { "field": "repository-dashboard-href" },
+            { "field": "repository-dashboard-label" }, { "field": "repository-slug" }
+          ]
+        }
+      ],
+      "select": [
+        { "field": "organization" },
+        { "field": "repository" },
+        { "field": "workflow" },
+        { "field": "campaign" },
+        { "field": "campaign-name" },
+        { "field": "workflow-name" },
+        { "field": "workflow-role" },
+        { "field": "rollout-mode" },
+        { "field": "workflow-active" },
+        { "field": "repository-link" },
+        { "field": "workflow-link" },
+        { "field": "repository-slug" },
+        { "field": "declared-mode" },
+        { "field": "declared-registration" },
+        { "field": "campaign-display-name" },
+        { "field": "workflow-display-name" },
+        { "field": "repository-dashboard-link" }
+      ]
+    },
+    {
+      "name": "campaign-workflow-inventory",
+      "subject": "Project declared campaign workflows with lean execution and configuration evidence.",
+      "objective": "Provide campaign totals and lists from shared declarations with separate execution and import-quality evidence.",
+      "acceptance": "Keep all declared orchestrators and workers, including inactive and unobserved entries; preserve inventory ordering, configuration defaults, execution totals, and import-evidence quality.",
+      "description": "Lean campaign inventory with execution totals that retain the public workflow inventory's evidence-quality dependencies.",
+      "from": "campaign-workflow-declarations",
+      "joins": [
+        {
+          "source": "campaign-workflow-execution-totals",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" }
+          ],
+          "fields": [
+            { "field": "runs", "as": "observed-runs" },
+            { "field": "aic", "as": "observed-aic" }
+          ]
+        }
+      ],
+      "compute": [
         {
           "as": "total-runs",
           "function": "coalesce",
@@ -445,7 +550,10 @@
         { "field": "total-runs", "as": "runs" },
         { "field": "total-aic", "as": "aic" },
         { "field": "repository-link" },
-        { "field": "workflow-link" }
+        { "field": "workflow-link" },
+        { "field": "campaign-display-name" },
+        { "field": "workflow-display-name" },
+        { "field": "repository-dashboard-link" }
       ],
       "order-by": [
         { "field": "repository", "direction": "asc" },
@@ -984,25 +1092,52 @@
       ]
     },
     {
+      "name": "repository-run-statistics",
+      "subject": "Reduce run counts, conclusions, and positive AI Credits before repository enrichment.",
+      "objective": "Share one row-local run aggregate between repository execution and cost summaries.",
+      "acceptance": "Keep organization/repository grain, distinct run IDs, existing failure and approval counts, and positive recorded AIC. Reduce before joins; missing evidence is not zero activity or free execution.",
+      "from": "runs",
+      "compute": [
+        {
+          "as": "positive-aic",
+          "function": "greater-than",
+          "args": [{ "field": "aic-total" }, { "value": 0 }]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository"],
+        "values": [
+          { "field": "run", "as": "runs", "reducer": "distinct-count" },
+          {
+            "field": "run-conclusion", "as": "failed", "reducer": "count",
+            "filter": { "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "timed-out"] }] }
+          },
+          {
+            "field": "run-conclusion", "as": "action-required", "reducer": "count",
+            "filter": { "predicates": [{ "field": "run-conclusion", "equals": "action-required" }] }
+          },
+          {
+            "field": "run", "as": "aic-runs", "reducer": "count",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
+          },
+          {
+            "field": "aic-total", "as": "aic", "reducer": "sum",
+            "filter": { "predicates": [{ "field": "positive-aic", "equals": true }] }
+          }
+        ]
+      }
+    },
+    {
       "name": "repository-aic-totals",
       "subject": "Summarize observed AI Credit usage by repository.",
       "objective": "Provide repository-level retained AI Credit totals for comparing observed usage with run activity.",
       "acceptance": "Sum only positive recorded aic-total by organization and repository; exclude zero and missing costs rather than treating them as free execution.",
       "description": "Observed AI Credit totals for each repository.",
-      "from": "workflow-aic-totals",
-      "aggregate": {
-        "by": [
-          "organization",
-          "repository"
-        ],
-        "values": [
-          {
-            "field": "aic",
-            "as": "aic",
-            "reducer": "sum"
-          }
-        ]
-      }
+      "from": "repository-run-statistics",
+      "filter": { "predicates": [{ "field": "aic-runs", "gte": 1 }] },
+      "select": [
+        { "field": "organization" }, { "field": "repository" }, { "field": "aic" }
+      ]
     },
     {
       "name": "maintenance-repository-versions",

@@ -43,7 +43,7 @@ describe('linked-text debug logging', () => {
       toText
     );
 
-    renderEntityAwareCellValue('repository', 'gh-aw-cao', {});
+    renderEntityAwareCellValue('repository', 'gh-cao', {});
     renderEntityAwareCellValue({ field: 'homepage' }, 'https://example.com', {});
 
     expect(output.debug).not.toHaveBeenCalled();
@@ -58,9 +58,9 @@ describe('linked-text debug logging', () => {
       toText
     );
 
-    const rendered = renderEntityAwareCellValue('repository', 'gh-aw-cao', {});
+    const rendered = renderEntityAwareCellValue('repository', 'gh-cao', {});
 
-    expect(rendered).toBe('text:gh-aw-cao');
+    expect(rendered).toBe('text:gh-cao');
     expect(output.debug).toHaveBeenCalledWith('[cao:linked-text]', {
       event: 'entity-link-missing',
       field: 'repository',
@@ -72,12 +72,12 @@ describe('linked-text debug logging', () => {
     const { createEntityAwareCellRenderer, output } = await loadLinkedTextWithDebug('?debug=linked-text');
     const renderEntityAwareCellValue = createEntityAwareCellRenderer(
       { repository: 'repository-link' },
-      () => ({ href: 'https://github.com/githubnext/gh-aw-cao', label: 'View on GitHub' }),
+      () => ({ href: 'https://github.com/githubnext/gh-cao', label: 'View on GitHub' }),
       renderTableCellValue,
       toText
     );
 
-    renderEntityAwareCellValue('repository', 'gh-aw-cao', {});
+    renderEntityAwareCellValue('repository', 'gh-cao', {});
 
     expect(output.debug).not.toHaveBeenCalled();
   });

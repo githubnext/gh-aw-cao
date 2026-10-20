@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func (q *webhookQueue) Claim(ctx context.Context, request wg.ClaimRequest) (*wg.Job, error) {

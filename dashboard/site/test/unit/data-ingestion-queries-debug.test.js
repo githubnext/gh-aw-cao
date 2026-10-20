@@ -9,7 +9,7 @@ const runsSource = {
   runs: {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       run: '12345',
       'run-status': 'completed',
@@ -103,7 +103,7 @@ describe('dashboard source ingestion query debug logging', () => {
       const meta = call[2];
       expect(Object.values(meta).every((value) => typeof value !== 'object')).toBe(true);
       expect(JSON.stringify(meta)).not.toContain('githubnext');
-      expect(JSON.stringify(meta)).not.toContain('gh-aw-cao');
+      expect(JSON.stringify(meta)).not.toContain('gh-cao');
     }
 
     vi.doUnmock('../../src/debug.js');

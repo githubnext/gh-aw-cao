@@ -66,7 +66,7 @@ permissions:
 
 engine:
   id: pi
-  model: copilot/gpt-5.4
+  model: copilot/gpt-5.6-sol
 
 strict: true
 max-ai-credits: 500
@@ -227,7 +227,7 @@ steps:
 
 Scan the same bounded activity snapshot used by the CAO dashboard, cluster related failed runs across represented public projects, surface the result, and file focused remediation issues.
 
-Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop.
+Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop.
 
 Read `/tmp/gh-aw/agent/self-care-open-source-failures/evidence.json` once. The activity snapshot is the complete repository scope for this worker. Do not discover repositories, follow repository identifiers into additional API reads, dispatch workflows, publish or mutate the shared cache, or widen the evidence window.
 

@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 type boundaryPolicy struct{ snapshot wg.PolicySnapshot }

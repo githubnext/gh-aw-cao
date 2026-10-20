@@ -76,6 +76,13 @@ Failure before the update leaves the candidate a prerelease. A failed readback
 after the update is reported as failure, not silently rolled back or declared
 successful; an operator must inspect the actual release state.
 
+Promotion's GitHub.com `cache-mode: read` denies cache writes through scoped
+job tokens. No job overrides it.
+Unsupported GHES versions must omit this key without an equivalent guarantee.
+Docs cache npm downloads, never `node_modules`, and always run `npm ci` with
+lockfile integrity checks. Approval follows validation and does not protect
+earlier execution. Dashboard delivery is unchanged.
+
 ## Administrator setup (not performed by this change)
 
 1. Independently review and land the promotion workflow. Keep the existing
@@ -93,7 +100,7 @@ successful; an operator must inspect the actual release state.
    implicitly by starting a job that references its name.
 
 ```sh
-node scripts/verify-release-environment.mjs githubnext/gh-aw-cao
+node scripts/verify-release-environment.mjs githubnext/gh-cao
 ```
 
 The supported `.github/github-app.yml` exposes this as a manual verification
@@ -120,9 +127,9 @@ revalidation and postcondition checks.
 
 ## Hosted CLI scanner disposition
 
-Parent PR [#18462](https://github.com/githubnext/gh-aw-cao/pull/18462), revision
+Parent PR [#18462](https://github.com/githubnext/gh-cao/pull/18462), revision
 `81b7333a7cbb4cc5064ccb3f2c7d9dd22196d132`,
-[CodeQL check 117485353748](https://github.com/githubnext/gh-aw-cao/runs/117485353748)
+[CodeQL check 117485353748](https://github.com/githubnext/gh-cao/runs/117485353748)
 reported a high-severity potential allocation overflow at
 `server/internal/hostedcli/apple_container.go`: `42 + len(spec.Args)`.
 This is scanner evidence, not independently established exploitation.

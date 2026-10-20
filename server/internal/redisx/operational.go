@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 var _ operational.Store = (*Store)(nil)

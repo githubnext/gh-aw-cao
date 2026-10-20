@@ -426,7 +426,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
       ...process.env,
       CAO_CAMPAIGN: "dependabot",
       CAO_ROLE: "orchestrator",
-      GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+      GITHUB_REPOSITORY: "githubnext/gh-cao",
     },
   }));
 
@@ -451,12 +451,13 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(activity, /node activity\/control-settings\.mjs \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
-  assert.match(quickstart, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
+  assert.match(quickstart, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.match(quickstart, /gh cao setup/);
   assert.match(quickstart, /installs no campaign and runs no workflow/);
-  const campaignQuickstart = readFileSync(join(root, "docs", "repo-assist-quickstart.md"), "utf8");
-  assert.match(campaignQuickstart, /latest stable CAO `vX\.Y\.Z`\s+release/);
-  assert.match(campaignQuickstart, /development build by passing `githubnext\/gh-aw-cao@main`/);
+  const campaignWalkthrough = readFileSync(join(root, "docs", "repo-assist-quickstart.md"), "utf8");
+  assert.match(campaignWalkthrough, /gh cao campaigns add githubnext\/gh-cao\/repo-assist/);
+  assert.match(campaignWalkthrough, /gh aw run repo-assist/);
+  assert.doesNotMatch(campaignWalkthrough, /--quickstart|node activity\/cao\.mjs quickstart/);
   assert.doesNotMatch(quickstart, /commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(updateSection, /gh cao update --major --cool-down 0/);
@@ -636,15 +637,15 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /references\/public-control-repositories\.md/);
   assert.match(setupSkill, /references\/implementation-details\.md/);
   assert.match(setupSkill, /Preferred human flow/i);
-  assert.match(setupSkill, /setup quickstart/);
+  assert.match(setupSkill, /setup guide/);
   assert.match(setupSkill, /gh cao setup/);
   assert.match(setupSkill, /offers authentication choices\s+based on that scope/);
   assert.match(setupSkill, /setup fails after approved mutations[\s\S]*credential configuration metadata/);
   assert.match(setupQuickstart, /offers authentication choices based on that scope[\s\S]*profile's\s+prerequisites/);
   assert.doesNotMatch(setupSkill, /workflow-token/);
-  assert.match(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
+  assert.match(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
-  assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-aw-cao@main|full commit SHA/);
+  assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-cao@main|full commit SHA/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(setupSkill, /gh aw doctor --repo OWNER\/CONTROL_REPOSITORY --dir \./);
   assert.doesNotMatch(setupSkill, /\.\/cao\.sh add|gh aw run|safe_output_mode=review/);

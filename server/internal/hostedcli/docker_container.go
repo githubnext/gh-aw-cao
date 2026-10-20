@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/cliegress"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/cliegress"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 // The pinned gh-aw update/upgrade --repo entrypoints require a Git root

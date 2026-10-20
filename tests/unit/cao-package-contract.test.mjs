@@ -43,7 +43,7 @@ test("CAO server package workflow publishes immutable Compose-ready images", asy
   assert.equal(workflow.jobs.publish.permissions["id-token"], "write");
   assert.equal(
     workflow.jobs.publish.uses,
-    "githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml@main",
+    "githubnext/gh-cao/.github/workflows/cao-package-publish.yml@main",
   );
   assert.deepEqual(workflow.jobs.publish.needs, ["source", "lint", "test", "build"]);
   assert.equal(publisher.on.workflow_call.inputs.revision.required, true);
@@ -146,6 +146,24 @@ test("CAO server image supports downstream Compose role selection", async () => 
   assert.match(dockerfile, /USER 65532:65532/);
 });
 
+test("workflow linters allow read-only cache authority unsupported by the pinned actionlint", async () => {
+  const workflows = await Promise.all([
+    text(".github/workflows/action-lint.yml"),
+    text(".github/workflows/cao-package.yml"),
+  ]);
+  for (const source of workflows) {
+    const workflow = parse(source);
+    const step = workflow.jobs.lint.steps.find((candidate) =>
+      candidate.run?.includes("rhysd/actionlint:"),
+    );
+    assert.ok(step, `${workflow.name} must run actionlint`);
+    assert.ok(
+      step.run.includes(`-ignore '^unexpected key "cache-mode" for "workflow" section\\.'`),
+      `${workflow.name} must allow the cache-mode syntax checked by release promotion contracts`,
+    );
+  }
+});
+
 test("CAO server package installs build dependencies before verifying API artifacts", async () => {
   const workflow = parse(await text(".github/workflows/cao-package.yml"));
   const build = workflow.jobs.test.steps.find((step) => step.id === "dashboard-build");
@@ -160,4 +178,25 @@ test("CAO server package installs build dependencies before verifying API artifa
     const index = commands.indexOf(install);
     assert.ok(index >= 0 && index < buildIndex, `${install} must precede the dashboard build`);
   }
+});
+
+test("Docker dashboard builder installs production tooling without shipping build dependencies", async () => {
+  const dockerfile = await text("server/Dockerfile");
+  const stages = dockerfile.split(/(?=^FROM )/m);
+  const builder = stages.find((stage) => stage.includes(" AS dashboard-build"));
+  assert.ok(builder);
+  const install = builder.indexOf("npm --prefix dashboard/site ci --omit=dev --ignore-scripts");
+  assert.ok(install >= 0, "the builder must install esbuild even with NODE_ENV=production");
+  const manifest = JSON.parse(await text("dashboard/site/package.json"));
+  assert.ok(manifest.dependencies.esbuild, "esbuild is required by the production build");
+  assert.doesNotMatch(builder, /--include=dev/);
+  for (const name of ["dashboard-runtime", "azure-functions-runtime"]) {
+    const runtime = stages.find((stage) => stage.includes(` AS ${name}`));
+    assert.ok(runtime);
+    assert.doesNotMatch(runtime, /node_modules|control-plane-inventory\.json/);
+    assert.match(runtime, /\/workspace\/dashboard\/site\/dist\/ \/app\/site\//);
+  }
+  const collector = stages.find((stage) => stage.includes(" AS collector-runtime"));
+  assert.match(collector, /control-plane-inventory\.json \/app\/catalog\/control-plane-inventory\.json/);
+  assert.doesNotMatch(collector, /COPY .*\/workspace\/dashboard\/site\/node_modules\/ \/app\//);
 });

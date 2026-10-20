@@ -35,14 +35,14 @@ describe('table cell display helper', () => {
     expect(renderCellDisplay(undefined, 'nested/daily.md', toText, null, 'nominal', 'workflow-relative-path')).toBe('nested/daily.md');
     const workflowRun = /** @type {HTMLAnchorElement} */ (renderCellDisplay(
       undefined,
-      'https://github.com/githubnext/gh-aw-cao/actions/runs/12345',
+      'https://github.com/githubnext/gh-cao/actions/runs/12345',
       toText,
       null,
       'nominal',
       'workflow-run-url'
     ));
     expect(workflowRun.tagName).toBe('A');
-    expect(workflowRun.href).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/12345');
+    expect(workflowRun.href).toBe('https://github.com/githubnext/gh-cao/actions/runs/12345');
     expect(workflowRun.textContent).toContain('12345');
     expect(workflowRun.target).toBe('_blank');
     expect(workflowRun.rel).toBe('noopener noreferrer');

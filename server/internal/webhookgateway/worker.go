@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	servertelemetry "github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	servertelemetry "github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 // Worker owns one fenced same-kind batch at a time. Queue never performs HTTP.

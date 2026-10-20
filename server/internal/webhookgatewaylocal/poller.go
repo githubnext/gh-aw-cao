@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/simulator"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 var eventTypes = map[string]string{

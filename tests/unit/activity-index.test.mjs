@@ -60,7 +60,7 @@ graders:
       event: "workflow_dispatch",
       conclusion: "failure",
       status: "completed",
-      url: "https://github.com/githubnext/gh-aw-cao/actions/runs/42",
+      url: "https://github.com/githubnext/gh-cao/actions/runs/42",
       classification: "runtime",
       failure_kind: "driver_exit",
       failure_detail: "Agent process exited with code 1.",
@@ -94,7 +94,7 @@ graders:
       cwd: path.resolve("."),
       env: {
         ...process.env,
-        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+        GITHUB_REPOSITORY: "githubnext/gh-cao",
         REPORT_ROOT: root,
         REPORT_INVENTORY: inventoryPath,
         REPORT_GH_AW_LOGS_SHARDS: logsPath,
@@ -104,12 +104,12 @@ graders:
     });
     const result = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(result.repositoryCount, 1);
-    assert.deepEqual(result.allowedRepositories, ["githubnext/gh-aw-cao"]);
+    assert.deepEqual(result.allowedRepositories, ["githubnext/gh-cao"]);
     assert.equal(result.workflows[0].ghAwVersion, "v0.88.4");
     assert.equal(result.workflows[0].runHealth.failed, 1);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runId, 42);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runAttempt, 2);
-    assert.equal(result.workflows[0].runHealth.runRecords[0].runUrl, "https://github.com/githubnext/gh-aw-cao/actions/runs/42");
+    assert.equal(result.workflows[0].runHealth.runRecords[0].runUrl, "https://github.com/githubnext/gh-cao/actions/runs/42");
     assert.equal(result.workflows[0].runHealth.runRecords[0].classification, "runtime");
     assert.equal(result.workflows[0].runHealth.runRecords[0].failureKind, "driver_exit");
     assert.equal(result.workflows[0].runHealth.runRecords[0].failureMessage, "Agent process exited with code 1.");
@@ -148,7 +148,7 @@ test("activity index reports fields missing from gh aw usage artifacts", async (
       cwd: path.resolve("."),
       env: {
         ...process.env,
-        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+        GITHUB_REPOSITORY: "githubnext/gh-cao",
         REPORT_ROOT: root,
         REPORT_INVENTORY: path.join(root, "missing-inventory.json"),
         REPORT_GH_AW_LOGS_SHARDS: logsPath,
@@ -205,7 +205,7 @@ role: orchestrator
       cwd: path.resolve("."),
       env: {
         ...process.env,
-        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+        GITHUB_REPOSITORY: "githubnext/gh-cao",
         REPORT_ROOT: root,
         REPORT_INVENTORY: path.join(root, "missing-inventory.json"),
         REPORT_GH_AW_LOGS_SHARDS: logsPath,

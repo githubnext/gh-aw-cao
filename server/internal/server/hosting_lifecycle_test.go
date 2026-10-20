@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
@@ -29,7 +29,7 @@ func TestExternalHTTPServerDrainLifecycle(t *testing.T) {
 	app, err := New(t.Context(), redisx.NewStore(client, "external-lifecycle"), Config{
 		Database:      integrationDatabase(t),
 		HostProfile:   profile,
-		SiteDirectory: t.TempDir(),
+		SiteDirectory: hostedTestSite(t),
 		Proxy: ProxyPolicy{
 			AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true,
 			TrustForwarded: true, TrustedProxyPrefixes: loopbackProxyPrefixes(),

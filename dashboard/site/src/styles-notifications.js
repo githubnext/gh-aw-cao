@@ -15,7 +15,7 @@ export const notificationStyles = `
 .dashboard-notification-icon { width: 16px; height: 16px; flex: 0 0 16px; color: var(--muted, GrayText); }
 .dashboard-notification-icon .octicon { width: 16px; height: 16px; }
 .dashboard-notification-message { min-width: 0; flex: 1; overflow-wrap: anywhere; text-align: left; }
-.dashboard-notification-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.dashboard-notification-link { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .dashboard-notification-link:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 3px; border-radius: 3px; }
 .dashboard-notification-toggle { width: 100%; display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .dashboard-notification-toggle:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 3px; border-radius: 3px; }
@@ -36,6 +36,7 @@ export const notificationStyles = `
   .dashboard-notification-actions { flex-wrap: wrap; }
   .dashboard-notification-dismiss { min-height: 44px; min-width: 44px; }
   .dashboard-notification-action { min-height: 44px; }
+  .dashboard-notification-link { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dashboard-notification { transition: none; }

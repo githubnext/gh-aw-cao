@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
-	"github.com/githubnext/gh-aw-cao/server/internal/webhookgatewaylocal"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/webhookgatewaylocal"
 )
 
 type specStep struct {

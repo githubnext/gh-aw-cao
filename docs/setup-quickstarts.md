@@ -3,33 +3,33 @@ title: Set Up CAO
 description: Set up CAO, monitor one repository, and explore your dashboard before adding automation.
 ---
 
-**Start with visibility, not automation.** Connect one repository and see its
-existing GitHub Agentic Workflow runs, costs, and outcomes in your dashboard.
-You do not need to install or run a campaign.
+This guide walks you through installing CAO in a control repository, connecting
+one repository to monitor, and publishing a dashboard of its existing GitHub
+Agentic Workflow runs, costs, and outcomes.
 
-Your first milestone: **one repository in scope, a published dashboard, and no
-new agentic work running.**
+This setup is for monitoring only. You can add an agentic workflow or a campaign
+later if you choose.
 
 ## Prerequisites
 
-You need Git, Bash, `curl`, **Node.js 24+**, and **GitHub CLI 2.68+**.
-Sign in with `gh auth login` if needed. You need permission to configure
-Actions, credentials, and Pages in your control repository.
-
-CAO lives in a **control repository**: the repository that stores its
-configuration and runs collection. Prefer a separate repository; the repository
-you monitor does not need CAO installed in it.
-
-Use a private control repository for private or internal evidence. Dashboard
-visibility is a separate choice: a private repository does **not** guarantee a
-private Pages site. Setup checks this and asks before allowing public publication.
+- You need **Git**, **Bash**, **`curl`**, **Node.js 24+**, and **GitHub CLI 2.68+**.
+- Run **`gh auth login`** if needed.
+- You need permission to configure **Actions**, **credentials**, and
+  **Pages** in your control repository.
+- CAO lives in a **control repository** that stores its configuration
+  and runs collection. Prefer a separate repository; the repository you monitor
+  does not need CAO installed in it.
+- Use a **private control repository** for private or internal evidence.
+  **Dashboard visibility** is a separate choice: a private repository does **not**
+  guarantee a private Pages site. Setup checks this and asks before allowing
+  public publication.
 
 ## 1. Install CAO
 
 From a clean checkout of your chosen control repository, on its default branch:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
 ```
 
 **Ready:** the CAO runtime, Activity collector, and dashboard workflows are
@@ -42,7 +42,7 @@ Run this outside a Git checkout, replacing `OWNER/CONTROL_REPOSITORY` with the
 exact repository you want to create:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
   bash -s -- --create-repo OWNER/CONTROL_REPOSITORY
 ```
 
@@ -125,17 +125,17 @@ missing evidence is not proof of zero cost or success.
 **No Agentic Workflow history yet?** An empty dashboard is expected. CAO monitors
 GitHub Agentic Workflows, not every ordinary Actions job. You can finish setup
 without generating a run. Preview the
-[sample dashboard](https://githubnext.github.io/gh-aw-cao/cao/) to see populated
+[sample dashboard](https://githubnext.github.io/gh-cao/cao/) to see populated
 views, or return after your existing workflows have run and Activity has refreshed.
 
 ## Optional: add automation later
 
 Monitoring is enough to get started. When you have a task you want CAO to perform,
-browse the [campaign catalog](https://githubnext.github.io/gh-aw-cao/catalog/).
+browse the [campaign catalog](https://githubnext.github.io/gh-cao/catalog/).
 Install a chosen campaign with:
 
 ```bash
-gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN
+gh cao campaigns add githubnext/gh-cao/CAMPAIGN
 ```
 
 Installation is not execution. Review and commit its workflows and policy
@@ -143,7 +143,7 @@ together before enabling or running it. Start in **review** mode with **one
 repository**; model access and AI credits are separate prerequisites.
 See [Roll out a campaign](rollout-and-routing.md) for the execution steps.
 
-Want a guided campaign example instead? The separate
-[Repo Assist walkthrough](repo-assist-quickstart.md) starts from a fresh control
-repository and requests one review-only maintenance proposal. It is optional,
+Want a manual campaign example instead? The separate
+[Repo Assist walkthrough](repo-assist-quickstart.md) starts from a configured control
+repository and shows how to request one review-only maintenance proposal. It is optional,
 not a prerequisite for monitoring.

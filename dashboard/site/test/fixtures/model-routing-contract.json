@@ -1,8 +1,9 @@
 {
   "page": "model-routing",
   "detail": "routing-run",
-  "views": ["routing-adoption", "routing-decisions", "routing-cost", "routing-runs", "routing-classification", "routing-adoption-summary", "routing-decision-dimensions", "routing-coverage", "routing-duplicate-sessions", "routing-cost-coverage", "routing-stability", "routing-cost-distributions", "routing-weekly-cost", "routing-comparisons", "routing-deviations", "routing-deviation-summary", "routing-failures", "routing-outcomes", "routing-resolution-coverage", "routing-resolution-status", "routing-alias-moves", "routing-alias-history", "routing-resolution-failures", "routing-resolution-failure-runs"],
+  "views": ["routing-health", "routing-models", "routing-cost-trend", "routing-problems", "routing-runs"],
   "detail-views": ["routing-run-cost", "routing-run-requests", "routing-run-attribution", "routing-run-timeline", "routing-run-resolutions"],
-  "queries": ["routing-runs", "routing-adoption", "routing-adoption-summary", "routing-decision-dimensions", "routing-picks", "routing-attributed-accounting", "routing-cost-buckets", "routing-deviations", "routing-deviation-summary", "routing-failures", "routing-outcomes", "routing-resolutions", "routing-resolution-status", "routing-resolution-coverage", "routing-alias-moves", "routing-alias-history", "routing-resolution-failures", "routing-resolution-failure-records"],
+  "detail-audit-read-bound": 1,
+  "queries": ["routing-runs", "routing-attributed-accounting", "routing-deviations", "routing-failures", "routing-health", "routing-weekly-models", "routing-weekly-cost", "routing-problems", "routing-resolutions", "routing-resolution-failure-records"],
   "states": ["selected", "selection_failed", "harness_reported", "unrouted", "configured_unrecorded", "unrouted_inferred", "unknown"]
 }

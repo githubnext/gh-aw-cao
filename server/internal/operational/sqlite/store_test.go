@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 var compileInvocation = operational.CLICommandInvocation{ActionID: "compile", Command: "gh aw compile --strict", Actor: "octocat", Repository: "octo/repo"}

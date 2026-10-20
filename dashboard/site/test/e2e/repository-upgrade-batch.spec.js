@@ -221,7 +221,7 @@ for (const { width, canExecute } of [
       await page.getByRole('button', { name: 'Update all', exact: true }).click();
       const updateDialog = page.getByRole('dialog', { name: 'Approve Update all', exact: true });
       await expect(updateDialog).toBeVisible();
-      await expect(updateDialog.locator('.cli-action-preview-command')).toHaveText('gh aw update https://github.com/githubnext/gh-aw-cao/activity --repo acme/control --create-pull-request');
+      await expect(updateDialog.locator('.cli-action-preview-command')).toHaveText('gh aw update https://github.com/githubnext/gh-cao/activity --repo acme/control --create-pull-request');
       await expect(updateDialog.locator('.cli-action-command')).not.toBeVisible();
       await expect(updateDialog.getByRole('checkbox', { name: 'Auto merge' })).not.toBeChecked();
       await updateDialog.getByRole('checkbox', { name: 'Auto merge' }).check();
@@ -234,7 +234,7 @@ for (const { width, canExecute } of [
       expect(updates.map((tokens) => tokens[3].split('/').at(-1)).sort()).toEqual([...campaigns].sort());
       for (const tokens of updates) {
         expect(tokens.slice(0, 3)).toEqual(['gh', 'aw', 'update']);
-        expect(tokens[3]).toMatch(/^https:\/\/github\.com\/githubnext\/gh-aw-cao\//);
+        expect(tokens[3]).toMatch(/^https:\/\/github\.com\/githubnext\/gh-cao\//);
         expect(tokens.slice(4, 7)).toEqual(['--repo', 'acme/control', '--pr-message']);
         expect(tokens[7]).toContain(`to update the ${tokens[3].split('/').at(-1)} campaign from its upstream source`);
         expect(tokens[7]).toContain('[Central Agentic Ops (CAO)](https://github.com/acme/control)');
@@ -242,7 +242,7 @@ for (const { width, canExecute } of [
         expect(tokens.slice(8)).toEqual(['--create-pull-request', '--auto-merge']);
       }
       const campaignScreenshot = testInfo.outputPath(`campaigns-queued-${width}.png`);
-      await expect(page.locator('[data-view-id="commands-history"]')).toContainText('gh aw update https://github.com/githubnext/gh-aw-cao/activity');
+      await expect(page.locator('[data-view-id="commands-history"]')).toContainText('gh aw update https://github.com/githubnext/gh-cao/activity');
       await page.screenshot({ path: campaignScreenshot, fullPage: true });
       await testInfo.attach(`campaigns-queued-${width}`, { path: campaignScreenshot, contentType: 'image/png' });
     } finally {

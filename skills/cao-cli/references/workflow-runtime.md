@@ -3,6 +3,10 @@
 Use this reference only when the workflow imports
 `.github/workflows/shared/activity-cache.md`.
 
+The agent runtime is JavaScript under `activity/` and `dashboard/`. Invoke it
+with Node.js; never build, install, or invoke the native `gh cao` extension or
+run the operator's `install.sh` inside a workflow as a runtime dependency.
+
 1. Check `$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite`. A missing or empty file
    is a cache miss, not an error. Fall back to bounded read-only GitHub or
    agentic-workflow tools.

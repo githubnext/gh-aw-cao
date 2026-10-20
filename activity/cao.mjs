@@ -3,7 +3,6 @@ import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { formatSetupAuthenticationSummary } from './authentication.mjs';
 import { runCli } from './cli/run.mjs';
-import { formatQuickstartSummary } from './quickstart.mjs';
 
 export { setupCaoControlPlane } from './setup.mjs';
 export { formatSetupAuthenticationSummary } from './authentication.mjs';
@@ -50,12 +49,8 @@ async function main() {
     }
     if (typeof output === 'object' && output?.command === 'setup' && !arguments_.includes('--json')) {
       if (!output.cancelled) {
-        process.stdout.write('Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nAdd your first campaign separately with gh cao campaigns add githubnext/gh-aw-cao/CAMPAIGN.\n');
+        process.stdout.write('Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nAdd your first campaign separately with gh cao campaigns add githubnext/gh-cao/CAMPAIGN.\n');
       }
-      return;
-    }
-    if (typeof output === 'object' && output?.command === 'quickstart' && !arguments_.includes('--json')) {
-      process.stdout.write(`${formatQuickstartSummary(output)}\n`);
       return;
     }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);

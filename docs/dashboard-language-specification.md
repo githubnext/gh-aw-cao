@@ -97,6 +97,43 @@ configuration rather than activity evidence: browser-local IndexedDB, local-serv
 SQLite, or server PostgreSQL. Unknown server configuration remains unknown; this
 element does not query, derive, or infer a storage engine from retained rows.
 
+The `environment-defaults` element declares `data.sources: []` and a
+`config.actions` mapping of `get-repo`, `update-repo`, `get-org`, `update-org`,
+`get-ent`, and `update-ent` to matching view-placed `gh aw env` CLI actions.
+It is an interaction-only configuration editor: mutable YAML, file transport,
+preview output, and explicit write approval cannot be expressed by evidence
+marks. It never queries activity data or infers configuration from dashboard
+rows. The Governance page under Maintenance uses this element.
+
+Governance is visible only on a local server started with `--admin` or to an
+authorized hosted administrator with a current, assured session. Published
+dashboards, ordinary local previews, and Copilot canvas mode do not expose it,
+including through direct links. Editing defaults still requires the local
+GitHub CLI identity's administrative access to the selected repository,
+organization, or enterprise. Hosted repository installation credentials do not
+authorize organization or enterprise administration. Load the current scope,
+edit its complete `default_` YAML mapping (quoted strings or `null`), and run
+**Preview changes** before **Review and apply**. Every command passes through
+the existing CLI-action queue and trusted-host approval. Changing the document
+or new-variable visibility invalidates the preview. Unsaved edits must be
+discarded before changing the target.
+
+These actions name `cao-governance.yml`. Local execution stages that file in a
+private temporary directory, supplies update YAML from the approved queue input,
+and returns downloaded YAML as stdout, separate from command diagnostics. It
+never reads or overwrites a checkout file or interprets YAML as shell commands.
+The installed gh-aw compiler owns the supported defaults registry; the editor
+does not maintain a partial list. Unknown keys are rejected by gh-aw.
+
+`gh aw env update` replaces the managed defaults at the selected scope:
+omitted and `null` fields delete overrides. Organization and enterprise
+variables can affect repositories outside CAO, and narrower overrides remain
+effective. New variables may use `all` or `private` visibility; existing
+visibility and selected-repository access lists are preserved. Reload after
+applying to verify saved values, and recompile workflows to incorporate changed
+compiler defaults. This edits non-secret Actions variables, not CAO rollout
+policy, credentials, or live authority.
+
 ### 1.3 Design Goals
 
 The language is designed to be minimal, deterministic, auditable, and safe to validate. Built-in pages provide useful defaults. Custom pages provide only metric, table, chart, and time-series views.
@@ -264,8 +301,8 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query `temporal-series.measures[]` | `field`, `key`, `kind` |
 | Query `temporal-series.maps[]` | `field`, `definitions`, `group`, `kind` |
 | Query `select` entry | `field`, `as` |
-| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `requires`, `form`, `definition` |
-| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `requires`, `form`, `route`, `views`, `sections` |
+| Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `query-binding`, `requires`, `form`, `definition` |
+| Custom page | `id`, `kind`, `title`, `navigation-label`, `navigation-indicator`, `description`, `intent`, `subject`, `objective`, `acceptance`, `icon`, `class-name`, `experimental`, `filter-bar`, `view-mode-control`, `pull-refresh`, `mode-indicator`, `query-binding`, `requires`, `form`, `route`, `views`, `sections` |
 | Page `requires` | `capability` |
 | Page `form` | `title`, `description`, `update`, `fields` |
 | Form `update` | `strategy`, `delay-ms` |
@@ -285,7 +322,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | View `requires` | `backend`, `message`, `on-unavailable` |
 | View `data` | `source` or `sources`, `partial-source`, `scope`, `time`, `filters`, `arguments`, `limit`, `order-by` |
 | View data argument | `name`, `field` |
-| View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message` |
+| View `config` | `body`, `sections`, `labels`, `measure-source`, `empty-message`, `actions` |
 | View `list` | `style`, `layout`, `icon`, `action`, `action-context`, `actions`, `card`, `drill` |
 | List `drill` | `type`, `field`, `page`, `query`, `title-field`, `arguments` |
 | Query drill argument | `name`, `field` |
@@ -1165,6 +1202,7 @@ For pages that opt in to `filter-bar: true`, the presenter renders a filter bar 
 - **DLS-PAGE-021:** Unless `view-mode-control` is `false`, a presenter **MUST** expose every presentation mode represented by the page's essential views, add a card presentation for every table, and order available controls as **Chart**, **Cards**, **Table**. It **MUST** expose the same modes through keyboard-operable desktop and mobile controls when two or more modes are available, and **MUST NOT** expose a mode control when only one mode is available. Supplemental views remain discoverable through their disclosure controls and **MUST NOT** add presentation modes.
 - **DLS-PAGE-022:** `pull-refresh`, when present, **MUST** be Boolean and defaults to `false`. When `true`, a presenter **MUST** enable a mobile pull-down gesture that requests a dashboard refresh only while that page is active and its scroller is already at its top; the presenter **MUST NOT** wire the gesture to any other page or infer eligibility from a page `id` or built-in page name.
 - **DLS-PAGE-023:** `mode-indicator`, when present, **MUST** be Boolean and defaults to `false`. When `true`, a presenter **MUST** read a `mode` value from the page's URL query string and render a **Review** or **Live** badge beside the page title only when that value is exactly `review` or `live`; the presenter **MUST NOT** show the badge for any page that does not declare `mode-indicator: true`, and **MUST NOT** infer eligibility from a page `id` or built-in page name.
+- **DLS-PAGE-024:** A page's `query-binding`, when present, **MUST** be `view` or `page` and defaults to `view`. `page` **MUST** bind all ordinary views on the active page, across presentation modes, through one abort-scoped canonical subscription, preserve distinct view payload aliases and query contexts, and reevaluate on database changes. Continuation requests **MUST** retain the originating subscription's compilation scope and source set. Authored `data.partial-source` previews **MUST** retain their backend eligibility, phase-gated publication, and pending-cell semantics; publishing a ready preview **MUST NOT** evaluate another view's deferred complete graph. Equivalent dependencies **MAY** share evaluation only within that request. Named elements that own subscriptions **MUST** retain their ownership.
 
 ---
 
@@ -1225,16 +1263,20 @@ An enabled view sharing a source still loads its own dependencies. A satisfied
 hosted prerequisite does not grant permissions: unauthorized or unavailable
 runtime sources retain their normal explicit failure states.
 
-Any page may declare `requires: { capability: cli-queue }`. The mapping accepts
-only the required `capability` key, whose supported value is `cli-queue`.
-This prerequisite uses the same explicit transport capability as CLI actions,
-not the data backend type or credential reach. Without it, the presenter omits
+Any page may declare `requires: { capability: cli-queue }` or
+`requires: { capability: admin }`. The mapping accepts only the required
+`capability` key. `cli-queue` uses the same explicit transport capability as CLI
+actions; `admin` requires the server-issued administrator capability from local
+`--admin` mode or an authorized hosted administrator session with current
+step-up assurance. Neither is inferred from URL parameters, the data backend
+type, or credential reach. Without the capability, the presenter omits
 the page from desktop and mobile navigation and route activation, and source
 selection excludes its queries and pagination. A direct link falls back to
 the default available page without loading the unsupported page. Requirements
-remain in lazy page stubs. Commands and command-output pages require this
-capability; published static dashboards and hosted backends without the local
-queue do not expose them. This presentation gate grants no execution authority.
+remain in lazy page stubs. Commands and command-output pages require `cli-queue`;
+published static dashboards and hosted backends without the local
+queue do not expose them. Governance requires `admin`, independently of CLI queue
+availability. These presentation gates grant no execution authority.
 
 A table or list encoding may declare row `actions`. A `copy-prompt` action materializes an intent as an icon-and-label button and may reference a row-placed `gh agent-task create --from-file -` CLI action by `action` ID. In canvas CLI-action mode the prompt preview then starts an agent task after explicit approval; in other modes it retains the clipboard control. A `cli-action` action references a dashboard CLI action by `action` ID and is rendered only in canvas CLI-action mode; its `context` fields provide validated scalar values for `{{field}}` tokens in the declared command. Each action declares `level: explore | propose | operate` independently of presentation, and may declare a concrete `verb` and canonical Octicon `icon`; omitted icons resolve from the semantic level and verb. Existing actions without a level migrate as `propose` for prompts and `operate` for CLI commands. The dashboard's `cli-actions` declarations use the same `level` and optional `verb` keys; an explicit row action may override the referenced command's level. An `explore` CLI command must be a supported read-only operation without optional boolean arguments; this is a safety validation, not a rule for inferring level. The `label` may be omitted to use `Investigate` or `Propose fix`; operational actions must supply a concrete label. Each action has a non-empty `presentation` and a non-empty `context` sequence of unique source fields. An action may use `when` with a source field and scalar `equals` value to limit the action to rows whose field has the same scalar type and value. Activating a prompt action opens a modal preview containing the complete prompt; opening the preview does not write to the clipboard or start a task. Activating a CLI action opens the same per-run command approval used by dashboard-level CLI actions. The prompt contains the intent followed by only the available scalar values selected by `context`, serialized as an ordered JSON object and explicitly identified as untrusted data. Link objects contribute only their HTTPS `href`. Authors do not interpolate row values into prompt intents, and undeclared row fields are not copied.
 
@@ -1353,6 +1395,23 @@ single recovery state instead of the ordinary sections. An incomplete but
 available source retains the page content with an explicit partial-data notice.
 Routes may supply `availability-message` and `partial-message` to explain
 those states in user-facing terms.
+
+A built-in or custom page may declare `query-binding: page` to evaluate all its ordinary
+views together in one abort-scoped canonical query subscription across presentation
+modes, without marking inactive views unavailable. The default,
+`query-binding: view`, keeps ordinary views independently subscribed. Page
+binding is useful when multiple widgets consume the same expensive derived
+source. Equivalent scoped dependency graphs may be evaluated once within that
+request, but each view retains its own payload alias, filters, ordering, limits,
+and evidence quality. Different route, time, search, or local-filter contexts
+must not be conflated. Named elements that own their subscriptions retain that
+ownership. Database changes refresh the active subscription; leaving the page
+or changing its query context cancels and replaces it. This is request-local
+work sharing, not a cross-request result cache. Repository overview and Campaigns
+both opt in to this same mechanism; neither requires a worker result cache.
+Their page declarations are JSON-only. The generic presenter interprets the
+binding flag, and the canonical compiler shares equivalent scoped dependency
+graphs without inferring behavior from page, view, or source identifiers.
 
 | Semantic view | `mark` values | Required encoding |
 |---|---|---|

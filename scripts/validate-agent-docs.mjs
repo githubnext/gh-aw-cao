@@ -11,7 +11,7 @@ import { webMCPManifestForDashboard } from "../dashboard/site/src/webmcp/manifes
 const artifactNames = ["llms.txt", "llms-small.txt", "llms-full.txt"];
 const scopedIndexPath = "agent/llms.txt";
 const resourceIndexPath = "agent/resources.json";
-const dashboardAgentGuide = "https://githubnext.github.io/gh-aw-cao/cao/llms.txt";
+const dashboardAgentGuide = "https://githubnext.github.io/gh-cao/cao/llms.txt";
 const artifactSizeLimits = {
   "llms.txt": 4 * 1024,
   "llms-small.txt": 64 * 1024,
@@ -63,7 +63,7 @@ function markdownLinks(text) {
 }
 
 function builtPathForUrl(distDirectory, url) {
-  const relativePath = url.pathname.slice("/gh-aw-cao/".length);
+  const relativePath = url.pathname.slice("/gh-cao/".length);
   if (!relativePath || relativePath.endsWith("/")) {
     return path.join(distDirectory, relativePath, "index.html");
   }
@@ -187,17 +187,17 @@ export async function validateAgentDocs({
 
   if (index) {
     const links = markdownLinks(index);
-    if (!links.includes("https://githubnext.github.io/gh-aw-cao/agent/llms.txt")) {
+    if (!links.includes("https://githubnext.github.io/gh-cao/agent/llms.txt")) {
       errors.push("llms.txt must route directly to the scoped agent resource index");
     }
-    if (!links.includes("https://githubnext.github.io/gh-aw-cao/agent/resources.json")) {
+    if (!links.includes("https://githubnext.github.io/gh-cao/agent/resources.json")) {
       errors.push("llms.txt must route directly to the machine-readable resource index");
     }
     if (!links.includes(dashboardAgentGuide)) {
       errors.push("llms.txt must route directly to the dashboard agent access guide");
     }
     for (const [task, skill] of commonTaskRoutes) {
-      const expected = `https://github.com/githubnext/gh-aw-cao/blob/main/skills/${skill}/SKILL.md`;
+      const expected = `https://github.com/githubnext/gh-cao/blob/main/skills/${skill}/SKILL.md`;
       const taskLine = index.split("\n").find((line) => line.includes(`[${task}]`));
       const skillLinks = taskLine
         ? markdownLinks(taskLine).filter((link) => /\/skills\/[^/]+\/SKILL\.md$/.test(link))
@@ -219,7 +219,7 @@ export async function validateAgentDocs({
         continue;
       }
       if (url.hostname !== "githubnext.github.io") continue;
-      if (url.origin !== "https://githubnext.github.io" || !url.pathname.startsWith("/gh-aw-cao/")) {
+      if (url.origin !== "https://githubnext.github.io" || !url.pathname.startsWith("/gh-cao/")) {
         errors.push(`llms.txt contains a non-canonical Pages URL: ${link}`);
         continue;
       }
@@ -324,7 +324,7 @@ export async function validateAgentDocs({
     }
     resourceIds.add(resource.id);
     resourceTypes.add(resource.type);
-    if (!resource.provenance || resource.provenance.repository !== "githubnext/gh-aw-cao") {
+    if (!resource.provenance || resource.provenance.repository !== "githubnext/gh-cao") {
       errors.push(`${relative} is missing repository provenance`);
     }
     if (expectedCommit && resource.provenance?.commit !== expectedCommit) {
@@ -342,7 +342,7 @@ export async function validateAgentDocs({
       generationTimes.add(resource.freshness.generatedAt);
     }
     if (!resource.source
-      || resource.source.repository !== "githubnext/gh-aw-cao"
+      || resource.source.repository !== "githubnext/gh-cao"
       || typeof resource.source.path !== "string"
       || typeof resource.source.url !== "string") {
       errors.push(`${relative} is missing canonical source metadata`);
@@ -431,12 +431,12 @@ export async function validateAgentDocs({
     if (await isRegularNonemptyFile(htmlPath)) {
       const html = await readFile(htmlPath, "utf8");
       const expectedAlternate = relative === "index.json"
-        ? "/gh-aw-cao/index.json"
-        : `/gh-aw-cao/${relative}`;
-      if (!html.includes(`rel="describedby" href="/gh-aw-cao/agent/llms.txt"`)) {
+        ? "/gh-cao/index.json"
+        : `/gh-cao/${relative}`;
+      if (!html.includes(`rel="describedby" href="/gh-cao/agent/llms.txt"`)) {
         errors.push(`${path.relative(distDirectory, htmlPath)} does not advertise the scoped llms.txt`);
       }
-      if (!html.includes(`rel="index" type="application/json" href="/gh-aw-cao/agent/resources.json"`)) {
+      if (!html.includes(`rel="index" type="application/json" href="/gh-cao/agent/resources.json"`)) {
         errors.push(`${path.relative(distDirectory, htmlPath)} does not advertise the resource index`);
       }
       if (!html.includes(`rel="alternate" type="application/json" href="${expectedAlternate}"`)) {

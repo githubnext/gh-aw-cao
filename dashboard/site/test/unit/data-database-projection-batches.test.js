@@ -16,7 +16,7 @@ const metadata = {
   availability: 'available'
 };
 const run = {
-  id: 'run:1', owner: 'githubnext', repository: 'gh-aw-cao',
+  id: 'run:1', owner: 'githubnext', repository: 'gh-cao',
   workflowPath: '.github/workflows/activity.md', githubRunId: '1', attempt: 1
 };
 

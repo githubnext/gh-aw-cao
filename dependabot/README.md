@@ -51,7 +51,7 @@ explicit reviewed backoff contract.
 Install the campaign into a new private control repository owned by an organization:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/dependabot
+gh aw add githubnext/gh-cao/dependabot
 ```
 
 The campaign is runnable after credentials, when needed, and checked-in policy are configured.

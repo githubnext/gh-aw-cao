@@ -113,18 +113,18 @@ safe-outputs:
       - "server/**/*.go"
 pre-agent-steps:
   - name: Set up Go
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
     with:
       go-version-file: server/go.mod
       cache: false
   - name: Install golangci-lint
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: |
       go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
       echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
   - name: Lint server baseline
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     working-directory: server
     run: |
       set -o pipefail
@@ -132,13 +132,13 @@ pre-agent-steps:
       test ! -s /tmp/golangci-lint-fmt.diff
       golangci-lint run ./...
   - name: Validate server baseline
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: go -C server test ./...
 ---
 
 # SelfCare Server Go Logging
 
-Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing repository files.
+Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing repository files.
 
 Operate as an all-you-can-eat feature grower: the CAO SelfCare orchestrator supplies frequent dispatch ticks, and `skip-if-match` keeps at most one unconsumed pull request from this worker open. Do not add a worker schedule, discover targets, dispatch workflows, or widen the precomputed CAO scope.
 
@@ -156,7 +156,7 @@ Refactor exactly one production Go subsystem under `server/` per run. The change
 ## Change contract
 
 1. Refactor one cohesive behavior only. Keep public APIs stable and touch at most four production Go files in one package plus focused `_test.go` files in that package.
-2. Use `github.com/githubnext/gh-aw-cao/server/internal/logger`; reuse an existing package logger or add one predictable `cao:<package>` namespace. Add at most three log calls at meaningful operation boundaries or state transitions, never in per-record, polling, retry, or other hot loops.
+2. Use `github.com/githubnext/gh-cao/server/internal/logger`; reuse an existing package logger or add one predictable `cao:<package>` namespace. Add at most three log calls at meaningful operation boundaries or state transitions, never in per-record, polling, retry, or other hot loops.
 3. Logging must be disabled by default and only observe already-computed scalar metadata. Never log secrets, tokens, credentials, authorization data, cookies, headers, request or response bodies, raw records, repository contents, user-authored text, full URLs, stack traces, or unconstrained error messages.
 4. Logging must not change control flow, mutate state, perform I/O beyond the logger call, add timers, catch or suppress errors, or compute expensive metadata solely for logging.
 5. Add focused unit tests for the refactored behavior and important error or boundary cases. Use real concrete values and standard-library facilities such as temporary directories, buffers, and `httptest` only when they exercise the actual production boundary. Do not use mock frameworks, generated mocks, hand-written mocks, fakes, stubs, monkey patches, or expectation-based test doubles.

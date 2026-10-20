@@ -25,13 +25,13 @@ const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'gene
 const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v3.json'), 'utf8'));
 const sources = {
   repositories: {
-    rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': metadata['as-of'] }],
+    rows: [{ organization: 'githubnext', repository: 'gh-cao', 'observed-at': metadata['as-of'] }],
     metadata
   },
   workflows: {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       'workflow-active': 'true',
       'observed-at': metadata['as-of']
@@ -41,7 +41,7 @@ const sources = {
   runs: {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       run: '12345',
       'run-attempt': 2,
@@ -55,7 +55,7 @@ const sources = {
   'job-performance': {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       run: '12345',
       'run-attempt': 2,
@@ -521,7 +521,7 @@ describe('database table ingestion and queries', () => {
 
     expect(repositories).toHaveLength(1);
     expect(workflows).toHaveLength(1);
-    expect(runs).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:12345' })]);
+    expect(runs).toEqual([expect.objectContaining({ id: 'github:run:githubnext/gh-cao:12345' })]);
     expect(await queries.runs.recentFailures()).toHaveLength(1);
   });
 
@@ -660,11 +660,11 @@ describe('database table ingestion and queries', () => {
 
     const queries = createCanonicalQueries(indexedDB);
     expect((await queries.runs.list()).map((run) => run.id)).toEqual([
-      'github:run:githubnext/gh-aw-cao:12345',
-      'github:run:githubnext/gh-aw-cao:303'
+      'github:run:githubnext/gh-cao:12345',
+      'github:run:githubnext/gh-cao:303'
     ]);
-    expect(await queries.audits.forRun('github:run:githubnext/gh-aw-cao:303')).toHaveLength(1);
-    expect(await queries.domains.forRun('github:run:githubnext/gh-aw-cao:303')).toHaveLength(1);
+    expect(await queries.audits.forRun('github:run:githubnext/gh-cao:303')).toHaveLength(1);
+    expect(await queries.domains.forRun('github:run:githubnext/gh-cao:303')).toHaveLength(1);
   });
 
   it('upserts complete gh-aw transaction logs onto retained canonical records', async () => {
@@ -692,7 +692,7 @@ describe('database table ingestion and queries', () => {
     const input = {
       generation: 'gh-aw-generation-b',
       observedAt: '2026-09-09T05:00:00Z',
-      repository: { githubId: '101', owner: 'githubnext', name: 'gh-aw-cao' },
+      repository: { githubId: '101', owner: 'githubnext', name: 'gh-cao' },
       workflow: { githubId: '202', name: 'Dashboard', path: '.github/workflows/dashboard.md' },
       run: { githubRunId: '303', attempt: 1, status: 'completed', conclusion: 'success' },
       job: { githubJobId: '404', name: 'agent', status: 'completed', conclusion: 'success' },
@@ -714,10 +714,10 @@ describe('database table ingestion and queries', () => {
       })
     ]);
     expect(activeRuns.map((run) => run.id)).toEqual([
-      'github:run:githubnext/gh-aw-cao:12345',
-      'github:run:githubnext/gh-aw-cao:303'
+      'github:run:githubnext/gh-cao:12345',
+      'github:run:githubnext/gh-cao:303'
     ]);
-    expect(await queries.audits.forRun('github:run:githubnext/gh-aw-cao:303')).toEqual([
+    expect(await queries.audits.forRun('github:run:githubnext/gh-cao:303')).toEqual([
       expect.objectContaining({ source: 'agent', type: 'user.message', sequence: 0 })
     ]);
   });
@@ -730,7 +730,7 @@ describe('database table ingestion and queries', () => {
     const input = {
       generation: 'gh-aw-generation-c',
       observedAt: metadata['as-of'],
-      repository: { githubId: '101', owner: 'githubnext', name: 'gh-aw-cao' },
+      repository: { githubId: '101', owner: 'githubnext', name: 'gh-cao' },
       workflow: { githubId: '202', name: 'Dashboard', path: '.github/workflows/dashboard.md' },
       run: { githubRunId: '303', attempt: 1, status: 'completed', conclusion: 'success' },
       job: { githubJobId: '404', name: 'agent', status: 'completed', conclusion: 'success' },
@@ -745,21 +745,21 @@ describe('database table ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toEqual([repositoryBefore]);
     await expect(queries.runs.list()).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-cao:303' })
     ]));
   });
 
   it('ingests schema-v2 cached JSONL, audits it, and expires stale records', async () => {
     const content = `${JSON.stringify({ schema_version: 2, kind: 'workflow_runs', request: {
-      host: 'github.com', repository: 'githubnext/gh-aw-cao', args: ['run', 'list']
+      host: 'github.com', repository: 'githubnext/gh-cao', args: ['run', 'list']
     }, payload: [{
       databaseId: 303, attempt: 1, number: 7, workflowName: 'Dashboard',
       displayTitle: 'Build dashboard', event: 'push', status: 'completed', conclusion: 'success',
       headBranch: 'main', headSha: 'abc123', createdAt: '2026-01-01T00:00:00Z',
       startedAt: '2026-01-01T00:00:01Z', updatedAt: '2026-01-01T00:01:00Z',
-      url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303'
+      url: 'https://github.com/githubnext/gh-cao/actions/runs/303'
     }] })}\n${JSON.stringify({ schema_version: 2, kind: 'run', run: {
-      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'githubnext/gh-aw-cao',
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'githubnext/gh-cao',
       workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at: '2026-01-01T00:00:00Z',
       started_at: '2026-01-01T00:00:01Z', updated_at: '2026-01-01T00:01:00Z',
@@ -799,7 +799,7 @@ describe('database table ingestion and queries', () => {
           }]
         }
       },
-      url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303', logs_path: 'logs', event: 'push', branch: 'main'
+      url: 'https://github.com/githubnext/gh-cao/actions/runs/303', logs_path: 'logs', event: 'push', branch: 'main'
     } })}\n${JSON.stringify({ schema_version: 2, kind: 'github_api_rate_limit', rate_limit: {
       host: 'github.com',
       start: { limit: 15000, remaining: 15000, reset: 1, used: 0 },
@@ -807,7 +807,7 @@ describe('database table ingestion and queries', () => {
     } })}\n`;
     const context = {
       observedAt: '2026-01-01T00:01:00Z',
-      repository: { githubId: '101', owner: 'githubnext', name: 'gh-aw-cao' },
+      repository: { githubId: '101', owner: 'githubnext', name: 'gh-cao' },
       workflow: { githubId: '202', name: 'Dashboard', path: '.github/workflows/dashboard.md' },
       run: { githubRunId: '303', attempt: 1, status: 'completed' }
     };
@@ -823,8 +823,8 @@ describe('database table ingestion and queries', () => {
     });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
       expect.objectContaining({
-        id: 'github:run:githubnext/gh-aw-cao:303',
-        owner: 'githubnext', repository: 'gh-aw-cao',
+        id: 'github:run:githubnext/gh-cao:303',
+        owner: 'githubnext', repository: 'gh-cao',
         agentId: 'copilot',
         agentVersion: '1.2.3',
         modelId: 'gpt-5.4',
@@ -833,7 +833,7 @@ describe('database table ingestion and queries', () => {
         aicTotal: 2.5
       })
     ]);
-    await expect(createCanonicalQueries(indexedDB).tools.forRun('github:run:githubnext/gh-aw-cao:303')).resolves.toEqual(
+    await expect(createCanonicalQueries(indexedDB).tools.forRun('github:run:githubnext/gh-cao:303')).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: 'mcp',
@@ -873,7 +873,7 @@ describe('database table ingestion and queries', () => {
     ]);
     await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
-      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-cao:303' })
     ]);
     expect((await readCanonicalBatch(indexedDB)).audits).toEqual([]);
   });
@@ -881,10 +881,10 @@ describe('database table ingestion and queries', () => {
   it('upserts multiple JSONL runs and retains earlier fresh records', async () => {
     /** @param {number} run_id @param {string} created_at */
     const record = (run_id, created_at) => JSON.stringify({ schema_version: 2, kind: 'run', run: {
-      run_id, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      run_id, run_attempt: '1', organization: 'githubnext', repository: 'gh-cao',
       workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at,
-      url: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run_id}`, logs_path: 'logs', event: 'push', branch: 'main'
+      url: `https://github.com/githubnext/gh-cao/actions/runs/${run_id}`, logs_path: 'logs', event: 'push', branch: 'main'
     } });
     await ingestCachedGhAwJsonl(indexedDB, `${record(1, '2026-02-01T00:00:00Z')}\n`, {
       now: Date.parse('2026-02-01T00:00:00Z')
@@ -894,7 +894,7 @@ describe('database table ingestion and queries', () => {
       now: Date.parse('2026-02-02T00:00:00Z')
     });
     expect((await createCanonicalQueries(indexedDB).runs.list()).map((run) => run.id).sort()).toEqual([
-      'github:run:githubnext/gh-aw-cao:1', 'github:run:githubnext/gh-aw-cao:2'
+      'github:run:githubnext/gh-cao:1', 'github:run:githubnext/gh-cao:2'
     ]);
   });
 
@@ -906,7 +906,7 @@ describe('database table ingestion and queries', () => {
         run_id: 303,
         run_attempt: 1,
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow_name: 'Dashboard',
         workflow_path: '.github/workflows/dashboard.md',
         status: 'completed',
@@ -931,7 +931,7 @@ describe('database table ingestion and queries', () => {
           run_id: 303,
           run_attempt: 1,
           organization: 'githubnext',
-          repository: 'gh-aw-cao',
+          repository: 'gh-cao',
           workflow_name: 'Dashboard 📊',
           workflow_path: '.github/workflows/dashboard.md',
           status: 'completed',
@@ -982,7 +982,7 @@ describe('database table ingestion and queries', () => {
     await ingestDashboardSources(indexedDB, discoverySources);
     const [repositoryBefore] = await createCanonicalQueries(indexedDB).repositories.list();
     const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
-      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-cao',
       workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at: metadata['as-of']
     } })}\n`;
@@ -994,7 +994,7 @@ describe('database table ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toEqual([repositoryBefore]);
     await expect(queries.runs.list()).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'github:run:githubnext/gh-aw-cao:303' })
+      expect.objectContaining({ id: 'github:run:githubnext/gh-cao:303' })
     ]));
   });
 
@@ -1023,7 +1023,7 @@ describe('database table ingestion and queries', () => {
           'workflow-registry-state': 'unknown',
           'workflow-link': {
             relation: 'workflow',
-            href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
+            href: 'https://github.com/githubnext/gh-cao/actions/workflows/501'
           },
           'created-at': '2026-09-01T00:00:00Z',
           'updated-at': '2026-09-08T00:00:00Z'
@@ -1032,7 +1032,7 @@ describe('database table ingestion and queries', () => {
       }
     });
     const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
-      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-cao',
       workflow_name: 'Stale run name', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at: '2026-09-09T05:00:00Z'
     } })}\n`;
@@ -1053,7 +1053,7 @@ describe('database table ingestion and queries', () => {
         registryState: 'unknown',
         workflowLink: {
           relation: 'workflow',
-          href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
+          href: 'https://github.com/githubnext/gh-cao/actions/workflows/501'
         },
         createdAt: '2026-09-01T00:00:00Z',
         updatedAt: '2026-09-08T00:00:00Z'
@@ -1146,7 +1146,7 @@ describe('database table ingestion and queries', () => {
     const refreshed = structuredClone(sources);
     refreshed.runs.rows.push({
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       run: '12346',
       'run-attempt': 1,

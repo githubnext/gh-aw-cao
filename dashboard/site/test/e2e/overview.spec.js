@@ -83,25 +83,25 @@ const sources = {
     {
       kind: 'Repeated workflow failures',
       title: '.github/workflows/doctor.md',
-      scope: 'githubnext/gh-aw-cao',
+      scope: 'githubnext/gh-cao',
       reason: '2 failed runs in the selected horizon',
       'failure-count': 2,
       action: 'Open latest failed run on GitHub',
       'observed-at': '2026-09-16T11:30:00Z',
       'evidence-link': {
-        href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+        href: 'https://github.com/githubnext/gh-cao/actions/runs/42',
         label: 'View run 42'
       }
     },
     ...['101', '102'].map((id) => ({
       kind: 'Human review required',
       title: `Review output ${id}`,
-      scope: 'githubnext/gh-aw-cao',
+      scope: 'githubnext/gh-cao',
       reason: 'Output awaits approval',
       action: 'Open review item on GitHub',
       'observed-at': '2026-09-16T10:00:00Z',
       'evidence-link': {
-        href: `https://github.com/githubnext/gh-aw-cao/issues/${id}`,
+        href: `https://github.com/githubnext/gh-cao/issues/${id}`,
         label: `View issue ${id}`
       }
     }))

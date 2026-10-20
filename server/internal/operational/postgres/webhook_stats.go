@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func (q *webhookQueue) QueueStats(ctx context.Context) (wg.QueueStats, error) {

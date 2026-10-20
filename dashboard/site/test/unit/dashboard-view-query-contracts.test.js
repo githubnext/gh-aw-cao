@@ -817,7 +817,7 @@ describe('dashboard view query contracts', () => {
         rows: [
           {
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow: 'optimization-worker.md',
             run: '100',
             'run-attempt': 1,
@@ -829,7 +829,7 @@ describe('dashboard view query contracts', () => {
           },
           {
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow: 'optimization-worker.md',
             run: '101',
             'run-attempt': 1,
@@ -841,7 +841,7 @@ describe('dashboard view query contracts', () => {
           },
           {
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow: 'optimization-worker.md',
             run: '102',
             'run-attempt': 1,
@@ -852,7 +852,7 @@ describe('dashboard view query contracts', () => {
           },
           {
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow: 'optimization-worker.md',
             run: 'old',
             'run-attempt': 1,
@@ -863,7 +863,7 @@ describe('dashboard view query contracts', () => {
           },
           {
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow: 'other-worker.md',
             run: 'other',
             'run-attempt': 1,
@@ -880,7 +880,7 @@ describe('dashboard view query contracts', () => {
         rows: [
           {
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow: 'optimization-worker.md',
             campaign: 'optimization',
             'campaign-name': 'Optimization',
@@ -889,7 +889,7 @@ describe('dashboard view query contracts', () => {
           },
           {
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow: 'other-worker.md',
             campaign: 'other',
             'campaign-name': 'Other',
@@ -1062,7 +1062,7 @@ describe('dashboard view query contracts', () => {
     const issueRows = [
       {
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow: '.github/workflows/worker.md',
         run: '101',
         'run-attempt': 1,
@@ -1077,11 +1077,11 @@ describe('dashboard view query contracts', () => {
         'issue-status-observed-at': '2026-09-20T12:31:00Z',
         'safe-output-type': 'create_issue',
         'event-summary': 'Fix issue view',
-        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/13439'
+        'correlation-id': 'https://github.com/githubnext/gh-cao/issues/13439'
       },
       {
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow: '.github/workflows/worker.md',
         run: '102',
         'run-attempt': 1,
@@ -1091,7 +1091,7 @@ describe('dashboard view query contracts', () => {
         'is-pull-request': true,
         'safe-output-type': 'create_pull_request',
         'event-summary': 'Ignore pull request',
-        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/pull/13440'
+        'correlation-id': 'https://github.com/githubnext/gh-cao/pull/13440'
       }
     ];
     const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
@@ -1105,13 +1105,13 @@ describe('dashboard view query contracts', () => {
           source: 'runs',
           rows: [{
             organization: 'githubnext',
-            repository: 'gh-aw-cao',
+            repository: 'gh-cao',
             workflow: '.github/workflows/worker.md',
             run: '101',
             'run-attempt': 1,
             'run-link': {
               relation: 'run',
-              href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/101',
+              href: 'https://github.com/githubnext/gh-cao/actions/runs/101',
               label: 'Run 101'
             }
           }],
@@ -1124,16 +1124,16 @@ describe('dashboard view query contracts', () => {
     expect(results['issue-safe-outputs'].rows).toEqual([
       expect.objectContaining({
         'event-summary': 'Fix issue view',
-        'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/13439',
+        'entity-url': 'https://github.com/githubnext/gh-cao/issues/13439',
         'issue-status': 'Closed',
         'issue-closing-status': 'Completed',
         'issue-status-detail': 'Closed: Completed',
-        repository: 'gh-aw-cao'
+        repository: 'gh-cao'
       })
     ]);
     expect(results['issue-repository-totals'].metadata.availability).toBe('available');
     expect(results['issue-repository-totals'].rows).toEqual([
-      { 'repository-coordinate': 'githubnext/gh-aw-cao', issues: 1 }
+      { 'repository-coordinate': 'githubnext/gh-cao', issues: 1 }
     ]);
   });
 

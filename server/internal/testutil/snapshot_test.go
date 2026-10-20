@@ -11,6 +11,41 @@ import (
 	"time"
 )
 
+func TestPublishedSnapshotHashesMatchEvidence(t *testing.T) {
+	root, err := os.OpenRoot("../../testdata/deployed-subset")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := root.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	content, err := root.ReadFile("payload-hashes.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest map[string]string
+	if err := json.Unmarshal(content, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest) == 0 {
+		t.Fatal("published snapshot requires hashed evidence")
+	}
+	for name, expected := range manifest {
+		t.Run(name, func(t *testing.T) {
+			content, err := root.ReadFile(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sum := sha256.Sum256(content)
+			if actual := hex.EncodeToString(sum[:]); actual != expected {
+				t.Fatalf("published payload hash = %s, want %s; refresh payload-hashes.json after editing evidence", actual, expected)
+			}
+		})
+	}
+}
+
 func TestRecentSnapshotPreservesEvidenceAndHashes(t *testing.T) {
 	source := "../../testdata/deployed-subset"
 	before, err := os.ReadFile(filepath.Join(source, "gh-aw-logs-runs/subset.jsonl"))

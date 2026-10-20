@@ -102,7 +102,7 @@ export async function compileAndCompare(root, execute, expectedVersion) {
     }
     const result = run(execute, "gh", [
       "aw", "compile", "--strict", "--validate", "--show-all", "--no-check-update",
-      "--schedule-seed", "githubnext/gh-aw-cao", "--dir", WORKFLOW_DIRECTORY,
+      "--schedule-seed", "githubnext/gh-cao", "--dir", WORKFLOW_DIRECTORY,
     ], temporaryRoot);
     if (result.error || result.status !== 0) {
       findings.push(compilerFinding(commandOutput(result) || result.error?.message));
@@ -283,6 +283,30 @@ export async function validatePolicy(root, source) {
       remediation: `Install ${campaign} or remove its stale policy entry`,
     }));
   }
+  for (const workflowName of Object.keys(policy["control-plane"]?.workflows ?? {})) {
+    const workflowPath = path.posix.join(WORKFLOW_DIRECTORY, `${workflowName}.md`);
+    if (!workflowNames.has(workflowName)) {
+      findings.push(finding("missing-standalone-workflow", "error", "policy", "Policy references a missing standalone workflow", {
+        files: [POLICY_PATH, workflowPath],
+        expected: `${workflowName}.md is installed`,
+        observed: "Workflow source is missing",
+        remediation: `Install ${workflowName} or remove its stale policy entry`,
+      }));
+      continue;
+    }
+    try {
+      effectivePolicy(policy, {
+        workflowName, role: "standalone",
+        controlRepository: process.env.GITHUB_REPOSITORY || "local/control",
+      });
+    } catch (error) {
+      findings.push(finding("invalid-policy-resolution", "error", "policy", "Standalone workflow policy cannot be resolved", {
+        files: [POLICY_PATH, workflowPath],
+        observed: error.message,
+        remediation: `Reconcile ${workflowPath} with ${POLICY_PATH}`,
+      }));
+    }
+  }
   return { policy, installed, findings };
 }
 
@@ -361,7 +385,7 @@ export async function validateSecurity(root, policySource, installed = []) {
       }));
     }
     for (const match of source.matchAll(/^\s*(?:-\s*)?uses:\s*([^/\s]+\/[^@\s]+)@([^\s#]+)([^\r\n]*)/gm)) {
-      if (match[1] === "githubnext/gh-aw-cao/.github/workflows/cao-package-publish.yml"
+      if (match[1] === "githubnext/gh-cao/.github/workflows/cao-package-publish.yml"
         && match[2] === "main"
         && match[3].trim() === "# zizmor: ignore[unpinned-uses] protected default-branch publisher") {
         continue;

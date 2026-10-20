@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func (a LiveAuthority) checkExternal(ctx context.Context, policy gateway.PolicySnapshot, subscription gateway.Subscription,

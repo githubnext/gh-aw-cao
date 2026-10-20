@@ -149,7 +149,7 @@ test("local GitHub routes enforce read-only same-origin access and advertise the
   try {
     const html = await (await fetch(`${preview.url}/`)).text();
     assert.match(html, /<meta name="dashboard-github-api-base" content="[^"]*\/">/);
-    const resource = `${preview.url}/api/v1/github/repos/githubnext/gh-aw-cao`;
+    const resource = `${preview.url}/api/v1/github/repos/githubnext/gh-cao`;
     for (const endpoint of [resource, `${resource}/releases/latest`]) {
       for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]) {
         const rejected = await fetch(endpoint, { method });
@@ -346,7 +346,9 @@ test("admin actions stream incrementally, reject untrusted requests, and survive
   try {
     const page = await fetch(`${preview.url}/`);
     assert.equal(new URL(page.url).searchParams.get("local-preview"), "admin");
-    assert.match(await page.text(), /globalThis\.__CLI_QUEUE__ = true/);
+    const html = await page.text();
+    assert.match(html, /globalThis\.__CLI_QUEUE__ = true/);
+    assert.match(html, /globalThis\.__DASHBOARD_ADMIN__ = true/);
     const url = `${preview.url}/__cli_action`;
     const headers = { "Content-Type": "application/json", Origin: new URL(url).origin };
     const request = (body, customHeaders = headers) => fetch(url, {

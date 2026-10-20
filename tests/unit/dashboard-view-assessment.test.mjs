@@ -81,13 +81,13 @@ test("finds declared views in loaded custom and built-in page definitions", () =
 });
 
 test("uses the dashboard repository when assessing repository routes", () => {
-  const dashboard = { dashboard: { repository: "githubnext/gh-aw-cao" } };
+  const dashboard = { dashboard: { repository: "githubnext/gh-cao" } };
   assert.equal(
     dashboardAssessmentPageHash({
       id: "repository-settings",
       route: { "hash-query-parameter": "repository" },
     }, dashboard),
-    "#page-repository-settings?repository=githubnext%2Fgh-aw-cao",
+    "#page-repository-settings?repository=githubnext%2Fgh-cao",
   );
   assert.equal(
     dashboardAssessmentPageHash({

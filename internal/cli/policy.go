@@ -16,7 +16,7 @@ import (
 )
 
 const policyPath = ".github/workflows/cao.json"
-const schemaURL = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json"
+const schemaURL = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json"
 
 var (
 	slugPattern       = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
@@ -157,7 +157,7 @@ func newPolicy(ctx context.Context, gh ghExecutor) (map[string]any, string, erro
 				"allowed-repositories": []string{repository},
 			},
 			"marketplace": map[string]any{"registries": []any{
-				map[string]any{"id": "official", "name": "Official CAO catalog", "repository": "githubnext/gh-aw-cao", "ref": "main", "auth": map[string]string{"type": "none"}},
+				map[string]any{"id": "official", "name": "Official CAO catalog", "repository": "githubnext/gh-cao", "ref": "main", "auth": map[string]string{"type": "none"}},
 				map[string]any{"id": "agentics", "name": "Agentics workflows", "repository": "githubnext/agentics", "path": "workflows", "format": "workflows", "ref": "main", "auth": map[string]string{"type": "none"}},
 			}},
 			"campaigns": map[string]any{},
@@ -190,9 +190,11 @@ func readPolicy() (map[string]any, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s control-plane must be an object", policyPath)
 		}
-		if value, exists := control["campaigns"]; exists {
-			if _, ok := value.(map[string]any); !ok {
-				return nil, fmt.Errorf("%s control-plane.campaigns must be an object", policyPath)
+		for _, key := range []string{"campaigns", "workflows"} {
+			if value, exists := control[key]; exists {
+				if _, ok := value.(map[string]any); !ok {
+					return nil, fmt.Errorf("%s control-plane.%s must be an object", policyPath, key)
+				}
 			}
 		}
 	}

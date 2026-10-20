@@ -129,7 +129,7 @@ Analyze the last 30 full days ending at this workflow's start time in UTC. Use o
 
 ## Catalog discovery
 
-Use `githubnext/gh-aw-cao` as the official Operations Catalog. Resolve its latest published release, then inspect public top-level `aw.yml` campaign manifests and campaign guides at that immutable tag. Exclude private campaigns. Preserve experimental status and never describe an experimental operation as proven or production-ready.
+Use `githubnext/gh-cao` as the official Operations Catalog. Resolve its latest published release, then inspect public top-level `aw.yml` campaign manifests and campaign guides at that immutable tag. Exclude private campaigns. Preserve experimental status and never describe an experimental operation as proven or production-ready.
 
 Build one bounded comparison:
 

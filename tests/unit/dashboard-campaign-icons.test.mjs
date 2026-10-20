@@ -25,7 +25,7 @@ test("every catalog package declares a supported marketplace Octicon", async () 
       registryId: "official",
       registryName: "Official CAO catalog",
       precedence: 0,
-      repository: "githubnext/gh-aw-cao",
+      repository: "githubnext/gh-cao",
       path: manifestPath,
       ref: "main",
       resolvedCommit: "a".repeat(40),

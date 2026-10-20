@@ -1,7 +1,7 @@
 # ADR: Ledger-Backed Work and Claim Orchestration in CAO
 
 - **Status:** Proposed
-- **Repository:** `githubnext/gh-aw-cao`
+- **Repository:** `githubnext/gh-cao`
 - **Decision type:** Architecture
 - **Scope:** Campaign orchestration, worker dispatch, Work/Claim ledger integration
 
@@ -188,7 +188,7 @@ Example conceptual input:
   "worker": "optimization-token-optimizer",
   "target_repo": "githubnext/gh-aw",
   "safe_output_mode": "review",
-  "safe_output_repo": "githubnext/gh-aw-cao",
+  "safe_output_repo": "githubnext/gh-cao",
   "decision_id": "optional-derived-decision-id"
 }
 ```

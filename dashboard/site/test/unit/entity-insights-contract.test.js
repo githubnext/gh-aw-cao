@@ -6,7 +6,7 @@ const dashboard = authoritativeDashboard.dashboard;
 
 describe('canonical entity insights', () => {
   for (const entity of [
-    { id: 'domain', card: 'firewall-domain', source: 'domains', identifier: 'domain' },
+    { id: 'domain', card: 'firewall-domain', source: 'domain-run-records', identifier: 'domain' },
     { id: 'tool', card: 'mcp-tool', source: 'mcp-tool-calls', identifier: 'mcp-tool-label' },
     { id: 'audit', card: 'audit', source: 'audits', identifier: 'event-summary' }
   ]) {

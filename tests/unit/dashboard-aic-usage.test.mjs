@@ -45,7 +45,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
   const outputPath = path.join(root, "aic-usage.json");
   const logsPath = path.join(root, "gh-aw-logs-shards");
   const cachePath = path.join(root, "cache");
-  const runPath = path.join(cachePath, "repo-githubnext-gh-aw-cao", "workflow-data", "run-42");
+  const runPath = path.join(cachePath, "repo-githubnext-gh-cao", "workflow-data", "run-42");
   await mkdir(path.join(runPath, "evals"), { recursive: true });
   await mkdir(path.join(runPath, "sandbox", "firewall", "logs"), { recursive: true });
   await mkdir(logsPath);
@@ -71,7 +71,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
   await writeFile(inventoryPath, JSON.stringify({
     runHealth: { windowHours: 24 },
     workflows: [{
-      repository: "githubnext/gh-aw-cao",
+      repository: "githubnext/gh-cao",
       path: ".github/workflows/data.lock.yml",
       name: "Data",
       runHealth: {
@@ -184,7 +184,7 @@ test("AI Credit usage collection reports an unreadable shared snapshot as unavai
   const statePath = path.join(root, "gh-aw-logs-state.json");
   await writeFile(inventoryPath, JSON.stringify({
     workflows: [{
-      repository: "githubnext/gh-aw-cao",
+      repository: "githubnext/gh-cao",
       path: ".github/workflows/data.lock.yml",
       name: "Data",
       runHealth: { runIds: [42] },

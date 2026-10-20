@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 func mcpLogsRequest(t *testing.T, method string, params map[string]any) *http.Request {

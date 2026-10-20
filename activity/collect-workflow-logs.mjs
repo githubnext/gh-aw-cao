@@ -33,8 +33,9 @@ export async function collectWorkflowLogs(binary, args) {
   }
   const timeoutIndex = args.indexOf('--timeout');
   const minutes = timeoutIndex < 0 ? 0 : Number(args[timeoutIndex + 1]);
+  // gh-aw needs time after its download deadline to flush retained evidence.
   const signal = Number.isSafeInteger(minutes) && minutes > 0
-    ? AbortSignal.timeout(minutes * 60_000) : undefined;
+    ? AbortSignal.timeout(minutes * 60_000 + 60_000) : undefined;
   let response;
   try {
     response = await execute(binary, [

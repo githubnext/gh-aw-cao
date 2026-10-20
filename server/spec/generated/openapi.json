@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -32,6 +32,9 @@
     },
     {
       "name": "MCP transport"
+    },
+    {
+      "name": "Activation admission"
     }
   ],
   "paths": {
@@ -415,6 +418,118 @@
           },
           {
             "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admission": {
+      "post": {
+        "operationId": "Admission_admit",
+        "description": "Implements the v1.2 wire contract merged in github/gh-aw#70429 at be70cb4ec4317135a1ab21d5b830b6fae7d5be4a, not the incompatible nine-field/correlation_id v1.0 contract merged in #70286 at d9abaf92a50fd8778f12fa122138b30c75daf8f2. Optional hosted service, authenticated exclusively with an Actions RS256 OIDC bearer token from the compiler-owned admission job and an independently configured audience. No OAuth cookie, CSRF token, GitHub API token, redirect or credential fallback. Every response is no-store and has no trace, quota, reset or reason headers. All durable denials are identical empty 403s; transient dependency failures are empty 503s. Spend-independent probe limiting may return empty 429s. Valid caller traceparent parents the server HTTP span and its dependencies; invalid or duplicate trace context starts a fresh server trace without changing the decision. Baggage and tracestate are ignored; sampling is locally controlled. The initial supported claim profile is GitHub.com, string audience, non-reusable workflows; unsupported reusable identities fail closed.",
+        "parameters": [
+          {
+            "name": "cache-control",
+            "in": "header",
+            "required": false,
+            "description": "Conforming clients send no-store; the server never permits response caching regardless of this request field.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "no-store"
+              ]
+            }
+          },
+          {
+            "name": "traceparent",
+            "in": "header",
+            "required": false,
+            "description": "Conforming clients always send this field. The server tolerates absent/malformed/duplicate context without changing authorization.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionAllowances"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Activation admission"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdmissionRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
           }
         ]
       }
@@ -3354,6 +3469,132 @@
           }
         ]
       },
+      "AdmissionAllowances": {
+        "type": "object",
+        "required": [
+          "max_ai_credits"
+        ],
+        "properties": {
+          "max_ai_credits": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "max_ai_credits_threat_detection": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "max_ai_credits_evals": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 2147483647
+          }
+        },
+        "unevaluatedProperties": {
+          "not": {}
+        },
+        "description": "Independent policy allowances, not remaining spend or reservations. The gh-aw client applies validated values to the corresponding runtime caps; omitted optional allowances preserve component policy. Wire numbers are plain positive decimal integers. Approval also idempotently publishes a sparse canonical Run with status admitted before returning 200; denied/blocked attempts publish no run. Publication failure is transient and preserves the original decision for retry.",
+        "examples": [
+          {
+            "max_ai_credits": 1000,
+            "max_ai_credits_threat_detection": 100,
+            "max_ai_credits_evals": 50
+          }
+        ]
+      },
+      "AdmissionRequest": {
+        "type": "object",
+        "required": [
+          "repo",
+          "workflow_id",
+          "workflow_hash",
+          "workflow_call_id",
+          "run_id",
+          "run_attempt",
+          "ref",
+          "event_type",
+          "actor",
+          "triggering_actor"
+        ],
+        "properties": {
+          "repo": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 140,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"
+          },
+          "workflow_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "workflow_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}:[0-9a-f]{64}$"
+          },
+          "workflow_call_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1400,
+            "description": "Exactly run_id + \"-\" + run_attempt + \":\" + workflow_id."
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "run_attempt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "event_type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "triggering_actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Informational only; the initial server profile never authorizes or attributes spend from this unsigned value."
+          }
+        },
+        "unevaluatedProperties": {
+          "not": {}
+        },
+        "description": "Activation-only gh-aw admission metadata. All identifiers are exact decoded strings; run numbers use canonical positive ASCII decimal spelling. Unknown or duplicate fields, invalid Unicode, query parameters and bodies over 8192 bytes are denied. workflow_hash is an untrusted cache hint, never authority.",
+        "examples": [
+          {
+            "repo": "acme/project",
+            "workflow_id": "acme/project/.github/workflows/triage.lock.yml@refs/heads/main",
+            "workflow_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "workflow_call_id": "1234-2:acme/project/.github/workflows/triage.lock.yml@refs/heads/main",
+            "run_id": "1234",
+            "run_attempt": "2",
+            "ref": "refs/heads/main",
+            "event_type": "workflow_dispatch",
+            "actor": "octocat",
+            "triggering_actor": "hubot"
+          }
+        ]
+      },
       "AgentGuideHeaders": {
         "type": "object"
       },
@@ -3686,7 +3927,7 @@
           {
             "tag_name": "v1.0.0",
             "name": "Version 1",
-            "html_url": "https://github.com/githubnext/gh-aw-cao/releases/tag/v1.0.0",
+            "html_url": "https://github.com/githubnext/gh-cao/releases/tag/v1.0.0",
             "published_at": "2026-10-01T00:00:00Z",
             "draft": false,
             "prerelease": false
@@ -3748,9 +3989,9 @@
         "description": "Safe repository metadata; upstream credentials and unrestricted GitHub payloads are never returned.",
         "examples": [
           {
-            "full_name": "githubnext/gh-aw-cao",
+            "full_name": "githubnext/gh-cao",
             "description": "Central Agentic Ops",
-            "html_url": "https://github.com/githubnext/gh-aw-cao",
+            "html_url": "https://github.com/githubnext/gh-cao",
             "default_branch": "main",
             "stargazers_count": 10,
             "forks_count": 2,

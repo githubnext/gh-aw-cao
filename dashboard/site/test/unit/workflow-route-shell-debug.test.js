@@ -18,13 +18,13 @@ const METADATA = {
 
 const WORKFLOWS = [{
   organization: 'githubnext',
-  repository: 'gh-aw-cao',
+  repository: 'gh-cao',
   workflow: '.github/workflows/ambient-context.md',
   'workflow-name': 'Ambient Context'
 }];
 
-const VALID_ROUTE = 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md';
-const MISSING_WORKFLOW_ROUTE = 'githubnext/gh-aw-cao:.github/workflows/unknown.md';
+const VALID_ROUTE = 'githubnext/gh-cao:.github/workflows/ambient-context.md';
+const MISSING_WORKFLOW_ROUTE = 'githubnext/gh-cao:.github/workflows/unknown.md';
 
 /** @param {{ search: string, output: { debug: import('vitest').Mock } }} options */
 async function importWorkflowRouteShellWithDebug({ search, output }) {

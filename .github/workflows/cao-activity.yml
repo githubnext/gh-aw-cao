@@ -246,7 +246,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Install gh-aw CLI
-        uses: github/gh-aw-actions/setup-cli@ebb97091a4afcc9bf2d594071dbabe861e9a34fc # v0.92.5
+        uses: github/gh-aw-actions/setup-cli@8b9c5e98dfe3472ac4e3f13e0a2441cd078a2ca7 # v0.92.6
         with:
           version: ${{ steps.gh-aw-compiler.outputs.version }}
 
@@ -690,7 +690,7 @@ jobs:
             const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
             const workflowSha = process.env.GITHUB_WORKFLOW_SHA
             const runUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
-            const debugSkillUrl = `${serverUrl}/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md`
+            const debugSkillUrl = `${serverUrl}/githubnext/gh-cao/blob/main/skills/debug-cao/SKILL.md`
             const rows = failures.map(({ code, message, result }) => `| \`${code}\` | ${message} | ${result} |`).join('\n')
             const body = [
               'The CAO Activity workflow failed in this repository.',

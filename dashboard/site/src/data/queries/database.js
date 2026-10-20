@@ -188,6 +188,12 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   budget.checkpoint();
   const index = dashboardQueryIndex(definitions);
   const defects = dashboardQueryDefects(definitions);
+  const countPlans = [...requested].flatMap((name) => {
+    const definition = index.get(name);
+    const plan = definition && !defects.has(name) ? nativeTableCountPlan(definition) : null;
+    return plan ? [{ name, ...plan }] : [];
+  });
+  const nativeCounts = new Set(countPlans.map(({ name }) => name));
   /** @type {Promise<Record<string, Record<string, unknown>[]>> | undefined} */
   let runRead;
   const readRuns = async () => {
@@ -196,11 +202,14 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   };
   /** @type {Map<unknown, Record<string, unknown>> | undefined} */
   let runsById;
+  /** @type {Map<string, Promise<Record<string, Record<string, unknown>[]>>>} */
+  const joinedReads = new Map();
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const streamed = {};
   /** @type {Map<string, import('../../presenter.js').LogicalSourceInput>} */
   const aggregateCache = new Map();
   for (const name of requested) {
+    if (nativeCounts.has(name)) continue;
     const definition = index.get(name);
     const plan = definition && !defects.has(name) ? streamingAggregatePlan(index, definition) : null;
     if (!definition?.aggregate || !plan) continue;
@@ -221,33 +230,52 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
       continue;
     }
     const reducer = incrementalAggregate(definition.aggregate, budget);
-    const runs = await readRuns();
-    if (!runsById) {
+    const needsRuns = !plan.direct || plan.projection.joins?.some((join) => join.source === '$runs');
+    if (needsRuns && !runsById) {
+      const runs = await readRuns();
       budget.spend(runs.length);
       runsById = new Map(runs.map((run) => [run.id, run]));
     }
     const runIndex = runsById;
+    /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
+    const joinedInputs = {};
+    for (const join of plan.direct ? (plan.projection.joins ?? []) : []) {
+      if (join.source === '$runs') continue;
+      const store = /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number]} */ (join.source.slice(1));
+      let read = joinedReads.get(store);
+      if (!read) {
+        read = readCollections(indexedDB, [store]);
+        joinedReads.set(store, read);
+      }
+      const rows = (await read)[store] ?? [];
+      budget.checkpoint();
+      joinedInputs[join.source] = {
+        source: join.source, rows,
+        metadata: queryMetadata(logicalSources, store, store, true)
+      };
+    }
     let metadata = queryMetadata(logicalSources, plan.store, name, true);
     let unavailable = false;
     /** @param {Record<string, unknown>[]} records */
     const consume = (records) => {
       if (unavailable) return;
       budget.spend(records.length);
-      const batchRuns = [...new Set(records.map((record) => record.runId))]
+      const batchRuns = runIndex ? [...new Set(records.map((record) => record.runId))]
         .flatMap((id) => {
           const run = runIndex.get(id);
           return run ? [run] : [];
-        });
+        }) : [];
       const projected = plan.direct
         ? executeDatabaseQuery(plan.source, {
+            ...joinedInputs,
             [`$${plan.store}`]: {
               source: `$${plan.store}`, rows: records,
               metadata: queryMetadata(logicalSources, plan.store, plan.store, true)
             },
-            $runs: {
+            ...(needsRuns ? { $runs: {
               source: '$runs', rows: batchRuns,
               metadata: queryMetadata(logicalSources, 'runs', 'runs', true)
-            }
+            } } : {})
           }, logicalSources, plan.store, budget)
         : executeDatabaseQuery(plan.source, {
             [plan.projection.from]: executeRecordQuery(plan.store, records, batchRuns, logicalSources, budget)
@@ -297,11 +325,12 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     if (unavailable) {
       return [name, executeRowLocalRecordGraph(plan.queries, { [source]: unavailable }, name, budget)];
     }
-    const keyReadId = `${plan.store}:${plan.indexName}`;
+    const keyReadId = JSON.stringify([plan.store, plan.indexName, plan.exactKey]);
     let keyRead = keyReads.get(keyReadId);
     if (!keyRead) {
       keyRead = readCollectionQueryKeys(indexedDB, plan.store, plan.indexName, {
-        maxKeys: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.spend(1)
+        maxKeys: DASHBOARD_QUERY_LIMITS['max-input-rows'], checkpoint: () => budget.spend(1),
+        exactKey: plan.exactKey
       });
       keyReads.set(keyReadId, keyRead);
     }
@@ -392,7 +421,69 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     };
     return [name, executeDashboardQueries([weighted], inputs, [name], { budget })[name]];
   }));
+  const runSelectionCandidates = [...requested].flatMap((name) => {
+    const definition = index.get(name);
+    const plan = definition && !defects.has(name) ? indexedRecordRunSelectionPlan(index, definition) : null;
+    return plan ? [{ name, plan }] : [];
+  });
+  const runSelectedNames = new Set(runSelectionCandidates.map(({ name }) => name));
+  const runSelectionPlans = runSelectionCandidates.filter(({ plan }) => (
+    !plan.queries.slice(0, -1).some((query) => runSelectedNames.has(query.name))
+  ));
+  /** @type {Map<string, import('../../presenter.js').LogicalSourceInput>} */
+  const runIdentities = new Map();
+  /** @type {Map<string, Promise<import('../../presenter.js').LogicalSourceInput>>} */
+  const runSelectedReads = new Map();
+  const runSelections = await Promise.all(runSelectionPlans.map(async ({ name, plan }) => {
+    const unavailable = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (logicalSources[plan.store]);
+    if (unavailable?.metadata?.availability === 'unavailable') {
+      return [name, executeRowLocalRecordGraph(plan.queries, { [plan.store]: unavailable }, name, budget)];
+    }
+    const runs = await readRuns();
+    const orphan = executeRecordQuery(plan.store, [{ id: '' }], [], logicalSources, budget);
+    const orphanSelection = executeDashboardQueries(plan.keyQueries, {
+      [plan.store]: { ...orphan, rows: orphan.rows.map((row) => ({ ...row, [plan.keyField]: '' })) }
+    }, [name], { budget })[name];
+    if (orphanSelection.metadata.availability === 'unavailable' || orphanSelection.rows.length > 0) return null;
+    let identities = runIdentities.get(plan.store);
+    if (!identities) {
+      identities = executeRecordQuery(plan.store, runs.map((run) => ({
+        id: run.id, runId: run.id
+      })), runs, logicalSources, budget);
+      runIdentities.set(plan.store, identities);
+    }
+    const selected = executeDashboardQueries(plan.keyQueries, {
+      [plan.store]: {
+        ...identities,
+        rows: identities.rows.map((row, position) => ({ ...row, [plan.keyField]: runs[position].id }))
+      }
+    }, [name], { budget })[name];
+    if (selected.metadata.availability === 'unavailable') return [name, selected];
+    const runIds = selected.rows.map((row) => row[plan.keyField]);
+    const readKey = JSON.stringify([plan.store, runIds]);
+    let read = runSelectedReads.get(readKey);
+    if (!read) {
+      read = (async () => {
+        /** @type {Record<string, unknown>[]} */
+        const records = [];
+        for (let offset = 0; offset < runIds.length; offset += 32) {
+          budget.checkpoint();
+          const batch = await queryCollection(indexedDB, plan.store, [
+            { op: 'filter', predicates: [{ field: 'runId', in: runIds.slice(offset, offset + 32) }] }
+          ], { maxRows: DASHBOARD_QUERY_LIMITS['max-input-rows'] - records.length });
+          for (const row of batch) records.push(row);
+        }
+        records.sort((left, right) => indexedDB.cmp(
+          /** @type {IDBValidKey} */ (left.id), /** @type {IDBValidKey} */ (right.id)
+        ));
+        return executeRecordQuery(plan.store, records, runs, logicalSources, budget);
+      })();
+      runSelectedReads.set(readKey, read);
+    }
+    return [name, executeRowLocalRecordGraph(plan.queries, { [plan.store]: await read }, name, budget)];
+  }));
   const recordSelectionPlans = [...requested].flatMap((name) => {
+    if (runSelectedNames.has(name)) return [];
     const definition = index.get(name);
     const flattened = definition && !defects.has(name)
       ? flattenIndexedRecordQuery(index, definition) : null;
@@ -446,48 +537,6 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     }
     return [name, executeDashboardQueries([definition], inputs, [name], { budget })[name]];
   }));
-  const countPlans = [...requested].flatMap((name) => {
-    const definition = index.get(name);
-    if (!definition || defects.has(name)) return [];
-    if (definition.from === STORAGE_SHARD_STORE) return [];
-    const table = CANONICAL_DATABASE_SCHEMA[definition.from];
-    const values = definition.aggregate?.values;
-    const computedLiterals = Object.fromEntries((definition.compute ?? []).flatMap((computed) => (
-      computed.function === 'literal'
-        && Array.isArray(computed.args)
-        && computed.args.length === 1
-        && 'value' in computed.args[0]
-        ? [[computed.as, computed.args[0].value]]
-        : []
-    )));
-    const computedFields = Object.keys(computedLiterals);
-    const groupedFields = definition.aggregate?.by ?? [];
-    const nativeCountFields = NATIVE_COUNT_FIELDS[definition.from]
-      ?? new Set([table?.keyPath]);
-    if (!table
-        || (computedFields.length === 0 && typeof table.keyPath !== 'string')
-        || definition.union?.length
-        || definition.joins?.length
-        || definition.filter
-        || computedFields.length !== (definition.compute?.length ?? 0)
-        || groupedFields.length !== computedFields.length
-        || groupedFields.some((field) => !Object.hasOwn(computedLiterals, field))
-        || definition['temporal-series']
-        || definition.predict?.length || definition.window?.length || definition.facet
-        || definition.select?.length
-        || definition['order-by']?.length
-        || definition.limit !== undefined
-        || !Array.isArray(values)
-        || values.length === 0
-        || values.some((value) => (
-          value.reducer !== 'count'
-          || (computedFields.length === 0 && !nativeCountFields.has(value.field))
-          || value.filter
-        ))) {
-      return [];
-    }
-    return [{ name, source: definition.from, values, computedLiterals }];
-  });
   const filterPlans = [...requested].flatMap((name) => {
     const definition = index.get(name);
     const executable = definition && !defects.has(name)
@@ -513,6 +562,13 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
       )
     : {};
   const counted = Object.fromEntries(countPlans.map(({ name, source, values, computedLiterals }) => {
+    const input = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (logicalSources[source]);
+    if (input?.metadata?.availability === 'unavailable') {
+      return [name, unavailableResult(
+        /** @type {import('./declarative.js').DashboardQuery} */ (index.get(name)),
+        input.metadata, `input source "${source}" is unavailable`, source
+      )];
+    }
     const metadata = queryMetadata(logicalSources, source, source, true);
     return [name, {
       source: name,
@@ -553,9 +609,35 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
     ...Object.fromEntries(filtered),
     ...Object.fromEntries(recordAggregates.filter((entry) => entry !== null)),
     ...Object.fromEntries(recordSelections),
+    ...Object.fromEntries(runSelections.filter((entry) => entry !== null)),
     ...Object.fromEntries(keySelections.filter((entry) => entry !== null)),
     ...streamed
   };
+}
+
+/** @param {import('./declarative.js').DashboardQuery} definition */
+function nativeTableCountPlan(definition) {
+  if (definition.from === STORAGE_SHARD_STORE) return null;
+  const table = CANONICAL_DATABASE_SCHEMA[definition.from];
+  const values = definition.aggregate?.values;
+  const computedLiterals = Object.fromEntries((definition.compute ?? []).flatMap((computed) => (
+    computed.function === 'literal' && computed.args.length === 1 && 'value' in computed.args[0]
+      ? [[computed.as, computed.args[0].value]] : []
+  )));
+  const computedFields = Object.keys(computedLiterals);
+  const groupedFields = definition.aggregate?.by ?? [];
+  const nativeCountFields = NATIVE_COUNT_FIELDS[definition.from] ?? new Set([table?.keyPath]);
+  if (!table || (computedFields.length === 0 && typeof table.keyPath !== 'string')
+      || definition.union?.length || definition.joins?.length || definition.filter
+      || computedFields.length !== (definition.compute?.length ?? 0)
+      || groupedFields.length !== computedFields.length
+      || groupedFields.some((field) => !Object.hasOwn(computedLiterals, field))
+      || definition['temporal-series'] || definition.predict?.length || definition.window?.length || definition.facet
+      || definition.select?.length || definition['order-by']?.length || definition.limit !== undefined
+      || !values?.length || values.some((value) => (
+        value.reducer !== 'count' || (computedFields.length === 0 && !nativeCountFields.has(value.field)) || value.filter
+      ))) return null;
+  return { source: definition.from, values, computedLiterals };
 }
 
 const RECORD_PROJECTIONS = [...RUN_RECORD_STORES].map((name) => databaseQueryIndex.get(name))
@@ -587,13 +669,14 @@ function streamingAggregatePlan(index, definition) {
   if (RUN_RECORD_STORES.has(source)) return null;
   const projection = databaseQueryIndex.get(source);
   if (!projection) return null;
-  const direct = projection.from.startsWith('$') && RUN_RECORD_STORES.has(projection.from.slice(1));
+  const direct = projection.from.startsWith('$') && Object.hasOwn(CANONICAL_DATABASE_SCHEMA, projection.from.slice(1));
   if ((!RUN_RECORD_STORES.has(projection.from) && !direct) || projection.aggregate || projection.union?.length
-      || (projection.joins ?? []).some((join) => !direct || join.source !== '$runs'
-        || join.on.length !== 1 || join.on[0].left !== 'runId' || join.on[0].right !== 'id')
+      || (projection.joins ?? []).some((join) => !direct || !join.source.startsWith('$')
+        || !Object.hasOwn(CANONICAL_DATABASE_SCHEMA, join.source.slice(1))
+        || join.type !== 'left' || join.on.length !== 1 || join.on[0].right !== 'id')
       || projection['order-by']?.length || projection.limit !== undefined
       || projection['temporal-series'] || projection.predict?.length || projection.window?.length || projection.facet) return null;
-  const stores = RUN_RECORD_STORES.has(source) ? [source]
+  const stores = direct ? [projection.from.slice(1)] : RUN_RECORD_STORES.has(source) ? [source]
     : (projection?.stores ?? []).filter((store) => RUN_RECORD_STORES.has(store));
   if (stores.length !== 1) return null;
   if (direct && projection.from !== `$${stores[0]}`) return null;
@@ -635,6 +718,57 @@ function selectedRecordLineage(fields, definition) {
   return definition.select
     ? new Map(definition.select.map((field) => [field.as ?? field.field, computed.get(field.field) ?? null]))
     : computed;
+}
+
+/**
+ * Evaluate run-derived predicates on canonical run identities, then read the
+ * matching record partitions byRun. Computed keys use their authored expression,
+ * never string parsing or an assumed inverse of concat.
+ * @param {Map<string, import('./declarative.js').DashboardQuery>} index
+ * @param {import('./declarative.js').DashboardQuery} definition
+ */
+function indexedRecordRunSelectionPlan(index, definition) {
+  /** @type {import('./declarative.js').DashboardQuery[]} */
+  const queries = [];
+  const seen = new Set();
+  let current = definition;
+  while (true) {
+    if (seen.has(current.name) || current.aggregate || current.joins?.length || current.union?.length
+        || current['temporal-series'] || current.predict?.length || current.window?.length || current.facet
+        || (queries.length > 0 && (current['order-by']?.length || current.limit !== undefined))) return null;
+    seen.add(current.name);
+    queries.unshift(current);
+    const parent = index.get(current.from);
+    if (!parent) break;
+    current = parent;
+  }
+  if (!RUN_RECORD_STORES.has(current.from)) return null;
+  const store = /** @type {typeof import('../storage/indexeddb.js').ENTITY_STORES[number]} */ (current.from);
+  /** @type {RecordFieldLineage} */
+  let fields = new Map([...RECORD_RUN_FIELDS].map((field) => [field, new Set([field])]));
+  const used = new Set(queries.flatMap((query) => [
+    ...(query.compute ?? []).map((computed) => computed.as),
+    ...(query.select ?? []).map((field) => field.as ?? field.field)
+  ]));
+  let keyField = '_native-run-id';
+  while (used.has(keyField)) keyField += '-value';
+  let hasRunPredicate = false;
+  const keyQueries = queries.map((query) => {
+    const predicates = (query.filter?.predicates ?? []).filter((predicate) => {
+      const lineage = fields.get(predicate.field);
+      if (!lineage || predicate.optional) return false;
+      if (lineage.size > 0) hasRunPredicate = true;
+      return true;
+    });
+    fields = selectedRecordLineage(fields, query);
+    return {
+      ...query,
+      filter: predicates.length ? { predicates } : undefined,
+      select: query.select ? [...query.select, { field: keyField }] : undefined,
+      'order-by': undefined, limit: undefined
+    };
+  });
+  return hasRunPredicate ? { store, queries, keyQueries, keyField } : null;
 }
 
 /**
@@ -730,9 +864,41 @@ function indexedRecordKeySelectionPlan(index, definition) {
   });
   return {
     source, store, indexName: candidate.indexName, keyField, queries,
+    exactKey: exactRecordSelectionKey(recordProjection, stages, candidate.covered),
     projection: projection ? pruned[0] : undefined,
     keyQueries: projection ? pruned.slice(1) : pruned
   };
+}
+
+/**
+ * Only invert unchanged scalar projections, never computed labels. Storage
+ * additionally proves that all indexed tuples contain strings before using
+ * this shortcut; coercible or structured values retain dictionary evaluation.
+ * @param {import('./declarative.js').DashboardQuery} projection
+ * @param {Array<{ definition: import('./declarative.js').DashboardQuery }>} stages
+ * @param {Set<string>} covered
+ */
+function exactRecordSelectionKey(projection, stages, covered) {
+  if (covered.size !== 1) return undefined;
+  const [rawField] = covered;
+  const computed = new Set((projection.compute ?? []).map((field) => field.as));
+  let fields = new Set((projection.select ?? []).filter((field) => (
+    field.field === rawField && !computed.has(field.field)
+  )).map((field) => field.as ?? field.field));
+  for (const { definition } of stages) {
+    for (const field of definition.compute ?? []) fields.delete(field.as);
+    const predicate = definition.filter?.predicates?.find((predicate) => (
+      fields.has(predicate.field) && !predicate.optional
+      && typeof predicate.equals === 'string' && !predicate.in
+      && predicate.includes === undefined && predicate.gte === undefined && predicate.lt === undefined
+    ));
+    if (predicate) return JSON.stringify([predicate.equals]);
+    if (definition.select) {
+      fields = new Set(definition.select.filter((field) => fields.has(field.field))
+        .map((field) => field.as ?? field.field));
+    }
+  }
+  return undefined;
 }
 
 /**

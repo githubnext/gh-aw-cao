@@ -36,7 +36,8 @@ The supported deployment is:
 - one local checkout or worktree;
 - an HTTP listener on loopback for debugging, or HTTPS with an
   operator-supplied certificate and key;
-- a dedicated or access-controlled Redis database;
+- a read-only SQLite snapshot for default local serving, or an explicit
+  PostgreSQL profile with access-controlled operational storage;
 - dashboard artifacts obtained from a trusted local workflow or download;
 - browser access through the capability URL printed by the server.
 
@@ -44,6 +45,11 @@ GitHub authentication, organization authorization, multi-user access, public
 hosting, reverse proxies, tunnels, and webhook ingestion are not part of the
 local profile. Use `serve-hosted` rather than exposing `serve` through a tunnel
 or public reverse proxy.
+
+Default local startup downloads and verifies a deployed snapshot only when the
+cache is missing; existing invalid or unreadable caches fail closed without an
+automatic repair download. `--download-sqlite` explicitly refreshes the cache
+before opening it read-only and does not relax the local security boundary.
 
 ## Host-neutral hosted profile
 
@@ -169,6 +175,34 @@ rejected stage (`credentials_missing`, `oidc_invalid`, `repository_unavailable`,
 include tokens or upstream error bodies.
 
 ## HTTP and TLS protections
+
+### Outbound trust and CA compromise
+
+Build the server and native CLI with Go 1.27.3 or newer. All three Go modules
+require this version so that an installed, unpatched Go 1.27 toolchain cannot
+satisfy a lower Go 1.26 minimum. Go 1.27.3 is a patched release identified by the
+[October 2026 eMudhra incident report](https://emudhra.we-have-a-problem.com/).
+Keep build toolchains, operating-system trust stores, and container CA packages
+current. Rebuild and redeploy existing binaries and images: changing `go.mod`
+does not repair already deployed executables. Browser revocation updates do not
+establish the trust behavior of Go, Node.js, `gh`, or other subprocesses; update
+those runtimes independently.
+
+Remote PostgreSQL connections require `sslmode=verify-full`, including every
+fallback, for both canonical and operational storage. `require` encrypts the
+connection but can skip certificate verification; `verify-ca` does not verify
+the hostname. Neither is accepted. Use `sslrootcert` to trust an operator-owned
+CA without bypassing verification. Unix sockets and loopback retain their local
+development exception.
+
+Snapshot download redirects must not downgrade HTTPS to HTTP. Use a trusted
+HTTPS origin: a downloaded manifest and its SHA-256 checksums share the same
+trust boundary and are not a publisher signature. The native CLI additionally
+supports `--manifest-sha256` / `DASHBOARD_MANIFEST_SHA256` for a manifest digest
+obtained independently. The server SQLite downloader does not provide this
+independent pin; use an independently verified local snapshot for that boundary.
+
+### Listener and response protections
 
 - The listener must be `localhost` or a loopback IP address. Non-loopback bind
   addresses are rejected even when a certificate is configured.
@@ -976,7 +1010,7 @@ npm run test:e2e:dashboard-server
 ## Reporting a vulnerability
 
 Report suspected vulnerabilities privately through a GitHub Security Advisory
-for `githubnext/gh-aw-cao`. Do not include credentials, access tokens, private
+for `githubnext/gh-cao`. Do not include credentials, access tokens, private
 dashboard data, or exploit details in a public issue.
 
 Include the affected commit, deployment topology, reproduction steps, impact,

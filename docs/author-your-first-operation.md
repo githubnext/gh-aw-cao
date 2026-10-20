@@ -8,11 +8,11 @@ agent:
 
 Use this guide when the [catalog](catalog.md) does not already produce the
 outcome you need. Agents should follow the
-[`create-cao-campaign` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/create-cao-campaign/SKILL.md);
+[`create-cao-campaign` skill](https://github.com/githubnext/gh-cao/blob/main/skills/create-cao-campaign/SKILL.md);
 to install an existing campaign instead, use the
-[`add-cao-campaign` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/add-cao-campaign/SKILL.md).
+[`add-cao-campaign` skill](https://github.com/githubnext/gh-cao/blob/main/skills/add-cao-campaign/SKILL.md).
 Before implementation, read [Orchestrators and Workers](orchestrators-and-workers.md)
-and the [control architecture specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md).
+and the [control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md).
 
 A campaign has:
 
@@ -26,7 +26,7 @@ This guide creates a review-ready campaign. Production rollout comes later.
 
 Complete [Set Up CAO](setup-quickstarts.md) so you have a validated control repository. Use a private control repository when the target or required evidence is non-public.
 
-You also need GitHub Agentic Workflows `v0.92.5` or newer:
+You also need GitHub Agentic Workflows `v0.92.6` or newer:
 
 ```bash
 gh aw version

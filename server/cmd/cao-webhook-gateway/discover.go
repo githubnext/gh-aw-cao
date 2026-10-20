@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func discoverWorkflows(ctx context.Context, paths []string, output io.Writer) error {

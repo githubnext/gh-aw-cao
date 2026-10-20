@@ -8,7 +8,7 @@ import (
 	"slices"
 	"time"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 var _ wg.RegistryStore = (*webhookQueue)(nil)

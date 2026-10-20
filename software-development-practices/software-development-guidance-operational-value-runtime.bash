@@ -25,7 +25,7 @@ definition() {
       {
         schemaVersion: 4,
         grader: "operational-value",
-        repository: "githubnext/gh-aw-cao",
+        repository: "githubnext/gh-cao",
         workflowName: $workflowName,
         sourcePath: $sourcePath,
         adoption: {commit: $adoptionCommit, adoptedAt: $adoptedAt},
@@ -34,7 +34,7 @@ definition() {
           opportunity: $opportunity,
           assignment: ("Bind targetRepo and evidenceRepo from workflow_dispatch inputs, then freeze the matching " + $framework + " guidance issue and its machine-readable target commit; key software-development-practices:" + $framework + ":<targetRepo>:<targetSha>. Duplicate runs for the same framework and target snapshot share the opportunity."),
           accepted: $accepted,
-          repositories: ["githubnext/gh-aw-cao"],
+          repositories: ["githubnext/gh-cao"],
           collection: "Read the guidance marker once to freeze the framework and target commit, then read issue reactions through the capped evidence cutoff. Count only a thumbs-up reaction from a non-bot GitHub user.",
           maturation: "Thirty days after the worker run starts, matching the guidance issue expiry.",
           zeroRule: "Complete evidence for a matching guidance issue with no non-bot human acceptance reaction scores 0.",

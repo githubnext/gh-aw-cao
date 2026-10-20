@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
+	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
 )
 
 func TestPostgresHostedOAuthSurvivesRestartWithoutRedis(t *testing.T) {
@@ -39,7 +39,7 @@ func TestPostgresHostedOAuthSurvivesRestartWithoutRedis(t *testing.T) {
 	})
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	config := Config{
-		Database: constructorDatabase(), SiteDirectory: t.TempDir(),
+		Database: constructorDatabase(), SiteDirectory: hostedTestSite(t),
 		HostProfile: hostedHostProfile(), Listen: "0.0.0.0:8443",
 		CertFile: "certificate.pem", KeyFile: "key.pem",
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},

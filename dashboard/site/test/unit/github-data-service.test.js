@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGitHubDataService, githubResourcePath } from '../../src/data/github-service.js';
 import { deleteCanonicalDatabase, readTransactions, readCollection } from '../../src/data/storage/indexeddb.js';
 
-const resource = { owner: 'githubnext', repo: 'gh-aw-cao' };
+const resource = { owner: 'githubnext', repo: 'gh-cao' };
 const configuration = { baseUrl: 'https://dashboard.example/api/v1/github/', cacheIdentity: 'test-principal:session-one' };
-const repository = { full_name: 'githubnext/gh-aw-cao', description: 'Catalog', stargazers_count: 42 };
+const repository = { full_name: 'githubnext/gh-cao', description: 'Catalog', stargazers_count: 42 };
 /** @type {AbortController[]} */
 let controllers = [];
 
@@ -59,7 +59,7 @@ describe('worker GitHub resource service', () => {
     const fetch = vi.fn(/** @type {typeof globalThis.fetch} */ (async () => response({ ...repository, secret_field: 'discard' })));
     const { listener } = subscribe(createGitHubDataService({ fetch }));
     await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network', status: 'available' })));
-    expect(String(fetch.mock.calls[0]?.[0])).toBe('https://dashboard.example/api/v1/github/repos/githubnext/gh-aw-cao');
+    expect(String(fetch.mock.calls[0]?.[0])).toBe('https://dashboard.example/api/v1/github/repos/githubnext/gh-cao');
     expect(fetch.mock.calls[0]?.[1]).toMatchObject({ credentials: 'same-origin', redirect: 'error' });
     expect(fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty('Authorization');
     const receipts = await readTransactions(indexedDB);
@@ -301,7 +301,7 @@ describe('worker GitHub resource service', () => {
       ...configuration, baseUrl: 'http://127.0.0.1:8080/cao/api/v1/github/', credentials: 'omit'
     });
     await vi.waitFor(() => expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'network' })));
-    expect(String(fetch.mock.calls[0]?.[0])).toBe('http://127.0.0.1:8080/cao/api/v1/github/repos/githubnext/gh-aw-cao');
+    expect(String(fetch.mock.calls[0]?.[0])).toBe('http://127.0.0.1:8080/cao/api/v1/github/repos/githubnext/gh-cao');
     expect(fetch.mock.calls[0]?.[1]).toMatchObject({ credentials: 'omit', redirect: 'error' });
     expect(fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty('Authorization');
   });
@@ -316,7 +316,7 @@ describe('worker GitHub resource service', () => {
       data: null, status: 'unavailable', error: 'unavailable'
     })));
     expect(fetch).toHaveBeenCalledOnce();
-    expect(String(fetch.mock.calls[0]?.[0])).toBe('https://dashboard.example/api/v1/github/repos/githubnext/gh-aw-cao');
+    expect(String(fetch.mock.calls[0]?.[0])).toBe('https://dashboard.example/api/v1/github/repos/githubnext/gh-cao');
   });
 
   it('supports safe normalized latest releases and refuses invalid resource paths', async () => {
@@ -337,7 +337,7 @@ describe('worker GitHub resource service', () => {
       configuration.baseUrl, 'same-origin', configuration.cacheIdentity
     ])));
     const partition = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-    expect((await readTransactions(indexedDB))[0]?.id).toBe(`github-resource:${partition}:repos/githubnext/gh-aw-cao`);
+    expect((await readTransactions(indexedDB))[0]?.id).toBe(`github-resource:${partition}:repos/githubnext/gh-cao`);
   });
 
   it('clears active private results on logout and cannot reuse them under a new session or backend', async () => {

@@ -2,7 +2,7 @@
 argument-hint: Dashboard page, view, or UI element
 description: Build or revise CAO dashboard UI with Dashboard Language, reusable UI elements, and the reactive.js framework.
 metadata:
-    local-path: /home/runner/work/gh-aw-cao/gh-aw-cao/.github/skills/reactive-ui
+    local-path: /home/runner/work/gh-cao/gh-cao/.github/skills/reactive-ui
 name: reactive-ui
 ---
 # Reactive UI

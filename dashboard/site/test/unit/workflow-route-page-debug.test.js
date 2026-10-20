@@ -13,7 +13,7 @@ const metadata = {
 
 const workflows = [{
   organization: 'githubnext',
-  repository: 'gh-aw-cao',
+  repository: 'gh-cao',
   workflow: '.github/workflows/ambient-context.md',
   'workflow-name': 'Ambient Context',
   'workflow-role': 'orchestrator',

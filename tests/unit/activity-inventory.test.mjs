@@ -25,7 +25,7 @@ test("projects installed campaign revisions and local compiler metadata", async 
     }));
     await writeFile(path.join(workflows, "dependabot.md"), `---
 name: Dependabot
-source: githubnext/gh-aw-cao@${sourceRevision}
+source: githubnext/gh-cao@${sourceRevision}
 ---
 `);
     const intelligenceDeclaration = {
@@ -47,8 +47,8 @@ source: githubnext/gh-aw-cao@${sourceRevision}
     );
     await writeFile(path.join(campaigns, "dependabot.json"), JSON.stringify({
       schemaVersion: 1,
-      campaign: "githubnext/gh-aw-cao/dependabot",
-      source: `githubnext/gh-aw-cao/dependabot@${campaignRevision}`,
+      campaign: "githubnext/gh-cao/dependabot",
+      source: `githubnext/gh-cao/dependabot@${campaignRevision}`,
       resolvedCommit: campaignRevision,
       installer: "gh-aw v0.89.15",
       files: [],
@@ -59,13 +59,13 @@ source: githubnext/gh-aw-cao@${sourceRevision}
     assert.deepEqual(inventory.campaigns, [{
       id: "dependabot",
       name: "dependabot",
-      campaign: "githubnext/gh-aw-cao/dependabot",
-      source: `githubnext/gh-aw-cao/dependabot@${campaignRevision}`,
+      campaign: "githubnext/gh-cao/dependabot",
+      source: `githubnext/gh-cao/dependabot@${campaignRevision}`,
       resolvedCommit: campaignRevision,
       installer: "gh-aw v0.89.15",
       intelligenceDeclaration,
     }]);
-    assert.equal(inventory.workflows[0].source, `githubnext/gh-aw-cao@${sourceRevision}`);
+    assert.equal(inventory.workflows[0].source, `githubnext/gh-cao@${sourceRevision}`);
     assert.equal(inventory.workflows[0].version, sourceRevision);
     assert.equal(inventory.workflows[0].ghAwVersion, "v0.89.15");
     assert.equal(

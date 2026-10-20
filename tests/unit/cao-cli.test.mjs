@@ -91,6 +91,24 @@ test("keeps every CAO command in its own command module", async () => {
   assert.deepEqual(moduleNames, [...commandHandlers.keys()].sort());
 });
 
+test("quickstart is not registered or advertised by the Node CLI", async () => {
+  assert.equal(commandHandlers.has("quickstart"), false);
+  assert.doesNotMatch(await caoApi.runCli(["--help"]), /quickstart/i);
+  for (const args of [
+    ["quickstart"], ["quickstart", "--help"], ["quickstart", "--json"],
+    ["quickstart", "--step", "run"], ["quickstart", "--step", "collect"],
+    ["quickstart", "--step", "dashboard"], ["quickstart", "--target", "owner/repo"],
+    ["quickstart", "--wait", "--target", "owner/repo"],
+  ]) {
+    await assert.rejects(executeFile(process.execPath, [cao, ...args]), (error) => {
+      assert.equal(error.code, 1);
+      assert.equal(error.stdout, "");
+      assert.equal(error.stderr, "Error: Unknown command: quickstart\n");
+      return true;
+    });
+  }
+});
+
 test("reports a missing cao add campaign without a stack trace", async () => {
   let error;
   try {

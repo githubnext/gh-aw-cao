@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var actionsAuthLog = logger.New("cao:server:actions-auth")
@@ -79,7 +79,7 @@ func verifyGitHubActionsPermissions(ctx context.Context, config Config, token st
 		request.Header.Set("Accept", "application/vnd.github+json")
 		request.Header.Set("Authorization", "Bearer "+token)
 		request.Header.Set("X-GitHub-Api-Version", actionsGitHubAPIVersion)
-		request.Header.Set("User-Agent", "gh-aw-cao-mcp")
+		request.Header.Set("User-Agent", "gh-cao-mcp")
 		response, err := client.Do(request)
 		if err != nil {
 			actionsAuthLog.Printf("permission probe request failed probe=%s", probe.name)

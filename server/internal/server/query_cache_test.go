@@ -19,9 +19,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
 )
 
 type queryCacheClient struct {
@@ -423,7 +423,7 @@ func TestQueryCacheSharedByAuthenticatedHTTPAndMCP(t *testing.T) {
 		t.Helper()
 		seedDatabase(t, database, map[string]model.Source{
 			"$repositories": {Source: "$repositories", Rows: []model.Row{{
-				"id": "repository", "owner": "githubnext", "name": "gh-aw-cao",
+				"id": "repository", "owner": "githubnext", "name": "gh-cao",
 			}}},
 			"$campaigns": {Source: "$campaigns", Rows: []model.Row{{
 				"id": "campaign", "slug": "cache-fixture",
@@ -435,7 +435,7 @@ func TestQueryCacheSharedByAuthenticatedHTTPAndMCP(t *testing.T) {
 			"$runs": {
 				Source: "$runs", Rows: []model.Row{{
 					"id": id, "repositoryId": "repository", "workflowId": "workflow",
-					"owner": "githubnext", "repository": "gh-aw-cao", "githubRunId": "123",
+					"owner": "githubnext", "repository": "gh-cao", "githubRunId": "123",
 					"attempt": 1, "title": id,
 				}},
 				Metadata: model.Metadata{"availability": "available"},

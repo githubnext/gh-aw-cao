@@ -8,7 +8,7 @@ LABEL org.opencontainers.image.title="Central Agentic Ops MCP server" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.created="${CREATED}" \
-      org.opencontainers.image.source="https://github.com/githubnext/gh-aw-cao"
+      org.opencontainers.image.source="https://github.com/githubnext/gh-cao"
 
 # The server executes named Dashboard Language queries over a local SQLite
 # projection, so the image carries only the CLI, the dashboard definitions, and

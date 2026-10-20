@@ -8,14 +8,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/query"
 )
 
-func TestReadTransactionDisablesJITLocally(t *testing.T) {
+func TestReadTransactionPlannerSettingsAreLocal(t *testing.T) {
 	store, _ := nativeTestStore(t)
 	store.db.SetMaxOpenConns(1)
 	if _, err := store.db.ExecContext(t.Context(), "SET jit = on"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(t.Context(), "SET enable_nestloop = on"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -28,26 +31,26 @@ func TestReadTransactionDisablesJITLocally(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := store.WithReadTransaction(t.Context(), func(ctx context.Context, reader NativeReader) error {
-				var jit bool
+				var jit, nestloop bool
 				var timeout string
 				if err := reader.(*readTransaction).tx.QueryRowContext(ctx,
-					"SELECT current_setting('jit')::boolean, current_setting('statement_timeout')").Scan(&jit, &timeout); err != nil {
+					"SELECT current_setting('jit')::boolean, current_setting('enable_nestloop')::boolean, current_setting('statement_timeout')").Scan(&jit, &nestloop, &timeout); err != nil {
 					return err
 				}
-				if jit || timeout != "1min" {
-					t.Errorf("read settings: jit=%t statement_timeout=%q", jit, timeout)
+				if jit || nestloop || timeout != "1min" {
+					t.Errorf("read settings: jit=%t enable_nestloop=%t statement_timeout=%q", jit, nestloop, timeout)
 				}
 				return tc.err
 			})
 			if !errors.Is(err, tc.err) {
 				t.Fatalf("read transaction error = %v, want %v", err, tc.err)
 			}
-			var jit bool
-			if err := store.db.QueryRowContext(t.Context(), "SELECT current_setting('jit')::boolean").Scan(&jit); err != nil {
+			var jit, nestloop bool
+			if err := store.db.QueryRowContext(t.Context(), "SELECT current_setting('jit')::boolean, current_setting('enable_nestloop')::boolean").Scan(&jit, &nestloop); err != nil {
 				t.Fatal(err)
 			}
-			if !jit {
-				t.Fatal("read transaction changed the session JIT setting")
+			if !jit || !nestloop {
+				t.Fatal("read transaction changed the session planner settings")
 			}
 		})
 	}
@@ -130,10 +133,11 @@ func TestRelationalSQLExecutesInPostgres(t *testing.T) {
 		for rows.Next() {
 			var relation string
 			var size, bytes int64
-			if err := rows.Scan(&relation, &size, &bytes); err != nil {
+			var duplicateJoin bool
+			if err := rows.Scan(&relation, &size, &bytes, &duplicateJoin); err != nil {
 				return err
 			}
-			if size < 0 || bytes < 0 {
+			if size < 0 || bytes < 0 || duplicateJoin {
 				t.Error("invalid SQL resource accounting")
 			}
 			count++

@@ -67,8 +67,8 @@ export const UNIT_DEFINITION_KEYS = ['name', 'symbol', 'significant', 'format'];
 export const UNIT_FORMAT_VALUES = ['aicc', 'duration', 'number', 'usd'];
 export const NAVIGATION_SECTION_KEYS = ['label', 'pages', 'experimental', 'placement'];
 export const NAVIGATION_INDICATOR_KEYS = ['label', 'any'];
-export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-label', 'navigation-indicator', 'description', 'intent', 'subject', 'objective', 'acceptance', 'icon', 'class-name', 'experimental', 'filter-bar', 'view-mode-control', 'pull-refresh', 'mode-indicator', 'requires', 'form', 'definition'];
-export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'navigation-indicator', 'description', 'intent', 'subject', 'objective', 'acceptance', 'icon', 'class-name', 'experimental', 'filter-bar', 'view-mode-control', 'pull-refresh', 'mode-indicator', 'retain-on-navigation', 'requires', 'form', 'route', 'views', 'sections'];
+export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-label', 'navigation-indicator', 'description', 'intent', 'subject', 'objective', 'acceptance', 'icon', 'class-name', 'experimental', 'filter-bar', 'view-mode-control', 'pull-refresh', 'mode-indicator', 'query-binding', 'requires', 'form', 'definition'];
+export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'navigation-indicator', 'description', 'intent', 'subject', 'objective', 'acceptance', 'icon', 'class-name', 'experimental', 'filter-bar', 'view-mode-control', 'pull-refresh', 'mode-indicator', 'retain-on-navigation', 'query-binding', 'requires', 'form', 'route', 'views', 'sections'];
 export const PAGE_FORM_KEYS = ['title', 'description', 'update', 'fields'];
 export const PAGE_FORM_UPDATE_KEYS = ['strategy', 'delay-ms'];
 export const PAGE_FORM_UPDATE_STRATEGY_VALUES = ['debounce', 'throttle'];
@@ -91,7 +91,7 @@ export const VIEW_REQUIREMENT_KEYS = ['backend', 'message', 'on-unavailable'];
 export const VIEW_BACKEND_VALUES = ['static', 'hosted'];
 export const VIEW_DATA_KEYS = ['source', 'partial-source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata', 'query-context'];
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
-export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'browser-first-load', 'data-status', 'view-all-page', 'view-all-label', 'label-field', 'label-badge-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source', 'content-field', 'path-field', 'base-link-field'];
+export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'stations', 'labels', 'animate', 'sources', 'browser-first-load', 'data-status', 'view-all-page', 'view-all-label', 'label-field', 'label-badge-field', 'link-field', 'icon-field', 'fallback-icon', 'indicator-field', 'indicator-label-field', 'empty-message', 'measure-source', 'content-field', 'path-field', 'base-link-field', 'actions'];
 export const FACTORY_HEADER_SOURCE_ROLES = ['presentation', 'rhythm'];
 export const FACTORY_FLOOR_SOURCE_ROLES = ['campaigns', 'repositories', 'issues', 'value-gains'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
@@ -117,7 +117,8 @@ export const VIEW_ELEMENT_VALUES = [
   'markdown',
   'query-editor',
   'command-terminal',
-  'storage-info'
+  'storage-info',
+  'environment-defaults'
 ];
 export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane', 'treemap'];
 export const TREEMAP_KEYS = ['method', 'ratio', 'padding'];
@@ -154,6 +155,7 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'insights',
   'query-editor',
   'commands',
+  'governance',
   'command'
 ]);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'card', 'x', 'y', 'color', 'section', 'weight', 'reference', 'href', 'actions', 'facet', 'row', 'column'];

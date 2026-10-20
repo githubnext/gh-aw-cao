@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 type registryFixture struct {

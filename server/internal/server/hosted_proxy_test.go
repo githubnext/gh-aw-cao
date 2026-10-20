@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/memory"
+	"github.com/githubnext/gh-cao/server/internal/operational/memory"
 )
 
 func TestHostedProxyTrust(t *testing.T) {

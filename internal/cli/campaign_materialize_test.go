@@ -71,8 +71,8 @@ func TestCampaignArchiveGitHubGlobalPAXHeader(t *testing.T) {
 
 func TestCampaignSlug(t *testing.T) {
 	for spec, want := range map[string]string{
-		"githubnext/gh-aw-cao/demo@feature/config":        "demo",
-		"https://github.com/githubnext/gh-aw-cao/demo@v1": "demo",
+		"githubnext/gh-cao/demo@feature/config":        "demo",
+		"https://github.com/githubnext/gh-cao/demo@v1": "demo",
 		"./demo/": "demo", "demo": "demo", "/space dir/demo": "demo",
 	} {
 		if got, err := campaignSlug(spec); err != nil || got != want {
@@ -95,7 +95,7 @@ func TestInstalledCampaignRevision(t *testing.T) {
 		}
 	}
 	for _, field := range []string{"campaign", "source"} {
-		record := `{"` + field + `":"githubnext/gh-aw-cao/demo@v1","resolvedCommit":"` + testCampaignSHA + `"}`
+		record := `{"` + field + `":"githubnext/gh-cao/demo@v1","resolvedCommit":"` + testCampaignSHA + `"}`
 		if field == "campaign" {
 			record = strings.ReplaceAll(record, "demo@v1", "demo")
 		}

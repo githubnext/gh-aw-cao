@@ -9,7 +9,7 @@ import { parseUpdateArguments } from "../../activity/commands/update.mjs";
 
 const oldCommit = "a".repeat(40);
 const commit = "b".repeat(40);
-const catalog = "githubnext/gh-aw-cao";
+const catalog = "githubnext/gh-cao";
 const ok = { status: 0, stdout: "", stderr: "" };
 
 async function withInstallation(run, { defaultBranch = "main" } = {}) {
@@ -183,7 +183,7 @@ test("selected release update retains release preparation and refreshes only the
     const beforeRoot = await readFile(recordPaths.get(catalog), "utf8");
     const start = calls.length;
     let releaseUpdates = 0;
-    const prMessage = "Requested through [CAO](https://github.com/githubnext/gh-aw-cao) to update the dependabot campaign.";
+    const prMessage = "Requested through [CAO](https://github.com/githubnext/gh-cao) to update the dependabot campaign.";
     const result = await updateCaoCampaigns(["--campaign", "dependabot", "--major", "--cool-down", "0", "--pr-message", prMessage], {
       execute(command, args) {
         if (args.includes(`/repos/${catalog}/tags`)) return { ...ok, stdout: "v0.0.2\n" };
@@ -208,7 +208,7 @@ test("selected release update retains release preparation and refreshes only the
   });
 });
 
-for (const slug of ["missing", "other", "gh-aw-cao"]) {
+for (const slug of ["missing", "other", "gh-cao"]) {
   test(`unknown selection ${slug} fails before gh-aw version checks or mutation`, async () => {
     await withInstallation(async ({ policy, policyPath }) => {
       await assert.rejects(updateCaoCampaigns(["--campaign", slug], {
@@ -310,7 +310,7 @@ test("release option values are not interpreted as refs", () => {
 });
 
 test("PR messages are forwarded as option values, not update refs", () => {
-  const message = "Requested through [CAO](https://github.com/githubnext/gh-aw-cao) to update workflows.";
+  const message = "Requested through [CAO](https://github.com/githubnext/gh-cao) to update workflows.";
   for (const option of [["--pr-message", message], [`--pr-message=${message}`]]) {
     const options = ["--create-pull-request", ...option];
     assert.deepEqual(parseUpdateArguments(["--campaign", "activity", ...options], Error), {

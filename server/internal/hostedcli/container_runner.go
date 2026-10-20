@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 const DefaultContainerImage = "ghcr.io/github/gh-aw@sha256:7ff77dc03182d4edcebc902fa94b0239eb9cde65ea212509aef700bcab354090"

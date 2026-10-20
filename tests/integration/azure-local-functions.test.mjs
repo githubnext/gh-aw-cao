@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const runtimePath = process.argv[2];
@@ -14,15 +14,7 @@ async function request(path, options = {}) {
   });
 }
 
-function redis(...arguments_) {
-  const result = spawnSync("docker", ["exec", runtime.redisContainerId, "redis-cli", ...arguments_], {
-    encoding: "utf8",
-  });
-  assert.equal(result.status, 0, result.stderr);
-  return result.stdout.trim();
-}
-
-test("Azure Functions routes requests through shared CAO logic and Redis", async () => {
+test("Azure Functions routes requests through shared CAO logic and PostgreSQL", async () => {
   const health = await request("/api/health");
   assert.equal(health.status, 200);
   assert.deepEqual((await health.json()).redis, { connected: true });
@@ -33,23 +25,14 @@ test("Azure Functions routes requests through shared CAO logic and Redis", async
   const wrongMethod = await request("/api/health", { method: "POST" });
   assert.equal(wrongMethod.status, 404);
 
-  const isolatedNamespace = `${runtime.redisNamespace}-isolated`;
-  redis("SET", `cao:${isolatedNamespace}:sentinel`, "unchanged");
-
   const first = await request("/api/repositories");
   const second = await request("/api/repositories");
   assert.equal(first.status, 401);
   assert.equal(second.status, 401);
   const firstRemaining = Number(first.headers.get("ratelimit-remaining"));
   const secondRemaining = Number(second.headers.get("ratelimit-remaining"));
-  assert.ok(Number.isInteger(firstRemaining), "first request must expose Redis-backed rate-limit state");
+  assert.ok(Number.isInteger(firstRemaining), "first request must expose PostgreSQL-backed rate-limit state");
   assert.equal(secondRemaining, firstRemaining - 1);
-
-  assert.equal(redis("GET", `cao:${isolatedNamespace}:sentinel`), "unchanged");
-  const activeKeys = redis("--scan", "--pattern", `cao:${runtime.redisNamespace}:*`).split("\n").filter(Boolean);
-  const isolatedKeys = redis("--scan", "--pattern", `cao:${isolatedNamespace}:*`).split("\n").filter(Boolean);
-  assert.ok(activeKeys.length > 0);
-  assert.deepEqual(isolatedKeys, [`cao:${isolatedNamespace}:sentinel`]);
 });
 
 test("missing local configuration fails predictably", () => {

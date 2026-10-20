@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const sources = {
   repositories: {
-    rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': metadata['as-of'] }],
+    rows: [{ organization: 'githubnext', repository: 'gh-cao', 'observed-at': metadata['as-of'] }],
     metadata
   },
   campaigns: {
@@ -14,7 +14,7 @@ const sources = {
   workflows: {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       'workflow-active': 'true',
       'observed-at': metadata['as-of']
@@ -24,7 +24,7 @@ const sources = {
   runs: {
     rows: [{
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow: '.github/workflows/dashboard.md',
       run: '12345',
       'run-attempt': 2,
@@ -130,7 +130,7 @@ describe('canonical queries index debug logging', () => {
       const serialized = JSON.stringify(payload);
       expect(serialized).not.toContain('self-care');
       expect(serialized).not.toContain(String(run.id));
-      expect(serialized).not.toContain('gh-aw-cao');
+      expect(serialized).not.toContain('gh-cao');
     }
   });
 });

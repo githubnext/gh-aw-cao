@@ -13,11 +13,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/audit"
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/audit"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 var proxyLog = logger.New("cao:server:proxy")
@@ -305,7 +305,13 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 		_ = database.Close()
 		return nil, err
 	}
+	admissionConfig, err := admissionConfigFromEnv()
+	if err != nil {
+		_ = database.Close()
+		return nil, err
+	}
 	app, err := New(ctx, store, Config{
+		Admission:              admissionConfig,
 		Database:               database,
 		Audit:                  auditLog,
 		DatabaseQueriesPath:    databaseQueries,
@@ -328,6 +334,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 			RedirectURL:                 redirectURL,
 			SessionSecret:               os.Getenv("CAO_SESSION_SECRET"),
 			PreviousSessionSecret:       os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
+			AllowedUsers:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_USERS")),
 			AllowedOrganizations:        splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
 			AllowedTeams:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
 			AdminReauthenticationMaxAge: envStrictDuration("CAO_ADMIN_REAUTH_MAX_AGE"),

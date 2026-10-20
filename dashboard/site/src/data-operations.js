@@ -110,7 +110,7 @@ function applyOperator(rows, operator) {
   if (operator.op === 'filter') return filter(rows, operator);
   if (operator.op === 'summarize') return summarize(rows, operator);
   if (operator.op === 'arrange') return arrange(rows, operator);
-  if (operator.op === 'compute') return compute(rows, operator);
+  if (operator.op === 'compute') return computeRows(rows, operator);
   if (operator.op === 'predict') return predict(rows, operator);
   if (operator.op === 'window') return windowRows(rows, operator);
   if (operator.op === 'select') return select(rows, operator);
@@ -369,15 +369,17 @@ function dot(left, right) {
 /**
  * Adds deterministic computed fields. Computed fields are evaluated in
  * declaration order so a later field may read an earlier one.
+ * An immediate selection shares the traversal without retaining computed rows.
  * @param {Row[]} rows @param {ComputeOperator} operator
+ * @param {SelectOperator} [selection]
  */
-function compute(rows, operator) {
+export function computeRows(rows, operator, selection) {
   return rows.map((row) => {
     const computed = { ...row };
     for (const value of operator.values) {
       computed[value.as] = computeValue(computed, value);
     }
-    return computed;
+    return selection ? selectRow(computed, selection) : computed;
   });
 }
 
@@ -386,11 +388,14 @@ function compute(rows, operator) {
  * @param {Row[]} rows @param {SelectOperator} operator
  */
 function select(rows, operator) {
-  return rows.map((row) => Object.fromEntries(
-    operator.fields
-      .filter((field) => row[field.field] !== undefined)
-      .map((field) => [field.as ?? field.field, row[field.field]])
-  ));
+  return rows.map((row) => selectRow(row, operator));
+}
+
+/** @param {Row} row @param {SelectOperator} operator */
+function selectRow(row, operator) {
+  return Object.fromEntries(operator.fields
+    .filter((field) => row[field.field] !== undefined)
+    .map((field) => [field.as ?? field.field, row[field.field]]));
 }
 
 /**

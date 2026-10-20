@@ -3,4 +3,4 @@ extensions:
       pack: codeql/go-all
       extensible: barrierModel
     data:
-      - ["github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder", "", false, "QuoteIdentifier", "", "", "ReturnValue", "sql-injection", "manual"]
+      - ["github.com/githubnext/gh-cao/server/internal/sqlbuilder", "", false, "QuoteIdentifier", "", "", "ReturnValue", "sql-injection", "manual"]

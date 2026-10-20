@@ -15,12 +15,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
-	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/server"
+	"github.com/githubnext/gh-cao/server/internal/ingest"
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/server"
 )
 
 var benchmarkLog = debuglogger.New("cao:dashboard:benchmark")

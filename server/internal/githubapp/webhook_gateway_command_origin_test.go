@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func TestGatewayCommandServerURLMatchesActualAPIBasePath(t *testing.T) {

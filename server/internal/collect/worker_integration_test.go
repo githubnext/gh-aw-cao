@@ -110,9 +110,10 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	catalogRoot := filepath.Join(workspace, "catalog")
 	writeValidCollectionCatalog(t, catalogRoot)
 	gh := writeFakeBinary(t, workspace, "gh", `echo "rate limited" >&2; exit 1`)
-	node := writeFakeBinary(t, workspace, "node", "exit 0")
+	// Forward the collection wrapper's arguments to gh so its failure is exercised.
+	node := writeFakeBinary(t, workspace, "node", "shift\nexec \"$@\"")
 	lake := Lake{Directory: filepath.Join(workspace, "lake")}
-	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxAttempts: 1}
+	queue := Queue{Tasks: store, Admission: store, Metadata: store, Leases: store, Deliveries: store, Metrics: store, MaxAttempts: 2}
 	if err := queue.Ensure(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -159,6 +160,34 @@ func TestWorkerRetriesAFailedCollection(t *testing.T) {
 	<-done
 	if dead != 1 {
 		t.Fatalf("dead letters = %d, want the exhausted task to be retained for inspection", dead)
+	}
+	counters, _, err := store.IngestionHealth(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, expected := range map[string]int64{
+		"collectionFailed":       2,
+		"collectionRetried":      1,
+		"collectionDeadLettered": 1,
+		"collectionSucceeded":    0,
+	} {
+		if counters[name] != expected {
+			t.Errorf("%s = %d, want %d", name, counters[name], expected)
+		}
+	}
+	depth, err := queue.Depth(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if depth != 0 {
+		t.Fatalf("queue depth = %d, want no remaining retries after exhaustion", depth)
+	}
+	leased, err := queue.Pending(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if leased != 0 {
+		t.Fatalf("pending = %d, want the exhausted task acknowledged", leased)
 	}
 	pending, err := (Projector{State: store, Leases: store, Lake: lake}).PendingProjection(ctx)
 	if err != nil {

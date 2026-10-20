@@ -18,7 +18,7 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 func TestBackfillTelemetryWithoutOpenObservePreservesTraceContext(t *testing.T) {

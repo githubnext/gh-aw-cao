@@ -62,12 +62,12 @@ Edit `.github/workflows/$WORKER.md`, not its generated `.lock.yml`. Compile
 after every change, including prompt-only edits:
 
 ```bash
-gh aw compile "$WORKER" --strict --schedule-seed githubnext/gh-aw-cao
+gh aw compile "$WORKER" --strict --schedule-seed githubnext/gh-cao
 git diff -- .github/workflows
 ```
 
 If you change shared imports, compile all importing workflows with
-`gh aw compile --strict --schedule-seed githubnext/gh-aw-cao` and review every
+`gh aw compile --strict --schedule-seed githubnext/gh-cao` and review every
 affected lock. Commit and push the reviewed source and generated files before
 launching. Include any changed shared imports and corresponding policy in the
 same reviewed commit; do not broaden policy merely to get a debug run admitted.
@@ -160,7 +160,7 @@ attempt; they must launch their own manual run.
 
 When using a local debugger agent, give it the control repository, worker,
 development ref, target, and observed failure. The
-[`debug-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md)
+[`debug-cao` skill](https://github.com/githubnext/gh-cao/blob/main/skills/debug-cao/SKILL.md)
 provides a bounded diagnostic procedure. Keep it on the human operator's
 authentication and require the single-worker command above; do not let it
 enable workflows, promote a campaign, or widen scope as a workaround.

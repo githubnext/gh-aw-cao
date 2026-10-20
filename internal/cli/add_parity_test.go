@@ -29,7 +29,7 @@ func TestNativeCampaignAddMatchesProductionContract(t *testing.T) {
 			program := `
 const { addCaoCampaign } = await import(process.argv[1]);
 process.chdir(process.argv[2]);
-const result = await addCaoCampaign("githubnext/gh-aw-cao/demo@feature/config", ["--force"], {
+const result = await addCaoCampaign("githubnext/gh-cao/demo@feature/config", ["--force"], {
   execute(command, args) {
     if (command === "gh" && args.join(" ") === "aw version")
       return {status:0, stdout:"", stderr:"gh-aw v0.92.4"};
@@ -49,7 +49,7 @@ process.stdout.write(JSON.stringify(result));
 			archive := campaignArchive(t, map[string]string{"catalog/demo/cao.json": testCampaignDeclaration})
 			var calls [][]string
 			root, stdout, _ := testCommand(t, campaignGH(t, archive, &calls), nil)
-			root.SetArgs([]string{"campaigns", "add", "githubnext/gh-aw-cao/demo@feature/config", "--force"})
+			root.SetArgs([]string{"campaigns", "add", "githubnext/gh-cao/demo@feature/config", "--force"})
 			if err := root.Execute(); err != nil {
 				t.Fatal(err)
 			}

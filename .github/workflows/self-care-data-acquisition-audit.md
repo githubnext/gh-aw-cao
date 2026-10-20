@@ -95,7 +95,7 @@ safe-outputs:
 
 # Data Acquisition Audit Refresher
 
-Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without investigating or changing files.
+Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without investigating or changing files.
 
 Re-audit the target repository and update `specs/data-acquisition-audit.md` only when its material findings have changed. When you make a material update, also add one dated row to its refresh ledger `specs/data-acquisition-audit-history.md`. Those two files are the only files you may change.
 

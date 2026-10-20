@@ -3,7 +3,7 @@
     "rows": [
       {
         "organization": "githubnext",
-        "repository": "gh-aw-cao",
+        "repository": "gh-cao",
         "workflow": ".github/workflows/dashboard.md",
         "run": "424242",
         "engine": "copilot",

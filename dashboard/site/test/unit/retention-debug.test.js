@@ -13,7 +13,7 @@ function batch(events) {
       source: 'fixture',
       sourceId: 'repository-1',
       observedAt: '2026-09-09T05:00:00Z',
-      data: { id: 'repository:1', owner: 'githubnext', name: 'gh-aw-cao' }
+      data: { id: 'repository:1', owner: 'githubnext', name: 'gh-cao' }
     },
     {
       kind: 'workflow',
@@ -30,7 +30,7 @@ function batch(events) {
       data: {
         githubRunId: 1,
         owner: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         repositoryId: 'repository:1',
         workflowId: 'workflow:1',
         startedAt: '2026-09-09T04:00:00Z'
@@ -43,7 +43,7 @@ function batch(events) {
       observedAt: event.timestamp,
       data: {
         id: event.eventId,
-        runId: event.runId ?? 'github:run:githubnext/gh-aw-cao:1',
+        runId: event.runId ?? 'github:run:githubnext/gh-cao:1',
         timestamp: event.timestamp,
         source: 'agent',
         type: 'user.message'
@@ -138,7 +138,7 @@ describe('retention debug logging', () => {
       for (const value of Object.values(payload)) {
         expect(typeof value === 'string' || typeof value === 'number').toBe(true);
       }
-      expect(JSON.stringify(payload)).not.toContain('gh-aw-cao');
+      expect(JSON.stringify(payload)).not.toContain('gh-cao');
       expect(JSON.stringify(payload)).not.toContain('event:');
     }
   });

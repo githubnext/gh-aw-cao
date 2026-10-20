@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var sqlbuilderLog = logger.New("cao:sqlbuilder")

@@ -36,6 +36,13 @@ The table below compares the deployment options. The GitHub Actions only option 
 
 Azure runs the host-neutral Go service from the `server/` directory, with authentication, authorization, cross-site request forgery (CSRF), webhook, rate-limit, and logging protections. You can also deploy that service on your own container platform; you are responsible for secret management, ingress, and delivery.
 
+**Server-backed means the Go server serves the dashboard itself.** Built HTML
+and assets, GitHub sign-in, query APIs, and revision events use the same hosted
+origin. Forward the entire application to the Go handler, not just API paths.
+Do not publish a separate Pages or static-hosted frontend for hosted mode.
+The browser uses server-side PostgreSQL queries; a hosted failure does not
+switch to browser storage or the Pages deployment.
+
 Use the [one-minute managed Redis guide](deployment-managed-redis.md) to connect
 AWS ElastiCache, Redis Cloud, GCP Memorystore, Railway, Render, or DigitalOcean.
 The same provider-neutral `cao.json` host contract also defines the local Redis,
@@ -54,7 +61,7 @@ Every option serves data derived from the same evidence.
 
 1. The `cao-activity.yml` workflow collects bounded `gh aw logs` evidence on a schedule.
 1. The `cao-dashboard.yml` workflow builds the dashboard site and a data payload. The payload includes a hash manifest (`payload-hashes.json`), an inventory (`inventory-sources.json`), and run and record files (`gh-aw-logs-runs/*.jsonl` and `gh-aw-logs-records/*.jsonl`).
-1. Your deployment serves the payload. GitHub Pages sends it to the browser. The Go server verifies it, transactionally loads dashboard entities into PostgreSQL, and answers bounded queries from PostgreSQL. Operational caches and state live in PostgreSQL by default, or in Redis when a deployment explicitly selects that legacy backend.
+1. The selected deployment consumes the payload. In static mode, GitHub Pages serves the UI and data to the browser. In hosted mode, the Go server serves the UI, verifies and transactionally loads the payload into PostgreSQL, and answers bounded same-origin queries. The payload is server ingestion input, not a separately hosted frontend. Operational caches and state live in PostgreSQL by default, or in Redis when a deployment explicitly selects that legacy backend.
 
 The optional Azure collection profile replaces the first step with server-side collection workers that GitHub App webhooks drive. For more information, see [Using the optional collection profile](deployment-azure.md#using-the-optional-collection-profile).
 
@@ -85,4 +92,4 @@ For collection boundaries, retention, and browser processing, see [Data ingestio
 - [Monitor and recover](operations.md), including [Publishing Pages reports](operations.md#publishing-pages-reports) and [Incident response](operations.md#incident-response)
 - [Optional observability](configuration.md#optional-observability) for the agentic workflows
 - [Glossary](glossary.md)
-- [`server/README.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md) and [`server/SECURITY.md`](https://github.com/githubnext/gh-aw-cao/blob/main/server/SECURITY.md), the detailed references for the Go server
+- [`server/README.md`](https://github.com/githubnext/gh-cao/blob/main/server/README.md) and [`server/SECURITY.md`](https://github.com/githubnext/gh-cao/blob/main/server/SECURITY.md), the detailed references for the Go server

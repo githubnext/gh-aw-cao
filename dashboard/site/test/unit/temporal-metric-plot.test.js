@@ -156,7 +156,7 @@ describe('Temporal metric plot', () => {
         id: 'value',
         label: 'githubnext/gh-aw',
         points: [
-          { x: '2026-09-22T00:00:00Z', y: 12.5, link: { href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/101', label: 'View run 101' } },
+          { x: '2026-09-22T00:00:00Z', y: 12.5, link: { href: 'https://github.com/githubnext/gh-cao/actions/runs/101', label: 'View run 101' } },
           { x: '2026-09-24T00:00:00Z', y: 8.25 }
         ]
       }]
@@ -168,7 +168,7 @@ describe('Temporal metric plot', () => {
     expect(tooltip?.textContent).toContain('not yet mature interim observation');
     const link = tooltip?.querySelector('a');
     expect(link?.textContent).toBe('View run report');
-    expect(link?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/101');
+    expect(link?.getAttribute('href')).toBe('https://github.com/githubnext/gh-cao/actions/runs/101');
     expect(link?.getAttribute('aria-label')).toBe('View run 101');
     expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
     expect(rendered.querySelectorAll('.temporal-plot-point-tooltip')).toHaveLength(1);

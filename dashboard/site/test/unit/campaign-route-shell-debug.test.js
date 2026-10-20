@@ -16,7 +16,7 @@ const workflows = [{
   campaign: 'ambient-context',
   'campaign-name': 'Ambient Context',
   organization: 'githubnext',
-  repository: 'gh-aw-cao',
+  repository: 'gh-cao',
   workflow: '.github/workflows/ambient-context.md',
   'workflow-name': 'Ambient Context',
   'workflow-role': 'orchestrator',

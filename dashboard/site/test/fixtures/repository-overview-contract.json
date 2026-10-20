@@ -1,0 +1,13 @@
+{
+  "page": "repository-detail",
+  "query-binding": "page",
+  "source": "repository-activity",
+  "route": { "repository": "org/alpha" },
+  "views": [
+    "repository-workflow-count",
+    "repository-run-count",
+    "repository-aic-total",
+    "repository-health-summary"
+  ],
+  "shared-dependency": "event-runs"
+}

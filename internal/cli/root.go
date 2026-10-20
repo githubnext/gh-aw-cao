@@ -7,7 +7,7 @@ import (
 	"github.com/github/gh-aw/pkg/logger"
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/internal/ghcli"
+	"github.com/githubnext/gh-cao/internal/ghcli"
 )
 
 var log = logger.New("cao:cli")
@@ -62,7 +62,9 @@ Help, version, and catalog discovery work offline.`,
 		doctorCommand(ghVersion, gh),
 	)
 	addPolicyCommands(root, gh)
+	root.AddCommand(admissionCommands(gh))
 	root.AddCommand(repositoryCommands(runtime))
-	addOperatorCommands(root, runtime)
+	addOperatorCommands(root, runtime, gh)
+	root.AddCommand(deployCommand(defaultDeployAzureDeps()))
 	return root
 }

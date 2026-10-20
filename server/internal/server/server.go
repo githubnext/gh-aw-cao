@@ -27,23 +27,25 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/audit"
-	"github.com/githubnext/gh-aw-cao/server/internal/dashboardstore"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubapp"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/ingest"
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/marketplace"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/repositorymemory"
-	"github.com/githubnext/gh-aw-cao/server/internal/sqlitex"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/admission"
+	"github.com/githubnext/gh-cao/server/internal/audit"
+	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/ingest"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/marketplace"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/repositorymemory"
+	"github.com/githubnext/gh-cao/server/internal/sqlitex"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 var serverLog = logger.New("cao:server")
@@ -87,7 +89,8 @@ type Config struct {
 	Logger               *log.Logger
 	// Audit records security audit events for administrator and hosted CLI
 	// operations; nil disables them (local mode and tests).
-	Audit *audit.Logger
+	Audit     *audit.Logger
+	Admission *AdmissionConfig
 	// RateLimits overrides inbound request rate limits; the zero value keeps
 	// the production defaults.
 	RateLimits RateLimitConfig
@@ -131,6 +134,7 @@ type App struct {
 	cacheError       error
 	githubResources  githubResourceCache
 	hostedCLI        *hostedCLI
+	admission        *admission.Service
 }
 
 func New(ctx context.Context, store operational.Store, config Config) (*App, error) {
@@ -217,9 +221,18 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	if err := validateHostedMode(store, &config); err != nil {
 		return nil, err
 	}
+	activationAdmission, err := newActivationAdmission(store, config)
+	if err != nil {
+		return nil, err
+	}
 	info, err := os.Stat(config.SiteDirectory)
 	if err != nil || !info.IsDir() {
 		return nil, errors.New("site directory must exist and contain the built dashboard")
+	}
+	if profile.Authentication == HostAuthenticationOAuth {
+		if err := validateHostedSite(config.SiteDirectory); err != nil {
+			return nil, err
+		}
 	}
 	if config.Logger == nil {
 		config.Logger = log.Default()
@@ -304,8 +317,9 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	}
 	serverLog.Printf("initialized host_profile=%s oauth=%t source_ingestion=%t", profile.Name, oauth != nil, config.SourceDirectory != "")
 	app := &App{
-		services: services,
-		database: config.Database, databaseQueries: databaseQueries, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
+		admission: activationAdmission,
+		services:  services,
+		database:  config.Database, databaseQueries: databaseQueries, config: config, accessToken: accessToken, oauth: oauth, hub: newEventHub(),
 		canonical: canonicalService{store: config.Database, definitions: databaseQueries}, reconciler: reconciler, memory: memoryResolver,
 		webhookSecret: []byte(config.WebhookSecret), actionsToken: actionsToken, actionsActor: actionsActor,
 		quota: quota, drain: make(chan struct{}),
@@ -662,6 +676,7 @@ func (a *App) Handler() http.Handler {
 	register("GET /llms.txt", a.llms)
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
+	register("POST /api/admission", a.activationAdmission)
 	if a.mcp != nil {
 		register("POST /mcp", a.mcp.ServeHTTP)
 	}
@@ -694,6 +709,18 @@ func (a *App) Handler() http.Handler {
 		handler = a.requireNotDraining(handler)
 	case HostListenerPlatform:
 	}
+	dashboardHandler := handler
+	handler = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/api/admission" {
+			route := semconv.HTTPRoute("/api/admission")
+			trace.SpanFromContext(request.Context()).SetAttributes(route)
+			labeler, _ := otelhttp.LabelerFromContext(request.Context())
+			labeler.Add(route)
+			a.activationAdmission(response, request)
+			return
+		}
+		dashboardHandler.ServeHTTP(response, request)
+	})
 	tracedHandler := withResponseTraceHeaders(handler)
 	instrumented := otelhttp.NewHandler(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		original := request.Context().Value(originalHTTPRequestKey{}).(*http.Request)
@@ -703,6 +730,9 @@ func (a *App) Handler() http.Handler {
 	}), telemetry.SpanHTTPServer,
 		// Sanitized parents are non-recording contexts, not SDK providers.
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
+		// Traceparent is extracted and sanitized below. Never let a global
+		// propagator reintroduce baggage, tracestate or a different parent.
+		otelhttp.WithPropagators(propagation.NewCompositeTextMapPropagator()),
 		otelhttp.WithFilter(func(request *http.Request) bool {
 			// OAuth callbacks use a dedicated, allowlisted server span instead
 			// of the generic HTTP instrumentation.
@@ -720,13 +750,26 @@ func (a *App) Handler() http.Handler {
 		}),
 	)
 	safeTelemetry := http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		ctx := telemetry.ExtractTraceparent(request.Context(), request.Header.Get("Traceparent"))
+		traceparent := request.Header.Get("Traceparent")
+		if request.URL.Path == "/api/admission" && len(request.Header.Values("Traceparent")) != 1 {
+			traceparent = ""
+		}
+		parentContext := request.Context()
+		if request.URL.Path == "/api/admission" {
+			parentContext = trace.ContextWithSpanContext(parentContext, trace.SpanContext{})
+		}
+		ctx := telemetry.ExtractTraceparent(parentContext, traceparent)
+		if request.URL.Path == "/api/admission" {
+			parent := trace.SpanContextFromContext(ctx)
+			// Use one local sampling choice, not the remote caller's sampled flag.
+			ctx = trace.ContextWithRemoteSpanContext(ctx, parent.WithTraceFlags(trace.FlagsSampled))
+		}
 		safe := request.Clone(context.WithValue(ctx, originalHTTPRequestKey{}, request))
 		safe.RemoteAddr = ""
 		safe.Host = ""
 		safe.RequestURI = ""
 		safe.Header = make(http.Header)
-		if traceparent := request.Header.Get("Traceparent"); traceparent != "" {
+		if traceparent != "" && request.URL.Path != "/api/admission" {
 			safe.Header.Set("Traceparent", traceparent)
 		}
 		path := ""
@@ -753,7 +796,9 @@ type originalHTTPRequestKey struct{}
 // the client to send its own traceparent header.
 func withResponseTraceHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		telemetry.SetResponseTraceHeaders(response, trace.SpanContextFromContext(request.Context()))
+		if request.URL.Path != "/api/admission" {
+			telemetry.SetResponseTraceHeaders(response, trace.SpanContextFromContext(request.Context()))
+		}
 		next.ServeHTTP(response, request)
 	})
 }
@@ -795,7 +840,7 @@ func (a *App) requireAccess(next http.Handler) http.Handler {
 			if (request.Method == http.MethodGet || request.Method == http.MethodHead) &&
 				constantTimeTokenEqual(request.URL.Query().Get("access_token"), a.accessToken) {
 				a.logAuthBranch("access.local_capability_accepted")
-				a.serveIndex(response, a.accessToken)
+				a.serveIndex(response, request, a.accessToken)
 				return
 			}
 			a.logAuthBranch("access.local_static_allowed")
@@ -1182,9 +1227,9 @@ Server commit SHA: %s
 
 ## Agent documentation
 
-- CAO agent resources: https://githubnext.github.io/gh-aw-cao/agent/llms.txt
-- Published dashboard agent guide: https://githubnext.github.io/gh-aw-cao/cao/llms.txt
-- Agent analysis and MCP setup: https://githubnext.github.io/gh-aw-cao/agent-analysis/
+- CAO agent resources: https://githubnext.github.io/gh-cao/agent/llms.txt
+- Published dashboard agent guide: https://githubnext.github.io/gh-cao/cao/llms.txt
+- Agent analysis and MCP setup: https://githubnext.github.io/gh-cao/agent-analysis/
 
 ## Configure MCP
 
@@ -1197,7 +1242,7 @@ Other hosted clients must run in GitHub Actions on the authorized repository's d
 send a repository-scoped GITHUB_TOKEN as a bearer token and an Actions OIDC token
 in X-GitHub-OIDC-Token (audience https://cao.githubnext.com).
 See the agent analysis guide and server setup documentation:
-https://github.com/githubnext/gh-aw-cao/blob/main/server/README.md#local-mcp-endpoint
+https://github.com/githubnext/gh-cao/blob/main/server/README.md#local-mcp-endpoint
 Never put credentials in a URL or in source control.
 `, revision)
 }
@@ -1693,7 +1738,7 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 	file, err := root.Open(clean)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			a.serveIndex(response, "")
+			a.serveIndex(response, request, "")
 		} else {
 			http.NotFound(response, request)
 		}
@@ -1706,13 +1751,13 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	if info.IsDir() || filepath.Base(clean) == "index.html" {
-		a.serveIndex(response, "")
+		a.serveIndex(response, request, "")
 		return
 	}
 	http.ServeContent(response, request, info.Name(), info.ModTime(), file)
 }
 
-func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
+func (a *App) serveIndex(response http.ResponseWriter, request *http.Request, accessToken string) {
 	root, err := os.OpenRoot(a.config.SiteDirectory)
 	if err != nil {
 		http.Error(response, "not found", http.StatusNotFound)
@@ -1732,6 +1777,9 @@ func (a *App) serveIndex(response http.ResponseWriter, accessToken string) {
 	injections := `<meta name="dashboard-data-backend" content="server-http"><meta name="dashboard-storage-backend" content="` + storageBackend + `">`
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
+		if a.adminAuthorized(request) {
+			injections += `<script>globalThis.__DASHBOARD_ADMIN__ = true;</script>`
+		}
 		if a.hostedCLI != nil {
 			injections += `<script>globalThis.__CLI_QUEUE__ = true;</script>`
 		}

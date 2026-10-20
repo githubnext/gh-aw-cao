@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/query"
 )
 
 func TestCompileQueriesCommandReadsAllFragmentsAndDatabaseQueries(t *testing.T) {

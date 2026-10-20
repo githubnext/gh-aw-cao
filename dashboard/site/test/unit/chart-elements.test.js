@@ -82,8 +82,8 @@ describe('chart element helpers', () => {
   });
 
   it('assigns stable palette colors to existing and new category identities', () => {
-    expect(chartSeriesClassName('githubnext/gh-aw-cao', 0))
-      .toBe(chartSeriesClassName('githubnext/gh-aw-cao', 9));
+    expect(chartSeriesClassName('githubnext/gh-cao', 0))
+      .toBe(chartSeriesClassName('githubnext/gh-cao', 9));
     expect(chartSeriesClassName('New Campaign', 1))
       .toBe(chartSeriesClassName(' new campaign ', 7));
     expect(chartSeriesClassName('Cafe\u0301', 0)).toBe('chart-series-2');
@@ -369,7 +369,7 @@ describe('chart element helpers', () => {
 
   it('formats linked horizontal bar categories without changing their destinations', () => {
     const points = [{
-      x: 'githubnext/gh-aw-cao:.github/workflows/optimization-agents-and-curator.md',
+      x: 'githubnext/gh-cao:.github/workflows/optimization-agents-and-curator.md',
       y: 40,
       color: null,
       link: { href: '#page-workflow-runtime?workflow=optimization', label: 'View workflow dashboard' }
@@ -389,7 +389,7 @@ describe('chart element helpers', () => {
     expect(chart.querySelector('.horizontal-bar-chart-label a')?.getAttribute('href'))
       .toBe('#page-workflow-runtime?workflow=optimization');
     expect(chart.querySelector('.horizontal-bar-chart-label-text')?.textContent)
-      .toBe('githubnext/gh-aw-cao (optimization-agents-and-curator.md)');
+      .toBe('githubnext/gh-cao (optimization-agents-and-curator.md)');
   });
 
   it('preserves complete horizontal bar labels with shared prefixes', () => {
@@ -535,14 +535,14 @@ describe('chart element helpers', () => {
       {
         x: '2026-08-28T08:00:00Z',
         y: Number.NaN,
-        category: 'doctor.md (githubnext/gh-aw-cao)',
+        category: 'doctor.md (githubnext/gh-cao)',
         color: 'success',
         source: { run: '1840' }
       },
       {
         x: '2026-08-28T08:00:00Z',
         y: Number.NaN,
-        category: 'doctor.md (githubnext/gh-aw-cao)',
+        category: 'doctor.md (githubnext/gh-cao)',
         color: 'failure',
         source: { run: '1841' }
       },
@@ -558,7 +558,7 @@ describe('chart element helpers', () => {
     const chart = renderChartWidget('swimlane', points, listChartSeries(points));
 
     expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.textContent)).toEqual([
-      'doctor.md (githubnext/gh-aw-cao)',
+      'doctor.md (githubnext/gh-cao)',
       'audit.md (githubnext/control-plane)'
     ]);
     expect(chart.querySelectorAll('.swimlane-run-mark')).toHaveLength(3);
@@ -568,7 +568,7 @@ describe('chart element helpers', () => {
     expect([...chart.querySelectorAll('[data-swimlane-count]')].map((mark) => mark.getAttribute('data-swimlane-count')))
       .toEqual(['1', '1', '1']);
     expect(chart.querySelector('.swimlane-mark-failure')?.getAttribute('aria-label'))
-      .toContain('Lane: doctor.md (githubnext/gh-aw-cao)');
+      .toContain('Lane: doctor.md (githubnext/gh-cao)');
   });
 
   it('renders 100,000 swimlane observations as bounded line intervals', () => {

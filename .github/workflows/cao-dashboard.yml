@@ -529,7 +529,7 @@ jobs:
             const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
             const runUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             const workflowSha = process.env.GITHUB_WORKFLOW_SHA
-            const debugSkillUrl = `${serverUrl}/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md`
+            const debugSkillUrl = `${serverUrl}/githubnext/gh-cao/blob/main/skills/debug-cao/SKILL.md`
             const rows = failures
               .map(({ code, message, result }) => `| \`${code}\` | ${message} | ${result} |`)
               .join('\n')

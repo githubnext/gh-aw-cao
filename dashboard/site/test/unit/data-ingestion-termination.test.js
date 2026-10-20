@@ -38,13 +38,13 @@ const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'gene
 function sourcesWithRuns(count) {
   return {
     repositories: {
-      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': metadata['as-of'] }],
+      rows: [{ organization: 'githubnext', repository: 'gh-cao', 'observed-at': metadata['as-of'] }],
       metadata
     },
     workflows: {
       rows: [{
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow: '.github/workflows/dashboard.md',
         'workflow-active': 'true',
         'observed-at': metadata['as-of']
@@ -54,7 +54,7 @@ function sourcesWithRuns(count) {
     runs: {
       rows: Array.from({ length: count }, (_, index) => ({
         organization: 'githubnext',
-        repository: 'gh-aw-cao',
+        repository: 'gh-cao',
         workflow: '.github/workflows/dashboard.md',
         run: String(1000 + index),
         'run-attempt': 1,

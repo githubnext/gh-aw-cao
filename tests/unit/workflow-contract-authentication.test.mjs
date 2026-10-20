@@ -40,6 +40,46 @@ test("Copilot setup uses Node 24", () => {
   assert.match(source, /actions\/setup-node@[0-9a-f]{40}[\s\S]*?node-version: 24[\s\S]*?cache: npm[\s\S]*?run: npm ci/);
 });
 
+test("Copilot setup stages evidence with the JavaScript runtime, not the operator extension", () => {
+  const setup = parse(workflow("copilot-setup-steps.yml"));
+  const steps = setup.jobs["copilot-setup-steps"].steps;
+  const stage = steps.find((step) => step.name === "Stage CAO dashboard evidence");
+  assert.equal(stage.run, "node activity/cao.mjs download");
+  assert.equal(stage.env.DASHBOARD_DATA_URL, "${{ vars.CAO_DASHBOARD_DATA_URL }}");
+  assert.doesNotMatch(steps.map((step) => step.run ?? "").join("\n"),
+    /\bgh[ \t]+cao\b|(?:^|[ \t/])gh-cao(?:\.exe)?[ \t]|\bmake[ \t]+build\b|\bgo[ \t]+build\b/);
+});
+
+test("agentic and deterministic CAO workflows do not invoke the native operator extension", () => {
+  // Release packaging verifies the native product, not the agent runtime.
+  const sources = readdirSync(workflowsDirectory).filter((name) => name.endsWith(".md") && name !== "release.md");
+  const names = [
+    ...sources,
+    ...sources.map((name) => name.replace(/\.md$/, ".lock.yml")),
+    ...readdirSync(join(workflowsDirectory, "shared")).filter((name) => name.endsWith(".md")).map((name) => `shared/${name}`),
+    "cao-activity.yml", "cao-dashboard.yml", "cao-validate.yml",
+  ];
+  for (const name of names) {
+    assert.doesNotMatch(workflow(name),
+      /\bgh[ \t]+cao\b|(?:^|[ \t/])gh-cao(?:\.exe)?[ \t]|\bgo[ \t]+(?:build|run)[^\n]*\.\/cmd\/gh-cao|\bgh[ \t]+extension[ \t]+(?:install|upgrade)[^\n]*gh-cao/m,
+      `${name} must use the installed JavaScript agent runtime`);
+  }
+});
+
+test("agent guidance documents the JavaScript-only workflow runtime", () => {
+  for (const file of [
+    ".github/cao/instructions.md",
+    "skills/cao-cli/SKILL.md",
+    "skills/analyze-cao/SKILL.md",
+    "skills/cao-cli/references/workflow-runtime.md",
+  ]) {
+    const source = readFileSync(join(root, file), "utf8");
+    assert.match(source, /activity\/`\s+and\s+`dashboard\/`/);
+    assert.match(source, /node activity\/cao\.mjs/);
+    assert.match(source, /(?:[Nn]ever|not|Do not)[\s\S]*?(?:build|install|invoke)[\s\S]*?(?:gh cao|extension)/);
+  }
+});
+
 test("Copilot setup installs and caches every npm package's locked dependencies", () => {
   const setup = parse(readFileSync(join(root, ".github", "workflows", "copilot-setup-steps.yml"), "utf8"));
   const steps = setup.jobs["copilot-setup-steps"].steps;
@@ -369,7 +409,7 @@ test("CAO Activity workflow token rejects broader collection instead of silently
 
 test("CAO Activity workflow token honors an explicit control-repository collection subset", () => {
   assert.deepEqual(activityCollectionPlan({
-    allowed_repositories: ["acme/control", "githubnext/gh-aw-cao"],
+    allowed_repositories: ["acme/control", "githubnext/gh-cao"],
     allowed_owners: ["acme", "githubnext"],
     activity_repositories: ["ACME/CONTROL"],
   }, {
@@ -383,7 +423,7 @@ test("CAO Activity workflow token honors an explicit control-repository collecti
   }]);
 
   assert.throws(() => activityCollectionPlan({
-    activity_repositories: ["githubnext/gh-aw-cao"],
+    activity_repositories: ["githubnext/gh-cao"],
   }, {
     authMode: "workflow-token",
     controlRepository: "acme/control",

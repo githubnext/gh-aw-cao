@@ -18,7 +18,7 @@ const completeMetadata = {
 
 const workflow = {
   organization: 'githubnext',
-  repository: 'gh-aw-cao',
+  repository: 'gh-cao',
   workflow: '.github/workflows/multi-device-docs-tester.md',
   'workflow-name': 'Multi-Device Docs Tester',
   'workflow-role': 'standalone',
@@ -28,9 +28,9 @@ const workflow = {
   'rollout-mode': 'review',
   'workflow-link': {
     relation: 'workflow',
-    href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
+    href: 'https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
     label: 'View Multi-Device Docs Tester',
-    'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md',
+    'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md',
     'dashboard-label': 'View Multi-Device Docs Tester workflow dashboard'
   }
 };
@@ -69,7 +69,7 @@ function context(overrides = {}) {
 }
 
 /** @param {HTMLElement} rendered @param {string} [value] */
-function selectWorkflow(rendered, value = 'githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md') {
+function selectWorkflow(rendered, value = 'githubnext/gh-cao:.github/workflows/multi-device-docs-tester.md') {
   rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
     detail: { parameter: 'workflow', value }
   }));
@@ -102,14 +102,14 @@ describe('renderWorkflowRuntime', () => {
     const rendered = renderWorkflowRuntime(context());
     selectWorkflow(rendered);
 
-    expect(rendered.dataset.workflow).toBe('githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md');
+    expect(rendered.dataset.workflow).toBe('githubnext/gh-cao:.github/workflows/multi-device-docs-tester.md');
     expect(rendered.querySelector('.repository-tabs')?.textContent).toBe('InsightsReportsRuns');
     expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Insights');
     expect(rendered.querySelector('.repository-tabs a:last-child')?.getAttribute('href')).toBe(
-      '#page-workflow-runs?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md'
+      '#page-workflow-runs?workflow=githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md'
     );
     expect(rendered.querySelector('.repository-tabs a:nth-child(2)')?.getAttribute('href')).toBe(
-      '#page-workflow-detail?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md'
+      '#page-workflow-detail?workflow=githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md'
     );
     expect([...rendered.querySelectorAll('.workflow-badges .workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Standalone',
@@ -119,7 +119,7 @@ describe('renderWorkflowRuntime', () => {
       '#page-campaign-insights?campaign=testing'
     ]);
     expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('href')).toBe(
-      'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md'
+      'https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md'
     );
     expect(rendered.querySelector('.workflow-identity > a')?.textContent).toBe('View authored workflow');
     expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('target')).toBe('_blank');
@@ -173,9 +173,9 @@ describe('renderWorkflowRuntime', () => {
     selectWorkflow(rendered);
     expect(detail).toEqual({
       title: 'Multi-Device Docs Tester',
-      description: 'Run health and AI Credit usage for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
+      description: 'Run health and AI Credit usage for .github/workflows/multi-device-docs-tester.md in githubnext/gh-cao.',
       titleLink: {
-        href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
+        href: 'https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
         label: 'Open Multi-Device Docs Tester workflow on GitHub'
       },
       mode: 'review',
@@ -184,7 +184,7 @@ describe('renderWorkflowRuntime', () => {
 
     selectWorkflow(rendered, '<invalid>');
     expect(rendered.textContent).toBe('Select a workflow to inspect its runtime.');
-    selectWorkflow(rendered, 'githubnext/gh-aw-cao:.github/workflows/missing.md');
+    selectWorkflow(rendered, 'githubnext/gh-cao:.github/workflows/missing.md');
     expect(rendered.textContent).toBe('Workflow not found.');
   });
 
@@ -198,7 +198,7 @@ describe('renderWorkflowRuntime', () => {
 
     expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Insights');
     expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.getAttribute('href')).toBe(
-      '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md'
+      '#page-workflow-runtime?workflow=githubnext%2Fgh-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md'
     );
     expect(rendered.querySelector('.workflow-runtime-metrics')).not.toBeNull();
   });

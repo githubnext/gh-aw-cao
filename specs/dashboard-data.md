@@ -1,6 +1,6 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
-description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
+description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-cao dashboard.
 version: 1.8.3
 status: Working Draft
 editors:
@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.8.3
 **Status:** Working Draft
-**Repository:** `githubnext/gh-aw-cao`
+**Repository:** `githubnext/gh-cao`
 **Target implementation:** Dashboard data subsystem
 **Date:** 2026-10-11
 
@@ -70,28 +70,50 @@ GitHub creation or ingestion time.
 
 The Model routing page SHALL admit `model.resolution` into
 `routing-session-observations` and apply the same latest-attempt selection and
-Routing scope filters before joining resolution events. Its Model resolution
-section SHALL report coverage over scoped runs (runs with resolution evidence,
-positively identified routed runs, routed runs without resolution and non-routed
-runs without resolution), status by event engine and role with distinct run and
-record counts, alias moves and history, and failures grouped by configured
-model and cause with links to the contributing runs. Roles are records, not
-runs: four roles from one run count as one run. A routed session is expected to
-have no configured-model resolution; absence SHALL NOT classify a run as routed,
-failed or successful, and legacy sessions without the event SHALL report no
-resolution evidence. Alias series SHALL be keyed by repository, workflow,
-engine, role, provider and configured model, so unrelated resolutions cannot
-manufacture a move. A move SHALL be highlighted only between adjacent runs with
-recorded session clocks; untimed runs are counted but cannot establish a
-transition. Alias moves are observations of resolution, not served-model
-evidence or a cause. The `routing-run` drill-down SHALL list each run's
+Routing scope filters before joining resolution events. Failed resolutions
+SHALL appear in its Problems view with their distinct causes and a link to the
+run page; per-run resolution roles SHALL stay on the run page. Roles are
+records, not runs: four roles from one run count as one run. A routed session is
+expected to have no configured-model resolution; absence SHALL NOT classify a
+run as routed, failed or successful, and legacy sessions without the event
+SHALL report no resolution evidence. Any future alias view SHALL key alias
+series by repository, workflow, engine, role, provider and configured model, so
+unrelated resolutions cannot manufacture a move, and SHALL highlight a move only
+between adjacent runs with recorded session clocks; untimed runs are counted but
+cannot establish a transition. Alias moves are observations of resolution, not
+served-model evidence or a cause. The page is not required to show alias
+history. The `routing-run` drill-down SHALL list each run's
 resolution roles with configured-to-resolved model, status, cause, engine and
 provider, showing unknown values rather than manufacturing rows.
 
-The Model routing page currently provides adoption, objective/classifier
-dimensions, label-to-pick counts, workflow stability, exclusive AIC/token
-attribution, complete-cost distributions and observational baselines, deviation
-shares, failure facts, agent-job Wilson intervals and a run drill-down. It does
+Run drill-down queries SHALL constrain complete run partitions before projecting
+Audit evidence, using canonical run identities and the Audit run index. This
+constraint MUST preserve all attempts until session selection, all events and
+accounting phases within the selected run, and reactive refreshes. A constraint
+may cross a window only on its partition keys and may narrow a joined source
+only through a preserved mandatory equality key. Cross-run history and
+observational baselines MUST retain their required evidence. Tables SHALL use
+canonical pagination and fail-closed output budgets, not synthesize semantic
+source-query limits before view scope. All authored query limits, including a
+displayed source's limit, remain semantic boundaries and MUST NOT be moved across
+scope.
+
+The Model routing page currently provides five views. Routing health by
+workflow answers whether routing is on and working: per repository and workflow
+with a routed run, it shows routed runs, the share with a model selected, the
+share with an agent-phase routing failure or degraded classification (no
+separate fallback field exists), the share of runs whose agent-phase requests
+followed the pick, the success rate over known agent-job outcomes and the median
+AIC per complete run. Models picked over time answers what the router chooses,
+counting proxy-selected runs with a known pick model per UTC ISO week.
+Cost per run over time answers whether routing pays off with the weekly median
+AIC per routing state; it is labeled observational, not causal, because routed
+and unrouted runs are different tasks. Problems answers what needs attention
+with one row per run and kind (routing failure, deviation or resolution failure),
+its cause, a run-page link and the run's recorded observation time. Routing runs
+lists identified runs and opens the run drill-down. A share or median without
+evidence (a zero denominator or no complete cost) and a week with fewer complete
+runs than the minimum sample SHALL be unknown or a gap, never zero. It does
 not yet implement candidate ranking, inventory/router change context, prioritized deviation causes, failure clustering, or the full
 safe-output/grader/delayed-outcome comparison surfaces of the upstream analytics
 specification. Absent producer fields and these unimplemented analyses MUST NOT
@@ -595,6 +617,39 @@ The default local profile is loopback-only. The separate hosted profile requires
 GitHub OAuth and explicit organization/team authorization; neither profile
 grants database access to clients.
 
+The optional hosted OIDC admission gate MAY publish early Run evidence only
+after verified identity, policy approval and durable decision resolution.
+Successful publication SHALL insert a sparse canonical `runs` row with
+`status: admitted` and `admissionStatus: admitted`, using the existing
+repository-scoped GitHub run ID and normalized workflow relationship.
+Blocked, revoked, malformed or unauthenticated attempts SHALL create no Run
+or parent rows. Missing repository/workflow identity parents MAY be inserted
+sparsely; existing inventory identities SHALL be reused. The observation
+timestamp is `updatedAt`, not a fabricated workflow start or creation time.
+No conclusion, completion, actor, allowance or usage SHALL be synthesized.
+Canonical attempts outside the BIGINT range SHALL remain unknown rather than
+truncate; exact signed invocation identity remains in the independent decision
+key and is not reconstructed from the projection.
+
+Run publication SHALL be atomic with its missing parents and revision update,
+idempotent across retries, and serialized with canonical replacement. Pending
+admitted rows and required parents SHALL survive replacement snapshots that
+have not observed their run yet; an incoming canonical row with that Run ID
+SHALL take precedence. Late admission retries SHALL NOT downgrade collected
+evidence or refresh the admission observation time. Source quality containing
+these sparse rows SHALL remain partial. Admission is not proof of actual
+execution, completion, outcome or spend. Projection failure SHALL return a
+generic transient response without discarding the durable admission decision.
+
+Hosted container, Azure Functions, and external-listener deployments SHALL
+serve the built dashboard HTML and assets through the complete Go handler on
+the same origin as OAuth, query APIs, and revision events. They SHALL NOT
+require a separately hosted Pages or static frontend. Hosted startup SHALL
+reject a missing, unreadable, or empty built `index.html`. Dashboard entry
+responses SHALL select the `server-http` backend and SHALL NOT be cached as
+static HTML. Hosted service failures SHALL NOT fall back to browser shard
+ingestion, IndexedDB query execution, or the separate Pages deployment.
+
 `gh-aw-cao-dashboard-data` is the logical database name. Every implemented
 store uses `id` as its key path. The implemented secondary indexes are:
 
@@ -642,7 +697,12 @@ Canonical write APIs SHALL prepare these keys after pruning redundant fields;
 canonical read APIs SHALL remove them. Equivalent native query plans MAY
 evaluate declared row-local expressions on distinct indexed keys, read only
 matching observations, and obtain grouped event counts from indexes before
-materializing bounded results. Such plans MUST preserve observation grain,
+materializing bounded results. An unchanged single-field string equality MAY
+seek its encoded tuple directly only after verifying index coverage and excluding
+non-string tuples; nullable, coercible, structured, or computed values retain
+normal dictionary evaluation. The Domain runs table SHALL consume its declared
+`domain-run-records` query and return only the paginated view alias, not an
+additional unbounded `domains` collection. Such plans MUST preserve observation grain,
 run attempts, null and missing values, ordering, provenance, pagination, and
 unavailable inputs. Unsupported plans retain normal fail-closed execution, and
 an oversized selected scope MUST NOT be truncated or have its limits raised.
@@ -1396,8 +1456,8 @@ Example:
   githubId: 123456,
 
   owner: "githubnext",
-  name: "gh-aw-cao",
-  fullName: "githubnext/gh-aw-cao",
+  name: "gh-cao",
+  fullName: "githubnext/gh-cao",
 
   visibility: "public",
 
@@ -1457,7 +1517,7 @@ Example:
 
 ```js
 {
-  id: "github:run:githubnext/gh-aw-cao:123456789",
+  id: "github:run:githubnext/gh-cao:123456789",
 
   repositoryId: "...",
   targetRepositoryId: "...",
@@ -1678,6 +1738,16 @@ Grader values and units MUST remain distinct from YES/NO eval answers in
 dashboard views; a grader score or pass/fail status does not create an Eval.
 Direct artifact ingestion SHALL apply the same classification and identity
 checks to supplied `evals.jsonl` records when session eval evidence is absent.
+Version-1 and version-2 `grader_results.json` documents SHALL use the same
+allowlisted projection as session grader events, enriched by the adjacent
+`grader_manifest.json`. Collection SHALL verify the artifact's repository,
+run and attempt using `aw_info.json`; supplied result run identities and
+attempts MUST also agree. Session results remain authoritative for duplicate
+IDs; the downstream `graders` artifact MAY supplement them with previously
+unrecorded custom results, without duplicating built-ins. Compact
+`usage/graders/`, named or prefixed `graders` artifacts, and flattened files
+SHALL be supported. Ordered metrics SHALL preserve explicit `null` values
+as unavailable evidence, not discard them or promote a diagnostic metric.
 The Evals observation ledger SHALL display retained `YES`, `NO`, and `UNKNOWN`
 answers distinctly, preserving run evidence links and observation times rather
 than hiding unknown answers behind a binary-only filter.
@@ -1826,7 +1896,7 @@ Example:
 {
   id: "domain:01J...",
 
-  runId: "github:run:githubnext/gh-aw-cao:123456789",
+  runId: "github:run:githubnext/gh-cao:123456789",
 
   sequence: 17,
   timestamp: "...",

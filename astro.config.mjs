@@ -20,16 +20,16 @@ function createAuthors(authors) {
 
 export default defineConfig({
   site: "https://githubnext.github.io",
-  base: "/gh-aw-cao",
+  base: "/gh-cao",
   redirects: {
-    "/control-plane-authentication": "/gh-aw-cao/authentication/",
-    "/getting-started": "/gh-aw-cao/setup-quickstarts/",
-    "/setup": "/gh-aw-cao/setup-quickstarts/",
+    "/control-plane-authentication": "/gh-cao/authentication/",
+    "/getting-started": "/gh-cao/setup-quickstarts/",
+    "/setup": "/gh-cao/setup-quickstarts/",
   },
   srcDir: "./docs",
   markdown: {
     processor: unified({
-      remarkPlugins: [[rewriteDocsLinks, { base: "/gh-aw-cao" }]],
+      remarkPlugins: [[rewriteDocsLinks, { base: "/gh-cao" }]],
     }),
   },
   integrations: [
@@ -69,7 +69,7 @@ export default defineConfig({
         starlightAgent({
           projectName: "Central Agentic Ops",
           description: "Machine-readable navigation for the authoritative CAO documentation and dashboard architecture.",
-          repository: "githubnext/gh-aw-cao",
+          repository: "githubnext/gh-cao",
         }),
         starlightLlmsTxt({
           projectName: "Central Agentic Ops",
@@ -92,6 +92,7 @@ export default defineConfig({
           exclude: [
             "activity*",
             "admission",
+            "admission-gate",
             "agent-*",
             "agentic-*",
             "architecture",
@@ -118,52 +119,52 @@ export default defineConfig({
           optionalLinks: [
             {
               label: "Set up a CAO control plane",
-              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/setup-cao/SKILL.md",
+              url: "https://github.com/githubnext/gh-cao/blob/main/skills/setup-cao/SKILL.md",
               description: "Use setup-cao for bootstrap, repository scope, and authentication.",
             },
             {
               label: "Debug a CAO failure",
-              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/debug-cao/SKILL.md",
+              url: "https://github.com/githubnext/gh-cao/blob/main/skills/debug-cao/SKILL.md",
               description: "Use debug-cao for policy, credential, workflow, Activity, dashboard, or safe-output failures.",
             },
             {
               label: "Add an existing campaign",
-              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/add-cao-campaign/SKILL.md",
+              url: "https://github.com/githubnext/gh-cao/blob/main/skills/add-cao-campaign/SKILL.md",
               description: "Use add-cao-campaign to discover, compare, and install a catalog campaign.",
             },
             {
               label: "Create a new campaign",
-              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/create-cao-campaign/SKILL.md",
+              url: "https://github.com/githubnext/gh-cao/blob/main/skills/create-cao-campaign/SKILL.md",
               description: "Use create-cao-campaign to author an orchestrator and its workers.",
             },
             {
               label: "Analyze CAO activity",
-              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/analyze-cao/SKILL.md",
+              url: "https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md",
               description: "Use analyze-cao to answer questions from a published Activity snapshot.",
             },
             {
               label: "Use or extend the CAO CLI",
-              url: "https://github.com/githubnext/gh-aw-cao/blob/main/skills/cao-cli/SKILL.md",
+              url: "https://github.com/githubnext/gh-cao/blob/main/skills/cao-cli/SKILL.md",
               description: "Use cao-cli for command selection, workflow invocation, and CLI development.",
             },
             {
               label: "Compact project context",
-              url: "https://githubnext.github.io/gh-aw-cao/llms-small.txt",
+              url: "https://githubnext.github.io/gh-cao/llms-small.txt",
               description: "Load only when a routed skill needs project context.",
             },
             {
               label: "Dashboard data access",
-              url: "https://githubnext.github.io/gh-aw-cao/cao/llms.txt",
+              url: "https://githubnext.github.io/gh-cao/cao/llms.txt",
               description: "Choose bounded dashboard artifacts, MCP queries, or local SQLite analysis.",
             },
             {
               label: "Machine-readable resource index",
-              url: "https://githubnext.github.io/gh-aw-cao/agent/resources.json",
+              url: "https://githubnext.github.io/gh-cao/agent/resources.json",
               description: "Discover every documentation route without loading its body.",
             },
             {
               label: "Scoped documentation index",
-              url: "https://githubnext.github.io/gh-aw-cao/agent/llms.txt",
+              url: "https://githubnext.github.io/gh-cao/agent/llms.txt",
               description: "Browse the small set of important HTML and JSON resources.",
             },
           ],
@@ -179,7 +180,7 @@ export default defineConfig({
         ThemeSelect: "./docs/components/ThemeToggle.astro",
       },
       editLink: {
-        baseUrl: "https://github.com/githubnext/gh-aw-cao/edit/main/",
+        baseUrl: "https://github.com/githubnext/gh-cao/edit/main/",
       },
       head: [
         {
@@ -240,7 +241,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub repository",
-          href: "https://github.com/githubnext/gh-aw-cao",
+          href: "https://github.com/githubnext/gh-cao",
         },
       ],
       sidebar: [
@@ -265,6 +266,7 @@ export default defineConfig({
           items: [
             { label: "Control plane status", link: "/cao/" },
             { label: "Admission gates", link: "/admission/" },
+            { label: "Set up the admission gate", link: "/admission-gate/" },
             { label: "Roll out a campaign", link: "/rollout-and-routing/" },
             { label: "Monitor and recover", link: "/operations/" },
             { label: "Emergency stop", link: "/operations/#emergency-stop" },

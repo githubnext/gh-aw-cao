@@ -4,19 +4,19 @@ import { renderLinkedText, createEntityAwareCellRenderer } from '../../src/compo
 
 describe('linked text helpers', () => {
   it('renders plain text when no safe link is available and an anchor when a safe link exists', () => {
-    expect(renderLinkedText('gh-aw-cao', null)).toBe('gh-aw-cao');
+    expect(renderLinkedText('gh-cao', null)).toBe('gh-cao');
 
-    const linked = /** @type {HTMLElement} */ (renderLinkedText('gh-aw-cao', {
-      href: 'https://github.com/githubnext/gh-aw-cao',
-      label: 'View githubnext/gh-aw-cao on GitHub'
+    const linked = /** @type {HTMLElement} */ (renderLinkedText('gh-cao', {
+      href: 'https://github.com/githubnext/gh-cao',
+      label: 'View githubnext/gh-cao on GitHub'
     }));
 
     expect(linked).toBeInstanceOf(HTMLElement);
-    expect(linked.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
+    expect(linked.getAttribute('href')).toBe('https://github.com/githubnext/gh-cao');
     expect(linked.getAttribute('target')).toBe('_blank');
     expect(linked.getAttribute('rel')).toBe('noopener noreferrer');
-    expect(linked.getAttribute('aria-label')).toBe('View githubnext/gh-aw-cao on GitHub');
-    expect(linked.textContent).toBe('gh-aw-cao');
+    expect(linked.getAttribute('aria-label')).toBe('View githubnext/gh-cao on GitHub');
+    expect(linked.textContent).toBe('gh-cao');
   });
 
   it('renders entity-aware linked table values only for mapped entity fields with safe links', () => {
@@ -27,25 +27,25 @@ describe('linked text helpers', () => {
       (value) => value == null ? 'unknown' : String(value)
     );
 
-    const linkedRepository = /** @type {HTMLElement} */ (renderEntityAwareCellValue('repository', 'gh-aw-cao', {
+    const linkedRepository = /** @type {HTMLElement} */ (renderEntityAwareCellValue('repository', 'gh-cao', {
       'repository-link': {
-        href: 'https://github.com/githubnext/gh-aw-cao',
-        label: 'View githubnext/gh-aw-cao on GitHub'
+        href: 'https://github.com/githubnext/gh-cao',
+        label: 'View githubnext/gh-cao on GitHub'
       }
     }));
     const plainStatus = renderEntityAwareCellValue('run-status', 'completed', {
       'repository-link': {
-        href: 'https://github.com/githubnext/gh-aw-cao',
-        label: 'View githubnext/gh-aw-cao on GitHub'
+        href: 'https://github.com/githubnext/gh-cao',
+        label: 'View githubnext/gh-cao on GitHub'
       }
     });
-    const plainRepository = renderEntityAwareCellValue('repository', 'gh-aw-cao', {});
+    const plainRepository = renderEntityAwareCellValue('repository', 'gh-cao', {});
 
     expect(linkedRepository).toBeInstanceOf(HTMLElement);
-    expect(linkedRepository.textContent).toBe('gh-aw-cao');
-    expect(linkedRepository.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
+    expect(linkedRepository.textContent).toBe('gh-cao');
+    expect(linkedRepository.getAttribute('href')).toBe('https://github.com/githubnext/gh-cao');
     expect(plainStatus).toBe('text:completed');
-    expect(plainRepository).toBe('text:gh-aw-cao');
+    expect(plainRepository).toBe('text:gh-cao');
   });
 
   it('DLS-TEST-003 keeps absent entity values unlinked so missing-data markers stay visible', () => {
@@ -57,7 +57,7 @@ describe('linked text helpers', () => {
     );
     const row = {
       'workflow-link': {
-        href: 'https://github.com/githubnext/gh-aw-cao',
+        href: 'https://github.com/githubnext/gh-cao',
         label: 'View workflow on GitHub'
       }
     };

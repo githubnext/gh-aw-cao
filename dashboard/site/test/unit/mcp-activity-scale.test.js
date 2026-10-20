@@ -7,13 +7,13 @@ describe('bounded MCP activity inventory', () => {
   it('counts more than 100,000 calls through the production query handler without an oversized label-only intermediate', async () => {
     const count = DASHBOARD_QUERY_LIMITS['max-output-rows'] + 1;
     const rows = Array.from({ length: count }, (_, index) => ({
-      organization: 'githubnext', repository: 'gh-aw-cao',
+      organization: 'githubnext', repository: 'gh-cao',
       workflow: `workflow-${index % 3}.md`, 'mcp-observation': `call-${index}`,
       'mcp-server': 'github', 'mcp-tool': 'list_issues',
       'request-bytes': 2, 'response-bytes': 3
     }));
     rows.push({
-      organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'workflow-0.md',
+      organization: 'githubnext', repository: 'gh-cao', workflow: 'workflow-0.md',
       'mcp-observation': 'safe-output-call', 'mcp-server': 'safe_outputs',
       'mcp-tool': 'create_issue', 'request-bytes': 100, 'response-bytes': 200
     });

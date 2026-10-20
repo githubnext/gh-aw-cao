@@ -24,7 +24,7 @@ The current measure contract is:
 ```
 
 For the normative computation model, see the
-[Computations Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/computations.md).
+[Computations Specification](https://github.com/githubnext/gh-cao/blob/main/specs/computations.md).
 
 ## Run it
 

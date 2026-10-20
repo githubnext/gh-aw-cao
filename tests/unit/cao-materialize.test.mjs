@@ -148,6 +148,8 @@ test("the runtime package uses npm files selection without shipping development 
     assert.ok(packed.files.includes("dashboard/site/scripts/build.mjs"));
     assert.ok(packed.files.includes("dashboard/site/src/data-worker.js"));
     assert.ok(packed.files.includes("dashboard/site/package-lock.json"));
+    assert.ok(!packed.files.includes("activity/quickstart.mjs"));
+    assert.ok(!packed.files.includes("activity/commands/quickstart.mjs"));
     assert.deepEqual(JSON.parse(readFileSync(path.join(packed.sourceRoot, "package.json"), "utf8")), runtimeManifest);
     for (const file of packed.files) {
       assert.doesNotMatch(file, /(?:^|\/)(?:test|tests|fixtures|screenshots|skills|com\.github\.copilot)(?:\/|$)/);
@@ -324,7 +326,7 @@ for (const missingResource of [
     const destination = mkdtempSync(path.join(tmpdir(), "cao-materialize-existing-plugin-"));
     try {
       const [{ resources }] = planCaoMaterialization([{
-        name: "githubnext/gh-aw-cao",
+        name: "githubnext/gh-cao",
         record: { resolvedCommit: "1".repeat(40) },
       }], "root");
       for (const resource of [...resources, ...runtimeManifest.files]) {
@@ -371,11 +373,11 @@ test("root materialization preserves exact focused package revisions", () => {
   const activityRevision = "2".repeat(40);
   const plans = planCaoMaterialization([
     {
-      name: "githubnext/gh-aw-cao/control-plane",
+      name: "githubnext/gh-cao/control-plane",
       record: { resolvedCommit: rootRevision },
     },
     {
-      name: "githubnext/gh-aw-cao/activity",
+      name: "githubnext/gh-cao/activity",
       record: { resolvedCommit: activityRevision },
     },
   ], "root");
@@ -423,7 +425,7 @@ test("root installation provides every local action used by its installed workfl
   };
   visit("aw.yml");
   const [{ resources }] = planCaoMaterialization([{
-    name: "githubnext/gh-aw-cao/control-plane",
+    name: "githubnext/gh-cao/control-plane",
     record: { resolvedCommit: "1".repeat(40) },
   }], "root");
   const provided = (file) =>
@@ -445,8 +447,8 @@ test("root installation provides every local action used by its installed workfl
 test("CAO materialization requires immutable resolved commit provenance", () => {
   assert.throws(
     () => planCaoMaterialization([{
-      name: "githubnext/gh-aw-cao",
-      record: { source: "githubnext/gh-aw-cao@v1.2.3" },
+      name: "githubnext/gh-cao",
+      record: { source: "githubnext/gh-cao@v1.2.3" },
     }], "root"),
     /must contain a full resolvedCommit SHA/,
   );

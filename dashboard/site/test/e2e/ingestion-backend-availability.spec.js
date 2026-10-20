@@ -65,9 +65,9 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
     if (url.pathname === '/inventory-sources.json') {
       await route.fulfill({
         json: {
-          repositories: { rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }], metadata: { 'as-of': asOf } },
+          repositories: { rows: [{ organization: 'githubnext', repository: 'gh-cao' }], metadata: { 'as-of': asOf } },
           workflows: {
-            rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'dashboard.md', 'workflow-name': 'Dashboard' }],
+            rows: [{ organization: 'githubnext', repository: 'gh-cao', workflow: 'dashboard.md', 'workflow-name': 'Dashboard' }],
             metadata: { 'as-of': asOf }
           }
         }
@@ -80,7 +80,7 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
         body: route.request().method() === 'HEAD' ? '' : normalizedRunShard(`${JSON.stringify({
           schema_version: 2, kind: 'run',
           run: {
-            run_id: 3001, run_attempt: 1, organization: 'githubnext', repository: 'gh-aw-cao',
+            run_id: 3001, run_attempt: 1, organization: 'githubnext', repository: 'gh-cao',
             workflow_path: 'dashboard.md', workflow_name: 'Dashboard', status: 'completed',
             conclusion: 'success', created_at: asOf, updated_at: asOf
           }

@@ -7,7 +7,7 @@ import (
 	"math"
 	"time"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 var _ wg.BatchQueue = (*webhookQueue)(nil)

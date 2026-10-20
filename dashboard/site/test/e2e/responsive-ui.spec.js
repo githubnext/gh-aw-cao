@@ -64,7 +64,7 @@ test('footer omits data update details and keeps versions within the viewport', 
       ghAwVersion: 'v0.91.1',
       commitSha: 'a7a23e1'.padEnd(40, '0'),
       githubUrlBase: 'https://github.com',
-      dashboardRepository: 'githubnext/gh-aw-cao'
+      dashboardRepository: 'githubnext/gh-cao'
     }));
   }, ['http://dashboard.test/src/styles.js', 'http://dashboard.test/src/components/dashboard-footer.js']);
 
@@ -238,8 +238,8 @@ test('mobile title bar keeps the dashboard subtitle adjacent to the page title',
         languageVersion: '0.1.0',
         dashboard: {
           id: 'mobile-title-dashboard',
-          title: 'gh-aw-cao',
-          repository: 'githubnext/gh-aw-cao',
+          title: 'gh-cao',
+          repository: 'githubnext/gh-cao',
           pages: [
             { id: 'overview', kind: 'custom', title: 'Overview', description: 'Operational dashboard', views: [], sections: [] }
           ]
@@ -251,7 +251,7 @@ test('mobile title bar keeps the dashboard subtitle adjacent to the page title',
 
   const mobileHeader = page.locator('.mobile-page-header');
   await expect(mobileHeader.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
-  await expect(mobileHeader.locator('.mobile-brand-name')).toHaveText('gh-aw-cao');
+  await expect(mobileHeader.locator('.mobile-brand-name')).toHaveText('gh-cao');
   await expect(mobileHeader.locator('[data-page-description]')).toHaveAttribute('aria-hidden', 'true');
 
   const titleGap = await mobileHeader.evaluate((element) => {
@@ -711,11 +711,11 @@ test('mobile horizontal bar sections keep repository context outside concise wor
   await page.setViewportSize({ width: 390, height: 844 });
   await renderHorizontalBarFixture(page, {
     labels: ['dependabot-update-planner.md', 'dependabot-update-worker.md', 'deploy.md'],
-    sections: ['githubnext/gh-aw-cao', 'githubnext/gh-aw-cao', 'octo/app']
+    sections: ['githubnext/gh-cao', 'githubnext/gh-cao', 'octo/app']
   });
 
   await expect(page.locator('.horizontal-bar-chart-section-title'))
-    .toHaveText(['githubnext/gh-aw-cao', 'octo/app']);
+    .toHaveText(['githubnext/gh-cao', 'octo/app']);
   await expect(page.locator('.horizontal-bar-chart-label-text'))
     .toHaveText(['dependabot-update-planner.md', 'dependabot-update-worker.md', 'deploy.md']);
   await expect.poll(() => page.locator('.horizontal-bar-chart-label-text').evaluateAll((elements) => (
@@ -870,7 +870,7 @@ test('mobile chart cards keep content close to the viewport edges', async ({ pag
         languageVersion: '0.1.0',
         dashboard: {
           id: 'mobile-chart-dashboard',
-          title: 'gh-aw-cao',
+          title: 'gh-cao',
           pages: [{
             id: 'cost',
             kind: 'custom',

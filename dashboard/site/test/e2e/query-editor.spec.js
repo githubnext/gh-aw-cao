@@ -316,7 +316,7 @@ test('preview subscriptions refresh from canonical ingestion and worker output s
       runs: {
         metadata: { 'as-of': '2026-10-10T11:00:00Z', 'artifact-generation': 'query-editor-refresh' },
         rows: Array.from({ length: 251 }, (_, index) => ({
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/example.md',
+          organization: 'githubnext', repository: 'gh-cao', workflow: '.github/workflows/example.md',
           run: String(1000 + index), 'run-attempt': 1, 'run-status': 'completed', 'run-conclusion': 'failure',
           'started-at': '2026-10-10T10:00:00Z'
         }))

@@ -16,18 +16,18 @@ describe('SQL export adapter', () => {
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch).toMatchObject({
-      repositories: [{ id: 'github:repository:101', owner: 'githubnext', name: 'gh-aw-cao' }],
+      repositories: [{ id: 'github:repository:101', owner: 'githubnext', name: 'gh-cao' }],
       workflows: [{ id: 'github:workflow:202', repositoryId: 'github:repository:101' }],
       runs: [{
-        id: 'github:run:githubnext/gh-aw-cao:303',
+        id: 'github:run:githubnext/gh-cao:303',
         repositoryId: 'github:repository:101',
         workflowId: 'github:workflow:202'
       }],
       audits: expect.arrayContaining([
-        expect.objectContaining({ runId: 'github:run:githubnext/gh-aw-cao:303' })
+        expect.objectContaining({ runId: 'github:run:githubnext/gh-cao:303' })
       ]),
       domains: [expect.objectContaining({
-        runId: 'github:run:githubnext/gh-aw-cao:303',
+        runId: 'github:run:githubnext/gh-cao:303',
         domain: 'api.github.com'
       })]
     });
@@ -54,7 +54,7 @@ describe('SQL export adapter', () => {
       github_run_id: '303',
       run_attempt: 1,
       is_pull_request: false,
-      url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+      url: 'https://github.com/githubnext/gh-cao/issues/42'
     });
 
     const [issue] = normalize(adaptSqlExport(input).observations).issues;
@@ -93,8 +93,8 @@ describe('SQL export adapter', () => {
       optimization_previous_recommendation_disposition: 'unapplied',
       optimization_recommendation_disposition: 'applied',
       optimization_evidence_state: 'complete',
-      optimization_safe_output_id: 'github:issue:githubnext/gh-aw-cao:11861',
-      optimization_safe_output_url: 'https://github.com/githubnext/gh-aw-cao/issues/11861',
+      optimization_safe_output_id: 'github:issue:githubnext/gh-cao:11861',
+      optimization_safe_output_url: 'https://github.com/githubnext/gh-cao/issues/11861',
       optimization_implementation_change_id: 'github:pull-request:octo/example:42',
       optimization_implementation_pull_request_url: 'https://github.com/octo/example/pull/42',
       optimization_implementation_run_ids: ['7001'],
@@ -106,7 +106,7 @@ describe('SQL export adapter', () => {
       optimization_actor: 'maintainer',
       optimization_source_provenance: {
         kind: 'workflow-dispatch-claim',
-        sourceId: 'github-actions-run:githubnext/gh-aw-cao:1189001:attempt:1'
+        sourceId: 'github-actions-run:githubnext/gh-cao:1189001:attempt:1'
       },
       optimization_accepted_at: '2026-09-08T04:00:00Z',
       optimization_implementation_started_at: '2026-09-08T05:00:00Z',
@@ -137,7 +137,7 @@ describe('SQL export adapter', () => {
       actor: 'maintainer',
       sourceProvenance: {
         kind: 'workflow-dispatch-claim',
-        sourceId: 'github-actions-run:githubnext/gh-aw-cao:1189001:attempt:1'
+        sourceId: 'github-actions-run:githubnext/gh-cao:1189001:attempt:1'
       }
     });
   });

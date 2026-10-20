@@ -8,7 +8,7 @@ import test from "node:test";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const control = join(root, ".github", "workflows", "shared", "control.mjs");
-const schemaUri = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
+const schemaUri = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";
 
 function policy() {
   return {
@@ -434,7 +434,7 @@ for (const [name, mutate, expected] of policyViolations) {
 }
 
 const effectivePolicyViolations = [
-  ["unknown roles", { CAO_ROLE: "unknown" }, "role must be orchestrator or worker"],
+  ["unknown roles", { CAO_ROLE: "unknown" }, "role must be orchestrator, worker, or standalone"],
   ["workers without identities", { CAO_ROLE: "worker" }, "worker identity is required"],
   ["orchestrators with worker identities", { CAO_WORKER: "auditor" }, "worker identity is forbidden for orchestrators"],
   ["undeclared workers", { CAO_ROLE: "worker", CAO_WORKER: "unknown" }, "unknown worker: operations/unknown"],

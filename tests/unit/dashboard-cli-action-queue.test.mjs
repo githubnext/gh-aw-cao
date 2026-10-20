@@ -165,17 +165,21 @@ test("admission fails closed, bounds concurrency, and cancellation wins running 
 test("deadline aborts executor, never frees its slot before termination, and retry is idempotent", async (t) => {
   const filename = await fixture(t);
   let calls = 0;
+  const termination = Promise.withResolvers();
   const queue = createCliActionQueue({
     filename, timeoutMs: 15,
     execute: async ({ signal }) => {
       calls += 1;
       if (calls > 1) return success;
       await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
-      await delay(30);
+      await termination.promise;
       return success;
     },
   });
-  t.after(() => queue.close());
+  t.after(() => {
+    termination.resolve();
+    return queue.close();
+  });
   const first = queue.enqueue(invocation());
   await until(() => queue.detail(first.id).status === "timed-out");
   const retry = queue.retry(first.id, "retry-1");
@@ -183,6 +187,8 @@ test("deadline aborts executor, never frees its slot before termination, and ret
   assert.equal(queue.retry(first.id, "retry-1").id, retry.id);
   await delay(5);
   assert.equal(calls, 1);
+  assert.equal(queue.detail(retry.id).status, "queued");
+  termination.resolve();
   await until(() => queue.detail(retry.id).status === "completed");
   assert.equal(queue.detail(first.id).result.ok, false);
 });

@@ -14,7 +14,7 @@ import { fetchResolvedDashboard } from '../resolved-dashboard.js';
 
 const siteRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const lighthouseCli = join(siteRoot, 'node_modules', 'lighthouse', 'cli', 'index.js');
-const defaultSiteUrl = 'https://githubnext.github.io/gh-aw-cao/cao/';
+const defaultSiteUrl = 'https://githubnext.github.io/gh-cao/cao/';
 const defaultOutputRoot = resolve(siteRoot, 'test-results', 'pages-health');
 
 function run(command, args, options = {}) {

@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/cliegress"
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/cliegress"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var relayLog = logger.New("cao:cli-relay")

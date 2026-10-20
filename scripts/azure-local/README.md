@@ -1,10 +1,10 @@
 # Local Azure Functions simulation
 
 This Linux-only harness runs the CAO Azure Functions hosting boundary against
-Azurite and a real Redis container. It uses no Azure subscription, Azure login,
+Azurite and a real PostgreSQL container. It uses no Azure subscription, Azure login,
 Azure credentials, or production secrets. It does not
 emulate managed identity, Key Vault, deployed networking, Azure edge behavior,
-or Azure Managed Redis TLS; those remain real-Azure smoke-test concerns.
+or managed PostgreSQL TLS; those remain real-Azure smoke-test concerns.
 
 ## Prerequisites
 
@@ -13,8 +13,8 @@ or Azure Managed Redis TLS; those remain real-Azure smoke-test concerns.
 - A running Docker daemon
 
 Azure Functions Core Tools 4.15.1 is downloaded on first use from its official
-GitHub release and verified by SHA-256. Redis 7.4.7 and Azurite 3.37.0 images
-are pinned by tag and digest.
+GitHub release and verified by SHA-256. PostgreSQL 16 and Azurite 3.37.0 images
+are pinned by tag or digest.
 
 Run the complete suite:
 
@@ -41,16 +41,22 @@ several stacks in parallel. Set `AZURE_LOCAL_WAIT_TIMEOUT` to change the
 
 ## Process model
 
-Each run owns a state directory, a uniquely named Redis container, a uniquely
+Each run owns a state directory, a uniquely named PostgreSQL container, a uniquely
 named Azurite container, a Functions Core Tools process group, generated
-Functions metadata, dynamically published loopback ports, and a unique Redis
-namespace. The state records exact process/container identities; teardown never
+Functions metadata, dynamically published loopback ports, and unique canonical
+and operational namespaces. The state records exact process/container identities; teardown never
 uses global process discovery. Fixed internal container ports are published to
 dynamic host ports to avoid collisions.
 
-Readiness polling verifies Redis `PING`, an Azurite Blob endpoint response, and
+Readiness polling verifies PostgreSQL readiness, an Azurite Blob endpoint response, and
 the CAO `/api/readiness` endpoint through Functions Core Tools. Timeouts print
 all available service logs and fail.
+
+Build, canonical database bootstrap, and fixture ingestion failures print the
+failed stage, exit status, and captured output before teardown. Their log files
+remain available alongside the service logs. Fixture ingestion verifies the
+checked-in `server/testdata/deployed-subset/payload-hashes.json` manifest;
+a mismatch fails startup rather than skipping or weakening integrity checks.
 
 ## Repository audit checklist
 
@@ -58,9 +64,9 @@ Before changing this harness:
 
 - inspect `server/internal/server/azure.go` and the `cao-functions` custom
   handler entrypoint;
-- inspect hosted environment validation and retain production `rediss://` and
-  HTTPS requirements;
-- inspect the Redis namespace, rate-limit, ingestion, and integration tests;
+- inspect hosted environment validation and retain production PostgreSQL TLS
+  and HTTPS requirements;
+- inspect the PostgreSQL operational namespace, rate-limit, ingestion, and integration tests;
 - inspect `server/azure/main.bicep` and its contract tests without changing the
   production deployment contract for local convenience;
 - inspect existing dashboard build, server test fixtures, Docker, and GitHub
@@ -72,7 +78,7 @@ Before changing this harness:
 
 The integration test enters through the real Functions HTTP surface. It proves
 that Core Tools registers and forwards the CAO routes, health/readiness reach
-shared server logic and Redis, Redis-backed pre-authentication rate-limit state
-survives separate HTTP requests, a second namespace remains isolated, and a
-missing local Redis setting makes the custom handler fail predictably. Azurite
-is exercised only as Functions runtime storage.
+shared server logic and PostgreSQL, and PostgreSQL-backed pre-authentication
+rate-limit state survives separate HTTP requests. Missing reviewed host policy
+still makes the custom handler fail predictably. Azurite is exercised only as
+Functions runtime storage.

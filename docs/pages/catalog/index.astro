@@ -1,6 +1,7 @@
 ---
 import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
 import { catalogEntries } from "../../lib/catalog";
+import DispatchIllustration from "../../components/DispatchIllustration.astro";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
@@ -65,6 +66,21 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
     <p class="catalog-empty" data-catalog-empty hidden>No campaigns match your search.</p>
   </section>
 
+  <section class="campaign-execution" aria-labelledby="campaign-execution-title">
+    <h2 id="campaign-execution-title">How campaigns run</h2>
+    <p>
+      Campaigns coordinate dispatchers and bounded workers in a control repository. Reviewed policy sets the scope;
+      each worker handles one authorized target and emits only declared safe outputs.
+    </p>
+    <figure class="campaign-flow not-content" aria-describedby="campaign-flow-description">
+      <figcaption id="campaign-flow-description">
+        Example campaign execution: Dependabot and Repo Assist dispatch parallel workers from the central control
+        repository to enrolled targets. Their workflow definitions stay in the control repository, not the targets.
+      </figcaption>
+      <DispatchIllustration />
+    </figure>
+  </section>
+
   <section class="catalog-next" aria-labelledby="catalog-next">
     <h2 id="catalog-next">No campaign fits?</h2>
     <p>
@@ -98,6 +114,21 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 </script>
 
 <style>
+  .campaign-execution {
+    margin-block-start: 2.5rem;
+  }
+
+  .campaign-flow {
+    container-type: inline-size;
+    margin: 1.5rem 0 0;
+  }
+
+  .campaign-flow figcaption {
+    margin-bottom: 1rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.875rem;
+  }
+
   .catalog-intro {
     max-width: 46rem;
     color: var(--sl-color-gray-2);

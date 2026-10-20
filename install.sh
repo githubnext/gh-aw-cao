@@ -95,18 +95,12 @@ run_quiet_command() {
 
 usage() {
   printf '%s\n' \
-    'Usage: install.sh [CATALOG_SOURCE] [--setup | --quickstart] [--create-repo [OWNER/NAME]] [--target OWNER/REPO]' \
+    'Usage: install.sh [CATALOG_SOURCE] [--setup] [--create-repo [OWNER/NAME]]' \
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo requires typing an eligible OWNER and NAME with no defaults; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
-    '--quickstart requires explicit --target OWNER/REPO for an accessible public repository and pins the latest stable CAO release.' \
-    'Use a clean connected control checkout, or explicitly request --create-repo [OWNER/NAME]; no owner or repository is suggested.' \
-    'It configures and commits the review-only control plane, then stops with Repo Assist paused; no campaign or Activity run is dispatched.' \
-    'Continue with gh cao quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
-    'Starting Repo Assist can use up to 1,250 AI credits under default limits; proposals are optional, not requirements for using CAO.' \
-    'The default budget includes 250 orchestration + 600 maintenance + 400 output checking; configured output-check limits may differ.' \
-    'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
+    'Existing policy and unrelated files are preserved and no campaign is added or run.'
 }
 
 version_at_least() {
@@ -190,18 +184,6 @@ styled_prompt_enabled() {
 terminal_available() {
   [[ -z "${CI:-}" ]] || return 1
   { : < /dev/tty; } 2>/dev/null
-}
-
-run_cao_quickstart() {
-  local node_options="${NODE_OPTIONS:-}"
-  if [[ " $node_options " != *" --disable-warning=ExperimentalWarning "* ]]; then
-    node_options="${node_options:+$node_options }--disable-warning=ExperimentalWarning"
-  fi
-  if terminal_available; then
-    NODE_OPTIONS="$node_options" "$@" < /dev/tty
-  else
-    NODE_OPTIONS="$node_options" "$@"
-  fi
 }
 
 confirm_repository_creation() {
@@ -390,13 +372,13 @@ verify_gh_aw_version() {
 resolve_latest_cao_release() {
   local releases
   local draft
-  local prerelease
+  local _prerelease
   local release
   if releases="$(gh api --hostname github.com --paginate \
-    'repos/githubnext/gh-aw-cao/releases?per_page=100' \
+    'repos/githubnext/gh-cao/releases?per_page=100' \
     --jq '.[] | [.draft, .prerelease, .tag_name] | @tsv')"; then
-    while IFS=$'\t' read -r draft prerelease release; do
-      if [[ "$draft" == false && "$prerelease" == false &&
+    while IFS=$'\t' read -r draft _prerelease release; do
+      if [[ "$draft" == false &&
         "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         printf '%s\n' "$release"
         return
@@ -404,15 +386,54 @@ resolve_latest_cao_release() {
     done <<< "$releases"
   fi
   printf '%s\n' \
-    'Unable to resolve the latest stable CAO release with a vX.Y.Z tag.' \
-    'Retry after GitHub release access is restored, or pass an explicit published tag such as githubnext/gh-aw-cao@vX.Y.Z.' \
+    'Unable to resolve the latest published CAO release with a vX.Y.Z tag (including prereleases).' \
+    'Retry after GitHub release access is restored, or pass an explicit published tag such as githubnext/gh-cao@vX.Y.Z.' \
     'No CAO files were written.' >&2
+  return 1
+}
+
+verify_cao_extension_release() {
+  local release="$1"
+  local assets asset count prefix complete missing=""
+  if ! assets="$(gh api --hostname github.com \
+    "repos/githubnext/gh-cao/releases/tags/$release" \
+    --jq 'select(.draft == false) | .assets[] | select(.state == "uploaded" and .size > 0) | .name')"; then
+    printf 'Unable to inspect CAO extension release %s. No CAO files were written.\n' "$release" >&2
+    return 1
+  fi
+  count="$(awk '$0 == "checksums.txt" { count++ } END { print count + 0 }' <<< "$assets")"
+  if [[ "$count" == 1 ]]; then
+    for prefix in "gh-cao-" ""; do
+      complete=true
+      for asset in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64.exe windows-arm64.exe; do
+        asset="$prefix$asset"
+        count="$(awk -v asset="$asset" '$0 == asset { count++ } END { print count + 0 }' <<< "$assets")"
+        if [[ "$count" != 1 ]]; then
+          [[ -n "$missing" ]] || missing="$asset"
+          complete=false
+          break
+        fi
+      done
+      if [[ "$complete" == true ]]; then
+        printf '%s' "$prefix"
+        return
+      fi
+    done
+  else
+    missing=checksums.txt
+  fi
+  printf '%s\n' \
+    "CAO release $release is not installable: expected exactly one uploaded, nonempty $missing asset in a complete native asset set." \
+    "Releases must provide all six gh-cao-OS-ARCH binaries (or all six legacy OS-ARCH binaries) and checksums.txt." \
+    "Maintainers must publish a corrected release with scripts/build-release.sh assets; published prereleases are supported." \
+    "Published immutable releases cannot be repaired in place. No CAO files were written." >&2
   return 1
 }
 
 install_cao_extension() (
   set -euo pipefail
   local release="$1"
+  local asset_prefix="${2-gh-cao-}"
   local os arch suffix="" data_dir asset directory binary expected actual installed_version
   case "$(uname -s)" in
     Linux) os=linux ;;
@@ -447,9 +468,9 @@ install_cao_extension() (
   trap 'rm -rf -- "$staged"' EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
-  asset="gh-cao-$os-$arch$suffix"
+  asset="$asset_prefix$os-$arch$suffix"
   info "Downloading gh cao $release for $os-$arch..."
-  local base_url="https://github.com/githubnext/gh-aw-cao/releases/download/$release"
+  local base_url="https://github.com/githubnext/gh-cao/releases/download/$release"
   curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 120 \
     "$base_url/$asset" -o "$binary"
   curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 60 \
@@ -481,6 +502,26 @@ install_cao_extension() (
   mv -f "$binary" "$directory/gh-cao$suffix"
   success "Installed gh cao $release."
 )
+
+initialize_cao_policy() {
+  gh cao init || return "$?"
+  node --input-type=module - "$1" <<'NODE'
+import { readFile } from "node:fs/promises";
+import { minimalPolicy } from "./activity/cli/policy.mjs";
+import { writeJsonAtomically } from "./activity/cli/files.mjs";
+const file = process.argv[2];
+const policy = JSON.parse(await readFile(file, "utf8"));
+const expected = minimalPolicy(policy["gh-aw-version"], policy["control-plane"].scope["allowed-repositories"][0]).$schema;
+if (policy.$schema === expected) process.exit(0);
+const legacy = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
+const current = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";
+if (policy.$schema !== legacy || expected !== current) {
+  throw new Error("The initialized policy schema does not match the installed catalog.");
+}
+policy.$schema = expected;
+await writeJsonAtomically(file, policy);
+NODE
+}
 
 # Asks on the controlling terminal before reinstalling an installed gh-aw. A
 # declined prompt stops successfully with manual-upgrade guidance; no usable
@@ -514,15 +555,13 @@ main() {
   local materializer=".github/workflows/shared/materialize-cao.mjs"
   local runtime_action=".github/actions/setup-cao-runtime/action.yml"
   local required_gh="v2.68.0"
-  local required_gh_aw="v0.92.5"
-  local catalog_source="githubnext/gh-aw-cao"
+  local required_gh_aw="v0.92.6"
+  local catalog_source="githubnext/gh-cao"
   local package_source
   local explicit_source=false
   local setup=false
-  local quickstart=false
   local create_repository_requested=false
   local create_repository=""
-  local target_repository=""
   local create_repository_in_place=false
   local control_repository
   local directory=""
@@ -533,24 +572,13 @@ main() {
   local current_gh
   local current_gh_aw
   local authentication_status
-  local quickstart_status
-  local quickstart_release
   local extension_release=""
+  local extension_asset_prefix
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --help|-h) usage; return ;;
       --setup) setup=true; shift ;;
-      --quickstart) quickstart=true; shift ;;
-      --target)
-        if [[ $# -lt 2 || "$2" == -* ||
-          ! "$2" =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
-          printf 'Provide an exact public OWNER/REPOSITORY after --target.\n' >&2
-          return 1
-        fi
-        target_repository="$2"
-        shift 2
-        ;;
       --create-repo)
         create_repository_requested=true
         if [[ $# -ge 2 && "$2" != -* ]]; then
@@ -580,18 +608,6 @@ main() {
         ;;
     esac
   done
-  if [[ "$setup" == true && "$quickstart" == true ]]; then
-    printf '%s\n' '--setup and --quickstart cannot be used together.' >&2
-    return 1
-  fi
-  if [[ -n "$target_repository" && "$quickstart" == false ]]; then
-    printf '%s\n' '--target requires --quickstart.' >&2
-    return 1
-  fi
-  if [[ "$quickstart" == true && -z "$target_repository" ]]; then
-    printf '%s\n' '--quickstart requires explicit --target OWNER/REPO. No CAO files were written.' >&2
-    return 1
-  fi
 
   for tool in node gh git curl; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -623,9 +639,6 @@ main() {
     printf 'Sign in with gh auth login, then rerun this command. No CAO files were written.\n' >&2
     return 1
   fi
-  if [[ "$quickstart" == true ]]; then
-    note "Quickstart configures review-only Repo Assist for $target_repository and public Pages, commits and pushes, then stops with the orchestrator paused."
-  fi
   if [[ "$create_repository_requested" == false ]]; then
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       in_git_checkout=true
@@ -635,9 +648,6 @@ main() {
           'No CAO files were written.' >&2
         return 1
       fi
-    elif [[ "$quickstart" == true ]]; then
-      printf '%s\n' 'Quickstart requires a connected GitHub checkout or explicit --create-repo OWNER/NAME (or interactive --create-repo). No CAO files were written.' >&2
-      return 1
     elif terminal_available &&
       confirm_repository_creation 'Create and clone a new private control repository?'; then
       create_repository_requested=true
@@ -649,17 +659,13 @@ main() {
     fi
   fi
 
-  if [[ "$create_repository_requested" == false && "$in_git_checkout" == true ]] &&
-    { [[ "$quickstart" == true ]] || [[ ! -f "$policy_path" ]]; }; then
+  if [[ "$create_repository_requested" == false && "$in_git_checkout" == true && ! -f "$policy_path" ]]; then
     if control_repository="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" &&
       [[ "$control_repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
       :
     else
       git_remotes="$(git remote)"
-      if [[ -z "$git_remotes" && "$quickstart" == true ]]; then
-        printf '%s\n' 'Quickstart requires a connected GitHub checkout or explicit --create-repo OWNER/NAME (or interactive --create-repo). No CAO files were written.' >&2
-        return 1
-      elif [[ -z "$git_remotes" ]] && terminal_available &&
+      if [[ -z "$git_remotes" ]] && terminal_available &&
         confirm_repository_creation 'Create a new private GitHub repository for this checkout?'; then
           create_repository_requested=true
           create_repository_in_place=true
@@ -669,19 +675,6 @@ main() {
           'No CAO files were written.' >&2
         return 1
       fi
-    fi
-  fi
-  if [[ "$quickstart" == true && "$create_repository_requested" == false ]]; then
-    if ! quickstart_status="$(git status --porcelain=v1 --untracked-files=all)"; then
-      printf '%s\n' 'Unable to inspect the current checkout before quickstart. No CAO files were written.' >&2
-      return 1
-    fi
-    if [[ -n "$quickstart_status" ]]; then
-      printf '%s\n' \
-        'Quickstart requires a clean control-repository checkout before installation.' \
-        'Commit, stash, or remove existing changes, then rerun --quickstart.' \
-        'No CAO files were written.' >&2
-      return 1
     fi
   fi
 
@@ -701,20 +694,12 @@ main() {
     return 1
   fi
 
-  if [[ "$quickstart" == true && "$explicit_source" == false ]]; then
-    if ! quickstart_release="$(resolve_latest_cao_release)"; then
-      return 1
-    fi
-    catalog_source="githubnext/gh-aw-cao@$quickstart_release"
-    explicit_source=true
-    note "Quickstart selected stable CAO release $quickstart_release."
-  fi
-
-  if [[ "$catalog_source" =~ ^githubnext/gh-aw-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+  if [[ "$catalog_source" =~ ^githubnext/gh-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
     extension_release="${BASH_REMATCH[1]}"
   elif ! extension_release="$(resolve_latest_cao_release)"; then
     return 1
   fi
+  extension_asset_prefix="$(verify_cao_extension_release "$extension_release")"
 
   if [[ -d "$catalog_source" ]]; then
     catalog_source="$(cd "$catalog_source" && pwd)"
@@ -724,7 +709,7 @@ main() {
   else
     package_source="$catalog_source"
   fi
-  if [[ "$catalog_source" == "githubnext/gh-aw-cao" && -f aw.yml ]]; then
+  if [[ "$catalog_source" == "githubnext/gh-cao" && -f aw.yml ]]; then
     manifest_required_gh_aw="$(awk '$1 == "min-version:" { print $2; exit }' aw.yml)"
     if [[ -n "$manifest_required_gh_aw" ]]; then
       required_gh_aw="$manifest_required_gh_aw"
@@ -740,7 +725,7 @@ main() {
   else
     note "Using gh-aw $current_gh_aw."
   fi
-  install_cao_extension "$extension_release"
+  install_cao_extension "$extension_release" "$extension_asset_prefix"
 
   if [[ -n "$create_repository" ]]; then
     if [[ "$create_repository_in_place" == true ]]; then
@@ -811,7 +796,7 @@ main() {
     if ! run_quiet_command \
       "Initializing the CAO policy..." \
       "CAO policy initialized." \
-      gh cao init; then
+      initialize_cao_policy "$policy_path"; then
       [[ -z "$quiet_command_output" ]] || printf '%s\n' "$quiet_command_output" >&2
       return 1
     fi
@@ -825,22 +810,11 @@ main() {
     else
       gh cao setup
     fi
-  elif [[ "$quickstart" == true ]]; then
-    local -a quickstart_arguments=(quickstart)
-    if [[ -n "$target_repository" ]]; then
-      quickstart_arguments+=(--target "$target_repository")
-    fi
-    if [[ -d "$catalog_source" ]]; then
-      quickstart_arguments+=(--campaign "$catalog_source/repo-assist")
-      run_cao_quickstart gh cao "${quickstart_arguments[@]}"
-    else
-      run_cao_quickstart gh cao "${quickstart_arguments[@]}"
-    fi
   fi
   if [[ -n "$create_repository" && "$create_repository_in_place" == false ]]; then
     printf 'Open the new checkout: cd %q\n' "$directory"
   fi
-  if [[ "$setup" == false && "$quickstart" == false ]]; then
+  if [[ "$setup" == false ]]; then
     next_step "Next: gh cao setup"
   fi
 }

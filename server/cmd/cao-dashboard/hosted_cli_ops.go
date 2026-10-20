@@ -16,11 +16,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/audit"
-	"github.com/githubnext/gh-aw-cao/server/internal/hostedcli"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/server"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/audit"
+	"github.com/githubnext/gh-cao/server/internal/hostedcli"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/server"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 var hostedCLOperatorLogin = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(?:\[bot\])?$`)

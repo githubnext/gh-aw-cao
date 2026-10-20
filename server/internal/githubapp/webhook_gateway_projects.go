@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
 )
 
 const webhookGatewayProjectQuery = `query($id: ID!) {

@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var authLog = logger.New("cao:marketplace:auth")

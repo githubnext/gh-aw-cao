@@ -83,7 +83,7 @@ permissions:
 
 engine:
   id: pi
-  model: copilot/gpt-5.4
+  model: copilot/gpt-5.6-sol
 
 strict: true
 

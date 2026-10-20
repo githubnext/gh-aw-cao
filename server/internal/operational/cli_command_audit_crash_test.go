@@ -10,8 +10,8 @@ import (
 
 	sqlitedriver "modernc.org/sqlite"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/sqlite"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational/sqlite"
 )
 
 func TestAuditedSQLiteCrashDuringAppend(t *testing.T) {

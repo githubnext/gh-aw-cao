@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 var ErrAPIBudget = fmt.Errorf("gateway API request budget is unavailable: %w", gateway.ErrRequestNotSent)

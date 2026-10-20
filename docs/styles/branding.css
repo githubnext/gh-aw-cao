@@ -10,6 +10,62 @@
   --sl-content-width: 60rem;
 }
 
+.cao-intro-screenshot {
+  position: relative;
+  isolation: isolate;
+}
+
+.cao-intro-screenshot > p {
+  margin: 0;
+}
+
+.cao-intro-screenshot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cao-intro-screenshot .cao-intro-marker {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #0550ae;
+  color: #ffffff;
+  font: bold 0.875rem/1 ui-sans-serif, sans-serif;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.cao-intro-marker-navigation {
+  top: 25%;
+  left: 15%;
+}
+
+.cao-intro-marker-activity {
+  top: 19%;
+  left: 40%;
+}
+
+.cao-intro-marker-outputs {
+  top: 65%;
+  left: 47%;
+}
+
+:root:not([data-has-hero]) {
+  --sl-content-width: 100%;
+}
+
+@media (min-width: 50rem) {
+  :root:not([data-has-hero]) {
+    --sl-content-width: 52rem;
+  }
+}
+
 .sl-skip-link:focus-visible {
   clip: unset;
   z-index: var(--sl-z-index-skiplink);
@@ -92,7 +148,7 @@
   order: 2;
 }
 
-.right-group .social-icons a[href="https://github.com/githubnext/gh-aw-cao"] {
+.right-group .social-icons a[href="https://github.com/githubnext/gh-cao"] {
   order: 3;
   margin-inline-start: 0.25rem;
 }

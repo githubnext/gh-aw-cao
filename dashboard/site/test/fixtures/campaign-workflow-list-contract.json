@@ -1,0 +1,12 @@
+{
+  "page": "campaign-workflows",
+  "view": "campaign-workflow-table",
+  "source": "campaign-workflows",
+  "routeField": "campaign",
+  "importSources": ["audits", "domains", "tools", "issues"],
+  "fields": [
+    "campaign", "campaign-name", "organization", "repository", "workflow",
+    "workflow-name", "workflow-role", "rollout-mode", "workflow-active",
+    "runs", "aic", "repository-link", "workflow-link"
+  ]
+}

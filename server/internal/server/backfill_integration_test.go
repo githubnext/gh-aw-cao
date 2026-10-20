@@ -16,15 +16,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/collect"
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/redisx"
-	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
-	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
+	"github.com/githubnext/gh-cao/server/internal/collect"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/redisx"
+	"github.com/githubnext/gh-cao/server/internal/simulator"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/testutil"
 )
 
 const backfillDatabaseQueries = "../../../dashboard/site/src/data/queries/database.json"
@@ -338,8 +338,8 @@ func assertBackfillRows(t *testing.T, result queryResponse) {
 		}
 	}
 	run := result.Sources["backfill-runs"].Rows[0]
-	if run["id"] != "run:424242" || run["repositoryId"] != "repository:githubnext/gh-aw-cao" ||
-		run["workflowId"] != "workflow:githubnext/gh-aw-cao:dashboard" {
+	if run["id"] != "run:424242" || run["repositoryId"] != "repository:githubnext/gh-cao" ||
+		run["workflowId"] != "workflow:githubnext/gh-cao:dashboard" {
 		t.Fatalf("backfill lost canonical run relationships: %+v", run)
 	}
 }

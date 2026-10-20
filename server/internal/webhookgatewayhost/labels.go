@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 var errLabelAlreadyConsumed = errors.New("gateway label consumption already confirmed")

@@ -26,8 +26,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/telemetry"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 //go:embed oauth_failure.html
@@ -100,6 +100,7 @@ type GitHubOAuthConfig struct {
 	RedirectURL           string
 	SessionSecret         string
 	PreviousSessionSecret string
+	AllowedUsers          []string
 	AllowedOrganizations  []string
 	AllowedTeams          []string
 	// LocalDevelopmentUser replaces membership authorization for one
@@ -217,11 +218,11 @@ func (config *GitHubOAuthConfig) validate() error {
 			strings.ContainsAny(config.LocalDevelopmentUser, "/ ,\t\r\n*") {
 			return errors.New("CAO_GITHUB_LOCAL_USER must be one exact GitHub login")
 		}
-		if len(config.AllowedOrganizations) != 0 || len(config.AllowedTeams) != 0 || len(config.SSOOrganizations) != 0 {
-			return errors.New("CAO_GITHUB_LOCAL_USER cannot be combined with organization, team, or SSO authorization")
+		if len(config.AllowedUsers) != 0 || len(config.AllowedOrganizations) != 0 || len(config.AllowedTeams) != 0 || len(config.SSOOrganizations) != 0 {
+			return errors.New("CAO_GITHUB_LOCAL_USER cannot be combined with user, organization, team, or SSO authorization")
 		}
-	} else if len(config.AllowedOrganizations) == 0 && len(config.AllowedTeams) == 0 {
-		return errors.New("GitHub OAuth authorization requires at least one allowed organization or team")
+	} else if len(config.AllowedUsers) == 0 && len(config.AllowedOrganizations) == 0 && len(config.AllowedTeams) == 0 {
+		return errors.New("GitHub OAuth authorization requires at least one allowed user, organization, or team")
 	}
 	if config.AdminReauthenticationMaxAge == 0 {
 		config.AdminReauthenticationMaxAge = defaultAdminReauthenticationMaxAge
@@ -296,7 +297,7 @@ func recordOAuthDecision(ctx context.Context, operation, outcome string) {
 		attribute.String("cao_dashboard.auth.outcome", outcome),
 	}
 	trace.SpanFromContext(ctx).AddEvent("cao_dashboard.auth.decision", trace.WithAttributes(attrs...))
-	counter, err := otel.Meter("github.com/githubnext/gh-aw-cao/server").Int64Counter(
+	counter, err := otel.Meter("github.com/githubnext/gh-cao/server").Int64Counter(
 		"cao_dashboard.auth.decision.count",
 		metric.WithUnit("{decision}"),
 		metric.WithDescription("OAuth authorization and credential cleanup decisions by fixed operation and outcome"),
@@ -426,7 +427,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 			attrs = append(attrs, attribute.String("error.type", errorType))
 		}
 		span.SetAttributes(attrs...)
-		counter, err := otel.Meter("github.com/githubnext/gh-aw-cao/server").Int64Counter(
+		counter, err := otel.Meter("github.com/githubnext/gh-cao/server").Int64Counter(
 			"cao_dashboard.auth.callback.count",
 			metric.WithUnit("{callback}"),
 			metric.WithDescription("Completed GitHub OAuth callbacks by outcome and fixed error type"),
@@ -964,6 +965,12 @@ func (oauth *githubOAuth) authorizedAccount(ctx context.Context, accessToken str
 		}
 		oauth.logBranch("authorization.local_user_allowed")
 		return account, nil
+	}
+	for _, login := range oauth.config.AllowedUsers {
+		if strings.EqualFold(strings.TrimSpace(login), account.Login) {
+			oauth.logBranch("authorization.user_allowed")
+			return account, nil
+		}
 	}
 	for _, org := range oauth.config.AllowedOrganizations {
 		if oauth.orgAuthorized(ctx, accessToken, org) {

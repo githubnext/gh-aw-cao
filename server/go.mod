@@ -1,10 +1,11 @@
-module github.com/githubnext/gh-aw-cao/server
+module github.com/githubnext/gh-cao/server
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0
-	github.com/githubnext/gh-aw-cao/internal/dashboardquery v0.0.0
+	github.com/githubnext/gh-cao/internal/dashboardquery v0.0.0
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/go-github/v62 v62.0.0
 	github.com/google/go-github/v66 v66.0.0
 	github.com/jackc/pgx/v5 v5.11.0
@@ -29,7 +30,7 @@ require (
 	modernc.org/sqlite v1.60.1
 )
 
-replace github.com/githubnext/gh-aw-cao/internal/dashboardquery => ../internal/dashboardquery
+replace github.com/githubnext/gh-cao/internal/dashboardquery => ../internal/dashboardquery
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -38,7 +39,6 @@ require (
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect

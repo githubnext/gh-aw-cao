@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
 var validationLog = logger.New("cao:operational:validation")

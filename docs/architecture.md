@@ -9,7 +9,7 @@ agent:
 Read this overview when evaluating the control plane or changing how campaigns
 are authorized and dispatched. For authorization changes, continue to
 [Control Policy](control-policy-specification.md), then the
-[control architecture specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md)
+[control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md)
 and `.github/workflows/shared/control.md`. For installation steps, begin with
 [Set Up CAO](setup-quickstarts.md).
 
@@ -27,9 +27,9 @@ The control plane is designed to:
 ## Mental Model
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/gh-aw-cao/assets/control-plane-mental-model-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="/gh-aw-cao/assets/control-plane-mental-model-light.svg">
-  <img alt="A catalog release enters a governed control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode." src="/gh-aw-cao/assets/control-plane-mental-model-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="/gh-cao/assets/control-plane-mental-model-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="/gh-cao/assets/control-plane-mental-model-light.svg">
+  <img alt="A catalog release enters a governed control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode." src="/gh-cao/assets/control-plane-mental-model-light.svg">
 </picture>
 
 :::note[Three records, three jobs]
@@ -67,14 +67,27 @@ collection flow and data-quality behavior.
 - missing authority, authentication, routing, or eligibility fails closed.
 
 :::caution[The control plane is not a universal policy boundary]
-Central Agentic Ops governs participating catalog workflows. Use GitHub rulesets, Actions policy, protected environments, CODEOWNERS, and credential scoping to govern other automation.
+Central Agentic Ops governs explicitly integrated workflows, not every observed workflow
+or every workflow in a target repository. Merely hosting a workflow in the
+control repository does not apply CAO rollout policy. Use GitHub rulesets,
+Actions policy, protected environments, CODEOWNERS, and credential scoping to
+govern other automation.
+
+Standalone scheduled, event-driven, or manually invoked AWs can opt in through
+`shared/control.md` with `role: standalone` and their own
+`control-plane.workflows` entry. They receive the same admission gates and
+bounded rollout without requiring an orchestrator/worker pair. Their mission
+runs directly against the precomputed admitted set. This is explicit
+integration, not automatic governance of observed workflows.
+See [standalone workflow configuration](configuration.md#standalone-agentic-workflows).
+AW remains responsible for execution capabilities and safe outputs.
 :::
 
 ## Detailed References
 
 | Read | When you need to understand |
 | --- | --- |
-| [What Is Central Agentic Ops?](architecture-at-a-glance.md) | How ready-made or custom campaigns scale across GitHub from one place |
+| [What Is Central Agentic Ops?](architecture-at-a-glance.md) | CAO's purpose, available capabilities, and workflow operating patterns |
 | [Deployment and Governance](deployment-and-governance.md) | Organization and enterprise topologies, ownership, target enrollment, provenance, reporting identity, and the broader governance boundary |
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
 | [Orchestrators and Workers](orchestrators-and-workers.md) | Campaign-specific authority, worker enforcement, eligibility, and worker ceilings |

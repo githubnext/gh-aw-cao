@@ -273,6 +273,7 @@ jobs:
       contents: write
     outputs:
       runtime_archive: ${{ steps.attach.outputs.runtime_archive }}
+      azure_archive: ${{ steps.attach.outputs.azure_archive }}
     steps:
       - name: Download extension release binaries
         uses: actions/download-artifact@v8.0.1
@@ -328,6 +329,29 @@ jobs:
             --signer-digest "${REVISION}" \
             --deny-self-hosted-runners
 
+          azure_name="cao-azure-${REVISION}"
+          azure_dir="${RUNNER_TEMP}/release-azure"
+          mkdir -p "${azure_dir}"
+          gh run download "${run_id}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name "${azure_name}" \
+            --dir "${azure_dir}"
+
+          azure_archive="${azure_dir}/${azure_name}.tgz"
+          azure_checksum="${azure_archive}.sha256"
+          [[ -s "${azure_archive}" && -s "${azure_checksum}" ]]
+          [[ "$(find "${azure_dir}" -maxdepth 1 -type f | wc -l)" -eq 2 ]]
+          (
+            cd "${azure_dir}"
+            sha256sum --check "${azure_name}.tgz.sha256"
+          )
+          gh attestation verify "${azure_archive}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/cao-runtime.yml" \
+            --source-digest "${REVISION}" \
+            --signer-digest "${REVISION}" \
+            --deny-self-hosted-runners
+
           binary_dir="${RUNNER_TEMP}/release-binaries"
           binary_assets=(
             gh-cao-darwin-amd64 gh-cao-darwin-arm64 gh-cao-linux-amd64 gh-cao-linux-arm64
@@ -376,28 +400,34 @@ jobs:
           [[ "${type}" == commit && "${sha}" == "${REVISION}" ]]
 
           gh release upload "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
-            "${archive}" "${checksum}" "${binary_paths[@]}"
+            "${archive}" "${checksum}" "${azure_archive}" "${azure_checksum}" "${binary_paths[@]}"
 
           assets="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100")"
           jq -e \
             --arg archive "${runtime_name}.tgz" \
             --arg checksum "${runtime_name}.tgz.sha256" \
-            'length == 9
+            --arg azure_archive "${azure_name}.tgz" \
+            --arg azure_checksum "${azure_name}.tgz.sha256" \
+            'length == 11
               and (map(.name) | sort) == ([
-                $archive, $checksum, "gh-cao-darwin-amd64", "gh-cao-darwin-arm64",
+                $archive, $checksum, $azure_archive, $azure_checksum, "gh-cao-darwin-amd64", "gh-cao-darwin-arm64",
                 "gh-cao-linux-amd64", "gh-cao-linux-arm64", "gh-cao-windows-amd64.exe",
                 "gh-cao-windows-arm64.exe", "checksums.txt"
               ] | sort)
               and all(.[]; .state == "uploaded" and .size > 0)' \
             <<< "${assets}" >/dev/null
 
-          echo "runtime_archive=${runtime_name}.tgz" >> "${GITHUB_OUTPUT}"
+          {
+            echo "runtime_archive=${runtime_name}.tgz"
+            echo "azure_archive=${azure_name}.tgz"
+          } >> "${GITHUB_OUTPUT}"
           {
             echo "## Runtime and extension assets attached"
             echo
             echo "- Draft release: ${RELEASE_TAG}"
             echo "- Source revision: ${REVISION}"
             echo "- Runtime archive: ${runtime_name}.tgz"
+            echo "- Azure deployment assets: ${azure_name}.tgz"
             echo "- Extension binaries: Linux, macOS, Windows (amd64 and arm64), version ${RELEASE_TAG}"
             echo
             echo "The workflow will now publish this draft as a prerelease before applying release highlights."
@@ -421,6 +451,7 @@ jobs:
           RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
           RUNTIME_ARCHIVE: ${{ needs.attach-runtime-assets.outputs.runtime_archive }}
+          AZURE_ARCHIVE: ${{ needs.attach-runtime-assets.outputs.azure_archive }}
           REVISION: ${{ github.sha }}
         with:
           github-token: ${{ github.token }}
@@ -428,6 +459,7 @@ jobs:
             const releaseId = Number(process.env.RELEASE_ID);
             const releaseTag = process.env.RELEASE_TAG;
             const runtimeArchive = process.env.RUNTIME_ARCHIVE;
+            const azureArchive = process.env.AZURE_ARCHIVE;
             const revision = process.env.REVISION;
             if (!Number.isSafeInteger(releaseId) || releaseId <= 0) {
               throw new Error(`Invalid release ID: ${process.env.RELEASE_ID}`);
@@ -441,6 +473,10 @@ jobs:
             const expectedArchive = `cao-runtime-${revision}.tgz`;
             if (runtimeArchive !== expectedArchive) {
               throw new Error(`Runtime archive ${runtimeArchive} does not match ${expectedArchive}`);
+            }
+            const expectedAzureArchive = `cao-azure-${revision}.tgz`;
+            if (azureArchive !== expectedAzureArchive) {
+              throw new Error(`Azure deployment archive ${azureArchive} does not match ${expectedAzureArchive}`);
             }
 
             const { data: draft } = await github.rest.repos.getRelease({
@@ -475,6 +511,7 @@ jobs:
             });
             const expectedAssets = [
               expectedArchive, `${expectedArchive}.sha256`,
+              expectedAzureArchive, `${expectedAzureArchive}.sha256`,
               'gh-cao-darwin-amd64', 'gh-cao-darwin-arm64', 'gh-cao-linux-amd64', 'gh-cao-linux-arm64',
               'gh-cao-windows-amd64.exe', 'gh-cao-windows-arm64.exe', 'checksums.txt',
             ].sort();

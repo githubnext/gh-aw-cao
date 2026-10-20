@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const nativeAnalysisContextRoot = "https://github.com/githubnext/gh-aw-cao"
+const nativeAnalysisContextRoot = "https://github.com/githubnext/gh-cao"
 
 func nativePrompt(cmd *cobra.Command, id string) (err error) {
 	catalog, err := loadNativeCatalog(nativeString(cmd, "dashboard"))

@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func (q *webhookQueue) batchMembers(t *transaction, fences []wg.Fence) ([]wg.Job, error) {

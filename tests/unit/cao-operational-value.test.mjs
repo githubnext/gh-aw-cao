@@ -283,7 +283,7 @@ test('operational-value worker execution is cancellable', async () => {
       indexedDB: null,
       databasePath: path.join(temporary, 'dashboard.sqlite'),
       root: temporary,
-      repositories: ['githubnext/gh-aw-cao'],
+      repositories: ['githubnext/gh-cao'],
       signal: controller.signal
     }), reason);
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -325,7 +325,7 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
       indexedDB: null,
       databasePath: path.join(temporary, 'dashboard.sqlite'),
       root: temporary,
-      repositories: ['githubnext/gh-aw-cao'],
+      repositories: ['githubnext/gh-cao'],
       workerTimeoutMs: 500
     });
 
@@ -351,7 +351,7 @@ test('operational-value cleans up descendants after worker failure', async () =>
       indexedDB: null,
       databasePath: path.join(temporary, 'dashboard.sqlite'),
       root: temporary,
-      repositories: ['githubnext/gh-aw-cao']
+      repositories: ['githubnext/gh-cao']
     });
     await new Promise((resolve) => setTimeout(resolve, 250));
 
@@ -376,7 +376,7 @@ test('cao operational-value terminates worker process trees on SIGTERM', async (
       'operational-value',
       '--database', path.join(temporary, 'dashboard.sqlite'),
       '--root', temporary,
-      '--repository', 'githubnext/gh-aw-cao'
+      '--repository', 'githubnext/gh-cao'
     ], { stdio: 'ignore' });
     for (let attempt = 0; attempt < 40 && !existsSync(readyMarker); attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -418,7 +418,7 @@ for (const repository of request.repositories) {
     '--root', temporary,
     '--output', output,
     '--timestamp', '2026-09-24T10:00:00Z',
-    '--repository', 'githubnext/gh-aw-cao',
+    '--repository', 'githubnext/gh-cao',
     '--repository', 'github/gh-aw',
   ], { encoding: 'utf8', env: {
     ...process.env,
@@ -437,7 +437,7 @@ for (const repository of request.repositories) {
   ], { encoding: 'utf8' }));
   assert.deepEqual(stored.map(({ repository, valueId, value }) => ({ repository, valueId, value })), [
     { repository: 'github/gh-aw', valueId: 'example-count', value: 2 },
-    { repository: 'githubnext/gh-aw-cao', valueId: 'example-count', value: 2 },
+    { repository: 'githubnext/gh-cao', valueId: 'example-count', value: 2 },
   ]);
   assert.deepEqual(
     stored.map((record) => ({
@@ -545,7 +545,7 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
       root: temporary,
       outputPath: output,
       timestamp: '2026-09-24T10:00:00Z',
-      repositories: ['githubnext/gh-aw-cao']
+      repositories: ['githubnext/gh-cao']
     });
 
     const values = readFileSync(output, 'utf8').trim().split('\n')
@@ -590,7 +590,7 @@ test('cao operational-value materializes queried history, compacts cadence bucke
 const chunks = [];
 for await (const chunk of process.stdin) chunks.push(chunk);
 const request = JSON.parse(Buffer.concat(chunks).toString());
-console.log(JSON.stringify({kind:"operational_value_definition",workflowSlug:"example-worker",adoptedAt:"2026-09-15T23:30:36Z",evaluationMode:"baseline-comparable",cadenceDays:1,repositories:["githubnext/gh-aw-cao"],valueIds:["example-worker.current"]}));
+console.log(JSON.stringify({kind:"operational_value_definition",workflowSlug:"example-worker",adoptedAt:"2026-09-15T23:30:36Z",evaluationMode:"baseline-comparable",cadenceDays:1,repositories:["githubnext/gh-cao"],valueIds:["example-worker.current"]}));
 console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repositories[0],valueId:"example-worker.current",value:3}));\n`);
   writeFileSync(output, [
     {
@@ -598,7 +598,7 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
       kind: 'operational_value',
       operational_value: {
         campaign: 'example',
-        repository: 'githubnext/gh-aw-cao',
+        repository: 'githubnext/gh-cao',
         value_id: 'example-worker.retired',
         value: 1,
         timestamp: '2026-09-21T10:00:00.000Z'
@@ -609,7 +609,7 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
       kind: 'operational_value',
       operational_value: {
         campaign: 'unrelated',
-        repository: 'githubnext/gh-aw-cao',
+        repository: 'githubnext/gh-cao',
         value_id: 'preserved',
         value: 4,
         timestamp: '2026-09-21T10:00:00.000Z'
@@ -626,7 +626,7 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
     '--timestamp', '2026-09-24T10:00:00Z',
     '--retention-days', '30',
     '--history-campaign', 'example',
-    '--repository', 'githubnext/gh-aw-cao'
+    '--repository', 'githubnext/gh-cao'
   ];
   const result = JSON.parse(execFileSync(process.execPath, arguments_, { encoding: 'utf8' }));
 
@@ -712,7 +712,7 @@ console.log(JSON.stringify({timestamp:request.timestamp,repository:request.repos
     '--root', temporary,
     '--output', output,
     '--timestamp', '2026-09-24T10:00:00Z',
-    '--repository', 'githubnext/gh-aw-cao'
+    '--repository', 'githubnext/gh-cao'
   ], {
     encoding: 'utf8',
     env: { ...process.env, CAO_OPERATIONAL_VALUE_GH_TOKEN: 'read-only-token' }
@@ -809,23 +809,23 @@ test('cao operational-value warns on non-numeric metrics and bounds retained out
   mkdirSync(packageDirectory);
   const script = path.join(packageDirectory, 'operational-value.mjs');
   writeFileSync(script, `process.stdin.resume();
-process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00.000Z",repository:"githubnext/gh-aw-cao",valueId:"example",value:1})));\n`);
+process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00.000Z",repository:"githubnext/gh-cao",valueId:"example",value:1})));\n`);
   chmodSync(script, 0o755);
   const retained = [
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
-      timestamp: '2025-09-23T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'expired', value: 1
+      timestamp: '2025-09-23T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-cao', value_id: 'expired', value: 1
     } }),
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
-      timestamp: '2025-09-24T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'boundary', value: 1
+      timestamp: '2025-09-24T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-cao', value_id: 'boundary', value: 1
     } }),
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
-      timestamp: '2026-08-01T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'old', value: 1
+      timestamp: '2026-08-01T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-cao', value_id: 'old', value: 1
     } }),
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
-      timestamp: '2026-09-19T10:00:00.000Z', repository: 'githubnext/gh-aw-cao', value_id: 'legacy', value: 1
+      timestamp: '2026-09-19T10:00:00.000Z', repository: 'githubnext/gh-cao', value_id: 'legacy', value: 1
     } }),
     JSON.stringify({ schema_version: 2, kind: 'operational_value', operational_value: {
-      timestamp: '2026-09-20T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-aw-cao', value_id: 'retained', value: 1
+      timestamp: '2026-09-20T10:00:00.000Z', campaign: 'example', repository: 'githubnext/gh-cao', value_id: 'retained', value: 1
     } })
   ].join('\n');
   writeFileSync(output, retained);
@@ -833,7 +833,7 @@ process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T
   execFileSync(process.execPath, [
     cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
     '--root', temporary, '--output', output, '--timestamp', '2026-09-24T10:00:00Z',
-    '--repository', 'githubnext/gh-aw-cao', '--retention-days', '30'
+    '--repository', 'githubnext/gh-cao', '--retention-days', '30'
   ]);
   const envelopes = readFileSync(output, 'utf8').trim().split('\n').map(JSON.parse);
   assert.deepEqual(envelopes.map((entry) => entry.operational_value.value_id), ['retained', 'example']);
@@ -842,16 +842,16 @@ process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T
   execFileSync(process.execPath, [
     cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
     '--root', temporary, '--output', output, '--timestamp', '2026-09-24T10:00:00Z',
-    '--repository', 'githubnext/gh-aw-cao'
+    '--repository', 'githubnext/gh-cao'
   ]);
   assert.deepEqual(readFileSync(output, 'utf8').trim().split('\n')
     .map((line) => JSON.parse(line).operational_value.value_id), ['boundary', 'old', 'retained', 'example']);
 
   writeFileSync(script, `process.stdin.resume();
-process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00Z",repository:"githubnext/gh-aw-cao",valueId:"invalid",value:null})));\n`);
+process.stdin.on('end', () => console.log(JSON.stringify({timestamp:"2026-09-24T10:00:00Z",repository:"githubnext/gh-cao",valueId:"invalid",value:null})));\n`);
   const invalid = spawnSync(process.execPath, [
     cao, 'operational-value', '--database', path.join(temporary, 'dashboard.sqlite'),
-    '--root', temporary, '--repository', 'githubnext/gh-aw-cao'
+    '--root', temporary, '--repository', 'githubnext/gh-cao'
   ], { encoding: 'utf8' });
   assert.equal(invalid.status, 0);
   assert.match(invalid.stderr, /Warning: .*must be a finite number/);

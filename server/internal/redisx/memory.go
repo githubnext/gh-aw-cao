@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 const DefaultMaxMemoryBytes int64 = 200_000_000

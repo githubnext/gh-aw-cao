@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	debuglogger "github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/server"
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/server"
 )
 
 var compileQueriesLog = debuglogger.New("cao:dashboard:compile")

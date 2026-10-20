@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
 )
 
 func TestWebhookGatewayRepositoryFreshScopedMintProvesMembership(t *testing.T) {

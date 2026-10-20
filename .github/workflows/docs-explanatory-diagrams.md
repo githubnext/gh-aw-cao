@@ -174,9 +174,9 @@ Replace exactly one ASCII diagram or add exactly one image reference near the se
 
 ```html
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/gh-aw-cao/assets/<concept>-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="/gh-aw-cao/assets/<concept>-light.svg">
-  <img alt="Concise description of the complete relationship" src="/gh-aw-cao/assets/<concept>-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="/gh-cao/assets/<concept>-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="/gh-cao/assets/<concept>-light.svg">
+  <img alt="Concise description of the complete relationship" src="/gh-cao/assets/<concept>-light.svg">
 </picture>
 ```
 

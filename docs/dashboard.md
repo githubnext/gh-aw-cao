@@ -19,8 +19,8 @@ answer a specific question:
 - Is the evidence complete and current enough to act on?
 
 <div class="docs-theme-diagram">
-	<img class="docs-theme-diagram-light" alt="The selected dashboard view sends a Dashboard Language query to structured data and receives results" src="/gh-aw-cao/assets/dashboard-view-system-light.svg">
-	<img class="docs-theme-diagram-dark" alt="The selected dashboard view sends a Dashboard Language query to structured data and receives results" src="/gh-aw-cao/assets/dashboard-view-system-dark.svg">
+	<img class="docs-theme-diagram-light" alt="The selected dashboard view sends a Dashboard Language query to structured data and receives results" src="/gh-cao/assets/dashboard-view-system-light.svg">
+	<img class="docs-theme-diagram-dark" alt="The selected dashboard view sends a Dashboard Language query to structured data and receives results" src="/gh-cao/assets/dashboard-view-system-dark.svg">
 </div>
 
 ## How it works
@@ -139,10 +139,42 @@ Layered charts omit `data.limit` and use a source query `limit` of at most 200.
 Forms, lazy pagination, and drill navigation are not supported in previews.
 This editor does not change rollout policy or control-plane authority.
 
-The dashboard helps you observe and investigate campaigns. It does not start
+The published dashboard helps you observe and investigate campaigns. It does not start
 work, approve an output, grant workflow authority, change rollout policy, or
 write to a repository. Make those decisions through the control repository and
 its reviewed workflows and policy.
+
+### Configure compiler defaults
+
+**Maintenance → Governance** is visible only in local server `--admin` mode or
+to an authorized hosted administrator with a current, assured session. It is
+hidden in published dashboards, ordinary local previews, and Copilot canvas
+mode, including through direct links. To edit defaults, start an authorized
+loopback admin dashboard:
+
+```sh
+npm run dashboard:local -- --repo OWNER/REPOSITORY --admin
+```
+
+Select **Organization**, **Enterprise**, or **Repository** and enter the exact
+target. **Load defaults** uses `gh aw env get` to obtain every compiler default
+supported by the installed gh-aw version. Edit the complete YAML document,
+keeping values as quoted strings or `null`, then select **Preview changes**.
+Review the proposed sets and deletions, choose **Review and apply**, and confirm
+the exact scope and YAML. All commands use the existing approved CLI-action
+queue and your local GitHub CLI credentials. Reload after applying to verify
+the saved variables; recompile workflows to incorporate changed compiler defaults.
+
+Organization and enterprise variables are inherited by repositories with access
+to them, including CAO repositories, but may also affect repositories outside
+CAO. Existing narrower overrides and variable access lists remain in effect.
+`null` or omitted keys remove an override at the selected scope, not an inherited
+default. Visibility controls access for newly created variables only.
+
+This page manages **non-secret GitHub Actions variables**, not secrets, rollout
+policy, or live authority. Never enter credentials in the YAML. The chosen scope
+requires administrative access; hosted repository installation tokens cannot
+perform these operations, so editing remains disabled for hosted administrators.
 
 ## Continue reading
 

@@ -12,7 +12,7 @@ import (
 	githubv62 "github.com/google/go-github/v62/github"
 	"github.com/google/go-github/v66/github"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
 )
 
 type gatewayMintTransport struct {

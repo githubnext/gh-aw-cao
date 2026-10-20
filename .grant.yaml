@@ -4,7 +4,7 @@ grant:
   allowed-owners:
     - githubnext
   allowed-repos:
-    - githubnext/gh-aw-cao
+    - githubnext/gh-cao
   permissions:
     metadata: read
     contents: read

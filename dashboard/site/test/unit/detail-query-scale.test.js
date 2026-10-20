@@ -49,7 +49,7 @@ beforeAll(async () => {
     observedAt,
     runLink: {
       relation: 'run',
-      href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${attempt === 3 ? '99' : contract.run.run}/attempts/${attempt === 3 ? 1 : attempt}`
+      href: `https://github.com/githubnext/gh-cao/actions/runs/${attempt === 3 ? '99' : contract.run.run}/attempts/${attempt === 3 ? 1 : attempt}`
     }
   }));
   /** @type {Record<string, unknown>[]} */

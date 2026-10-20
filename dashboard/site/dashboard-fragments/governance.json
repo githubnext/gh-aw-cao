@@ -1,0 +1,96 @@
+{
+    "cli-actions": [
+      {
+        "id": "governance-get-repo",
+        "level": "explore",
+        "label": "Load repository defaults",
+        "icon": "download",
+        "command": "gh aw env get cao-governance.yml --scope repo --repo {{repository}}",
+        "placement": "view"
+      },
+      {
+        "id": "governance-update-repo",
+        "level": "operate",
+        "label": "Apply repository defaults",
+        "icon": "upload",
+        "command": "gh aw env update cao-governance.yml --scope repo --repo {{repository}} --yes",
+        "placement": "view",
+        "arguments": [
+          { "id": "dry-run", "label": "Preview only", "type": "boolean", "flag": "--dry-run", "default": true }
+        ]
+      },
+      {
+        "id": "governance-get-org",
+        "level": "explore",
+        "label": "Load organization defaults",
+        "icon": "download",
+        "command": "gh aw env get cao-governance.yml --scope org --org {{organization}}",
+        "placement": "view"
+      },
+      {
+        "id": "governance-update-org",
+        "level": "operate",
+        "label": "Apply organization defaults",
+        "icon": "upload",
+        "command": "gh aw env update cao-governance.yml --scope org --org {{organization}} --visibility {{visibility}} --yes",
+        "placement": "view",
+        "arguments": [
+          { "id": "dry-run", "label": "Preview only", "type": "boolean", "flag": "--dry-run", "default": true }
+        ]
+      },
+      {
+        "id": "governance-get-ent",
+        "level": "explore",
+        "label": "Load enterprise defaults",
+        "icon": "download",
+        "command": "gh aw env get cao-governance.yml --scope ent --enterprise {{enterprise}}",
+        "placement": "view"
+      },
+      {
+        "id": "governance-update-ent",
+        "level": "operate",
+        "label": "Apply enterprise defaults",
+        "icon": "upload",
+        "command": "gh aw env update cao-governance.yml --scope ent --enterprise {{enterprise}} --visibility {{visibility}} --yes",
+        "placement": "view",
+        "arguments": [
+          { "id": "dry-run", "label": "Preview only", "type": "boolean", "flag": "--dry-run", "default": true }
+        ]
+      }
+    ],
+    "pages": [
+      {
+        "id": "governance",
+        "kind": "custom",
+        "title": "Governance",
+        "icon": "shield",
+        "requires": { "capability": "admin" },
+        "intent": "Configure gh-aw compiler defaults at an explicitly selected repository, organization, or enterprise scope.",
+        "subject": "Non-secret GitHub Actions compiler default variables and their inherited repository reach.",
+        "objective": "Review the complete defaults document before approving scoped changes.",
+        "acceptance": "Load the selected scope and preview all sets and deletions before approval; preserve narrower overrides and visibility, report access failures, and never grant CAO rollout authority.",
+        "description": "Review inherited gh-aw compiler defaults before approving a scoped configuration change.",
+        "views": [
+          {
+            "id": "governance-defaults",
+            "title": "Compiler defaults",
+            "description": "Edit the full gh-aw defaults YAML with scoped CLI approval. This interaction element owns mutable configuration, command output, and file transport, which evidence marks cannot express.",
+            "data": { "sources": [] },
+            "mark": "element",
+            "element": "environment-defaults",
+            "config": {
+              "actions": {
+                "get-repo": "governance-get-repo",
+                "update-repo": "governance-update-repo",
+                "get-org": "governance-get-org",
+                "update-org": "governance-update-org",
+                "get-ent": "governance-get-ent",
+                "update-ent": "governance-update-ent"
+              }
+            },
+            "layout": "full"
+          }
+        ]
+      }
+    ]
+}

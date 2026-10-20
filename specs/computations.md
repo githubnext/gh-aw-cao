@@ -11,7 +11,7 @@ editors:
 
 **Version:** 0.9.0
 **Status:** Working Draft
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/computations.md
+**Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/computations.md
 **Editors:** GitHub Next
 
 ## Abstract

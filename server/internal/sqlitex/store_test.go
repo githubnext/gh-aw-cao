@@ -4,17 +4,114 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/dashboardstore"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
+	"github.com/githubnext/gh-cao/internal/dashboardquery"
+
+	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/testutil"
 )
+
+func TestSnapshotSQLProjectionPreservesJSONAndFullRecordBudgets(t *testing.T) {
+	path := testutil.SQLiteSnapshot(t, map[string][]model.Row{"repositories": {{
+		"id": "repo", "yes": true, "no": false, "null": nil, "number": 1.5, "text": "quoted \"",
+		"array": []any{"value", true}, "object": map[string]any{"key": false},
+		"unused": strings.Repeat("x", 4096), "_storage": map[string]any{"private": true},
+	}}})
+	store, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	err = store.WithReadTransaction(t.Context(), func(ctx context.Context, r dashboardstore.Reader) error {
+		tx := r.(*reader).tx
+		full, err := dashboardquery.ReadCollection(ctx, tx, "repositories", 10, 1<<20)
+		if err != nil {
+			return err
+		}
+		fields := []string{"id", "yes", "no", "null", "number", "text", "array", "object", "missing"}
+		projected, err := dashboardquery.ReadCollectionFields(ctx, tx, "repositories", fields, 10, 1<<20)
+		if err != nil {
+			return err
+		}
+		delete(full[0], "unused")
+		if !reflect.DeepEqual(projected, full) {
+			t.Fatalf("SQL projection changed JSON types or missing fields: got=%v want=%v", projected, full)
+		}
+		if _, err := dashboardquery.ReadCollectionFields(ctx, tx, "repositories", []string{"id"}, 10, 100); err == nil {
+			t.Fatal("projecting a small result bypassed the full-record input byte budget")
+		}
+		empty, err := dashboardquery.ReadCollectionFields(ctx, tx, "repositories", []string{}, 10, 1<<20)
+		if err != nil || len(empty) != 1 || len(empty[0]) != 0 {
+			t.Fatalf("empty projection changed cardinality: %v %v", empty, err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSnapshotProjectionUnionsConsumerFieldsWithoutChangingRequestedSources(t *testing.T) {
+	store, _ := localSnapshot(t)
+	definitions := []query.Definition{
+		{Name: "base", From: "$runs"},
+		{Name: "one", From: "base", Select: []query.SelectedField{{Field: "id"}, {Field: "explicit"}}},
+		{Name: "two", From: "base", Select: []query.SelectedField{{Field: "duration"}}},
+	}
+	err := store.WithReadTransaction(t.Context(), func(ctx context.Context, r dashboardstore.Reader) error {
+		result, _, err := r.ExecuteSQLPlan(ctx, definitions, []string{"one", "two", "$runs"})
+		if err != nil {
+			return err
+		}
+		if result["two"].Rows[0]["duration"] != float64(2) || result["$runs"].Rows[0]["workflowId"] != "workflow:1" {
+			t.Fatalf("consumer fields were dropped: %+v", result)
+		}
+		if _, present := result["one"].Rows[0]["explicit"]; present {
+			t.Fatal("missing value became explicit null")
+		}
+		if value, present := result["one"].Rows[1]["explicit"]; !present || value != nil {
+			t.Fatal("explicit null became absent")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSnapshotPlanReleasesCompletedInputs(t *testing.T) {
+	store, _ := localSnapshot(t)
+	definitions := make([]query.Definition, 12)
+	from := "$repositories"
+	for index := range definitions {
+		definitions[index] = query.Definition{Name: fmt.Sprintf("step-%d", index), From: from}
+		from = definitions[index].Name
+	}
+	err := store.WithReadTransaction(t.Context(), func(ctx context.Context, r dashboardstore.Reader) error {
+		sources, metrics, err := r.ExecuteSQLPlan(ctx, definitions, []string{"$repositories", from})
+		if err != nil {
+			return err
+		}
+		if len(sources[from].Rows) != 2 || len(sources["$repositories"].Rows) != 2 {
+			t.Fatalf("requested sources were released too early: %+v", sources)
+		}
+		if metrics.RetainedRows != 6 {
+			t.Fatalf("completed DAG inputs remained retained: peak rows=%d, want 6", metrics.RetainedRows)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
 func localSnapshot(t *testing.T) (*Store, string) {
 	t.Helper()

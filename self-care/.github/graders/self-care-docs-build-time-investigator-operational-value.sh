@@ -14,7 +14,7 @@ definition() {
 {
   "schemaVersion": 4,
   "grader": "operational-value",
-  "repository": "githubnext/gh-aw-cao",
+  "repository": "githubnext/gh-cao",
   "workflowName": "SelfCare / Docs Build Time",
   "sourcePath": ".github/workflows/self-care-docs-build-time-investigator.md",
   "adoption": {
@@ -26,7 +26,7 @@ definition() {
     "opportunity": "The Documentation Pages performance state at the control-plane source revision audited by the worker run.",
     "assignment": "Bind the dispatched target repository, worker run source revision, and the median execution time and failure rate from completed docs.yml runs during the preceding seven days; key docs-build-performance:<targetRepo>:<sourceSha> so repeated audits of one revision share an opportunity.",
     "accepted": "At least five successful docs.yml runs after assignment have a lower median execution time than the frozen baseline, with full attainment at a reduction of at least 60 seconds or 15 percent, whichever is greater, and the completed-run failure rate does not increase.",
-    "repositories": ["githubnext/gh-aw-cao"],
+    "repositories": ["githubnext/gh-cao"],
     "collection": "Use GitHub Actions run timestamps for at most 100 completed docs.yml runs in each bounded baseline and post-assignment window.",
     "maturation": "Fourteen days after the worker run starts.",
     "zeroRule": "Complete post-assignment evidence with no execution-time reduction or a higher failure rate scores 0.",
@@ -137,7 +137,7 @@ summarize_runs() {
 assign_case() {
     request_file=$1
     target_repo=$(jq -r '.event.inputs.target_repo // empty' "$request_file")
-    [[ $target_repo == githubnext/gh-aw-cao ]] || return 1
+    [[ $target_repo == githubnext/gh-cao ]] || return 1
     assigned_at=$(normalize_timestamp "$(jq -r .run.createdAt "$request_file")") || return 1
     source_sha=$(jq -r '.run.sha // empty' "$request_file")
     [[ $source_sha =~ ^[0-9a-f]{40}$ ]] || return 1
@@ -173,7 +173,7 @@ grade_run() {
     source_sha=$(printf '%s\n' "$case_json" | jq -r .sourceSha)
     assigned_at=$(printf '%s\n' "$case_json" | jq -r .assignedAt)
     key="docs-build-performance:${target_repo}:${source_sha}"
-    if [[ $target_repo != githubnext/gh-aw-cao || ! $source_sha =~ ^[0-9a-f]{40}$ ]]; then
+    if [[ $target_repo != githubnext/gh-cao || ! $source_sha =~ ^[0-9a-f]{40}$ ]]; then
         emit_missing "$key" "$case_json" "$evidence_cutoff" "$matures_at" invalid-assignment
         return
     fi

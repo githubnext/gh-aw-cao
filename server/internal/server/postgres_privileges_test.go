@@ -13,13 +13,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/postgres"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	gateway "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
-	"github.com/githubnext/gh-aw-cao/server/internal/webhookgatewaylocal"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/webhookgatewaylocal"
 )
 
 func TestPostgresWebhookRuntimePrivilegeBoundary(t *testing.T) {

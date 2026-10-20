@@ -30,6 +30,29 @@ export function setDeclaredCliActions(actions, options = {}) {
   declaredCliActionContext = options.context ?? {};
 }
 
+/**
+ * Resolve an interaction element's explicit action reference using the same host declarations.
+ * @param {string} id
+ * @param {Record<string, string>} values
+ * @param {Record<string, boolean>} [args]
+ */
+export function declaredCliActionCommand(id, values, args = {}) {
+  const action = declaredCliActions.find((candidate) => candidate.id === id);
+  if (!action || action['copy-only'] === true) throw new Error('CLI action is unavailable.');
+  return commandPreview(action, args, values, declaredCliActionContext);
+}
+
+/**
+ * @param {string} id
+ * @param {Record<string, string>} values
+ * @param {{ arguments?: Record<string, boolean>, input?: string, signal: AbortSignal, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }} options
+ */
+export function executeDeclaredCliAction(id, values, options) {
+  if (!declaredCliActionsCanExecute || !cliQueueAvailable()) throw new Error('Authorized local CLI actions are unavailable.');
+  declaredCliActionCommand(id, values, options.arguments);
+  return executeAction(id, options.arguments ?? {}, values, options.onOutput, options.input, options.signal);
+}
+
 /** @returns {string | undefined} */
 export function declaredAgentTaskActionId() {
   return declaredCliActions.find((action) => action.command === 'gh agent-task create --from-file -'

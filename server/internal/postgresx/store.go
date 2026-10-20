@@ -15,11 +15,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/logger"
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresconn"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/sqlbuilder"
+	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/postgresconn"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/sqlbuilder"
 )
 
 var storeLog = logger.New("cao:postgresx:store")
@@ -325,6 +325,11 @@ func (s *Store) WithReadTransaction(ctx context.Context, fn func(context.Context
 	}
 	// JIT compilation of wide dashboard plans can consume the entire read budget.
 	if _, err := tx.ExecContext(ctx, "SET LOCAL jit = off"); err != nil {
+		return err
+	}
+	// PostgreSQL 16 can estimate window-filtered CTEs as one row and choose
+	// quadratic rescans. Compiled joins are equijoins; prefer hash/merge plans.
+	if _, err := tx.ExecContext(ctx, "SET LOCAL enable_nestloop = off"); err != nil {
 		return err
 	}
 	if err := fn(ctx, &readTransaction{store: s, tx: tx}); err != nil {

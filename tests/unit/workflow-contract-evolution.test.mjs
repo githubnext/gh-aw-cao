@@ -112,7 +112,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(orchestrator, /Dispatch the integrity, reliability, efficiency, and catalog-advisor workers only for verified control repositories/);
   assert.match(orchestrator, /Dispatch the failure investigator and compiler-security workers only for verified agentic-workflow repositories/);
   const catalogAdvisor = workflow("cao-evolution-catalog-advisor.md");
-  assert.match(catalogAdvisor, /Use `githubnext\/gh-aw-cao` as the official Operations Catalog/);
+  assert.match(catalogAdvisor, /Use `githubnext\/gh-cao` as the official Operations Catalog/);
   assert.match(catalogAdvisor, /Never install or update a campaign, edit policy, dispatch a workflow/);
   assert.match(catalogAdvisor, /installation and enablement require separate reviewed changes/);
   assert.match(workflow("cao-evolution-reliability.md"), /uses: shared\/activity-cache\.md/);

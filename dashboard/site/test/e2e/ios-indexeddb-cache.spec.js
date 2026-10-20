@@ -18,7 +18,7 @@ function shard(runId) {
       run_id: runId,
       run_attempt: 1,
       organization: 'githubnext',
-      repository: 'gh-aw-cao',
+      repository: 'gh-cao',
       workflow_name: 'Dashboard',
       workflow_path: '.github/workflows/dashboard.md',
       status: 'completed',
@@ -96,7 +96,7 @@ test('iPhone WebKit retains canonical data through ingest, reload, and another i
   }, { url: storageUrl, createdAt });
   expect(await readSnapshot()).toEqual({ createdAt });
   const firstState = await stored();
-  expect(firstState.runIds).toEqual(['github:run:githubnext/gh-aw-cao:1001']);
+  expect(firstState.runIds).toEqual(['github:run:githubnext/gh-cao:1001']);
   expect(firstState.receiptHashes).toEqual([firstIdentity]);
 
   await page.reload();
@@ -108,8 +108,8 @@ test('iPhone WebKit retains canonical data through ingest, reload, and another i
   expect(await cachedShards()).toEqual([true, true]);
   expect(await stored()).toEqual({
     runIds: [
-      'github:run:githubnext/gh-aw-cao:1001',
-      'github:run:githubnext/gh-aw-cao:1002'
+      'github:run:githubnext/gh-cao:1001',
+      'github:run:githubnext/gh-cao:1002'
     ],
     receiptHashes: [firstIdentity, secondIdentity]
   });

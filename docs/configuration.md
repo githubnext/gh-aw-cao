@@ -15,9 +15,9 @@ This minimal policy enables the installed Dependabot campaign and its workers in
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
+  "$schema": "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
-  "gh-aw-version": "v0.92.5",
+  "gh-aw-version": "v0.92.6",
   "control-plane": {
     "scope": {
       "allowed-owners": ["acme"]
@@ -120,7 +120,7 @@ Imports resolve relative to the importing file and must remain within the
 extension's directory after symlink resolution. Cycles, more than eight
 imports, duplicate keys, expressions, non-host overrides, and invalid
 composed policy fail closed. See the
-[control architecture specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md#531-deployment-specific-host-extensions)
+[control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md#531-deployment-specific-host-extensions)
 and [managed Redis guide](deployment-managed-redis.md) for host-module options.
 
 For example, this policy keeps Dependabot in review across its scope while promoting one exact target to live:
@@ -156,6 +156,124 @@ For example, this policy keeps Dependabot in review across its scope while promo
 
 Shared control applies schema defaults, then `control-plane.defaults`, campaign values, the exact target mode, and any explicit worker ceiling, in that order. A dispatch request may narrow the result. Workers independently resolve their exact target from the policy revision at `github.workflow_sha`; an envelope that requests a wider mode fails before agent execution. Campaign repository and percentage caps still apply across all candidates regardless of target mode.
 
+### Standalone Agentic Workflows
+
+Start with a regular workflow, such as
+[Daily Repo Status from Agentics](https://github.com/githubnext/agentics/blob/main/docs/repo-status.md),
+and adapt its repository assumptions before reusing it across repositories.
+`gh aw add` installs the upstream workflow; it does not automatically add CAO
+admission or redirect its writes.
+
+Keep upstream installation ownership with `gh aw add`/`update`. Prepare a
+distinctly named, locally maintained variant, recording its source revision and
+manual update responsibility. Import `shared/control.md` as `role: standalone`,
+bind reads to the admitted target, and use each candidate's resolved mode and
+output destination. Route every effect, including closing older reports, to
+review; keep report matching target-specific.
+
+Declare the variant under `control-plane.workflows` with `enabled: false`,
+`mode: review`, `max-mode: review`, and `max-repositories: 1`. Start manual-only
+against one explicitly enrolled repository, without activating a duplicate
+upstream schedule. Keep separate read/write credentials in Actions secrets.
+Checked-in rollout policy decides where it may run; optional control-owned
+steering may refine the task but cannot widen authority.
+
+Compile with the policy-pinned `gh aw`, inspect admission and output routing,
+and review source, lock, and policy together before enabling a review run.
+Review mode executes the agent and may create review outputs; it is not a
+no-write simulation. Once the integration is proven, reuse the definition
+across additional explicitly enrolled targets through reviewed policy changes.
+Live delivery additionally requires a supported output path and explicit live
+authorization. No campaign or new installation command is required.
+
+Any agentic workflow can opt into CAO without becoming a campaign or introducing
+an orchestrator/worker pair. Install or maintain its Markdown source in the
+control repository, retain its own trigger and mission, and declare its exact
+workflow slug under `control-plane.workflows`:
+
+```json
+{
+  "version": 1,
+  "gh-aw-version": "v0.92.6",
+  "control-plane": {
+    "scope": {
+      "allowed-owners": ["acme"],
+      "allowed-repositories": ["acme/service-a", "acme/service-b"]
+    },
+    "workflows": {
+      "fleet-audit": {
+        "enabled": true,
+        "mode": "review",
+        "max-mode": "review",
+        "max-repositories": 2,
+        "rollout-percent": 50
+      }
+    }
+  }
+}
+```
+
+In `.github/workflows/fleet-audit.md`, add the shared-control import and
+pre-activation gate:
+
+```yaml
+jobs:
+  pre-activation:
+    outputs:
+      cao_authorized: ${{ steps.cao_admission.outputs.authorized == 'true' && steps.cao_precompute.outputs.authorized != 'false' }}
+if: needs.pre_activation.outputs.cao_authorized == 'true'
+imports:
+  - uses: shared/control.md
+    with:
+      role: standalone
+      workflow: fleet-audit
+      read_repository: ${{ github.repository }}
+      read_contents: read
+```
+
+Keep the workflow's existing gh-aw engine, read permissions, tools, credentials,
+and safe outputs. Its pre-activation permissions need `contents: read` and
+`actions: read`, as in the campaign integration. Expose optional `target_repo`,
+`safe_output_repo`, `safe_output_mode`, `max_repos`, and `rollout_percent` manual
+inputs only when needed; omit defaults that would unintentionally narrow a
+scheduled or manual run's checked-in policy.
+The [compilation fixture](https://github.com/githubnext/gh-cao/blob/main/tests/fixtures/workflows/fleet-audit.md)
+shows a complete review-report workflow.
+
+The identity is the filename slug, not the display name. Admission verifies it
+against the actual compiled workflow reference and policy at `github.workflow_sha`.
+No campaign descriptor, worker mapping, dispatch envelope, or campaign
+installation record is required. An undeclared or disabled workflow cannot
+activate. Compile with the policy-pinned `gh aw`, then commit source, generated
+lock, and policy together; use `gh aw run fleet-audit` for a manual run.
+
+Standalone workflows inherit `control-plane.defaults` and global scope and
+inventory settings. Each declaration supports `enabled`, `mode`,
+`max-repositories`, `rollout-percent`, optional `targets.<owner/repository>.mode`,
+and optional `max-mode`. As with worker ceilings, `max-mode` can only narrow
+default and exact-target modes; `live` does not promote a review target.
+`monthly-ai-credit-budget` remains compatibility-only. Persistent `debug`,
+campaign workers, and gh-aw execution capabilities are not accepted in this map.
+
+Precompute uses the same bounded discovery, deterministic cells and batches,
+and request narrowing as campaign orchestration. It excludes archived/disabled
+repositories and admits the first deterministic subset bounded by the
+repository limit and percentage of the eligible batch. The workflow performs
+its mission directly against that admitted set; it does not dispatch workers
+or discover additional targets. An empty set is a no-op; unavailable required
+inventory evidence fails closed.
+
+Read `/tmp/gh-aw/agent/control-precompute.json` and use each admitted candidate's
+`safe_output_mode` and `safe_output_repo`. Mixed review/live target policies
+remain distinct: review proposals go to the validated review destination
+(the control repository by default), and live target writes go only to that
+target. Fleet admission does not mint broader credentials or add safe-output
+capabilities. Declare the required read scope, output repository allowlists,
+and authentication in the workflow using gh-aw; if they cannot reach an
+admitted target or implement its output route, report incomplete rather than
+falling back to a different destination. Merely installing or observing a
+workflow does not opt it into this contract.
+
 ### Monthly Campaign Budgets
 
 `monthly-ai-credit-budget` is deprecated. Existing policy files may keep the field during migration, but shared control no longer reads month-to-date usage or gates repository admission with monthly AI Credit totals. Existing repository, rollout, dispatch, and native gh-aw workflow credit limits remain cumulative.
@@ -180,7 +298,7 @@ entry to disable it or add public, private, or GitHub Enterprise registries.
         {
           "id": "official",
           "name": "Official CAO catalog",
-          "repository": "githubnext/gh-aw-cao",
+          "repository": "githubnext/gh-cao",
           "ref": "main",
           "auth": { "type": "none" }
         },

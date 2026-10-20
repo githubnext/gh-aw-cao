@@ -21,7 +21,7 @@ func TestActionsRepositoryMetadataResponse(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			api := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-				if request.URL.Path != "/repos/githubnext/gh-aw-cao" ||
+				if request.URL.Path != "/repos/githubnext/gh-cao" ||
 					request.Header.Get("Authorization") != "Bearer "+testActionsToken ||
 					request.Header.Get("X-GitHub-Api-Version") != actionsGitHubAPIVersion {
 					t.Error("repository identity request is invalid")
@@ -30,21 +30,21 @@ func TestActionsRepositoryMetadataResponse(t *testing.T) {
 				}
 				response.WriteHeader(test.status)
 				_ = json.NewEncoder(response).Encode(map[string]any{
-					"id": 1302952722, "full_name": "githubnext/gh-aw-cao",
+					"id": 1302952722, "full_name": "githubnext/gh-cao",
 					"owner": map[string]any{"id": 89615882}, "default_branch": "main",
 					"description": strings.Repeat("x", test.padding),
 				})
 			}))
 			defer api.Close()
 			metadata, err := actionsRepositoryMetadataForToken(t.Context(), Config{
-				ActionsRepository: "githubnext/gh-aw-cao", GitHubAPIURL: api.URL,
+				ActionsRepository: "githubnext/gh-cao", GitHubAPIURL: api.URL,
 				ActionsHTTPClient: api.Client(),
 			}, testActionsToken)
 			if (err == nil) != test.valid {
 				t.Fatalf("metadata=%+v error=%v, want valid=%t", metadata, err, test.valid)
 			}
 			if test.valid && metadata != (actionsRepositoryMetadata{
-				FullName: "githubnext/gh-aw-cao", ID: "1302952722",
+				FullName: "githubnext/gh-cao", ID: "1302952722",
 				OwnerID: "89615882", DefaultBranch: "main",
 			}) {
 				t.Fatalf("unexpected repository identity: %+v", metadata)

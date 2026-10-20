@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational/sqlite"
-	"github.com/githubnext/gh-aw-cao/server/internal/simulator"
-	wg "github.com/githubnext/gh-aw-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/operational/sqlite"
+	"github.com/githubnext/gh-cao/server/internal/simulator"
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 type pollingCase struct {

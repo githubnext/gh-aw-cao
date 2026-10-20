@@ -261,6 +261,10 @@ async function setupNonInteractivePublicControl({
   if (!isMapping(campaigns) || Object.keys(campaigns).length > 0) {
     throw new UsageError('Non-interactive setup requires a bare control plane with no declared campaigns');
   }
+  if (controlPlane.workflows !== undefined
+    && (!isMapping(controlPlane.workflows) || Object.keys(controlPlane.workflows).length > 0)) {
+    throw new UsageError('Non-interactive setup requires a bare control plane with no declared standalone workflows');
+  }
   const owner = control.repository.split('/')[0];
   const scope = controlPlane.scope;
   if (scope !== undefined) {
@@ -419,6 +423,10 @@ export async function setupCaoControlPlane({
     const campaigns = policy?.['control-plane']?.campaigns;
     if (!isMapping(campaigns) || Object.keys(campaigns).length > 0) {
       throw new Error('cao setup only configures a bare control plane with no declared campaigns');
+    }
+    const workflows = policy['control-plane'].workflows;
+    if (workflows !== undefined && (!isMapping(workflows) || Object.keys(workflows).length > 0)) {
+      throw new Error('cao setup only configures a bare control plane with no declared standalone workflows');
     }
 
     interactive.note(`Control repository: ${control.repository} (${control.visibility})\nNo campaign will be installed, enabled, or run.\nWildcard patterns are expanded now; only exact names are saved.`, '1 / 3  Repositories');

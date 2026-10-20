@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/control-architecture.md  
+**Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md
 **Editors:** GitHub Next
 
 ## Abstract
@@ -45,14 +45,14 @@ This document is a Working Draft and may be updated, replaced, or made obsolete.
 
 ### 1.1 Purpose
 
-CAO installs and operates agentic workflow campaigns from a central control repository across an explicitly bounded set of target repositories. This specification separates organizational operating authority from workflow execution capability so neither layer can silently grant authority owned by the other.
+CAO operates agentic workflows from a central control repository across an explicitly bounded set of target repositories. Campaigns are an optional orchestrator/worker packaging pattern, not a prerequisite for governed execution. This specification separates organizational operating authority from workflow execution capability so neither layer can silently grant authority owned by the other.
 
 ### 1.2 Scope
 
 This specification covers:
 
 - `.github/workflows/cao.json` as the sole persistent non-secret CAO policy authority;
-- campaign and worker enablement, repository scope, rollout, and output-mode ceilings;
+- standalone workflow, campaign, and worker enablement, repository scope, rollout, and output-mode ceilings;
 - deterministic policy resolution, narrowing, provenance, and revocation; and
 - the authority boundary between CAO and gh-aw.
 
@@ -115,9 +115,9 @@ Review-only operation MAY conform to Level 2. Live operation MUST NOT claim Leve
 
 **Control repository:** The repository from which CAO campaigns, policy, and workflow runs are operated.
 
-**Target repository:** A repository selected for analysis or mutation by one worker run.
+**Target repository:** A repository admitted for analysis or mutation by a worker or standalone workflow run.
 
-**Rollout authority:** CAO authority to enable campaigns and workers and bound repositories, modes, inventory slices, repository counts, rollout percentages, and cross-run admission.
+**Rollout authority:** CAO authority to enable standalone workflows, campaigns, and workers and bound repositories, modes, inventory slices, repository counts, rollout percentages, and cross-run admission.
 
 **Execution capability:** A capability declared by gh-aw source, including an engine, per-run limit, tool, network host, permission, generated job, authentication mechanism, or safe-output primitive.
 
@@ -141,7 +141,7 @@ CAO governs **whether and where** an operation may run. gh-aw governs **how** an
 
 | Concern | CAO authority | gh-aw authority |
 | --- | --- | --- |
-| Enablement | Campaign and worker gates | Execution of an admitted workflow |
+| Enablement | Standalone workflow, campaign, and worker gates | Execution of an admitted workflow |
 | Repository scope | Eligible owners, targets, and review destinations | Use of the admitted repository |
 | Output mode | Campaign and worker review/live ceilings | Declared safe-output behavior for the effective mode |
 | Rollout | Scan, partition, batch, percentage, repository-count, and monthly campaign admission | Execution of admitted runs |
@@ -219,6 +219,33 @@ Repository-memory staging remains a gh-aw capability, not a CAO job replacement.
 
 The orchestrator is the rollout decision point. Each worker is an independent enforcement point that revalidates the envelope before execution.
 
+### 4.5 Standalone Workflow Execution
+
+**CAO-EXE-005:** An agentic workflow MAY participate directly in CAO without a
+campaign, orchestrator, worker, or campaign installation record. It MUST import
+shared control as `standalone`, declare its exact compiled workflow slug, expose
+the pre-activation authorization output, and gate activation on successful
+admission and precompute. The resolver MUST match that identity against
+`GITHUB_WORKFLOW_REF` and resolve `control-plane.workflows.<slug>` at the exact
+workflow SHA. Undeclared or disabled workflows MUST NOT activate.
+
+A standalone run MUST receive the same policy validation, scope, request
+narrowing, and API-capacity checks as an orchestrator. Its precompute MUST use
+the same bounded inventory and deterministic cell/batch partitioning. It MUST
+exclude archived and disabled repositories and cap the admitted deterministic
+subset by `max-repositories` and `rollout-percent`; each admitted target MUST
+carry its own effective mode and output destination. An empty set permits only
+no-op execution; unavailable required inventory evidence MUST fail closed.
+
+The workflow MAY perform its mission directly across that set, but MUST NOT
+discover additional repositories, dispatch downstream work, or carry a
+dispatcher envelope. Review targets MUST route proposals to the admitted review
+repository; live targets MUST route target writes only to that target through
+declared safe outputs. Workflow `max-mode`, when present, MUST narrow every
+target's mode. Credential reach, tools, and safe-output capabilities remain
+gh-aw-owned cumulative boundaries; CAO MUST NOT expand them for a fleet run.
+Request-only `debug` remains restricted to manual single-target workers.
+
 ## 5. JSON Configuration
 
 ### 5.1 Location and Validation
@@ -235,7 +262,7 @@ The orchestrator is the rollout decision point. Each worker is an independent en
 
 **CAO-CFG-006:** A control repository MUST declare `gh-aw-version` as a `v`-prefixed semantic version. Infrastructure that installs the gh-aw CLI MUST use this value as its compiler-version source of truth. The field does not grant execution capability or rollout authority.
 
-The `$schema` property SHOULD identify `https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json`.
+The `$schema` property SHOULD identify `https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json`.
 
 ### 5.2 Document Roles
 
@@ -250,6 +277,7 @@ A control repository uses `control-plane`. A target repository uses `target-auth
 | `web` | Presentation settings for deterministic web surfaces | Campaignd defaults |
 | `defaults` | Mode, repository, and rollout defaults | Schema defaults |
 | `campaigns` | Explicit campaign and worker workflow declarations | Undeclared campaigns and workers are disabled |
+| `workflows` | Standalone agentic workflows keyed by exact compiled workflow slug | Undeclared workflows are disabled |
 | `publishing` | Deterministic reviewed-output publication | Disabled |
 
 `allowed-owners` and `allowed-repositories` are cumulative when both are non-empty. Wildcards MUST NOT be accepted in version 1.
@@ -331,12 +359,24 @@ override that converts normal campaign dispatches into debug runs.
 
 An absent campaign is disabled. A campaign's `workers` map declares its worker identities and exact workflow slugs; undeclared workers are disabled. Every worker requires `workflow`, defaults to enabled, may set `enabled: false`, and may set `max-mode` only to narrow the resolved campaign or exact-target mode. Campaign, worker, and workflow identifiers use lowercase kebab-case, and workflow identities must be unique within a campaign.
 
+An entry under `control-plane.workflows` MAY declare `enabled`, `mode`,
+`max-mode`, `max-repositories`, `rollout-percent`, `targets`, and the deprecated
+`monthly-ai-credit-budget` compatibility field. It MUST NOT contain campaign
+workers or execution capabilities. Its key MUST be the exact lowercase
+kebab-case workflow slug, not a display name or campaign alias. Enablement
+defaults to true for declared workflows; `max-mode` is an optional ceiling
+applied after default and exact-target modes. Target policies MUST satisfy the
+same global repository and owner scope constraints as campaign targets.
+Persistent modes, including `max-mode` and target modes, MUST be `review` or
+`live`, never `debug`. A standalone import MUST NOT also declare campaign or
+worker identities; campaign roles MUST NOT use standalone policy identity.
+
 ### 5.4 Precedence and Narrowing
 
 Persistent values resolve in this order:
 
 ```text
-schema defaults < control-plane.defaults < campaign policy < exact target policy < optional worker ceiling
+schema defaults < control-plane.defaults < campaign or standalone workflow policy < exact target policy < optional worker or standalone workflow ceiling
 ```
 
 Dispatch values are intersected with the persistent result. They are requests and MUST NOT become persistent authority.
@@ -386,9 +426,15 @@ The resolver MUST:
 
 ### 6.3 Effective Record
 
-The resolver MUST write exactly one derived record to `/tmp/gh-aw/agent/control-precompute.json`. Every authorized record MUST include authorization status and reason, campaign, role, worker when applicable, effective mode and routing, control repository, workflow and policy commit SHA, lowercase SHA-256 policy digest, schema version, and resolution time.
+The resolver MUST write exactly one derived record to `/tmp/gh-aw/agent/control-precompute.json`. Every authorized record MUST include authorization status and reason, workflow or campaign identity, role, worker when applicable, effective mode and routing, control repository, workflow and policy commit SHA, lowercase SHA-256 policy digest, schema version, and resolution time.
 
 An orchestrator record MUST additionally include inventory version and batch identity; configured and effective repository and rollout caps; repository discovery status; the bounded candidate repositories; and eligible worker workflows with skip reasons. A worker record MUST additionally include the target, worker enablement and mode ceiling, and the standard dispatch envelope. A manual debug worker MUST instead use the run-specific provenance in CAO-EXE-004: `safe_output_mode: debug`, `launch_kind: manual-debug`, `debug_actor`, and `safe_outputs_staged: true`, with the actual control repository and empty dispatcher correlation fields. Its candidate and downstream-worker lists MUST be empty.
+
+A standalone record MUST identify `control_role: standalone` and `workflow`,
+leave campaign and worker identities empty, and include inventory/batch
+provenance, effective repository and rollout caps, and only the admitted
+`candidate_repositories`, each with `safe_output_mode` and `safe_output_repo`.
+Its `worker_workflows` list MUST be empty.
 
 Consumers MUST treat the record's `candidate_repositories`, `worker_workflows`, `effective_max_repos`, `safe_output_mode`, and `safe_output_repo` fields as authoritative. They MUST NOT reconstruct those values from workflow inputs.
 
@@ -482,7 +528,7 @@ The effective record SHOULD contain only identifiers and provenance required for
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
+  "$schema": "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
   "control-plane": {
     "scope": {

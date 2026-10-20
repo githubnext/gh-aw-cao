@@ -13,9 +13,9 @@ import (
 
 	"github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
-	"github.com/githubnext/gh-aw-cao/server/internal/testutil"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/testutil"
 )
 
 func TestUnchangedArtifactRevisionCuratesExistingAudits(t *testing.T) {

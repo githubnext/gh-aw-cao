@@ -9,12 +9,26 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/model"
-	"github.com/githubnext/gh-aw-cao/server/internal/postgresx"
-	"github.com/githubnext/gh-aw-cao/server/internal/query"
+	"github.com/githubnext/gh-cao/server/internal/model"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
+	"github.com/githubnext/gh-cao/server/internal/query"
 )
 
 func TestDashboardQueryCorpusUsesPostgres(t *testing.T) {
+	assertDashboardQueriesUsePostgres(t, nil)
+}
+
+func TestRepositoryQueriesUsePostgres(t *testing.T) {
+	assertDashboardQueriesUsePostgres(t, []string{
+		"repository-run-statistics", "repository-run-identities",
+		"repository-import-totals", "repository-run-totals",
+		"repository-aic-totals", "repository-activity",
+		"repository-observed-run-counts", "repository-run-inventory",
+	})
+}
+
+func assertDashboardQueriesUsePostgres(t *testing.T, requested []string) {
+	t.Helper()
 	store := integrationDatabase(t)
 	definitions, parameters, err := dashboardSQLCorpus()
 	if err != nil {
@@ -25,6 +39,12 @@ func TestDashboardQueryCorpusUsesPostgres(t *testing.T) {
 	}
 	if err := query.Validate(definitions); err != nil {
 		t.Fatalf("validate deployed dashboard query corpus: %v", err)
+	}
+	if requested == nil {
+		requested = make([]string, len(definitions))
+		for index, definition := range definitions {
+			requested[index] = definition.Name
+		}
 	}
 	runtimeSource := func(_ context.Context, name string) (model.Source, error) {
 		return model.Source{
@@ -38,20 +58,20 @@ func TestDashboardQueryCorpusUsesPostgres(t *testing.T) {
 		}, nil
 	}
 	err = store.WithReadTransaction(t.Context(), func(ctx context.Context, reader postgresx.NativeReader) error {
-		for _, definition := range definitions {
+		for _, name := range requested {
 			sources, metrics, err := reader.ExecuteSQLPlanWithOptions(
-				ctx, definitions, []string{definition.Name},
+				ctx, definitions, []string{name},
 				postgresx.SQLExecutionOptions{Runtime: runtimeSource},
 			)
 			if err != nil {
-				return fmt.Errorf("execute dashboard query %q through PostgreSQL: %w", definition.Name, err)
+				return fmt.Errorf("execute dashboard query %q through PostgreSQL: %w", name, err)
 			}
-			if _, ok := sources[definition.Name]; !ok {
-				return fmt.Errorf("PostgreSQL SQL plan omitted dashboard query %q", definition.Name)
+			if _, ok := sources[name]; !ok {
+				return fmt.Errorf("PostgreSQL SQL plan omitted dashboard query %q", name)
 			}
 			if len(metrics.FallbackOperations) != 0 {
 				return fmt.Errorf("dashboard query %q used Go fallback operations: %v",
-					definition.Name, metrics.FallbackOperations)
+					name, metrics.FallbackOperations)
 			}
 		}
 		return nil

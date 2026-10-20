@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/githubnext/gh-aw-cao/server/internal/operational"
+	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
 func (s *Store) RecordGitHubQuotaUsage(ctx context.Context, bucket string, at time.Time, limit, used, reserved int64) (bool, error) {

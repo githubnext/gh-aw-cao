@@ -111,7 +111,7 @@ The compiled `generated/openapi.json` is OpenAPI **3.1** and can be consumed by
 another server implementation. Its `info.version` records the HTTP contract
 version; review and update it when changing externally observable API signatures.
 `generated/schemas/` contains JSON Schema 2020-12
-documents for query definitions, requests and results, SSE data frames, and webhook
+documents for admission requests/allowances, query definitions, requests and results, SSE data frames, and webhook
 acknowledgements. Representative safe examples are embedded in the TypeSpec
 models and emitted into OpenAPI/JSON Schema. `RevisionEvent.json` describes the
 JSON *inside* each SSE `data:` frame; the stream itself is `text/event-stream`.
