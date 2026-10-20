@@ -221,6 +221,11 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	if err != nil || !info.IsDir() {
 		return nil, errors.New("site directory must exist and contain the built dashboard")
 	}
+	if profile.Authentication == HostAuthenticationOAuth {
+		if err := validateHostedSite(config.SiteDirectory); err != nil {
+			return nil, err
+		}
+	}
 	if config.Logger == nil {
 		config.Logger = log.Default()
 	}

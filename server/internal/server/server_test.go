@@ -267,7 +267,7 @@ func TestExternallyHostedHandlerRequiresActiveLifecycle(t *testing.T) {
 	profile.Listener = HostListenerExternal
 	app, err := New(t.Context(), redisx.NewStore(client, "external-test"), Config{
 		Database:    database,
-		HostProfile: profile, SiteDirectory: t.TempDir(),
+		HostProfile: profile, SiteDirectory: hostedTestSite(t),
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth: validOAuthConfig("https://github.test"),
 		CORS:        CORSPolicy{AllowedOrigins: []string{"https://tools.example.com"}},

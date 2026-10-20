@@ -445,6 +445,16 @@ The hosted dashboard has one strict storage split:
 | Redis | Sessions, rate limits, webhook and collection queues, delivery deduplication, distributed coordination, GitHub quota state, pending token revocations, and bounded runtime caches | Dashboard entity rows, canonical source documents, query indexes, persistent query projections, or dashboard query execution |
 | In-process memory (explicit opt-in) | The same operational contracts within one owning process, with bounded volatile state and restart recovery limitations | Dashboard entity storage, query execution, cross-process coordination, restart durability, or fallback for a failed Redis deployment |
 
+The Go HTTP(S) server serves the hosted dashboard itself, including its built
+HTML, JavaScript and other assets, OAuth routes, query API, and revision events
+on one origin. Container, Azure Functions, and externally owned listeners all
+expose the complete CAO handler, not an API behind a separately hosted Pages
+application. Hosted startup requires a readable, non-empty built `index.html`.
+The server injects the `server-http` backend bootstrap into dashboard entry
+responses; the browser uses server-side PostgreSQL queries rather than static
+shard ingestion or IndexedDB query execution. Hosted failures do not fall back
+to the separate Pages deployment.
+
 The browser communicates only with the Go HTTP(S) server. It never connects to
 either store. Artifact ingestion and rebuilds transactionally replace the
 current PostgreSQL data; Redis failure may make protected operations
@@ -568,7 +578,7 @@ reconstructable.
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Independent, entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds the dashboard's authoritative JSON contracts. Actions pipeline commands remain Node-owned. |
 | `internal/dashboardquery/` | Small independent Go module sharing the bounded local Dashboard Language evaluator and read-only canonical SQLite reader between the extension and explicit local server profile; never a hosted PostgreSQL fallback. |
-| `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
+| `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and shared browser UI built for either Pages or the hosted Go server. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, container image, and Azure Functions deployment profile. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
@@ -1121,13 +1131,14 @@ all public; that does not authorize non-public targets or other campaigns.
   an explicit alternative operational adapter for caches, queues, coordination, rate limits,
   and sessions, with bounded volatile memory available only for an explicitly
   acknowledged single-process hosted deployment.
-- **Go** implements the isolated host-neutral HTTP(S) ingestion, reconciliation,
-  rebuild, and query service, plus the independent native GitHub CLI extension
-  scaffold.
+- **Go** serves the hosted dashboard HTML and assets with its same-origin
+  authentication, ingestion, reconciliation, rebuild, query, and revision-event
+  service, plus the independent native GitHub CLI extension scaffold.
 - **Dashboard Language** keeps data operations declarative and off the browser
   main thread.
 - **Astro/Starlight** builds the documentation site. The operational dashboard
-  is a separately bundled static application published through GitHub Pages.
+  has a separately bundled browser UI. Only the static deployment publishes it
+  through GitHub Pages; hosted deployments serve it through the Go handler.
 
 ## Where to read next
 

@@ -33,7 +33,7 @@ func memoryOAuthApp(t *testing.T, githubURL string) *App {
 	profile.SingleReplica = true
 	profile.RequiresRedis = false
 	app, err := New(t.Context(), focusedTestStore(store), Config{
-		Database: constructorDatabase(), SiteDirectory: t.TempDir(),
+		Database: constructorDatabase(), SiteDirectory: hostedTestSite(t),
 		HostProfile: profile, Listen: "0.0.0.0:8443",
 		CertFile: "certificate.pem", KeyFile: "key.pem",
 		SingleReplicaConfirmed: true, AllowVolatile: true,
