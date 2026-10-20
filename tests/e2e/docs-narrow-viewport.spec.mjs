@@ -20,8 +20,7 @@ const paths = [
   "blog/",
   "operational-observability-visualization-specification/",
   "operational-value-how-to/",
-  "operational-value-evidence-reference/",
-  "agent-work-value/",
+  "blog/measuring-agent-work-value/",
 ];
 
 for (const colorScheme of ["light", "dark"]) {
@@ -35,7 +34,7 @@ for (const colorScheme of ["light", "dark"]) {
       const trail = content.getByRole("list", { name: "Five steps from a goal to evidence" });
       await expect(trail.locator("li")).toHaveCount(5);
       await expect(trail.locator("strong")).toHaveText([
-        "1. Set a goal", "2. Follow the output", "3. Find the change", "4. Measure it", "5. State the limits",
+        "1. Define value", "2. Follow the output", "3. Locate acceptance", "4. Measure it", "5. State the limits",
       ]);
       await expect(trail.locator('svg[aria-hidden="true"][focusable="false"]')).toHaveCount(5);
       for (const icon of await trail.locator("svg").all()) {
@@ -43,12 +42,11 @@ for (const colorScheme of ["light", "dark"]) {
         expect(bounds.width).toBeGreaterThanOrEqual(24);
         expect(bounds.height).toBeGreaterThanOrEqual(24);
       }
-      const details = content.locator("details");
-      await expect(details).not.toHaveAttribute("open");
-      await details.locator("summary").focus();
-      await page.keyboard.press("Enter");
-      await expect(details).toHaveAttribute("open", "");
-      await expect(details).toContainText("1,129 to 248 lines");
+      await expect(content).toContainText("Markdown, imports and precomputes");
+      await expect(content).toContainText("value function");
+      await expect(content).toContainText("with or without CAO");
+      await expect(content).toContainText("1,129 to 248 lines");
+      await expect(content.locator(".mermaid svg")).toBeVisible();
       expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
       for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
         const href = await link.getAttribute("href");
@@ -61,13 +59,14 @@ for (const colorScheme of ["light", "dark"]) {
         }
       }
 
-      for (const route of ["operational-value-evidence-reference/", "agent-work-value/"]) {
-        expect((await page.goto(route))?.ok()).toBe(true);
-        const diagram = page.locator(".sl-markdown-content .mermaid svg");
-        await expect(diagram).toBeVisible();
-        await expect(diagram).not.toContainText("Syntax error");
-        expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
-      }
+      expect((await page.goto("blog/measuring-agent-work-value/"))?.ok()).toBe(true);
+      const diagram = page.locator(".sl-markdown-content .mermaid svg");
+      await expect(diagram).toBeVisible();
+      await expect(diagram).not.toContainText("Syntax error");
+      expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
+      expect((await page.goto("blog/"))?.ok()).toBe(true);
+      await expect(page.locator("main").getByRole("link", { name: "What counts as value from agent work?", exact: true }))
+        .toBeVisible();
     });
   }
 }
@@ -84,11 +83,8 @@ test("operational value beginner guide remains readable without JavaScript", asy
     const content = page.locator(".sl-markdown-content");
     await expect(content.getByRole("list", { name: "Five steps from a goal to evidence" }).locator("li"))
       .toHaveCount(5);
-    const details = content.locator("details");
-    await details.locator("summary").focus();
-    await page.keyboard.press("Enter");
-    await expect(details).toHaveAttribute("open", "");
-    await expect(details.getByRole("link", { name: "github/gh-aw#55785", exact: true })).toBeVisible();
+    await expect(content).toContainText("actual first parent");
+    await expect(content.getByRole("link", { name: "github/gh-aw#55785", exact: true })).toBeVisible();
     expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(320);
   } finally {
     await context.close();
