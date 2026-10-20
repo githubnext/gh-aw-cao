@@ -44,7 +44,6 @@ for (const colorScheme of ["light", "dark"]) {
       }
       await expect(content).toContainText("Markdown, imports and precomputes");
       await expect(content).toContainText("value function");
-      await expect(content).toContainText("with or without CAO");
       await expect(content).toContainText("1,129 to 248 lines");
       await expect(content.locator(".mermaid svg")).toBeVisible();
       expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);

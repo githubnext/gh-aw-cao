@@ -7,7 +7,6 @@ description: A beginner's guide to seeing whether an AI workflow helped, using D
 Its Markdown, imports and precomputes define the intended outcome and checks.
 These define the **value function: a fixed rule for measuring that outcome**.
 The output's acceptance state tells us when to check for delivery.
-This method works with or without CAO.
 
 Daily File Diet suggests splitting oversized Go files. Its evidence chain is:
 
