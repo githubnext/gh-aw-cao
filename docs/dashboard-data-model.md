@@ -27,6 +27,7 @@ erDiagram
   REPOSITORY ||--o{ RUN : executes
   REPOSITORY ||--o{ OPERATIONAL_VALUE : measures
   WORKFLOW ||--o{ RUN : defines
+  WORKFLOW ||--o{ OPERATIONAL_VALUE_EVIDENCE : evaluates
   RUN ||--o{ DOMAIN : records
   RUN ||--o{ TOOL : invokes
   RUN ||--o{ AUDIT : records
@@ -53,6 +54,7 @@ the exact identities and parent relationships.
 | **Audit** | Namespaced deterministic source ID | Run | Records lifecycle, policy, grader, agent, and other execution observations. |
 | **Issue** | `github:issue:<owner>/<repository>:<number>` | Run | Records issue and pull-request safe outputs. |
 | **Operational Value** | Deterministic repository, value ID, and timestamp identity | Repository | Records a campaign-defined numeric repository metric. |
+| **Operational Value Evidence** | Deterministic repository, workflow, metric, and metric-version identity | Repository and Workflow | Retains a coherent evidence packet connecting intent, safe outputs, accepted implementations, and independent repository snapshots. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
@@ -90,7 +92,7 @@ Model routing uses typed Audit facts projected from `usage/aw_session.jsonl`,
 not a parallel telemetry table. The Model routing page resolves proxy-first
 state, per-phase accounting, sub-agent attribution and cost completeness with
 Dashboard Language queries. Missing costs remain unknown; partial runs do not
-enter cost quantiles. Browser schema 32 / IndexedDB version 42 rebuild older
+enter cost quantiles. Browser schema 33 / IndexedDB version 43 rebuild older
 projections, and hosted PostgreSQL requires a fresh generated schema.
 
 A Run owns ordered Domain, Tool, Skill, Friction, Audit, and Issue records combining observations
@@ -114,10 +116,10 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 32. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 42. Its canonical stores are
+The canonical model is version 33. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 43. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
-`friction`, `audits`, `issues`, `operationalValues`, `marketplacePackages`,
+`friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
 `evals`, and `evalObservations`;
 all use `id` as the key.
