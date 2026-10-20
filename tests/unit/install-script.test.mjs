@@ -34,17 +34,14 @@ const materializer = path.join(".github", "workflows", "shared", "materialize-ca
 const curlCommand = "curl --fail --show-error --location";
 const manualUpgrade = (version) => new RegExp(`Run \`${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- ${version.replaceAll(".", "\\.")}\`, then rerun the CAO installer`);
 
-test("quickstart keeps terminal presentation and filters Node experimental warnings", () => {
-  assert.match(installerSource, /run_cao_quickstart\(\)[\s\S]*?terminal_available[\s\S]*?< \/dev\/tty/);
-  assert.match(installerSource, /--disable-warning=ExperimentalWarning/);
-  assert.match(installerSource, /quickstart_arguments=\(quickstart\)/);
-  assert.match(installerSource, /quickstart_arguments\+=\(--target "\$target_repository"\)/);
-  assert.match(installerSource, /run_cao_quickstart node "\$cao_cli" "\$\{quickstart_arguments\[@\]\}"/);
-  assert.doesNotMatch(installerSource, /gh cao quickstart|run_cao_quickstart gh cao/);
-  assert.doesNotMatch(installerSource, /default_quickstart_control_repository|default_repository_name/);
-  assert.match(installerSource, /Quickstart requires a clean control-repository checkout before installation/);
-  assert.match(installerSource, /Quickstart selected published CAO release \$quickstart_release/);
+test("installer help and implementation no longer expose Quickstart", async () => {
+  const { stdout } = await executeFile("bash", [installScript, "--help"]);
+  assert.match(stdout, /--setup/);
+  assert.match(stdout, /--create-repo/);
+  assert.doesNotMatch(stdout, /quickstart|--target/i);
+  assert.doesNotMatch(installerSource, /quickstart|target_repository/i);
 });
+
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
   ...manifest.resources.map(({ source, destination }) => ({
@@ -1179,7 +1176,7 @@ test("install.sh refuses an explicit clone path occupied by a dangling symlink",
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const occupied = path.join(consumer, "control");
   await fs.promises.symlink("missing-clone", occupied);
-  const result = await runStreamed(consumer, env, ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"]);
+  const result = await runStreamed(consumer, env, ["--create-repo", "alpha-org/control"]);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /Cannot clone into existing path/);
   assert.equal(await log(), "");
@@ -1262,129 +1259,6 @@ test("headless setup does not reconfigure an existing standalone control plane",
   assert.match(result.stderr, /requires a bare control plane with no declared standalone workflows/);
   assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
   assert.equal(await log(), "add\n");
-});
-
-test("headless quickstart selects the current checkout and validates it before mutation", async (t) => {
-  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
-  await writeFile(path.join(consumer, "README.md"), "existing change\n");
-  const result = await runStreamed(consumer, { ...env, CI: "1" }, ["--quickstart", "--target", "alpha-org/project"]);
-  assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /requires a clean control-repository checkout/);
-  assert.doesNotMatch(result.stderr, /Interactive repository creation requires a terminal/);
-  assert.equal(await log(), "");
-  await assertNothingInstalled(consumer);
-});
-
-test("implicit quickstart pins the latest published CAO release", async (t) => {
-  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
-  const result = await runStreamed(consumer, {
-    ...env,
-    CI: "1",
-    FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.3",
-  }, ["--quickstart", "--target", "alpha-org/project"]);
-
-  assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /Quickstart selected published CAO release v1\.2\.3/);
-  assert.equal(await log(), "add\n");
-});
-
-test("quickstart skips malformed tags and drafts but selects a published prerelease", async (t) => {
-  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
-  const result = await runStreamed(consumer, {
-    ...env,
-    CI: "1",
-    FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.5",
-    FAKE_CAO_RELEASE_LIST: [
-      "false\tfalse\tuntagged-a58de5448231a0eed5d3",
-      "true\tfalse\tv1.3.0",
-      "false\ttrue\tv1.2.5",
-      "false\tfalse\tv1.2.4-rc.1",
-      "false\tfalse\tv1.2.3",
-      "false\tfalse\tv1.2.2",
-    ].join("\n"),
-  }, ["--quickstart", "--target", "alpha-org/project"]);
-
-  assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /Quickstart selected published CAO release v1\.2\.5/);
-  assert.equal(await readFile(env.FAKE_CAO_RELEASE_REQUESTS, "utf8"), "repos/githubnext/gh-cao/releases/tags/v1.2.5\n");
-  assert.equal(await log(), "add\n");
-});
-
-for (const releases of [
-  "",
-  "false\tfalse\tuntagged-a58de5448231a0eed5d3",
-  "true\tfalse\tv1.3.0\ntrue\ttrue\tv1.2.5",
-]) {
-  test(`quickstart fails closed without a published version tag: ${JSON.stringify(releases)}`, async (t) => {
-    const { consumer, env, log } = await createConsumer(t, supportedGhAw);
-    const result = await runStreamed(consumer, {
-      ...env,
-      CI: "1",
-      FAKE_CAO_RELEASE_LIST: releases || "\n",
-    }, ["--quickstart", "--target", "alpha-org/project"]);
-
-    assert.notEqual(result.code, 0);
-    assert.match(result.stderr, /Unable to resolve the latest published CAO release with a vX\.Y\.Z tag/);
-    assert.match(result.stderr, /No CAO files were written/);
-    assert.equal(await log(), "");
-    await assertNothingInstalled(consumer);
-  });
-}
-
-test("implicit quickstart refreshes an existing control plane to the published release", async (t) => {
-  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
-  await streamInstaller(consumer, env);
-  await executeFile("git", ["add", "."], { cwd: consumer });
-  await executeFile("git", [
-    "-c", "user.name=CAO installation test",
-    "-c", "user.email=cao-test@example.invalid",
-    "-c", "commit.gpgsign=false",
-    "-c", "core.hooksPath=/dev/null",
-    "commit", "--quiet", "-m", "Install CAO",
-  ], { cwd: consumer });
-
-  const result = await runStreamed(consumer, {
-    ...env,
-    CI: "1",
-    FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@v1.2.3",
-  }, ["--quickstart", "--target", "alpha-org/project"]);
-
-  assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /Refreshing control plane components/);
-  assert.equal(await log(), "add\nadd-force\n");
-});
-
-test("quickstart preserves an explicit main source", async (t) => {
-  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
-  const result = await runStreamed(consumer, {
-    ...env,
-    CI: "1",
-    FAKE_ADD_FAILURE: "1",
-    FAKE_EXPECT_CAO_SOURCE: "githubnext/gh-cao@main",
-  }, ["githubnext/gh-cao@main", "--quickstart", "--target", "alpha-org/project"]);
-
-  assert.notEqual(result.code, 0);
-  assert.doesNotMatch(result.stdout + result.stderr, /Unable to resolve the latest published CAO release/);
-  assert.doesNotMatch(result.stdout, /Quickstart selected published CAO release/);
-  assert.equal(await log(), "add\n");
-});
-
-test("quickstart fails closed when no published CAO release can be resolved", async (t) => {
-  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
-  const result = await runStreamed(consumer, {
-    ...env,
-    CI: "1",
-    FAKE_LATEST_CAO_RELEASE_FAILURE: "1",
-  }, ["--quickstart", "--target", "alpha-org/project"]);
-
-  assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /Unable to resolve the latest published CAO release/);
-  assert.match(result.stderr, /No CAO files were written/);
-  assert.equal(await log(), "");
-  await assertNothingInstalled(consumer);
 });
 
 test("an explicit release downloads the matching Go binary without a latest-release lookup", async (t) => {
@@ -1644,66 +1518,6 @@ for (const kind of ["source", "linked", "non-file"]) {
   });
 }
 
-test("quickstart rejects a non-vX.Y.Z tag as the implicit source", async (t) => {
-  const { consumer, env, log } = await createConsumer(t, supportedGhAw);
-  const result = await runStreamed(consumer, {
-    ...env,
-    CI: "1",
-    FAKE_LATEST_CAO_RELEASE: "v1.2.3-rc.1",
-  }, ["--quickstart", "--target", "alpha-org/project"]);
-
-  assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /Unable to resolve the latest published CAO release/);
-  assert.equal(await log(), "");
-  await assertNothingInstalled(consumer);
-});
-
-for (const location of ["outside", "disconnected", "disconnected-with-policy"]) {
-  test(`quickstart requires explicit creation: ${location}`, async (t) => {
-    const { root, consumer, env, log } = await createConsumer(t, supportedGhAw);
-    const inCheckout = location !== "outside";
-    const start = inCheckout ? consumer : path.join(root, "outside-checkout");
-    if (inCheckout) {
-      await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
-    } else {
-      await mkdir(start);
-    }
-    if (location === "disconnected-with-policy") {
-      await mkdir(path.join(consumer, ".github/workflows"), { recursive: true });
-      await writeFile(path.join(consumer, policyPath), '{"operator":"preserve"}\n');
-    }
-    const result = await runStreamed(start, {
-      ...env, CI: "1", FAKE_REPOSITORY_LOOKUP_FAILURE: "1",
-    }, ["--quickstart", "--target", "alpha-org/project"]);
-    assert.notEqual(result.code, 0);
-    assert.match(result.stderr, /connected GitHub checkout or explicit --create-repo OWNER\/NAME/);
-    assert.equal(await log(), "");
-    if (location === "disconnected-with-policy") {
-      assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), '{"operator":"preserve"}\n');
-      assert.equal(await exists(path.join(consumer, "cao.sh")), false);
-    } else {
-      await assertNothingInstalled(start);
-    }
-    if (!inCheckout) assert.deepEqual(await fs.promises.readdir(start), []);
-  });
-}
-
-for (const arguments_ of [
-  ["--quickstart"],
-  ["--quickstart", "--create-repo", "alpha-org/control"],
-  ["--quickstart", "--create-repo"],
-]) {
-  test(`quickstart requires target before mutation: ${arguments_.join(" ")}`, async (t) => {
-    const { consumer, env, log } = await createConsumer(t);
-    const result = await runStreamed(consumer, { ...env, FAKE_AUTH_FAILURE: "1" }, arguments_);
-    assert.notEqual(result.code, 0);
-    assert.match(result.stderr, /--quickstart requires explicit --target OWNER\/REPO/);
-    assert.doesNotMatch(result.stderr, /gh auth login|Interactive repository creation/);
-    assert.equal(await log(), "");
-    await assertNothingInstalled(consumer);
-  });
-}
-
 for (const [name, environment, message] of [
   ["the selected name is occupied", { FAKE_EXISTING_REPOSITORIES: "alpha-org/control" }, /Repository alpha-org\/control already exists/],
   ["the availability check fails", { FAKE_REPOSITORY_CHECK_FAILURE: "alpha-org/control" }, /Unable to check whether alpha-org\/control is available/],
@@ -1712,7 +1526,7 @@ for (const [name, environment, message] of [
     const { consumer, env, log } = await createConsumer(t);
     const result = await runStreamed(consumer, {
       ...env, CI: "1", ...environment,
-    }, ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"]);
+    }, ["--create-repo", "alpha-org/control"]);
     assert.notEqual(result.code, 0);
     assert.match(result.stderr, message);
     assert.equal(await log(), "");
@@ -1721,37 +1535,7 @@ for (const [name, environment, message] of [
   });
 }
 
-test("quickstart explicitly creates the requested private repository outside a checkout", async (t) => {
-  const { root, env, log } = await createConsumer(t, supportedGhAw);
-  const start = path.join(root, "outside-checkout");
-  await mkdir(start);
-  const result = await runStreamed(start, {
-    ...env, CI: "1", FAKE_ADD_FAILURE: "1",
-  }, ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"]);
-  assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /Created private control repository alpha-org\/control/);
-  assert.equal(await log(), "create-private\nadd\n");
-  await assertNothingInstalled(start);
-});
-
-test("interactive quickstart requires manually typed owner and name for explicit creation", { skip: process.platform === "win32" }, async (t) => {
-  const { root, env, log } = await createConsumer(t, supportedGhAw);
-  const start = path.join(root, "outside-checkout");
-  await mkdir(start);
-  const result = await runTerminal("bash", [installScript, "--quickstart", "--target", "alpha-org/project", "--create-repo"], {
-    cwd: start,
-    env: { ...env, TERM: "xterm-256color", ACCESSIBLE: "", NO_COLOR: "", FAKE_ADD_FAILURE: "1" },
-    timeout,
-    input: "\nalpha-org\n\ncontrol\n",
-  });
-  assert.notEqual(result.code, 0);
-  assert.match(result.stdout, /blank input does not choose an owner/);
-  assert.match(result.stdout, /Repository name\s+control/);
-  assert.match(result.stdout, /Repo Assist for alpha-org\/project/);
-  assert.equal(await log(), "owners-query\ncreate-private\nadd\n");
-});
-
-test("quickstart never changes an explicitly requested repository name on collision", async (t) => {
+test("install.sh never changes an explicitly requested repository name on collision", async (t) => {
   const { root, env, log } = await createConsumer(t, supportedGhAw);
   const outsideCheckout = path.join(root, "outside-checkout");
   await mkdir(outsideCheckout);
@@ -1760,7 +1544,7 @@ test("quickstart never changes an explicitly requested repository name on collis
     CI: "1",
     FAKE_CONTROL_REPOSITORY: "alpha-org/control",
     FAKE_CREATE_REPOSITORY_FAILURE: "1",
-  }, ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"]);
+  }, ["--create-repo", "alpha-org/control"]);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /Repository already exists/);
   assert.doesNotMatch(result.stderr, /UTC timestamp|creating a fresh private control repository/);
@@ -1798,15 +1582,37 @@ for (const arguments_ of [
   ["--create-repo", "not-a-coordinate"],
   ["--create-repo", "owner/../escape"],
   ["--unknown"],
-  ["--setup", "--quickstart"],
-  ["--target", "alpha-org/project"],
-  ["--quickstart", "--target", "not-a-coordinate"],
 ]) {
   test(`install.sh rejects unusable onboarding arguments before mutations: ${arguments_.join(" ")}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t);
     const result = await runStreamed(consumer, env, arguments_);
     assert.notEqual(result.code, 0);
     assert.equal(await log(), "");
+    await assertNothingInstalled(consumer);
+  });
+}
+
+for (const arguments_ of [
+  ["--quickstart"],
+  ["--target"],
+  ["--target", "alpha-org/project"],
+  ["--setup", "--quickstart"],
+  ["--quickstart", "--target", "alpha-org/project", "--create-repo", "alpha-org/control"],
+  ["--create-repo", "alpha-org/control", "--quickstart"],
+  ["--create-repo", "alpha-org/control", "--target", "alpha-org/project"],
+]) {
+  test(`install.sh rejects removed flags before sign-in or mutations: ${arguments_.join(" ")}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t);
+    const result = await runStreamed(consumer, { ...env, FAKE_AUTH_FAILURE: "1" }, arguments_);
+    const removedFlag = arguments_.find((argument) => argument === "--quickstart" || argument === "--target");
+    assert.equal(result.code, 1);
+    assert.ok(result.stderr.includes(`Unknown option: ${removedFlag}`), result.stderr);
+    assert.doesNotMatch(result.stdout + result.stderr, /Checking tools|gh auth login|Interactive repository creation/);
+    assert.equal(await log(), "");
+    assert.equal(await exists(env.XDG_DATA_HOME), false);
+    assert.equal(await exists(env.FAKE_CAO_DOWNLOADS), false);
+    assert.equal(await exists(env.FAKE_CAO_RELEASE_REQUESTS), false);
+    assert.equal(await exists(path.join(consumer, "control")), false);
     await assertNothingInstalled(consumer);
   });
 }

@@ -57,7 +57,7 @@ control repository or selecting a non-public target.
 ## Preferred human flow
 
 For a separate control repository, prefer interactive setup.
-For a new repository, use the review-before-apply [setup quickstart](https://github.com/githubnext/gh-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
+For a new repository, use the review-before-apply [setup guide](https://github.com/githubnext/gh-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
 The installer's `--setup` flag enters `gh cao setup` directly.
 
 ```bash

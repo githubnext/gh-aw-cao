@@ -36,8 +36,8 @@ var nativeRuntimeRequiredFiles = []string{
 	"activity/commands/index.mjs", "activity/setup.mjs", "activity/upgrade-gh-aw.mjs",
 	"activity/control-settings.mjs", "activity/repository-visibility.mjs", "activity/recycle-snapshot.mjs",
 	"activity/collect-logs.sh", "activity/collect-workflow-logs.mjs", "activity/marketplace.mjs",
-	"activity/problem-clustering.mjs", "activity/quickstart.mjs", "activity/repository-memory.mjs",
-	"activity/commands/quickstart.mjs", "dashboard/site/package.json", "dashboard/report/aic-usage.mjs",
+	"activity/problem-clustering.mjs", "activity/repository-memory.mjs",
+	"dashboard/site/package.json", "dashboard/report/aic-usage.mjs",
 }
 
 func nativeMaterializeRuntime(ctx context.Context, gh ghExecutor, campaign string) (err error) {

@@ -51,7 +51,7 @@ and your first look at the data. Prefer a private control repository for
 non-public evidence; a private repository does not guarantee a private dashboard.
 
 **Optional, later:** browse the [campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
-or try the separate [Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
+or follow the manual [Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
 You can also read [real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)
 without starting a workflow or spending AI credits.
 

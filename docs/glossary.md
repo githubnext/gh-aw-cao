@@ -108,7 +108,7 @@ The explicit `generic` HTTP target with `listener: external` that lets a separat
 
 ## gh cao
 
-The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All extension commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. The retained installer quickstart is Node-only, invoked through `install.sh --quickstart` or `node activity/cao.mjs quickstart`, and is not exposed by the extension. Actions pipeline commands, SQLite snapshot doctor, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All extension commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot doctor, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
 
 ## GitHub quota service
 
@@ -161,10 +161,6 @@ The provider-neutral storage contract in `server/internal/operational/` that exp
 ## Public control repository
 
 A control repository whose own visibility is public, so its policy, workflow runs, operational metadata, dashboard data, and review outputs are also public. Activity and Server Ingestion both fail closed and refuse to collect evidence when a public control repository's credentials can reach any non-public repository, reporting only a rejected-repository count. See [Control Repository Visibility](authentication.md#control-repository-visibility).
-
-## Quickstart
-
-The explicit Node-only staged guide run by `node activity/cao.mjs quickstart` or the installer's `--quickstart` option, distinct from ordinary install or `gh cao setup` and not exposed by the Go extension. Installation requires an explicit public `--target OWNER/REPO` and a selected control repository; no owner or repository is suggested. It configures Repo Assist maintenance in review mode, commits and pushes bounded CAO paths, and stops with the orchestrator paused. Separate `--step run`, `--step collect`, and read-only `--step dashboard` commands reuse committed policy to introduce campaign execution, Activity evidence, and verified public dashboard publication without a long terminal wait. The campaign never modifies the target. Explicit `--wait` retains the end-to-end flow for unattended use immediately after bare installation, not for resuming stages. This optional campaign walkthrough is not required for monitoring. See [Try a Repo Assist review](repo-assist-quickstart.md), [Set Up CAO](setup-quickstarts.md), and [Repository Layout and Installation §4.3-4.4](https://github.com/githubnext/gh-cao/blob/main/specs/repository-layout-and-installation.md#43-lifecycle-entry-points).
 
 ## Repo memory
 

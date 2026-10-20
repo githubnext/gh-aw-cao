@@ -95,18 +95,12 @@ run_quiet_command() {
 
 usage() {
   printf '%s\n' \
-    'Usage: install.sh [CATALOG_SOURCE] [--setup | --quickstart] [--create-repo [OWNER/NAME]] [--target OWNER/REPO]' \
+    'Usage: install.sh [CATALOG_SOURCE] [--setup] [--create-repo [OWNER/NAME]]' \
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo requires typing an eligible OWNER and NAME with no defaults; pass OWNER/NAME for non-interactive use.' \
     '--setup opens guided setup; without a terminal or in CI, it applies exact public-repository workflow-token defaults.' \
-    '--quickstart requires explicit --target OWNER/REPO for an accessible public repository and pins the latest published CAO release, including prereleases.' \
-    'Use a clean connected control checkout, or explicitly request --create-repo [OWNER/NAME]; no owner or repository is suggested.' \
-    'It configures and commits the review-only control plane, then stops with Repo Assist paused; no campaign or Activity run is dispatched.' \
-    'Continue with node activity/cao.mjs quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
-    'Starting Repo Assist can use up to 1,250 AI credits under default limits; proposals are optional, not requirements for using CAO.' \
-    'The default budget includes 250 orchestration + 600 maintenance + 400 output checking; configured output-check limits may differ.' \
-    'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
+    'Existing policy and unrelated files are preserved and no campaign is added or run.'
 }
 
 version_at_least() {
@@ -190,18 +184,6 @@ styled_prompt_enabled() {
 terminal_available() {
   [[ -z "${CI:-}" ]] || return 1
   { : < /dev/tty; } 2>/dev/null
-}
-
-run_cao_quickstart() {
-  local node_options="${NODE_OPTIONS:-}"
-  if [[ " $node_options " != *" --disable-warning=ExperimentalWarning "* ]]; then
-    node_options="${node_options:+$node_options }--disable-warning=ExperimentalWarning"
-  fi
-  if terminal_available; then
-    NODE_OPTIONS="$node_options" "$@" < /dev/tty
-  else
-    NODE_OPTIONS="$node_options" "$@"
-  fi
 }
 
 confirm_repository_creation() {
@@ -578,10 +560,8 @@ main() {
   local package_source
   local explicit_source=false
   local setup=false
-  local quickstart=false
   local create_repository_requested=false
   local create_repository=""
-  local target_repository=""
   local create_repository_in_place=false
   local control_repository
   local directory=""
@@ -592,8 +572,6 @@ main() {
   local current_gh
   local current_gh_aw
   local authentication_status
-  local quickstart_status
-  local quickstart_release
   local extension_release=""
   local extension_asset_prefix
 
@@ -601,16 +579,6 @@ main() {
     case "$1" in
       --help|-h) usage; return ;;
       --setup) setup=true; shift ;;
-      --quickstart) quickstart=true; shift ;;
-      --target)
-        if [[ $# -lt 2 || "$2" == -* ||
-          ! "$2" =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
-          printf 'Provide an exact public OWNER/REPOSITORY after --target.\n' >&2
-          return 1
-        fi
-        target_repository="$2"
-        shift 2
-        ;;
       --create-repo)
         create_repository_requested=true
         if [[ $# -ge 2 && "$2" != -* ]]; then
@@ -640,18 +608,6 @@ main() {
         ;;
     esac
   done
-  if [[ "$setup" == true && "$quickstart" == true ]]; then
-    printf '%s\n' '--setup and --quickstart cannot be used together.' >&2
-    return 1
-  fi
-  if [[ -n "$target_repository" && "$quickstart" == false ]]; then
-    printf '%s\n' '--target requires --quickstart.' >&2
-    return 1
-  fi
-  if [[ "$quickstart" == true && -z "$target_repository" ]]; then
-    printf '%s\n' '--quickstart requires explicit --target OWNER/REPO. No CAO files were written.' >&2
-    return 1
-  fi
 
   for tool in node gh git curl; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -683,9 +639,6 @@ main() {
     printf 'Sign in with gh auth login, then rerun this command. No CAO files were written.\n' >&2
     return 1
   fi
-  if [[ "$quickstart" == true ]]; then
-    note "Quickstart configures review-only Repo Assist for $target_repository and public Pages, commits and pushes, then stops with the orchestrator paused."
-  fi
   if [[ "$create_repository_requested" == false ]]; then
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       in_git_checkout=true
@@ -695,9 +648,6 @@ main() {
           'No CAO files were written.' >&2
         return 1
       fi
-    elif [[ "$quickstart" == true ]]; then
-      printf '%s\n' 'Quickstart requires a connected GitHub checkout or explicit --create-repo OWNER/NAME (or interactive --create-repo). No CAO files were written.' >&2
-      return 1
     elif terminal_available &&
       confirm_repository_creation 'Create and clone a new private control repository?'; then
       create_repository_requested=true
@@ -709,17 +659,13 @@ main() {
     fi
   fi
 
-  if [[ "$create_repository_requested" == false && "$in_git_checkout" == true ]] &&
-    { [[ "$quickstart" == true ]] || [[ ! -f "$policy_path" ]]; }; then
+  if [[ "$create_repository_requested" == false && "$in_git_checkout" == true && ! -f "$policy_path" ]]; then
     if control_repository="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" &&
       [[ "$control_repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
       :
     else
       git_remotes="$(git remote)"
-      if [[ -z "$git_remotes" && "$quickstart" == true ]]; then
-        printf '%s\n' 'Quickstart requires a connected GitHub checkout or explicit --create-repo OWNER/NAME (or interactive --create-repo). No CAO files were written.' >&2
-        return 1
-      elif [[ -z "$git_remotes" ]] && terminal_available &&
+      if [[ -z "$git_remotes" ]] && terminal_available &&
         confirm_repository_creation 'Create a new private GitHub repository for this checkout?'; then
           create_repository_requested=true
           create_repository_in_place=true
@@ -729,19 +675,6 @@ main() {
           'No CAO files were written.' >&2
         return 1
       fi
-    fi
-  fi
-  if [[ "$quickstart" == true && "$create_repository_requested" == false ]]; then
-    if ! quickstart_status="$(git status --porcelain=v1 --untracked-files=all)"; then
-      printf '%s\n' 'Unable to inspect the current checkout before quickstart. No CAO files were written.' >&2
-      return 1
-    fi
-    if [[ -n "$quickstart_status" ]]; then
-      printf '%s\n' \
-        'Quickstart requires a clean control-repository checkout before installation.' \
-        'Commit, stash, or remove existing changes, then rerun --quickstart.' \
-        'No CAO files were written.' >&2
-      return 1
     fi
   fi
 
@@ -759,15 +692,6 @@ main() {
   fi
   if [[ -n "$create_repository" ]] && ! assert_repository_available "$create_repository"; then
     return 1
-  fi
-
-  if [[ "$quickstart" == true && "$explicit_source" == false ]]; then
-    if ! quickstart_release="$(resolve_latest_cao_release)"; then
-      return 1
-    fi
-    catalog_source="githubnext/gh-cao@$quickstart_release"
-    explicit_source=true
-    note "Quickstart selected published CAO release $quickstart_release (including prereleases)."
   fi
 
   if [[ "$catalog_source" =~ ^githubnext/gh-cao@(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
@@ -886,22 +810,11 @@ main() {
     else
       gh cao setup
     fi
-  elif [[ "$quickstart" == true ]]; then
-    local -a quickstart_arguments=(quickstart)
-    if [[ -n "$target_repository" ]]; then
-      quickstart_arguments+=(--target "$target_repository")
-    fi
-    if [[ -d "$catalog_source" ]]; then
-      quickstart_arguments+=(--campaign "$catalog_source/repo-assist")
-      run_cao_quickstart node "$cao_cli" "${quickstart_arguments[@]}"
-    else
-      run_cao_quickstart node "$cao_cli" "${quickstart_arguments[@]}"
-    fi
   fi
   if [[ -n "$create_repository" && "$create_repository_in_place" == false ]]; then
     printf 'Open the new checkout: cd %q\n' "$directory"
   fi
-  if [[ "$setup" == false && "$quickstart" == false ]]; then
+  if [[ "$setup" == false ]]; then
     next_step "Next: gh cao setup"
   fi
 }

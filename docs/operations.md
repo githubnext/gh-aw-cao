@@ -555,7 +555,7 @@ administrator setup and evidence requirements. The workflow's prerelease
 publication makes the tag and assets immutable; no workflow can add, replace, or
 remove release assets afterward. A failure before publication leaves the draft
 unpublished; a later failure leaves a correctly tagged prerelease for diagnosis,
-never a stable release that quickstart or update can select.
+never a stable release that installation or update can select.
 
 Promotion to latest makes those compiled binaries available to the root
 installer's default selection. The installer downloads the platform binary and

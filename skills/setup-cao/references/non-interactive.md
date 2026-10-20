@@ -24,19 +24,6 @@ incompatible existing scope/authentication are blockers, not permission to
 guess or broaden access. An outdated installed gh-aw must be upgraded
 explicitly before retrying. Report the applied defaults or blocker plainly.
 
-`install.sh --quickstart` is the only exception: the explicit flag authorizes
-its selected public-target campaign, public Pages, bounded commit and push, and
-workflow dispatches. It may run without prompts from a clean public or private
-control-repository checkout on the default branch. Outside a checkout it may
-create only the signed-in user's private `cao` control repository, using a
-fresh UTC `cao-YYYYMMDD-HHMMSS` name when the remote name or local clone path is
-occupied (numeric suffixes are checked through `-10` if needed). Lookup failures
-remain blockers; existing repositories and paths are never reused or overwritten.
-The public canonical `github/gh-aw` Repo Assist target is referenced rather than
-created; other control names or owners require exact
-`--create-repo OWNER/NAME`, and another target requires exact
-`--target OWNER/REPO`. Explicit repository names are never silently changed.
-
 ## Explicit broader setup with a user available
 
 1. Run `gh auth status` and resolve the control repository with `gh repo view`.

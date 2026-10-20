@@ -16,9 +16,7 @@ agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md).
 The Go extension exposes the operator-facing command surface as `gh cao`.
 Internal Node implementations remain for Actions and parity tests, not as an
-alternative operator surface. The retained installer quickstart is a Node-only
-exception: use `install.sh --quickstart` or `node activity/cao.mjs quickstart`;
-the Go extension does not expose quickstart. Run policy commands from the control repository root:
+alternative operator surface. Run policy commands from the control repository root:
 
 ```bash
 gh cao --help
@@ -70,7 +68,6 @@ to invoke it as `gh cao`.
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
 | Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
 | Node-only administration | `node activity/cao.mjs doctor`, `node activity/cao.mjs setup-auth hosted-cli` | SQLite check/repair and dedicated hosted-executor App creation; neither has an equivalent Go command. |
-| Node-only installer quickstart | `node activity/cao.mjs quickstart` | Retained staged Repo Assist walkthrough, also available through `install.sh --quickstart`; not exposed by the Go extension. |
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
@@ -226,38 +223,12 @@ commits nor pushes, enables campaigns, changes rollout limits, configures
 credentials, nor expands an explicitly narrowed Activity scope. Review and commit
 the policy before activation at a reviewed workflow SHA.
 
-### Node-only installer quickstart
+### Setup and manual campaign execution
 
-These retained commands require Node.js 24+ and run from the installed control
-repository root. They are not Go extension commands.
-
-| Command | Use it to |
-| --- | --- |
-| `node activity/cao.mjs quickstart --target OWNER/REPO` | Explicitly select the public target, install and commit the review-only control plane, and leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
-| `node activity/cao.mjs quickstart --step run` | Dispatch one bounded Repo Assist review using existing policy, then pause the orchestrator and return an Actions link. |
-| `node activity/cao.mjs quickstart --step collect` | Dispatch Activity collection and return without waiting. Use after the maintenance outcome is available. |
-| `node activity/cao.mjs quickstart --step dashboard` | Check Activity evidence and dashboard deployment read-only; repeat if pending. |
-| `node activity/cao.mjs quickstart --wait --target OWNER/REPO` | Explicitly select the target and opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
-
-Use `node activity/cao.mjs quickstart --target OWNER/REPO` only immediately after verified installation in a
-clean public or private control repository on its default branch. Existing
-commits are allowed; the install stage adds one bounded CAO commit and pauses
-Repo Assist without dispatching it. Continue with `--step run`, inspect its
-outcome in Actions, then use `--step collect` and `--step dashboard`.
-The command prints persistent, numbered explanations of the selected repositories
-and package, installed components, policy, authentication, public Pages visibility,
-and commit/push effects before applying each phase. Each stage ends with a
-**Before continuing** inspection checkpoint, not just the next command.
-`--json` suppresses progress; installation returns the same `guide` details and
-`checkpoint` as structured data without adding interactive prompts.
-Only the read-only dashboard step is a repeatable status check; repeating run
-or collect requests new work. The run stage can consume
-up to 1,250 AI credits under default limits (250 orchestration + 600 maintenance
-+ 400 output checking; configured output-check limits may differ),
-with each stage owning only its documented effects in the
-[Repo Assist walkthrough](repo-assist-quickstart.md). Use `gh cao setup` for
-review-before-apply configuration. The individual `setup-auth` commands remain
-available for manual and non-interactive administration.
+Use `gh cao setup` for review-before-apply configuration. Setup installs no
+campaign, runs no workflow, and never commits or pushes. To add automation
+afterward, follow the manual [Repo Assist walkthrough](repo-assist-quickstart.md)
+using `gh cao campaigns add` and `gh aw run`.
 
 Without an interactive terminal or when `CI` is set, `gh cao setup` applies
 only the agent-safe public profile: exact current-repository read and Activity
@@ -268,20 +239,6 @@ control repositories, broader existing policy, or installed campaigns.
 `"nonInteractive": true`. Bare installation remains usable before setup with
 exact control-repository scope, no operational campaigns, and
 repository-local workflow-token Activity access.
-Explicit quickstart is also terminal-independent. Installation and `--wait`
-require `--target OWNER/REPO`; no owner or repository is suggested or selected
-for you. Later stages reuse the target in committed policy.
-The public target receives one validated maintenance proposal or no-op,
-not a readiness or eligibility grade. Applying the proposal
-is never required for using CAO. Existing Agentic Workflows, Actions
-history, or telemetry are not required.
-Only the existing maintenance worker is enabled. The normal orchestrator is
-paused after installation; the run step enables it only for its dispatch and
-pauses it again through `gh workflow disable`. Re-enable
-it explicitly for further runs; doing so also resumes its six-hour schedule.
-`--target OWNER/REPO` selects another existing public repository. The checkout,
-target-visibility and default-branch preflight remain
-fail-closed.
 
 ## Control Campaigns
 
