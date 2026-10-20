@@ -695,7 +695,6 @@ export async function startDashboardServer({
     });
   }
   let terminalBundle;
-  let environmentDefaultsBundle;
   if (admin || canvas) {
     const { build } = createRequire(new URL("./site/package.json", import.meta.url))("esbuild");
     const result = await build({
@@ -1418,13 +1417,7 @@ export async function startDashboardServer({
 
       let content;
       if (pathname === "/dashboard.json") content = dashboardContent;
-      else if (pathname === "/src/environment-defaults.js") {
-        environmentDefaultsBundle ??= createRequire(new URL("./site/package.json", import.meta.url))("esbuild").build({
-          entryPoints: [join(scriptDirectory, "site/src/environment-defaults.js")],
-          bundle: true, write: false, platform: "browser", format: "esm", target: "es2023", minify: true,
-        }).then((result) => result.outputFiles[0].text);
-        content = await environmentDefaultsBundle;
-      } else content = browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath));
+      else content = browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath));
       if ((cliQueue || admin) && extension === ".html") {
         const capabilityScript = `<script>${cliQueue ? "globalThis.__CLI_QUEUE__ = true; globalThis.__LOCAL_CLI_QUEUE__ = true;" : ""}${admin ? "globalThis.__DASHBOARD_ADMIN__ = true;" : ""}</script>`;
         content = /<head(\s[^>]*)?>/i.test(String(content))

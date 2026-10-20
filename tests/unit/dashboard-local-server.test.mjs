@@ -183,6 +183,9 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   await writeFile(path.join(siteRoot, "image.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
   await writeFile(path.join(siteRoot, "private.txt"), "must not be served");
   await writeFile(path.join(siteRoot, "private"), "must not be served");
+  const defaultsSource = await readFile(new URL("../../dashboard/site/src/environment-defaults.js", import.meta.url), "utf8");
+  await mkdir(path.join(siteRoot, "src"), { recursive: true });
+  await writeFile(path.join(siteRoot, "src/environment-defaults.js"), defaultsSource);
   const builtInDashboard = JSON.parse(dashboard("built-in"));
   builtInDashboard.dashboard.description = syntheticToken;
   await writeFile(path.join(siteRoot, "dashboard.json"), JSON.stringify(builtInDashboard));
@@ -247,6 +250,9 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     assert.deepEqual(Buffer.from(await imageResponse.arrayBuffer()), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
     assert.equal((await fetch(`${preview.url}/private.txt`)).status, 404);
     assert.equal((await fetch(`${preview.url}/private`)).status, 404);
+    const defaultsResponse = await fetch(`${preview.url}/src/environment-defaults.js`);
+    assert.equal(defaultsResponse.status, 200);
+    assert.equal(await defaultsResponse.text(), defaultsSource);
     assert.ok(requestLogs.some((message) => /^GET \/ 302 \d+ms$/.test(message)));
 
     const dashboardResponse = await fetch(`${preview.url}/dashboard.json`);

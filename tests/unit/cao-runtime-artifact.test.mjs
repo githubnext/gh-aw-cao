@@ -129,12 +129,12 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.doesNotMatch(prompt, /Bundled dependency:|@clack\/|fast-string-width|fast-wrap-ansi|sisteransi/);
   assert.equal(existsSync(path.join(root, "node_modules")), false);
   assert.match(readFileSync(path.join(root, "dashboard/site/src/validator-dashboard.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
-  assert.match(readFileSync(path.join(root, "dashboard/site/src/environment-defaults.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
+  assert.doesNotMatch(readFileSync(path.join(root, "dashboard/site/src/environment-defaults.js"), "utf8"), /from ['"].*yaml/);
   assert.equal(existsSync(path.join(root, "dashboard/site/node_modules")), false);
   assert.throws(() => validateCaoRuntimeArtifact(root, "2".repeat(40)), /provenance does not match/);
 });
 
-test("the prebuilt archive loads the Governance CLI transport and its bundled YAML parser", async (t) => {
+test("the prebuilt archive loads the Governance CLI transport with dependency-free defaults parsing", async (t) => {
   const root = unpack(t);
   const { executeDashboardCommand } = await import(pathToFileURL(path.join(root, "dashboard/cli-actions.mjs")));
   const yaml = 'default_max_turns: "20"\n';
