@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-20T10:35:00Z",
-      "worker_run_id": "39408961877",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39408919999,
-        39407527074,
-        39407194981,
-        39404935529,
-        39403590816,
-        39402236283,
-        39400711523,
-        39398865390,
-        39397756747,
-        39396576266,
-        39394069863,
-        39393719815,
-        39390537827,
-        39388787873,
-        39386887878,
-        39386513324,
-        39383844471,
-        39381458818,
-        39381197975,
-        39378144737
-      ],
-      "outcome": "incomplete: during the 2026-10-20T06:02:41Z to 2026-10-20T10:34:56Z evidence window, the latest 20 completed docs.yml runs contained 15 successful schedule runs and five skipped workflow_run entries. All 15 successful runs were freshness checks that skipped build and deploy, so there were zero comparable successful build samples and no dashboard job in docs.yml. The two newly observed schedule runs each queued the freshness job for 4 seconds, ran it for 12 seconds, spent 9 and 8 seconds respectively in the freshness check, then skipped build and deploy. The required five comparable successful runs were unavailable, preventing median/p90 build and deploy measurements or verification of repeated dependency and dashboard cache behavior. The evaluation is incomplete and the category remains next."
-    },
-    {
       "evaluated_at": "2026-10-20T10:53:52Z",
       "worker_run_id": "39410799101",
       "category": "dependency installation and caching",
@@ -820,6 +792,34 @@
         39482760104
       ],
       "outcome": "no-op: the 2026-10-20T19:21:28Z to 2026-10-20T22:19:56Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Five successful builds were comparable (four push and one workflow_run, across five source SHAs): median/p90 end-to-end 131/142.4 seconds, initial queue 4/8.6 seconds, queue-excluded execution 127/135.4 seconds, build job 93/108.2 seconds, and deploy job 20/26.8 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; all five builds restored its 58 MiB cache in 3 seconds and skipped artifact fallback. Trusted bounded logs verified four npm package-cache hits and one miss after a lockfile-key change; dependency installation was median/p90 22/27 seconds, with a 20.5-second median on hits and 29 seconds on the miss. Documentation generation was 13/14.8 seconds and Pages artifact upload was 12/13.6 seconds. The observed cache-hit advantage was only 8.5 seconds, and no evidence shows that adding a node_modules cache would preserve npm ci correctness while saving at least 60 seconds or 15% of median execution. No actionable dependency-cache change was supported, so the category advanced. Three skipped workflow_run entries were excluded from build comparisons."
+    },
+    {
+      "evaluated_at": "2026-10-20T22:35:32Z",
+      "worker_run_id": "39508878533",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39508887305,
+        39507632316,
+        39507308747,
+        39504989291,
+        39503217685,
+        39502971923,
+        39501354413,
+        39499956441,
+        39499549966,
+        39497001456,
+        39495125880,
+        39493508349,
+        39491858643,
+        39491441523,
+        39488433149,
+        39487836723,
+        39486361919,
+        39484726164,
+        39484498653,
+        39484331843
+      ],
+      "outcome": "incomplete: the 2026-10-20T19:32:30Z to 2026-10-20T22:32:54Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Only four successful runs executed both build and deploy (four push runs across four source SHAs), below the required minimum of five comparable successful builds. The newest schedule run 39508887305 queued its freshness job for 4 seconds, ran it for 8 seconds with a 4-second freshness check, and skipped build and deploy. During collection of remaining job metadata and the required open-issue duplicate search, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API work stopped. Required median/p90 workflow, build, deploy, and Astro-generation measurements could not be completed; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
     }
   ]
 }
