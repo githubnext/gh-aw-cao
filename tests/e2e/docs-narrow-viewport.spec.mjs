@@ -725,10 +725,10 @@ for (const { name, viewport } of [
         )).toBe(true);
         const rolloutStory = page.locator(".terminal-story");
         await rolloutStory.scrollIntoViewIfNeeded();
-        await expect(rolloutStory).toContainText("Start with a CAO-integrated workflow, such as Daily Repo Status from Agentics.");
-        await expect(rolloutStory).toContainText("In review mode, inspect its proposed report in a review repository");
+        await expect(rolloutStory).toContainText("Bring an existing workflow, such as Daily Repo Status from Agentics, under central control.");
+        await expect(rolloutStory).toContainText("reuse the workflow across enrolled repositories");
         await expect(rolloutStory.locator(".terminal")).not.toContainText(/campaign|dependabot/i);
-        await expect(rolloutStory.locator(".terminal code").last()).toHaveText("Use integrate-cao-workflow for Daily Repo Status");
+        await expect(rolloutStory.locator(".terminal code").last()).toHaveText("Adapt Daily Repo Status for CAO");
         await expect(rolloutStory.locator('[data-terminal-request="integration"]')).toContainText("Keep policy disabled, review-only");
         await expect(rolloutStory).toHaveCSS("opacity", "1");
         const rolloutScreenshot = testInfo.outputPath(`rollout-story-${name}-${colorScheme}.png`);
@@ -761,7 +761,7 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Roll out with confidence.", exact: true })).toBeAttached();
       await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Setup, authentication, and rollout");
       await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
-        "Set repository scope and connect separate read/write credentials. Start with a CAO-integrated workflow, such as Daily Repo Status from Agentics. In review mode, inspect its proposed report in a review repository before authorizing live delivery. Keep credentials in Actions secrets and rollout decisions in versioned policy. Add campaigns when you're ready to scale.",
+        "Bring an existing workflow, such as Daily Repo Status from Agentics, under central control. Set repository scope and separate read/write credentials. Review proposed reports before authorizing live delivery. Keep rollout policy and steering in your control repository, and reuse the workflow across enrolled repositories. Add campaigns when you need coordinated work.",
       );
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
@@ -786,16 +786,16 @@ for (const { name, viewport } of [
       await expect(page.locator(".terminal code")).toHaveText([
         "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
         "gh cao setup",
-        "Use integrate-cao-workflow for Daily Repo Status",
+        "Adapt Daily Repo Status for CAO",
       ]);
       await expect(page.locator(".terminal a")).toHaveCount(0);
       await expect(page.locator('[data-terminal-output="install"]')).toHaveText("==> CAO runtime materialized and verified.");
       await expect(page.locator('[data-terminal-output="setup"]')).toHaveText(
         "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.",
       );
-      await expect(page.locator(".terminal-label")).toHaveText("Agent with CAO skills — integration request");
+      await expect(page.locator(".terminal-label")).toHaveText("Example agent request — not a CLI command");
       await expect(page.locator('[data-terminal-request="integration"]')).toHaveText(
-        "Create a local repo-status-cao variant.\nAdd standalone control and review-output routing.\nKeep policy disabled, review-only, and scoped to one repo.\nLeave upstream files unchanged. Do not enable or run.",
+        "Import shared/control.md as standalone.\nBind reads and review outputs to admitted targets.\nKeep policy disabled, review-only, and scoped to one repo.\nPreserve upstream ownership. Do not enable or run.",
       );
       await expect(page.locator('[data-terminal-output="rollout"]')).toHaveCount(0);
       await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);

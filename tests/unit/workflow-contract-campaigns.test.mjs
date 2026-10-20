@@ -206,7 +206,6 @@ test("operational packages own their workflows without reinstalling the control 
       name.endsWith(".md")
       && workflowConfig(name).imports?.some((entry) =>
         entry.uses === "shared/control.md"
-        && typeof entry.with.campaign === "string"
         && existsSync(join(root, entry.with.campaign, "cao.json"))))
     .sort();
   assert.deepEqual(operationWorkflows.map((name) => `.github/workflows/${name}`), declaredOperationWorkflows);
@@ -340,7 +339,6 @@ test("root campaign provides default control-repository agent context", () => {
     "skills/setup-cao",
     "skills/add-cao-campaign",
     "skills/create-cao-campaign",
-    "skills/integrate-cao-workflow",
     "skills/debug-cao",
     "skills/analyze-cao",
     "skills/cao-cli",
@@ -368,7 +366,6 @@ test("root campaign provides default control-repository agent context", () => {
     "setup-cao",
     "add-cao-campaign",
     "create-cao-campaign",
-    "integrate-cao-workflow",
     "debug-cao",
     "analyze-cao",
     "cao-cli",

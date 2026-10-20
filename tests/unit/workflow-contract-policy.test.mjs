@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
 import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs";
-import { controlPolicy, controlPrecompute, generatedJobs, modes, portableSkill, resolvePolicy, root, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { controlPrecompute, generatedJobs, modes, portableSkill, resolvePolicy, root, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Central policy resolution, rollout limits, and activation contracts.
 
@@ -351,10 +351,7 @@ test("control workflows deny before activation through one shared admission cont
 
   assert.deepEqual(
     controlled.map(([name]) => name).sort(),
-    [
-      ...registrations.map(({ name }) => name),
-      ...Object.keys(controlPolicy["control-plane"].workflows ?? {}).map(name => `${name}.md`),
-    ].sort(),
+    registrations.map(({ name }) => name).sort(),
     "shared control imports must match the declarative operation inventory",
   );
   for (const { campaignName, policy, descriptor } of operationCampaigns()) {

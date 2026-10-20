@@ -180,10 +180,6 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
       if (name === "dependabot-update-planner.md") {
         assert.equal(issue["close-older-issues"], undefined, `${name} preserves its durable parent`);
         assert.equal(issue["require-temporary-id"], true, `${name} links same-run children to a new parent`);
-      } else if (name === "repo-status-cao.md") {
-        assert.equal(issue.expires, undefined, `${name} must not install scheduled expiration maintenance`);
-        assert.equal(issue["close-older-issues"], true, `${name} replaces older reports on demand`);
-        assert.equal(issue["close-older-key"], "${{ format('repo-status-cao-{0}', inputs.target_repo) }}");
       } else {
         assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
       }

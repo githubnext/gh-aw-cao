@@ -51,14 +51,6 @@
         }
       ]
     },
-    "workflows": {
-      "repo-status-cao": {
-        "enabled": false,
-        "mode": "review",
-        "max-mode": "review",
-        "max-repositories": 1
-      }
-    },
     "campaigns": {
       "dashboard": {
         "deploy": false

@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { controlPolicy, controlProgram, root } from "../helpers/control-precompute.mjs";
+import { controlPolicy, controlProgram } from "../helpers/control-precompute.mjs";
 
 const program = controlProgram();
 
@@ -147,7 +147,7 @@ const standaloneEnv = {
   GITHUB_WORKFLOW_REF: "acme/control/.github/workflows/fleet-audit.lock.yml@refs/heads/main",
 };
 
-function standalonePolicy(workflow = {}, inventory = {}, workflowName = "fleet-audit") {
+function standalonePolicy(workflow = {}, inventory = {}) {
   return JSON.stringify({
     version: 1,
     "gh-aw-version": "v0.92.5",
@@ -157,7 +157,7 @@ function standalonePolicy(workflow = {}, inventory = {}, workflowName = "fleet-a
         "allowed-repositories": ["acme/one", "acme/two", "acme/three", "acme/four"],
       },
       inventory,
-      workflows: { [workflowName]: { "max-repositories": 3, "rollout-percent": 50, ...workflow } },
+      workflows: { "fleet-audit": { "max-repositories": 3, "rollout-percent": 50, ...workflow } },
     },
   });
 }
@@ -165,76 +165,6 @@ function standalonePolicy(workflow = {}, inventory = {}, workflowName = "fleet-a
 const standaloneRepositories = ["one", "two", "three", "four"].map((name, index) => ({
   id: index + 1, full_name: `acme/${name}`, archived: false, disabled: false, private: true,
 }));
-
-const repoStatusDeclaration = JSON.parse(
-  readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"),
-)["control-plane"].workflows["repo-status-cao"];
-const repoStatusEnv = {
-  ...standaloneEnv,
-  CAO_WORKFLOW: "repo-status-cao",
-  CAO_TARGET_REPOSITORY: "acme/one",
-  CAO_REQUESTED_MODE: "review",
-  GITHUB_WORKFLOW_REF: "acme/control/.github/workflows/repo-status-cao.lock.yml@refs/heads/main",
-};
-const repoStatusPolicy = (overrides = {}) =>
-  standalonePolicy({ ...repoStatusDeclaration, ...overrides }, {}, "repo-status-cao");
-
-test("Daily Repo Status denies undeclared, shipped disabled, and widened live requests", () => {
-  for (const [policy, env, reason] of [
-    [standalonePolicy(), repoStatusEnv, /workflow-undeclared/],
-    [repoStatusPolicy(), repoStatusEnv, /workflow-disabled/],
-    [repoStatusPolicy({ enabled: true }), { ...repoStatusEnv, CAO_REQUESTED_MODE: "live" }, /exceeds checked-in policy/],
-  ]) {
-    const { output } = runAdmission({ policy, env });
-    assert.equal(output.authorized, "false");
-    assert.match(output.reason, reason);
-  }
-});
-
-test("Daily Repo Status admits exactly the requested review target after separate enablement", () => {
-  for (const reviewRepo of ["acme/control", "acme/review"]) {
-    const { output, precomputeResult, precompute } = runAdmission({
-      policy: repoStatusPolicy({ enabled: true }),
-      env: {
-        ...repoStatusEnv,
-        CAO_SAFE_OUTPUT_REPOSITORY: reviewRepo,
-        CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: reviewRepo,
-      },
-      repositories: [...standaloneRepositories, { id: 5, full_name: "acme/review", private: true }],
-      runPrecompute: true,
-    });
-    assert.equal(output.authorized, "true");
-    assert.equal(precomputeResult.status, 0, precomputeResult.stderr);
-    assert.equal(precompute.effective_max_repos, 1);
-    assert.deepEqual(precompute.candidate_repositories.map(({ full_name, safe_output_mode, safe_output_repo }) =>
-      [full_name, safe_output_mode, safe_output_repo]), [["acme/one", "review", reviewRepo]]);
-    assert.deepEqual(precompute.worker_workflows, []);
-  }
-});
-
-test("Daily Repo Status handles empty admission and refuses unsafe output destinations or scope", () => {
-  const empty = runAdmission({
-    policy: repoStatusPolicy({ enabled: true }), env: repoStatusEnv,
-    repositories: standaloneRepositories.map(repository => ({ ...repository, archived: true })),
-    runPrecompute: true,
-  });
-  assert.equal(empty.precomputeResult.status, 0, empty.precomputeResult.stderr);
-  assert.deepEqual(empty.precompute.candidate_repositories, []);
-  for (const [env, repositories, reason] of [
-    [{ CAO_SAFE_OUTPUT_REPOSITORY: "acme/one" }, standaloneRepositories, /review safe_output_repo must differ/],
-    [{ CAO_SAFE_OUTPUT_REPOSITORY: "acme/review" }, [
-      ...standaloneRepositories, { id: 5, full_name: "acme/review", private: false },
-    ], /private/],
-    [{ CAO_TARGET_REPOSITORY: "acme/outside" }, standaloneRepositories, /target_repo is not allowed/],
-  ]) {
-    const { precomputeResult } = runAdmission({
-      policy: repoStatusPolicy({ enabled: true }),
-      env: { ...repoStatusEnv, ...env }, repositories, runPrecompute: true,
-    });
-    assert.notEqual(precomputeResult.status, 0);
-    assert.match(precomputeResult.stderr, reason);
-  }
-});
 
 test("standalone admission and precompute process a bounded fleet without campaign or dispatch APIs", () => {
   const { result, output, admission, precomputeResult, precompute } = runAdmission({

@@ -158,16 +158,33 @@ Shared control applies schema defaults, then `control-plane.defaults`, campaign 
 
 ### Standalone Agentic Workflows
 
-To adapt an existing workflow, use the
-[`integrate-cao-workflow` skill](https://github.com/githubnext/gh-cao/blob/main/skills/integrate-cao-workflow/SKILL.md).
-It prepares a locally maintained variant with explicit upstream update
-responsibility, disabled review-only policy, admission and output routing, and
-validation. It does not compete with `gh aw add`/`update` or activate a second
-schedule automatically.
+Start with a regular workflow, such as
+[Daily Repo Status from Agentics](https://github.com/githubnext/agentics/blob/main/docs/repo-status.md),
+and adapt its repository assumptions before reusing it across repositories.
+`gh aw add` installs the upstream workflow; it does not automatically add CAO
+admission or redirect its writes.
 
-For a ready-to-install example, see [Daily Repo Status](./repo-status.md):
-an opt-in standalone adaptation of Agentics with manual dispatch and
-review-repository issue delivery.
+Keep upstream installation ownership with `gh aw add`/`update`. Prepare a
+distinctly named, locally maintained variant, recording its source revision and
+manual update responsibility. Import `shared/control.md` as `role: standalone`,
+bind reads to the admitted target, and use each candidate's resolved mode and
+output destination. Route every effect, including closing older reports, to
+review; keep report matching target-specific.
+
+Declare the variant under `control-plane.workflows` with `enabled: false`,
+`mode: review`, `max-mode: review`, and `max-repositories: 1`. Start manual-only
+against one explicitly enrolled repository, without activating a duplicate
+upstream schedule. Keep separate read/write credentials in Actions secrets.
+Checked-in rollout policy decides where it may run; optional control-owned
+steering may refine the task but cannot widen authority.
+
+Compile with the policy-pinned `gh aw`, inspect admission and output routing,
+and review source, lock, and policy together before enabling a review run.
+Review mode executes the agent and may create review outputs; it is not a
+no-write simulation. Once the integration is proven, reuse the definition
+across additional explicitly enrolled targets through reviewed policy changes.
+Live delivery additionally requires a supported output path and explicit live
+authorization. No campaign or new installation command is required.
 
 Any agentic workflow can opt into CAO without becoming a campaign or introducing
 an orchestrator/worker pair. Install or maintain its Markdown source in the

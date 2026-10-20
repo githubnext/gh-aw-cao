@@ -49,26 +49,29 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Setup, authentication, and rollout/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Roll out with confidence\./);
-  assert.match(hero, /Set repository scope and connect separate read\/write credentials\./);
-  assert.match(hero, /Start with a CAO-integrated workflow,\s+such as Daily Repo Status from Agentics\./);
-  assert.match(hero, /In review mode, inspect its proposed report in a review repository before authorizing\s+live delivery\./);
-  assert.match(hero, /Keep credentials in Actions secrets/);
+  assert.match(hero, /Bring an existing workflow, such as Daily Repo Status from Agentics, under central control\./);
+  assert.match(hero, /Set repository scope and separate read\/write credentials\./);
+  assert.match(hero, /Review proposed reports before authorizing live delivery\./);
+  assert.match(hero, /Keep rollout policy and steering in your control repository/);
+  assert.match(hero, /reuse the workflow across enrolled repositories/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
-  assert.match(terminalText, /Use integrate-cao-workflow for Daily Repo Status/);
+  assert.match(terminalText, /Adapt Daily Repo Status for CAO/);
   assert.match(terminalText, /CAO runtime materialized and verified/);
   assert.match(terminalText, /Next: gh cao doctor/);
   assert.match(terminalText, /Then review git diff and git status, commit, and push the installed files/);
-  assert.match(terminalText, /Agent with CAO skills — integration request/);
+  assert.match(terminalText, /Example agent request — not a CLI command/);
   assert.match(terminal, /data-terminal-request="integration"/);
   assert.match(terminalText, /Keep policy disabled, review-only, and scoped to one repo/);
-  assert.match(terminalText, /Leave upstream files unchanged\. Do not enable or run/);
+  assert.match(terminalText, /Import shared\/control\.md as standalone/);
+  assert.match(terminalText, /Bind reads and review outputs to admitted targets/);
+  assert.match(terminalText, /Preserve upstream ownership\. Do not enable or run/);
   assert.doesNotMatch(terminal, /data-terminal-output="rollout"|\bjq\b/);
   assert.doesNotMatch(terminalText, /campaign|dependabot/i);
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
-  assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field/);
+  assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
   assert.match(hero, /Monitor what runs\./);
   assert.match(hero, /Roll out safely\./);
   assert.match(hero, /See workflow health, cost, and outcomes in one dashboard/);
@@ -104,11 +107,14 @@ test("terminal output excerpts remain grounded in the production installer and C
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
   assert.ok(installer.includes('"CAO runtime materialized and verified."'));
   assert.ok(setup.includes("Next: gh cao doctor\\nThen review git diff and git status, commit, and push the installed files."));
-  const integration = readFileSync("skills/integrate-cao-workflow/SKILL.md", "utf8");
+  const integration = readFileSync("docs/configuration.md", "utf8");
   for (const requirement of [
-    "repo-status-cao", "role: standalone", "enabled: false", "max-mode: review", "max-repositories: 1",
+    "Daily Repo Status from Agentics", "role: standalone", "enabled: false", "max-mode: review", "max-repositories: 1",
   ]) assert.ok(integration.includes(requirement));
-  assert.match(hero, /Add campaigns\s+when you're ready to scale\./);
+  assert.match(integration, /does not automatically add CAO\nadmission or redirect its writes/);
+  assert.match(integration, /including closing older reports/);
+  assert.match(integration, /additional explicitly enrolled targets through reviewed policy changes/);
+  assert.match(hero, /Add campaigns when you need coordinated work\./);
 });
 
 test("landing page shows shared and local workflows with explicit ownership", () => {

@@ -16,7 +16,6 @@ const taskRoutes = [
   ["Debug a CAO failure", "debug-cao"],
   ["Add an existing campaign", "add-cao-campaign"],
   ["Create a new campaign", "create-cao-campaign"],
-  ["Integrate an existing workflow", "integrate-cao-workflow"],
   ["Analyze CAO activity", "analyze-cao"],
   ["Use or extend the CAO CLI", "cao-cli"],
 ];

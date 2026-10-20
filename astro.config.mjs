@@ -108,7 +108,6 @@ export default defineConfig({
             "local-debugging",
             "marketplace",
             "operational-*",
-            "repo-status",
             "operations",
             "orchestrators-*",
             "rollout-*",
@@ -136,11 +135,6 @@ export default defineConfig({
               label: "Create a new campaign",
               url: "https://github.com/githubnext/gh-cao/blob/main/skills/create-cao-campaign/SKILL.md",
               description: "Use create-cao-campaign to author an orchestrator and its workers.",
-            },
-            {
-              label: "Integrate an existing workflow",
-              url: "https://github.com/githubnext/gh-cao/blob/main/skills/integrate-cao-workflow/SKILL.md",
-              description: "Use integrate-cao-workflow for a locally maintained standalone CAO variant.",
             },
             {
               label: "Analyze CAO activity",
@@ -261,7 +255,6 @@ export default defineConfig({
           label: "Get started",
           items: [
             { label: "Set up and monitor", link: "/setup-quickstarts/" },
-            { label: "Daily Repo Status (optional)", link: "/repo-status/" },
             { label: "Add a campaign (optional)", link: "/catalog/" },
             { label: "CAO commands", link: "/cao-cli/" },
             { label: "Authentication", link: "/authentication/" },
