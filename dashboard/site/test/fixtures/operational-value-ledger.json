@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "kind": "operational-value-events",
+  "repository": "octo/example",
+  "workflowSlug": "verify-bugs",
+  "workflowName": "Verify bugs",
+  "sourcePath": ".github/workflows/verify-bugs.md",
+  "intent": {
+    "goal": "Resolve confirmed defects.",
+    "acceptance": "Independent verification at the accepted revision.",
+    "sources": [{ "label": "Frozen workflow", "url": "https://github.com/octo/example/blob/abc123/.github/workflows/verify-bugs.md" }],
+    "requirements": ["Preserve existing behavior."]
+  },
+  "observedAt": "2026-10-20T12:00:00Z",
+  "cadenceDays": 7,
+  "maturationDays": 0,
+  "metric": {
+    "id": "linked",
+    "name": "Verified linked repairs",
+    "unit": "defects",
+    "direction": "increase",
+    "version": "v1",
+    "formula": "Count independently verified linked repairs once at acceptance."
+  },
+  "basis": "workflow-contribution",
+  "window": { "startAt": "2026-01-01T00:00:00Z", "endAt": "2026-10-20T00:00:00Z" },
+  "coverage": [{ "startAt": "2026-01-01T00:00:00Z", "endAt": "2026-10-20T00:00:00Z", "status": "partial" }],
+  "limitations": ["Older creation receipts were not retained."],
+  "resultLabel": "verified repairs",
+  "events": [{
+    "id": "accepted:2",
+    "at": "2026-10-10T12:00:00Z",
+    "observedAt": "2026-10-11T12:00:00Z",
+    "acceptance": { "state": "accepted", "at": "2026-10-10T12:00:00Z", "ref": "abc123" },
+    "value": 1,
+    "attribution": "corroborated",
+    "label": "Repair defect",
+    "detail": "The independently measured repair was accepted.",
+    "evidence": [{ "label": "Implementing PR", "url": "https://github.com/octo/example/pull/2" }],
+    "lineage": [{ "outputId": "issue:1", "implementationId": "accepted:2", "relation": "connected", "at": "2026-10-09T12:00:00Z" }]
+  }],
+  "outputs": {
+    "scope": "Retained issues for the frozen workflow",
+    "coverage": "partial",
+    "unit": "issues",
+    "implementationUnit": "merged PRs",
+    "items": [{
+      "id": "issue:1",
+      "label": "Proposal",
+      "title": "Repair a defect",
+      "url": "https://github.com/octo/example/issues/1",
+      "createdAt": "2026-10-01T12:00:00Z",
+      "state": "closed",
+      "origin": "corroborated",
+      "implementationIds": ["accepted:2"],
+      "evidence": [{ "label": "Origin", "url": "https://github.com/octo/example/issues/1" }]
+    }]
+  },
+  "repositoryState": {
+    "metric": { "id": "backlog", "name": "Confirmed defect backlog", "unit": "defects", "direction": "decrease", "version": "v1", "formula": "Count confirmed unresolved defects." },
+    "observations": [
+      { "at": "2026-10-01T00:00:00Z", "value": 1, "ref": "def456", "url": "https://github.com/octo/example/tree/def456", "items": [{ "label": "Defect", "url": "https://github.com/octo/example/issues/1" }] },
+      { "at": "2026-10-20T00:00:00Z", "value": 0, "ref": "abc123", "url": "https://github.com/octo/example/tree/abc123", "items": [] }
+    ],
+    "limitation": "Sparse independent observations."
+  },
+  "checks": [{ "name": "Behavior preservation", "status": "not-verified", "detail": "Independent quality evidence is unavailable." }]
+}

@@ -28,7 +28,7 @@ agent-written routing summaries. Audit retains typed routing identifiers,
 classifier labels, request identities, sub-agent ownership, token classes,
 per-response AIC and collection receipts. It MUST NOT retain prompts, bodies,
 free-form errors/reasons, raw tool payloads or content-derived hashes.
-Canonical schema 32 and IndexedDB version 42 invalidate older browser projections;
+Canonical schema 33 and IndexedDB version 43 invalidate older browser projections;
 hosted PostgreSQL deployments require a fresh schema with the generated Audit
 columns, including the configured-model resolution columns added in schema 32.
 
@@ -575,10 +575,10 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 32 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 42 | Eighteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
-| Local SQLite projection | IndexedDB 38 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
-| Go server Postgres sources | Canonical model 17 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
+| Canonical model | 33 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Operational Value Evidence, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 43 | Nineteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
+| Local SQLite projection | IndexedDB 43 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Go server Postgres sources | Canonical model 18 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Go server profile
@@ -2485,7 +2485,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 42;
+const DATABASE_VERSION = 43;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2497,7 +2497,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 42 SHALL define:
+IndexedDB version 43 SHALL define:
 
 ```text
 campaigns
@@ -2511,6 +2511,7 @@ friction
 audits
 issues
 operationalValues
+operationalValueEvidence
 marketplacePackages
 experiments
 experimentAssignments
@@ -2702,6 +2703,66 @@ Derived query results SHALL be computed from canonical records on demand.
 No derived-result generation, metadata pointer, or persistent projection
 store is required. Canonical ingestion transactions remain the authority
 for atomic source-data updates.
+
+## 31.2 Native Operational Value report evidence
+
+Canonical schema 33 SHALL retain `operationalValueEvidence`: one bounded current
+packet per exact target repository, workflow filename stem and frozen
+contribution metric ID/version. Capture time is not part of identity. A newer
+packet SHALL replace the entire fact array atomically, never merge fields or
+facts from different revisions. Stale imports SHALL NOT roll back a newer
+capture; a conflicting same-capture packet or changed contract digest under
+the same metric version SHALL fail. Original accepted-event dates, native values
+and immutable references SHALL remain evidence, not recalculated report state.
+Existing `operationalValues` semantics and retention SHALL remain unchanged.
+
+The skill's validated event ledger SHALL export a schema-v2
+`operational_value_evidence` JSONL envelope. Normal Activity ingestion,
+normalization, phase publication and browser/SQLite/PostgreSQL storage SHALL
+retain it without a Run parent. Packets SHALL survive Run-detail expiry and
+retain their repository and observed workflow parents; each identity holds only its current bounded
+packet. Limits are 20,000 facts and 8 MiB per packet. Typed facts SHALL be stored
+as entity-owned relational child values in PostgreSQL, not JSON documents or
+persisted report/view models. Fact fields SHALL preserve native scalar types.
+Imports SHALL NOT infer rollout authority or trigger evidence acquisition.
+Normalized publications SHALL emit ingestion version 5. Version 4 remains
+read-compatible within the supported canonical-schema range; optional new
+evidence does not make existing phase envelopes invalid.
+The retained source path and workflow name SHALL materialize only observed
+Workflow identity with unknown state, never registration or live activation.
+
+The single logical source `operational-value-evidence` SHALL purely normalize
+these originals. Every row SHALL expose `report-id`, `organization`,
+`repository`, `workflow` (filename stem), `workflow-path` (the validated original
+Markdown source path), `observed-at` (capture), `window-start`, `window-end`
+(evidence cutoff) and `contract-digest`. Original capture/cutoff boundaries
+SHALL NOT advance on replay. `fact-kind` and `fact-id` identify each fact;
+IDs SHALL be stable and unique within kind and optional parent.
+Base-source metadata SHALL retain the oldest included packet cutoff as `as-of`
+and its oldest capture as `retrieved-at`; these clocks alone SHALL NOT promote
+completeness or freshness to known states.
+
+| Fact kind | Acquired facts |
+| --- | --- |
+| `contract` | `goal`, `acceptance`, `workflow-name`, `metric-id/name/unit/direction/version/formula`, `result-label`, `measurement-basis`, `cadence-days`, optional `maturation-days`, snapshot metric identity/name/unit/direction/version/formula, output/implementation units, `output-scope`, `output-coverage`, and `outputs-available`, `repository-state-available`, `checks-available` booleans |
+| `intent-source`, `requirement`, `limitation` | Source `label/url`, requirement `label`, or limitation `label/detail` |
+| `output` | Original output `fact-id`, `label/title/url`, creation `at`, lifecycle `state`, evidence `origin` |
+| `output-implementation`, `output-evidence` | Output `parent-id`, accepted-event `related-id`, or retained evidence `label/url` |
+| `implementation` | Original event `fact-id`, original acceptance `at` and `accepted-at`, native `value`, `label/title/detail/url`, accepted revision `ref`, evidence-strength `origin` |
+| `implementation-evidence`, `implementation-lineage` | Accepted-event `parent-id`, retained `label/url`, or explicit lineage relation `label`, output `related-id`, and separate relationship `at` |
+| `snapshot`, `snapshot-item` | Stable snapshot identity, native `at/value/ref/url`, required `items-available` boolean; item `parent-id` names that exact snapshot with retained `label/url` |
+| `quality-check` | Named `label`, explicit `status` (`verified` or `not-verified`), `detail` |
+| `coverage` | Original interval `at`, `end-at`, `coverage-status` |
+
+Unavailable optional evidence SHALL remain distinct from an explicitly empty
+cohort, check array or snapshot-item population. Invalid identities, duplicate
+facts, dangling edges, unsafe/non-HTTPS URLs, non-native/non-finite numbers,
+mutable references and invalid timestamps SHALL fail rather than become missing.
+Independent repository snapshots SHALL remain separate from linked contribution.
+All selection, grouping, totals, comparisons, movement, attention and report
+presentation SHALL be Dashboard Language queries over these factual rows,
+re-executed within the active abort-scoped worker subscription. No navigation
+handler SHALL fetch saved reports or acquire missing evidence.
 
 ---
 

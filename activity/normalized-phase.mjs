@@ -3,7 +3,7 @@ import { NORMALIZED_COLLECTIONS } from './cli-usage.mjs';
 const RUN_COLLECTIONS = new Set([
   'campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments'
 ]);
-const STRUCTURAL_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows', 'experiments', 'graders', 'evals']);
+const STRUCTURAL_COLLECTIONS = new Set(['campaigns', 'repositories', 'workflows', 'experiments', 'graders', 'evals', 'operationalValueEvidence']);
 export const STRUCTURAL_CONSOLIDATION_BUCKET = '0000-00-00';
 const TIMESTAMP_FIELDS = ['startedAt', 'observedAt', 'timestamp', 'completedAt', 'createdAt', 'updatedAt'];
 

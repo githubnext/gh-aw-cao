@@ -52,7 +52,8 @@ describe('operational-value tracking contract', () => {
     const evidence = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === 'operational-value-evidence');
     for (const selected of [page, evidence]) {
       expect(selected.route.tabs).toEqual([
-        { id: 'overview', label: 'Overview', icon: 'graph', page: 'operational-value' }
+        { id: 'workflows', label: 'Workflow results', icon: 'trophy', page: 'value' },
+        { id: 'measurements', label: 'Repository measurements', icon: 'repo', page: 'operational-value' }
       ]);
     }
   });

@@ -1,5 +1,6 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
 import { mergeCanonicalRun } from '../model/fields.js';
+import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
 import {
   auditCurationRunFacts, discardAudit, AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION
 } from '../model/audit-curation.js';
@@ -89,6 +90,10 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       ? withStorageMetadata(storeName, mergeEvidenceDefinition(
           withoutStorageMetadata(previous), withoutStorageMetadata(record)
         ))
+      : previous && storeName === 'operationalValueEvidence'
+      ? withStorageMetadata(storeName, mergeOperationalValueEvidence(
+          withoutStorageMetadata(previous), withoutStorageMetadata(record)
+        ))
       : record);
   }
   const incoming = [...unique.values()];
@@ -126,6 +131,10 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       const incomingRun = withoutStorageMetadata(record);
       const merged = mergeCanonicalRun(withoutStorageMetadata(existing), incomingRun);
       if (merged !== incomingRun) record = withStorageMetadata(storeName, merged);
+    } else if (storeName === 'operationalValueEvidence') {
+      record = withStorageMetadata(storeName, mergeOperationalValueEvidence(
+        existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(record)
+      ));
     } else if (EVIDENCE_DEFINITION_STORES.has(storeName)) {
       record = withStorageMetadata(storeName, mergeEvidenceDefinition(
         existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(record)

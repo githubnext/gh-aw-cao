@@ -1,0 +1,398 @@
+{
+  "queries": [
+    {
+      "name": "value-evidence-facts",
+      "subject": "Published original evidence for frozen workflow value contracts.",
+      "objective": "Keep report identity, target repository, workflow and capture together.",
+      "acceptance": "Read canonical evidence only. No GitHub acquisition, HTML loading or fabricated evidence on navigation.",
+      "from": "operational-value-evidence",
+      "time": { "range": "all" },
+      "compute": [
+        { "as": "workflow-route", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }, { "value": ":" }, { "field": "workflow-path" }] }
+      ]
+    },
+    {
+      "name": "value-contracts",
+      "subject": "Latest retained report contract per repository, workflow and native measure.",
+      "objective": "Prevent old reports or versions from masking newer evidence.",
+      "acceptance": "Select the latest cutoff then capture before evaluating missing or incomplete evidence. Preserve separate measures.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "equals": "contract" }] },
+      "compute": [{ "as": "report-marker", "function": "literal", "args": [{ "value": 1 }] }],
+      "window": [{
+        "operation": "change", "field": "report-marker", "as": "older-report", "mode": "absolute",
+        "groupby": ["organization", "repository", "workflow", "metric-id"],
+        "order-by": [{ "field": "window-end", "direction": "desc" }, { "field": "observed-at", "direction": "desc" }, { "field": "report-id", "direction": "desc" }]
+      }]
+    },
+    {
+      "name": "value-snapshots",
+      "subject": "Independent repository-state observations and exact item drill-downs.",
+      "objective": "Keep everyone's changes separate from workflow-linked delivery.",
+      "acceptance": "Retain observed native values, dates and immutable references. Do not invent intermediate observations.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "equals": "snapshot" }] },
+      "compute": [
+        { "as": "snapshot-marker", "function": "literal", "args": [{ "value": 1 }] },
+        { "as": "snapshot-route", "function": "concat", "args": [{ "field": "report-id" }, { "value": "|" }, { "field": "fact-id" }] },
+        { "as": "encoded-snapshot", "function": "url-encode", "args": [{ "field": "snapshot-route" }] },
+        { "as": "snapshot-href", "function": "concat", "args": [{ "value": "#page-value-snapshot?snapshot=" }, { "field": "encoded-snapshot" }] }
+      ],
+      "order-by": [{ "field": "at", "direction": "asc" }, { "field": "fact-id", "direction": "asc" }]
+    },
+    {
+      "name": "value-first-snapshot-order",
+      "subject": "First independently observed repository state.",
+      "objective": "Name the actual first-snapshot reference rather than an invented baseline.",
+      "acceptance": "Strictly use retained snapshot time. A post-adoption snapshot is not a pre-adoption baseline.",
+      "from": "value-snapshots",
+      "window": [{ "operation": "change", "field": "snapshot-marker", "as": "earlier-snapshot", "mode": "absolute",
+        "groupby": ["report-id"], "order-by": [{ "field": "at", "direction": "asc" }] }]
+    },
+    {
+      "name": "value-first-snapshot",
+      "subject": "First retained snapshot per report.",
+      "objective": "Provide the explicit reference value and date.",
+      "acceptance": "No retained reference means no comparison.",
+      "from": "value-first-snapshot-order",
+      "filter": { "predicates": [{ "field": "earlier-snapshot", "equals": "unknown" }] }
+    },
+    {
+      "name": "value-last-snapshot-order",
+      "subject": "Latest independently observed repository state.",
+      "objective": "Show the actual last measurement rather than an extrapolation.",
+      "acceptance": "Preserve the latest retained snapshot even if unchanged.",
+      "from": "value-snapshots",
+      "window": [{ "operation": "change", "field": "snapshot-marker", "as": "later-snapshot", "mode": "absolute",
+        "groupby": ["report-id"], "order-by": [{ "field": "at", "direction": "desc" }] }]
+    },
+    {
+      "name": "value-last-snapshot",
+      "subject": "Last retained snapshot per report.",
+      "objective": "Provide the current native observation.",
+      "acceptance": "One snapshot establishes state, not movement.",
+      "from": "value-last-snapshot-order",
+      "filter": { "predicates": [{ "field": "later-snapshot", "equals": "unknown" }] }
+    },
+    {
+      "name": "value-output-counts",
+      "subject": "Retained safe outputs and applied creation receipts.",
+      "objective": "Describe output activity without treating it as accepted value.",
+      "acceptance": "Count distinct validated output facts. Tracking corroboration is not an applied receipt.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "equals": "output" }] },
+      "aggregate": { "by": ["report-id"], "values": [
+        { "field": "fact-id", "as": "retained-outputs", "reducer": "count" },
+        { "field": "fact-id", "as": "receipt-outputs", "reducer": "count", "filter": { "predicates": [{ "field": "origin", "equals": "receipt-verified" }] } }
+      ] }
+    },
+    {
+      "name": "value-implementation-counts",
+      "subject": "Distinct accepted implementations and their measured native effects.",
+      "objective": "Count each accepted implementation once, including zero and negative effects.",
+      "acceptance": "Validated implementation identities are unique; many-to-many output edges must not multiply value. Complete coverage is checked separately.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "equals": "implementation" }] },
+      "compute": [
+        { "as": "accepted-ms", "function": "timestamp", "args": [{ "field": "at" }] },
+        { "as": "cutoff-ms", "function": "timestamp", "args": [{ "field": "window-end" }] },
+        { "as": "current-start", "function": "difference", "args": [{ "field": "cutoff-ms" }, { "value": 2419200000 }] },
+        { "as": "previous-start", "function": "difference", "args": [{ "field": "cutoff-ms" }, { "value": 4838400000 }] },
+        { "as": "before-current", "function": "greater-than", "args": [{ "field": "current-start" }, { "field": "accepted-ms" }] },
+        { "as": "before-previous", "function": "greater-than", "args": [{ "field": "previous-start" }, { "field": "accepted-ms" }] },
+        { "as": "current-effect", "function": "if", "args": [{ "field": "before-current" }, { "value": 0 }, { "field": "value" }] },
+        { "as": "previous-candidate", "function": "if", "args": [{ "field": "before-previous" }, { "value": 0 }, { "field": "value" }] },
+        { "as": "previous-effect", "function": "if", "args": [{ "field": "before-current" }, { "field": "previous-candidate" }, { "value": 0 }] }
+      ],
+      "aggregate": { "by": ["report-id"], "values": [
+        { "field": "fact-id", "as": "accepted-implementations", "reducer": "count" },
+        { "field": "value", "as": "known-result", "reducer": "sum" },
+        { "field": "current-effect", "as": "known-recent", "reducer": "sum" },
+        { "field": "previous-effect", "as": "known-previous", "reducer": "sum" }
+      ] }
+    },
+    {
+      "name": "value-covered-durations",
+      "subject": "Explicit complete evidence durations in the report and adjacent 28-day delivery periods.",
+      "objective": "Distinguish known zero from gaps or incomplete evidence.",
+      "acceptance": "The producer validates non-overlapping bounded coverage. Count only complete intervals, clipped to each exact half-open period.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "equals": "coverage" }, { "field": "coverage-status", "equals": "complete" }] },
+      "compute": [
+        { "as": "left-ms", "function": "timestamp", "args": [{ "field": "at" }] },
+        { "as": "right-ms", "function": "timestamp", "args": [{ "field": "end-at" }] },
+        { "as": "cutoff-ms", "function": "timestamp", "args": [{ "field": "window-end" }] },
+        { "as": "current-start", "function": "difference", "args": [{ "field": "cutoff-ms" }, { "value": 2419200000 }] },
+        { "as": "previous-start", "function": "difference", "args": [{ "field": "cutoff-ms" }, { "value": 4838400000 }] },
+        { "as": "after-current", "function": "greater-than", "args": [{ "field": "left-ms" }, { "field": "current-start" }] },
+        { "as": "after-previous", "function": "greater-than", "args": [{ "field": "left-ms" }, { "field": "previous-start" }] },
+        { "as": "before-current-end", "function": "greater-than", "args": [{ "field": "current-start" }, { "field": "right-ms" }] },
+        { "as": "current-left", "function": "if", "args": [{ "field": "after-current" }, { "field": "left-ms" }, { "field": "current-start" }] },
+        { "as": "previous-left", "function": "if", "args": [{ "field": "after-previous" }, { "field": "left-ms" }, { "field": "previous-start" }] },
+        { "as": "previous-right", "function": "if", "args": [{ "field": "before-current-end" }, { "field": "right-ms" }, { "field": "current-start" }] },
+        { "as": "duration", "function": "difference", "args": [{ "field": "right-ms" }, { "field": "left-ms" }] },
+        { "as": "current-duration", "function": "difference", "args": [{ "field": "right-ms" }, { "field": "current-left" }] },
+        { "as": "previous-duration", "function": "difference", "args": [{ "field": "previous-right" }, { "field": "previous-left" }] },
+        { "as": "positive-current", "function": "greater-than", "args": [{ "field": "current-duration" }, { "value": 0 }] },
+        { "as": "positive-previous", "function": "greater-than", "args": [{ "field": "previous-duration" }, { "value": 0 }] },
+        { "as": "covered-current", "function": "if", "args": [{ "field": "positive-current" }, { "field": "current-duration" }, { "value": 0 }] },
+        { "as": "covered-previous", "function": "if", "args": [{ "field": "positive-previous" }, { "field": "previous-duration" }, { "value": 0 }] }
+      ],
+      "aggregate": { "by": ["report-id"], "values": [
+        { "field": "duration", "as": "covered-duration", "reducer": "sum" },
+        { "field": "covered-current", "as": "covered-current", "reducer": "sum" },
+        { "field": "covered-previous", "as": "covered-previous", "reducer": "sum" }
+      ] }
+    },
+    {
+      "name": "value-report-delivery",
+      "subject": "Evidence-qualified output and accepted-contribution totals.",
+      "objective": "Keep populations and native units separate without an implied conversion rate.",
+      "acceptance": "Absent output context is unknown. Missing coverage withholds complete totals and recent zero, retaining labelled known subtotals.",
+      "from": "value-contracts",
+      "joins": [
+        { "source": "value-output-counts", "type": "left", "on": [{ "left": "report-id", "right": "report-id" }], "fields": [{ "field": "retained-outputs", "as": "retained-outputs" }, { "field": "receipt-outputs", "as": "retained-receipts" }] },
+        { "source": "value-implementation-counts", "type": "left", "on": [{ "left": "report-id", "right": "report-id" }], "fields": [{ "field": "accepted-implementations", "as": "retained-implementations" }, { "field": "known-result", "as": "known-result" }, { "field": "known-recent", "as": "known-recent" }, { "field": "known-previous", "as": "known-previous" }] },
+        { "source": "value-covered-durations", "type": "left", "on": [{ "left": "report-id", "right": "report-id" }], "fields": [{ "field": "covered-duration", "as": "covered-duration" }, { "field": "covered-current", "as": "covered-current" }, { "field": "covered-previous", "as": "covered-previous" }] }
+      ],
+      "compute": [
+        { "as": "start-ms", "function": "timestamp", "args": [{ "field": "window-start" }] },
+        { "as": "end-ms", "function": "timestamp", "args": [{ "field": "window-end" }] },
+        { "as": "report-duration", "function": "difference", "args": [{ "field": "end-ms" }, { "field": "start-ms" }] },
+        { "as": "complete-report", "function": "equals-any", "args": [{ "field": "covered-duration" }, { "field": "report-duration" }] },
+        { "as": "complete-current", "function": "equals-any", "args": [{ "field": "covered-current" }, { "value": 2419200000 }] },
+        { "as": "complete-previous", "function": "equals-any", "args": [{ "field": "covered-previous" }, { "value": 2419200000 }] },
+        { "as": "show-workflow-trail", "function": "equals-any", "args": [{ "field": "measurement-basis" }, { "value": "workflow-contribution" }] },
+        { "as": "known-output-count", "function": "coalesce", "args": [{ "field": "retained-outputs" }, { "value": 0 }] },
+        { "as": "known-receipt-count", "function": "coalesce", "args": [{ "field": "retained-receipts" }, { "value": 0 }] },
+        { "as": "receipt-outputs", "function": "if", "args": [{ "field": "outputs-available" }, { "field": "known-receipt-count" }, { "value": null }] },
+        { "as": "accepted-implementations", "function": "coalesce", "args": [{ "field": "retained-implementations" }, { "value": 0 }] },
+        { "as": "output-count", "function": "if", "args": [{ "field": "outputs-available" }, { "field": "known-output-count" }, { "value": null }] },
+        { "as": "native-result", "function": "coalesce", "args": [{ "field": "known-result" }, { "value": 0 }] },
+        { "as": "current-subtotal", "function": "coalesce", "args": [{ "field": "known-recent" }, { "value": 0 }] },
+        { "as": "previous-subtotal", "function": "coalesce", "args": [{ "field": "known-previous" }, { "value": 0 }] },
+        { "as": "recent-result", "function": "if", "args": [{ "field": "complete-current" }, { "field": "current-subtotal" }, { "value": null }] },
+        { "as": "previous-result", "function": "if", "args": [{ "field": "complete-previous" }, { "field": "previous-subtotal" }, { "value": null }] }
+      ]
+    },
+    {
+      "name": "value-report-summary",
+      "subject": "Shared native card and report comparison against the first retained snapshot.",
+      "objective": "Show signed repository-wide movement, the goal direction and the exact comparison dates.",
+      "acceptance": "This first/last snapshot comparison is not the adjacent-period alert policy, a pre-adoption baseline or causal workflow credit. One snapshot is not zero change.",
+      "from": "value-report-delivery",
+      "joins": [
+        { "source": "value-first-snapshot", "type": "left", "on": [{ "left": "report-id", "right": "report-id" }], "fields": [{ "field": "value", "as": "reference-value" }, { "field": "at", "as": "reference-at" }] },
+        { "source": "value-last-snapshot", "type": "left", "on": [{ "left": "report-id", "right": "report-id" }], "fields": [{ "field": "value", "as": "current-value" }, { "field": "at", "as": "current-at" }, { "field": "snapshot-href", "as": "current-snapshot-href" }] }
+      ],
+      "compute": [
+        { "as": "same-snapshot", "function": "equals-any", "args": [{ "field": "reference-at" }, { "field": "current-at" }] },
+        { "as": "raw-change", "function": "difference", "args": [{ "field": "current-value" }, { "field": "reference-value" }] },
+        { "as": "native-change", "function": "if", "args": [{ "field": "same-snapshot" }, { "value": null }, { "field": "raw-change" }] },
+        { "as": "change-missing", "function": "equals-any", "args": [{ "field": "native-change" }, { "value": null }] },
+        { "as": "rising", "function": "greater-than", "args": [{ "field": "native-change" }, { "value": 0 }] },
+        { "as": "falling", "function": "greater-than", "args": [{ "value": 0 }, { "field": "native-change" }] },
+        { "as": "unchanged", "function": "equals-any", "args": [{ "field": "native-change" }, { "value": 0 }] },
+        { "as": "decrease-goal", "function": "equals-any", "args": [{ "field": "snapshot-direction" }, { "value": "decrease" }] },
+        { "as": "increase-goal", "function": "equals-any", "args": [{ "field": "snapshot-direction" }, { "value": "increase" }] },
+        { "as": "increase-movement", "function": "if", "args": [{ "field": "rising" }, { "value": "Better" }, { "value": "Worse" }] },
+        { "as": "decrease-movement", "function": "if", "args": [{ "field": "falling" }, { "value": "Better" }, { "value": "Worse" }] },
+        { "as": "directed-movement", "function": "if", "args": [{ "field": "decrease-goal" }, { "field": "decrease-movement" }, { "field": "increase-movement" }] },
+        { "as": "known-movement", "function": "if", "args": [{ "field": "unchanged" }, { "value": "Unchanged" }, { "field": "directed-movement" }] },
+        { "as": "movement", "function": "if", "args": [{ "field": "change-missing" }, { "value": "Comparison unavailable" }, { "field": "known-movement" }] },
+        { "as": "increase-direction-label", "function": "if", "args": [{ "field": "increase-goal" }, { "value": "↑ Higher is better" }, { "value": "Direction not retained" }] },
+        { "as": "direction-label", "function": "if", "args": [{ "field": "decrease-goal" }, { "value": "↓ Lower is better" }, { "field": "increase-direction-label" }] },
+        { "as": "change-arrow", "function": "if", "args": [{ "field": "rising" }, { "value": "↑ +" }, { "value": "↓ " }] },
+        { "as": "change-number", "function": "format-count", "args": [{ "field": "native-change" }] },
+        { "as": "directional-delta", "function": "concat", "args": [{ "field": "change-arrow" }, { "field": "change-number" }, { "value": " " }, { "field": "snapshot-unit" }] },
+        { "as": "known-delta", "function": "if", "args": [{ "field": "unchanged" }, { "value": "Unchanged" }, { "field": "directional-delta" }] },
+        { "as": "delta-label", "function": "if", "args": [{ "field": "change-missing" }, { "value": "Comparison unavailable" }, { "field": "known-delta" }] },
+        { "as": "signed-change", "function": "concat", "args": [{ "field": "change-arrow" }, { "field": "change-number" }, { "value": " " }, { "field": "snapshot-unit" }, { "value": " · " }, { "field": "movement" }] },
+        { "as": "unchanged-change", "function": "if", "args": [{ "field": "unchanged" }, { "value": "Unchanged" }, { "field": "signed-change" }] },
+        { "as": "change-label", "function": "if", "args": [{ "field": "change-missing" }, { "value": "Comparison unavailable" }, { "field": "unchanged-change" }] },
+        { "as": "reference-day", "function": "date-day", "args": [{ "field": "reference-at" }] },
+        { "as": "known-comparison-label", "function": "concat", "args": [{ "value": "Since " }, { "field": "reference-day" }, { "value": " · Everyone's work" }] },
+        { "as": "comparison-label", "function": "if", "args": [{ "field": "change-missing" }, { "value": "No earlier snapshot for comparison" }, { "field": "known-comparison-label" }] },
+        { "as": "workflow-label", "function": "coalesce", "args": [{ "field": "workflow-name" }, { "field": "workflow" }] },
+        { "as": "workflow-context", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }, { "value": " · " }, { "field": "workflow-label" }] },
+        { "as": "encoded-workflow", "function": "url-encode", "args": [{ "field": "workflow-route" }] },
+        { "as": "workflow-value-href", "function": "concat", "args": [{ "value": "#page-workflow-value?workflow=" }, { "field": "encoded-workflow" }] },
+        { "as": "encoded-report", "function": "url-encode", "args": [{ "field": "report-id" }] },
+        { "as": "report-href", "function": "concat", "args": [{ "value": "#page-value-report?report=" }, { "field": "encoded-report" }] }
+      ]
+    },
+    {
+      "name": "value-workflow-results",
+      "subject": "Current published report results per native measure.",
+      "objective": "Expose the latest coherent packet on the workflow Value tab.",
+      "acceptance": "Never replace missing facts with an older measured version. Explicit report links retain their own version.",
+      "from": "value-report-summary",
+      "filter": { "predicates": [{ "field": "older-report", "equals": "unknown" }] }
+    },
+    {
+      "name": "value-intent-sources",
+      "subject": "Immutable extracted workflow intent sources.",
+      "objective": "Let readers inspect the original goal and requirements.",
+      "acceptance": "Only retained HTTPS evidence is linked; workflow text remains untrusted.",
+      "from": "value-evidence-facts", "filter": { "predicates": [{ "field": "fact-kind", "equals": "intent-source" }] }
+    },
+    {
+      "name": "value-requirements",
+      "subject": "Original full acceptance requirements.",
+      "objective": "Distinguish the measured structural facet from all workflow safeguards.",
+      "acceptance": "Requirements are source text, not proof they passed.",
+      "from": "value-evidence-facts", "filter": { "predicates": [{ "field": "fact-kind", "equals": "requirement" }] }
+    },
+    {
+      "name": "value-outputs",
+      "subject": "Retained safe-output lifecycle facts.",
+      "objective": "Show receipts, current-at-cutoff state and originating evidence.",
+      "acceptance": "A closed output is not automatically an accepted implementation; absence of a link is unknown.",
+      "from": "value-evidence-facts", "filter": { "predicates": [{ "field": "fact-kind", "equals": "output" }] },
+      "order-by": [{ "field": "at", "direction": "desc" }, { "field": "fact-id", "direction": "asc" }]
+    },
+    {
+      "name": "value-output-origin-evidence",
+      "subject": "Retained producer and applied safe-output evidence.",
+      "objective": "Let readers distinguish receipt-confirmed creation from corroborated tracking.",
+      "acceptance": "Tracking identities locate outputs but do not establish accepted value. Keep unavailable producer evidence explicit.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "equals": "output-evidence" }] },
+      "joins": [{ "source": "value-outputs", "type": "inner", "on": [{ "left": "report-id", "right": "report-id" }, { "left": "parent-id", "right": "fact-id" }], "fields": [{ "field": "label", "as": "output-label" }, { "field": "url", "as": "output-url" }] }]
+    },
+    {
+      "name": "value-implementations",
+      "subject": "Accepted implementations and native before/after effects.",
+      "objective": "Expose delivery time and immutable acceptance evidence.",
+      "acceptance": "Do not equate acceptance with full quality verification or omit negative effects.",
+      "from": "value-evidence-facts", "filter": { "predicates": [{ "field": "fact-kind", "equals": "implementation" }] },
+      "order-by": [{ "field": "at", "direction": "desc" }, { "field": "fact-id", "direction": "asc" }]
+    },
+    {
+      "name": "value-output-trails",
+      "subject": "Explicit output-to-implementation edges.",
+      "objective": "Make the trail from a proposal to an accepted measured change inspectable.",
+      "acceptance": "Use retained dated edges only. Many-to-many links do not duplicate headline counts or values.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "equals": "output-implementation" }] },
+      "joins": [
+        { "source": "value-outputs", "type": "inner", "on": [{ "left": "report-id", "right": "report-id" }, { "left": "parent-id", "right": "fact-id" }], "fields": [{ "field": "label", "as": "output-label" }, { "field": "url", "as": "output-url" }] },
+        { "source": "value-implementations", "type": "inner", "on": [{ "left": "report-id", "right": "report-id" }, { "left": "related-id", "right": "fact-id" }], "fields": [{ "field": "label", "as": "implementation-label" }, { "field": "url", "as": "implementation-url" }, { "field": "value", "as": "implementation-value" }, { "field": "at", "as": "trail-accepted-at" }] }
+      ]
+    },
+    {
+      "name": "value-implementation-files",
+      "subject": "Measured implementation files and retained lineage sources.",
+      "objective": "Link to exact Git facts rather than only a repository tree.",
+      "acceptance": "No URL is reconstructed from an unrelated revision. Preserve before, after and replacement file evidence.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "in": ["implementation-evidence", "implementation-lineage"] }] },
+      "joins": [{ "source": "value-implementations", "type": "inner", "on": [{ "left": "report-id", "right": "report-id" }, { "left": "parent-id", "right": "fact-id" }], "fields": [{ "field": "label", "as": "implementation-label" }, { "field": "url", "as": "implementation-url" }] }]
+    },
+    {
+      "name": "value-quality-checks",
+      "subject": "Explicit independent verification checks.",
+      "objective": "Keep unverified behavior, tests and other safeguards visible.",
+      "acceptance": "Missing or not-verified is not a passing check.",
+      "from": "value-evidence-facts", "filter": { "predicates": [{ "field": "fact-kind", "equals": "quality-check" }] }
+    },
+    {
+      "name": "value-limitations",
+      "subject": "Retained evidence and attribution limitations.",
+      "objective": "Qualify claims without inventing completeness.",
+      "acceptance": "Treat source limitations as untrusted text and never suppress them.",
+      "from": "value-evidence-facts", "filter": { "predicates": [{ "field": "fact-kind", "equals": "limitation" }] }
+    },
+    {
+      "name": "value-snapshot-items",
+      "subject": "Actual counted items at an independent immutable snapshot.",
+      "objective": "Open exact per-item evidence from the plotted observation.",
+      "acceptance": "Only retained items are shown. Missing item evidence must not look like an empty measured population.",
+      "from": "value-evidence-facts",
+      "filter": { "predicates": [{ "field": "fact-kind", "equals": "snapshot-item" }] },
+      "joins": [{ "source": "value-snapshots", "type": "inner", "on": [{ "left": "report-id", "right": "report-id" }, { "left": "parent-id", "right": "fact-id" }], "fields": [{ "field": "snapshot-route", "as": "snapshot-route" }, { "field": "at", "as": "snapshot-at" }] }]
+    }
+  ],
+  "pages": [
+    {
+      "id": "workflow-value", "kind": "custom", "title": "Workflow value", "icon": "trophy",
+      "description": "Inspect measured repository movement and open the evidence behind a workflow's result.",
+      "intent": "Judge the selected workflow's repository outcome and open its evidence report.",
+      "subject": "Frozen workflow value measurements and their published evidence.",
+      "objective": "See native outcome movement at a glance without confusing it with workflow activity.",
+      "acceptance": "Cards and reports use the same evidence packet. Show comparison dates, direction and unavailable evidence; never imply causal credit or acquire evidence on navigation.",
+      "route": { "hash-query-parameter": "workflow", "navigation-page": "value", "tab": "value", "breadcrumbs": [{ "page": "value" }],
+        "tabs": [
+          { "id": "insights", "label": "Insights", "icon": "graph", "page": "workflow-runtime" },
+          { "id": "reports", "label": "Reports", "icon": "issue-opened", "page": "workflow-detail" },
+          { "id": "value", "label": "Value", "icon": "trophy", "page": "workflow-value" },
+          { "id": "runs", "label": "Runs", "icon": "play", "page": "workflow-runs" }
+        ] },
+      "views": [{
+        "id": "workflow-value-cards", "title": "Repository outcomes",
+        "subject": "Direction-aware native changes for this workflow's measured repository problems.",
+        "objective": "Open the evidence behind one compact result card.",
+        "acceptance": "A card is a first-to-last snapshot comparison, not an alert, causal rating or conversion rate. Missing evidence is not zero.",
+        "data": { "source": "value-workflow-results", "route-field": "workflow-route", "query-context": false, "time": { "range": "all" } },
+        "mark": "list",
+        "list": { "style": "entity-cards", "card": "workflow-value-result", "icon": "trophy",
+          "drill": { "type": "query", "page": "value-report", "query": "value-report-summary", "title-field": "snapshot-name", "arguments": [{ "name": "report", "field": "report-id" }] } },
+        "encoding": { "columns": [{ "field": "change-label", "type": "nominal", "title": "Observed change" }] },
+        "layout": "full", "empty-message": "No value evidence has been published for this workflow. Configure a frozen measurement with /add-operational-value; missing evidence is not zero value."
+      }]
+    },
+    {
+      "id": "value-report", "kind": "custom", "title": "Workflow value report", "icon": "trophy",
+      "description": "Trace workflow intent through safe outputs, accepted changes and independent repository measurements.",
+      "intent": "Explain one workflow value result through its intent, safe outputs, acceptance and native evidence.",
+      "subject": "One coherent published evidence packet and independently measured repository history.",
+      "objective": "Inspect the result and follow the exact evidence behind it.",
+      "acceptance": "Read the same packet as its Value card; preserve zero, negative, incomplete and unverified evidence. No causal score or interactive GitHub acquisition.",
+      "route": { "hash-query-parameter": "report", "navigation-page": "value", "breadcrumbs": [{ "page": "value" }] },
+      "views": [{
+        "id": "native-value-report", "title": "Workflow value", "show-title": false,
+        "data": { "sources": ["value-report-summary", "value-intent-sources", "value-requirements", "value-outputs", "value-output-trails", "value-implementation-files", "value-snapshots", "value-quality-checks", "value-limitations", "value-output-origin-evidence"], "arguments": [{ "name": "report", "field": "report-id" }], "query-context": false, "time": { "range": "all" } },
+        "mark": "element", "element": "workflow-value-report", "layout": "full"
+      }]
+    },
+    {
+      "id": "value-snapshot", "kind": "custom", "title": "Measured snapshot", "icon": "file",
+      "description": "Verify the exact items counted at one retained repository snapshot.",
+      "intent": "Inspect the actual counted items behind an independent repository observation.",
+      "subject": "One immutable repository-state snapshot and its retained per-item links.",
+      "objective": "Verify what the plotted native value counts.",
+      "acceptance": "Keep missing item evidence distinct from a measured empty population. Do not substitute a repository tree for item-level evidence.",
+      "route": { "hash-query-parameter": "snapshot", "navigation-page": "value", "breadcrumbs": [{ "page": "value" }] },
+      "views": [{
+        "id": "native-value-snapshot", "title": "Counted items", "show-title": false,
+        "data": { "sources": ["value-snapshots", "value-snapshot-items"], "arguments": [{ "name": "snapshot", "field": "snapshot-route" }], "query-context": false, "time": { "range": "all" } },
+        "mark": "element", "element": "workflow-value-snapshot", "layout": "full"
+      }]
+    },
+    {
+      "id": "value", "kind": "custom", "title": "Value", "icon": "trophy",
+      "description": "Review measured results and follow the evidence behind each workflow's contribution.",
+      "intent": "Start with repository outcomes, then inspect the workflow evidence behind a result.",
+      "subject": "Latest published workflow value reports across repositories.",
+      "objective": "Find a measured result and open its native evidence report.",
+      "acceptance": "Keep native units, direction, repository, workflow, dates and unknowns visible. No alert score, causal credit or GitHub acquisition.",
+      "route": { "tab": "workflows", "tabs": [
+        { "id": "workflows", "label": "Workflow results", "icon": "trophy", "page": "value" },
+        { "id": "measurements", "label": "Repository measurements", "icon": "repo", "page": "operational-value" }
+      ] },
+      "views": [{
+        "id": "value-results", "title": "Workflow results", "show-title": false,
+        "subject": "Direction-aware results from published frozen evidence packets.",
+        "objective": "Open a result's intent, output, acceptance and independent measurement trail.",
+        "acceptance": "Use the same latest-packet selector and reusable card as the workflow shortcut. Missing reports are unconfigured, never zero value or healthy.",
+        "data": { "source": "value-workflow-results", "query-context": false, "time": { "range": "all" } },
+        "mark": "list",
+        "list": { "style": "entity-cards", "card": "workflow-value-result", "icon": "trophy",
+          "drill": { "type": "query", "page": "value-report", "query": "value-report-summary", "title-field": "workflow-name", "arguments": [{ "name": "report", "field": "report-id" }] } },
+        "encoding": { "columns": [{ "field": "change-label", "type": "nominal", "title": "Observed change" }] },
+        "layout": "full",
+        "empty-message": "No workflow value reports have been published. Use /add-operational-value to define a frozen measure and publish evidence, or open Repository measurements for existing native observations."
+      }]
+    }
+  ]
+}

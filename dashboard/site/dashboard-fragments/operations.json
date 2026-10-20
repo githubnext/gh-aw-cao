@@ -2384,10 +2384,12 @@
       "class-name": "value-page",
       "view-mode-control": false,
       "route": {
-        "tab": "overview",
-        "breadcrumbs": [{ "page": "operational-value" }],
+        "navigation-page": "value",
+        "tab": "measurements",
+        "breadcrumbs": [{ "page": "value" }],
         "tabs": [
-          { "id": "overview", "label": "Overview", "icon": "graph", "page": "operational-value" }
+          { "id": "workflows", "label": "Workflow results", "icon": "trophy", "page": "value" },
+          { "id": "measurements", "label": "Repository measurements", "icon": "repo", "page": "operational-value" }
         ]
       },
         "views": [
@@ -2460,10 +2462,11 @@
       "icon": "graph",
       "view-mode-control": false,
       "route": {
-        "navigation-page": "operational-value",
+        "navigation-page": "value",
         "breadcrumbs": [{ "page": "operational-value" }],
         "tabs": [
-          { "id": "overview", "label": "Overview", "icon": "graph", "page": "operational-value" }
+          { "id": "workflows", "label": "Workflow results", "icon": "trophy", "page": "value" },
+          { "id": "measurements", "label": "Repository measurements", "icon": "repo", "page": "operational-value" }
         ]
       },
       "views": [

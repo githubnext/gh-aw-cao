@@ -22,6 +22,10 @@ These are the default product destinations. They are custom pages composed from 
 | `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes campaign health, repository coverage, weekly rhythm, and campaign shortcuts. |
 | `configuration` | Settings | `configuration-policy` | Presents checked-in control policy and its editable settings surface. |
 | `governance` | Governance | `environment-defaults` | Visible only in local `--admin` mode or to authorized hosted administrators; loads, previews, and explicitly approves gh-aw compiler default variables through authorized local CLI actions. |
+| `value` | Value | Shared entity cards | Trophy-marked entry point for workflow results, with a separate Repository measurements tab for existing native observations. |
+| `workflow-value` | Workflow Value tab | Shared entity cards | Shows direction-aware native repository movement and opens its evidence report. |
+| `value-report` | Workflow value report | `workflow-value-report` | Connects consolidated intent, safe outputs, distinct accepted implementations and independent repository snapshots. |
+| `value-snapshot` | Measured snapshot | `workflow-value-snapshot` | Opens the exact retained items counted at one observation. |
 
 ## Built-in pages
 
@@ -130,6 +134,8 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `configuration-policy` | Presents and edits checked-in CAO policy. |
 | `environment-defaults` | Edits the full gh-aw defaults YAML through declared `gh aw env` actions, with scope selection, dry-run preview, explicit approval, and private temporary-file transport; does not query activity evidence or grant rollout authority. |
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
+| `workflow-value-report` | Presents query-prepared workflow value, a linked snapshot plot and an evidence disclosure; owns only presentation, scoped reveal/focus and reactive cleanup. |
+| `workflow-value-snapshot` | Presents exact immutable item links and distinguishes omitted item evidence from an explicitly empty population. |
 | `factory-header` | Presents campaign status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
 | `all-campaign-memory` | Browses every campaign repository-memory branch in place without route navigation. |
@@ -140,5 +146,14 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `storage-info` | Identifies the configured dashboard storage engine and location without querying activity evidence; supports browser IndexedDB, local-server SQLite, server PostgreSQL, and unknown configuration. |
 
 ## Testing standard
+
+The value report uses named elements because standard marks cannot compose its
+scoped evidence-reveal buttons, focus preservation and exact-item snapshot
+navigation into one compact report. Its counts, time periods, relationships,
+coverage checks, direction and comparison labels remain Dashboard Language
+queries in `dashboard-fragments/workflow-value.json`. The Value card and full
+report share the same summary query and frozen evidence identity. The
+first-to-last snapshot comparison is descriptive, not an alert policy or causal
+credit; missing data never becomes zero.
 
 Generic marks are covered by validator and presenter tests. Named elements require focused unit tests for states and cleanup, plus Playwright when behavior depends on browser layout, navigation, focus, scrolling, workers, or responsive interaction. The integrated local visual fixture is available at `?fixtures=1#page-overview` for Overview and equivalent page hashes for other destinations.

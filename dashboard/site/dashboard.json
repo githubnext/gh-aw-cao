@@ -26,6 +26,20 @@
     ],
     "card-templates": [
       {
+        "id": "workflow-value-result",
+        "icon": "trophy",
+        "title": { "field": "delta-label", "title": "Observed change" },
+        "subtitle": { "field": "workflow-context", "title": "Workflow" },
+        "status": { "field": "movement", "title": "Compared with goal" },
+        "labels": [],
+        "details": [
+          { "field": "snapshot-name", "title": "Measure" },
+          { "field": "direction-label", "title": "Goal" },
+          { "field": "comparison-label", "title": "Reference" }
+        ],
+        "timing": [{ "field": "observed-at", "type": "temporal", "format": "human-friendly-timestamp", "title": "Evidence captured", "icon": "clock" }]
+      },
+      {
         "id": "command",
         "icon": "terminal",
         "title": { "field": "command-title", "title": "Command" },
@@ -1169,7 +1183,7 @@
           "runs",
           "issues",
           "cost",
-          "operational-value",
+          "value",
           "friction",
           "engines-models",
           "firewall",
@@ -1218,6 +1232,7 @@
     "dashboard-fragments/controls.json",
     "dashboard-fragments/repositories.json",
     "dashboard-fragments/workflow-runs.json",
+    "dashboard-fragments/workflow-value.json",
     "dashboard-fragments/campaigns.json",
     "dashboard-fragments/campaign-runtime.json",
     "dashboard-fragments/campaign-problems.json",

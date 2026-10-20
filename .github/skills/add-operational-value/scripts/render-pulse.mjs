@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { escapeXml, readJson, requireArgs, run, scriptDir, writeJson } from "./common.mjs";
 import { eventPulse, timelinePulse } from "./pulse-model.mjs";
 import { mountPulse } from "./pulse-view.mjs";
+import { operationalValueEvidenceJsonl } from "./export-evidence.mjs";
 
 export function renderPulse(model) {
   const data = JSON.stringify(model).replaceAll("<", "\\u003c").replaceAll(">", "\\u003e")
@@ -21,9 +22,11 @@ export function renderPulse(model) {
 export function writePulse(input, output) {
   if (path.extname(output) !== ".html") throw new Error("Pulse output must end in .html");
   const model = input.kind === "operational-value-events" ? eventPulse(input) : timelinePulse(input);
+  const evidence = input.kind === "operational-value-events" ? operationalValueEvidenceJsonl(input) : null;
   mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
   writeFileSync(output, renderPulse(model));
   writeFileSync(output.replace(/\.html$/, ".json"), writeJson(model));
+  if (evidence !== null) writeFileSync(output.replace(/\.html$/, "-evidence.jsonl"), evidence);
   return model;
 }
 

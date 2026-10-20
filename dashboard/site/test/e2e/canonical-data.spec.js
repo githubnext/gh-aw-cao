@@ -23,7 +23,7 @@ const currentFixtureDates = (value) => JSON.parse(JSON.stringify(value).replace(
 const canonicalEntityTables = [
   'audits', 'campaigns', 'domains', 'evalObservations', 'evals', 'experimentAssignments',
   'experiments', 'friction', 'graderObservations', 'graders', 'issues', 'marketplacePackages',
-  'operationalValues', 'repositories', 'runs', 'skills', 'tools', 'workflows'
+  'operationalValueEvidence', 'operationalValues', 'repositories', 'runs', 'skills', 'tools', 'workflows'
 ];
 
 function ghAwLogInput() {

@@ -18,12 +18,15 @@ import (
 )
 
 type entityColumn struct{ field, name, kind, sql string }
+type entityChild struct{ field, source string }
 type entityTable struct {
 	name        string
 	runtime     bool
 	canonical   bool
 	partitioned bool
+	internal    bool
 	columns     []entityColumn
+	children    []entityChild
 }
 
 func IsCanonicalCollection(name string) bool {
@@ -228,6 +231,11 @@ func (w *Writer) AppendInventory(ctx context.Context, source string, row model.R
 }
 
 func (w *Writer) append(ctx context.Context, source string, row model.Row, inventory bool) error {
+	if source == "$operationalValueEvidence" {
+		if err := validateOperationalValueEvidence(row); err != nil {
+			return err
+		}
+	}
 	table, exists := entityTables[source]
 	if !exists || table.runtime {
 		return fmt.Errorf("canonical collection %q is not registered by TypeSpec", source)
@@ -305,6 +313,25 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 	ordinals[source]++
 	w.batches[batchName] = append(w.batches[batchName], values)
 	w.rows++
+	for _, child := range table.children {
+		items, ok := row[child.field].([]any)
+		if !ok || len(items) > 20000 {
+			return errors.New("typed evidence facts must be a bounded native array")
+		}
+		for index, item := range items {
+			fact, ok := item.(map[string]any)
+			if !ok {
+				return errors.New("typed evidence fact must be an object")
+			}
+			owned := model.Row{"id": fmt.Sprintf("%s:%d", id, index), "packetId": id}
+			for field, value := range fact {
+				owned[field] = value
+			}
+			if err := w.append(ctx, child.source, owned, false); err != nil {
+				return err
+			}
+		}
+	}
 	if w.rows >= BatchRows || w.bytes >= BatchBytes {
 		return w.Flush(ctx)
 	}
@@ -511,6 +538,8 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	for _, check := range []string{
 		`SELECT 1 FROM runs r JOIN workflows p ON p.namespace=r.namespace AND p.id=r.workflow_id
 			WHERE r.namespace=$1 AND r.repository_id<>p.repository_id LIMIT 1`,
+		`SELECT 1 FROM operational_value_evidence e JOIN workflows p ON p.namespace=e.namespace AND p.id=e.workflow_id
+			WHERE e.namespace=$1 AND e.repository_id<>p.repository_id LIMIT 1`,
 		`SELECT 1 FROM experiment_assignments o JOIN runs r ON r.namespace=o.namespace AND r.id=o.run_id
 			JOIN experiments d ON d.namespace=o.namespace AND d.id=o.experiment_id WHERE o.namespace=$1 AND r.workflow_id<>d.workflow_id LIMIT 1`,
 		`SELECT 1 FROM grader_observations o JOIN runs r ON r.namespace=o.namespace AND r.id=o.run_id
@@ -552,6 +581,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	}
 	state := State{Ready: true, DataRevision: dataRevision, EvaluatedAt: w.evaluatedAt.UTC(), Counts: map[string]int{}}
 	for _, source := range tableNames() {
+		if entityTables[source].internal {
+			continue
+		}
 		var count int
 		if err := w.tx.QueryRow(ctx, "SELECT count(*) FROM "+query.SQLIdentifier(entityTables[source].name)+" WHERE namespace=$1", w.store.namespace).Scan(&count); err != nil {
 			return State{}, err

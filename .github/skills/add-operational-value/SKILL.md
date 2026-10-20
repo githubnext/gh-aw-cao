@@ -212,7 +212,10 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   node .github/skills/add-operational-value/scripts/render-pulse.mjs INPUT_JSON REPORT-pulse.html
   ```
 
-  It writes self-contained HTML and adjacent pulse JSON without model calls,
+  It writes self-contained HTML, adjacent pulse JSON and, for event ledgers,
+  `*-evidence.jsonl` containing validated originals for normal Activity ingestion
+  and native dashboard reports. See [publication](references/event-ledger.md#shared-native-dashboard-publication).
+  It makes no model calls,
   remote queries or a dashboard. Do not implement a custom chart or report for
   each workflow. The report preserves native units, separate outcome and
   contribution bases, explicit evidence gaps and inspectable event links.
@@ -312,7 +315,8 @@ after their upstream artifacts expire; unavailable new evidence is not invented.
 Temporary Git and request caches are workspace-local and removed in `finally`.
 
 The result directory contains `proof/`, `daily-file-diet-pulse-events.json`,
-`daily-file-diet-pulse.json` and `daily-file-diet-pulse.html`. Acquisition fails
+`daily-file-diet-pulse.json`, `daily-file-diet-pulse.html` and
+`daily-file-diet-pulse-evidence.jsonl`. Acquisition fails
 closed on identity mismatches, incomplete bounded search, changed adoption,
 corrupt evidence or exhausted budgets. Do not claim full acceptance, historical
 discovery completeness or causal impact from tracking and structural facts.

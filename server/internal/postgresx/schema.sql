@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS cao_quality (
   retrieved_at TIMESTAMPTZ,
   PRIMARY KEY (namespace, collection),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (collection IN ('$repositories','$campaigns','$workflows','$runs','$audits','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
+  CHECK (collection IN ('$repositories','$campaigns','$workflows','$runs','$audits','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValueEvidence','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
   CHECK (availability IN ('available','empty','unavailable')),
   CHECK (completeness IN ('complete','partial','unknown')),
   CHECK (freshness IN ('current','stale','unknown'))
@@ -795,6 +795,98 @@ CREATE TABLE IF NOT EXISTS issues (
 CREATE INDEX IF NOT EXISTS issues_run_id ON issues (namespace, run_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS issues_identity ON issues (namespace, id);
+
+CREATE TABLE IF NOT EXISTS operational_value_evidence (
+  namespace TEXT NOT NULL,
+  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
+  present_fields BIT VARYING NOT NULL,
+  id TEXT NOT NULL CHECK (id <> ''),
+  schema_version BIGINT,
+  repository TEXT,
+  workflow TEXT,
+  source_path TEXT,
+  observed_at TIMESTAMPTZ,
+  window_start TIMESTAMPTZ,
+  window_end TIMESTAMPTZ,
+  contract_digest TEXT,
+  repository_id TEXT,
+  workflow_id TEXT,
+
+  PRIMARY KEY (namespace, id),
+  UNIQUE (namespace, ordinal),
+  CHECK (bit_length(present_fields) = 11),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  CHECK (repository_id IS NOT NULL AND repository_id <> ''),
+  FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED,
+  CHECK (workflow_id IS NOT NULL AND workflow_id <> ''),
+  FOREIGN KEY (namespace, workflow_id) REFERENCES workflows(namespace, id) DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS operational_value_evidence_repository_id ON operational_value_evidence (namespace, repository_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS operational_value_evidence_workflow_id ON operational_value_evidence (namespace, workflow_id, ordinal);
+
+CREATE TABLE IF NOT EXISTS operational_value_evidence_facts (
+  namespace TEXT NOT NULL,
+  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
+  present_fields BIT VARYING NOT NULL,
+  id TEXT NOT NULL CHECK (id <> ''),
+  packet_id TEXT,
+  fact_kind TEXT,
+  fact_id TEXT,
+  parent_id TEXT,
+  related_id TEXT,
+  label TEXT,
+  title TEXT,
+  url TEXT,
+  at TIMESTAMPTZ,
+  accepted_at TIMESTAMPTZ,
+  end_at TIMESTAMPTZ,
+  value NUMERIC,
+  ref TEXT,
+  state TEXT,
+  origin TEXT,
+  scope TEXT,
+  coverage_status TEXT,
+  status TEXT,
+  detail TEXT,
+  goal TEXT,
+  acceptance TEXT,
+  metric_id TEXT,
+  metric_name TEXT,
+  metric_unit TEXT,
+  metric_direction TEXT,
+  metric_version TEXT,
+  metric_formula TEXT,
+  result_label TEXT,
+  measurement_basis TEXT,
+  snapshot_name TEXT,
+  snapshot_unit TEXT,
+  snapshot_direction TEXT,
+  snapshot_id TEXT,
+  snapshot_version TEXT,
+  snapshot_formula TEXT,
+  outputs_available BOOLEAN,
+  repository_state_available BOOLEAN,
+  checks_available BOOLEAN,
+  items_available BOOLEAN,
+  output_unit TEXT,
+  implementation_unit TEXT,
+  output_scope TEXT,
+  output_coverage TEXT,
+  workflow_name TEXT,
+  cadence_days NUMERIC,
+  maturation_days NUMERIC,
+
+  PRIMARY KEY (namespace, id),
+  UNIQUE (namespace, ordinal),
+  CHECK (bit_length(present_fields) = 47),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  CHECK (packet_id IS NOT NULL AND packet_id <> ''),
+  FOREIGN KEY (namespace, packet_id) REFERENCES operational_value_evidence(namespace, id) DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS operational_value_evidence_facts_packet_id ON operational_value_evidence_facts (namespace, packet_id, ordinal);
 
 CREATE TABLE IF NOT EXISTS operational_values (
   namespace TEXT NOT NULL,

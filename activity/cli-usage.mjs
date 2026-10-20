@@ -16,6 +16,7 @@ export const ENTITY_COLLECTIONS = [
   'audits',
   'issues',
   'operationalValues',
+  'operationalValueEvidence',
   'experiments',
   'experimentAssignments',
   'graders',

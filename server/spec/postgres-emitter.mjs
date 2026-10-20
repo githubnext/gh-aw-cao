@@ -34,6 +34,7 @@ export async function $onEmit(context) {
   const inventoryContract = JSON.parse(readFileSync(new URL('../../dashboard/site/src/data/queries/ingestion.json', import.meta.url)));
   const tables = [];
   const systems = [];
+  const children = [];
   const parents = new Map();
   navigateProgram(context.program, {
     model(model) {
@@ -41,6 +42,27 @@ export async function $onEmit(context) {
       if (!['Cao.Postgres', 'Cao.Postgres.Inputs', 'Cao.Postgres.Storage', 'Cao.Postgres.Runtime'].includes(namespace)) return;
       const columns = [];
       for (const property of model.properties.values()) {
+        if (property.type.kind === 'Model' && property.type.name === 'Array') {
+          const member = property.type.indexer?.value;
+          if (member?.kind !== 'Model' || getNamespaceFullName(member.namespace) !== 'Cao.Postgres.Values') {
+            throw new Error(`Storage arrays require typed child values: ${model.name}.${property.name}`);
+          }
+          const childColumns = [
+            { field: 'id', name: 'id', kind: '', sql: 'TEXT' },
+            { field: 'packetId', name: 'packet_id', kind: '', sql: 'TEXT' }
+          ];
+          for (const field of member.properties.values()) {
+            const kind = field.type.kind === 'Scalar' && kinds.get(field.type.name);
+            if (!kind) throw new Error(`Storage child requires native types: ${member.name}.${field.name}`);
+            childColumns.push({ field: field.name, name: snake(field.name), kind: kind[0], sql: kind[1] });
+          }
+          const collection = `${model.name}.${property.name}`;
+          children.push({ collection, name: `${snake(model.name)}_${snake(property.name)}`,
+            source: `$${collection}`, columns: childColumns, partitioned: false,
+            canonical: false, runtime: false, owner: model.name, field: property.name });
+          parents.set(collection, [['packetId', model.name, false]]);
+          continue;
+        }
         const relationship = context.program.stateMap(parentKey).get(property);
         if (relationship) {
           const declared = parents.get(model.name) ?? [];
@@ -70,6 +92,7 @@ export async function $onEmit(context) {
       }
     }
   });
+  tables.push(...children);
   tables.sort((a, b) => a.collection.localeCompare(b.collection));
   const ordered = [];
   const visit = (table) => {
@@ -98,7 +121,7 @@ export async function $onEmit(context) {
     ] : [
       'PRIMARY KEY (namespace, collection)',
       'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',
-      `CHECK (collection IN (${tables.filter((t) => !t.runtime).map((t) => `'${t.source}'`).join(',')}))`,
+      `CHECK (collection IN (${tables.filter((t) => !t.runtime && !t.owner).map((t) => `'${t.source}'`).join(',')}))`,
       "CHECK (availability IN ('available','empty','unavailable'))",
       "CHECK (completeness IN ('complete','partial','unknown'))",
       "CHECK (freshness IN ('current','stale','unknown'))"
@@ -135,11 +158,13 @@ ${table.partitioned ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
       }
       if (table.partitioned) statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_identity ON ${table.name} (namespace, id);`);
     }
-    go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, partitioned: ${table.partitioned}, columns: []entityColumn{`);
+    go.push(`\t"${table.source}": {name: "${table.name}", runtime: ${table.runtime}, canonical: ${table.canonical}, partitioned: ${table.partitioned},${table.owner ? ' internal: true,' : ''} columns: []entityColumn{`);
     for (const column of table.columns) {
       go.push(`\t\t{field: "${column.field}", name: "${column.name}", kind: "${column.kind}", sql: "${column.sql}"},`);
     }
-    go.push('\t}},');
+    const owned = children.filter((child) => child.owner === table.collection);
+    go.push(owned.length ? `\t}, children: []entityChild{${owned
+      .map((child) => `{field: "${child.field}", source: "${child.source}"}`).join(',')}}},` : '\t}},');
   }
   go.push('}', '');
   const literal = (value) => value === null ? 'nil' : JSON.stringify(value);

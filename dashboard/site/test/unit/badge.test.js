@@ -50,6 +50,17 @@ describe('badge', () => {
   });
 
   it.each([
+    ['Better', 'status-success'],
+    ['Worse', 'status-attention'],
+    ['Unchanged', 'status-muted'],
+    ['Comparison unavailable', 'status-muted'],
+    ['Improving', 'status-success'],
+    ['Worsening', 'status-attention'],
+  ])('shows directional movement %s without treating it as an alert %s', (state, expectedClass) => {
+    expect(renderStatusBadge(state).className).toBe(`status ${expectedClass}`);
+  });
+
+  it.each([
     ['completed', 'status-success'],
     ['success', 'status-success'],
     ['queued', 'status-attention'],

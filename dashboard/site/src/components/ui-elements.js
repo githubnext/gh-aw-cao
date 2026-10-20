@@ -57,7 +57,7 @@ const ELEMENT_RENDERERS = new Map([
 const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'all-campaign-memory', 'link-button-list', 'measure-history']);
 
 /** Elements that retain their DOM while the active page publishes subscribed results. */
-const PAGE_BOUND_ELEMENTS = new Set(['problem-detail', 'campaign-route']);
+const PAGE_BOUND_ELEMENTS = new Set(['problem-detail', 'campaign-route', 'workflow-value-report', 'workflow-value-snapshot']);
 
 /** @param {string} name */
 export function elementBindsPageSources(name) {
@@ -86,11 +86,13 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'link-button-list',
   'markdown',
   'measure-history',
+  'workflow-value-report',
+  'workflow-value-snapshot',
   'command-terminal',
   'storage-info',
   'environment-defaults'
 ]);
-const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail', 'campaign-route']);
+const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail', 'campaign-route', 'workflow-value-report', 'workflow-value-snapshot']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
@@ -113,6 +115,14 @@ function lazyElementRenderer(importModule, render) {
 
 /** @type {Map<string, (context: ElementRenderContext, signal?: AbortSignal) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
+  ['workflow-value-report-lazy', lazyElementRenderer(
+    () => import('./workflow-value-report.js'),
+    ({ renderWorkflowValueReport }, context) => renderWorkflowValueReport(context)
+  )],
+  ['workflow-value-snapshot-lazy', lazyElementRenderer(
+    () => import('./workflow-value-report.js'),
+    ({ renderWorkflowValueSnapshot }, context) => renderWorkflowValueSnapshot(context)
+  )],
   ['environment-defaults-lazy', lazyElementRenderer(
     () => import('./environment-defaults.js'),
     ({ renderEnvironmentDefaults }, context) => renderEnvironmentDefaults(context)

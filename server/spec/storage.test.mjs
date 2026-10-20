@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { compile, getDoc, getNamespaceFullName, navigateProgram, NodeHost } from '@typespec/compiler';
 import { PRUNED_CANONICAL_FIELDS } from '../../dashboard/site/src/data/model/fields.js';
+import { EVIDENCE_FACT_FIELDS } from '../../dashboard/site/src/data/model/operational-value-evidence.js';
 
 const program = await compile(NodeHost, new URL('storage.tsp', import.meta.url).pathname, { noEmit: true });
 assert.deepEqual(program.diagnostics, []);
@@ -10,8 +11,12 @@ const tables = new Map();
 const documentation = new Map();
 const parents = new Map();
 const partitioned = new Set();
+let evidenceFactFields;
 navigateProgram(program, {
   model(model) {
+    if (getNamespaceFullName(model.namespace) === 'Cao.Postgres.Values' && model.name === 'OperationalValueFact') {
+      evidenceFactFields = [...model.properties.keys()];
+    }
     if (getNamespaceFullName(model.namespace) === 'Cao.Postgres') {
       for (const property of model.properties.values()) {
         assert.notEqual(property.type.name, 'unknown', `${model.name}.${property.name} must be a typed field`);
@@ -47,7 +52,7 @@ function inputFields(definition) {
 
 test('TypeSpec declares exactly one root table per canonical dashboard collection', () => {
   assert.deepEqual([...tables.keys()].sort(), [
-    '$campaigns', '$repositories', '$workflows', '$runs', ...records, '$operationalValues',
+    '$campaigns', '$repositories', '$workflows', '$runs', ...records, '$operationalValues', '$operationalValueEvidence',
     '$marketplacePackages', '$experiments', '$experimentAssignments',
     '$graders', '$graderObservations', '$evals', '$evalObservations'
   ].sort());
@@ -115,7 +120,10 @@ test('native table fields cover database projections and joins without speculati
   const defects = [];
   const required = new Map([...tables.keys()].map((source) => [source, new Set(['id'])]));
   required.get('$runs').add('repositoryId'); // Cross-parent canonical integrity.
+  // This input normalizes the packet and its typed child values, not root columns.
+  required.set('$operationalValueEvidence', new Set(tables.get('$operationalValueEvidence')));
   for (const definition of definitions) {
+    if (definition.from === '$operationalValueEvidence') continue;
     const sources = [definition.from];
     const fields = inputFields(definition);
     if (tables.has(definition.from)) {
@@ -141,6 +149,18 @@ test('native table fields cover database projections and joins without speculati
     }
   }
   assert.deepEqual(defects, []);
+});
+
+test('operational value evidence projects exactly the typed fact and common packet contract', () => {
+  assert.deepEqual(evidenceFactFields.sort(), [...EVIDENCE_FACT_FIELDS].sort());
+  const projection = definitions.find((definition) => definition.name === 'operational-value-evidence');
+  assert.deepEqual(projection.select.map((field) => field.field).sort(), [
+    ...EVIDENCE_FACT_FIELDS, 'report-id', 'organization', 'repository', 'workflow', 'workflow-path',
+    'observed-at', 'window-start', 'window-end', 'contract-digest'
+  ].sort());
+  const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS operational_value_evidence_facts/);
+  assert.match(sql, /FOREIGN KEY \(namespace, packet_id\) REFERENCES operational_value_evidence/);
 });
 
 test('TypeSpec excludes pruned payload copies and lifecycle aliases', () => {

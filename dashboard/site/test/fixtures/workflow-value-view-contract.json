@@ -1,0 +1,18 @@
+{
+  "page": "workflow-value",
+  "view": "workflow-value-cards",
+  "query": "value-workflow-results",
+  "card": "workflow-value-result",
+  "reportPage": "value-report",
+  "reportElement": "workflow-value-report",
+  "snapshotPage": "value-snapshot",
+  "snapshotElement": "workflow-value-snapshot",
+  "route": "octo/example:.github/workflows/verify-bugs.md",
+  "headline": "↑ +38 files · Worse",
+  "reportSources": [
+    "value-report-summary", "value-intent-sources", "value-requirements",
+    "value-outputs", "value-output-trails", "value-implementation-files",
+    "value-snapshots", "value-quality-checks", "value-limitations",
+    "value-output-origin-evidence"
+  ]
+}

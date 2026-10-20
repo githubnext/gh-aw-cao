@@ -33,13 +33,15 @@ func SQLiteSnapshot(t testing.TB, sources map[string][]model.Row) string {
 			PRIMARY KEY(database_name,name));
 		CREATE TABLE __idb_records(database_name TEXT NOT NULL,store_name TEXT NOT NULL,
 			record_key TEXT NOT NULL,value TEXT NOT NULL,PRIMARY KEY(database_name,store_name,record_key));
-		INSERT INTO __idb_databases VALUES ('gh-aw-cao-dashboard-data',42);
 	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), `INSERT INTO __idb_databases VALUES (?,?)`, dashboardquery.DatabaseName, dashboardquery.DatabaseVersion); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{
 		"campaigns", "repositories", "workflows", "runs", "domains", "tools", "skills", "friction", "audits", "issues",
-		"operationalValues", "marketplacePackages", "experiments", "experimentAssignments", "graders", "graderObservations",
+		"operationalValues", "operationalValueEvidence", "marketplacePackages", "experiments", "experimentAssignments", "graders", "graderObservations",
 		"evals", "evalObservations", "transactions",
 	} {
 		if _, err := db.ExecContext(t.Context(), `INSERT INTO __idb_stores VALUES (?,?,'id')`, dashboardquery.DatabaseName, name); err != nil {

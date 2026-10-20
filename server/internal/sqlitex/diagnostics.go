@@ -33,6 +33,8 @@ func (r *reader) Diagnostics(ctx context.Context) (model.Diagnostics, error) {
 		{"domains", "runId", "runs"}, {"tools", "runId", "runs"}, {"skills", "runId", "runs"},
 		{"friction", "runId", "runs"}, {"audits", "runId", "runs"}, {"issues", "runId", "runs"},
 		{"operationalValues", "repositoryId", "repositories"}, {"experiments", "workflowId", "workflows"},
+		{"operationalValueEvidence", "repositoryId", "repositories"},
+		{"operationalValueEvidence", "workflowId", "workflows"},
 		{"graders", "workflowId", "workflows"}, {"evals", "workflowId", "workflows"},
 		{"experimentAssignments", "runId", "runs"}, {"experimentAssignments", "experimentId", "experiments"},
 		{"graderObservations", "runId", "runs"}, {"graderObservations", "graderId", "graders"},

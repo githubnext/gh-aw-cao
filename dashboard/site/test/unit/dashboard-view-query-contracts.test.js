@@ -451,7 +451,7 @@ describe('dashboard view query contracts', () => {
     );
 
     expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages)
-      .toContain('operational-value');
+      .toContain('value');
     for (const pageId of ['operational-value', 'operational-value-evidence', 'operational-value-repository']) {
       const valuePage = dashboard.pages.find(
         (/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId
@@ -462,8 +462,9 @@ describe('dashboard view query contracts', () => {
     expect(page).toMatchObject({
       kind: 'custom',
       'view-mode-control': false,
-      route: { tab: 'overview', tabs: [
-        { id: 'overview', page: 'operational-value' }
+      route: { tab: 'measurements', 'navigation-page': 'value', tabs: [
+        { id: 'workflows', page: 'value' },
+        { id: 'measurements', page: 'operational-value' }
       ] }
     });
     expect(viewsOf(page)[0]).toMatchObject({
@@ -486,7 +487,7 @@ describe('dashboard view query contracts', () => {
     const evidence = dashboard.pages.find(
       (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value-evidence'
     );
-    expect(evidence).toMatchObject({ route: { 'navigation-page': 'operational-value' } });
+    expect(evidence).toMatchObject({ route: { 'navigation-page': 'value' } });
     expect(viewsOf(evidence)[0]).toMatchObject({
       id: 'operational-value-coverage', disclosure: 'supplemental',
       data: { source: 'operational-value-repository-coverage' }

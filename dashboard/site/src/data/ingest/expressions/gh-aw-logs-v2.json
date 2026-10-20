@@ -4,6 +4,11 @@
   "source": "gh-aw-logs",
   "sourceSchemaVersions": [2, 4, 5],
   "variants": {
+    "operational_value_evidence": {
+      "payloadPath": "operational_value_evidence",
+      "emits": ["repository", "operational-value-evidence"],
+      "identity": ["id"]
+    },
     "workflow_runs": {
       "payloadPath": "payload",
       "emits": ["repository", "workflow", "run"],

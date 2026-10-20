@@ -41,8 +41,8 @@ import { AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION } from '../model/
 const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 8;
-export const GH_AW_JSONL_INGESTION_VERSION = 12;
-export const NORMALIZED_JSONL_INGESTION_VERSION = 4;
+export const GH_AW_JSONL_INGESTION_VERSION = 13;
+export const NORMALIZED_JSONL_INGESTION_VERSION = 5;
 const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 17;
 const PRE_EVIDENCE_INGESTION_VERSION = 3;
 const LAST_PRE_EVIDENCE_SCHEMA_VERSION = 22;
@@ -60,6 +60,7 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'audits',
   'issues',
   'operationalValues',
+  'operationalValueEvidence',
   'marketplacePackages',
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
@@ -674,6 +675,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
               throw new TypeError(`Unsupported normalized activity schema: ${String(envelope.schemaVersion)}`);
             }
             if (envelope.ingestionVersion !== NORMALIZED_JSONL_INGESTION_VERSION
+                && envelope.ingestionVersion !== 4
                 && !(envelope.ingestionVersion === PRE_EVIDENCE_INGESTION_VERSION
                   && schemaVersion <= LAST_PRE_EVIDENCE_SCHEMA_VERSION)) {
               throw new TypeError(`Unsupported normalized activity ingestion version: ${String(envelope.ingestionVersion)}`);
@@ -712,7 +714,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             throw new TypeError(`Normalized activity JSONL line ${lineNumber} must contain a canonical record`);
           }
           const excluded = header.phase === 'runs'
-            ? ['domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues',
+            ? ['domains', 'tools', 'skills', 'friction', 'audits', 'issues', 'operationalValues', 'operationalValueEvidence',
               'graders', 'graderObservations', 'evals', 'evalObservations']
             : header.phase === 'records'
             ? ['campaigns', 'repositories', 'workflows', 'runs', 'experiments', 'experimentAssignments']

@@ -52,10 +52,14 @@ func relationColumns(table entityTable, presence func(int) string) map[string]qu
 }
 
 func (r *readTransaction) entitySQLSource(name string) (query.SQLRelation, error) {
+	if name == "$operationalValueEvidence" {
+		return r.operationalValueEvidenceSQLSource(), nil
+	}
 	table, exists := entityTables[name]
-	if !exists || table.runtime {
+	if !exists || table.runtime || table.internal {
 		return query.SQLRelation{}, fmt.Errorf("SQL source %q is not registered by TypeSpec", name)
 	}
+
 	columns := relationColumns(table, func(index int) string { return "get_bit(t.present_fields, " + strconv.Itoa(index) + ") = 1" })
 	return query.SQLRelation{
 		SQL:     "(SELECT * FROM " + query.SQLIdentifier(table.name) + " WHERE namespace = {}) AS t",
@@ -63,6 +67,36 @@ func (r *readTransaction) entitySQLSource(name string) (query.SQLRelation, error
 		Columns: columns,
 		Order:   "t.ordinal",
 	}, nil
+}
+
+// The logical input is a projection of typed child facts, not a saved report.
+func (r *readTransaction) operationalValueEvidenceSQLSource() query.SQLRelation {
+	facts := entityTables["$operationalValueEvidence.facts"]
+	columns := relationColumns(facts, func(index int) string {
+		return "get_bit(t.present_fields, " + strconv.Itoa(index) + ") = 1"
+	})
+	delete(columns, "id")
+	delete(columns, "packetId")
+	projections := []string{"f.*"}
+	for logical, physical := range map[string]string{
+		"report-id": "id", "workflow": "workflow", "workflow-path": "source_path", "observed-at": "observed_at",
+		"window-start": "window_start", "window-end": "window_end", "contract-digest": "contract_digest",
+	} {
+		kind := query.SQLText
+		if logical == "observed-at" || logical == "window-start" || logical == "window-end" {
+			kind = query.SQLTimestamp
+		}
+		alias := "__" + physical
+		projections = append(projections, "p."+query.SQLIdentifier(physical)+" AS "+query.SQLIdentifier(alias))
+		columns[logical] = query.SQLColumn{Expression: "t." + query.SQLIdentifier(alias), Presence: "TRUE", Kind: kind}
+	}
+	projections = append(projections, "split_part(p.repository, '/', 1) AS __organization", "split_part(p.repository, '/', 2) AS __repository")
+	columns["organization"] = query.SQLColumn{Expression: "t.__organization", Presence: "TRUE", Kind: query.SQLText}
+	columns["repository"] = query.SQLColumn{Expression: "t.__repository", Presence: "TRUE", Kind: query.SQLText}
+	return query.SQLRelation{
+		SQL:    "(SELECT " + strings.Join(projections, ",") + " FROM operational_value_evidence_facts f JOIN operational_value_evidence p ON p.namespace=f.namespace AND p.id=f.packet_id WHERE f.namespace={}) AS t",
+		Params: []any{r.store.namespace}, Columns: columns, Order: "t.ordinal",
+	}
 }
 
 func runtimeSQLSource(name string, source model.Source) (query.SQLRelation, error) {

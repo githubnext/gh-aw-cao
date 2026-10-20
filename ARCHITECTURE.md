@@ -213,11 +213,23 @@ deduplicates GitHub webhooks, and atomically replaces the current Postgres
 sources and state. `server/spec/storage.tsp` owns the fresh-only physical
 Postgres contract. Its emitter generates the standalone
 `server/internal/postgresx/schema.sql` and matching Go column bindings.
-Eighteen canonical collections map one-to-one to entity tables containing only
+Nineteen canonical collections map one-to-one to entity tables containing only
 query-consumed fields and identity/storage keys. Scalars use native SQL types;
 required structured fields use entity-owned relational child values, not
 JSON, JSONB, or serialized row documents. Scalar entity rows are never duplicated
 in generic source storage. Compact presence bits preserve missing versus null.
+Operational Value evidence retains one bounded current packet per target
+repository, workflow and frozen contribution metric/version. Its acquired
+contract, output, acceptance, lineage, independent snapshot, quality and
+coverage facts are typed relational children, replaced atomically with their
+packet and retained independently of seven-day Run detail. The single
+`operational-value-evidence` logical source only normalizes those facts.
+Retained source identity materializes observed Repository and Workflow parents,
+never registration or activation; packet cutoff/capture provenance supplies
+source metadata without asserting complete coverage or current freshness.
+Counts, comparisons, movement and report presentation remain declarative
+queries; importing evidence grants no target authority and navigation never
+acquires evidence.
 Owner-run bootstrap initializes this schema and its weekly partitions; runtime
 opens and validates provisioned state without DDL. Daily owner-run maintenance
 keeps historical and four upcoming weeks provisioned. A fixed schema-qualified

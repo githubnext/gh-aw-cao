@@ -129,12 +129,13 @@ function workflowTabs(routeValue, _displayName) {
   return [
     workflowTab('workflow-runtime', 'Insights', 'graph', workflowQuery),
     workflowTab('workflow-detail', 'Reports', 'issue', workflowQuery),
+    workflowTab('workflow-value', 'Value', 'trophy', workflowQuery),
     workflowTab('workflow-runs', 'Runs', 'play', workflowQuery)
   ];
 }
 
 /**
- * @param {'workflow-runtime'|'workflow-detail'|'workflow-runs'} pageId
+ * @param {'workflow-runtime'|'workflow-detail'|'workflow-runs'|'workflow-value'} pageId
  * @param {string} label
  * @param {string} icon
  * @param {string} workflowQuery

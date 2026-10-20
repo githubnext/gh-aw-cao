@@ -703,7 +703,7 @@
       "title": "Operational Value",
       "description": "Assess whether the selected repository's operational measurements support a comparison.",
       "route": {
-        "hash-query-parameter": "repository", "navigation-page": "operational-value",
+        "hash-query-parameter": "repository", "navigation-page": "value",
         "breadcrumbs": [
           { "page": "operational-value" },
           { "page": "operational-value-repository", "parameters": ["organization", "repository"] }

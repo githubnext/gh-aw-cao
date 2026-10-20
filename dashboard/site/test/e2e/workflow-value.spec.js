@@ -1,0 +1,148 @@
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { authoritativeDashboard, expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import { adaptCachedGhAwJsonl } from '../../src/data/adapters/gh-aw-logs.js';
+import { normalize } from '../../src/data/normalize/index.js';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
+import { NORMALIZED_JSONL_INGESTION_VERSION } from '../../src/data/ingest/coordinator.js';
+import ledgerFixture from '../fixtures/operational-value-ledger.json' with { type: 'json' };
+
+registerSmokeRoutes();
+
+/** @param {typeof ledgerFixture} ledger */
+function publishedShards(ledger) {
+  const root = resolve('../..');
+  mkdirSync(join(root, '.tmp'), { recursive: true });
+  const directory = mkdtempSync(join(root, '.tmp', 'workflow-value-browser-'));
+  try {
+    const input = join(directory, 'ledger.json');
+    const output = join(directory, 'pulse.html');
+    writeFileSync(input, JSON.stringify(ledger));
+    execFileSync(process.execPath, [
+      '.github/skills/add-operational-value/scripts/render-pulse.mjs', input, output
+    ], { cwd: root, stdio: 'pipe' });
+    const original = readFileSync(join(directory, 'pulse-evidence.jsonl'), 'utf8');
+    const batch = normalize(adaptCachedGhAwJsonl(original).observations);
+    const records = Object.entries(batch).flatMap(([collection, rows]) =>
+      Array.isArray(rows) ? rows.map(record => ({ kind: 'record', collection, record })) : []);
+    const runs = new Set(['campaigns', 'repositories', 'workflows', 'runs']);
+    /** @type {Record<string, string>} */
+    const manifest = {};
+    /** @type {Record<string, string>} */
+    const contents = {};
+    for (const phase of ['runs', 'records']) {
+      const selected = records.filter(({ collection }) => runs.has(collection) === (phase === 'runs'));
+      const content = [
+        { kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION, ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
+          sourceRecords: 1, phase, records: selected.length },
+        ...selected
+      ].map(record => JSON.stringify(record)).join('\n') + '\n';
+      const hash = createHash('sha256').update(content).digest('hex');
+      const name = `gh-aw-logs-${phase}/logs-${hash}-${'0'.repeat(16)}.jsonl`;
+      manifest[name] = hash;
+      contents[`/${name}`] = content;
+    }
+    return { manifest, contents };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+for (const width of [1440, 390]) {
+  test(`workflow Value card opens native evidence and exact items at ${width}px`, async ({ page, context }) => {
+    await page.setViewportSize({ width, height: 900 });
+    let publication = publishedShards(structuredClone(ledgerFixture));
+    const inventory = {
+      repositories: { rows: [{ organization: 'octo', repository: 'example' }], metadata: { 'as-of': ledgerFixture.observedAt } },
+      workflows: { rows: [{ organization: 'octo', repository: 'example', workflow: ledgerFixture.sourcePath,
+        'workflow-name': ledgerFixture.workflowName }], metadata: { 'as-of': ledgerFixture.observedAt } }
+    };
+    await context.route('http://dashboard.test/inventory-sources.json', route => route.fulfill({
+      contentType: 'application/json', body: JSON.stringify(inventory)
+    }));
+    await context.route('http://dashboard.test/payload-hashes.json', route => route.fulfill({
+      contentType: 'application/json', body: JSON.stringify(publication.manifest)
+    }));
+    await context.route('http://dashboard.test/gh-aw-logs-*/**', route => route.fulfill({
+      contentType: 'application/x-ndjson', body: publication.contents[new URL(route.request().url()).pathname]
+    }));
+    await page.evaluate(async ({ dashboard }) => {
+      const { renderDashboard, dashboardPageSourceNames } = await import(`${location.origin}/src/presenter.js`);
+      const { loadCanonicalDashboardSources, subscribeCanonicalDashboardView } = await import(`${location.origin}/src/data-processor.js`);
+      location.hash = '#page-workflow-runtime?workflow=octo%2Fexample%3A.github%2Fworkflows%2Fverify-bugs.md';
+      const model = { languageVersion: dashboard['language-version'], dashboard: dashboard.dashboard };
+      const queryContext = { pages: model.dashboard.pages, queries: model.dashboard.queries, views: model.dashboard.views };
+      await loadCanonicalDashboardSources(`${location.origin}/payload-hashes.json`, [], queryContext);
+      let subscription = 0;
+      const subscribe = (
+        /** @type {string} */ pageId,
+        /** @type {string[]} */ names,
+        /** @type {import('../../src/presenter.js').PageSourceLoadOptions} */ options,
+        /** @type {string | undefined} */ viewId = undefined
+      ) => new Promise((resolve, reject) => {
+        let initial = true;
+        subscribeCanonicalDashboardView(`value-browser:${++subscription}`, names, queryContext,
+          (/** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ sources) => {
+            if (initial) { initial = false; resolve(sources); } else options.onUpdate(sources);
+          }, {}, { signal: options.signal, pageId, viewId, routeParameters: options.routeParameters,
+            queryContext: options.queryContext, onError: reject });
+      });
+      const loadPageSources = (
+        /** @type {string} */ pageId,
+        /** @type {import('../../src/presenter.js').PageSourceLoadOptions} */ options
+      ) => subscribe(pageId, dashboardPageSourceNames(model, pageId), options);
+      loadPageSources.subscribeViewSources = (
+        /** @type {string} */ pageId, /** @type {string} */ viewId, /** @type {string[]} */ names,
+        /** @type {import('../../src/presenter.js').PageSourceLoadOptions} */ options
+      ) => subscribe(pageId, names, options, viewId);
+      document.querySelector('#root')?.append(renderDashboard({ document: model, sources: {}, loadPageSources }));
+    }, { dashboard: authoritativeDashboard });
+
+    await expect(page.locator('.workflow-tabs').getByRole('link', { name: 'Value', exact: true }))
+      .toHaveAttribute('href', /#page-workflow-value\?workflow=/);
+    if (width < 600) {
+      await page.locator('.mobile-nav-menu > summary').click();
+      await page.locator('.mobile-nav-menu a[href="#page-value"]').click();
+    } else {
+      await page.getByRole('navigation', { name: 'Primary', exact: true }).getByRole('link', { name: 'Value', exact: true }).click();
+    }
+    await expect(page).toHaveURL(/#page-value$/);
+    await page.getByRole('link', { name: '↓ -1 defects', exact: true }).click();
+    await expect(page.locator('.value-report-heading')).toContainText('Resolve confirmed defects.');
+    await expect(page.locator('.value-report-movement')).toHaveText('↓ -1 defects · Better');
+    const outputs = page.getByRole('button', { name: 'Safe outputs: 1 issues. Explore evidence.' });
+    await outputs.focus();
+    await outputs.press('Enter');
+    await expect(page.locator('[data-value-section="outputs"]')).toBeFocused();
+    await expect(page.locator('[data-value-section="trails"] a[href="https://github.com/octo/example/pull/2"]')).toHaveCount(1);
+    await page.locator('details.value-report-evidence > summary').click();
+    await page.locator('.value-report-plot svg a').first().locator('circle').click();
+    await expect(page).toHaveURL(/#page-value-snapshot\?snapshot=/);
+    await expect(page.locator('.value-report-items a')).toHaveAttribute('href', 'https://github.com/octo/example/issues/1');
+    await page.getByRole('link', { name: '← Value report' }).click();
+    await expect(page.locator('.value-report-movement')).toHaveText('↓ -1 defects · Better');
+
+    const newer = structuredClone(ledgerFixture);
+    newer.observedAt = '2026-10-20T12:01:00Z';
+    newer.window.endAt = '2026-10-20T00:01:00Z';
+    newer.repositoryState.observations.push({
+      at: newer.window.endAt, value: 2, ref: 'new123', url: 'https://github.com/octo/example/tree/new123',
+      items: [{ label: 'Defect 3', url: 'https://github.com/octo/example/issues/3' },
+        { label: 'Defect 4', url: 'https://github.com/octo/example/issues/4' }]
+    });
+    publication = publishedShards(newer);
+    await page.evaluate(async ({ dashboard }) => {
+      const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
+      await loadCanonicalDashboardSources(`${location.origin}/payload-hashes.json`, [], {
+        pages: dashboard.dashboard.pages, queries: dashboard.dashboard.queries, views: dashboard.dashboard.views
+      });
+    }, { dashboard: authoritativeDashboard });
+    await expect(page.locator('.value-report-movement')).toHaveText('↑ +1 defects · Worse');
+    await expect(page.locator('.value-report-number')).toHaveText('2 defects');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(page.locator('.value-report-movement')).toBeVisible();
+  });
+}

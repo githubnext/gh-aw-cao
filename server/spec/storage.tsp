@@ -440,6 +440,24 @@ model issues {
   type?: string;
 }
 
+/** Current bounded acquired evidence packet; replaced as one coherent revision. */
+model operationalValueEvidence {
+  id: string;
+  schemaVersion: int64;
+  repository: string;
+  workflow: string;
+  sourcePath: string;
+  observedAt: utcDateTime;
+  windowStart: utcDateTime;
+  windowEnd: utcDateTime;
+  contractDigest: string;
+  @parent("repositories")
+  repositoryId: string;
+  @parent("workflows")
+  workflowId: string;
+  facts: Values.OperationalValueFact[];
+}
+
 model operationalValues {
   @minValueExclusive(0)
   `cadence-days`?: decimal;
@@ -633,6 +651,53 @@ model marketplacePackages {
 }
 
 namespace Values {
+  model OperationalValueFact {
+    `fact-kind`: string;
+    `fact-id`: string;
+    `parent-id`?: string;
+    `related-id`?: string;
+    label?: string;
+    title?: string;
+    url?: string;
+    at?: utcDateTime;
+    `accepted-at`?: utcDateTime;
+    `end-at`?: utcDateTime;
+    value?: decimal;
+    ref?: string;
+    state?: string;
+    origin?: string;
+    scope?: string;
+    `coverage-status`?: string;
+    status?: string;
+    detail?: string;
+    goal?: string;
+    acceptance?: string;
+    `metric-id`?: string;
+    `metric-name`?: string;
+    `metric-unit`?: string;
+    `metric-direction`?: string;
+    `metric-version`?: string;
+    `metric-formula`?: string;
+    `result-label`?: string;
+    `measurement-basis`?: string;
+    `snapshot-name`?: string;
+    `snapshot-unit`?: string;
+    `snapshot-direction`?: string;
+    `snapshot-id`?: string;
+    `snapshot-version`?: string;
+    `snapshot-formula`?: string;
+    `outputs-available`?: boolean;
+    `repository-state-available`?: boolean;
+    `checks-available`?: boolean;
+    `items-available`?: boolean;
+    `output-unit`?: string;
+    `implementation-unit`?: string;
+    `output-scope`?: string;
+    `output-coverage`?: string;
+    `workflow-name`?: string;
+    `cadence-days`?: decimal;
+    `maturation-days`?: decimal;
+  }
   /** Intrinsic relation-specific link from Dashboard Language section 9.1. */
   model Link {
     relation?: string;

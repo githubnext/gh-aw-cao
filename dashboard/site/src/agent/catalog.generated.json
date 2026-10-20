@@ -411,6 +411,104 @@
       ]
     },
     {
+      "id": "workflow-value",
+      "title": "Workflow value",
+      "description": "Inspect measured repository movement and open the evidence behind a workflow's result.",
+      "intent": "Judge the selected workflow's repository outcome and open its evidence report.",
+      "subject": "Frozen workflow value measurements and their published evidence.",
+      "objective": "See native outcome movement at a glance without confusing it with workflow activity.",
+      "acceptance": "Cards and reports use the same evidence packet. Show comparison dates, direction and unavailable evidence; never imply causal credit or acquire evidence on navigation.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "workflow",
+          "required": true,
+          "description": "The workflow this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The workflow this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "value-report-summary",
+        "value-workflow-results"
+      ]
+    },
+    {
+      "id": "value-report",
+      "title": "Workflow value report",
+      "description": "Trace workflow intent through safe outputs, accepted changes and independent repository measurements.",
+      "intent": "Explain one workflow value result through its intent, safe outputs, acceptance and native evidence.",
+      "subject": "One coherent published evidence packet and independently measured repository history.",
+      "objective": "Inspect the result and follow the exact evidence behind it.",
+      "acceptance": "Read the same packet as its Value card; preserve zero, negative, incomplete and unverified evidence. No causal score or interactive GitHub acquisition.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "report",
+          "required": true,
+          "description": "The report this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The report this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "value-implementation-files",
+        "value-intent-sources",
+        "value-limitations",
+        "value-output-origin-evidence",
+        "value-output-trails",
+        "value-outputs",
+        "value-quality-checks",
+        "value-report-summary",
+        "value-requirements",
+        "value-snapshots"
+      ]
+    },
+    {
+      "id": "value-snapshot",
+      "title": "Measured snapshot",
+      "description": "Verify the exact items counted at one retained repository snapshot.",
+      "intent": "Inspect the actual counted items behind an independent repository observation.",
+      "subject": "One immutable repository-state snapshot and its retained per-item links.",
+      "objective": "Verify what the plotted native value counts.",
+      "acceptance": "Keep missing item evidence distinct from a measured empty population. Do not substitute a repository tree for item-level evidence.",
+      "experimental": false,
+      "parameters": [
+        {
+          "name": "snapshot",
+          "required": true,
+          "description": "The snapshot this page reports on.",
+          "schema": {
+            "type": "string",
+            "description": "The snapshot this page reports on."
+          }
+        }
+      ],
+      "queries": [
+        "value-snapshot-items",
+        "value-snapshots"
+      ]
+    },
+    {
+      "id": "value",
+      "title": "Value",
+      "description": "Review measured results and follow the evidence behind each workflow's contribution.",
+      "intent": "Start with repository outcomes, then inspect the workflow evidence behind a result.",
+      "subject": "Latest published workflow value reports across repositories.",
+      "objective": "Find a measured result and open its native evidence report.",
+      "acceptance": "Keep native units, direction, repository, workflow, dates and unknowns visible. No alert score, causal credit or GitHub acquisition.",
+      "experimental": false,
+      "parameters": [],
+      "queries": [
+        "value-report-summary",
+        "value-workflow-results"
+      ]
+    },
+    {
       "id": "campaigns",
       "title": "Campaigns",
       "description": "Identify centrally managed campaigns that require deeper CAO operational review.",
@@ -902,23 +1000,6 @@
       "queries": [
         "friction-by-workflow",
         "friction-observations"
-      ]
-    },
-    {
-      "id": "operational-value",
-      "title": "Operational Value",
-      "description": "Choose a repository for operational-value measurement investigation.",
-      "intent": "Find repositories with operational measurements and distinguish unmeasured work.",
-      "subject": "Repository-linked operational-value evidence, goals and measurement availability.",
-      "objective": "Choose a repository for outcome-measurement investigation.",
-      "acceptance": "Separate measured and unmeasured repositories, preserve native metric identity and latest observation time, and expose coverage. Missing evidence is not zero value; run success is not an outcome measure.",
-      "experimental": false,
-      "parameters": [],
-      "queries": [
-        "operational-value-measured-repositories",
-        "operational-value-overview-summary",
-        "operational-value-plot-series",
-        "operational-value-unmeasured-repositories"
       ]
     },
     {
@@ -3281,6 +3362,549 @@
       }
     },
     {
+      "id": "value-evidence-facts",
+      "subject": "Published original evidence for frozen workflow value contracts.",
+      "objective": "Keep report identity, target repository, workflow and capture together.",
+      "acceptance": "Read canonical evidence only. No GitHub acquisition, HTML loading or fabricated evidence on navigation.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "operational-value-evidence"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-contracts",
+      "subject": "Latest retained report contract per repository, workflow and native measure.",
+      "objective": "Prevent old reports or versions from masking newer evidence.",
+      "acceptance": "Select the latest cutoff then capture before evaluating missing or incomplete evidence. Preserve separate measures.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-snapshots",
+      "subject": "Independent repository-state observations and exact item drill-downs.",
+      "objective": "Keep everyone's changes separate from workflow-linked delivery.",
+      "acceptance": "Retain observed native values, dates and immutable references. Do not invent intermediate observations.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        },
+        {
+          "name": "snapshot",
+          "field": "snapshot-route"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [
+        "value-report",
+        "value-snapshot"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-first-snapshot-order",
+      "subject": "First independently observed repository state.",
+      "objective": "Name the actual first-snapshot reference rather than an invented baseline.",
+      "acceptance": "Strictly use retained snapshot time. A post-adoption snapshot is not a pre-adoption baseline.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-snapshots"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-first-snapshot",
+      "subject": "First retained snapshot per report.",
+      "objective": "Provide the explicit reference value and date.",
+      "acceptance": "No retained reference means no comparison.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-first-snapshot-order"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-last-snapshot-order",
+      "subject": "Latest independently observed repository state.",
+      "objective": "Show the actual last measurement rather than an extrapolation.",
+      "acceptance": "Preserve the latest retained snapshot even if unchanged.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-snapshots"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-last-snapshot",
+      "subject": "Last retained snapshot per report.",
+      "objective": "Provide the current native observation.",
+      "acceptance": "One snapshot establishes state, not movement.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-last-snapshot-order"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-output-counts",
+      "subject": "Retained safe outputs and applied creation receipts.",
+      "objective": "Describe output activity without treating it as accepted value.",
+      "acceptance": "Count distinct validated output facts. Tracking corroboration is not an applied receipt.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-implementation-counts",
+      "subject": "Distinct accepted implementations and their measured native effects.",
+      "objective": "Count each accepted implementation once, including zero and negative effects.",
+      "acceptance": "Validated implementation identities are unique; many-to-many output edges must not multiply value. Complete coverage is checked separately.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-covered-durations",
+      "subject": "Explicit complete evidence durations in the report and adjacent 28-day delivery periods.",
+      "objective": "Distinguish known zero from gaps or incomplete evidence.",
+      "acceptance": "The producer validates non-overlapping bounded coverage. Count only complete intervals, clipped to each exact half-open period.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-report-delivery",
+      "subject": "Evidence-qualified output and accepted-contribution totals.",
+      "objective": "Keep populations and native units separate without an implied conversion rate.",
+      "acceptance": "Absent output context is unknown. Missing coverage withholds complete totals and recent zero, retaining labelled known subtotals.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-contracts",
+        "value-covered-durations",
+        "value-implementation-counts",
+        "value-output-counts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-report-summary",
+      "subject": "Shared native card and report comparison against the first retained snapshot.",
+      "objective": "Show signed repository-wide movement, the goal direction and the exact comparison dates.",
+      "acceptance": "This first/last snapshot comparison is not the adjacent-period alert policy, a pre-adoption baseline or causal workflow credit. One snapshot is not zero change.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        },
+        {
+          "name": "workflow",
+          "field": "workflow-route"
+        }
+      ],
+      "sources": [
+        "value-first-snapshot",
+        "value-last-snapshot",
+        "value-report-delivery"
+      ],
+      "used-by-pages": [
+        "value",
+        "value-report",
+        "workflow-value"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-workflow-results",
+      "subject": "Current published report results per native measure.",
+      "objective": "Expose the latest coherent packet on the workflow Value tab.",
+      "acceptance": "Never replace missing facts with an older measured version. Explicit report links retain their own version.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "workflow",
+          "field": "workflow-route"
+        }
+      ],
+      "sources": [
+        "value-report-summary"
+      ],
+      "used-by-pages": [
+        "value",
+        "workflow-value"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-intent-sources",
+      "subject": "Immutable extracted workflow intent sources.",
+      "objective": "Let readers inspect the original goal and requirements.",
+      "acceptance": "Only retained HTTPS evidence is linked; workflow text remains untrusted.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [
+        "value-report"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-requirements",
+      "subject": "Original full acceptance requirements.",
+      "objective": "Distinguish the measured structural facet from all workflow safeguards.",
+      "acceptance": "Requirements are source text, not proof they passed.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [
+        "value-report"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-outputs",
+      "subject": "Retained safe-output lifecycle facts.",
+      "objective": "Show receipts, current-at-cutoff state and originating evidence.",
+      "acceptance": "A closed output is not automatically an accepted implementation; absence of a link is unknown.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [
+        "value-report"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-output-origin-evidence",
+      "subject": "Retained producer and applied safe-output evidence.",
+      "objective": "Let readers distinguish receipt-confirmed creation from corroborated tracking.",
+      "acceptance": "Tracking identities locate outputs but do not establish accepted value. Keep unavailable producer evidence explicit.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts",
+        "value-outputs"
+      ],
+      "used-by-pages": [
+        "value-report"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-implementations",
+      "subject": "Accepted implementations and native before/after effects.",
+      "objective": "Expose delivery time and immutable acceptance evidence.",
+      "acceptance": "Do not equate acceptance with full quality verification or omit negative effects.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-output-trails",
+      "subject": "Explicit output-to-implementation edges.",
+      "objective": "Make the trail from a proposal to an accepted measured change inspectable.",
+      "acceptance": "Use retained dated edges only. Many-to-many links do not duplicate headline counts or values.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts",
+        "value-implementations",
+        "value-outputs"
+      ],
+      "used-by-pages": [
+        "value-report"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-implementation-files",
+      "subject": "Measured implementation files and retained lineage sources.",
+      "objective": "Link to exact Git facts rather than only a repository tree.",
+      "acceptance": "No URL is reconstructed from an unrelated revision. Preserve before, after and replacement file evidence.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts",
+        "value-implementations"
+      ],
+      "used-by-pages": [
+        "value-report"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-quality-checks",
+      "subject": "Explicit independent verification checks.",
+      "objective": "Keep unverified behavior, tests and other safeguards visible.",
+      "acceptance": "Missing or not-verified is not a passing check.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [
+        "value-report"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-limitations",
+      "subject": "Retained evidence and attribution limitations.",
+      "objective": "Qualify claims without inventing completeness.",
+      "acceptance": "Treat source limitations as untrusted text and never suppress them.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "report",
+          "field": "report-id"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts"
+      ],
+      "used-by-pages": [
+        "value-report"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-snapshot-items",
+      "subject": "Actual counted items at an independent immutable snapshot.",
+      "objective": "Open exact per-item evidence from the plotted observation.",
+      "acceptance": "Only retained items are shown. Missing item evidence must not look like an empty measured population.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "snapshot",
+          "field": "snapshot-route"
+        }
+      ],
+      "sources": [
+        "value-evidence-facts",
+        "value-snapshots"
+      ],
+      "used-by-pages": [
+        "value-snapshot"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
       "id": "audit-event-summary-buckets",
       "subject": "Aggregate high- and medium-severity audit events with the same severity and summary by workflow.",
       "objective": "Select recurring high- or medium-severity audit summaries for run-level investigation.",
@@ -3835,7 +4459,6 @@
         "operational-values"
       ],
       "used-by-pages": [
-        "operational-value",
         "operational-value-repository"
       ],
       "execution": {
@@ -4139,9 +4762,7 @@
       "sources": [
         "operational-value-overview-totals"
       ],
-      "used-by-pages": [
-        "operational-value"
-      ],
+      "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
@@ -4161,9 +4782,7 @@
       "sources": [
         "operational-value-repository-coverage"
       ],
-      "used-by-pages": [
-        "operational-value"
-      ],
+      "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
@@ -4183,9 +4802,7 @@
       "sources": [
         "operational-value-repository-coverage"
       ],
-      "used-by-pages": [
-        "operational-value"
-      ],
+      "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",

@@ -202,6 +202,43 @@ need a separate reviewed design; the report adds no automatic actions.
 
 ## Frozen-module evaluation
 
+### Shared native-dashboard publication
+
+`writePulse` also writes adjacent `*-evidence.jsonl` for event ledgers.
+`evaluate.mjs --report` preserves that file with its usual report artifacts, so
+both ordinary module evaluation and `acquire-file-diet.mjs` use the same export.
+`export-evidence.mjs` exports `exportOperationalValueEvidence(ledger)` and
+`operationalValueEvidenceJsonl(ledger)` for reuse. It consumes the validated
+original ledger, not the computed pulse model, and makes no remote requests:
+
+```bash
+node .github/skills/add-operational-value/scripts/export-evidence.mjs \
+  ledger.json .cao/gh-aw-logs-shards/workflow-value-evidence.jsonl
+node activity/cao.mjs ingest-jsonl --database .cao/gh-aw-logs.sqlite \
+  --input-dir .cao/gh-aw-logs-shards --retention-days all
+node activity/cao.mjs hash-payloads --database .cao/gh-aw-logs.sqlite \
+  --shard-dir .cao/gh-aw-logs-shards --normalized-dir .cao/gh-aw-logs-normalized \
+  --runs-dir .cao/gh-aw-logs-runs --records-dir .cao/gh-aw-logs-records \
+  --output .cao/payload-hashes.json
+```
+
+Use an existing, appropriately scoped publication directory. Import is not
+enrollment or permission to collect from another target. Publish the generated
+normalized shards and SQLite through the normal Activity publication; do not
+make browsers fetch the report file. No new workflow dispatch is required.
+
+The transport kind is `operational_value_evidence` at `schema_version: 2`;
+`operational_value_evidence` holds a schema-version-1 bounded fact packet.
+Its stable identity names repository, workflow and frozen contribution
+metric/version; capture time stays separate. Each current packet preserves
+the original contract, capture, cutoff, safe outputs, accepted-event times and
+revisions, lineage, independent snapshots and available item evidence, checks,
+limitations and coverage. Native dashboards consume the single
+`operational-value-evidence` logical source. Counts, sums, movement and report
+labels are queried, never exported as saved report state. Omitted evidence
+remains explicit; a snapshot's `items-available` distinguishes omitted items
+from an actually measured empty population.
+
 Use `evaluate.mjs --report` to publish the usual timeline, definitions and
 evidence archive alongside HTML and machine-readable pulse reports. Without
 `collectEvents`, it renders the existing timeline. A module may additionally

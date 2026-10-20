@@ -271,6 +271,8 @@ try {
     writePulse(eventLedger ?? readJson(timeline), pulse);
     reportFiles.push([pulse, path.join(reportDir, path.basename(pulse))]);
     reportFiles.push([pulse.replace(/\.html$/, ".json"), path.join(reportDir, `${workflowSlug}-pulse.json`)]);
+    if (eventLedger) reportFiles.push([pulse.replace(/\.html$/, "-evidence.jsonl"),
+      path.join(reportDir, `${workflowSlug}-pulse-evidence.jsonl`)]);
   }
   if (sha256File(valueFunction) !== initialSha) throw new Error("value function changed during deterministic evaluation");
 

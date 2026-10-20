@@ -9,6 +9,7 @@ import { operationStyles } from './styles-operations.js';
 import { contentStyles } from './styles-content.js';
 import { queryEditorStyles } from './styles-query-editor.js';
 import { governanceStyles } from './styles-governance.js';
+import { workflowValueStyles } from './styles-workflow-value.js';
 import { responsiveStyles } from './styles-responsive.js';
 import { accessibilityStyles } from './styles-accessibility.js';
 
@@ -25,6 +26,7 @@ export const primerStyles = [
   contentStyles,
   queryEditorStyles,
   governanceStyles,
+  workflowValueStyles,
   responsiveStyles,
   accessibilityStyles
 ].join('');

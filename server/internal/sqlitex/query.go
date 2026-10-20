@@ -206,7 +206,7 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 			return model.Source{}, fmt.Errorf("canonical SQLite source %q is not present in the snapshot", name)
 		}
 		var projected []string
-		if !fields.all {
+		if !fields.all && collection != "operationalValueEvidence" {
 			projected = make([]string, 0, len(fields.fields))
 			for field := range fields.fields {
 				projected = append(projected, field)
@@ -217,6 +217,23 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 		if err != nil {
 			return model.Source{}, err
 		}
+		metadata := model.Metadata{
+			"source-id": name, "completeness": "unknown", "freshness": "unknown",
+			"as-of": state.EvaluatedAt.Format("2006-01-02T15:04:05.999999999Z07:00"),
+		}
+		if collection == "operationalValueEvidence" {
+			clocks, err := dashboardquery.OperationalValueEvidenceMetadata(rows)
+			if err != nil {
+				return model.Source{}, err
+			}
+			for field, value := range clocks {
+				metadata[field] = value
+			}
+			rows, err = dashboardquery.OperationalValueEvidenceRows(rows)
+			if err != nil {
+				return model.Source{}, err
+			}
+		}
 		result := make([]model.Row, len(rows))
 		for index, row := range rows {
 			result[index] = model.Row(row)
@@ -225,10 +242,8 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 		if len(result) == 0 {
 			availability = "empty"
 		}
-		return model.Source{Source: name, Rows: result, Metadata: model.Metadata{
-			"source-id": name, "availability": availability, "completeness": "unknown", "freshness": "unknown",
-			"as-of": state.EvaluatedAt.Format("2006-01-02T15:04:05.999999999Z07:00"),
-		}}, nil
+		metadata["availability"] = availability
+		return model.Source{Source: name, Rows: result, Metadata: metadata}, nil
 	}
 	if postgresx.IsRuntimeSource(name) {
 		if options.Runtime != nil {

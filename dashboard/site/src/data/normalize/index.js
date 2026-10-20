@@ -3,6 +3,7 @@ import { canonicalTimestamp, requiredString } from '../model/schema.js';
 import { mergeCanonicalRun, pruneCanonicalRecord } from '../model/fields.js';
 import { createDebug } from '../../debug.js';
 import { curateBatchAudits } from '../model/audit-curation.js';
+import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
 
 const debugNormalize = createDebug('normalize:index');
 
@@ -19,6 +20,7 @@ const COLLECTIONS = {
   audit: 'audits',
   issue: 'issues',
   'operational-value': 'operationalValues',
+  'operational-value-evidence': 'operationalValueEvidence',
   'marketplace-package': 'marketplacePackages',
   experiment: 'experiments', 'experiment-assignment': 'experimentAssignments',
   grader: 'graders', 'grader-observation': 'graderObservations',
@@ -173,6 +175,7 @@ export function normalize(observations, options = {}) {
     audits: new Map(),
     issues: new Map(),
     operationalValues: new Map(),
+    operationalValueEvidence: new Map(),
     marketplacePackages: new Map(),
     experiments: new Map(), experimentAssignments: new Map(),
     graders: new Map(), graderObservations: new Map(), evals: new Map(), evalObservations: new Map()
@@ -197,12 +200,15 @@ export function normalize(observations, options = {}) {
         }
       : {};
     const incoming = withoutUndefined(pruneCanonicalRecord(collection, observation.data));
+    const evidenceRecord = collection === 'operationalValueEvidence'
+      ? mergeOperationalValueEvidence(entities[collection].get(id), incoming) : null;
     entities[collection].set(id, {
-      ...(collection === 'runs' ? mergeCanonicalRun(current, incoming) : { ...current, ...incoming }),
+      ...(collection === 'runs' ? mergeCanonicalRun(current, incoming)
+        : evidenceRecord ?? { ...current, ...incoming }),
       ...definitionRange,
       id,
-      observedAt,
-      provenance: {
+      observedAt: evidenceRecord ? evidenceRecord.observedAt : observedAt,
+      provenance: evidenceRecord?.provenance ?? {
         source: observation.source,
         sourceId: observation.sourceId,
         observedAt

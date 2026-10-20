@@ -14,7 +14,7 @@ standalone DDL for downstream implementations; the Go file supplies the same
 entity names, fields, and native types to ingestion and reads. Both are generated
 artifacts. Edit TypeSpec, never the generated SQL or bindings.
 
-Each of the fifteen canonical collections has one root table. Only fields
+Each canonical collection has one root table. Only fields
 consumed by `dashboard/site/src/data/queries/database.json` and its joins are
 retained, plus identity/storage keys. Counters use `BIGINT`, fractional measures
 use `NUMERIC`, booleans use `BOOLEAN`, timestamps use `TIMESTAMPTZ`, and identifiers
@@ -22,6 +22,14 @@ use `TEXT`. Optional-field presence costs one bit per scalar column, preserving
 absent versus explicit null. Query-required structured evidence uses entity-owned
 relational child values; no JSON, JSONB, serialized row documents, or duplicate
 generic scalar rows are stored.
+
+`operationalValueEvidence.facts` is an entity-owned typed array. The emitter
+generates its private relational child table and native scalar bindings.
+The canonical packet and all its facts publish in one transaction;
+`operational-value-evidence` projects the child facts with their original
+packet identity, source path, contract digest and capture/cutoff timestamps.
+It never stores report HTML, counts, deltas, movement or attention labels.
+Changing this physical contract requires a fresh PostgreSQL schema.
 
 The `Storage` namespace describes the current source metadata, auxiliary
 sources, revision, and diagnostics scaffolding, separately from entity models.

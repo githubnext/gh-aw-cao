@@ -8,6 +8,7 @@ import {
   workflowSourcePath
 } from '../model/ids.js';
 import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePeriod, requiredString } from '../model/schema.js';
+import { validateOperationalValueEvidence } from '../model/operational-value-evidence.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
 import { normalizeSessionMcpEvents, parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
@@ -1134,6 +1135,8 @@ function createCachedGhAwJsonlAccumulator(options) {
   const tokenEfficiencyLifecycleObservationsByRun = new Map();
   /** @type {{ value: Record<string, unknown>, line: number }[]} */
   const operationalValues = [];
+  /** @type {Record<string, any>[]} */
+  const evidencePackets = [];
   /** @type {Map<string, string>} */
   const latestRunByGithubId = new Map();
   /** @type {Map<string, CachedRun>} */
@@ -1155,6 +1158,10 @@ function createCachedGhAwJsonlAccumulator(options) {
   /** @param {{ envelope: Record<string, unknown>, line: number }} record */
   const accept = ({ envelope, line }) => {
     records += 1;
+    if (envelope.kind === 'operational_value_evidence') {
+      evidencePackets.push(validateOperationalValueEvidence(objectValue(envelope.operational_value_evidence, 'operational_value_evidence')));
+      return;
+    }
     if (envelope.kind === 'github_api_rate_limit') {
       rateLimitEnvelopes.push({ envelope, line });
     }
@@ -1315,6 +1322,25 @@ function createCachedGhAwJsonlAccumulator(options) {
   const repositories = new Map();
   /** @type {Map<string, import('../model/schema.js').CanonicalObservation>} */
   const workflows = new Map();
+  for (const packet of evidencePackets) {
+    const coordinates = repositoryCoordinates(packet.repository);
+    const parentId = repositoryCoordinateId(coordinates.owner, coordinates.name);
+    const workflowId = workflowCoordinateId(coordinates.owner, coordinates.name, packet.sourcePath);
+    const contract = packet.facts.find((/** @type {Record<string, unknown>} */ fact) => fact['fact-kind'] === 'contract');
+    repositories.set(parentId, {
+      kind: 'repository', source: OBSERVATION_SOURCE, sourceId: packet.repository, observedAt: packet.observedAt,
+      data: { id: parentId, owner: coordinates.owner, name: coordinates.name }
+    });
+    workflows.set(workflowId, {
+      kind: 'workflow', source: OBSERVATION_SOURCE, sourceId: packet.sourcePath, observedAt: packet.observedAt,
+      data: { id: workflowId, repositoryId: parentId, name: contract['workflow-name'] ?? packet.workflow,
+        path: packet.sourcePath, state: 'unknown' }
+    });
+    observations.push({
+      kind: 'operational-value-evidence', source: OBSERVATION_SOURCE, sourceId: packet.id,
+      observedAt: packet.observedAt, data: { ...packet, repositoryId: parentId, workflowId }
+    });
+  }
   for (const { value, line } of operationalValues) {
     const repository = requiredString(value.repository, `gh-aw JSONL line ${line}.operational_value.repository`);
     const coordinates = repositoryCoordinates(repository);

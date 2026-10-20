@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  GH_AW_JSONL_INGESTION_VERSION,
+  NORMALIZED_JSONL_INGESTION_VERSION,
   finalizeNormalizedJsonlIngestion,
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
@@ -177,7 +179,7 @@ describe('database table ingestion and queries', () => {
     ]);
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: `ingest-normalized-jsonl:sha256:${options.payloadIdentity}:v4`,
+        id: `ingest-normalized-jsonl:sha256:${options.payloadIdentity}:v${NORMALIZED_JSONL_INGESTION_VERSION}`,
         kind: 'ingest-normalized-jsonl',
         payloadHash: options.payloadIdentity
       })
@@ -209,7 +211,7 @@ describe('database table ingestion and queries', () => {
     })).resolves.toMatchObject({ updated: true });
     expect(await readTransactions(indexedDB)).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: `ingest-normalized-jsonl:sha256:${payloadIdentity}:v4`,
+        id: `ingest-normalized-jsonl:sha256:${payloadIdentity}:v${NORMALIZED_JSONL_INGESTION_VERSION}`,
         kind: 'ingest-normalized-jsonl'
       })
     ]));
@@ -853,9 +855,9 @@ describe('database table ingestion and queries', () => {
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
-        id: expect.stringMatching(/^ingest-jsonl:sha256:[a-f0-9]{64}:v12$/),
+        id: expect.stringMatching(new RegExp(`^ingest-jsonl:sha256:[a-f0-9]{64}:v${GH_AW_JSONL_INGESTION_VERSION}$`)),
         kind: 'ingest-jsonl',
-        ingestionVersion: 12,
+        ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       }),

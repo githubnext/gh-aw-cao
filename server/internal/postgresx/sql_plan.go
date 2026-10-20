@@ -273,6 +273,13 @@ func (r *readTransaction) rootMetadata(ctx context.Context, name string) (model.
 	if err != nil {
 		return nil, err
 	}
+	if name == "$operationalValueEvidence" {
+		if err := r.tx.QueryRowContext(ctx, `SELECT min(window_end),min(observed_at)
+			FROM operational_value_evidence WHERE namespace=$1`, r.store.namespace).Scan(&asOf, &retrieved); err != nil {
+			return nil, err
+		}
+		completeness, freshness = "unknown", "unknown"
+	}
 	value := model.Metadata{"source-id": name, "source-kind": "canonical", "availability": availability, "completeness": completeness, "freshness": freshness}
 	var evaluated time.Time
 	if err := r.tx.QueryRowContext(ctx, "SELECT evaluated_at FROM cao_state WHERE namespace=$1", r.store.namespace).Scan(&evaluated); err != nil {

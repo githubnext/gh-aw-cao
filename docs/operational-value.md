@@ -14,6 +14,23 @@ Research and replay details are in the
 
 The dashboard's **Operational Value** view starts with repositories. Select a repository to see its retained outcome measurements across campaigns and standalone workflows; campaign registration is not required. Each repository appears once in the overview, while workflow, measure, native unit, direction, and evaluator boundaries remain separate in history and comparisons. **Evidence** lists repository coverage and the latest native values. Missing measurements are not zero value. Native run-scoped gh-aw operational-grader results are separate evidence and are not included in this repository-outcome view.
 
+Open **Value** in the sidebar (the trophy icon) to see evidence-backed workflow
+result cards. **Repository measurements** preserves the existing repository-first
+view; a workflow's **Value** tab is also a shortcut to its reports.
+A result card appears when a validated report packet has been published.
+For example, **↑ +38 files · Worse** means the
+independently measured repository population increased by 38 since its displayed
+first snapshot, against a **lower is better** goal. It is not an alert, a
+pre-adoption baseline or a causal rating of the workflow. Select the card to
+follow consolidated intent, retained safe outputs, distinct accepted changes and
+their Git evidence; select a measured dot to inspect the exact counted items.
+The card and native report share one canonical evidence packet, not a saved HTML
+page. Opening either does not collect new evidence or silently fill missing
+measurements. Each workflow still needs a frozen measurement contract and
+published evidence; no packet produces an explicit unconfigured state.
+These evidence routes keep their declared cohort and cutoff when the dashboard's
+global display horizon changes; they are not new evaluations of that horizon.
+
 CAO uses one shared campaign module for both collection paths:
 
 - By default, scheduled `cao operational-value` collection evaluates only the current repository observation and publishes compact numeric records to the canonical data model. Retention keeps one observation per declared cadence bucket: closed cadence-aligned observations remain fixed, while repeated collections replace the latest observation in the still-open bucket.

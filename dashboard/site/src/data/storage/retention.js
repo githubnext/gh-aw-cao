@@ -1,6 +1,7 @@
 import { orderRunRecords } from '../normalize/index.js';
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
 import { createDebug } from '../../debug.js';
+import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
 
 const debugRetention = createDebug('retention');
 
@@ -41,6 +42,7 @@ const STORES = /** @type {const} */ ([
   'audits',
   'issues',
   'operationalValues',
+  'operationalValueEvidence',
   'marketplacePackages',
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
@@ -177,6 +179,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     workflows: batch.workflows,
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
     operationalValues: batch.operationalValues ?? [],
+    operationalValueEvidence: batch.operationalValueEvidence ?? [],
     marketplacePackages: batch.marketplacePackages ?? [],
     experiments: batch.experiments ?? [],
     graders: batch.graders ?? [],
@@ -275,7 +278,8 @@ function upsertRecords(
           continue;
         }
       }
-      records.set(id, EVIDENCE_DEFINITION_STORES.has(storeName)
+      records.set(id, storeName === 'operationalValueEvidence'
+        ? mergeOperationalValueEvidence(records.get(id), record) : EVIDENCE_DEFINITION_STORES.has(storeName)
         ? mergeEvidenceDefinition(records.get(id), record) : record);
     }
     merged[storeName] = records;
@@ -335,6 +339,10 @@ function pruneOrphans(merged) {
   for (const [id, record] of merged.operationalValues) {
     if (!repositories.has(String(record.repositoryId))) merged.operationalValues.delete(id);
   }
+  for (const [id, record] of merged.operationalValueEvidence) {
+    if (!repositories.has(String(record.repositoryId))
+      || workflows.get(String(record.workflowId))?.repositoryId !== record.repositoryId) merged.operationalValueEvidence.delete(id);
+  }
   if (orphanedRunCount > 0) debugRetention({ event: 'orphans-pruned', orphanedRunCount });
 }
 
@@ -351,6 +359,7 @@ function collectUnreferencedParents(merged, incoming) {
   const incomingRepositories = new Set(incoming.repositories.map((record) => String(record.id)));
   const referencedWorkflows = new Set([
     ...[...merged.runs.values()].map((run) => String(run.workflowId)),
+    ...[...merged.operationalValueEvidence.values()].map((packet) => String(packet.workflowId)),
     ...['experiments', 'graders', 'evals'].flatMap((store) =>
       [...merged[store].values()].map((record) => String(record.workflowId)))
   ]);
@@ -360,7 +369,8 @@ function collectUnreferencedParents(merged, incoming) {
   const referencedRepositories = new Set([
     ...[...merged.workflows.values()].map((workflow) => String(workflow.repositoryId)),
     ...[...merged.runs.values()].map((run) => String(run.repositoryId)),
-    ...[...merged.operationalValues.values()].map((value) => String(value.repositoryId))
+    ...[...merged.operationalValues.values()].map((value) => String(value.repositoryId)),
+    ...[...merged.operationalValueEvidence.values()].map((value) => String(value.repositoryId))
   ]);
   for (const [id] of merged.repositories) {
     if (!incomingRepositories.has(id) && !referencedRepositories.has(id)) merged.repositories.delete(id);

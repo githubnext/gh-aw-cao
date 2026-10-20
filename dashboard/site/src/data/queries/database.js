@@ -28,6 +28,7 @@ import { SERVER_SOURCE_VALUES, SYNTHETIC_SOURCE_FIELDS } from '../../specificati
 import { isGitHubQuerySource } from '../github-query-sources.js';
 import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 import { createDebug } from '../../debug.js';
+import { operationalValueEvidenceMetadata, operationalValueEvidenceRows } from '../model/operational-value-evidence.js';
 import { incrementalAggregate } from './incremental-aggregate.js';
 
 const debugDatabase = createDebug('database');
@@ -100,7 +101,9 @@ function executeDatabaseQuery(queryName, inputs, sources, metadataSource, budget
     metadata: unavailable
       ? result.metadata
       : {
-          ...queryMetadata(DIRECT_EVIDENCE_SOURCES.has(queryName) ? {} : sources, metadataSource, queryName, true),
+          ...(queryName === 'operational-value-evidence'
+            ? { ...result.metadata, 'source-id': queryName, 'source-kind': 'database-query' }
+            : queryMetadata(DIRECT_EVIDENCE_SOURCES.has(queryName) ? {} : sources, metadataSource, queryName, true)),
           availability: result.rows.length > 0 ? 'available' : 'empty'
         }
   });
@@ -650,6 +653,7 @@ const RECORD_PROJECTIONS = [...RUN_RECORD_STORES].map((name) => databaseQueryInd
  * @param {import('./declarative.js').DashboardQuery} definition
  */
 function streamingAggregatePlan(index, definition) {
+  if (definition.from === 'operational-value-evidence') return null;
   if (!definition.aggregate || definition.union?.length || definition.joins?.length
       || definition['temporal-series'] || definition.predict?.length || definition.window?.length || definition.facet
       || definition.aggregate.values.some((value) => !['count', 'distinct-count', 'sum'].includes(value.reducer))) return null;
@@ -669,6 +673,7 @@ function streamingAggregatePlan(index, definition) {
   if (RUN_RECORD_STORES.has(source)) return null;
   const projection = databaseQueryIndex.get(source);
   if (!projection) return null;
+  if (projection.from === '$operationalValueEvidence') return null;
   const direct = projection.from.startsWith('$') && Object.hasOwn(CANONICAL_DATABASE_SCHEMA, projection.from.slice(1));
   if ((!RUN_RECORD_STORES.has(projection.from) && !direct) || projection.aggregate || projection.union?.length
       || (projection.joins ?? []).some((join) => !direct || !join.source.startsWith('$')
@@ -1234,8 +1239,11 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       }
       return [input, {
         source: input,
-        rows: store === 'transactions' ? transactions : collections[store],
-        metadata: queryMetadata(sources, store, store, true)
+        rows: store === 'transactions' ? transactions
+          : store === 'operationalValueEvidence' ? operationalValueEvidenceRows(collections[store]) : collections[store],
+        metadata: store === 'operationalValueEvidence'
+          ? { ...queryMetadata(sources, store, store, true), ...operationalValueEvidenceMetadata(collections[store]) }
+          : queryMetadata(sources, store, store, true)
       }];
     }));
     const projection = executeDatabaseQuery(name, inputs, sources, definition.from.replace(/^\$/, ''));

@@ -18,6 +18,7 @@ import {
   upsertCanonicalBatch
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
+import { NORMALIZED_JSONL_INGESTION_VERSION } from '../../src/data/ingest/coordinator.js';
 import { doctorSqliteDatabase } from '../../src/data/storage/sqlite-doctor.js';
 import {
   createSqliteIndexedDB,
@@ -462,7 +463,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(normalizedMetadata).toMatchObject({
       kind: 'metadata',
       schemaVersion: CANONICAL_SCHEMA_VERSION,
-      ingestionVersion: 4,
+      ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
       sourceRecords: 3,
       phase: 'all',
       records: normalizedRecords.length

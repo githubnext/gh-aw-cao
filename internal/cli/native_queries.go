@@ -263,6 +263,8 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 	cache := map[string][]map[string]any{}
 	visiting := map[string]bool{}
 	canonicalRead := false
+	otherCanonicalRead := false
+	evidenceClocks := map[string]any{}
 	var load func(string) ([]map[string]any, error)
 	load = func(source string) ([]map[string]any, error) {
 		if err := ctx.Err(); err != nil {
@@ -284,7 +286,14 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 		switch {
 		case strings.HasPrefix(source, "$"):
 			canonicalRead = true
+			otherCanonicalRead = otherCanonicalRead || source != "$operationalValueEvidence"
 			rows, err = readNativeCollection(ctx, db, strings.TrimPrefix(source, "$"))
+			if err == nil && source == "$operationalValueEvidence" {
+				evidenceClocks, err = dashboardquery.OperationalValueEvidenceMetadata(rows)
+				if err == nil {
+					rows, err = dashboardquery.OperationalValueEvidenceRows(rows)
+				}
+			}
 		case source == "simulation-days":
 			rows = []map[string]any{}
 			for day := 1; day <= 30; day++ {
@@ -343,6 +352,11 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 	}
 	metadata := map[string]any{"availability": availability, "completeness": completeness, "freshness": freshness,
 		"as-of": "1970-01-01T00:00:00.000Z", "returned-rows": len(rows), "limit": limit}
+	for _, field := range []string{"as-of", "retrieved-at"} {
+		if instant, present := evidenceClocks[field]; present && !otherCanonicalRead {
+			metadata[field] = instant
+		}
+	}
 	if len(resolved) > 0 {
 		values := map[string]any{}
 		for _, parameter := range resolved {

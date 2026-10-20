@@ -96,7 +96,7 @@ for (const width of [1200, 390]) {
     const view = page.locator('[data-page-id="operational-value"]');
     await expect(view).toBeVisible();
     await expect(page.getByRole('heading', { level: 1, name: 'Operational Value', exact: true })).toBeVisible();
-    await expect(view.getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(view.getByRole('link', { name: 'Repository measurements', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(view.getByText(`2 of 3 repositories measured · ${unversioned ? 0 : 2} comparable goals`, { exact: true })).toBeVisible();
     const signals = view.locator('[data-view-id="operational-value-signals"] .entity-card-list-card');
     await expect(signals).toHaveCount(2);
@@ -132,7 +132,7 @@ for (const width of [1200, 390]) {
       await expect(distribution.locator('a.horizontal-bar-chart-track[href="#page-operational-value-repository?organization=octo&repository=api"]')).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await evidence.getByRole('link', { name: 'Overview', exact: true }).click();
+    await evidence.getByRole('link', { name: 'Repository measurements', exact: true }).click();
     await expect(view).toBeVisible();
     await signals.filter({ hasText: 'octo/api' }).locator('[data-card-drill]').click();
     await expect(page).toHaveURL(/#page-operational-value-repository\?/);
@@ -1783,7 +1783,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
   `);
 
   await expect(page.getByRole('heading', { name: 'Multi-Device Docs Tester', level: 1 })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Multi-Device Docs Tester views' })).toContainText('InsightsReportsRuns');
+  await expect(page.getByRole('navigation', { name: 'Multi-Device Docs Tester views' })).toContainText('InsightsReportsValueRuns');
   await expect(page.getByRole('link', { name: 'Reports' })).toHaveAttribute('href', /#page-workflow-detail\?workflow=/);
   await expect(page.locator('.workflow-badges .workflow-badge')).toHaveText([
     'Standalone',

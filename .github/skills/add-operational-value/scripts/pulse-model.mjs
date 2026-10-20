@@ -316,6 +316,13 @@ function validateLedger(ledger) {
   return [...unique.values()].sort((left, right) => time(left.at) - time(right.at) || left.id.localeCompare(right.id));
 }
 
+export function validateEventLedger(ledger) {
+  const events = validateLedger(ledger);
+  reportContext(ledger);
+  outputContext(ledger, events);
+  return events;
+}
+
 export function eventPulse(ledger) {
   const events = validateLedger(ledger);
   const context = reportContext(ledger);
