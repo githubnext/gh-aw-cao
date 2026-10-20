@@ -1,6 +1,6 @@
 {
   "source_sha": "1dc16c56a287aef0bfaed0cde6a94c9a8b47b49f",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
     {
       "evaluated_at": "2026-10-20T06:34:25Z",
@@ -645,6 +645,34 @@
         39417494838
       ],
       "outcome": "no-op: the 2026-10-20T11:47:39Z to 2026-10-20T15:01:53Z window contained 16 successful and four skipped completed docs.yml runs. Five successful builds were comparable (two push and three schedule, across four source SHAs): median/p90 end-to-end 225/347 seconds, initial queue or concurrency wait 3/114 seconds, queue-excluded execution 184/304 seconds, build job 87/94 seconds, and deploy job 73/203 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. Trusted logs verified five of five npm package-cache hits, each restoring about 308 MiB; dependency installation still took median/p90 23/27 seconds. The reusable dashboard cache also hit in all five builds and restored about 57 MiB in 2-3 seconds. Even eliminating dependency installation entirely would save only 12.5% of median queue-excluded execution and 23 seconds, below both the 15% and 60-second thresholds; replacing npm's package cache with a node_modules cache has no measured correctness-preserving benefit. No actionable dependency caching change was supported, so the category advanced. Deploy variance and one 187-second concurrency wait were disclosed rather than attributed to dependency caching."
+    },
+    {
+      "evaluated_at": "2026-10-20T15:38:03Z",
+      "worker_run_id": "39449786090",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39449842682,
+        39448017239,
+        39447662756,
+        39444611896,
+        39442826835,
+        39440727596,
+        39438956620,
+        39438578838,
+        39435558939,
+        39433804572,
+        39432443073,
+        39430511764,
+        39430500899,
+        39430273601,
+        39430006806,
+        39427857200,
+        39427737824,
+        39426199464,
+        39426192123,
+        39423355731
+      ],
+      "outcome": "no-op: the 2026-10-20T12:34:49Z to 2026-10-20T15:35:49Z window contained 16 successful and four skipped completed docs.yml runs. Five successful builds were comparable (two push and three schedule, across four source SHAs): median/p90 end-to-end 225/347 seconds, initial queue or concurrency wait 3/114 seconds, queue-excluded execution 184/304 seconds, build job 87/94 seconds, deploy job 73/203 seconds, and Astro documentation generation 14/15 seconds. docs.yml has no dashboard job because generation is reusable work in cao-dashboard.yml. Trusted logs verified five of five npm package-cache hits and five of five reusable dashboard-cache hits; artifact fallback was skipped. Astro generation was stable and only 7.6% of median queue-excluded execution, below the 60-second and 15% actionability thresholds. No correctness-preserving Astro change has evidence for the required saving, so the category advanced. Four skipped workflow_run entries, one 187-second concurrency wait, and deploy outliers were disclosed rather than attributed to Astro."
     }
   ]
 }
