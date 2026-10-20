@@ -18,10 +18,13 @@ import (
 
 	"github.com/githubnext/gh-cao/server/internal/audit"
 	"github.com/githubnext/gh-cao/server/internal/hostedcli"
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/operational"
 	"github.com/githubnext/gh-cao/server/internal/server"
 	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
+
+var hostedCLILog = debuglogger.New("cao:dashboard:hosted-cli")
 
 var hostedCLOperatorLogin = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(?:\[bot\])?$`)
 
@@ -59,23 +62,9 @@ func newHostedCLIQueueListCommand() *cobra.Command {
 	limit := cmd.Flags().Int("limit", 20, "maximum commands to return (1-100)")
 	continuationToken := cmd.Flags().String("continuation-token", "", "opaque token returned by the previous page")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		filter := operational.CLICommandCursorFilter{Limit: *limit}
-		for _, raw := range *statuses {
-			status := operational.CLICommandStatus(strings.TrimSpace(raw))
-			if status == "" {
-				return operational.ErrCLICommandInput
-			}
-			filter.Statuses = append(filter.Statuses, status)
-		}
-		if filter.Validate() != nil || filter.Limit > 100 {
-			return errors.New("invalid queue filter: limit must be 1-100 and statuses valid")
-		}
-		if *continuationToken != "" {
-			beforeID, err := parseHostedCLIContinuationToken(*continuationToken)
-			if err != nil {
-				return err
-			}
-			filter.BeforeID = beforeID
+		filter, err := hostedCLIQueueFilter(*statuses, *limit, *continuationToken)
+		if err != nil {
+			return err
 		}
 		return runHostedCLIQueueCommand(*sqlitePath, func(ctx context.Context, session hostedCLIQueueSession) error {
 			page, err := session.queue.ListBefore(ctx, filter)
@@ -94,6 +83,32 @@ func newHostedCLIQueueListCommand() *cobra.Command {
 		})
 	}
 	return cmd
+}
+
+// hostedCLIQueueFilter validates list flags and builds the queue cursor filter.
+func hostedCLIQueueFilter(statuses []string, limit int, continuationToken string) (operational.CLICommandCursorFilter, error) {
+	filter := operational.CLICommandCursorFilter{Limit: limit}
+	for _, raw := range statuses {
+		status := operational.CLICommandStatus(strings.TrimSpace(raw))
+		if status == "" {
+			hostedCLILog.Printf("queue list rejected: reason=empty_status")
+			return filter, operational.ErrCLICommandInput
+		}
+		filter.Statuses = append(filter.Statuses, status)
+	}
+	if filter.Validate() != nil || filter.Limit > 100 {
+		hostedCLILog.Printf("queue list rejected: reason=invalid_filter statuses=%d limit=%d", len(statuses), limit)
+		return filter, errors.New("invalid queue filter: limit must be 1-100 and statuses valid")
+	}
+	if continuationToken != "" {
+		beforeID, err := parseHostedCLIContinuationToken(continuationToken)
+		if err != nil {
+			hostedCLILog.Printf("queue list rejected: reason=invalid_continuation_token")
+			return filter, err
+		}
+		filter.BeforeID = beforeID
+	}
+	return filter, nil
 }
 
 func newHostedCLIQueueShowCommand() *cobra.Command {
@@ -150,6 +165,7 @@ func newHostedCLIQueueCancelCommand() *cobra.Command {
 					slog.Int64("command_id", id))
 				return err
 			}
+			hostedCLILog.Printf("queue command cancelled: status=%s", command.Status)
 			if err := session.audit.Record(ctx, "cli_command.operator_cancelled", audit.Success,
 				slog.String("actor", login), slog.String("actor_source", "self_reported_cli"),
 				slog.Int64("command_id", id),

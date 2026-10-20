@@ -144,3 +144,28 @@ func runHostedCLIQueueTestCommand(t *testing.T, sqlitePath string, args ...strin
 	err := root.Execute()
 	return output.String(), err
 }
+
+func TestHostedCLIQueueFilter(t *testing.T) {
+	token := hostedCLIContinuationToken(42)
+	filter, err := hostedCLIQueueFilter([]string{" queued ", "running"}, 100, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filter.Limit != 100 || filter.BeforeID != 42 || len(filter.Statuses) != 2 || filter.Statuses[0] != "queued" {
+		t.Fatalf("unexpected filter: %+v", filter)
+	}
+	if filter, err = hostedCLIQueueFilter(nil, 20, ""); err != nil || filter.BeforeID != 0 || len(filter.Statuses) != 0 {
+		t.Fatalf("unexpected default filter: %+v, %v", filter, err)
+	}
+	for name, call := range map[string]func() error{
+		"empty status":   func() error { _, err := hostedCLIQueueFilter([]string{"  "}, 20, ""); return err },
+		"unknown status": func() error { _, err := hostedCLIQueueFilter([]string{"bogus"}, 20, ""); return err },
+		"zero limit":     func() error { _, err := hostedCLIQueueFilter(nil, 0, ""); return err },
+		"limit too high": func() error { _, err := hostedCLIQueueFilter(nil, 101, ""); return err },
+		"bad token":      func() error { _, err := hostedCLIQueueFilter(nil, 20, "not-a-token"); return err },
+	} {
+		if call() == nil {
+			t.Errorf("%s: expected an error", name)
+		}
+	}
+}
