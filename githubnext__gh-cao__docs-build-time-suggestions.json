@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-20T08:48:53Z",
-      "worker_run_id": "39395728143",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39394069863,
-        39393719815,
-        39390537827,
-        39388787873,
-        39386887878,
-        39386513324,
-        39383844471,
-        39381458818,
-        39381197975,
-        39378144737,
-        39376963126,
-        39376153086,
-        39375999551,
-        39375801479,
-        39374762521,
-        39372664779,
-        39371749392,
-        39370827216,
-        39369620161,
-        39369423241
-      ],
-      "outcome": "incomplete: during the 2026-10-20T04:24:41Z to 2026-10-20T08:32:09Z evidence window, the latest 20 completed docs.yml runs contained 15 successful runs and five skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 14 successful runs were schedule freshness checks that skipped both jobs. The sole comparable build restored the dashboard cache, installed dependencies in 14 seconds, built documentation in 9 seconds, completed the build job in 70 seconds, deployment in 18 seconds, and the workflow in 97 seconds with no queue delay. One build sample cannot establish the required median/p90 build and deploy timings or repeated cache effectiveness, and the current Documentation Pages workflow has no dashboard job to sample. Fewer than five comparable successful build samples were available, so the category remains next."
-    },
-    {
       "evaluated_at": "2026-10-20T08:52:59Z",
       "worker_run_id": "39397407046",
       "category": "dependency installation and caching",
@@ -820,6 +792,34 @@
         39462547132
       ],
       "outcome": "no-op: the 2026-10-20T17:01:35Z to 2026-10-20T20:22:39Z latest-20 window contained 16 successful and four skipped completed docs.yml runs. Five successful builds were comparable (three push, one schedule, and one workflow_run, across four source SHAs): median/p90 end-to-end 134/181.6 seconds, initial queue 4/8.6 seconds, queue-excluded execution 130/175.6 seconds, build job 93/108.2 seconds, and deploy job 20/32.2 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. All five builds restored the reusable dashboard cache in 2-3 seconds and skipped artifact fallback; bounded logs for the newest build confirmed a 58 MiB cache hit. The prior same-SHA schedule/push overlap no longer duplicated deployment: the schedule waited for the push, freshness-checked, and skipped, while the newest post-push schedule also skipped in 12 seconds. Open issue #17171 already represents the stable freshness-history-scan optimization. Current evidence does not materially change that issue, and no new non-duplicate scheduling or concurrency improvement met the 60-second or 15% threshold, so the category advanced."
+    },
+    {
+      "evaluated_at": "2026-10-20T20:40:25Z",
+      "worker_run_id": "39493608093",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39493508349,
+        39491858643,
+        39491441523,
+        39488433149,
+        39487836723,
+        39486361919,
+        39484726164,
+        39484498653,
+        39484331843,
+        39483522398,
+        39482760104,
+        39482357411,
+        39479892762,
+        39477603930,
+        39475085157,
+        39474674500,
+        39471268585,
+        39469112454,
+        39467160399,
+        39465724868
+      ],
+      "outcome": "incomplete: the 2026-10-20T17:23:57Z to 2026-10-20T20:37:19Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Only four successful runs executed both build and deploy (three push and one workflow_run, across four source SHAs); schedule run 39484498653 spent 59 seconds waiting to start its freshness job, then freshness-checked and skipped build and deploy. Trusted job and step metadata for the four builds showed successful dependency installation, documentation generation, dashboard-cache restoration, Pages packaging, and deployment, but four samples are below the required minimum of five comparable successful builds. Median/p90 workflow, build, deploy, and repeated cache-effectiveness evaluation therefore cannot be completed. docs.yml has no dashboard job because generation is reusable work in cao-dashboard.yml. No recommendation was made and the category remains next."
     }
   ]
 }
