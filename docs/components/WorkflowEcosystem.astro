@@ -37,7 +37,7 @@ const safeOutputs = [
     <div class="ecosystem-branches">
       {organizations.map((organization, index) => (
         <>
-        <div class="ecosystem-branch">
+        <div class="ecosystem-branch" data-organization={organization.id}>
           <section class="ecosystem-node organization-node" data-node={organization.id} style={nodeStyle(organization.id)} aria-label={`${organization.name} workflows`}>
             <span class="mobile-delivery enterprise-delivery enterprise" aria-hidden="true">
               <i class="optimization"></i>
@@ -99,6 +99,9 @@ const safeOutputs = [
           )}
         </>
       ))}
+      <span class="mobile-continuation" role="img" aria-label="More organizations and repositories, through Org N and Repo N">
+        ... Org N / Repo N
+      </span>
     </div>
   </div>
   <button class="animation-toggle" type="button" hidden>Pause animation</button>
@@ -247,6 +250,7 @@ const safeOutputs = [
   }
 
   .continuation-point small { display: none; }
+  .mobile-continuation { display: none; }
 
   .organization-node {
     padding-inline: 16px;
@@ -368,9 +372,9 @@ const safeOutputs = [
       display: grid;
       gap: 32px;
       margin-top: 24px;
-      margin-left: 8px;
+      margin-left: 6px;
       border-left: 2px dashed var(--node-border);
-      padding-left: 16px;
+      padding-left: 12px;
     }
 
     .ecosystem-branch,
@@ -379,11 +383,21 @@ const safeOutputs = [
       gap: 24px;
     }
 
+    .ecosystem-branch:not([data-organization="org-1"]),
+    .continuation-point { display: none; }
+
+    .mobile-continuation {
+      display: block;
+      color: var(--node-muted);
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+
     .organization-repositories {
       position: relative;
-      margin-left: 8px;
+      margin-left: 6px;
       border-left: 2px dashed var(--node-border);
-      padding-left: 16px;
+      padding-left: 12px;
     }
 
     .organization-repositories::before {
@@ -403,24 +417,12 @@ const safeOutputs = [
       height: auto;
     }
 
-    .continuation-point {
-      font-size: 0.75rem;
-      line-height: 1.4;
-      text-align: left;
-    }
-
-    .continuation-point small {
-      display: inline;
-      font: inherit;
-      font-weight: 400;
-    }
-
     .organization-node::before,
     .repository-node::before {
       position: absolute;
       top: var(--branch-y);
       right: 100%;
-      width: 18px;
+      width: 14px;
       border-top: 2px dashed var(--node-border);
       content: "";
     }
@@ -428,7 +430,7 @@ const safeOutputs = [
     .mobile-delivery { display: block; position: absolute; pointer-events: none; }
     .mobile-delivery i { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0; }
     .organization-delivery,
-    .enterprise-delivery { top: calc(var(--branch-y) - 1.5px); right: 100%; width: 18px; }
+    .enterprise-delivery { top: calc(var(--branch-y) - 1.5px); right: 100%; width: 14px; }
     .organization-delivery i { animation: mobile-org-delivery 14s linear infinite; }
     .enterprise-delivery .optimization { animation: mobile-opt-delivery 14s linear infinite; }
   }

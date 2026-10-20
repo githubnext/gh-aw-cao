@@ -183,12 +183,13 @@ test("legacy getting-started route redirects to interactive setup", async ({ pag
 });
 
 for (const colorScheme of ["light", "dark"]) {
-  for (const width of [320, 390, 1153, 1280, 1920]) {
+  for (const width of [320, 390, 768, 1152, 1153, 1280, 1920]) {
     test(`workflow ecosystem and campaign animation at ${width}px in ${colorScheme} mode`, async ({ page }, testInfo) => {
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
       await page.setViewportSize({ width, height: 900 });
       expect((await page.goto("./"))?.ok()).toBe(true);
       const ecosystem = page.locator(".workflow-ecosystem");
+      const mobile = width <= 1152;
       await ecosystem.scrollIntoViewIfNeeded();
       await expect(ecosystem).toBeVisible();
       await expect(ecosystem.locator(".animation-toggle")).toBeHidden();
@@ -217,26 +218,38 @@ for (const colorScheme of ["light", "dark"]) {
       await expect(ecosystem.locator(".node-owner")).toHaveCount(0);
       await expect(ecosystem.getByText(/Enterprise automation team|Platform team|Engineering team|Organization team|Maintainers/)).toHaveCount(0);
       await expect(ecosystem.locator(".branch")).toHaveCount(0);
-      for (const title of await ecosystem.locator(".workflow-run strong").all()) {
+      for (const title of await ecosystem.locator(".workflow-run:visible strong").all()) {
         expect(await title.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
       }
-      await expect(ecosystem.locator(".organization-node header strong")).toHaveText(["Org 1", "Org 2", "Org N"]);
-      await expect(ecosystem.locator(".repository-node header strong")).toHaveText(["Repo 1", "Repo 2", "Repo 3", "Repo N"]);
-      await expect(ecosystem.getByText("Org 2", { exact: true })).toBeVisible();
+      await expect(ecosystem.locator(".organization-node:visible header strong")).toHaveText(mobile ? ["Org 1"] : ["Org 1", "Org 2", "Org N"]);
+      await expect(ecosystem.locator(".repository-node:visible header strong")).toHaveText(mobile ? ["Repo 1", "Repo 2"] : ["Repo 1", "Repo 2", "Repo 3", "Repo N"]);
       await expect(ecosystem.locator(".enterprise-node .workflow-run strong")).toHaveText(["Optimization"]);
       await expect(ecosystem.getByText("Supply chain", { exact: true })).toHaveCount(0);
       await expect(ecosystem.locator(".enterprise-node .managed-workflows .management-label")).toHaveText("Centrally managed");
       await expect(ecosystem.locator(".organization-node .managed-workflows .management-label")).toHaveText([
         "Centrally managed", "Centrally managed", "Centrally managed",
       ]);
-      for (const badge of await ecosystem.locator(".management-label").all()) {
+      for (const badge of await ecosystem.locator(".management-label:visible").all()) {
         expect(await badge.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
       }
-      await expect(ecosystem.getByText("Org N", { exact: true })).toBeVisible();
-      await expect(ecosystem.getByText("Repo N", { exact: true })).toBeVisible();
-      await expect(ecosystem.getByRole("img", { name: "More organizations", exact: true })).toBeVisible();
-      await expect(ecosystem.getByRole("img", { name: "More repositories", exact: true })).toBeVisible();
-      for (const repository of await ecosystem.locator(".repository-node").all()) {
+      if (mobile) {
+        await expect(ecosystem.getByText("Org 2", { exact: true })).toBeHidden();
+        await expect(ecosystem.getByText("Org N", { exact: true })).toBeHidden();
+        await expect(ecosystem.getByText("Repo 3", { exact: true })).toBeHidden();
+        await expect(ecosystem.getByText("Repo N", { exact: true })).toBeHidden();
+        await expect(ecosystem.locator(".mobile-continuation")).toBeVisible();
+        await expect(ecosystem.locator(".mobile-continuation")).toHaveText("... Org N / Repo N");
+        await expect(ecosystem.locator(".continuation-point:visible")).toHaveCount(0);
+        expect(await ecosystem.locator(".ecosystem-board").evaluate((element) => element.getBoundingClientRect().height)).toBeLessThanOrEqual(780);
+      } else {
+        await expect(ecosystem.getByText("Org 2", { exact: true })).toBeVisible();
+        await expect(ecosystem.getByText("Org N", { exact: true })).toBeVisible();
+        await expect(ecosystem.getByText("Repo N", { exact: true })).toBeVisible();
+        await expect(ecosystem.getByRole("img", { name: "More organizations", exact: true })).toBeVisible();
+        await expect(ecosystem.getByRole("img", { name: "More repositories", exact: true })).toBeVisible();
+        await expect(ecosystem.locator(".mobile-continuation")).toBeHidden();
+      }
+      for (const repository of await ecosystem.locator(".repository-node:visible").all()) {
         const order = await repository.evaluate((element) => {
           const workflow = element.querySelector(".local-workflows");
           const outputs = element.querySelector(".workflow-outputs");
@@ -306,11 +319,11 @@ for (const colorScheme of ["light", "dark"]) {
         await expect(repository.locator(".local-workflows .status.complete")).toHaveCSS("opacity", "1");
       }
       expect(await page.locator("html").evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(width);
-      for (const node of await ecosystem.locator(".ecosystem-node").all()) {
+      for (const node of await ecosystem.locator(".ecosystem-node:visible").all()) {
         expect(await node.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
       }
       if (width <= 1152) {
-        const alignment = await ecosystem.locator(".organization-node, .repository-node").evaluateAll((nodes) => nodes.map((node) => {
+        const alignment = await ecosystem.locator(".organization-node:visible, .repository-node:visible").evaluateAll((nodes) => nodes.map((node) => {
           const box = node.getBoundingClientRect();
           const header = node.querySelector("header").getBoundingClientRect();
           const link = getComputedStyle(node, "::before");
@@ -379,6 +392,31 @@ for (const colorScheme of ["light", "dark"]) {
     });
   }
 }
+
+test("workflow ecosystem restores the unchanged desktop layout after a mobile resize", async ({ page }) => {
+  for (const colorScheme of ["light", "dark"]) {
+    await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("./");
+    const ecosystem = page.locator(".workflow-ecosystem");
+    const layout = () => ecosystem.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.querySelectorAll("[data-node]")].map((node) => {
+        const box = node.getBoundingClientRect();
+        return { id: node.dataset.node, x: box.x - bounds.x, y: box.y - bounds.y, width: box.width, height: box.height };
+      });
+    });
+    const desktop = await layout();
+    await expect(ecosystem.locator(".ecosystem-node:visible")).toHaveCount(8);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await expect(ecosystem.locator(".ecosystem-node:visible")).toHaveCount(4);
+    await expect(ecosystem.locator(".mobile-continuation")).toBeVisible();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(ecosystem.locator(".ecosystem-node:visible")).toHaveCount(8);
+    await expect(ecosystem.locator(".mobile-continuation")).toBeHidden();
+    expect(await layout()).toEqual(desktop);
+  }
+});
 
 test("workflow ecosystem shared connector stems have the same paint weight as single branches", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -527,7 +565,7 @@ for (const width of [390, 1280]) {
         await expect(output).toHaveCSS("opacity", "1");
         await expect(output).toHaveCSS("color", successColor);
       }
-      for (const status of await ecosystem.locator(".workflow-run .status.complete").all()) await expect(status).toHaveCSS("opacity", "1");
+      for (const status of await ecosystem.locator(".workflow-run:visible .status.complete").all()) await expect(status).toHaveCSS("opacity", "1");
     }
     await seek(14100);
     await expect(optimization.locator(".status.queued")).toHaveCSS("opacity", "1");
@@ -541,7 +579,7 @@ for (const width of [390, 1280]) {
       await expect(output).toHaveCSS("opacity", "1");
       await expect(output).toHaveCSS("color", successColor);
     }
-    for (const status of await ecosystem.locator(".workflow-run .status.complete").all()) {
+    for (const status of await ecosystem.locator(".workflow-run:visible .status.complete").all()) {
       await expect(status).toHaveCSS("opacity", "1");
     }
     await expect(delivery).toBeHidden();
