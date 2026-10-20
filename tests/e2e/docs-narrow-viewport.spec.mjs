@@ -42,8 +42,10 @@ for (const colorScheme of ["light", "dark"]) {
         expect(bounds.width).toBeGreaterThanOrEqual(24);
         expect(bounds.height).toBeGreaterThanOrEqual(24);
       }
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText("Define and measure workflow value");
       await expect(content).toContainText("Markdown, imports and precomputes");
       await expect(content).toContainText("value function");
+      await expect(content).toContainText("at least 800 lines");
       await expect(content).toContainText("1,129 to 248 lines");
       await expect(content.locator(".mermaid svg")).toBeVisible();
       expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);

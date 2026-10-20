@@ -8,7 +8,7 @@ Operational value is the degree to which a workflow's intended repository outcom
 It measures repository outcomes rather than workflow runs, generated output, or an agent's assessment. A person or another system achieving the same outcome must count as success under the same contract.
 
 For the short intent → output → Git evidence flow, see
-[Trace workflow goals to measured value](operational-value-how-to.md).
+[Define and measure workflow value](operational-value-how-to.md).
 Research and replay details are in the
 [blog article](/gh-cao/blog/measuring-agent-work-value/).
 
