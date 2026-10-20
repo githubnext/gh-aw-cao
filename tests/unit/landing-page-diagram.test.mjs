@@ -48,14 +48,14 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
   assert.match(hero, /Install\. Download\. Query\./);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(hero, /Put workflow evidence to work\./);
-  assert.match(hero, /Install CAO, download published workflow evidence, and query costs from your terminal\./);
-  assert.match(hero, /Use the sample dashboard or your own deployment\./);
+  assert.match(hero, /Ask more of your workflow data\./);
+  assert.match(hero, /See what each repository costs, investigate failed runs, and explore measured outcomes\./);
+  assert.match(hero, /Install CAO, download published evidence, and query it directly, without opening a dashboard or setting up a campaign\./);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao download --url https:\/\/githubnext\.github\.io\/gh-cao\/cao\/payload-hashes\.json/);
   assert.match(terminalText, /Example uses public sample data\. Use your deployment's manifest URL for your own evidence/);
-  assert.match(terminalText, /gh cao query cost-by-campaign/);
+  assert.match(terminalText, /gh cao query cost-by-repository/);
   assert.match(terminal, /href="\/gh-cao\/cao-cli\/#inspect-activity"/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
   assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field/);

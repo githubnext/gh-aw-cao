@@ -745,10 +745,10 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Shared work. Clear ownership.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
-      await expect(page.getByRole("heading", { name: "Put workflow evidence to work.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Ask more of your workflow data.", exact: true })).toBeAttached();
       await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Install. Download. Query.");
       await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
-        "Install CAO, download published workflow evidence, and query costs from your terminal. Use the sample dashboard or your own deployment.",
+        "See what each repository costs, investigate failed runs, and explore measured outcomes. Install CAO, download published evidence, and query it directly, without opening a dashboard or setting up a campaign.",
       );
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
@@ -773,7 +773,7 @@ for (const { name, viewport } of [
       await expect(page.locator(".terminal code")).toHaveText([
         "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
         "gh cao download --url https://githubnext.github.io/gh-cao/cao/payload-hashes.json",
-        "gh cao query cost-by-campaign",
+        "gh cao query cost-by-repository",
       ]);
       await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);
       await expect(page.locator(".product-shot-mobile")).toHaveCount(2);
