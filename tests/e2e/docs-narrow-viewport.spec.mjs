@@ -770,6 +770,16 @@ for (const { name, viewport } of [
       await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
       await expect(phone).toBeVisible();
       await expect(page.locator(".terminal")).toBeAttached();
+      await expect(page.locator(".terminal code")).toHaveText([
+        "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
+        "gh cao setup",
+        "gh cao doctor",
+        "gh cao download --url https://OWNER.github.io/CONTROL_REPO/cao/payload-hashes.json",
+        "gh cao query cost-by-campaign",
+        "gh cao prompt cost-by-campaign --database .cao/gh-aw-logs.sqlite",
+        "gh cao campaigns add githubnext/gh-cao/dependabot",
+        "gh cao campaigns mode preview dependabot",
+      ]);
       await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);
       await expect(page.locator(".product-shot-mobile")).toHaveCount(2);
       await page.locator(".product-shot").last().scrollIntoViewIfNeeded();

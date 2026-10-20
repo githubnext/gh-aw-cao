@@ -383,10 +383,10 @@ test("cleans up on page swaps and does not open a disposed lazy launcher", async
   await expect(presentation(page)).not.toBeVisible();
 });
 
-test("keeps the scrolling landing page usable without JavaScript", async ({ browser }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false });
+test("keeps the scrolling landing page usable without JavaScript", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
   const page = await context.newPage();
-  await page.goto("http://127.0.0.1:4321/gh-cao/");
+  await page.goto("./");
   await expect(page.getByRole("button", { name: "Start slideshow", exact: true })).toBeHidden();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(slideTitles[1]);
   await expect(page.locator(".product-story:visible")).toHaveCount(4);
