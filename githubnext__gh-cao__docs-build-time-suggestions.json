@@ -1,35 +1,7 @@
 {
   "source_sha": "251152f70de183158723b2f306de86df19d10fdd",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-20T10:22:16Z",
-      "worker_run_id": "39407082642",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39407194981,
-        39404935529,
-        39403590816,
-        39402236283,
-        39400711523,
-        39398865390,
-        39397756747,
-        39396576266,
-        39394069863,
-        39393719815,
-        39390537827,
-        39388787873,
-        39386887878,
-        39386513324,
-        39383844471,
-        39381458818,
-        39381197975,
-        39378144737,
-        39376963126,
-        39376153086
-      ],
-      "outcome": "incomplete: during the 2026-10-20T05:40:31Z to 2026-10-20T10:20:07Z evidence window, the latest 20 completed docs.yml runs contained 15 successful runs and five skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 14 successful runs were schedule freshness checks that skipped build and deploy. The newest successful schedule run 39404935529 queued its freshness job for 3 seconds, ran it for 12 seconds (8 seconds in the freshness check), then skipped build and deploy. The sole comparable build completed the build job in 70 seconds, deployment in 18 seconds, and the workflow in 97 seconds with 4 seconds of initial job queue time; bounded step evidence for that unchanged run showed a dashboard-cache hit, 14-second dependency installation, and 9-second documentation build. One build sample cannot establish required median/p90 build and deploy timings or repeated dependency-cache effectiveness, and docs.yml has no dashboard job. Fewer than five comparable successful build samples were available, so the evaluation is incomplete and the category remains next."
-    },
     {
       "evaluated_at": "2026-10-20T10:35:00Z",
       "worker_run_id": "39408961877",
@@ -820,6 +792,34 @@
         39479892762
       ],
       "outcome": "incomplete: the 2026-10-20T19:01:39Z to 2026-10-20T21:49:41Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Five successful runs appeared to execute both build and deploy (four push and one workflow_run, across five source SHAs), satisfying the sample-count screen. Trusted metadata for the newest two builds showed 119-148 second end-to-end workflows, 85-113 second build jobs, 19-25 second deploy jobs, 19-29 second dependency installation, 10-13 second documentation generation, 3-second dashboard-cache restoration with artifact fallback skipped, and 10-12 second Pages upload. During collection of the remaining required job, step, and cache-log evidence, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API work stopped. Complete median/p90 workflow, queue, build, deploy, and repeated cache-effectiveness measurements could not be established; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T22:22:00Z",
+      "worker_run_id": "39507162359",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39507308747,
+        39504989291,
+        39503217685,
+        39502971923,
+        39501354413,
+        39499956441,
+        39499549966,
+        39497001456,
+        39495125880,
+        39493508349,
+        39491858643,
+        39491441523,
+        39488433149,
+        39487836723,
+        39486361919,
+        39484726164,
+        39484498653,
+        39484331843,
+        39483522398,
+        39482760104
+      ],
+      "outcome": "no-op: the 2026-10-20T19:21:28Z to 2026-10-20T22:19:56Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Five successful builds were comparable (four push and one workflow_run, across five source SHAs): median/p90 end-to-end 131/142.4 seconds, initial queue 4/8.6 seconds, queue-excluded execution 127/135.4 seconds, build job 93/108.2 seconds, and deploy job 20/26.8 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; all five builds restored its 58 MiB cache in 3 seconds and skipped artifact fallback. Trusted bounded logs verified four npm package-cache hits and one miss after a lockfile-key change; dependency installation was median/p90 22/27 seconds, with a 20.5-second median on hits and 29 seconds on the miss. Documentation generation was 13/14.8 seconds and Pages artifact upload was 12/13.6 seconds. The observed cache-hit advantage was only 8.5 seconds, and no evidence shows that adding a node_modules cache would preserve npm ci correctness while saving at least 60 seconds or 15% of median execution. No actionable dependency-cache change was supported, so the category advanced. Three skipped workflow_run entries were excluded from build comparisons."
     }
   ]
 }
