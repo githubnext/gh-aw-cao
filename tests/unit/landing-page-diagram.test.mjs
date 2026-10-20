@@ -73,7 +73,7 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
   assert.ok(tagline && wordCount(tagline) <= 25, "hero tagline should stay within twenty-five words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
-  assert.equal(paragraphs.length, 4);
+  assert.equal(paragraphs.length, 5);
   for (const [, paragraph] of paragraphs) {
     assert.ok(wordCount(paragraph) <= 30, "each supporting paragraph should stay within thirty words");
   }

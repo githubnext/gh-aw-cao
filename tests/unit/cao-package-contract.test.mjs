@@ -146,6 +146,24 @@ test("CAO server image supports downstream Compose role selection", async () => 
   assert.match(dockerfile, /USER 65532:65532/);
 });
 
+test("workflow linters allow read-only cache authority unsupported by the pinned actionlint", async () => {
+  const workflows = await Promise.all([
+    text(".github/workflows/action-lint.yml"),
+    text(".github/workflows/cao-package.yml"),
+  ]);
+  for (const source of workflows) {
+    const workflow = parse(source);
+    const step = workflow.jobs.lint.steps.find((candidate) =>
+      candidate.run?.includes("rhysd/actionlint:"),
+    );
+    assert.ok(step, `${workflow.name} must run actionlint`);
+    assert.ok(
+      step.run.includes(`-ignore '^unexpected key "cache-mode" for "workflow" section\\.'`),
+      `${workflow.name} must allow the cache-mode syntax checked by release promotion contracts`,
+    );
+  }
+});
+
 test("CAO server package installs build dependencies before verifying API artifacts", async () => {
   const workflow = parse(await text(".github/workflows/cao-package.yml"));
   const build = workflow.jobs.test.steps.find((step) => step.id === "dashboard-build");

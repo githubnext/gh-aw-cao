@@ -281,6 +281,7 @@ jobs:
             --volume "$PWD:/repo:ro" --workdir /repo \
             rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
             -ignore 'unknown permission scope "vulnerability-alerts"' \
+            -ignore '^unexpected key "cache-mode" for "workflow" section\.' \
             "${workflow_files[@]}" 2>&1 \
             | tee "${RUNNER_TEMP}/static-check-results/actionlint.txt"
       - id: zizmor

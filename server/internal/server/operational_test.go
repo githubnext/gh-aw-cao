@@ -167,7 +167,7 @@ func TestMemoryCollectorHTTPBootstrapAndPopulatedAdminBackfill(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	const secret = "memory-integration-webhook-secret"
 	app, err := New(t.Context(), focusedTestStore(store), Config{
-		Database: data, DatabaseQueriesPath: backfillDatabaseQueries, SiteDirectory: t.TempDir(),
+		Database: data, DatabaseQueriesPath: backfillDatabaseQueries, SiteDirectory: hostedTestSite(t),
 		HostProfile: host.Profile, Listen: "0.0.0.0:8443", CertFile: "certificate.pem", KeyFile: "key.pem",
 		SingleReplicaConfirmed: true, AllowVolatile: true,
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
