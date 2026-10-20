@@ -269,8 +269,10 @@ volatile-memory acknowledgement is required:
 
 Omit `postgres.url-env` to use `CAO_POSTGRES_URL`, allowing both adapters to use
 the same database without sharing tables or lifecycle. Keep connection strings
-in server-side secrets, not policy. TLS is required for non-loopback TCP
-connections, including every configured fallback. The canonical namespace
+in server-side secrets, not policy. Verified TLS (`sslmode=verify-full`) is required
+for non-loopback TCP connections, including every configured fallback. Encryption
+without certificate and hostname verification (`require` or `verify-ca`) is rejected.
+Use `sslrootcert` for a private CA rather than disabling verification. The canonical namespace
 remains the existing `REDIS_NAMESPACE`; changing the operational namespace
 does not move canonical data. The explicit PostgreSQL profile of local bearer
 `serve` also defaults to PostgreSQL operational storage; supplying `--redis-url`
@@ -2373,7 +2375,7 @@ guidance, limitations, and private vulnerability-reporting process.
 
 ## Run locally
 
-The module targets and pins Go 1.27.2.
+The module targets and pins Go 1.27.3.
 
 On a MacBook, install Homebrew first and run the idempotent project setup:
 
@@ -2722,7 +2724,7 @@ npm run test:e2e:dashboard-server
 `.github/workflows/cgo.yml` keeps server validation separate from the static
 dashboard CI:
 
-- **Go format, lint, and tests** runs Go 1.27.2, golangci-lint v2.14.0, and the
+- **Go format, lint, and tests** runs Go 1.27.3, golangci-lint v2.14.0, and the
   server unit suite.
 - **Redis dashboard integration** starts Redis, runs the Redis integration
   tests, builds the dashboard and server, ingests the deployed shard subset,

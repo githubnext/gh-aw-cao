@@ -2,6 +2,7 @@
 package postgresconn
 
 import (
+	"crypto/tls"
 	"errors"
 	"net/netip"
 	"path/filepath"
@@ -15,7 +16,7 @@ import (
 var transportLog = logger.New("cao:postgresconn")
 
 // transportRejectionStage identifies which connection endpoint failed
-// ValidateTransport's TLS-or-loopback precondition, so a misconfigured
+// ValidateTransport's verified-TLS-or-loopback precondition, so a misconfigured
 // Postgres endpoint is diagnosable without logging the host itself, which
 // can reveal internal network topology.
 type transportRejectionStage string
@@ -25,35 +26,34 @@ const (
 	transportRejectionStageFallback transportRejectionStage = "fallback-host"
 )
 
-// isSecureTransport reports whether host is safe to connect to without TLS:
-// TLS is already enabled, host is a Unix socket directory (an absolute
-// path), host is the literal name "localhost", or host parses as a loopback
-// IP address. It is a pure function extracted from ValidateTransport's
-// inline closure so the TLS-or-loopback decision is independently testable
-// against host strings, without constructing a pgx.ConnConfig.
-func isSecureTransport(host string, tlsEnabled bool) bool {
-	if tlsEnabled || filepath.IsAbs(host) || strings.EqualFold(host, "localhost") {
+// Remote connections require both chain and hostname verification. Encryption
+// alone (pgx sslmode=require or verify-ca) does not authenticate the database.
+func isSecureTransport(host string, config *tls.Config) bool {
+	if filepath.IsAbs(host) || strings.EqualFold(host, "localhost") {
 		return true
 	}
 	address, err := netip.ParseAddr(host)
-	return err == nil && address.IsLoopback()
+	if err == nil && address.IsLoopback() {
+		return true
+	}
+	return config != nil && !config.InsecureSkipVerify && config.ServerName != ""
 }
 
-// ValidateTransport requires every PostgreSQL adapter connection to use TLS
+// ValidateTransport requires every PostgreSQL adapter connection to use verified TLS
 // unless it targets a Unix socket or a loopback address, rejecting a plain
 // connection to any other host before it is used.
 func ValidateTransport(config *pgx.ConnConfig) error {
 	if config == nil {
 		return errors.New("postgres connection configuration is required")
 	}
-	if !isSecureTransport(config.Host, config.TLSConfig != nil) {
+	if !isSecureTransport(config.Host, config.TLSConfig) {
 		transportLog.Printf("postgres transport rejected stage=%s", transportRejectionStagePrimary)
-		return errors.New("postgres TLS is required for non-loopback connections")
+		return errors.New("postgres verified TLS with hostname verification (sslmode=verify-full) is required for non-loopback connections")
 	}
 	for _, fallback := range config.Fallbacks {
-		if fallback == nil || !isSecureTransport(fallback.Host, fallback.TLSConfig != nil) {
+		if fallback == nil || !isSecureTransport(fallback.Host, fallback.TLSConfig) {
 			transportLog.Printf("postgres transport rejected stage=%s", transportRejectionStageFallback)
-			return errors.New("postgres TLS is required for non-loopback fallback connections")
+			return errors.New("postgres verified TLS with hostname verification (sslmode=verify-full) is required for non-loopback fallback connections")
 		}
 	}
 	return nil

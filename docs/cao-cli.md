@@ -398,6 +398,11 @@ gh cao download --url https://OWNER.github.io/CONTROL_REPO/cao/payload-hashes.js
 ```
 
 The download remains local under `.cao/`. It is derived evidence, not rollout authority.
+Use a trusted HTTPS source; redirects cannot downgrade HTTPS to HTTP.
+For independent manifest integrity, pass `--manifest-sha256 SHA256` (or set
+`DASHBOARD_MANIFEST_SHA256`) with a digest obtained through a separate trusted channel.
+Checksums fetched alongside the snapshot detect corruption, not a compromised publisher
+or TLS trust authority.
 
 Use the gh-like query surface for common questions:
 
