@@ -128,6 +128,10 @@ export function fileDietEvents({ proof, inventories }) {
       value: oversized(pull.preMergeSha) - oversized(pull.mergeSha),
       attribution: linked.some(issue => receipts.has(issue.number)) ? "receipt-verified" : "corroborated",
       label: `${repository}#${pull.number}`,
+      ...(pull.title ? { title: pull.title } : {}),
+      summary: targets.length
+        ? `${targets[0]}. ${additions.length} production files added or renamed. File structure is measured; unchanged behavior is not verified.`
+        : "The oversized-file count is measured before and after this merge. Unchanged behavior is not verified.",
       detail: `${targets.join(". ")}${additions.length ? `. Added ${additions.join(", ")}` : ""}. `
         + "Net change includes replacement oversized files. Behavior preservation and full acceptance remain unverified. Shared workflow-enabled contribution.",
       evidence: [
@@ -164,6 +168,24 @@ export function fileDietEvents({ proof, inventories }) {
       formula: "Count regular non-test Go files under pkg/ with at least 800 newline characters before the merge, minus the same count after it, including replacements." },
     basis: "workflow-contribution", window, coverage: [{ ...window, status: complete ? "complete" : "partial" }],
     opportunities: oversized(last.commit), events,
+    repositoryState: {
+      metric: { id: "oversized-files", name: "Oversized production Go files", unit: "files",
+        direction: "decrease", version: "observed-800-line-snapshot-v1",
+        formula: "Count regular non-test Go files under pkg/ with at least 800 newline characters at the snapshot revision." },
+      observations: proof.snapshots.map(snapshot => ({ at: snapshot.at, value: oversized(snapshot.commit),
+        ref: snapshot.commit, url: `${root}/tree/${snapshot.commit}` })),
+      limitation: "These snapshots include everyone's changes. They are sparse observations, not continuous monitoring; changes between cutoffs and their causes are unknown.",
+    },
+    checks: [
+      { name: "Structural change measured", status: events.length ? "verified" : "not-verified",
+        detail: events.length
+          ? "File counts were checked before and after linked merges, including replacement files and zero or negative changes."
+          : "No linked implementation was measured; output creation alone does not establish a structural result." },
+      { name: "Behavior preserved", status: "not-verified",
+        detail: "This evidence does not independently establish unchanged behavior for every implementation." },
+      { name: "All quality requirements met", status: "not-verified",
+        detail: "Required coverage and the size of every new file are not fully verified by this structural measure." },
+    ],
     limitations: [
       "Coverage is the surviving discovered File Diet issue cohort and its explicit merge links, not deleted outputs or an exclusive causal effect.",
       ...(proof.issues.some(issue => issue.eligible === false || issue.receipt?.status === "not-applied-to-output")

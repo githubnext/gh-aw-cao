@@ -86,6 +86,38 @@ an actor-independent primary. Do not mix metric versions or units in one ledger.
 Optional `maturationDays` defaults to zero only when the contract requires no
 delay. Evidence observation must follow acceptance by that interval.
 
+### Beginner-facing context
+
+The default report has one deterministic plain-language assessment, three
+compact facts (recent results, historical contribution and repository state),
+an unknown-quality caveat and an independent snapshot chart when available.
+Historical contribution is not the repository's current
+state or exclusive workflow credit. A quiet period does not diagnose its cause.
+Goal-check details, example changes, detailed charts, formulas, receipt
+distinctions and raw IDs remain behind one **Explore evidence** disclosure,
+with keyboard-accessible details inside. The report is not a workflow tutorial.
+
+An event may add `title` and a short `summary`; both are untrusted display text,
+not measurements or acceptance evidence. Preserve full native facts in `detail`.
+The ledger may additionally supply:
+
+- `repositoryState`: `{metric, observations, limitation}`. `metric` declares
+  `id`, `name`, `unit`, `version`, `formula` and `direction` (`increase` or
+  `decrease`) for the already-defined independent snapshot measure.
+  Each observation is `{at, value, ref, url}` with a finite native value,
+  an immutable evidence reference and an HTTPS URL without credentials.
+  Observations are strictly ordered within the report interval and no later
+  than evidence capture. They never enter contribution totals. Sparse
+  observations are dots, not an interpolated continuous series.
+- `checks`: `{name, status, detail}[]`, where status is explicitly `verified`
+  or `not-verified`. Verification applies only to the named check. A measured
+  structural change does not verify behavior preservation or every safeguard.
+
+Omitted repository state is **not measured here**; omitted quality evidence is
+**not verified here**. Do not infer either from output counts, contribution,
+acceptance text or an observed merge. These optional projections expose acquired
+facts; they do not change the frozen function or reclassify historical evidence.
+
 ## Frozen-module evaluation
 
 Use `evaluate.mjs --report` to publish the usual timeline, definitions and

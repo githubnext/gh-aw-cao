@@ -83,6 +83,10 @@ test("File Diet measures actual merge-parent inventories and replacement files, 
   assert.match(ledger.events[0].evidence[1].url, new RegExp(`${parent}$`));
   assert.equal(eventPulse(ledger).metrics[0].receiptTotal, 0);
   assert.match(ledger.intent.acceptance, /full behavior-preserving acceptance remains unknown/);
+  assert.deepEqual(ledger.repositoryState.observations.map(row => row.value), [1, 1]);
+  assert.equal(ledger.repositoryState.observations.at(-1).ref, merged);
+  assert.equal(ledger.checks.find(check => check.name === "Behavior preserved").status, "not-verified");
+  assert.equal(ledger.checks.find(check => check.name === "Structural change measured").status, "verified");
   delete input.proof.pulls[0].preMergeSha;
   assert.throws(() => fileDietEvents(input), /Missing immutable inventory/);
 });
@@ -96,6 +100,7 @@ test("tracked auxiliary outputs and receipts for another object are not credited
     change(input.proof.issues[0]);
     const ledger = fileDietEvents(input);
     assert.equal(ledger.events.length, 0);
+    assert.equal(ledger.checks.find(check => check.name === "Structural change measured").status, "not-verified");
     assert.match(ledger.limitations[1], /auxiliary outputs/);
   }
 });

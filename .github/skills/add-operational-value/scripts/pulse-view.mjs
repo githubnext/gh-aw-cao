@@ -17,16 +17,26 @@ export function mountPulse(document, model) {
     { maximumFractionDigits: 2 }).format(value);
   const date = value => new Date(value).toLocaleDateString("en-US", { timeZone: "UTC",
     year: "numeric", month: "short", day: "numeric" });
+  const disclosure = (title, parent, className) => {
+    const details = node("details", null, parent, className);
+    node("summary", title, details);
+    return details;
+  };
+  const link = (ref, parent) => {
+    const element = node("a", ref.label, parent);
+    element.href = ref.url;
+    element.target = "_blank";
+    element.rel = "noopener noreferrer";
+  };
   const main = document.querySelector("main");
   node("p", `${model.repository} / ${model.workflowSlug}`, main, "eyebrow");
   node("h1", model.workflowName, main);
-  if (model.intent) {
+  if (typeof model.intent?.goal === "string" && model.intent.goal) {
     node("p", `Goal: ${model.intent.goal}`, main);
-    node("p", `Acceptance: ${model.intent.acceptance}`, main, "muted");
-  }
-  node("p", `${date(model.window.startAt)} - ${date(model.window.endAt)}. Source: ${model.sourcePath}`, main, "muted");
-  if (model.observedAt) node("p", `Evidence captured ${date(model.observedAt)}; this is a saved report, not a live monitor.`, main, "muted");
-  const label = node("label", "Native measure ", main, "metric-picker");
+  } else node("p", "Goal not recorded in this report. Inspect the workflow Markdown before judging its purpose.", main, "notice");
+  node("p", `As of ${date(model.window.endAt)}${model.observedAt ? `; evidence captured ${date(model.observedAt)}` : ""}. Saved report, not live.`, main, "muted");
+  const label = node("label", "Explore a measure ", main, "metric-picker");
+  label.hidden = model.metrics.length === 1;
   const select = node("select", null, label);
   select.setAttribute("aria-label", "Native measure");
   for (const metric of model.metrics) {
@@ -40,59 +50,106 @@ export function mountPulse(document, model) {
     const metric = model.metrics.find(item => item.id === select.value);
     const events = metric.kind === "events";
     const status = metric.signal;
+    const contribution = metric.basis === "workflow-contribution";
     const heading = node("div", null, content, `signal ${status.attention}`);
-    node("strong", status.status.replaceAll("-", " "), heading);
-    node("span", `Attention: ${status.attention.replaceAll("-", " ")}`, heading);
-    node("p", status.reason, content);
-    node("p", `Basis: ${metric.basis}. Better: ${metric.direction}${metric.target == null ? "" : ` toward ${metric.target}`}.`, content, "muted");
-    if (metric.formula) node("p", `Fixed rule (${metric.version}): ${metric.formula}`, content, "muted");
-    if (metric.currentWindow && metric.previousWindow) node("p",
-      `Comparing ${date(metric.currentWindow.startAt)} - ${date(metric.currentWindow.endAt)} with ${date(metric.previousWindow.startAt)} - ${date(metric.previousWindow.endAt)} (UTC, end exclusive).`, content, "muted");
-    const cards = node("div", null, content, "cards");
-    const card = (name, value, detail) => {
-      const element = node("div", null, cards, "card");
-      node("span", name, element, "muted");
-      node("strong", value, element);
-      node("small", detail, element);
+    node("h2", metric.reader.title, heading);
+    const facts = node("dl", null, content, "facts");
+    const fact = (name, value, detail) => {
+      const row = node("div", null, facts);
+      node("dt", name, row);
+      const description = node("dd", null, row);
+      node("strong", value, description);
+      node("span", detail, description, "muted");
     };
-    card(events ? metric.basis === "workflow-contribution" ? "Observed delivery" : "Observed outcome" : "Latest native value",
-      format(events ? metric.completeTotal : status.current),
-      `${metric.unit}${events && metric.completeTotal == null ? `; observed subtotal ${format(metric.observedTotal)}` : ""}`);
-    card(events ? "Last 28 days" : "Current period", format(status.current),
-      `${metric.unit}${events ? "/week" : ""}; previous ${format(status.previous)}`);
-    card(events ? "91-day context" : "Direction-aware change",
-      format(events ? metric.baselineRate : status.directionAwareGain),
-      events ? `${metric.unit}/week; context, not an independent comparison` : `${metric.unit}; not a causal effect`);
-    card(events ? "Since last positive delivery" : "Agreed decision",
-      events ? metric.daysSincePositive == null ? "Unknown" : `${format(metric.daysSincePositive)} days`
-        : model.decision.status,
-      events ? metric.lastPositiveAt ? date(metric.lastPositiveAt) : "No positive event observed" : model.decision.reason);
+    const state = model.repositoryState;
+    const firstState = state?.observations[0], lastState = state?.observations.at(-1);
+    const primary = model.metrics.find(item => item.basis === "repository-outcome");
+    fact(events ? `Last ${metric.shortDays} days` : "Recent change", events
+      ? `${format(metric.currentTotal)} ${metric.unit}` : `${format(status.directionAwareGain)} ${metric.unit}`,
+    events ? `${format(metric.previousTotal)} in the previous ${metric.shortDays} days; net measured change.`
+      : "Direction-aware change; unknown is not zero.");
+    fact(events ? contribution ? "Linked contribution" : "Measured outcomes" : "Latest measure", events
+      ? `${format(metric.completeTotal ?? metric.observedTotal)} ${metric.unit}` : `${format(status.current)} ${metric.unit}`,
+    events ? `${metric.completeTotal == null ? "Known subtotal only; coverage is incomplete. " : ""}${metric.name} since ${date(model.window.startAt)}; not the number remaining today.`
+      : `${metric.name}. ${status.status === "insufficient-evidence" ? "Recent comparison is not verified." : ""}`);
+    fact("Repository state", state
+      ? `${format(lastState.value)} ${state.metric.unit}` : primary ? `${format(primary.signal.current)} ${primary.unit}` : "Not measured here",
+    state ? `${state.metric.name} on ${date(lastState.at)}; ${format(firstState.value)} at the first snapshot. ${state.metric.direction === "decrease" ? "Lower" : "Higher"} is better. Includes everyone's work.`
+      : primary ? `${primary.name}. Includes everyone's work.` : "Linked contribution does not establish overall repository health.");
+    const unknownChecks = model.checks?.filter(check => check.status !== "verified") ?? [];
+    node("p", unknownChecks.length
+      ? `Not verified: ${unknownChecks.map(check => check.name).join("; ")}.`
+      : model.checks?.length ? "Only the named checks are verified; see the evidence for their scope."
+        : "Whole-goal acceptance is not verified here.", content, "notice");
+    if (status.status === "insufficient-evidence") node("p", status.reason, content, "notice");
+    const evidence = disclosure("Explore evidence", content, "evidence");
+    node("p", metric.reader.caution, evidence, "muted");
+    if (events) node("p", metric.daysSincePositive == null
+      ? "No positive contribution observed; this is not proof that none occurred."
+      : `Last positive contribution: ${date(metric.lastPositiveAt)}, about ${Math.round(metric.daysSincePositive)} days before this report's cutoff.`, evidence);
+    node("h2", "What to investigate", evidence);
+    node("p", metric.reader.next, evidence);
+    node("h2", "Goal checks", evidence);
+    if (model.checks?.length) {
+      const checks = node("ul", null, evidence, "checks");
+      for (const check of model.checks) {
+        const item = node("li", null, checks);
+        node("strong", `${check.status === "verified" ? "Verified" : "Not verified"}: ${check.name}. `, item);
+        node("span", check.detail, item);
+      }
+    } else node("p", "Not verified here. This report does not establish that every acceptance requirement passed.", evidence);
+    node("p", status.status === "no-opportunity"
+      ? "No eligible work was observed; that does not establish workflow failure."
+      : "The reason for a quiet or weaker period is unknown from these measurements alone.", evidence, "muted");
     const start = Date.parse(model.window.startAt), end = Date.parse(model.window.endAt);
     const x = at => 66 + (Date.parse(at) - start) / (end - start) * 990;
-    const chart = (title, caption, values, height = 235) => {
-      node("h2", title, content);
-      node("p", caption, content, "muted");
-      const wrap = node("div", null, content, "chart");
+    const chart = (title, caption, values, height = 235, parent = content, chartTicks = model.ticks, width = 1100) => {
+      node("h2", title, parent);
+      node("p", caption, parent, "muted");
+      const wrap = node("div", null, parent, "chart");
       wrap.setAttribute("tabindex", "0");
       wrap.setAttribute("role", "region");
       wrap.setAttribute("aria-label", title);
-      const svg = svgNode("svg", { viewBox: `0 0 1100 ${height + 45}`, role: "img", "aria-label": title }, wrap);
+      const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height + 45}`, role: "img", "aria-label": title }, wrap);
       svgNode("title", {}, svg, `${title}: ${metric.name}`);
+      const position = at => 66 + (Date.parse(at) - start) / (end - start) * (width - 110);
       const { low, high } = values.reduce((range, value) => value == null ? range
         : { low: Math.min(range.low, value), high: Math.max(range.high, value) }, { low: 0, high: 1 });
       const y = value => 16 + (high - value) / (high - low) * (height - 38);
       for (let i = 0; i <= 4; i++) {
-        const value = low + (high - low) * i / 4;
-        svgNode("line", { x1: 66, x2: 1056, y1: y(value), y2: y(value), class: "grid" }, svg);
+        const native = low + (high - low) * i / 4;
+        const value = width < 1100 && Number.isInteger(low) && Number.isInteger(high) && high - low >= 4
+          ? Math.round(native) : native;
+        svgNode("line", { x1: 66, x2: width - 44, y1: y(value), y2: y(value), class: "grid" }, svg);
         svgNode("text", { x: 58, y: y(value) + 4, "text-anchor": "end", class: "axis" }, svg, format(value));
       }
-      for (const tick of model.ticks) {
-        svgNode("line", { x1: x(tick.at), x2: x(tick.at), y1: 16, y2: height - 22, class: "grid" }, svg);
-        svgNode("text", { x: x(tick.at), y: height + 4, "text-anchor": "middle", class: "axis" }, svg, tick.label);
+      for (const tick of chartTicks) {
+        svgNode("line", { x1: position(tick.at), x2: position(tick.at), y1: 16, y2: height - 22, class: "grid" }, svg);
+        svgNode("text", { x: position(tick.at), y: height + 4,
+          "text-anchor": width < 1100 && tick === chartTicks.at(-1) ? "end" : "middle", class: "axis" }, svg, tick.label);
       }
-      return { svg, y, height };
+      return { svg, y, height, x: position };
     };
-    node("p", "Scroll charts horizontally on smaller screens to inspect the full history.", content, "muted mobile-help");
+    if (state) {
+      const panel = document.createElement("section");
+      panel.className = "snapshot-chart";
+      content.insertBefore(panel, evidence);
+      const plot = chart(state.metric.name, "Snapshots only; changes between points are unknown.",
+        state.observations.map(row => row.value), 190, panel,
+        [{ at: firstState.at, label: date(firstState.at) }, { at: lastState.at, label: date(lastState.at) }], 500);
+      for (const row of state.observations) {
+        const dot = svgNode("circle", { cx: plot.x(row.at), cy: plot.y(row.value), r: 5, class: "point" }, plot.svg);
+        svgNode("title", {}, dot, `${date(row.at)}: ${format(row.value)} ${state.metric.unit}`);
+      }
+      const snapshots = disclosure("Inspect the repository snapshots", evidence);
+      const list = node("ul", null, snapshots);
+      for (const row of state.observations) {
+        const item = node("li", null, list);
+        link({ label: `${date(row.at)}: ${format(row.value)} ${state.metric.unit}`, url: row.url }, item);
+      }
+    }
+    const history = disclosure("Measurements over time", evidence, "history");
+    node("p", "Scroll detailed charts horizontally on smaller screens.", history, "muted mobile-help");
     const path = (points, field, plot, className, step = false) => {
       let d = "", connected = false;
       for (const point of points) {
@@ -106,7 +163,7 @@ export function mountPulse(document, model) {
     const top = chart(events ? `${metric.basis === "workflow-contribution" ? "Delivery" : "Outcome"} pulse (${metric.unit}/week)` : `${metric.name} (${metric.unit})`,
       events ? "Calendar-week bars; solid: trailing 28 days; dashed: trailing 91 days. Faded bars are partial weeks. Blank rates mean insufficient coverage."
         : "Native observations, not cumulative delivery. Gaps remain unknown; overlapping intervals are not added.",
-      [...metric.series.flatMap(point => [point.value, point.baseline]), ...metric.weekly.map(point => point.rate)]);
+      [...metric.series.flatMap(point => [point.value, point.baseline]), ...metric.weekly.map(point => point.rate)], 235, history);
     for (const bucket of metric.weekly) {
       if (bucket.rate == null) continue;
       const bar = svgNode("rect", { x: x(bucket.startAt) + 1, width: Math.max(1, x(bucket.endAt) - x(bucket.startAt) - 2),
@@ -130,27 +187,29 @@ export function mountPulse(document, model) {
         contribution
           ? `Solid: all demonstrated contribution. Dotted: receipt-backed subset (${format(metric.receiptTotal)}); corroborated: ${format(metric.observedTotal - metric.receiptTotal)}. Click or focus an event to inspect evidence.`
           : "Actor-independent native outcomes, not workflow credit. Click or focus an event to inspect evidence.",
-        metric.cumulative.flatMap(point => [point.value, point.receipt]), 190);
+        metric.cumulative.flatMap(point => [point.value, point.receipt]), 190, history);
       bottom.svg.setAttribute("role", "group");
       path(metric.cumulative, "value", bottom, "primary", true);
       if (contribution) path(metric.cumulative, "receipt", bottom, "receipt", true);
-      const detail = node("aside", null, content, "event-detail");
+      const detail = node("aside", null, evidence, "event-detail");
       detail.setAttribute("aria-live", "polite");
       const show = event => {
         detail.replaceChildren();
-        node("h3", `${date(event.at)}: ${event.label}`, detail);
-        node("p", `${format(event.value)} ${metric.unit}; ${event.attribution}.`, detail);
-        node("p", `Acceptance: ${date(event.acceptance.at)}; reference ${event.acceptance.ref}.`, detail, "muted");
-        for (const edge of event.lineage ?? []) {
-          node("p", `Lineage: ${edge.outputId} ${edge.relation} ${edge.implementationId} at ${edge.at}.`, detail, "muted");
-        }
-        node("p", event.detail, detail);
+        node("h3", event.title ?? event.label, detail);
+        node("p", `${date(event.at)} - ${event.label}. Net measured change (${metric.unit}): ${format(event.value)}.`, detail);
+        node("p", event.summary ?? "Inspect the linked output and accepted implementation to understand this measured result.", detail);
         const links = node("p", null, detail, "evidence-links");
-        for (const ref of event.evidence) {
-          const link = node("a", ref.label, links);
-          link.href = ref.url;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
+        for (const ref of event.evidence) link(ref, links);
+        const technical = disclosure("Inspect this result's technical evidence", detail);
+        node("p", event.detail, technical);
+        node("p", `Acceptance: ${event.acceptance.at}; reference ${event.acceptance.ref}.`, technical, "muted");
+        node("p", event.attribution === "receipt-verified"
+          ? "An applied safe-output receipt confirms creation of a linked output. This does not verify every quality requirement."
+          : event.attribution === "corroborated"
+            ? "Retained relationships support this contribution; an applied output-creation receipt is not established here."
+            : "This is an actor-independent outcome, not workflow credit.", technical);
+        for (const edge of event.lineage ?? []) {
+          node("p", `Lineage: ${edge.outputId} ${edge.relation} ${edge.implementationId} at ${edge.at}.`, technical, "muted");
         }
       };
       metric.events.forEach((event, index) => {
@@ -170,11 +229,23 @@ export function mountPulse(document, model) {
       if (latest) show(latest);
       else node("p", "No delivery events observed; inspect coverage before interpreting zero.", detail);
     }
-    node("h2", "Interpretation and limits", content);
-    const notes = node("ul", null, content);
+    evidence.append(history);
+    const rules = disclosure("Measurement rules and evidence limits", evidence);
+    node("p", `Source: ${model.sourcePath}`, rules, "muted");
+    if (typeof model.intent?.acceptance === "string" && model.intent.acceptance) node("p", `Acceptance: ${model.intent.acceptance}`, rules);
+    node("p", `Measured movement: ${status.status.replaceAll("-", " ")}. Attention: ${status.attention.replaceAll("-", " ")}.`, rules);
+    node("p", status.reason, rules);
+    node("p", `Basis: ${metric.basis}. Better: ${metric.direction}${metric.target == null ? "" : ` toward ${metric.target}`}.`, rules);
+    if (metric.formula) node("p", `Fixed rule (${metric.version}): ${metric.formula}`, rules);
+    if (state) node("p", `Repository-state rule (${state.metric.version}): ${state.metric.formula}`, rules);
+    if (state) node("p", state.limitation, rules);
+    if (metric.currentWindow && metric.previousWindow) node("p",
+      `Comparing ${date(metric.currentWindow.startAt)} - ${date(metric.currentWindow.endAt)} with ${date(metric.previousWindow.startAt)} - ${date(metric.previousWindow.endAt)} (UTC, end exclusive).`, rules);
+    if (events) node("p", `Recent rate: ${format(status.current)} ${metric.unit}/week; previous ${format(status.previous)}. Overlapping ${metric.baselineDays}-day context: ${format(metric.baselineRate)} ${metric.unit}/week, not an independent comparison.`, rules);
+    const notes = node("ul", null, rules);
     for (const note of metric.notes) node("li", note, notes);
-    node("p", `Decision: ${model.decision.status}. Costs: ${model.cost.status}. ${model.limitation}`, content, "muted");
-    node("p", "Improving/worsening describes measured movement, not statistical significance. Attention means inspect, not disable. A saved report must be regenerated to monitor new work.", content, "muted");
+    node("p", `Decision: ${model.decision.status}. Costs: ${model.cost.status}. ${model.limitation}`, rules, "muted");
+    node("p", "Improving/worsening describes measured movement, not statistical significance. Attention means inspect, not disable. A saved report must be regenerated to monitor new work.", rules, "muted");
   };
   select.addEventListener("change", draw);
   draw();

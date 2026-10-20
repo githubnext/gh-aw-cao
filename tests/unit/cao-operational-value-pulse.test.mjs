@@ -69,6 +69,62 @@ test("delivery trends are exact adjacent-window native rates, not the overlappin
   }
 });
 
+test("beginner summaries distinguish net change, missing evidence and whole-goal verification", () => {
+  const quiet = focus(ledger(2, 0));
+  assert.match(quiet.reader.title, /No net improvement in the last 28 days/);
+  assert.equal(quiet.currentTotal, 0);
+  assert.equal(quiet.previousTotal, 2);
+  assert.match(quiet.reader.caution, /not exclusive workflow credit/);
+  assert.match(quiet.reader.next, /cannot distinguish/);
+  const worse = focus(ledger(2, -1));
+  assert.match(worse.reader.title, /has worsened/);
+  assert.equal(worse.currentTotal, -1);
+  const partial = ledger();
+  partial.coverage[0].status = "partial";
+  const unknown = focus(partial);
+  assert.match(unknown.reader.title, /Not enough evidence/);
+  assert.equal(unknown.currentTotal, null);
+  assert.equal(unknown.previousTotal, null);
+  assert.deepEqual(eventPulse(ledger()).checks, []);
+  assert.equal(eventPulse(ledger()).repositoryState, null);
+  const noWork = ledger(0, 0);
+  noWork.opportunities = 0;
+  assert.equal(focus(noWork).reader.title, "No eligible work observed");
+});
+
+test("independent snapshot context and explicit quality checks survive without becoming contribution", () => {
+  const input = ledger();
+  input.repositoryState = {
+    metric: { ...metric, id: "remaining", name: "Unresolved defects", direction: "decrease" },
+    observations: [
+      { at: input.window.startAt, value: 2, ref: "start", url: "https://github.com/octo/example/commit/start" },
+      { at: input.window.endAt, value: 8, ref: "end", url: "https://github.com/octo/example/commit/end" },
+    ],
+    limitation: "Sparse snapshots include changes by every actor.",
+  };
+  input.checks = [{ name: "No regressions", status: "not-verified", detail: "Required tests are not retained." }];
+  const model = eventPulse(input);
+  assert.deepEqual(model.repositoryState, input.repositoryState);
+  assert.deepEqual(model.checks, input.checks);
+  assert.equal(model.metrics[0].completeTotal, 3);
+  assert.equal(model.metrics[0].signal.status, "improving");
+  for (const mutate of [
+    value => { value.repositoryState.observations[1].value = NaN; },
+    value => { value.repositoryState.observations[1].at = "2026-05-02T00:00:00Z"; },
+    value => { value.repositoryState.observations[1].at = value.window.startAt; },
+    value => { value.repositoryState.observations[0].url = "javascript:alert(1)"; },
+    value => { value.repositoryState.observations[0].url = "https://token@example.com/"; },
+    value => { value.repositoryState.observations[0].ref = ""; },
+    value => { value.repositoryState.observations[0] = null; },
+    value => { value.repositoryState.metric.formula = ""; },
+    value => { value.checks[0].status = "probably-passed"; },
+  ]) {
+    const altered = structuredClone(input);
+    mutate(altered);
+    assert.throws(() => eventPulse(altered), /Invalid repository-state|Invalid report checks/);
+  }
+});
+
 test("no opportunity and unknown opportunity are not workflow failure", () => {
   const input = ledger(0, 0);
   input.opportunities = 0;
@@ -324,6 +380,8 @@ test("reports are self-contained and treat workflow goals/labels as untrusted te
   const model = eventPulse(ledger());
   model.workflowName = "</script><img src=x onerror=alert(1)>";
   model.metrics[0].events[0].detail = "</script><script>alert(2)</script>";
+  model.metrics[0].events[0].title = "</script><img src=x onerror=alert(3)>";
+  model.metrics[0].events[0].summary = "</script><script>alert(4)</script>";
   const html = renderPulse(model);
   assert.equal((html.match(/<script /g) ?? []).length, 1);
   assert.equal((html.match(/<\/script>/g) ?? []).length, 1);

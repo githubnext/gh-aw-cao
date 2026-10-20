@@ -17,6 +17,36 @@ const gain = (metric, before, after) => {
 const headline = metric => ({ ...metric.signal, metricId: metric.id, basis: metric.basis,
   unit: metric.kind === "events" ? `${metric.unit}/week` : metric.unit });
 
+export function readerSummary(metric) {
+  const status = metric.signal;
+  const contribution = metric.basis === "workflow-contribution";
+  const subject = contribution ? "Linked contribution" : metric.basis === "repository-outcome"
+    ? "The repository measure" : "The diagnostic measure";
+  const ready = status.status !== "insufficient-evidence";
+  const title = !ready ? "Not enough evidence to compare recent results"
+    : status.status === "no-opportunity" ? "No eligible work observed"
+      : metric.kind === "events" && status.current === 0
+        ? `No net improvement in the last ${metric.shortDays} days`
+        : status.status === "stalled" ? "No recent measured contribution"
+          : status.status === "improving" ? `${subject} is improving`
+            : status.status === "worsening" ? contribution && gain(metric, 0, status.current) > 0
+              ? "Recent measured contribution has slowed" : `${subject} has worsened`
+              : `${subject} is unchanged between comparable periods`;
+  return {
+    title,
+    caution: contribution
+      ? "Linked changes show a measured contribution, not exclusive workflow credit or proof that every quality requirement passed."
+      : "Repository movement includes everyone's work; it does not establish this workflow's causal impact.",
+    next: !ready || status.attention === "evidence-needed"
+      ? "Check missing coverage, evidence freshness and eligible work before judging the workflow."
+      : status.status === "no-opportunity"
+        ? "Check whether the workflow had suitable work to do; a quiet period alone is not failure."
+        : contribution
+          ? "Inspect recent proposals and their acceptance state. This view alone cannot distinguish no proposals, waiting for acceptance or ineffective changes."
+          : "Inspect the repository changes and linked implementations behind this movement before changing the workflow.",
+  };
+}
+
 export function signalPolicy(definition) {
   const primary = definition.metrics.find(metric => metric.role === "primary");
   const policy = definition.signal ?? (definition.review
@@ -111,13 +141,47 @@ export function timelinePulse(timeline) {
       ],
     };
   });
+  for (const metric of metrics) metric.reader = readerSummary(metric);
   return { schemaVersion: 1, repository: timeline.repository, workflowSlug: definition.slug,
     workflowName: definition.workflowName, sourcePath: definition.sourcePath,
+    intent: definition.intent ?? null,
     valueFunctionSha256: timeline.valueFunction.sha256 ?? null,
     window: timeline.window, ticks: ticks(time(timeline.window.startAt), time(timeline.window.endAt)),
     selectedMetricId: policy.metricId, signal: headline(metrics.find(metric => metric.id === policy.metricId)),
     metrics, decision: review.decision,
     cost: review.cost, limitation: review.limitation };
+}
+
+function reportContext(ledger) {
+  const checks = ledger.checks ?? [];
+  if (!Array.isArray(checks) || checks.some(check => !check || !check.name || !check.detail
+    || typeof check.name !== "string" || typeof check.detail !== "string"
+    || !["verified", "not-verified"].includes(check.status))) {
+    throw new Error("Invalid report checks: verification must be explicit");
+  }
+  const state = ledger.repositoryState;
+  if (state !== undefined) {
+    if (!state || !state.metric || ["id", "name", "unit", "version", "formula"].some(key =>
+      typeof state.metric[key] !== "string" || !state.metric[key])
+      || !["increase", "decrease"].includes(state.metric.direction)
+      || typeof state.limitation !== "string" || !state.limitation
+      || !Array.isArray(state.observations) || !state.observations.length) {
+      throw new Error("Invalid repository-state report context");
+    }
+    let previous = -Infinity;
+    for (const row of state.observations) {
+      const url = typeof row?.url === "string" && URL.canParse(row.url) ? new URL(row.url) : null;
+      if (!row || !finite(time(row.at)) || time(row.at) <= previous
+        || time(row.at) < time(ledger.window.startAt) || time(row.at) > time(ledger.window.endAt)
+        || time(row.at) > time(ledger.observedAt)
+        || !finite(row.value) || typeof row.ref !== "string" || !row.ref
+        || !url || url.protocol !== "https:" || url.username || url.password) {
+        throw new Error("Invalid repository-state observation or immutable evidence reference");
+      }
+      previous = time(row.at);
+    }
+  }
+  return { checks, repositoryState: state ?? null };
 }
 
 function validateLedger(ledger) {
@@ -173,6 +237,8 @@ function validateLedger(ledger) {
       || !["receipt-verified", "corroborated", "not-applicable"].includes(event.attribution)
       || (ledger.basis === "workflow-contribution" && event.attribution === "not-applicable")
       || typeof event.label !== "string" || typeof event.detail !== "string"
+      || (event.title !== undefined && (typeof event.title !== "string" || !event.title))
+      || (event.summary !== undefined && (typeof event.summary !== "string" || !event.summary))
       || !Array.isArray(event.evidence) || !event.evidence.length
       || event.evidence.some(ref => {
         try {
@@ -194,6 +260,7 @@ function validateLedger(ledger) {
 
 export function eventPulse(ledger) {
   const events = validateLedger(ledger);
+  const context = reportContext(ledger);
   const start = time(ledger.window.startAt), end = time(ledger.window.endAt);
   const complete = (left, right) => {
     if (left < start || right > end || left >= right) return false;
@@ -259,6 +326,8 @@ export function eventPulse(ledger) {
     currentWindow: { startAt: iso(end - shortDays * DAY), endAt: iso(end) },
     previousWindow: { startAt: iso(end - 2 * shortDays * DAY), endAt: iso(end - shortDays * DAY) },
     series, weekly, cumulative, events, shortDays, baselineDays,
+    currentTotal: finite(current) ? total(end - shortDays * DAY, end) : null,
+    previousTotal: finite(previous) ? total(end - 2 * shortDays * DAY, end - shortDays * DAY) : null,
     observedTotal: sum, completeTotal: complete(start, end) ? sum : null,
     receiptTotal: receipt, baselineRate: rate(end, baselineDays),
     lastPositiveAt: latestPositive?.at ?? null,
@@ -269,9 +338,10 @@ export function eventPulse(ledger) {
       "Recent movement compares adjacent 28-day rates; the overlapping 91-day curve is context, not a pre-adoption baseline.",
       "Partial calendar weeks use their actual exposure; gaps are not zero. No significance or keep threshold is invented.",
     ] };
+  metric.reader = readerSummary(metric);
   return { schemaVersion: 1, repository: ledger.repository, workflowSlug: ledger.workflowSlug,
     workflowName: ledger.workflowName, sourcePath: ledger.sourcePath, observedAt: ledger.observedAt,
-    intent: ledger.intent, provenance: ledger.provenance ?? [],
+    intent: ledger.intent, provenance: ledger.provenance ?? [], ...context,
     valueFunctionSha256: ledger.valueFunctionSha256 ?? null,
     window: ledger.window, ticks: ticks(start, end), selectedMetricId: metric.id,
     signal: headline(metric), metrics: [metric],

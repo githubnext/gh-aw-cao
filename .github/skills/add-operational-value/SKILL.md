@@ -220,6 +220,20 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   curve is context, not a pre-adoption baseline. Without an agreed decision bar
   or matched costs, report **not rated** and **not measured**.
 
+  Lead reports with the goal and a deterministic plain-language assessment,
+  then three compact facts: recent progress, historical contribution and
+  independent repository state. Show a concise unknown-quality caveat and,
+  when available, the independent snapshot chart. Do not make the default
+  report a tutorial: avoid card grids, a workflow walkthrough and repeated
+  disclaimers. Keep missing coverage visible. Put goal-check details,
+  investigation guidance, example implementations, elapsed times, rates,
+  formulas, receipts and raw IDs behind one **Explore evidence** disclosure,
+  with keyboard-accessible details inside. Do not invent a health score,
+  causal verdict, pending count,
+  reason for inactivity or keep/retire recommendation. Optional structured
+  repository snapshots and verification checks follow the event-ledger
+  contract; absence must say **not measured** or **not verified**.
+
 ## Collect and report Daily File Diet
 
 The skill includes a complete fresh acquisition-to-report entry point for
