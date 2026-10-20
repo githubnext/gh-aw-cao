@@ -75,3 +75,34 @@ func TestAdmissionValidateOperatorReadiness(t *testing.T) {
 		t.Fatalf("environment defaults: %v", err)
 	}
 }
+
+func TestResolveAdmissionInputs(t *testing.T) {
+	t.Setenv("CAO_ADMISSION_POLICY_FILE", "/env/policy.json")
+	t.Setenv("CAO_ADMISSION_AUDIENCE", "https://env.example/api")
+	path, audience, err := resolveAdmissionInputs("", "")
+	if err != nil || path != "/env/policy.json" || audience != "https://env.example/api" {
+		t.Fatalf("env fallback: %q %q %v", path, audience, err)
+	}
+	path, audience, err = resolveAdmissionInputs("/flag.json", "https://flag.example/api")
+	if err != nil || path != "/flag.json" || audience != "https://flag.example/api" {
+		t.Fatalf("flags must win: %q %q %v", path, audience, err)
+	}
+}
+
+func TestResolveAdmissionInputsRequiresBoth(t *testing.T) {
+	t.Setenv("CAO_ADMISSION_POLICY_FILE", "")
+	t.Setenv("CAO_ADMISSION_AUDIENCE", "")
+	for _, c := range [][2]string{{"", ""}, {"/p.json", ""}, {"", "https://a.example/api"}} {
+		if _, _, err := resolveAdmissionInputs(c[0], c[1]); err == nil {
+			t.Fatalf("expected error for %q", c)
+		}
+	}
+}
+
+func TestValidateAdmissionInputsMissingSnapshot(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "absent.json")
+	err := validateAdmissionInputs(t.Context(), missing, "https://cao.example/api/admission")
+	if err == nil || !strings.Contains(err.Error(), "snapshot is not ready") {
+		t.Fatalf("got %v", err)
+	}
+}
