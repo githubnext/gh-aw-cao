@@ -113,6 +113,34 @@
         39365869604
       ],
       "outcome": "incomplete: during the 2026-10-20T03:44:29Z to 2026-10-20T07:47:05Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 15 successful runs were freshness checks that skipped both jobs. The newly observed schedule run 39388787873 completed only its 10-second schedule-freshness job and skipped build and deploy. The sole comparable build restored the dashboard cache, installed dependencies in 14 seconds, built documentation in 9 seconds, completed the build job in 70 seconds, and completed deployment in 18 seconds. One build sample cannot establish required median/p90 build timings or repeated cache effectiveness. Fewer than five comparable successful build samples were available, so the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T08:27:08Z",
+      "worker_run_id": "39393191689",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39390537827,
+        39388787873,
+        39386887878,
+        39386513324,
+        39383844471,
+        39381458818,
+        39381197975,
+        39378144737,
+        39376963126,
+        39376153086,
+        39375999551,
+        39375801479,
+        39374762521,
+        39372664779,
+        39371749392,
+        39370827216,
+        39369620161,
+        39369423241,
+        39367420475,
+        39366749142
+      ],
+      "outcome": "incomplete: during the 2026-10-20T03:54:34Z to 2026-10-20T08:02:30Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 15 successful runs were freshness checks that skipped both jobs. The newly observed schedule run 39390537827 completed a 9-second schedule-freshness job and skipped build and deploy. The sole comparable build restored the dashboard cache, installed dependencies in 14 seconds, built documentation in 9 seconds, completed the build job in 70 seconds, deployment in 18 seconds, and the workflow in 97 seconds with no queue delay. One build sample cannot establish required median/p90 build, deploy, or cache-effectiveness evidence. Fewer than five comparable successful build samples were available, so the category remains next."
     }
   ]
 }
