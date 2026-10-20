@@ -7,6 +7,12 @@ Operational value is the degree to which a workflow's intended repository outcom
 
 It measures repository outcomes rather than workflow runs, generated output, or an agent's assessment. A person or another system achieving the same outcome must count as success under the same contract.
 
+For a worked evidence flow and reproducible report, see
+[Trace workflow goals to measured value](operational-value-how-to.md).
+The how-to follows Daily File Diet from natural-language intent through safe
+outputs and downstream Git changes, and identifies the newer source-branch
+tooling required to replay its saved pulse.
+
 The dashboard's **Operational Value** view starts with repositories. Select a repository to see its retained outcome measurements across campaigns and standalone workflows; campaign registration is not required. Each repository appears once in the overview, while workflow, measure, native unit, direction, and evaluator boundaries remain separate in history and comparisons. **Evidence** lists repository coverage and the latest native values. Missing measurements are not zero value. Native run-scoped gh-aw operational-grader results are separate evidence and are not included in this repository-outcome view.
 
 CAO uses one shared campaign module for both collection paths:
