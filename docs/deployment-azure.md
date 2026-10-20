@@ -50,7 +50,7 @@ The `server/azure/main.bicep` template creates the following resources in one re
 - At least one GitHub organization, or team in `ORGANIZATION/TEAM-SLUG` format, whose active members can read the dashboard.
 - A PostgreSQL database and connection URL. The current Bicep template does not provision PostgreSQL or its secret; configure `CAO_POSTGRES_URL` separately.
 - A private network path from the Function App to PostgreSQL and Azure Managed Redis, and from any host that runs ingestion. The template turns off public network access for Redis but doesn't create a virtual network or private endpoint. You must add private networking that fits your tenant.
-- A dashboard payload from the `cao-dashboard.yml` workflow in your control repository. To produce one, first complete [the GitHub Actions only deployment](deployment-actions.md). If you don't want to publish to Pages, set `control-plane.campaigns.dashboard.deploy` to `false`.
+- A dashboard payload from the `cao-dashboard.yml` workflow in your control repository. Follow the workflow and collection setup in [the GitHub Actions only deployment](deployment-actions.md), but set `control-plane.campaigns.dashboard.deploy` to `false` when Pages publication is not wanted. Azure serves the dashboard through the Go handler; a Pages site is not required.
 
 The optional collection profile also needs a container image of the collector, a GitHub App, and Azure Container Apps. For more information, see [Using the optional collection profile](#using-the-optional-collection-profile).
 

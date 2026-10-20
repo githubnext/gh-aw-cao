@@ -607,6 +607,15 @@ The default local profile is loopback-only. The separate hosted profile requires
 GitHub OAuth and explicit organization/team authorization; neither profile
 grants database access to clients.
 
+Hosted container, Azure Functions, and external-listener deployments SHALL
+serve the built dashboard HTML and assets through the complete Go handler on
+the same origin as OAuth, query APIs, and revision events. They SHALL NOT
+require a separately hosted Pages or static frontend. Hosted startup SHALL
+reject a missing, unreadable, or empty built `index.html`. Dashboard entry
+responses SHALL select the `server-http` backend and SHALL NOT be cached as
+static HTML. Hosted service failures SHALL NOT fall back to browser shard
+ingestion, IndexedDB query execution, or the separate Pages deployment.
+
 `gh-aw-cao-dashboard-data` is the logical database name. Every implemented
 store uses `id` as its key path. The implemented secondary indexes are:
 

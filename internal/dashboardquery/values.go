@@ -267,7 +267,19 @@ func engineISO(value float64) string {
 	if !engineFinite(value) || value < float64(math.MinInt64) || value >= -float64(math.MinInt64) {
 		return ""
 	}
-	date := time.UnixMilli(int64(value)).UTC()
+	milliseconds := int64(math.MinInt64)
+	if value != float64(math.MinInt64) {
+		// Keep the narrowing check in the integer domain for static analysis.
+		magnitude := uint64(math.Abs(value))
+		if magnitude > math.MaxInt64 {
+			return ""
+		}
+		milliseconds = int64(magnitude)
+		if value < 0 {
+			milliseconds = -milliseconds
+		}
+	}
+	date := time.UnixMilli(milliseconds).UTC()
 	text := date.Format("2006-01-02T15:04:05.000Z")
 	if date.Year() < 0 || date.Year() > 9999 {
 		year := date.Year()

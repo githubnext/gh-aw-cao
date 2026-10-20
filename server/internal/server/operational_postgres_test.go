@@ -39,7 +39,7 @@ func TestPostgresHostedOAuthSurvivesRestartWithoutRedis(t *testing.T) {
 	})
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	config := Config{
-		Database: constructorDatabase(), SiteDirectory: t.TempDir(),
+		Database: constructorDatabase(), SiteDirectory: hostedTestSite(t),
 		HostProfile: hostedHostProfile(), Listen: "0.0.0.0:8443",
 		CertFile: "certificate.pem", KeyFile: "key.pem",
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
