@@ -11,11 +11,18 @@ const scripts = path.join(root, ".github/skills/add-operational-value/scripts");
 
 test("skill connects frozen intent, final acceptance, dated lineage and reusable reporting", () => {
   const skill = readFileSync(path.join(root, ".github/skills/add-operational-value/SKILL.md"), "utf8");
-  assert.match(skill, /Intent defines what to measure; acceptance anchors when to measure it/);
+  assert.match(skill, /Intent defines what to measure; cadence tracks repository state/);
+  assert.match(skill, /Do not sample only at accepted outputs/);
+  assert.match(skill, /same elapsed follow-up/);
+  assert.match(skill, /right-censored at the observation cutoff/);
   assert.match(skill, /ClosedEvent.closer/);
   assert.match(skill, /collectEvents/);
   assert.match(skill, /--report/);
   assert.match(skill, /examples\/daily-file-diet.mjs/);
+  assert.match(skill, /examples\/acquire-file-diet.mjs/);
+  assert.match(skill, /gh-aw-execution/);
+  assert.match(skill, /Tracking IDs locate outputs, not accepted/);
+  assert.match(skill, /not.*a current-evidence/);
   const events = JSON.parse(readFileSync(path.join(root, "tests/fixtures/operational-value/file-diet-events.json"), "utf8")).events;
   assert.equal(events.filter(event => !event.lineage.some(edge => edge.relation === "connected")
     && event.lineage.some(edge => edge.relation === "closed-by")).length, 26);

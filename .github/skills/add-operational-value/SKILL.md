@@ -4,7 +4,7 @@ description: "Define and measure workflow value from Markdown intent, accepted s
 argument-hint: "OWNER/REPO [WORKFLOW-NAME] [--campaign CAMPAIGN-SLUG]"
 allowed-tools: bash node gh
 metadata:
-  version: "0.8.0"
+  version: "0.9.0"
 ---
 
 # Add Operational Value
@@ -27,7 +27,8 @@ Do not derive the primary measure from a gh-aw workflow's own output, recommenda
 
 ## Intent, acceptance and measurement
 
-**Intent defines what to measure; acceptance anchors when to measure it.**
+**Intent defines what to measure; cadence tracks repository state;
+acceptance anchors linked contribution.**
 Recover the intended outcome and checks from workflow Markdown, imports,
 precomputes and the effective executor. Translate them into a fixed value
 function before inspecting results; do not invent a new goal or score.
@@ -51,6 +52,24 @@ primary repository measure separate: improvements by anyone must count.
 Preserve full-acceptance checks when reporting a separately named, versioned
 partial improvement. Missing quality evidence and missing attribution receipts
 qualify different claims; neither is an invented zero.
+
+Do not sample only at accepted outputs: that would condition observation on
+delivery and miss independent changes, deterioration, no-op periods and
+reversals. Measure the actor-independent primary at the frozen cadence whether
+or not the workflow runs or anything merges. Event-aligned before/after
+measurements are additional contribution diagnostics and retain zero/negative
+effects. Where the outcome is response to a repository change, retain that
+opportunity's start time and measure response time or time in the adverse state
+under the agreed contract; do not wait until a positive result to observe it.
+
+Acceptance latency varies. Keep opportunity/start, delivery/acceptance,
+observation and maturation clocks separate. Follow cohorts from opportunity
+creation and compare the same elapsed follow-up, not only completed cases.
+An unresolved opportunity is right-censored at the observation cutoff, not a
+zero, rejection or failed outcome. Report pending counts and ages, coverage and
+time-to-acceptance evidence; later checks and reversals remain visible. Do not
+choose a maturation interval, causal lag or follow-up horizon after seeing
+results, or claim a reaction was caused by the workflow from timing alone.
 
 ## Inputs
 
@@ -142,6 +161,30 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
     use the frozen native rule and independent postcondition checks, not PR
     counts or the model's assessment. It is not a new primary metric or a
     substitute for the module's strict acceptance diagnostic.
+  - Include a bounded acquisition entry point for facts absent from canonical
+    data; a renderer plus a historical replay is not a current-evidence
+    implementation. Reuse `scripts/github-evidence.mjs` for workflow/tracker
+    identities, execution markers, run identity, dated issue/PR graph and
+    timelines, and `scripts/git-evidence.mjs` for immutable native inventories.
+    Acquisition may read GitHub; window scoring and rendering must remain
+    offline. Preserve the acquired proof so another run can replay it.
+  - Discover candidates using exact `gh-aw-workflow-id`, `gh-aw-tracker-id`,
+    versioned `gh-aw-execution` markers, named legacy footers and declared
+    workflow-specific search rules. Tracking IDs locate outputs, not accepted
+    value. Verify the referenced producer repository, workflow path, run,
+    attempt and revision when retained; compare applied safe-output receipt
+    identities when available. A footer is not an applied receipt, a deleted
+    run is explicit unavailable evidence, and a title match alone is not origin
+    proof. Never follow a reference into an undeclared repository.
+    If a retained artifact names a different created output, keep that
+    contradiction explicit rather than crediting the copied tracking/footer
+    text; auxiliary tracked outputs need not be eligible outcome opportunities.
+  - Join actual output IDs through dated implementation relationships to the
+    Git graph. Deduplicate implementations, use the merge's actual first
+    parent rather than its PR base field, and measure all eligible replacement
+    files. Keep producer, issue, connection, merge, closure, observation and
+    required maturation timestamps distinct. Preserve incomplete pagination,
+    source retention and unobserved/deleted-output limitations.
 
 7. **Offer deterministic evaluation.** Ask whether to evaluate the verified function now. If declined, stop. If accepted, capture one UTC endpoint and run:
 
@@ -157,6 +200,12 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   against the same frozen metric, intent, repository and evaluation endpoint.
   Otherwise it reports the existing timeline without inventing event deliveries.
   A complete matching archived ledger is reused; `--refresh` is explicit.
+  When the user requests a report **as of today** or a fresh refresh, acquire
+  evidence through the requested UTC endpoint first. Reuse verified immutable
+  Git measurements and preserved receipts by identity/digest, but refresh
+  mutable discovery and lifecycle state. Do not move the evidence-capture
+  timestamp or extend complete coverage merely by rerendering an old ledger.
+  Publish only after acquisition, validation and measurement succeed.
   The renderer can also replay either input directly:
 
   ```bash
@@ -171,7 +220,35 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   curve is context, not a pre-adoption baseline. Without an agreed decision bar
   or matched costs, report **not rated** and **not measured**.
 
-## Reproduce the Daily File Diet report
+## Collect and report Daily File Diet
+
+The skill includes a complete fresh acquisition-to-report entry point for
+`github/gh-aw` / `daily-file-diet`. It uses `gh api`, Git and `unzip`; authenticate
+with read access to the repository and retained Actions artifacts. It never
+dispatches a workflow or mutates the target repository.
+
+```bash
+END_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+node .github/skills/add-operational-value/examples/acquire-file-diet.mjs \
+  "$END_AT" NEW_REPORT_DIRECTORY [PREVIOUS_PROOF_DIRECTORY]
+```
+
+Pass an unused report directory. Omit the optional previous-proof argument
+for a clean acquisition. To refresh incrementally, supply a prior report's
+`proof/` directory, or the pinned historical proof described below.
+The command refreshes output discovery, tracking/run identity and lifecycle
+graphs, then fetches missing Git objects and measures eligible files. Existing
+verified blob measurements and applied-output receipts remain reusable even
+after their upstream artifacts expire; unavailable new evidence is not invented.
+Temporary Git and request caches are workspace-local and removed in `finally`.
+
+The result directory contains `proof/`, `daily-file-diet-pulse-events.json`,
+`daily-file-diet-pulse.json` and `daily-file-diet-pulse.html`. Acquisition fails
+closed on identity mismatches, incomplete bounded search, changed adoption,
+corrupt evidence or exhausted budgets. Do not claim full acceptance, historical
+discovery completeness or causal impact from tracking and structural facts.
+
+### Replay the preserved example
 
 Use the preserved `github/gh-aw` evidence from source revision
 `0782148c0af21f4f1d10b7cb5e81b571ed58c463` on
@@ -193,7 +270,8 @@ including a **13-reduction receipt-backed subset**, latest 28-day delivery
 Full behavior preservation remains unknown. This is replay of a saved,
 outcome-informed retrospective instrument, not a fresh prospective design or
 proof of causal impact. It does not require copying experimental executable
-code, acquiring live evidence or installing a campaign.
+code or installing a campaign. Those expected numbers belong to the October 18
+proof, not a target for fresh collections.
 
 ## Design Invariants
 

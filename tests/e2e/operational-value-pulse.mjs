@@ -9,7 +9,7 @@ const root = path.resolve(import.meta.dirname, "../..");
 mkdirSync(path.join(root, ".tmp"), { recursive: true });
 const directory = mkdtempSync(path.join(root, ".tmp", "value-pulse-browser-"));
 try {
-  const ledger = JSON.parse(readFileSync(path.join(root, "tests/fixtures/operational-value/file-diet-events.json"), "utf8"));
+  const ledger = JSON.parse(readFileSync(process.argv[2] ?? path.join(root, "tests/fixtures/operational-value/file-diet-events.json"), "utf8"));
   const output = path.join(directory, "pulse.html");
   const model = writePulse(ledger, output);
   const browser = await chromium.launch({ headless: true });
@@ -27,7 +27,7 @@ try {
           await page.locator("[data-event]").first().waitFor();
           assert.equal(await page.locator("h1").textContent(), "Daily File Diet");
           assert.match(await page.locator("main").innerText(), /Goal: Identify oversized production Go files/);
-          assert.equal(await page.locator('[data-event]').count(), 51);
+          assert.equal(await page.locator('[data-event]').count(), model.metrics[0].events.length);
           assert.equal(await page.locator("svg").count(), 2);
           const first = page.locator('[data-event]').first();
           await first.focus();

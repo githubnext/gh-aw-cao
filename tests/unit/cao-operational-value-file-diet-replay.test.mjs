@@ -87,6 +87,18 @@ test("File Diet measures actual merge-parent inventories and replacement files, 
   assert.throws(() => fileDietEvents(input), /Missing immutable inventory/);
 });
 
+test("tracked auxiliary outputs and receipts for another object are not credited as deliveries", () => {
+  for (const change of [
+    issue => { issue.eligible = false; },
+    issue => { issue.receipt = { status: "not-applied-to-output", reason: "Artifact created another issue" }; },
+  ]) {
+    const input = example();
+    change(input.proof.issues[0]);
+    const ledger = fileDietEvents(input);
+    assert.equal(ledger.events.length, 0);
+    assert.match(ledger.limitations[1], /auxiliary outputs/);
+  }
+});
 test("unmerged proposals, later connections and disconnected links do not become deliveries", () => {
   for (const change of [
     input => { input.proof.pulls[0].mergedAt = null; },

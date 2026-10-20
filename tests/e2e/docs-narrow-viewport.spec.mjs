@@ -47,7 +47,11 @@ for (const colorScheme of ["light", "dark"]) {
       await expect(content).toContainText("value function");
       await expect(content).toContainText("at least 800 lines");
       await expect(content).toContainText("1,129 to 248 lines");
+      await expect(content).toContainText("fixed cadence, including periods");
+      await expect(content).toContainText("compare cohorts with equal follow-up");
+      await expect(content).toContainText("Unresolved work is not automatically zero or failure");
       await expect(content.locator(".mermaid svg")).toBeVisible();
+      await expect(content.locator(".mermaid svg")).toContainText("Fixed-cadence repository snapshots");
       expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
       for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
         const href = await link.getAttribute("href");

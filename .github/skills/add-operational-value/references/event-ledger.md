@@ -4,6 +4,16 @@ The value function defines **what** an outcome means. An accepted output or
 linked implementation supplies **when and where** to evaluate it. An event
 records the independently measured native result, not merely a merge or run.
 Keep primary repository state independent of workflow outputs.
+Its frozen cadence continues between deliveries, including deterioration and
+reversals. This ledger is the acceptance-timed contribution view, not a
+replacement for that primary time series. Sparse snapshots cannot demonstrate
+the timing of changes between their cutoffs.
+
+Track opportunity and acceptance times separately in the underlying lifecycle
+proof. Pending work is right-censored, not failed; compare opportunity cohorts
+at equal follow-up ages. Delivery-date rates measure throughput, not
+time-to-acceptance or response speed. Do not derive latency from completed
+events alone or interpret a quiet delivery period as evidence of no reaction.
 
 ## Ledger interface
 
@@ -93,6 +103,24 @@ ledgers are reused unless `--refresh` is explicit. Refresh cannot delete or
 rewrite preserved accepted events, their native values, delivery dates or
 accepted revisions. Failed validation does not replace published artifacts.
 An evaluation without `--report` leaves the archived ledger intact.
+
+## Acquisition is separate from replay
+
+Fresh reports must first collect facts through an explicit endpoint. Use the
+shared GitHub helpers to discover tracked outputs and verify producer identity,
+retain applied-output receipts, and collect dated lifecycle relationships.
+Tracking IDs and execution markers establish discovery/provenance claims, not
+acceptance or measured value. Use immutable Git identities for native
+measurements at acceptance. The evaluator and renderer consume those saved
+facts without making remote calls.
+
+The File Diet entry point `examples/acquire-file-diet.mjs END_AT NEW_DIRECTORY
+[PREVIOUS_PROOF_DIRECTORY]` orchestrates all stages. It keeps the original
+receipt observation date and reuses immutable measurements; fresh lifecycle
+collection gets a new observation date. A saved October 18 ledger rerendered
+on October 20 is still October 18 evidence. Never relabel it as a fresh capture.
+Output files are published only after validation, and temporary request caches
+and bare Git repositories are removed even on failure.
 
 ## Evidence rules
 

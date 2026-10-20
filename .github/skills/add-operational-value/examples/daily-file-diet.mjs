@@ -81,7 +81,9 @@ export function fileDietEvents({ proof, inventories }) {
   };
   const oversized = commit => inventory(commit).filter(file => file.lines >= 800).length;
   const root = `https://github.com/${repository}`;
-  const receipts = new Set(proof.issues.filter(receiptVerified).map(issue => issue.number));
+  const eligibleIssues = proof.issues.filter(issue => issue.eligible !== false
+    && issue.receipt?.status !== "not-applied-to-output");
+  const receipts = new Set(eligibleIssues.filter(receiptVerified).map(issue => issue.number));
   const events = [];
   let undatedClosingLinks = 0;
   for (const pull of proof.pulls) {
@@ -91,7 +93,7 @@ export function fileDietEvents({ proof, inventories }) {
     assert.equal(pull.graph.mergeCommit, pull.mergeSha, "Accepted revision mismatch");
     assert.equal(pull.graph.mergedAt, pull.mergedAt, "Acceptance time mismatch");
     const lineage = [];
-    const linked = proof.issues.filter(issue => {
+    const linked = eligibleIssues.filter(issue => {
       if (Date.parse(issue.createdAt) > Date.parse(pull.createdAt)) return false;
       const connection = issue.timeline.events.filter(event => ["connected", "disconnected"].includes(event.type)
         && event.target?.kind === "pull-request" && event.target.number === pull.number
@@ -142,8 +144,9 @@ export function fileDietEvents({ proof, inventories }) {
   const window = { startAt: proof.adoption.at, endAt: proof.until };
   const complete = Array.isArray(proof.discovery) && proof.discovery.length > 0
     && proof.discovery.every(item => item.complete === true)
-    && proof.issues.every(issue => issue.timeline.complete === true)
-    && proof.pulls.filter(pull => pull.mergedAt).every(pull => pull.graph.closingLinksComplete === true);
+    && proof.issues.every(issue => issue.timeline.complete === true && issue.graph?.historyComplete !== false)
+    && proof.pulls.filter(pull => pull.mergedAt).every(pull =>
+      pull.graph.closingLinksComplete === true && pull.graph.historyComplete !== false);
   return {
     schemaVersion: 1, kind: "operational-value-events",
     repository, workflowSlug: "daily-file-diet", workflowName: "Daily File Diet", sourcePath,
@@ -151,7 +154,10 @@ export function fileDietEvents({ proof, inventories }) {
       goal: "Identify oversized production Go files and promote behavior-preserving decomposition.",
       acceptance: "This named structural facet measures net 800+ file reductions at linked merges; full behavior-preserving acceptance remains unknown.",
     },
-    provenance: [{ sourceRevision, proofDigest: digest(proof), kind: "preserved-retrospective-proof" }],
+    provenance: [{ sourceRevision, proofDigest: digest(proof),
+      kind: proof.acquisition?.kind ?? "preserved-retrospective-proof",
+      ...(proof.acquisition ? { acquisition: proof.acquisition } : {}),
+      ...(proof.previousProof ? { previousProof: proof.previousProof } : {}) }],
     observedAt: proof.observedAt, cadenceDays: 1, maturationDays: 0,
     metric: { id: "oversized-files-reduced", name: "Workflow-enabled oversized-file reductions",
       unit: "files", direction: "increase", version: "observed-800-line-net-reductions-v1",
@@ -160,12 +166,17 @@ export function fileDietEvents({ proof, inventories }) {
     opportunities: oversized(last.commit), events,
     limitations: [
       "Coverage is the surviving discovered File Diet issue cohort and its explicit merge links, not deleted outputs or an exclusive causal effect.",
+      ...(proof.issues.some(issue => issue.eligible === false || issue.receipt?.status === "not-applied-to-output")
+        ? ["Tracked auxiliary outputs and artifacts naming a different created output remain in the lifecycle proof but are not credited as eligible File Diet deliveries."] : []),
       ...(!complete ? ["Discovery or relationship history is incomplete; observed events do not establish complete-period totals."] : []),
       ...(undatedClosingLinks ? [`${undatedClosingLinks} retained closing links lack a dated connection or closed-by event; these corroborate lineage rather than prove when that relationship was recorded.`] : []),
       "Creation receipts strengthen attribution within the observed contribution; they do not cap its independently measured native change.",
       "Full behavior preservation, required coverage and all-new-files-under-500 acceptance remain unverified; this measures structural progress.",
       `The repository oversized-file count changes from ${oversized(proof.adoption.commit)} to ${oversized(last.commit)}. Other actors' growth is not attributed to this workflow.`,
-      "Replay validates preserved digests and identities; it does not reacquire Git objects, historical links or expired receipt archives.",
+      "This contribution pulse is not a continuous repository-state or response-latency series; sparse repository snapshots cannot locate changes between their cutoffs.",
+      proof.acquisition
+        ? "GitHub relationships were freshly collected; immutable inventories and verified receipts are reused by digest where available. Expired receipts remain unavailable unless previously preserved."
+        : "Replay validates preserved digests and identities; it does not reacquire Git objects, historical links or expired receipt archives.",
     ],
   };
 }

@@ -7,7 +7,8 @@ We measure **operational value** by checking whether a workflow's intended
 repository outcome was attained—not whether a run succeeded or produced output.
 This guide assumes you know workflow Markdown, precomputes and safe outputs.
 
-**Intent defines what we measure; output acceptance anchors when we measure it.**
+**Intent defines what we measure. A fixed cadence tracks the repository;
+acceptance anchors each linked contribution.**
 
 <ol class="cao-value-trail" aria-label="Five steps from a goal to evidence">
 <li><svg class="cao-value-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1.5a6.5 6.5 0 1 0 6.016 4.035.75.75 0 0 1 1.388-.57 8 8 0 1 1-4.37-4.37.75.75 0 1 1-.569 1.389A6.473 6.473 0 0 0 8 1.5Zm6.28.22a.75.75 0 0 1 0 1.06l-4.063 4.064a2.5 2.5 0 1 1-1.06-1.06L13.22 1.72a.75.75 0 0 1 1.06 0ZM7 8a1 1 0 1 0 2 0 1 1 0 0 0-2 0Z"></path></svg><strong>1. Define value</strong><span>Translate the workflow's goal and checks into a fixed measurement rule.</span></li>
@@ -31,9 +32,10 @@ for full acceptance.
 
 ```mermaid
 flowchart TD
-  accTitle: Intent defines the value function; acceptance anchors its evaluation
-  accDescr: Markdown intent defines a fixed value function. Applied output is explicitly linked to an accepted implementation. Its merge locates the before and after Git revisions where that function is evaluated.
+  accTitle: Track repository state regularly and measure linked contributions at acceptance
+  accDescr: Markdown intent defines a fixed value function. Repository snapshots track the problem at a fixed cadence regardless of delivery. Applied output is linked to an accepted implementation whose merge locates before and after Git revisions for a separate contribution measurement.
   G["Markdown + precomputes: intent"] --> V["Fixed value function: what to measure"]
+  V --> S["Fixed-cadence repository snapshots: primary outcome"]
   G --> O["Applied safe output: issue"]
   O -->|"Explicit implementation link"| A["Accepted implementation: merged PR"]
   A -->|"Delivery time"| M["Merge commit: after"]
@@ -43,7 +45,12 @@ flowchart TD
   M --> D
 ```
 
-## Measure at the acceptance point
+## Measure regularly, and at acceptance
+
+Measure the primary repository state at a fixed cadence, including periods
+with no accepted output. This reveals growth, recovery and reversals regardless
+of who changes the repo. Measuring only at merges would select for completed
+work and miss what happens between them.
 
 Track the safe output's actual issue or PR through its lifecycle. For a proposal,
 follow explicit links to the accepted implementation. Its merge time
@@ -51,6 +58,10 @@ locates the **actual first parent** and **merge commit** for before/after checks
 Apply the fixed function to all eligible files, including replacements; count
 each PR once. If acceptance requires later evidence, wait for that maturation
 period. Pending or rejected outputs are not delivered improvements.
+Acceptance times vary: keep each opportunity's start and acceptance times,
+report pending work and its age, and compare cohorts with equal follow-up.
+Unresolved work is not automatically zero or failure. Retain zero and negative
+changes at accepted merges, too.
 
 For example, [github/gh-aw#55785](https://github.com/github/gh-aw/pull/55785)
 links to [github/gh-aw#55776](https://github.com/github/gh-aw/issues/55776).
@@ -74,12 +85,14 @@ timing alone does not prove causation.** A merge is not proof of every quality
 requirement. Missing evidence is unknown, not zero.
 
 Use `/add-operational-value OWNER/REPO WORKFLOW` to design and verify a measure
-with the skill. Reuse that fixed definition for subsequent evaluations.
+with the skill. It gathers tracked outputs, verifies available producer
+evidence, follows dated implementation links and measures the accepted Git
+revisions. Reuse that fixed definition for subsequent evaluations.
 
 > [!IMPORTANT]
-> The skill includes the report renderer and File Diet replay tool. Replaying
-> this saved example requires its preserved evidence from the pinned
-> `mnkiefer-workflow-operational-value` source branch.
+> A current report requires fresh evidence collection, not just rerendering.
+> The skill includes File Diet acquisition and offline replay commands.
+> The linked October 18 example remains a saved historical report.
 
 For research, limitations and exact replay commands, read the
 [long-form blog article](/gh-cao/blog/measuring-agent-work-value/).

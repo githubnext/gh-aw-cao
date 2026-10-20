@@ -15,7 +15,8 @@ The missing connection is from that known intent, through applied outputs,
 to independently verified changes in repository history. That is a property of
 agentic workflows, not something that requires CAO.
 
-**Intent defines what to measure; acceptance anchors when to measure it.**
+**Intent defines what to measure; a fixed cadence tracks repository state;
+acceptance anchors linked contribution.**
 Translate the declared outcome and checks into a fixed value function before
 examining results. Follow each applied output to its final acceptance state,
 including a linked downstream implementation when the output is a proposal.
@@ -27,7 +28,20 @@ remain visible without being counted as delivery.
 
 This event-anchored check explains contribution. Keep the primary repository
 measure independent: it must also record improvements by people or other tools,
-without requiring a workflow output or merge event.
+without requiring a workflow output or merge event. Observe it regularly,
+including quiet periods, adverse changes and later reversals. Sampling only
+at accepted changes would condition observation on delivery and conceal what
+happens while work is pending.
+
+There are distinct clocks: the opportunity or repository change that starts
+the work, delivery/acceptance, evidence observation, and any maturation or
+durability follow-up. Acceptance may take minutes or months. A delivery-date
+chart describes throughput, not response speed. Compare opportunity cohorts at
+the same elapsed follow-up; unresolved cases are **right-censored** at the
+cutoff, not automatically failed or zero-valued. Keep pending counts and ages
+alongside completed outcomes, and freeze any response-time rule or follow-up
+horizon before examining results. Neither a reaction in time nor acceptance
+alone demonstrates causation.
 
 An agent can pass a test, open a useful PR and still fail to save the team time.
 It can also help deliver useful work without making the whole repository
@@ -168,9 +182,10 @@ This example closes an evidence gap between "suggestion produced" and
 "independently checked change delivered." It does not close every gap to
 productivity or financial return.
 
-The updated skill includes a shared HTML/JSON report renderer and a File Diet
-replay example. The preserved input evidence remains on the experimental
-branch; broader experimental discovery and acquisition tools are not required.
+The updated skill includes a shared HTML/JSON renderer, tracking and Git
+evidence helpers, and File Diet acquisition and replay entry points. The
+historical input proof remains on the experimental branch; its executable
+tools do not need to be copied.
 See the
 [replay prerequisites](#replay-the-file-diet-report).
 The existing [CAO collection path](/gh-cao/operational-value/) is a separate integration.
@@ -261,6 +276,29 @@ There is no honest single score that fills in unknown quality, costs and
 causality for you.
 
 ## Replay the File Diet report
+
+For a **fresh report**, authenticate `gh` with repository and Actions artifact
+read access, and run the skill's collector. Git and `unzip` are also required:
+
+```sh
+END_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+node .github/skills/add-operational-value/examples/acquire-file-diet.mjs \
+  "$END_AT" .tmp/file-diet-today
+```
+
+Use an unused output directory. Supply an earlier report's `proof/` directory
+as the optional third argument to reuse verified immutable inventories and
+preserved receipts. The collector refreshes tracking-ID, execution-marker and
+legacy-footer discovery, producer identity and issue/PR lifecycle evidence,
+then measures native Git facts and generates the report. Tracking is not
+acceptance; merge is not proof of all quality checks. The command is read-only
+against GitHub, bounded, and cleans up its temporary Git/request data.
+
+Its `proof/` directory makes the new collection replayable. The report states
+the actual measurement endpoint and evidence-capture date. **Replaying old
+evidence does not refresh it.**
+
+For a **historical replay**, follow the commands below.
 
 Use this checkout's updated skill to replay the **preserved evidence** from
 experimental revision `0782148c0af21f4f1d10b7cb5e81b571ed58c463`.
