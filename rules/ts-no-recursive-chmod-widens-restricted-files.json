@@ -14,6 +14,16 @@
       "txn_id": "refiner-38065270021-1"
     },
     {
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Searched all .ts/.js/.cjs/.mjs sources under github/gh-aw for execa(.sync)('chmod',['-R',...]), shell strings containing 'chmod -R', and manual readdirSync-driven recursive chmod walks: all 26 chmodSync/fchmodSync call sites target a single explicit file or directory path, none recursive. Recursive 'chmod -R' usage exists only in shell scripts under actions/setup/sh, outside this JS/TS-scoped rule.",
+      "target_commit": "97b70090f01eab67204b05d8d897506c1c657d2d",
+      "target_repo": "github/gh-aw",
+      "true_positive_count": 0,
+      "txn_id": "refiner-37835259305-5"
+    },
+    {
       "false_negative_count": 1,
       "false_positive_count": 4,
       "readiness_for_target": "needs-work",
@@ -85,24 +95,6 @@
       "readiness_for_target": "needs-work",
       "target_repo": "github/gh-aw-firewall",
       "txn_id": "refiner-39067866988-1"
-    },
-    {
-      "readiness_for_target": "not-applicable",
-      "true_positive_count": 0,
-      "false_positive_count": 0,
-      "false_negative_count": 0,
-      "classification_counts": {
-        "false_positive": 0,
-        "false_negative": 0,
-        "unclear_diagnostic": 0,
-        "unsafe_or_incomplete_autofix": 0,
-        "missing_suppression_or_configuration_behaviour": 0,
-        "performance_regression": 0
-      },
-      "target_commit": "70e15c7ff659c05c2f4466aa172bb910d28847a2",
-      "reason": "No recursive chmod in JS/TS/CJS/MJS sources; only recursive chown -R in a test (find_repo_checkout.test.cjs:586) which is out of rule scope.",
-      "target_repo": "github/gh-aw",
-      "txn_id": "refiner-39516012272-3"
     }
   ],
   "affected_paths": [
