@@ -126,6 +126,10 @@ An experimental hosted-server mode, enabled with `serve-hosted --experimental --
 
 The control repository's exclusive right to admit a `live` worker for a campaign and target, decided solely from `.github/workflows/cao.json` at the exact workflow SHA. A target repository's files cannot widen, narrow, or veto this decision.
 
+## Maintenance Governance
+
+The dashboard page for editing gh-aw compiler defaults at organization, enterprise, or repository scope. It is visible only in local server `--admin` mode or to an authorized hosted administrator with a current, assured session, and applies changes through the approved CLI-action queue. It does not change CAO rollout policy or control-plane authority.
+
 ## Marketplace
 
 The read-only dashboard catalog of campaign packages resolved from an operator-ordered list of registries declared in `control-plane.marketplace.registries`. It shows normalized package metadata, provenance, and an immutable source coordinate, and only ever offers a copy-only `gh cao campaigns add` command; it never installs a package or contacts a registry from the browser. Package rows carry declaratively sorted and filtered verification, maintenance, popularity, installation, and adoption signals, each reported as a known value with its provenance source or `unknown`; these signals describe discovery only and never grant or infer control-plane authority. See [Browse Campaign Packages](marketplace.md).
@@ -181,6 +185,10 @@ The effective mode in which a campaign runs for an admitted target: `review`, `l
 ## Safe output
 
 A declared, bounded way for a workflow to produce an external effect, such as creating an issue or dispatching a worker. See the canonical gh-aw definition of [Safe Outputs](https://github.github.com/gh-aw/reference/glossary/#safe-outputs).
+
+## Standalone workflow
+
+An agentic workflow that participates directly in CAO without a campaign, orchestrator, or worker. It imports shared control with the `standalone` role, declares its exact compiled workflow slug, and runs only when `control-plane.workflows.<slug>` admits it. It receives the same policy validation, bounded repository admission, and per-target mode and output routing as an orchestrator.
 
 ## Target repository
 

@@ -417,7 +417,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.equal((dashboardWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
   assert.doesNotMatch(dashboardWorkflow, /pages-aic|REPORT_AIC_CACHE/);
-  assert.match(activityCollector, /--artifacts usage,experiment \\\s+--start-date/);
+  assert.match(activityCollector, /--artifacts usage,experiment,graders \\\s+--start-date/);
   assert.match(aicUsage, /const FIREWALL_HORIZON_DAYS = 30/);
   assert.match(activityCollector, /--start-date "-\$\{window_days\}d"/);
   assert.match(activityCollector, /--cache-before "-\$\{window_days\}d"/);

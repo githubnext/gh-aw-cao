@@ -303,6 +303,99 @@ test('collection prefers unified experiment, grader and eval events over standal
   assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
 });
 
+test('v2 split graders preserve session built-ins and publish custom values once through SQLite', async (t) => {
+  const f = await fixture(t);
+  const builtin = { id: 'loops', value: 0, status: 'pass', source: 'builtin' };
+  await writeFile(path.join(f.usage, 'aw_session.jsonl'), `${session}\n${JSON.stringify({
+    type: 'grader.result',
+    data: { version: 2, run: { id: '303', attempt: 1 }, results: [builtin] }
+  })}\n`);
+  const directory = path.join(f.logs, 'run-303', 'worker-graders');
+  await mkdir(directory);
+  await writeFile(path.join(directory, 'grader_manifest.json'), JSON.stringify({
+    version: 2, graders: [{
+      id: 'custom-count', name: 'Custom count', direction: 'higher_is_better',
+      unit: 'count', threshold: 1, script: 'SECRET_SCRIPT'
+    }]
+  }));
+  await writeFile(path.join(directory, 'grader_results.json'), JSON.stringify({
+    version: 2, run: { id: '303', attempt: 1 }, results: [
+      { ...builtin, value: 99 },
+      { id: 'custom-count', value: null, status: 'unavailable', source: 'inline',
+        metrics: [{ id: 'primary', value: null }, { id: 'diagnostic', value: 7 }],
+        implementation: { id: 'gh-aw/custom-graders', version: 2, digest: 'sha256:frozen' },
+        error: 'SECRET_ERROR', message: 'SECRET_MESSAGE' }
+    ]
+  }));
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  const cached = await readFile(f.shard, 'utf8');
+  assert.doesNotMatch(cached, /SECRET_/);
+  const batch = normalize(adaptCachedGhAwJsonl(cached).observations);
+  assert.deepEqual(batch.graders.map((row) => row.name).sort(), ['custom-count', 'loops']);
+  const custom = batch.graders.find((row) => row.name === 'custom-count');
+  const observed = batch.graderObservations.find((row) => row.graderId === custom.id);
+  assert.equal(observed.value, null);
+  assert.equal(batch.graderObservations.find((row) => row.graderId !== custom.id).value, 0);
+  assert.equal(observed.evaluatorDigest, 'sha256:frozen');
+  assert.deepEqual(observed.metrics, [
+    { id: 'primary', value: null }, { id: 'diagnostic', value: 7 }
+  ]);
+  assert.equal(custom.direction, 'higher_is_better');
+  assert.equal(batch.audits.filter((row) => row.type === 'grader.result').length, 2);
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+
+  const args = ['activity/cao.mjs', 'ingest-jsonl', '--input-dir', path.dirname(f.shard),
+    '--database', path.join(f.root, 'activity.sqlite'), '--retention-days', 'all'];
+  const first = JSON.parse((await execute(process.execPath, args)).stdout);
+  assert.equal(first.counts.graders, 2);
+  assert.equal(first.counts.graderObservations, 2);
+  assert.equal(JSON.parse((await execute(process.execPath, args)).stdout).result.shards[0].skipped, true);
+});
+
+test('grader artifacts support compact, named and flattened layouts without a session', async (t) => {
+  for (const layout of ['usage/graders', 'worker-usage/graders', 'graders', 'worker-graders', '.']) {
+    await t.test(layout, async (t) => {
+      const f = await fixture(t);
+      const directory = path.join(f.logs, 'run-303', layout);
+      await mkdir(directory, { recursive: true });
+      await writeFile(path.join(directory, 'grader_results.json'), JSON.stringify({
+        version: 2, run: { id: '303', attempt: 1 },
+        results: [{ id: 'loops', value: 0, status: 'pass', source: 'builtin' }]
+      }));
+      await writeFile(path.join(f.usage, 'aw_info.json'), await readFile(f.info));
+      await rm(f.info);
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+      const batch = normalize(adaptCachedGhAwJsonl(await readFile(f.shard, 'utf8')).observations);
+      assert.equal(batch.graderObservations[0].value, 0);
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+    });
+  }
+});
+
+test('invalid grader artifacts do not replace valid sessions or expose payloads in warnings', async (t) => {
+  for (const invalid of [
+    'SECRET_INVALID_JSON',
+    JSON.stringify({ version: 99, results: [] }),
+    JSON.stringify({ version: 2, run: { id: '404', attempt: 1 }, results: [] }),
+    JSON.stringify({ version: 2, run: { id: '303', attempt: 2 }, results: [] }),
+    JSON.stringify({ version: 2, results: [{ id: 'quality', value: 'SECRET_VALUE' }] })
+  ]) {
+    const f = await fixture(t);
+    await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
+    const directory = path.join(f.logs, 'run-303', 'graders');
+    await mkdir(directory);
+    await writeFile(path.join(directory, 'grader_results.json'), invalid);
+    const warnings = t.mock.method(console, 'warn', () => {});
+    assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+    assert.equal(warnings.mock.callCount(), 1);
+    assert.equal(warnings.mock.calls[0].arguments[0], 'Skipping invalid grader evidence for run 303');
+    const cached = await readFile(f.shard, 'utf8');
+    assert.doesNotMatch(cached, /SECRET_/);
+    assert.equal(normalize(adaptCachedGhAwJsonl(cached).observations).graders.length, 0);
+    warnings.mock.restore();
+  }
+});
+
 test('explicit experiment artifacts populate SQLite and published run shards without a unified session', async (t) => {
   const f = await fixture(t);
   await mkdir(path.join(f.usage, 'experiment'));

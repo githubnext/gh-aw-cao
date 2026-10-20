@@ -12,6 +12,7 @@ import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' wit
 import { createDebug } from '../../debug.js';
 import { normalizeSessionMcpEvents, parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
 import { experimentAssignmentArtifact, parseExperimentAssignments } from './experiment-evidence.js';
+import { parseGraderArtifacts } from './grader-evidence.js';
 import { unifiedSessionEventType } from '../model/session-types.js';
 
 const debug = createDebug('data:ingestion:jsonl');
@@ -839,6 +840,9 @@ export function adaptGhAwLogs(input) {
   const unified = sessions[0];
   const sessionEvidence = unified
     ? parseUnifiedSessionDocument(unified.content, unified.path, { runId: githubRunId, attempt }) : undefined;
+  const graders = parseGraderArtifacts(files, { runId: githubRunId, attempt },
+    /** @type {{ results: Record<string, unknown>[] } | undefined} */ (sessionEvidence?.graders));
+  if (sessionEvidence && graders) sessionEvidence.graders = graders;
   const assignmentArtifact = sessionEvidence?.experiments === undefined
     ? experimentAssignmentArtifact(files) : undefined;
   const experiments = assignmentArtifact
@@ -901,12 +905,12 @@ export function adaptGhAwLogs(input) {
     }
   ];
   observations.push(...events);
-  if (unified || experiments || evalFile) {
+  if (unified || experiments || graders || evalFile) {
     const adapted = adaptCachedGhAwJsonl(`${JSON.stringify({
       schema_version: 5, kind: 'run', run: {
         run_id: githubRunId, run_attempt: attempt, organization: repositoryOwner, repository: repositoryName,
         workflow_name: workflow.name, workflow_path: workflowPath, created_at: run.createdAt,
-        updated_at: observedAt, experiments,
+        updated_at: observedAt, experiments, graders,
         ...(evals === undefined ? {} : { evals }),
         ...(unified ? { cao_unified_session: { version: 1, path: unified.path, ...sessionEvidence } } : {})
       }
