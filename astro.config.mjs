@@ -324,6 +324,8 @@ export default defineConfig({
             { label: "Campaign package marketplace", link: "/marketplace/" },
             { label: "Operational value", link: "/operational-value/" },
             { label: "Trace goals to measured value", link: "/operational-value-how-to/" },
+            { label: "Agent work and value", link: "/agent-work-value/" },
+            { label: "Value evidence reference", link: "/operational-value-evidence-reference/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },
             { label: "Agentic workflow smells", link: "/agentic-workflow-smells/" },

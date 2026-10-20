@@ -1,283 +1,126 @@
 ---
 title: Trace workflow goals to measured value
-description: Reproduce the Daily File Diet evidence flow from natural-language intent through safe outputs and downstream Git history to native operational-value measures.
+description: A beginner's guide to seeing whether an AI workflow helped, using Daily File Diet as a worked example.
 ---
 
-Use this how-to to answer two different questions: **Did the repository condition
-improve?** and **What useful improvement is demonstrably linked to this workflow?**
-The Daily File Diet example connects a natural-language goal to safe-output
-lifecycle evidence, downstream implementation and independently measured Git
-changes. It does not equate a successful run, an opened issue or a merged PR with
-the full intended outcome.
+**Your workflow ran. Did it help?**
 
-Start with the [saved Daily File Diet pulse](https://raw.githack.com/githubnext/gh-aw-cao/refs/heads/mnkiefer-workflow-operational-value/docs/operational-value/gh-aw-workflows/daily-file-diet-pulse.html).
-It is a report captured on October 18, 2026, not a live monitor.
-For the existing CAO collection and publication path, see
-[Operational Value](operational-value.md).
+A green check tells you that a run finished successfully. An opened issue tells
+you that the agent produced something. Neither tells you whether the problem
+got better.
 
-## Prerequisites and version boundary
+**Operational value means checking whether the outcome you wanted actually
+happened.** Start with one goal, follow the work, and measure the result.
+You do not need to understand CAO's data model to read this example.
+
+## The idea in one minute
+
+Daily File Diet looks for oversized Go files and suggests breaking them into
+smaller files. Follow its work through five steps:
+
+<ol class="cao-value-trail" aria-label="Five steps from a goal to evidence">
+<li><svg class="cao-value-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1.5a6.5 6.5 0 1 0 6.016 4.035.75.75 0 0 1 1.388-.57 8 8 0 1 1-4.37-4.37.75.75 0 1 1-.569 1.389A6.473 6.473 0 0 0 8 1.5Zm6.28.22a.75.75 0 0 1 0 1.06l-4.063 4.064a2.5 2.5 0 1 1-1.06-1.06L13.22 1.72a.75.75 0 0 1 1.06 0ZM7 8a1 1 0 1 0 2 0 1 1 0 0 0-2 0Z"></path></svg><strong>1. Set a goal</strong><span>Make oversized files smaller without breaking behavior.</span></li>
+<li><svg class="cao-value-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"></path></svg><strong>2. Follow the output</strong><span>The workflow opens an issue suggesting a change.</span></li>
+<li><svg class="cao-value-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0 0 .005V3.25Z"></path></svg><strong>3. Find the change</strong><span>A person or another agent implements it in a linked pull request.</span></li>
+<li><svg class="cao-value-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M1.5 1.75V13.5h13.75a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75V1.75a.75.75 0 0 1 1.5 0Zm14.28 2.53-5.25 5.25a.75.75 0 0 1-1.06 0L7 7.06 4.28 9.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.25-3.25a.75.75 0 0 1 1.06 0L10 7.94l4.72-4.72a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042Z"></path></svg><strong>4. Measure it</strong><span>Compare the actual files before and after the merged change.</span></li>
+<li><svg class="cao-value-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085h.001a.749.749 0 1 1-1.342-.67c.169-.339.436-.701.849-.977C6.845 4.16 7.369 4 8 4a2.756 2.756 0 0 1 1.637.525c.503.377.863.965.863 1.725 0 .448-.115.83-.329 1.15-.205.307-.47.513-.692.662-.109.072-.22.138-.313.195l-.006.004a6.24 6.24 0 0 0-.26.16.952.952 0 0 0-.276.245.75.75 0 0 1-1.248-.832c.184-.264.42-.489.692-.661.103-.067.207-.132.313-.195l.007-.004c.1-.061.182-.11.258-.161a.969.969 0 0 0 .277-.245C8.96 6.514 9 6.427 9 6.25a.612.612 0 0 0-.262-.525A1.27 1.27 0 0 0 8 5.5c-.369 0-.595.09-.74.187a1.01 1.01 0 0 0-.34.398ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg><strong>5. State the limits</strong><span>Smaller files are proved. Unchanged behavior still needs its own evidence.</span></li>
+</ol>
+
+**Do not stop at step 2.** A suggestion is not a delivered improvement.
+**Do not overclaim at step 4.** A smaller file is not proof that the program
+still works. Both distinctions matter.
+
+## Read the example report
+
+**[Open the Daily File Diet report](https://raw.githack.com/githubnext/gh-aw-cao/refs/heads/mnkiefer-workflow-operational-value/docs/operational-value/gh-aw-workflows/daily-file-diet-pulse.html).**
+This is a saved report from October 18, 2026, not today's live result.
+No installation is needed to read it.
+
+1. **Look at delivered work.** The report shows **48 net oversized-file
+   reductions** across linked merged changes. This is useful structural progress,
+   shared with the people and agents who implemented it.
+2. **Inspect an event.** Click a dot below the cumulative chart, or focus it with
+   the keyboard and press Enter. Follow the origin issue, merged PR and
+   before/after Git revisions. You can check the claim yourself.
+3. **Check what is happening recently.** The latest 28 days show
+   **0 files/week**, compared with **0.5 files/week** in the preceding 28 days.
+   Past usefulness does not guarantee current delivery.
+4. **Read the limits.** **13 of the 48 reductions** have stronger creation-receipt
+   evidence linking them to the workflow. That is a subset, not extra work.
+   Full behavior preservation and financial return are not established.
+
+<details>
+<summary>A concrete example: one big file becomes five smaller files</summary>
+
+[github/gh-aw#55785](https://github.com/github/gh-aw/pull/55785) links to
+[github/gh-aw#55776](https://github.com/github/gh-aw/issues/55776).
+`pkg/cli/add_command.go` goes from **1,129 to 248 lines**. Four new files contain
+250, 280, 86 and 328 lines. Comparing the actual Git revisions verifies the size
+change; the full inventory also checks whether replacement files are oversized.
+
+This demonstrates structural progress. Tests, coverage and public-API checks
+are separate evidence needed for the stronger claim of behavior-preserving
+refactoring. See the [evidence reference](operational-value-evidence-reference.md#3-verify-the-downstream-native-change)
+for the exact revisions and rules.
+
+</details>
+
+## Understand the two numbers that can disagree
+
+| Question | File Diet example | What it means |
+|---|---|---|
+| **Is the repository getting healthier?** | The oversized-file count grows from 16 to 53. | New problems can arrive faster than old ones are fixed. Count improvement by anyone, not just this workflow. |
+| **Did this workflow help deliver useful changes?** | Linked merges produce 48 net reductions over its lifetime. | There is evidence of useful contribution, even while the wider problem grows. |
+
+The first is the **primary measure**: the repository condition you care about.
+The second is a **diagnostic**: evidence that helps explain the work and its
+handoffs. One is not a substitute for the other.
+
+Think of fixing leaks while new leaks appear. You need to know both how much
+repair work was delivered and whether the building now has fewer leaks.
+
+> [!NOTE]
+> **Unknown is not zero.** If the evidence is missing, the report should say so.
+> And a link to a change is not proof that the change would never have happened
+> without the workflow.
+
+## Try it with your own workflow
+
+**Start small: one workflow, one outcome, one way to check it.**
+
+1. **Say what should improve.** For example: "Reduce oversized production files
+   without breaking behavior," not "Open more refactoring issues."
+2. **Ask the skill to design the measure.** With the skill available, use
+   `/add-operational-value OWNER/REPO WORKFLOW`. Agree on what counts as success,
+   where the evidence comes from, and which facts may remain unknown.
+3. **Keep that rule fixed.** The skill authors a measurement function. New reports
+   use that same rule; they do not ask a model to invent a new score each time.
+   An existing verified definition should be reused, not silently redesigned.
+4. **Collect evidence and read the report.** Creating a definition is not enough:
+   the workflow needs an implemented check and real evidence. Look at the result,
+   the downstream links and the missing pieces before making a decision.
 
 > [!IMPORTANT]
-> The portable discovery, event-pulse reporting and File Diet research instruments
-> used here are from `mnkiefer-workflow-operational-value`, pinned below at
-> `0782148c0af21f4f1d10b7cb5e81b571ed58c463`. They are not installed by this
-> documentation change. Main has an earlier `add-operational-value` skill and
-> evaluator; do not assume the newer flags, paths or helpers exist there.
+> **The example uses newer source-branch tooling.** Main has an earlier skill.
+> The portable pulse report and File Diet replay described here require the
+> pinned `mnkiefer-workflow-operational-value` sources. This guide does not
+> install or deploy them. Follow the
+> [prerequisites and version boundary](operational-value-evidence-reference.md#prerequisites-and-version-boundary)
+> before running the advanced commands.
 
-The supplied report URL uses the repository's former name,
-`githubnext/gh-aw-cao`. GitHub resolves that name to **`githubnext/gh-cao`**.
-Use the canonical name for checkout and the pinned revision for replay.
-The measured repository is **`github/gh-aw`**, not the CAO repository containing
-the instrument.
+You do not need a campaign or a dashboard to read or replay the saved example.
+Generating a report does not grant write permission, enroll a repository or
+start a schedule.
 
-You need Node.js 24+ and Git. Offline replay needs the source files and retained
-proof, but no npm installation, GitHub authentication, dashboard or campaign.
-Fresh GitHub acquisition additionally needs authenticated `gh`, explicit
-repository scope and access to the relevant evidence. Optional campaign discovery
-uses the source skill's locked YAML dependency; only that path needs `npm ci`
-inside the skill directory.
+## Go deeper when you need to
 
-The versioned sources for this procedure are the
-[skill](https://github.com/githubnext/gh-cao/blob/0782148c0af21f4f1d10b7cb5e81b571ed58c463/.github/skills/add-operational-value/SKILL.md),
-[module contract](https://github.com/githubnext/gh-cao/blob/0782148c0af21f4f1d10b7cb5e81b571ed58c463/.github/skills/add-operational-value/references/module-contract.md)
-and [worked operator guide](https://github.com/githubnext/gh-cao/blob/0782148c0af21f4f1d10b7cb5e81b571ed58c463/docs/operational-value.md#file-diet-since-actual-adoption).
-Keep that source checkout separate from a checkout used for authoring a new
-measurement.
+**[Replay the saved report](operational-value-evidence-reference.md#replay-the-file-diet-report)**
+for exact checkout and offline commands, expected readings and test instructions.
 
-## Follow the evidence flow
+**[Understand value beyond this example](agent-work-value.md)**
+for the research: what agent benchmarks, developer-productivity studies and
+financial measures each tell you, where CAO fits, and which evidence is still missing.
 
-```mermaid
-flowchart TD
-  A["Natural-language goal and effective workflow source"] --> B["Freeze outcome contract and metric roles"]
-  B --> C["Safe-output request and applied creation receipt"]
-  C --> D["Issue or PR lifecycle and explicit downstream links"]
-  D --> E["Merged implementation and immutable Git revisions"]
-  E --> F["Verify native before/after condition"]
-  B --> G["Independent repository-state snapshots, any actor"]
-  G --> H["Primary: repository outcome"]
-  F --> I["Diagnostic: linked structural delivery"]
-  C -. "Stronger attribution subset" .-> I
-  E -. "Required checks and safeguards" .-> J["Separate full-acceptance assessment"]
-  H --> K["Versioned evidence, deterministic scoring and report"]
-  I --> K
-  J --> K
-  K --> L["Comparable-period movement and evidence limits"]
-```
-
-The arrows are evidence relationships, not proof of causation. Repository
-outcomes can occur without a workflow output. A downstream implementer may be a
-person or another agent; retain that shared contribution rather than attributing
-the whole repository's movement to the original detector.
-
-### 1. Translate the goal into a frozen contract
-
-For File Diet, the goal is to identify oversized production Go files and promote
-behavior-preserving decomposition. The source's structural measure counts
-regular, non-test `.go` files under `pkg/` with **at least 800 newline characters**
-using `wc -l` semantics. Generated Go files are not silently excluded.
-
-Write the outcome in this form before selecting metrics:
-
-> For [eligible opportunities], improve [repository condition], verified by
-> [independent evidence], measured as [native quantity] every [period].
-
-Freeze scope, eligibility, acceptance, units, direction, cadence, maturation,
-missing-data rules and evidence interfaces. Inspect the effective executor as
-well as the Markdown prompt: a different runner may not execute those
-instructions. For adoption comparisons, recover adoption-time intent and test
-whether the same repository-native measure can be reconstructed before adoption.
-A newly authored measurement contract is not a newly adopted workflow.
-
-The [File Diet research module](https://github.com/githubnext/gh-cao/blob/0782148c0af21f4f1d10b7cb5e81b571ed58c463/tests/fixtures/operational-value-proof/file-diet.mjs)
-and its later lifetime event projection answer different questions:
-
-| Measure | Role and interpretation |
-|---|---|
-| Number of production Go files at or above 800 lines | Actor-independent **primary** repository-state measure; lower is better. A maintainer's improvement counts too. |
-| New, fully accepted receipt-linked refactors | **Diagnostic** under the stricter frozen rule: completion, merge, new files under 500 lines, tests, lint, build, at least 80% new-file coverage and unchanged public API. Required unknown facts stay unknown. |
-| Correctly targeted receipt-linked issues | **Diagnostic precursor**, not delivered refactoring. |
-| Net oversized-file reductions at explicitly linked merges | Separately named structural-progress **contribution** facet. Higher is better; it does not replace the strict full-acceptance rule. The lifetime pulse focuses on this facet. |
-
-Do not choose or tune a contract to make observed results look better. When
-authoring after inspecting outcomes, label it **outcome-informed retrospective
-assessment**, preserve previous contracts and give material changes explicit
-versions. The worked case is not evidence of automatic, blind goal translation.
-
-### 2. Trace applied outputs, not just workflow conclusions
-
-Treat a safe-output request as an attempt. Where retained, verify the applied
-`create_issue` result against the exact issue identity, repository, producing run,
-head revision and artifact digests. Tracking footers help discover candidates;
-editable text is not an authoritative creation receipt.
-
-Follow the actual issue/PR graph and its dated connections to the downstream
-implementation. Distinguish accepted, rejected, pending, ignored and normal
-lifecycle closure under the contract's maturation rule. Do not infer rejection
-from closure alone, or acceptance from a cross-reference or merge alone.
-
-The source guide's recent File Diet cohort illustrates why this matters:
-selection comments and assignment requests did not establish successful agent
-assignment; audited assignment jobs failed despite green workflow conclusions.
-The linked proposal [github/gh-aw#64854](https://github.com/github/gh-aw/pull/64854)
-closed without merging. Automatic-expiry explanations were not documented human
-rejections. Those facts explain a handoff gap, not a delivered refactor.
-
-### 3. Verify the downstream native change
-
-For each explicitly linked merged PR, the lifetime instrument compares complete
-eligible-file inventories at the merge commit's **actual first parent** and at
-the merge revision. It subtracts the after-count of oversized files from the
-before-count, including replacement oversized files. A rename is not itself a
-reduction. Stable PR identities deduplicate deliveries; the improvement is
-recorded at merge time, not credited again in each later snapshot.
-
-For example, [github/gh-aw#55785](https://github.com/github/gh-aw/pull/55785)
-links back to [github/gh-aw#55776](https://github.com/github/gh-aw/issues/55776).
-Its event retains a
-[before revision](https://github.com/github/gh-aw/tree/27092a4090300be16379f12fa5d60b36c04da832)
-and [merge revision](https://github.com/github/gh-aw/tree/50f4e1baafb070f8426566f5bfcdc0f5bf476011):
-`pkg/cli/add_command.go` goes from 1,129 to 248 lines, with four new files
-of 250, 280, 86 and 328 lines. This is inspectable structural progress.
-It does not, by itself, prove unchanged behavior or all required safeguards.
-
-Keep the original full-acceptance measure intact when a narrower facet can be
-proved. Missing quality evidence qualifies the claim; missing receipts qualify
-attribution. Neither erases an independently verified structural improvement,
-but missing evidence defining that improvement prevents accepting it.
-
-## Replay the File Diet report
-
-Use a new directory for the source checkout. These commands retrieve the
-source-branch prerequisites without merging them into main:
-
-```sh
-git clone --single-branch --branch mnkiefer-workflow-operational-value \
-  https://github.com/githubnext/gh-cao.git cao-value-example
-cd cao-value-example
-git checkout --detach 0782148c0af21f4f1d10b7cb5e81b571ed58c463
-```
-
-After checkout, the following replay is offline. It validates the retained proof
-and inventories, rebuilds lifetime measurements, projects deduplicated delivery
-events and uses the generic pulse renderer:
-
-```sh
-mkdir -p .tmp/file-diet
-node scripts/measure-file-diet-lifetime.mjs --replay \
-  docs/operational-value/proof/file-diet-lifetime .tmp/file-diet/lifetime.json
-node scripts/build-file-diet-value-events.mjs \
-  docs/operational-value/proof/file-diet-lifetime .tmp/file-diet/events.json
-node .github/skills/add-operational-value/scripts/render-pulse.mjs \
-  .tmp/file-diet/events.json .tmp/file-diet/daily-file-diet-pulse.html
-node --test tests/unit/cao-operational-value-file-diet-lifetime.test.mjs
-```
-
-Open `.tmp/file-diet/daily-file-diet-pulse.html` locally. Its adjacent `.json`
-contains the same computed facts. Replay validates preserved digests and
-reaggregates measurements; it does not reacquire Git blobs or establish that
-every historical output survived discovery.
-
-The saved report covers **November 15, 2025 through October 18, 2026**, with an
-exclusive endpoint of `2026-10-18T11:54:09Z`. Expected readings are:
-
-| Reading | What it establishes |
-|---|---|
-| 95 discovered issue outputs and 51 explicitly linked merged PRs | The surviving lifetime cohort, not all conceivable historical work. |
-| 48 net oversized-file reductions | Measured linked structural delivery, shared with downstream implementers. |
-| 13 reductions in the receipt-backed subset | Stronger attribution within the 48, not 13 additional reductions or a cap on useful progress. |
-| Repository oversized-file count: 16 to 53 | Worsening repository condition can coexist with useful linked delivery; growth is not attributed to File Diet. |
-| Latest 28 days: 0 files/week; preceding 28 days: 0.5 files/week | Descriptive **worsening / review** signal from adjacent, non-overlapping periods. |
-| Trailing 91 days: 1 file/week | Overlapping post-adoption context, **not a pre-adoption baseline** or an independent comparison. |
-| Decision: not rated; costs: not measured | No agreed keep/retire bar or matched financial evidence. |
-
-The last positive linked merge is August 25. Lifetime delivery is not current
-delivery, and neither is full behavior-preserving acceptance. The original
-workflow used 1,000 lines before transitioning to 800 in December 2025; the
-lifetime instrument retains separate fixed-threshold reference curves rather
-than splicing a mixed-threshold trend.
-
-## Apply the method to another workflow
-
-The following interfaces require the **pinned source skill**, not main's earlier
-version. In a separate target checkout with that skill available, invoke
-`/add-operational-value OWNER/REPO WORKFLOW`. The newer skill also accepts a
-document or `--goal "GOAL"`; campaign scope is optional and explicit.
-To make it available, copy the entire pinned
-`.github/skills/add-operational-value/` directory into the target checkout's
-skill location, reviewing any existing version rather than overwriting it blindly.
-
-From that checkout's root, deterministic discovery supplies intent candidates:
-
-```sh
-node .github/skills/add-operational-value/scripts/discover-intent.mjs \
-  --root . --source .github/workflows/WORKFLOW.md
-node .github/skills/add-operational-value/scripts/list-repository-workflows.mjs \
-  OWNER/REPO WORKFLOW
-```
-
-Replace `OWNER/REPO`, `WORKFLOW` and the source path with the actual target.
-Discovery does **not** generate a universal native collector. The authoring step
-must implement a reviewed `.github/operational-value/WORKFLOW.mjs` with
-`definition`, `collectBatch` and `scoreMetric`, independent acceptance checks and
-positive, negative, missing and malformed examples. Exactly one metric is
-primary; linked contribution remains a separately identified diagnostic.
-Use **baseline-comparable** only when the same native measure has a valid
-pre-adoption observation. Otherwise document why the contract is
-**attainment-only**, without inventing a baseline. Comparable complete
-post-adoption periods can still show observed change.
-
-Acquire the required originals in a separately authorized, bounded step. Prefer
-canonical CAO facts where authoritative and retained; use immutable target Git
-facts or preserved evidence for missing native postconditions. Share issue/PR
-discovery with the source skill's
-`collect-output-history.mjs --until UTC OWNER/REPO ARCHIVE`, but do not mistake its
-inventory for accepted outcomes or complete coverage of comments and Discussions.
-Do not make API requests per historical evaluation window.
-
-Once the module and its actual evidence inputs exist:
-
-```sh
-node .github/skills/add-operational-value/scripts/verify-value-function.mjs \
-  .github/operational-value/WORKFLOW.mjs
-node .github/skills/add-operational-value/scripts/verify-value-function.mjs \
-  --collector .github/operational-value/WORKFLOW.mjs
-END_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-node .github/skills/add-operational-value/scripts/evaluate.mjs \
-  --root . --end "$END_AT" OWNER/REPO WORKFLOW
-```
-
-Evaluation writes `WORKFLOW-timeline.json`, `WORKFLOW-definitions.md`,
-`WORKFLOW-pulse.html`, `WORKFLOW-pulse.json` and a version-keyed evidence archive
-under `docs/operational-value/reports/OWNER-REPO/`. `--function PATH` selects an
-explicit module and `--output-dir DIR` changes the output root. Normal reruns
-reuse matching preserved observations and collect missing requests;
-`--refresh` explicitly recollects them, not redesigns the metric.
-
-Authoring interprets the goal once per contract version. Subsequent acquisition,
-verification, scoring, comparison and rendering run deterministically without
-model judgments. Pin helper, oracle and input identities too: the archive's
-module-file SHA-256 is not an automatic hash of transitive dependencies.
-An interface check or all-unknown report is not evidence of production value.
-
-## Interpret and publish without overstating
-
-Keep native quantities, provenance, completeness and unknowns visible. The
-surviving issue cohort and explicit links cannot establish deleted outputs,
-edited-away markers or exclusive causal credit. Current mutable GitHub state
-must not be backdated to a historical cutoff. Expired run artifacts without
-preserved receipts remain an attribution gap.
-
-Use the same formula, population and unit across comparable complete periods.
-Missing, partial, interim or stale evidence is not zero or a current all-clear.
-Do not add overlapping windows, sum backlog snapshots or repeatedly count a
-surviving fix. A valid pre-adoption reference permits an adoption-relative
-association; neither that comparison nor linked delivery establishes a causal
-effect, statistical significance or financial return.
-
-The pulse is a saved local report. It installs no scheduler, enrolls no campaign,
-publishes nothing to the target and grants no authority to disable a workflow.
-An agreed native review bar is needed for a keep/change verdict. CAO publication
-through an adapter and Activity is a separate, authorized integration described
-in [Operational Value](operational-value.md); browser retention is not the durable
-evidence archive. Do not treat the portable report's event projection as a new
-canonical dashboard collection.
+**[Use the technical reference](operational-value-evidence-reference.md)**
+for frozen contracts, output receipts, Git matching, primary/diagnostic roles,
+historical comparisons and publication boundaries.

@@ -12,6 +12,8 @@ For a worked evidence flow and reproducible report, see
 The how-to follows Daily File Diet from natural-language intent through safe
 outputs and downstream Git changes, and identifies the newer source-branch
 tooling required to replay its saved pulse.
+For the wider research context and remaining evidence gaps, see
+[What counts as value from agent work?](agent-work-value.md).
 
 The dashboard's **Operational Value** view starts with repositories. Select a repository to see its retained outcome measurements across campaigns and standalone workflows; campaign registration is not required. Each repository appears once in the overview, while workflow, measure, native unit, direction, and evaluator boundaries remain separate in history and comparisons. **Evidence** lists repository coverage and the latest native values. Missing measurements are not zero value. Native run-scoped gh-aw operational-grader results are separate evidence and are not included in this repository-outcome view.
 

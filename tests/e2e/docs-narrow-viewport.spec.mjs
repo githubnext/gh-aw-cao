@@ -19,7 +19,81 @@ const paths = [
   "catalog/dependabot/",
   "blog/",
   "operational-observability-visualization-specification/",
+  "operational-value-how-to/",
+  "operational-value-evidence-reference/",
+  "agent-work-value/",
 ];
+
+for (const colorScheme of ["light", "dark"]) {
+  for (const width of [320, 1280]) {
+    test(`operational value beginner guide connects evidence and research at ${width}px in ${colorScheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      await page.setViewportSize({ width, height: 900 });
+      expect((await page.goto("operational-value-how-to/"))?.ok()).toBe(true);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
+      const content = page.locator(".sl-markdown-content");
+      const trail = content.getByRole("list", { name: "Five steps from a goal to evidence" });
+      await expect(trail.locator("li")).toHaveCount(5);
+      await expect(trail.locator("strong")).toHaveText([
+        "1. Set a goal", "2. Follow the output", "3. Find the change", "4. Measure it", "5. State the limits",
+      ]);
+      await expect(trail.locator('svg[aria-hidden="true"][focusable="false"]')).toHaveCount(5);
+      for (const icon of await trail.locator("svg").all()) {
+        const bounds = await icon.boundingBox();
+        expect(bounds.width).toBeGreaterThanOrEqual(24);
+        expect(bounds.height).toBeGreaterThanOrEqual(24);
+      }
+      const details = content.locator("details");
+      await expect(details).not.toHaveAttribute("open");
+      await details.locator("summary").focus();
+      await page.keyboard.press("Enter");
+      await expect(details).toHaveAttribute("open", "");
+      await expect(details).toContainText("1,129 to 248 lines");
+      expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
+      for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
+        const href = await link.getAttribute("href");
+        const response = await page.request.get(href);
+        expect(response.ok(), href).toBe(true);
+        const hash = new URL(href, page.url()).hash;
+        if (hash) {
+          const html = await response.text();
+          expect(html, href).toContain(`id="${hash.slice(1)}"`);
+        }
+      }
+
+      for (const route of ["operational-value-evidence-reference/", "agent-work-value/"]) {
+        expect((await page.goto(route))?.ok()).toBe(true);
+        const diagram = page.locator(".sl-markdown-content .mermaid svg");
+        await expect(diagram).toBeVisible();
+        await expect(diagram).not.toContainText("Syntax error");
+        expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
+      }
+    });
+  }
+}
+
+test("operational value beginner guide remains readable without JavaScript", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({
+    baseURL,
+    javaScriptEnabled: false,
+    viewport: { width: 320, height: 900 },
+  });
+  try {
+    const page = await context.newPage();
+    expect((await page.goto("operational-value-how-to/"))?.ok()).toBe(true);
+    const content = page.locator(".sl-markdown-content");
+    await expect(content.getByRole("list", { name: "Five steps from a goal to evidence" }).locator("li"))
+      .toHaveCount(5);
+    const details = content.locator("details");
+    await details.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(details).toHaveAttribute("open", "");
+    await expect(details.getByRole("link", { name: "github/gh-aw#55785", exact: true })).toBeVisible();
+    expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(320);
+  } finally {
+    await context.close();
+  }
+});
 
 for (const width of [390, 799, 800, 1920]) {
   test(`documentation uses responsive content width at ${width}px without changing the hero page`, async ({ page }) => {
