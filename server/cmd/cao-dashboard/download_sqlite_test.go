@@ -314,3 +314,32 @@ func TestDownloadSQLiteCancellation(t *testing.T) {
 		t.Fatalf("canceled download published a snapshot: %v", err)
 	}
 }
+
+func TestParseSQLiteChecksum(t *testing.T) {
+	valid := strings.Repeat("AB", 32)
+	got, err := parseSQLiteChecksum([]byte(`{"gh-aw-logs.sqlite":"` + valid + `"}`))
+	if err != nil || got != strings.ToLower(valid) {
+		t.Fatalf("parseSQLiteChecksum() = %q, %v", got, err)
+	}
+	for name, manifest := range map[string]string{
+		"not an object": `[]`,
+		"missing":       `{}`,
+		"not a string":  `{"gh-aw-logs.sqlite":5}`,
+		"not hex":       `{"gh-aw-logs.sqlite":"zz"}`,
+		"short":         `{"gh-aw-logs.sqlite":"abcd"}`,
+	} {
+		if _, err := parseSQLiteChecksum([]byte(manifest)); err == nil {
+			t.Errorf("%s: expected an error", name)
+		}
+	}
+}
+
+func TestRetryableSQLiteStatus(t *testing.T) {
+	for status, want := range map[int]bool{
+		200: false, 404: false, 408: true, 425: true, 429: true, 499: false, 500: true, 503: true,
+	} {
+		if got := retryableSQLiteStatus(status); got != want {
+			t.Errorf("retryableSQLiteStatus(%d) = %t, want %t", status, got, want)
+		}
+	}
+}
