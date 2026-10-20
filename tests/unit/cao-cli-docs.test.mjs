@@ -53,7 +53,6 @@ test("CAO command guide covers the operator-facing command surface", () => {
   for (const command of [
     "init",
     "setup",
-    "quickstart",
     "setup auth github-app",
     "setup auth enterprise-app",
     "setup auth token",
@@ -80,6 +79,7 @@ test("CAO command guide covers the operator-facing command surface", () => {
 
 test("Node-only command documentation uses explicit runtime entry points without a shell launcher", () => {
   for (const command of [
+    "quickstart",
     "setup-auth hosted-cli",
     "doctor",
     "operational-value",
@@ -91,6 +91,11 @@ test("Node-only command documentation uses explicit runtime entry points without
     assert.ok(docs.includes(`node activity/cao.mjs ${command}`), command);
   }
   assert.doesNotMatch(docs, /cao\.sh/);
+  assert.doesNotMatch(docs, /gh cao quickstart/);
+  assert.match(docs, /Node-only installer quickstart/);
+  assert.match(docs, /install\.sh --quickstart/);
+  assert.match(docs, /gh cao setup --help/);
+  assert.doesNotMatch(docs.match(/^\| Lifecycle \|.*$/m)?.[0] || "", /quickstart/);
   const demo = readFileSync("docs/components/TerminalDemo.astro", "utf8");
   assert.match(demo, /gh cao<\/span> setup/);
   assert.match(demo, /gh cao<\/span> doctor/);
@@ -107,27 +112,28 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.doesNotMatch(docs, /gh cao validate/);
 });
 
-test("campaign guides use supported native operator commands", () => {
+test("campaign guides use supported native and Node-only commands", () => {
   for (const [filename, commands] of [
     ["bug-bash/README.md", ["gh cao campaigns add githubnext/gh-cao/bug-bash"]],
     ["repo-assist/README.md", [
-      "gh cao quickstart --step run",
-      "gh cao quickstart --step collect",
-      "gh cao quickstart --step dashboard",
+      "node activity/cao.mjs quickstart --step run",
+      "node activity/cao.mjs quickstart --step collect",
+      "node activity/cao.mjs quickstart --step dashboard",
     ]],
   ]) {
     const guide = readFileSync(filename, "utf8");
     for (const command of commands) assert.ok(guide.includes(command), `${filename} must document ${command}`);
     assert.doesNotMatch(guide, /\.\/cao\.sh (?:add|quickstart)\b/);
+    assert.doesNotMatch(guide, /gh cao quickstart/);
   }
 });
 
 test("quickstart documents separate component stages and explicit checkpoints", () => {
   const installer = quickstart.indexOf("https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh");
   const command = quickstart.indexOf("bash -s -- --quickstart");
-  const campaign = quickstart.indexOf("gh cao quickstart --step run");
-  const activity = quickstart.indexOf("gh cao quickstart --step collect");
-  const dashboard = quickstart.indexOf("gh cao quickstart --step dashboard");
+  const campaign = quickstart.indexOf("node activity/cao.mjs quickstart --step run");
+  const activity = quickstart.indexOf("node activity/cao.mjs quickstart --step collect");
+  const dashboard = quickstart.indexOf("node activity/cao.mjs quickstart --step dashboard");
   const nextStep = quickstart.indexOf("## Next: assist another repository");
   const firstSuccess = quickstart.slice(0, nextStep);
 
@@ -148,7 +154,8 @@ test("quickstart documents separate component stages and explicit checkpoints", 
   assert.match(firstSuccess, /read-only step/);
   assert.match(firstSuccess, /normal push and scheduled\s+triggers/);
   assert.match(firstSuccess, /successful Pages deployment job, not merely a successful build/);
-  assert.match(firstSuccess, /gh cao quickstart --wait/);
+  assert.match(firstSuccess, /node activity\/cao\.mjs quickstart --wait/);
+  assert.doesNotMatch(quickstart, /gh cao quickstart/);
   assert.match(firstSuccess, /Do not use it to resume a staged installation/);
   assert.match(firstSuccess, /five numbered sections \*\*before each\s+corresponding change\*\*/);
   assert.match(firstSuccess, /stay in terminal scrollback/);

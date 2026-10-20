@@ -19,7 +19,8 @@ Workers are independently dispatchable and handle exactly one authorized target 
 
 ## First run
 
-The CAO quickstart uses **Repo Assist**, not a separate repository assessment.
+The Node-only CAO installer quickstart uses **Repo Assist**, not a separate repository assessment.
+Use `install.sh --quickstart` to install; quickstart is not a Go extension command.
 It enables only the existing maintenance worker, in review mode, for one exact
 public target. Issue triage, issue fix, and PR upkeep remain disabled.
 There is no special worker, snapshot helper, or reduced assessment profile.
@@ -42,9 +43,9 @@ not expected consumption or a measured token count. Normal validation and
 review-bundle behavior are unchanged.
 
 Quickstart installs and commits the control plane, then stops with the
-orchestrator paused. Continue with `gh cao quickstart --step run` when ready
+orchestrator paused. Continue with `node activity/cao.mjs quickstart --step run` when ready
 to request one review; inspect its outcome in Actions, then use
-`gh cao quickstart --step collect` and `gh cao quickstart --step dashboard`.
+`node activity/cao.mjs quickstart --step collect` and `node activity/cao.mjs quickstart --step dashboard`.
 These separate stages do not wait for remote completion. See the
 [Repo Assist walkthrough](../docs/repo-assist-quickstart.md) for component explanations
 and checkpoints.

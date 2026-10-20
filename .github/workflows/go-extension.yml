@@ -104,7 +104,6 @@ jobs:
           ./gh-cao --help
           ./gh-cao version
           ./gh-cao doctor --help
-          ./gh-cao quickstart --help
           ./gh-cao setup --help
           ./gh-cao setup auth --help
           ./gh-cao setup auth github-app --help

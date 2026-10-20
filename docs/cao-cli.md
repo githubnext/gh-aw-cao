@@ -16,7 +16,9 @@ agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md).
 The Go extension exposes the operator-facing command surface as `gh cao`.
 Internal Node implementations remain for Actions and parity tests, not as an
-alternative operator surface. Run policy commands from the control repository root:
+alternative operator surface. The retained installer quickstart is a Node-only
+exception: use `install.sh --quickstart` or `node activity/cao.mjs quickstart`;
+the Go extension does not expose quickstart. Run policy commands from the control repository root:
 
 ```bash
 gh cao --help
@@ -62,12 +64,13 @@ to invoke it as `gh cao`.
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
 | Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Native Go, preserving separate read/write credentials and explicit repository scope. |
-| Lifecycle | `quickstart`, `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
+| Lifecycle | `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
 | Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
 | Node-only administration | `node activity/cao.mjs doctor`, `node activity/cao.mjs setup-auth hosted-cli` | SQLite check/repair and dedicated hosted-executor App creation; neither has an equivalent Go command. |
+| Node-only installer quickstart | `node activity/cao.mjs quickstart` | Retained staged Repo Assist walkthrough, also available through `install.sh --quickstart`; not exposed by the Go extension. |
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
@@ -99,7 +102,7 @@ gh cao pages --json
 gh cao query campaign-runs --param campaign=dependabot
 ```
 
-All help works offline, including `gh cao quickstart --help` and
+All help works offline, including `gh cao setup --help` and
 `gh cao campaigns --help`. Campaign controls are available only under
 `campaigns` in the extension.
 Repository enrollment uses `gh cao repos add OWNER/REPO`; the extension has no
@@ -192,11 +195,6 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
-| `gh cao quickstart --target OWNER/REPO` | Explicitly select the public target, install and commit the review-only control plane, and leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
-| `gh cao quickstart --step run` | Dispatch one bounded Repo Assist review using existing policy, then pause the orchestrator and return an Actions link. |
-| `gh cao quickstart --step collect` | Dispatch Activity collection and return without waiting. Use after the maintenance outcome is available. |
-| `gh cao quickstart --step dashboard` | Check Activity evidence and dashboard deployment read-only; repeat if pending. |
-| `gh cao quickstart --wait --target OWNER/REPO` | Explicitly select the target and opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
 | `gh cao setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
 | `gh cao init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
 | `gh cao setup auth github-app ...` | Configure organization-owned read and write Apps. |
@@ -208,6 +206,8 @@ gh aw run dependabot --ref main \
 | `gh cao update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
 | `gh cao update --campaign SLUG` | Update exactly one installed campaign, retaining runtime materialization and worker-declaration refresh. Use `root` for the CAO root package. |
 | `gh cao upgrade-gh-aw VERSION` | Install an exact gh-aw release, upgrade local Agentic Workflow files, and update the pinned policy version after the upgrade succeeds. |
+
+### Update and enrollment details
 
 Omit `--campaign` to update all installed CAO packages. Selection also works with
 refs and update options, for example `gh cao update main --campaign dependabot`.
@@ -226,7 +226,20 @@ commits nor pushes, enables campaigns, changes rollout limits, configures
 credentials, nor expands an explicitly narrowed Activity scope. Review and commit
 the policy before activation at a reviewed workflow SHA.
 
-Use `gh cao quickstart --target OWNER/REPO` only immediately after verified installation in a
+### Node-only installer quickstart
+
+These retained commands require Node.js 24+ and run from the installed control
+repository root. They are not Go extension commands.
+
+| Command | Use it to |
+| --- | --- |
+| `node activity/cao.mjs quickstart --target OWNER/REPO` | Explicitly select the public target, install and commit the review-only control plane, and leave Repo Assist paused without dispatching or waiting. Equivalent to `--step install`. |
+| `node activity/cao.mjs quickstart --step run` | Dispatch one bounded Repo Assist review using existing policy, then pause the orchestrator and return an Actions link. |
+| `node activity/cao.mjs quickstart --step collect` | Dispatch Activity collection and return without waiting. Use after the maintenance outcome is available. |
+| `node activity/cao.mjs quickstart --step dashboard` | Check Activity evidence and dashboard deployment read-only; repeat if pending. |
+| `node activity/cao.mjs quickstart --wait --target OWNER/REPO` | Explicitly select the target and opt into the original install-through-dashboard flow with remote waits; not a resume or status command. |
+
+Use `node activity/cao.mjs quickstart --target OWNER/REPO` only immediately after verified installation in a
 clean public or private control repository on its default branch. Existing
 commits are allowed; the install stage adds one bounded CAO commit and pauses
 Repo Assist without dispatching it. Continue with `--step run`, inspect its

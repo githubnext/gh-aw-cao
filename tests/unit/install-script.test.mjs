@@ -39,6 +39,8 @@ test("quickstart keeps terminal presentation and filters Node experimental warni
   assert.match(installerSource, /--disable-warning=ExperimentalWarning/);
   assert.match(installerSource, /quickstart_arguments=\(quickstart\)/);
   assert.match(installerSource, /quickstart_arguments\+=\(--target "\$target_repository"\)/);
+  assert.match(installerSource, /run_cao_quickstart node "\$cao_cli" "\$\{quickstart_arguments\[@\]\}"/);
+  assert.doesNotMatch(installerSource, /gh cao quickstart|run_cao_quickstart gh cao/);
   assert.doesNotMatch(installerSource, /default_quickstart_control_repository|default_repository_name/);
   assert.match(installerSource, /Quickstart requires a clean control-repository checkout before installation/);
   assert.match(installerSource, /Quickstart selected published CAO release \$quickstart_release/);

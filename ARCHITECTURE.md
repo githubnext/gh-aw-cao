@@ -576,7 +576,7 @@ reconstructable.
 | `<operation>/operational-value.mjs` | Optional deterministic repository-scoped operational-value computation installed with its package. |
 | `<operation>/problem-clustering.mjs` | Optional bounded problem computation installed with its package. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
-| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Independent, entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds the dashboard's authoritative JSON contracts. Actions pipeline commands remain Node-owned. |
+| `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Independent, entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds the dashboard's authoritative JSON contracts. Actions pipeline commands and the retained installer quickstart remain Node-owned. |
 | `internal/dashboardquery/` | Small independent Go module sharing the bounded local Dashboard Language evaluator and read-only canonical SQLite reader between the extension and explicit local server profile; never a hosted PostgreSQL fallback. |
 | `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and shared browser UI built for either Pages or the hosted Go server. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, container image, and Azure Functions deployment profile. |
@@ -604,7 +604,9 @@ depends on `internal/ghcli/` and the declarative assets embedded by
 `dashboard/catalog.go`. Shared logging comes from
 `github.com/github/gh-aw/pkg/logger`; GitHub CLI execution uses
 `github.com/cli/go-gh/v2`, the same helper used by gh-aw. The Go command layer
-owns all operator implementation, argument validation and help. Campaign installation, policy
+owns all extension implementation, argument validation and help. The retained
+installer quickstart is a Node-only exception to the Go operator surface, not an
+extension command. Campaign installation, policy
 initialization, campaign mode changes, and workflow enablement run natively in Go.
 `gh cao campaigns add` delegates package ownership and workflow generation to
 `gh aw add`, preserves its option vector, then materializes only the selected
@@ -641,9 +643,11 @@ GitHub; raw authentication output and subprocess errors are never reported.
 Doctor does not replace production policy/workflow validation, grant authority,
 or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
 `node activity/cao.mjs <command>` explicitly, including SQLite snapshot `doctor`
-and the unmigrated `setup-auth hosted-cli` profile. There is no shell launcher.
+and the unmigrated `setup-auth hosted-cli` profile. The retained installer
+quickstart uses `node activity/cao.mjs quickstart`. There is no shell launcher.
 Internal Node implementations remain available for Actions and parity tests,
-not as an alternative operator surface. Root runtime upgrades remove only
+not as an alternative operator surface beyond that explicit quickstart exception.
+Root runtime upgrades remove only
 content-verified retired launchers; consumer-owned files, links, and directories
 are preserved. Verified older archives may contain the retired launcher but
 never install it. Quickstart stages its deletion only when present, never a
@@ -690,8 +694,9 @@ mixing names or retrying another asset after verification failure.
 For a newly initialized policy only, it aligns the former catalog's schema URI
 from an older extension with the installed catalog's canonical schema URI,
 rejecting unknown mismatches without rewriting authority fields or existing policy.
-Initialization, setup and quickstart invoke `gh cao`;
-Node.js remains an installation/pipeline prerequisite, not an operator dependency.
+Initialization and setup invoke `gh cao`; installer quickstart invokes
+`node activity/cao.mjs quickstart`. Node.js remains an installation/pipeline and
+quickstart prerequisite, not a dependency of Go extension commands.
 
 Campaign manifests are the catalog's source of truth for installed workflows and
 the trusted materializer bootstrap. The materializer copies executable resources
@@ -828,7 +833,9 @@ Private/internal repositories and incompatible existing policy fail before
 Pages or authentication changes. A fresh bare installation remains scoped to
 the exact control repository with no campaigns before setup.
 
-`activity/quickstart.mjs` owns a distinct explicit, staged first-success guide. It
+`activity/quickstart.mjs` owns a distinct explicit, staged first-success guide,
+retained through `install.sh --quickstart` and `node activity/cao.mjs quickstart`,
+not through the Go extension. It
 uses a clean public, private, or internal control repository on its checked-out
 default branch, preserving any existing commits. Outside a connected checkout,
 repository creation requires an explicitly chosen owner and name through

@@ -5,8 +5,8 @@ description: Optional campaign walkthrough to propose one maintenance improvemen
 
 This optional walkthrough installs and runs a campaign. To monitor existing
 Agentic Workflows without adding a campaign, start with [Set Up CAO](setup-quickstarts.md).
-If you already completed that setup, use the [campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
-to add a campaign to your existing control plane instead of reinstalling it.
+After setup, use the [campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
+to add a campaign without reinstalling.
 
 This guide introduces Central Agentic Ops (CAO) one component at a time.
 Each command finishes its own stage and tells you what to do next.
@@ -168,7 +168,7 @@ you intend to assist. Do not rerun installation to continue.
 Start the campaign only when you are ready:
 
 ```bash
-gh cao quickstart --step run
+node activity/cao.mjs quickstart --step run
 ```
 
 This uses the target already recorded in policy; it does not reinstall or
@@ -200,7 +200,7 @@ display. It does not rerun the maintenance analysis or apply a proposal.
 After reviewing the completed campaign, request collection:
 
 ```bash
-gh cao quickstart --step collect
+node activity/cao.mjs quickstart --step collect
 ```
 
 The command dispatches Activity and returns its Actions link without waiting.
@@ -214,7 +214,7 @@ Do not repeat `--step collect` as a status check; it requests a new snapshot.
 Check publication without starting another workflow:
 
 ```bash
-gh cao quickstart --step dashboard
+node activity/cao.mjs quickstart --step dashboard
 ```
 
 This read-only step checks for successful, data-bearing Activity and its
@@ -235,7 +235,7 @@ workers or live authority is a separate reviewed policy decision.
 ### Optional: wait for the whole flow
 
 For deliberate unattended use immediately after bare installation,
-`gh cao quickstart --wait --target TARGET_OWNER/TARGET_REPOSITORY` retains the end-to-end installation, run,
+`node activity/cao.mjs quickstart --wait --target TARGET_OWNER/TARGET_REPOSITORY` retains the end-to-end installation, run,
 collection, and deployment flow. It commits and pushes, starts workflows, and
 waits for remote completion. Do not use it to resume a staged installation or
 as a status check. The staged guide above is the default onboarding experience.

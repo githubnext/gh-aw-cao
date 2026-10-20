@@ -240,11 +240,13 @@ When an older verified extension initializes a new policy using the former
 `githubnext/gh-aw-cao` schema URI, the installer MUST align only that metadata URI
 with the installed catalog's canonical schema URI. It MUST reject unknown
 mismatches and MUST NOT rewrite an existing policy or any authority fields.
-The installer MUST invoke `gh cao init`, `setup` and `quickstart`, not their
-removed shell equivalents. No shell launcher is installed. Actions and Node-only
+The installer MUST invoke `gh cao init` and `gh cao setup`, while its retained
+quickstart MUST invoke `node activity/cao.mjs quickstart`, not the Go extension
+or removed shell equivalents. No shell launcher is installed. Actions and Node-only
 tools MUST invoke `node activity/cao.mjs <command>` or another explicit Node
 entry point directly, including SQLite `doctor` and `setup-auth hosted-cli`.
-User-facing commands MUST live in the Go extension, while Actions execution
+User-facing commands MUST live in the Go extension except the retained Node-only
+installer quickstart and Node-only administration tools above. Actions execution
 support MUST live in the JavaScript runtime under `activity/` and `dashboard/`.
 Agentic workflow execution and agent evidence preparation MUST NOT build,
 install, or invoke the native extension as a runtime dependency. Copilot setup
@@ -354,7 +356,7 @@ and MUST return without watching remote jobs. `--step dashboard` MUST be
 read-only, report pending work without polling, and be safe to repeat. Normal
 Activity push and schedule triggers MAY collect a baseline independently.
 Every stage MUST explain its component and provide the next command or Actions
-link. Explicit `cao quickstart --wait` MAY retain the end-to-end installation,
+link. Explicit `node activity/cao.mjs quickstart --wait` MAY retain the end-to-end installation,
 dispatch, collection, and deployment waits for unattended use immediately
 after bare installation; it MUST NOT be presented as a resume command. The
 installer MUST NOT add a redundant post-install confirmation.

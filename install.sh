@@ -103,7 +103,7 @@ usage() {
     '--quickstart requires explicit --target OWNER/REPO for an accessible public repository and pins the latest published CAO release, including prereleases.' \
     'Use a clean connected control checkout, or explicitly request --create-repo [OWNER/NAME]; no owner or repository is suggested.' \
     'It configures and commits the review-only control plane, then stops with Repo Assist paused; no campaign or Activity run is dispatched.' \
-    'Continue with gh cao quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
+    'Continue with node activity/cao.mjs quickstart --step run, --step collect, and --step dashboard; remote jobs run in Actions without a long terminal wait.' \
     'Starting Repo Assist can use up to 1,250 AI credits under default limits; proposals are optional, not requirements for using CAO.' \
     'The default budget includes 250 orchestration + 600 maintenance + 400 output checking; configured output-check limits may differ.' \
     'Without --quickstart, existing policy and unrelated files are preserved and no campaign is added or run.'
@@ -893,9 +893,9 @@ main() {
     fi
     if [[ -d "$catalog_source" ]]; then
       quickstart_arguments+=(--campaign "$catalog_source/repo-assist")
-      run_cao_quickstart gh cao "${quickstart_arguments[@]}"
+      run_cao_quickstart node "$cao_cli" "${quickstart_arguments[@]}"
     else
-      run_cao_quickstart gh cao "${quickstart_arguments[@]}"
+      run_cao_quickstart node "$cao_cli" "${quickstart_arguments[@]}"
     fi
   fi
   if [[ -n "$create_repository" && "$create_repository_in_place" == false ]]; then
