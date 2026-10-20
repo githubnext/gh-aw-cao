@@ -1,6 +1,6 @@
 {
   "source_sha": "1dc16c56a287aef0bfaed0cde6a94c9a8b47b49f",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-10-20T06:34:25Z",
@@ -589,6 +589,34 @@
         39414590932
       ],
       "outcome": "no-op: the 2026-10-20T11:23:21Z to 2026-10-20T14:36:21Z window contained 16 successful and four skipped completed docs.yml runs. Five successful builds were comparable (two push and three schedule, across four source SHAs): median/p90 end-to-end 225/347 seconds, initial queue or concurrency wait 3/114 seconds, queue-excluded execution 184/304 seconds, build job 87/94 seconds, deploy job 73/203 seconds, and Pages artifact upload 13/13 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. All five builds restored the dashboard cache in 2-3 seconds and skipped artifact lookup/download, so no dashboard artifact transfer occurred; each then packaged and uploaded dist in 12-13 seconds. Pages deployment varied from 10 to 251 seconds, but this service-side variance did not identify a correctness-preserving workflow packaging change. The 13-second packaging median is 7.1% of median queue-excluded execution and below both actionability thresholds; eliminating it entirely would save neither 60 seconds nor 15%. No actionable artifact-transfer or Pages-packaging improvement was supported; category advanced. One push run's 187-second concurrency wait and the deploy outliers were disclosed rather than attributed to packaging."
+    },
+    {
+      "evaluated_at": "2026-10-20T14:50:15Z",
+      "worker_run_id": "39443419901",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39442826835,
+        39440727596,
+        39438956620,
+        39438578838,
+        39435558939,
+        39433804572,
+        39432443073,
+        39430511764,
+        39430500899,
+        39430273601,
+        39430006806,
+        39427857200,
+        39427737824,
+        39426199464,
+        39426192123,
+        39423355731,
+        39422943430,
+        39419288382,
+        39417494838,
+        39415907323
+      ],
+      "outcome": "no-op: the 2026-10-20T11:34:22Z to 2026-10-20T14:50:15Z window contained 16 successful and four skipped completed docs.yml runs. Five successful builds were comparable (two push and three schedule, across four source SHAs): median/p90 end-to-end 225/347 seconds, initial queue or concurrency wait 3/114 seconds, queue-excluded execution 183/303 seconds, build job 87/94 seconds, and deploy job 73/203 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. Thirteen schedule-triggered runs were present: three rebuilt and deployed, while ten freshness-checked without building; the latest no-build checks spent 4-8 seconds in the freshness step. One schedule run overlapped a newer push and both deployed, but a single overlap is not repeated evidence for safely enabling cancellation. Open issue #17171 already represents the stable freshness-scan optimization, while current evidence does not materially change that work; creating another issue would be a duplicate. All five builds restored the reusable dashboard cache and skipped artifact fallback. No new non-duplicate scheduling or concurrency change met the repeated-evidence and safety requirements; category advanced."
     }
   ]
 }
