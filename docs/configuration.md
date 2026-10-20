@@ -165,6 +165,10 @@ responsibility, disabled review-only policy, admission and output routing, and
 validation. It does not compete with `gh aw add`/`update` or activate a second
 schedule automatically.
 
+For a ready-to-install example, see [Daily Repo Status](./repo-status.md):
+an opt-in standalone adaptation of Agentics with manual dispatch and
+review-repository issue delivery.
+
 Any agentic workflow can opt into CAO without becoming a campaign or introducing
 an orchestrator/worker pair. Install or maintain its Markdown source in the
 control repository, retain its own trigger and mission, and declare its exact

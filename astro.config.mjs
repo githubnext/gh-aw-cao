@@ -108,6 +108,7 @@ export default defineConfig({
             "local-debugging",
             "marketplace",
             "operational-*",
+            "repo-status",
             "operations",
             "orchestrators-*",
             "rollout-*",
@@ -260,6 +261,7 @@ export default defineConfig({
           label: "Get started",
           items: [
             { label: "Set up and monitor", link: "/setup-quickstarts/" },
+            { label: "Daily Repo Status (optional)", link: "/repo-status/" },
             { label: "Add a campaign (optional)", link: "/catalog/" },
             { label: "CAO commands", link: "/cao-cli/" },
             { label: "Authentication", link: "/authentication/" },
