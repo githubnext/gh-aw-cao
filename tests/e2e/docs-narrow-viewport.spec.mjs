@@ -748,7 +748,7 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Roll out with confidence.", exact: true })).toBeAttached();
       await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Setup, authentication, and rollout");
       await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
-        "Choose which repositories CAO can reach and connect separate read/write credentials. Guided setup brings scope, authentication, and dashboard visibility together for review. Add a campaign when you're ready, start in review mode, and promote selected repositories to live only through explicit policy. Keep credentials in Actions secrets and rollout decisions in versioned configuration.",
+        "Set repository scope and connect separate read/write credentials. Start with one CAO-integrated workflow, such as daily team status. In review mode, inspect its proposed report in a review repository before authorizing live delivery. Keep credentials in Actions secrets and rollout decisions in versioned policy. Add campaigns when you're ready to scale.",
       );
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
