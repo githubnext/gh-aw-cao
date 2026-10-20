@@ -1,35 +1,7 @@
 {
-  "source_sha": "251152f70de183158723b2f306de86df19d10fdd",
+  "source_sha": "750c4006623d7ae70dd61946505f50a3f731dd1c",
   "next_category": "Astro documentation generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-20T11:21:46Z",
-      "worker_run_id": "39414024611",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39414237559,
-        39412052909,
-        39410478515,
-        39409078842,
-        39408919999,
-        39407527074,
-        39407194981,
-        39404935529,
-        39403590816,
-        39402236283,
-        39400711523,
-        39398865390,
-        39397756747,
-        39396576266,
-        39394069863,
-        39393719815,
-        39390537827,
-        39388787873,
-        39386887878,
-        39386513324
-      ],
-      "outcome": "incomplete: during the 2026-10-20T07:26:24Z to 2026-10-20T11:20:23Z evidence window, the latest 20 completed docs.yml runs contained 15 successful runs and five skipped workflow_run entries. Only push run 39409078842 executed successful build and deploy jobs; the other 14 successful runs were schedule freshness checks that skipped build and deploy. The newest schedule run 39412052909 queued its freshness job for 4 seconds, ran it for 7 seconds (4 seconds in the freshness check), then skipped build and deploy. The sole comparable build queued for 4 seconds, completed in 111 seconds end to end, ran the build job for 84 seconds and deploy for 18 seconds, installed dependencies in 30 seconds, built documentation in 11 seconds, restored the dashboard cache, and uploaded the Pages artifact in 10 seconds. One build sample cannot establish required median/p90 build and deploy timings or repeated dependency-cache effectiveness; docs.yml has no dashboard job. Fewer than five comparable successful build samples were available, so the evaluation is incomplete and the category remains next."
-    },
     {
       "evaluated_at": "2026-10-20T11:37:10Z",
       "worker_run_id": "39415949495",
@@ -799,6 +771,34 @@
       "category": "Astro documentation generation",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T23:52:15Z",
+      "worker_run_id": "39517444216",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39517127441,
+        39516414092,
+        39516401425,
+        39515612526,
+        39514408681,
+        39514007733,
+        39512188837,
+        39510444217,
+        39508887305,
+        39507632316,
+        39507308747,
+        39504989291,
+        39503217685,
+        39502971923,
+        39501354413,
+        39499956441,
+        39499549966,
+        39497001456,
+        39495125880,
+        39493508349
+      ],
+      "outcome": "incomplete: the 2026-10-20T20:37:06Z to 2026-10-20T23:48:45Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Only four successful runs executed both build and deploy (two push, one schedule, and one workflow_run, across three source SHAs), below the required minimum of five comparable successful builds. Trusted job and step metadata confirmed the four builds and showed that the remaining newly observed successful schedule runs freshness-checked and skipped build and deploy. The newest schedule build completed in 166 seconds end to end, with a 79-second build job, 68-second deploy job, 21-second dependency installation, 13-second documentation generation, 2-second dashboard-cache restoration with artifact fallback skipped, and 13-second Pages upload. Required median/p90 workflow, queue, build, deploy, and Astro-generation measurements cannot be completed; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
     }
   ]
 }
