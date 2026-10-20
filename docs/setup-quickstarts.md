@@ -32,8 +32,8 @@ From a clean checkout of your chosen control repository, on its default branch:
 curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
 ```
 
-**Ready:** the CAO runtime, Activity collector, and dashboard workflows are
-installed locally. No campaign is installed or run.
+**Ready:** the runtime, Activity, dashboard, seven CAO skills, and an
+Agentic Workflows agent are installed locally. No campaign is installed or run.
 
 <details>
 <summary>Need a new control repository?</summary>
