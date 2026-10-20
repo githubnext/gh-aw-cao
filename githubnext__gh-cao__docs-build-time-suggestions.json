@@ -1,35 +1,7 @@
 {
-  "source_sha": "722794ad34c92bff5f48f72490f34949465ce86f",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "d9a6ec563de532b787cce1a0c9625d0a4bea9c61",
+  "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-20T08:27:08Z",
-      "worker_run_id": "39393191689",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39390537827,
-        39388787873,
-        39386887878,
-        39386513324,
-        39383844471,
-        39381458818,
-        39381197975,
-        39378144737,
-        39376963126,
-        39376153086,
-        39375999551,
-        39375801479,
-        39374762521,
-        39372664779,
-        39371749392,
-        39370827216,
-        39369620161,
-        39369423241,
-        39367420475,
-        39366749142
-      ],
-      "outcome": "incomplete: during the 2026-10-20T03:54:34Z to 2026-10-20T08:02:30Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 15 successful runs were freshness checks that skipped both jobs. The newly observed schedule run 39390537827 completed a 9-second schedule-freshness job and skipped build and deploy. The sole comparable build restored the dashboard cache, installed dependencies in 14 seconds, built documentation in 9 seconds, completed the build job in 70 seconds, deployment in 18 seconds, and the workflow in 97 seconds with no queue delay. One build sample cannot establish required median/p90 build, deploy, or cache-effectiveness evidence. Fewer than five comparable successful build samples were available, so the category remains next."
-    },
     {
       "evaluated_at": "2026-10-20T08:48:53Z",
       "worker_run_id": "39395728143",
@@ -820,6 +792,34 @@
         39460801866
       ],
       "outcome": "incomplete: the 2026-10-20T16:49:24Z to 2026-10-20T19:47:06Z latest-20 window contained 15 successful, four skipped, and one cancelled completed docs.yml run; the cancelled push was excluded. Five successful builds were comparable (two push, two schedule, and one workflow_run, across four source SHAs): median/p90 end-to-end 134/180.4 seconds, initial queue 4/6.4 seconds, queue-excluded execution 130/176.4 seconds, build job 93/106.4 seconds, and deploy job 20/32.2 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. Trusted step metadata showed all five reusable dashboard-cache restores completed in 2-3 seconds and all dashboard run lookup/artifact-download fallbacks were skipped. During the required open-issue duplicate search and bounded log verification, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API and model work stopped. Duplicate status and complete cache-log evidence could not be verified, so no actionable recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T20:24:26Z",
+      "worker_run_id": "39491178717",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39491441523,
+        39488433149,
+        39487836723,
+        39486361919,
+        39484726164,
+        39484498653,
+        39484331843,
+        39483522398,
+        39482760104,
+        39482357411,
+        39479892762,
+        39477603930,
+        39475085157,
+        39474674500,
+        39471268585,
+        39469112454,
+        39467160399,
+        39465724868,
+        39465386739,
+        39462547132
+      ],
+      "outcome": "no-op: the 2026-10-20T17:01:35Z to 2026-10-20T20:22:39Z latest-20 window contained 16 successful and four skipped completed docs.yml runs. Five successful builds were comparable (three push, one schedule, and one workflow_run, across four source SHAs): median/p90 end-to-end 134/181.6 seconds, initial queue 4/8.6 seconds, queue-excluded execution 130/175.6 seconds, build job 93/108.2 seconds, and deploy job 20/32.2 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. All five builds restored the reusable dashboard cache in 2-3 seconds and skipped artifact fallback; bounded logs for the newest build confirmed a 58 MiB cache hit. The prior same-SHA schedule/push overlap no longer duplicated deployment: the schedule waited for the push, freshness-checked, and skipped, while the newest post-push schedule also skipped in 12 seconds. Open issue #17171 already represents the stable freshness-history-scan optimization. Current evidence does not materially change that issue, and no new non-duplicate scheduling or concurrency improvement met the 60-second or 15% threshold, so the category advanced."
     }
   ]
 }
