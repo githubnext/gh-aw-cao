@@ -3497,7 +3497,7 @@
         "unevaluatedProperties": {
           "not": {}
         },
-        "description": "Independent policy allowances, not remaining spend or reservations. The gh-aw client applies validated values to the corresponding runtime caps; omitted optional allowances preserve component policy. Wire numbers are plain positive decimal integers.",
+        "description": "Independent policy allowances, not remaining spend or reservations. The gh-aw client applies validated values to the corresponding runtime caps; omitted optional allowances preserve component policy. Wire numbers are plain positive decimal integers. Approval also idempotently publishes a sparse canonical Run with status admitted before returning 200; denied/blocked attempts publish no run. Publication failure is transient and preserves the original decision for retry.",
         "examples": [
           {
             "max_ai_credits": 1000,

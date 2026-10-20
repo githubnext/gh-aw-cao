@@ -178,6 +178,9 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
 		return fail(err)
 	}
+	if err := writer.stageAdmittedRuns(ctx); err != nil {
+		return fail(err)
+	}
 	for _, source := range tableNames() {
 		statement, args, err := sqlbuilder.Build("DELETE FROM {} WHERE namespace={}", sqlbuilder.Identifier(entityTables[source].name), s.namespace)
 		if err != nil {
@@ -403,6 +406,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if err := w.Flush(ctx); err != nil {
 		return State{}, err
 	}
+	if err := w.restoreAdmittedRuns(ctx); err != nil {
+		return State{}, err
+	}
 	var duplicate bool
 	if err := w.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM runs WHERE namespace=$1 GROUP BY id HAVING count(*)>1)`, w.store.namespace).Scan(&duplicate); err != nil {
 		return State{}, err
@@ -563,6 +569,12 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			w.store.namespace, source, map[bool]string{true: "empty", false: "available"}[count == 0]); err != nil {
 			return State{}, err
 		}
+	}
+	if _, err := w.tx.Exec(ctx, `UPDATE cao_quality SET completeness='partial',availability='available'
+		WHERE namespace=$1 AND collection IN ('$runs','$workflows','$repositories')
+		AND EXISTS(SELECT 1 FROM runs WHERE namespace=$1 AND status='admitted' AND admission_status='admitted')`,
+		w.store.namespace); err != nil {
+		return State{}, err
 	}
 	if err := w.tx.QueryRow(ctx, `UPDATE cao_state SET revision=revision+1,data_revision=$1,evaluated_at=$2,schema_version=$3
 		WHERE namespace=$4 RETURNING revision`, dataRevision, w.evaluatedAt, model.SchemaVersion, w.store.namespace).Scan(&state.Revision); err != nil {

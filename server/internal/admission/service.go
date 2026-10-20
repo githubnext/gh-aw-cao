@@ -28,6 +28,12 @@ type Service struct {
 	Verifier  *Verifier
 	Policies  PolicySource
 	Decisions Decisions
+	Runs      AdmittedRuns
+}
+
+// AdmittedRuns publishes only verified approvals, never blocked attempts.
+type AdmittedRuns interface {
+	RecordAdmittedRun(context.Context, Identity) error
 }
 
 func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +133,15 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !decision.valid() || ctx.Err() != nil {
 		status = http.StatusServiceUnavailable
 		return
+	}
+	if s.Runs != nil {
+		_, err := observeOperation(ctx, telemetry.SpanAdmissionRun, func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, s.Runs.RecordAdmittedRun(ctx, identity)
+		})
+		if err != nil {
+			status = http.StatusServiceUnavailable
+			return
+		}
 	}
 	body, err := json.Marshal(decision)
 	if err != nil {

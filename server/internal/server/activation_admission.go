@@ -12,6 +12,7 @@ import (
 	"github.com/githubnext/gh-cao/server/internal/admission"
 	"github.com/githubnext/gh-cao/server/internal/operational"
 	operationalpostgres "github.com/githubnext/gh-cao/server/internal/operational/postgres"
+	"github.com/githubnext/gh-cao/server/internal/postgresx"
 )
 
 type AdmissionConfig struct {
@@ -46,7 +47,11 @@ func newActivationAdmission(store operational.Store, config Config) (*admission.
 	if err := policy.Validate(); err != nil {
 		return nil, errors.New("admission requires a readable valid protected policy and accounting snapshot")
 	}
-	return &admission.Service{Verifier: verifier, Policies: policy, Decisions: decisions}, nil
+	runs, ok := config.Database.(*postgresx.Store)
+	if !ok || runs == nil {
+		return nil, errors.New("activation admission requires the canonical PostgreSQL run store")
+	}
+	return &admission.Service{Verifier: verifier, Policies: policy, Decisions: decisions, Runs: runs}, nil
 }
 
 func (a *App) activationAdmission(w http.ResponseWriter, r *http.Request) {

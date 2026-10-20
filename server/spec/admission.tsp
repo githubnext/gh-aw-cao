@@ -33,7 +33,7 @@ model AdmissionRequest {
   @minLength(1) @maxLength(100) triggering_actor: string;
 }
 
-/** Independent policy allowances, not remaining spend or reservations. The gh-aw client applies validated values to the corresponding runtime caps; omitted optional allowances preserve component policy. Wire numbers are plain positive decimal integers. */
+/** Independent policy allowances, not remaining spend or reservations. The gh-aw client applies validated values to the corresponding runtime caps; omitted optional allowances preserve component policy. Wire numbers are plain positive decimal integers. Approval also idempotently publishes a sparse canonical Run with status admitted before returning 200; denied/blocked attempts publish no run. Publication failure is transient and preserves the original decision for retry. */
 @jsonSchema
 @example(#{max_ai_credits: 1000, max_ai_credits_threat_detection: 100, max_ai_credits_evals: 50})
 model AdmissionAllowances {

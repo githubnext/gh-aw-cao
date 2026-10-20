@@ -294,6 +294,15 @@ duration/status metrics with the fixed admission route even across its separate
 authentication path. Raw errors, credentials, identities, allowance values and
 denial reasons never enter those signals; exporter failures do not change
 operation results.
+Verified successful admission publishes a sparse canonical Run in admitted
+state before returning approval; blocked attempts publish nothing. Publication
+uses existing canonical IDs, inserts only missing parent identity facts,
+advances revision once and never downgrades collected evidence. Namespace
+ingestion locks serialize publication with replacement; replacement temporarily
+preserves missing admitted runs/parents but authoritative incoming Run evidence
+wins. Sparse quality stays partial and no start/completion/spend is inferred.
+Canonical publication failure is transient without changing the first durable
+decision; retry repairs the idempotent projection, not a financial commitment.
 Native `gh cao admission setup/status/disable` commands configure the
 selected scope's three managed non-secret variables. `gh cao setup admission`
 reuses admission setup without introducing workflow secrets. Setup/disable apply

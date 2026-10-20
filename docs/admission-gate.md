@@ -217,6 +217,14 @@ rollback occurs; inspect the failed target before retrying.
 
 ## 5. Monitor, disable, and recover
 
+Successful decisions also appear immediately in canonical `runs` as
+`status: admitted`. Blocked attempts do not create rows. These sparse records
+show that the gate approved an invocation, **not** that an agent started or
+completed, and contain no invented usage, conclusion or execution timestamps.
+Normal collection replaces them with authoritative run evidence; a snapshot
+that has not observed a pending run yet does not delete it. Retried approvals
+do not duplicate rows or overwrite collected state.
+
 The same scope selectors work for status and disable:
 
 ```sh

@@ -617,6 +617,30 @@ The default local profile is loopback-only. The separate hosted profile requires
 GitHub OAuth and explicit organization/team authorization; neither profile
 grants database access to clients.
 
+The optional hosted OIDC admission gate MAY publish early Run evidence only
+after verified identity, policy approval and durable decision resolution.
+Successful publication SHALL insert a sparse canonical `runs` row with
+`status: admitted` and `admissionStatus: admitted`, using the existing
+repository-scoped GitHub run ID and normalized workflow relationship.
+Blocked, revoked, malformed or unauthenticated attempts SHALL create no Run
+or parent rows. Missing repository/workflow identity parents MAY be inserted
+sparsely; existing inventory identities SHALL be reused. The observation
+timestamp is `updatedAt`, not a fabricated workflow start or creation time.
+No conclusion, completion, actor, allowance or usage SHALL be synthesized.
+Canonical attempts outside the BIGINT range SHALL remain unknown rather than
+truncate; exact signed invocation identity remains in the independent decision
+key and is not reconstructed from the projection.
+
+Run publication SHALL be atomic with its missing parents and revision update,
+idempotent across retries, and serialized with canonical replacement. Pending
+admitted rows and required parents SHALL survive replacement snapshots that
+have not observed their run yet; an incoming canonical row with that Run ID
+SHALL take precedence. Late admission retries SHALL NOT downgrade collected
+evidence or refresh the admission observation time. Source quality containing
+these sparse rows SHALL remain partial. Admission is not proof of actual
+execution, completion, outcome or spend. Projection failure SHALL return a
+generic transient response without discarding the durable admission decision.
+
 Hosted container, Azure Functions, and external-listener deployments SHALL
 serve the built dashboard HTML and assets through the complete Go handler on
 the same origin as OAuth, query APIs, and revision events. They SHALL NOT

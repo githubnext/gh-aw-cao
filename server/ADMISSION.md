@@ -261,6 +261,46 @@ a denial. Redirects are not followed and no caller credentials reach the issuer.
 
 ## Replay, expiry and revocation
 
+### Early canonical run visibility
+
+After verified policy approval and durable decision resolution, the service
+idempotently prepopulates the canonical PostgreSQL `runs` table with
+`status: "admitted"` and `admissionStatus: "admitted"` before returning `200`.
+Blocked, revoked, malformed and unauthenticated attempts create **no** run or
+parent rows. This is evidence of an affirmative gate decision, not proof that
+activation, agent execution or any paid work actually started.
+
+The projection uses the ordinary repository-scoped canonical run ID, preserves
+the exact GitHub run ID string, normalizes `.lock.yml` workflow paths to `.md`,
+and reuses existing repository/workflow inventory identities when available.
+Missing parents are inserted sparsely with the existing coordinate identities.
+The numeric attempt is populated when representable in the canonical BIGINT;
+larger signed attempt strings remain unknown in this numeric projection (with
+a non-sensitive server diagnostic), not truncated. Exact invocation identity
+continues to bind the durable decision independently.
+
+Only verified identity/event facts and the admission observation timestamp
+(`updatedAt`) are written. No actor, token, workflow hash, policy reason,
+allowance, start/creation/completion time, conclusion or usage is fabricated.
+The database revision advances once for a new row, so existing revision
+subscriptions refresh; retries do not create rows or move the observation time.
+Existing collected rows are never downgraded by admission or rerun retries.
+Sources containing sparse admission rows remain explicitly partial.
+
+Canonical ingestion temporarily preserves pending admitted rows and only their
+needed parents inside its replacement transaction. A snapshot not yet containing
+the run does not erase it; a collected record with that canonical run ID takes
+precedence and replaces the sparse row. There is no extra persistent shadow
+entity table or authority inferred from dashboard data. An admitted row may
+remain pending until authoritative collection observes its execution; it
+cannot be counted as completed/successful or as measured spend.
+
+Decision and canonical storage are separate transactions. A canonical
+publication failure returns generic `503` without erasing/changing the first
+decision; a legitimate retry completes the idempotent projection. No success
+is returned before projection commits, and neither write is a financial
+reservation, charge or proof of execution.
+
 The decision key hashes only verified issuer, immutable repository/owner IDs,
 run, attempt, original actor ID, workflow reference and revision. It contains no
 token or token hash. `workflow_call_id` is independently checked, while
@@ -364,6 +404,7 @@ repository or policy identifiers as dimensions. Stage spans are fixed names:
 | `cao_dashboard.admission.policy.evaluate` | Protected policy and accounting read/evaluation |
 | `cao_dashboard.admission.decision.resolve` | Durable first-decision/revocation transition |
 | `cao_dashboard.admission.replay.check` | Retained eligibility check during a dependency outage |
+| `cao_dashboard.admission.run.publish` | Idempotent sparse canonical Run publication after approval |
 
 Dependency failures have only a generic unavailable status; telemetry never
 records raw exceptions, tokens, claims, request bodies, allowance values or

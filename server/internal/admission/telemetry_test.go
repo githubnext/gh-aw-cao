@@ -142,6 +142,7 @@ func TestAdmissionOTLPExportAndShutdownFlush(t *testing.T) {
 	service := &Service{Verifier: fixture.verifier,
 		Policies:  policyFunc(func(context.Context, Identity) (Allowances, error) { return Allowances{Primary: 1000}, nil }),
 		Decisions: decisionsFunc(func(_ context.Context, _ string, a *Allowances) (Allowances, error) { return *a, nil }),
+		Runs:      admittedRunFunc(func(context.Context, Identity) error { return nil }),
 	}
 	request := httptest.NewRequestWithContext(ctx, http.MethodPost, "https://admission.example/api/admission", strings.NewReader(string(body)))
 	request.Header.Set("Content-Type", "application/json")
@@ -186,7 +187,7 @@ func TestAdmissionOTLPExportAndShutdownFlush(t *testing.T) {
 			}
 		}
 	}
-	for _, name := range []string{"POST /api/admission", telemetry.SpanAdmissionIdentity, telemetry.SpanAdmissionKeys, telemetry.SpanAdmissionPolicy, telemetry.SpanAdmissionDecision} {
+	for _, name := range []string{"POST /api/admission", telemetry.SpanAdmissionIdentity, telemetry.SpanAdmissionKeys, telemetry.SpanAdmissionPolicy, telemetry.SpanAdmissionDecision, telemetry.SpanAdmissionRun} {
 		if !names[name] {
 			t.Fatalf("shutdown did not flush span %s", name)
 		}
