@@ -745,10 +745,10 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Shared work. Clear ownership.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
-      await expect(page.getByRole("heading", { name: "Go from insight to action.", exact: true })).toBeAttached();
-      await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("One CLI. Fleet-wide control.");
+      await expect(page.getByRole("heading", { name: "Put workflow evidence to work.", exact: true })).toBeAttached();
+      await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Install. Download. Query.");
       await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
-        "Investigate failures and costs. Give agents operational evidence. Install campaigns and steer priorities. Control where automation runs with scoped authentication and reviewed rollout policy.",
+        "Install CAO, download published workflow evidence, and query costs from your terminal. Use the sample dashboard or your own deployment.",
       );
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
@@ -772,13 +772,8 @@ for (const { name, viewport } of [
       await expect(page.locator(".terminal")).toBeAttached();
       await expect(page.locator(".terminal code")).toHaveText([
         "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
-        "gh cao setup",
-        "gh cao doctor",
-        "gh cao download --url https://OWNER.github.io/CONTROL_REPO/cao/payload-hashes.json",
+        "gh cao download --url https://githubnext.github.io/gh-cao/cao/payload-hashes.json",
         "gh cao query cost-by-campaign",
-        "gh cao prompt cost-by-campaign --database .cao/gh-aw-logs.sqlite",
-        "gh cao campaigns add githubnext/gh-cao/dependabot",
-        "gh cao campaigns mode preview dependabot",
       ]);
       await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);
       await expect(page.locator(".product-shot-mobile")).toHaveCount(2);
