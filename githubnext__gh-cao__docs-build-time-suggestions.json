@@ -309,6 +309,34 @@
         39376153086
       ],
       "outcome": "incomplete: during the 2026-10-20T05:40:31Z to 2026-10-20T10:20:07Z evidence window, the latest 20 completed docs.yml runs contained 15 successful runs and five skipped workflow_run entries. Only push run 39376153086 executed successful build and deploy jobs; the other 14 successful runs were schedule freshness checks that skipped build and deploy. The newest successful schedule run 39404935529 queued its freshness job for 3 seconds, ran it for 12 seconds (8 seconds in the freshness check), then skipped build and deploy. The sole comparable build completed the build job in 70 seconds, deployment in 18 seconds, and the workflow in 97 seconds with 4 seconds of initial job queue time; bounded step evidence for that unchanged run showed a dashboard-cache hit, 14-second dependency installation, and 9-second documentation build. One build sample cannot establish required median/p90 build and deploy timings or repeated dependency-cache effectiveness, and docs.yml has no dashboard job. Fewer than five comparable successful build samples were available, so the evaluation is incomplete and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-20T10:35:00Z",
+      "worker_run_id": "39408961877",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39408919999,
+        39407527074,
+        39407194981,
+        39404935529,
+        39403590816,
+        39402236283,
+        39400711523,
+        39398865390,
+        39397756747,
+        39396576266,
+        39394069863,
+        39393719815,
+        39390537827,
+        39388787873,
+        39386887878,
+        39386513324,
+        39383844471,
+        39381458818,
+        39381197975,
+        39378144737
+      ],
+      "outcome": "incomplete: during the 2026-10-20T06:02:41Z to 2026-10-20T10:34:56Z evidence window, the latest 20 completed docs.yml runs contained 15 successful schedule runs and five skipped workflow_run entries. All 15 successful runs were freshness checks that skipped build and deploy, so there were zero comparable successful build samples and no dashboard job in docs.yml. The two newly observed schedule runs each queued the freshness job for 4 seconds, ran it for 12 seconds, spent 9 and 8 seconds respectively in the freshness check, then skipped build and deploy. The required five comparable successful runs were unavailable, preventing median/p90 build and deploy measurements or verification of repeated dependency and dashboard cache behavior. The evaluation is incomplete and the category remains next."
     }
   ]
 }
