@@ -185,6 +185,8 @@ test("independent snapshot context and explicit quality checks survive without b
   assert.deepEqual(model.checks, input.checks);
   assert.equal(model.metrics[0].completeTotal, 3);
   assert.equal(model.metrics[0].signal.status, "improving");
+  assert.deepEqual(model.repositoryComparison, { from: input.window.startAt, to: input.window.endAt,
+    delta: 6, movement: "worsening" });
   for (const mutate of [
     value => { value.repositoryState.observations[1].value = NaN; },
     value => { value.repositoryState.observations[1].at = "2026-05-02T00:00:00Z"; },
@@ -205,6 +207,33 @@ test("independent snapshot context and explicit quality checks survive without b
     mutate(altered);
     assert.throws(() => eventPulse(altered), /Invalid repository-state|Invalid report checks/);
   }
+});
+
+test("snapshot movement preserves native deltas and follows the declared direction without changing contribution", () => {
+  const input = ledger();
+  input.repositoryState = {
+    metric: { ...metric, id: "state", name: "Repository condition" },
+    observations: [
+      { at: input.window.startAt, value: 10, ref: "start", url: "https://github.com/octo/example/commit/start" },
+      { at: input.window.endAt, value: 15, ref: "end", url: "https://github.com/octo/example/commit/end" },
+    ], limitation: "Sparse observations, including every actor.",
+  };
+  const original = eventPulse(input).metrics;
+  for (const [direction, value, delta, movement] of [
+    ["decrease", 15, 5, "worsening"], ["decrease", 8, -2, "improving"],
+    ["increase", 15, 5, "improving"], ["increase", 8, -2, "worsening"],
+    ["increase", 10, 0, "unchanged"], ["decrease", 10, 0, "unchanged"],
+  ]) {
+    input.repositoryState.metric.direction = direction;
+    input.repositoryState.observations[1].value = value;
+    const model = eventPulse(input);
+    assert.deepEqual(model.repositoryComparison, { from: input.window.startAt, to: input.window.endAt, delta, movement });
+    assert.deepEqual(model.metrics, original, "Snapshot direction is not a change to delivery, acceptance or attention policy.");
+  }
+  input.repositoryState.observations.pop();
+  assert.equal(eventPulse(input).repositoryComparison, null, "One snapshot must not invent zero change.");
+  delete input.repositoryState;
+  assert.equal(eventPulse(input).repositoryComparison, null);
 });
 
 test("no opportunity and unknown opportunity are not workflow failure", () => {

@@ -79,8 +79,33 @@ try {
           assert.equal(await page.locator(".chart svg").count(), model.repositoryState ? 3 : 2);
           if (model.repositoryState) {
             assert.equal(await page.locator(".snapshot-chart circle").count(), model.repositoryState.observations.length);
-            assert.equal(await page.locator(".snapshot-chart path").count(), 0, "Sparse snapshots must not imply continuous change.");
-            assert.ok(await page.locator(".snapshot-chart .axis, .snapshot-chart .snapshot-value").evaluateAll(labels =>
+            assert.equal(await page.locator(".snapshot-chart path, .snapshot-chart polygon").count(), 0,
+              "Snapshots must not use a smoothed curve or filled area.");
+            assert.equal(await page.locator(".snapshot-connector").count(), model.repositoryState.observations.length - 1);
+            const segments = await page.locator(".snapshot-connector").evaluateAll(lines => lines.map(line => ({
+              x1: line.getAttribute("x1"), y1: line.getAttribute("y1"), x2: line.getAttribute("x2"), y2: line.getAttribute("y2"),
+              dash: getComputedStyle(line).strokeDasharray, hidden: line.getAttribute("aria-hidden"),
+              pointerEvents: getComputedStyle(line).pointerEvents,
+            })));
+            const points = await page.locator(".snapshot-chart circle").evaluateAll(points => points.map(point => ({
+              x: point.getAttribute("cx"), y: point.getAttribute("cy"),
+            })));
+            segments.forEach((segment, index) => {
+              assert.deepEqual([segment.x1, segment.y1, segment.x2, segment.y2],
+                [points[index].x, points[index].y, points[index + 1].x, points[index + 1].y]);
+              assert.notEqual(segment.dash, "none", "Every connector must be explicitly illustrative, not a solid continuous series.");
+              assert.equal(segment.hidden, "true");
+              assert.equal(segment.pointerEvents, "none", "Connectors must not intercept evidence links.");
+            });
+            assert.match(await page.locator(".snapshot-chart > .chart svg > title").textContent(), /not continuous observations/);
+            assert.match(await page.locator(".snapshot-chart .chart-caption").innerText(), /Dashed guide/);
+            assert.equal(await page.locator(".snapshot-direction").textContent(), "↓ Lower is better");
+            assert.ok(await page.locator(".snapshot-direction").evaluate(label => {
+              const bounds = label.getBoundingClientRect(), chart = label.ownerSVGElement.getBoundingClientRect();
+              return bounds.top >= chart.top && bounds.bottom <= chart.bottom
+                && bounds.left >= chart.left && bounds.right <= chart.right;
+            }), "The goal-direction cue must stay fully inside the responsive chart.");
+            assert.ok(await page.locator(".snapshot-chart .axis, .snapshot-chart .snapshot-value, .snapshot-direction").evaluateAll(labels =>
               labels.every(label => parseFloat(getComputedStyle(label).fontSize) * label.getScreenCTM().a >= 11)),
             "Chart labels must remain readable after SVG scaling on narrow screens.");
             assert.deepEqual(await page.locator(".snapshot-value").allTextContents(),
@@ -88,7 +113,10 @@ try {
             assert.match(await page.locator(".facts").innerText(),
               new RegExp(`${model.repositoryState.observations.at(-1).value} files`));
             const change = model.repositoryState.observations.at(-1).value - model.repositoryState.observations[0].value;
-            assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), `${change > 0 ? "+" : ""}${change} since first snapshot`);
+            assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), `↑ +${change} files · Worse`);
+            assert.ok(await page.locator(".repository-fact .fact-detail").evaluate(element => element.classList.contains("worsening")));
+            assert.equal(await page.locator(".repository-fact .fact-detail").evaluate(element => getComputedStyle(element).color),
+              colorScheme === "light" ? "rgb(154, 103, 0)" : "rgb(210, 153, 34)");
             assert.deepEqual(await page.locator(".snapshot-chart a").evaluateAll(links => links.map(link => link.getAttribute("href"))),
               model.repositoryState.observations.map((_, index) => `#snapshot-${index}`));
             assert.equal(await page.locator(".snapshot-chart").getByRole("link").count(), model.repositoryState.observations.length,
@@ -245,6 +273,7 @@ try {
           await page.goto(pathToFileURL(output).href);
           assert.match(await page.locator(".repository-fact .fact-detail").innerText(), /No earlier snapshot for comparison/);
           assert.equal(await page.locator(".snapshot-chart circle").count(), 1);
+          assert.equal(await page.locator(".snapshot-connector, .fact-movement").count(), 0);
           assert.equal(await page.locator(".snapshot-chart .axis").count(), 1,
             "One snapshot must not produce an overlapping or invented comparison.");
           const recovered = structuredClone(ledger);
@@ -253,7 +282,23 @@ try {
           delete final.items;
           writePulse(recovered, output);
           await page.reload();
-          assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), "-1 since first snapshot");
+          assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), "↓ -1 files · Better");
+          assert.equal(await page.locator(".repository-fact .fact-detail").evaluate(element => getComputedStyle(element).color),
+            colorScheme === "light" ? "rgb(26, 127, 55)" : "rgb(63, 185, 80)");
+          recovered.repositoryState.metric.direction = "increase";
+          writePulse(recovered, output);
+          await page.reload();
+          assert.equal(await page.locator(".snapshot-direction").textContent(), "↑ Higher is better");
+          assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), "↓ -1 files · Worse");
+          final.value = recovered.repositoryState.observations[0].value + 1;
+          writePulse(recovered, output);
+          await page.reload();
+          assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), "↑ +1 files · Better");
+          final.value = recovered.repositoryState.observations[0].value;
+          writePulse(recovered, output);
+          await page.reload();
+          assert.equal(await page.locator(".repository-fact .fact-detail").innerText(), "Unchanged since first snapshot");
+          assert.equal(await page.locator(".fact-movement.improving, .fact-movement.worsening").count(), 0);
           const missingItems = structuredClone(ledger);
           for (const row of missingItems.repositoryState.observations) delete row.items;
           writePulse(missingItems, output);

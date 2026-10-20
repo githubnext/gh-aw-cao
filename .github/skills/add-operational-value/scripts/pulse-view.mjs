@@ -163,17 +163,21 @@ export function mountPulse(document, model) {
     const state = model.repositoryState;
     const firstState = state?.observations[0], lastState = state?.observations.at(-1);
     const primary = model.metrics.find(item => item.basis === "repository-outcome");
-    const stateChange = state?.observations.length > 1 ? lastState.value - firstState.value : null;
+    const comparison = model.repositoryComparison;
+    const stateChange = comparison?.delta;
+    const movementLabel = comparison?.movement === "improving" ? "Better"
+      : comparison?.movement === "worsening" ? "Worse" : "Unchanged";
     const repositoryFact = fact(state ? state.metric.name : "Repository outcome", state
       ? format(lastState.value) : primary ? format(primary.signal.current) : "Not measured here",
     state?.metric.unit ?? primary?.unit ?? null,
-    state ? stateChange == null ? "No earlier snapshot for comparison"
-      : `${stateChange > 0 ? "+" : ""}${format(stateChange)} since first snapshot`
+    state ? comparison == null ? "No earlier snapshot for comparison"
+      : comparison.movement === "unchanged" ? "Unchanged since first snapshot"
+        : `${stateChange > 0 ? "↑ +" : "↓ "}${format(stateChange)} ${state.metric.unit} · ${movementLabel}`
       : primary ? primary.name : "Overall repository health is unknown.",
     state ? `snapshot-${state.observations.length - 1}` : primary ? `observations-${primary.id}` : null,
     2, "repository-fact");
-    node("span", state
-      ? `${state.metric.direction === "decrease" ? "Lower" : "Higher"} is better · Includes everyone's work`
+    if (comparison) repositoryFact.querySelector(".fact-detail").classList.add("fact-movement", comparison.movement);
+    node("span", comparison ? `Since ${date(comparison.from)} · Everyone's work`
       : "Includes everyone's work", repositoryFact.querySelector(".fact-body"), "fact-context muted");
     fact(events ? model.resultLabel ? `Recent ${model.resultLabel}` : contribution ? "Recent linked results" : "Recent outcomes" : "Recent change", events
       ? format(metric.currentTotal) : format(status.directionAwareGain), metric.unit,
@@ -338,11 +342,14 @@ export function mountPulse(document, model) {
       wrap.setAttribute("aria-label", `${state.metric.name}: independent snapshots`);
       const svg = svgNode("svg", { viewBox: "0 0 500 180", role: "group",
         "aria-label": `${state.metric.name}: independent snapshots` }, wrap);
-      svgNode("title", {}, svg, "Independent repository snapshots; select a point to inspect measured items.");
+      svgNode("title", {}, svg, "Measured snapshots; dashed connectors guide the eye, not continuous observations. Select a point to inspect measured items.");
+      svgNode("text", { x: state.observations.length === 1 ? 32 : 250, y: 28,
+        "text-anchor": state.observations.length === 1 ? "start" : "middle", class: "snapshot-direction" }, svg,
+      state.metric.direction === "decrease" ? "↓ Lower is better" : "↑ Higher is better");
       const low = Math.min(0, ...state.observations.map(row => row.value));
       const high = Math.max(1, ...state.observations.map(row => row.value));
       const plot = { svg, x: at => state.observations.length === 1 ? 250 : 32 + (Date.parse(at) - start) / (end - start) * 436,
-        y: value => 28 + (high - value) / (high - low) * 104 };
+        y: value => 44 + (high - value) / (high - low) * 88 };
       for (const value of [low, low + (high - low) / 2, high]) svgNode("line", {
         x1: 32, x2: 468, y1: plot.y(value), y2: plot.y(value), class: "grid",
       }, svg);
@@ -351,6 +358,12 @@ export function mountPulse(document, model) {
       for (const [row, anchor] of dateLabels) svgNode("text", {
         x: plot.x(row.at), y: 157, "text-anchor": anchor, class: "axis",
       }, svg, new Date(row.at).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", year: "numeric" }));
+      for (let index = 1; index < state.observations.length; index++) {
+        const before = state.observations[index - 1], after = state.observations[index];
+        svgNode("line", { x1: plot.x(before.at), y1: plot.y(before.value),
+          x2: plot.x(after.at), y2: plot.y(after.value), class: "snapshot-connector",
+          "aria-hidden": "true" }, svg);
+      }
       for (const [index, row] of state.observations.entries()) {
         const source = internalLink(svgNode("a", {
           "aria-label": `${date(row.at)}: ${format(row.value)} ${state.metric.unit}. Inspect measured items.`,
@@ -364,7 +377,8 @@ export function mountPulse(document, model) {
           "text-anchor": "middle", class: "snapshot-value",
         }, source, format(row.value));
       }
-      node("p", "Snapshots only · Select for files", panel, "chart-caption muted");
+      node("p", state.observations.length === 1 ? "One measured snapshot · Select for files"
+        : "Dashed guide · Select measured dots", panel, "chart-caption muted");
       const snapshots = disclosure("Inspect the repository snapshots", evidence);
       snapshots.id = "repository-snapshots";
       const list = node("ul", null, snapshots, "snapshot-list");

@@ -8,6 +8,7 @@
   --fgColor-muted: #59636e;
   --fgColor-accent: #0969da;
   --fgColor-attention: #9a6700;
+  --fgColor-success: #1a7f37;
   --borderColor-default: #d1d9e0;
   --borderColor-attention-emphasis: #9a6700;
   --data-blue: #0969da;
@@ -26,6 +27,7 @@
     --fgColor-muted: #9198a1;
     --fgColor-accent: #4493f8;
     --fgColor-attention: #d29922;
+    --fgColor-success: #3fb950;
     --borderColor-default: #3d444d;
     --borderColor-attention-emphasis: #d29922;
     --data-blue: #4493f8;
@@ -88,6 +90,9 @@ select { font: inherit; color: inherit; background: var(--bgColor-muted); border
 .repository-fact dd { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); align-items: center; gap: 24px; margin: 0; }
 .repository-fact strong { font-size: 3.5rem; line-height: 1.15; }
 .repository-fact .fact-detail { font-size: .875rem; color: var(--fgColor-default); }
+.repository-fact .fact-movement { font-weight: var(--base-text-weight-semibold); }
+.repository-fact .fact-movement.worsening { color: var(--fgColor-attention); }
+.repository-fact .fact-movement.improving { color: var(--fgColor-success); }
 .historical-fact { border-left: 1px solid var(--borderColor-default); }
 .chart { overflow-x: auto; border: 1px solid var(--borderColor-default); border-radius: 6px; }
 .chart svg { display: block; width: 100%; min-width: 900px; }
@@ -96,6 +101,8 @@ select { font: inherit; color: inherit; background: var(--bgColor-muted); border
 .snapshot-chart .axis { font-size: .8125rem; }
 .snapshot-chart .chart { border: 0; border-radius: 0; }
 .snapshot-chart .grid { stroke-dasharray: 3 4; }
+.snapshot-connector { fill: none; stroke: var(--fgColor-muted); stroke-width: 1.2; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.snapshot-direction { fill: var(--fgColor-default); font: var(--base-text-weight-semibold) .875rem var(--fontStack-sansSerif); }
 .snapshot-chart circle { stroke: var(--bgColor-default); stroke-width: 2; }
 .snapshot-chart .latest { fill: var(--bgColor-default); stroke: var(--data-blue); stroke-width: 3; }
 .snapshot-value { fill: var(--fgColor-default); font: var(--base-text-weight-semibold) 1rem var(--fontStack-sansSerif); paint-order: stroke; stroke: var(--bgColor-default); stroke-width: 5px; stroke-linejoin: round; }
@@ -161,7 +168,7 @@ summary:focus-visible, a:focus-visible, [tabindex="-1"]:focus { outline: 2px sol
   .recent-fact .fact-detail, .historical-fact .fact-detail { grid-column: 1 / -1; margin: 0; }
   .historical-fact { border-left: 0; border-top: 1px solid var(--borderColor-default); }
   .repository-fact dd { gap: 12px; }
-  .snapshot-chart .axis, .snapshot-chart .snapshot-value { font-size: 1.5rem; }
+  .snapshot-chart .axis, .snapshot-chart .snapshot-value, .snapshot-chart .snapshot-direction { font-size: 1.5rem; }
   .snapshot-chart .chart-caption { font-size: .6875rem; }
   .facts > div { padding: 12px 16px; }
   .workflow-trail { gap: 16px; }

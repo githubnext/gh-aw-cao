@@ -158,7 +158,16 @@ The ledger may additionally supply:
   an immutable evidence reference and an HTTPS URL without credentials.
   Observations are strictly ordered within the report interval and no later
   than evidence capture. They never enter contribution totals. Sparse
-  observations are dots, not an interpolated continuous series.
+  observations remain clickable dots. Thin, muted dashed straight connectors
+  may guide the eye between those dots only when explicitly labelled as guides,
+  not continuous observations. Do not add a filled area, smoothed curve or
+  invented intermediate values. Keep the conventional numeric axis and show
+  **↓ Lower is better** or **↑ Higher is better** directly on the plot.
+  Show signed native change from the first snapshot, its comparison date and
+  **Better**, **Worse** or **Unchanged** according to the declared direction.
+  Amber/green may reinforce worse/better movement, never replace words and
+  arrows or imply a workflow health rating. One snapshot has no comparison
+  or connector; unchanged values are not a missing observation.
   An observation may include `items: {label, url}[]`: precomputed item-level
   evidence with nonempty display labels and credential-free HTTPS permalinks.
   For an item-count measure, include the actual counted population from the

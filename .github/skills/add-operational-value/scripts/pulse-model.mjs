@@ -201,7 +201,16 @@ function reportContext(ledger) {
       previous = time(row.at);
     }
   }
-  return { checks, repositoryState: state ?? null, resultLabel: ledger.resultLabel ?? null };
+  let repositoryComparison = null;
+  if (state?.observations.length > 1) {
+    const first = state.observations[0], last = state.observations.at(-1);
+    const delta = last.value - first.value;
+    const movement = gain(state.metric, first.value, last.value);
+    if (!finite(delta) || !finite(movement)) throw new Error("Invalid repository-state comparison: native change is not finite");
+    repositoryComparison = { from: first.at, to: last.at, delta,
+      movement: movement > 0 ? "improving" : movement < 0 ? "worsening" : "unchanged" };
+  }
+  return { checks, repositoryState: state ?? null, repositoryComparison, resultLabel: ledger.resultLabel ?? null };
 }
 
 function outputContext(ledger, events) {

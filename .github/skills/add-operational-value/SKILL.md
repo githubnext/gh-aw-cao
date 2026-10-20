@@ -235,6 +235,13 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   Follow with a deterministic plain-language assessment and the independent
   repository state, its first-snapshot change and a compact, directly labelled
   snapshot chart. Keep recent results separate from the trail's historical scope.
+  Make the snapshot goal direction explicit on the plot: **↓ Lower is better**
+  or **↑ Higher is better**, without inverting the native axis. Show a signed
+  native delta, comparison date and direction-aware Better/Worse/Unchanged
+  wording; color alone is insufficient. Keep points clickable. Thin dashed
+  straight connectors may guide the eye when labelled as guides, not continuous
+  observations; do not add an area fill, smoothing or invented intermediate
+  values. A single snapshot cannot establish change.
   Use a short human result label, such as "file reductions", when supplied by
   the collector; never make readers infer what identical units mean.
   Keep the default view to roughly 150 words, not an equal-weight audit table

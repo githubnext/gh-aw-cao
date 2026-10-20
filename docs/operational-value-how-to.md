@@ -88,6 +88,9 @@ closing an issue alone is not acceptance. Repository state includes everyone's
 work; recent results remain separate from historical contribution. Unverified
 quality checks stay visible. Select a headline number for its exact evidence;
 chart points reveal the counted files with links at the measured Git revision.
+Dashed lines guide the eye between snapshots, not continuous observations.
+The plot states which direction is better; signed change shows whether the
+repository problem improved or worsened since the first snapshot.
 **Explore evidence** links each result to its issue, merged change, before/after
 files and measurement rules. Historical reductions
 do not mean that many fewer files remain today.
