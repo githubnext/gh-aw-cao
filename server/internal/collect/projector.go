@@ -172,6 +172,11 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	}()
 	ctx, cancel := context.WithTimeout(ctx, p.timeout())
 	defer cancel()
+	unlock, err := p.Lake.lockEvidence(ctx)
+	if err != nil {
+		return ingest.Result{}, err
+	}
+	defer unlock()
 	if err := p.State.SetOperationalState(ctx, projectionDirtyKey, nil); err != nil {
 		return ingest.Result{}, err
 	}
@@ -213,6 +218,21 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 // is projectable on its own, and a lake that is not already compacted fails
 // closed rather than being projected half-formed.
 func (p Projector) refreshCompaction(ctx context.Context) error {
+	if p.Enrollment.Metadata != nil {
+		repositories, err := p.enrolledRepositories(ctx)
+		if err != nil {
+			return fmt.Errorf("resolve retained value scope: %w", err)
+		}
+		enrolled := make(map[string]bool, len(repositories))
+		for _, repository := range repositories {
+			enrolled[strings.ToLower(repository)] = true
+		}
+		if err := p.Lake.filterOperationalValues(func(repository string) bool {
+			return enrolled[repository]
+		}); err != nil {
+			return fmt.Errorf("filter retained value scope: %w", err)
+		}
+	}
 	if p.CatalogRoot == "" {
 		populated, err := p.Lake.Populated()
 		if err != nil {
@@ -299,7 +319,7 @@ func (p Projector) refreshOperationalValues(ctx context.Context) error {
 		return err
 	}
 	observedAt := time.Now().UTC()
-	output := filepath.Join(p.Lake.ShardDirectory(), "operational-values.jsonl")
+	output := p.Lake.operationalValuesPath()
 	for _, repository := range repositories {
 		installationID, err := p.Enrollment.InstallationFor(ctx, repository)
 		if err != nil {

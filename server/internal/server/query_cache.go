@@ -108,22 +108,27 @@ func (a *App) queryResultCacheIdentity(ctx context.Context, input queryRequest, 
 	if err != nil {
 		return "", err
 	}
-	readsValue := slices.Contains(dependencies, "$operationalValueEvidence")
+	valueSources := []string{"$operationalValueEvidence", "$operationalValues"}
+	readsValue := false
+	for _, source := range valueSources {
+		readsValue = readsValue || slices.Contains(dependencies, source)
+	}
 	for _, definition := range definitions {
 		if !slices.Contains(dependencies, definition.Name) {
 			continue
 		}
-		readsValue = readsValue || definition.From == "$operationalValueEvidence" ||
-			slices.Contains(definition.Union, "$operationalValueEvidence")
-		for _, join := range definition.Joins {
-			readsValue = readsValue || join.Source == "$operationalValueEvidence"
+		for _, source := range valueSources {
+			readsValue = readsValue || definition.From == source || slices.Contains(definition.Union, source)
+			for _, join := range definition.Joins {
+				readsValue = readsValue || join.Source == source
+			}
 		}
 	}
 	if !readsValue {
 		return key, nil
 	}
-	// Value publications must be visible after the revision event, not after
-	// the ordinary five-minute cache lifetime.
+	// Value publication and collector withdrawal must be visible after the
+	// revision event, not after the ordinary five-minute cache lifetime.
 	active, err := a.database.State(ctx)
 	if err != nil {
 		return "", errValueRevisionUnavailable

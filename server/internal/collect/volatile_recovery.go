@@ -109,7 +109,7 @@ func (b Backfill) reconstructScope(ctx context.Context) (repositories []enrolled
 				_, err = b.Enrollment.removeRepositories(ctx, owner, []string{name})
 			}
 			if err == nil {
-				err = b.Lake.Forget(name)
+				err = b.Lake.ForgetContext(ctx, name)
 			}
 			unlockCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 			unlockErr := b.Queue.UnlockRepository(unlockCtx, name, token)
