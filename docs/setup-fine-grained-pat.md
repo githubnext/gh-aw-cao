@@ -23,24 +23,34 @@ CONTROL_REPO="acme/central-agentic-ops"
 TARGET_REPO="acme/example-service"
 
 gh auth status
+gh extension install githubnext/gh-cao
+```
+
+Enter an existing clean default-branch control checkout. To create a new
+repository instead, choose visibility explicitly:
+
+```bash
 gh repo create "$CONTROL_REPO" --private --clone
 cd "${CONTROL_REPO##*/}"
-
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash
+gh cao setup
 ```
 
-In `.github/workflows/cao.json`, add only the required owners and exact repositories:
+To reuse a remote repository, use `gh repo clone "$CONTROL_REPO"` instead of
+creating one. In an existing checkout, run only `gh cao setup`.
+No separate `init`, installer, or local Node.js is required. See the
+[primary setup guide](setup-quickstarts.md) for the release requirement.
 
-```json
-"scope": {
-  "allowed-owners": ["acme"],
-  "allowed-repositories": ["acme/example-service"]
-}
-```
+At **Repositories**, enter the exact value of `$TARGET_REPO`; the control
+repository stays included. Choose **`token`** when prompted.
+Setup prepares Activity, Dashboard, validation, shared runtime and missing
+baseline policy, then guides scoped token creation and Pages.
+A private repository does not guarantee private Pages: require restricted
+access for non-public evidence and decline public publication otherwise.
 
 ## Configure the Tokens
+
+Guided setup shows each owner-scoped token plan before requesting a secret.
+For credential-only changes after setup, inspect a dry run before applying:
 
 ```bash
 gh cao setup auth token \
@@ -68,13 +78,19 @@ The command groups repositories by resource owner and stores owner-scoped secret
 ## Validate and Commit
 
 ```bash
-node -e \
-  'const fs=require("node:fs"); JSON.parse(fs.readFileSync(".github/workflows/cao.json","utf8"))'
+gh cao doctor
 gh aw doctor --repo "$CONTROL_REPO" --dir .
 git diff --check
 ```
 
-Review the diff. After explicit approval:
+Initial guided setup separately offers **“Commit and push these CAO monitoring
+changes? [y/N]”** after review. Approval requires a synchronized default branch,
+matching origin and empty index. It publishes only reviewed CAO files and
+returns deployment-pending links immediately, without waiting for Actions.
+Declining, blocked publication, or unattended setup leaves files local.
+
+If not published, review the diff and stage only CAO files. The following assumes
+these paths contain no unrelated edits. After explicit approval:
 
 ```bash
 git add .github activity dashboard

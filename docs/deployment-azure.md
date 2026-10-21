@@ -22,15 +22,23 @@ flowchart LR
   Function -->|"OAuth, refresh, membership"| GitHub["GitHub OAuth + API"]
   Function -->|"managed identity"| KeyVault["Key Vault"]
   Function -->|"PostgreSQL protocol"| Postgres["PostgreSQL<br/>canonical + isolated operational tables"]
-  Function -->|"non-secret telemetry"| Insights["Application Insights"]
+  Function -->|"opt-in OTLP/HTTP over TLS"| Collector["Operator-managed OTel collector"]
+  Collector -->|"Azure Monitor exporter"| Insights["Application Insights"]
 ```
 
 ## Prerequisites
 
 ### Native fresh-deployment command
 
-`gh cao deploy azure` supports **fresh deployments only**. Review the non-secret
-deployment config, run `--plan`, then apply that exact plan. Apply repeats
+`gh cao deploy azure --apply` supports **fresh development deployments only**.
+Set `"environment": "development"` in the reviewed non-secret deployment config,
+then regenerate and review the plan. Missing environment declarations, old plans
+without that declaration, and `"environment": "production"` fail closed before
+any Azure call during apply. Read-only planning still permits an omitted or
+production environment; a successful plan does not authorize production apply.
+The declaration is an operator commitment, not automatic classification of an
+Azure subscription: never label production resources as development to bypass it.
+Review the non-secret deployment config, run `--plan`, then apply that exact plan. Apply repeats
 preflight and what-if and refuses any change-set drift before writing to Azure.
 Updates, resuming a partially created deployment, and upgrades are follow-up
 work; a subsequent `--plan` against a successfully deployed instance must fail
@@ -74,7 +82,12 @@ it never silently substitutes for a missing or invalid snapshot.
 Apply creates the resource group if necessary, deploys the exact template ACR
 resource, builds the Functions, database-provisioning, and ingestion Dockerfile targets, records their
 digests, and locks the version-plus-config-hash tags against writes and deletes.
-It then deploys the full template.
+It then deploys the full template with separate Functions, provisioning, and
+ingestion digest parameters, not those tags. After deployment it reads back the
+configured digest references for all three targets before starting either job;
+missing, mismatched, or additional job containers fail closed. Regenerate
+`server/azure/main.json` from the current Bicep source before planning: apply
+rejects templates without the three digest parameters before any Azure call.
 New managed-identity Key Vault grants can take time to propagate. Apply retries
 the exact reviewed ARM request at most three times only when every nested
 failure is the recognized job secret-fetch error in the ingestion or
@@ -102,9 +115,39 @@ read-back and a distinct diagnostic if tenant automation changed the settings;
 the command never fights or repairs such changes. `--timeout` bounds the overall
 apply (default 45 minutes). The secret-free receipt defaults to
 `.cao/deploy-azure-receipt.json` and records the reviewed plan digest, deployment
-identity, source/context identity, immutable image references, exact job
-execution, verification results, and timestamps. Existing receipts are not
+identity, source/context identity, immutable image references, configured image
+read-back, exact job execution, verification results, and timestamps. Existing receipts are not
 overwritten.
+
+#### Development image assurance boundary
+
+Source-built Azure images are **not production-assured**. The receipt explicitly
+records `environment: development`,
+`imageAssurance: not-evaluated-development-only`, and per-target scan (`not-performed`), SBOM
+(`not-generated`), and provenance (`local-context-not-attested`) dispositions.
+These are absence-of-assurance records, not passing gates or vulnerability
+waivers. No receipt or approval-file option enables production promotion.
+
+`sourceRevision` identifies the development checkout's base commit, not a claim
+that the uploaded files equal that commit. `sourceWorktree` records its observed
+clean/dirty state (including untracked files, which are not uploaded).
+`contextSha256` binds the copied allowlisted product files, operator policy,
+selected evidence, and normalized executable modes. Dirty inputs therefore have
+their own context identity even when the base commit stays unchanged. Status and
+revision changes detected during copying abort the build; use a stable checkout
+because local status observations are not signed, atomic source attestations.
+Configured digest read-back is not measurement of the platform's running image.
+
+Production promotion requires a separately reviewed independent pipeline binding
+**each exact Functions, ingestion, and provisioning digest** to source/context
+provenance (including dirty-context handling), scan policy and results with
+reviewed dispositions, an SBOM, approval, and deployed digest read-back. The
+official package workflow's Trivy/Grype/Dockle gates, SPDX SBOM, sealed candidate,
+and publish attestations provide prior art; neither its published server image
+nor the Azure asset-bundle attestation covers subsequent ACR target rebuilds.
+Selecting scanner policy, vulnerability exceptions, evidence retention, approvers,
+and enforcement in the production subscription remains the operator's
+responsibility. This CLI neither implements nor accepts that independent gate.
 
 Key Vault purge protection remains enabled by default. Only explicitly
 disposable environments should set `"keyVault": {"purgeProtection": false}` in
@@ -658,7 +701,7 @@ The template creates the following app settings.
 | `CAO_GITHUB_ALLOWED_USERS` | `githubAllowedUsers` parameter | Exact GitHub logins authorized directly. Use this for narrow access that must not depend on organization OAuth visibility. |
 | `CAO_SESSION_SECRET` | Key Vault secret `cao-session-secret` | Current session encryption key. At least 32 characters. |
 | `CAO_SESSION_SECRET_PREVIOUS` | Key Vault, only when `previousSessionSecret` is set | Previous session key, used during rotation. |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Application Insights | Where the Functions host sends telemetry. |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Application Insights | Platform/Functions-host setting only; does not enable exports in the direct Go container. |
 | `AzureWebJobsStorage__accountName` | `storageAccountName` parameter | Storage account used by the Functions runtime. |
 | `AzureWebJobsStorage__credential` | Fixed value `managedidentity` | Requires the Function App identity and assigned blob, queue, and table data roles; shared-key access is disabled. |
 | `WEBSITES_PORT` | Fixed value `8080` | Port exposed by the CAO Functions container. |
@@ -681,6 +724,8 @@ The `cao-functions` handler also reads these optional settings.
 Besides the parameters in the deployment command, the template accepts:
 
 - `location`, `hostingPlanName`, `applicationInsightsName`, `containerRegistryName`, `functionImageRepository`, and `functionImageTag`.
+- `otlpEndpoint`, `otlpLogsEnabled`, and secure `otlpHeaders`; see
+  [the explicit Go telemetry route](#explicit-go-telemetry-route).
 - `postgresRunRetentionDays`; explicitly preserve the greatest existing effective
   run or linked window across all database-owning roles and the complete snapshot
   window. Do not rely on the generic default during redeployment.
@@ -733,17 +778,95 @@ The Go server uses vendor-neutral OpenTelemetry and doesn't include the Azure Mo
 - `cao_dashboard.query.execute` for each query.
 - `cao_dashboard.ingest.run` for each ingestion.
 
-To send the spans to Application Insights:
+#### Explicit Go telemetry route
 
-1. Run an OpenTelemetry Collector with the `azuremonitorexporter`, configured with your Application Insights connection string.
-1. Add the following app settings to the Function App.
+The supported template overlay connects the Function App and, when deployed,
+both collection and backfill workers to an **operator-managed OTLP/HTTP collector**.
+It does not deploy that collector or enable any production network, role or
+monitoring settings. The baseline remains opt-in: an empty endpoint exports no
+Go telemetry, and is not evidence of an adequate monitoring boundary.
 
-   | App setting | Description |
-   | --- | --- |
-   | `OTEL_EXPORTER_OTLP_ENDPOINT` or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Turns on the OTLP/HTTP trace exporter. If neither is set, the server doesn't export spans. |
-   | `OTEL_EXPORTER_OTLP_HEADERS` | Authentication headers for the collector. Store the value as a Key Vault reference. |
-   | `OTEL_SERVICE_NAME` | Service name. Defaults to `cao-dashboard`. |
-   | `OTEL_SDK_DISABLED` | Set to `true` to turn off tracing even when an endpoint is set. |
+| Template parameter | Runtime wiring |
+| --- | --- |
+| `otlpEndpoint` | Reviewed HTTPS collector **base URL**, optionally with a path prefix, without credentials, query or fragment. Sets `OTEL_EXPORTER_OTLP_ENDPOINT` on all three roles. The Go SDK appends `/v1/traces`, `/v1/metrics`, or `/v1/logs`. |
+| `otlpLogsEnabled` | Defaults to `false`. Sets `CAO_OTEL_LOGS_ENABLED`. When true, selects bounded namespaces: `cao:server,cao:telemetry` on the Function App and `cao:telemetry,cao:collect:recovery` on workers. It deliberately does not export the workers' broad default debug namespaces, which can contain repository identifiers. Stderr remains available; its namespace selection is narrowed on workers when log export is enabled. |
+| Secure `otlpHeaders` | Optional standard OTLP header list, supplied only through secret-manager input. The template stores it in `cao-otel-headers` in Key Vault. The Function App uses a Key Vault reference; workers use managed-identity `secretRef` resolution. Only these runtime identities receive secret-scoped read grants. Never put a literal value in a command line, config, parameter file or deployment receipt. |
+
+The template pins the transport to `http/protobuf`. Traces and metrics require
+the endpoint; logs require the endpoint **and** the opt-in. The core remains
+vendor-neutral. `OTEL_SDK_DISABLED=true` still overrides the exporters; carry
+forward and review any manually configured signal-specific endpoints or headers,
+which take precedence over the shared settings. Do not retain overrides that
+silently redirect the reviewed route.
+
+For `gh cao deploy azure`, add this non-secret section to the reviewed deployment
+config (merge it with the other required fields), and an optional source reference
+under `secrets`:
+
+```json
+{
+  "telemetry": {
+    "otlpEndpoint": "https://collector.example.test/otlp",
+    "logsEnabled": true
+  },
+  "secrets": {
+    "otlpHeaders": {
+      "keyVault": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/observability/providers/Microsoft.KeyVault/vaults/collector-secrets",
+        "secretName": "cao-otlp-headers"
+      }
+    }
+  }
+}
+```
+
+Use the actual reviewed collector and secret source; the example is synthetic.
+An `env` reference populated by the operator secret manager is also supported.
+The CLI rejects non-HTTPS URLs, embedded URL credentials, query strings and
+fragments, and rejects log/auth settings without an endpoint before calling
+Azure. Direct ARM/Bicep deployments must enforce the same constraints in their
+parameter review. Deployment plans retain only secret references; secure header
+values follow the existing secure-parameter/redaction path.
+
+For Application Insights delivery, operate a collector distribution containing
+`azuremonitorexporter`, enable its OTLP/HTTP receiver behind the reviewed TLS and
+authentication boundary, and wire its traces, metrics and logs pipelines to that
+exporter. Supply its Application Insights connection string from its own secret
+manager. The Function App's `APPLICATIONINSIGHTS_CONNECTION_STRING` does not
+configure this external collector. Review collector version/signal support,
+certificate trust, private routing or authenticated ingress, outbound reach,
+bounded queues/retries, access and retention separately. Never expose an
+unauthenticated public OTLP receiver.
+
+Exporters batch asynchronously. Backend failure is not a health/readiness
+dependency and does not gate requests. This is best-effort observability, not
+durable audit delivery: platform/container logs and independent audit delivery
+remain separate evidence channels.
+
+#### Required deployment receipts
+
+Offline tests exercise the compiled template settings through real Go SDK
+exporters into a synthetic authenticated TLS receiver, including protobuf trace,
+metric and opted-in log receipts, disabled/default settings, and backend failure.
+They do **not** prove a tenant collector, Application Insights ingestion or alerts.
+Before treating this route as operational monitoring, retain:
+
+- Sanitized effective per-role settings (endpoint configured/TLS verified,
+  log opt-in, selected namespaces, SDK disable and signal-override decisions),
+  deployment revision and secret **reference/version**, never header values.
+- Approved collector topology/configuration revision, signal support, TLS,
+  authentication, network reach, access and retention review.
+- Backend-query receipts for a synthetic request trace, Go runtime metric and
+  selected non-sensitive log from each deployed role, correlated by time and
+  reviewed service identity. A successful SDK flush or collector HTTP response
+  alone is not proof of final backend ingestion.
+- A controlled exporter/backend outage and absent-signal alert acknowledgement,
+  named responder, recovery receipt, and confirmation that request availability
+  and independent audit delivery were not made dependent on the exporter.
+
+The CLI's deployment/ingress receipt does not assert those monitoring checks.
+Until these production receipts exist, the repository wiring is implemented but
+operational effectiveness remains unverified.
 
 If a client sends a `traceparent` header, the server continues that trace. Every API response includes `X-Trace-Id` and `X-Span-Id` headers so that you can correlate requests.
 

@@ -3,13 +3,12 @@ title: Set Up CAO
 description: Set up CAO, monitor one repository, and explore your dashboard before adding automation.
 ---
 
-Install CAO, connect one repository, and open a dashboard of its existing
-GitHub Agentic Workflow runs, costs, and outcomes where evidence is available.
+Monitor one repository's existing GitHub Agentic Workflow runs, costs, and
+outcomes where evidenced.
 
 **Estimated time: 15 minutes**, plus credential approval and Actions deployment time.
 
-This guide sets up **monitoring only**. It does not install or run a campaign
-or start new agentic work.
+**Monitoring only:** no campaign installation or new agentic work.
 
 :::note[Video TODO]
 **CAO setup walkthrough — recording not yet available.** Video TODO: demonstrate
@@ -18,13 +17,10 @@ install → connect → dashboard. Follow the written steps below.
 
 ## Prerequisites
 
-- **Tools:** Git, Bash, `curl`, Node.js 24+, and [GitHub CLI](https://cli.github.com)
-  2.68+. Linux, macOS, or Windows with WSL.
+- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+ on Linux, macOS,
+  or Windows. No local Node.js, Bash, or `curl` required.
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
-- **Control repository:** a separate GitHub repository where you can configure
-  Actions, credentials, and Pages. Enable Actions. CAO runs here, not in the
-  monitored repository.
 - **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
   Existing Agentic Workflow history is useful, not required.
 
@@ -36,19 +32,11 @@ separate [hosted server deployment](deployment.md).
 
 ## Step 1 - Install CAO
 
-In a clean control-repository checkout on its default branch, install the
-**`gh cao` GitHub CLI extension**, **repository runtime**, and required
-`gh-aw` extension together:
+Install the **`gh cao` GitHub CLI extension**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+gh extension install githubnext/gh-cao
 ```
-
-The installer verifies CLI checksums and version and supports published
-prereleases. The CLI alone is insufficient.
-
-Direct `gh extension install` currently fails, even with `--pin`: latest
-stable lacks binaries. Use the installer; see [why](cao-cli.md#github-cli-extension).
 
 :::tip[Installation and authentication]
 If authentication fails, sign in and retry:
@@ -58,28 +46,47 @@ gh auth login
 gh auth status
 ```
 
-The installer requires GitHub CLI sign-in.
+GitHub CLI extension installation requires GitHub CLI sign-in.
 :::
 
 ```bash
 gh cao --version
 ```
 
-**Ready:** `gh cao` prints its version; runtime files are installed.
-No campaign is installed or run.
+**Ready:** `gh cao` prints its version. Extension installation does not yet
+change a repository.
+
+:::note[Release availability]
+Unified setup requires a release newer than `v0.1.24` containing this fix;
+see [release compatibility](cao-cli.md#github-cli-release-discovery).
+:::
+
+Use a clean default-branch checkout you may configure and enable Actions.
+Prefer a dedicated control repository in your targets' organization;
+see [other topologies](deployment-and-governance.md).
 
 <details>
-<summary>No control repository yet? Create one during installation.</summary>
+<summary>No control checkout yet? Explicitly create or clone one.</summary>
 
-Run this outside a Git checkout, replacing `OWNER/CONTROL_REPOSITORY` with the
-exact repository you want to create:
+Outside a checkout, replace `OWNER/CONTROL_REPOSITORY` with your exact repository:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash -s -- --create-repo OWNER/CONTROL_REPOSITORY
+gh repo create OWNER/CONTROL_REPOSITORY --private --clone
+cd CONTROL_REPOSITORY
 ```
 
-Enter the new checkout and run `gh cao --version`.
+Choose visibility explicitly: use `--public` instead only for public evidence.
+A private control repository requires guided authentication even for public
+targets; unattended public-only setup cannot include it.
+
+To use an existing remote repository instead:
+
+```bash
+gh repo clone OWNER/CONTROL_REPOSITORY
+cd CONTROL_REPOSITORY
+```
+
+CAO does not create repositories.
 
 </details>
 
@@ -87,40 +94,53 @@ Enter the new checkout and run `gh cao --version`.
 
 ## Step 2 - Connect one repository
 
+In an **interactive terminal** at the **control repository's root**:
+
 ```bash
 gh cao setup
 ```
 
-Run this in an **interactive terminal**, then follow the prompts:
+No `init` or installer needed. Setup verifies a release and adds
+missing runtime/policy without overwriting files. Malformed policy/conflicts
+stop setup; complete runtime is reused. Missing `gh-aw` is installed; upgrade old
+versions explicitly. See [details](cao-cli.md#guided-runtime-preparation).
 
-1. At **Repositories CAO should read**, enter your exact `OWNER/REPOSITORY`,
+1. At **Repositories**, enter your exact `OWNER/REPOSITORY`,
    not an organization wildcard. The control repository stays included.
-2. Choose **Authentication**. Setup offers authentication choices based on that scope.
-   Check the profile's prerequisites in [Authentication](authentication.md#choose-cross-repository-authentication).
-   For an all-public scope,
-   `public-only` uses Actions' built-in `GITHUB_TOKEN`, without an App or PAT.
-   Private/internal evidence requires an App or token profile.
+2. Choose **Authentication** only if prompted. Confirmed all-public scope
+   (including the control repository) automatically uses `public-only` with
+   Actions' `GITHUB_TOKEN`, no App/PAT. Nonpublic scope requires credentials;
+   see [Authentication](authentication.md#choose-cross-repository-authentication).
 3. Review the exact read scope, output scope, and authentication, then confirm
    **Apply this setup?** Setup configures Pages and asks **Is a public dashboard
    OK?** if the site is public. Decline for non-public evidence.
-4. Complete any credential prompts. Let setup store secrets in Actions, never
-   in policy or committed files. Credential reach does not expand your scope.
+4. Store secrets in Actions, never in policy or committed files.
+   Credentials do not expand scope.
+5. Review the summary, policy diff, and full-diff path.
+   **“Commit and push these CAO monitoring changes? [y/N]”** optionally publishes
+   reviewed CAO files and returns **deployment pending** links immediately.
 
-**Ready:** repository scope and authentication are configured.
-Setup installs no campaign and runs no workflow; it does not commit or push.
+No campaigns or agentic work are installed. Publication requires a synchronized
+default branch, matching origin, and empty index; no protection bypass.
+Declining, blocked, or unattended setup stays local.
 
-If setup stops, inspect its error and any changed Pages or credential settings
-before retrying; do not publish an incomplete setup. For unattended public-only
+If setup stops, inspect its error, local files, and Pages or credential changes
+before retrying; do not publish incomplete setup. For unattended public-only
 setup, see [Authentication](authentication.md#public-only-monitoring-quickstart).
 
 <span id="step-3---review-and-publish-your-configuration"></span>
 
 ## Step 3 - Publish and open your dashboard
 
-Check the installation and inspect the installed files:
+Check installation:
 
 ```bash
 gh cao doctor
+```
+
+If setup published, follow its Actions link. Otherwise review and publish:
+
+```bash
 git status --short
 git diff -- .github
 ```
@@ -130,8 +150,7 @@ and that `control-plane.campaigns` is `{}`. Keep `control-plane.workflows` and
 `control-plane.operations` absent or `{}` too: monitoring does not enroll
 execution. Do not publish private evidence to a public dashboard.
 
-Review and include other installer-created files shown by `git status`, not
-unrelated files or secrets. Commit and push to the control repository's default branch:
+Include only setup-created files, never unrelated files or secrets:
 
 ```bash
 git add .github activity dashboard
@@ -147,9 +166,8 @@ it. This collects evidence, not new agentic work.
 <span id="4-open-your-dashboard"></span>
 <span id="step-4---wait-for-collection-and-inspect-your-dashboard"></span>
 
-In the control repository's **Actions** tab, wait for **CAO Activity** and then
-**CAO Dashboard** to complete, including its Pages deployment.
-Open the site link in **Settings → Pages**.
+Check **CAO Activity**, then **CAO Dashboard**, including its Pages deployment.
+Only then is the dashboard ready. Open its link or **Settings → Pages**.
 
 If collection has not started, request it once from the control checkout:
 

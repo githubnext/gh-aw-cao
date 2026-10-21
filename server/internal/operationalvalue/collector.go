@@ -921,9 +921,6 @@ func mergeValues(values []envelope, definitions map[string]definition) []envelop
 }
 
 func writeEnvelopes(path string, values []envelope) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return err
-	}
 	var content bytes.Buffer
 	encoder := json.NewEncoder(&content)
 	encoder.SetEscapeHTML(false)
@@ -931,6 +928,13 @@ func writeEnvelopes(path string, values []envelope) error {
 		if err := encoder.Encode(item); err != nil {
 			return err
 		}
+	}
+	return writeContent(path, content.Bytes())
+}
+
+func writeContent(path string, content []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return err
 	}
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".operational-values-*")
 	if err != nil {
@@ -942,7 +946,11 @@ func writeEnvelopes(path string, values []envelope) error {
 		_ = temporary.Close()
 		return err
 	}
-	if _, err := temporary.Write(content.Bytes()); err != nil {
+	if _, err := temporary.Write(content); err != nil {
+		_ = temporary.Close()
+		return err
+	}
+	if err := temporary.Sync(); err != nil {
 		_ = temporary.Close()
 		return err
 	}

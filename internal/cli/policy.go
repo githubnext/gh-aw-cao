@@ -27,6 +27,7 @@ var (
 func addPolicyCommands(root *cobra.Command, gh ghExecutor) {
 	root.AddCommand(&cobra.Command{
 		Use: "init", Short: "Create an exact, review-safe control-plane policy", Args: cobra.NoArgs,
+		Long: "Create only a local exact, review-safe policy for preparation or scripting. Requires gh-aw and a GitHub checkout; does not install runtime files, configure Pages or credentials, commit, push, or execute work. For complete guided onboarding use gh cao setup; no prior init is needed.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			result, err := initializePolicy(cmd.Context(), gh)
 			if err != nil {
@@ -149,7 +150,11 @@ func newPolicy(ctx context.Context, gh ghExecutor) (map[string]any, string, erro
 	if !repositoryPattern.MatchString(repository) {
 		return nil, "", errors.New("unable to determine control repository: expected exact OWNER/REPO")
 	}
-	policy := map[string]any{
+	return initialPolicy(repository, version), version, nil
+}
+
+func initialPolicy(repository, version string) map[string]any {
+	return map[string]any{
 		"$schema": schemaURL, "version": 1, "gh-aw-version": version,
 		"control-plane": map[string]any{
 			"scope": map[string]any{
@@ -163,7 +168,6 @@ func newPolicy(ctx context.Context, gh ghExecutor) (map[string]any, string, erro
 			"campaigns": map[string]any{},
 		},
 	}
-	return policy, version, nil
 }
 
 func readPolicy() (map[string]any, error) {

@@ -32,6 +32,45 @@ the focused contracts.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
+## Local GitHub bootstrap integration
+
+Run `npm run test:integration:bootstrap` from the repository root with Go,
+Node.js 24 or newer, Git, Bash, curl, GitHub CLI, and the root manifest's
+minimum gh-aw version installed. Set `CAO_BOOTSTRAP_GH_AW_BINARY` if gh-aw is
+not in the standard GitHub CLI extension directory.
+The `cao-bootstrap.yml` workflow runs this test daily, on relevant pull
+requests, and manually, retaining the test log for 14 days.
+
+The test builds the current CAO CLI as a local release fixture, then runs the
+unmodified `install.sh --create-repo` and `install.sh --setup`, real `gh`
+commands, and HTTPS Git push/clone against the simulator's test-only
+`BootstrapAPI` fixture. These bootstrap endpoints and their GraphQL selection
+reader are not compiled into production binaries. The fixture's
+stateful surface implements repository creation and visibility, the GraphQL
+selections used by gh, release metadata and checksum-verified asset downloads,
+workflow-sourced Pages, and Actions variables. Unknown routes and fields fail
+explicitly. The root campaign is installed and materialized from the current
+checkout, not a published CAO revision.
+
+An allowlisted CONNECT proxy maps the installer's fixed `github.com` and
+`api.github.com` URLs to one loopback simulator with an ephemeral trusted
+certificate. It never forwards to GitHub. A local Git HTTP backend receives
+the committed files, and a fresh clone must contain the exact verified policy.
+The test checks that private non-interactive setup fails without changing
+policy, repeated public monitoring setup is idempotent, and no campaign or
+agent operation is enabled. Home, Git configuration, CLI extensions, and
+credentials are isolated; only a synthetic token is used in the test.
+The workflow and every job grant only `contents: read`. The integration step
+explicitly clears real GitHub token environment variables; the read-only
+workflow token is used only to download the gh-aw prerequisite, never for
+repository creation, configuration, or Git publication.
+
+This covers control-repository bootstrap and publication, not execution of
+GitHub Actions jobs, rendering of a deployed Pages site, GitHub App consent,
+or Azure infrastructure provisioning. The fast bootstrap API regression tests
+also run with the ordinary simulator unit suite; the external-tool integration
+is opt-in outside its dedicated npm command and CI job.
+
 ## Secret-free fleet stress simulation
 
 Run `npm run test:stress:cao` from the repository root. The dedicated
@@ -106,6 +145,14 @@ events on the same origin. A reverse proxy or platform listener must forward
 the complete application, not just `/api/`. Do not deploy the frontend separately
 to Pages, a static website host, or an object-storage website endpoint.
 Pages is a different deployment mode whose browser owns ingestion and queries.
+
+Hosted revision streams reconnect before membership authorization, token-refresh
+eligibility or administrator health entitlement expires. A 20-second session
+check also closes revoked sessions and fails closed on session-store outages.
+Reconnection uses ordinary OAuth authentication and can renew cookies; an
+already-flushed stream cannot. See [stream authorization bounds](SECURITY.md)
+for revocation latency and proxy-delivery limitations. Local bearer streams
+remain open until cancellation or server drain.
 
 ## Local SQLite snapshot serving
 
@@ -1780,6 +1827,24 @@ execution claim prevents another replica from claiming an already-running
 command. The configured concurrency limit applies across executor replicas.
 Command deadlines and queue state survive process restarts.
 
+Queued commands retain the requester's numeric GitHub account ID as well as
+the admission login. Before prefetching or handing out any work token, the
+executor requires the live collaborator-permission response to identify that
+same account with write/admin access. The login remains attribution, not
+identity proof: a reused login, absent provider ID, inaccessible renamed login,
+or revoked writer fails closed.
+
+For an upgrade from login-only queue records, pause admissions, stop and
+reconcile old executors, and upgrade every web and executor replica together
+before resuming. The invocation JSON is additive; there is no SQL schema or
+namespace-version migration. Do not backfill IDs by looking up current logins.
+Legacy pending commands without IDs remain readable and become explicit failed
+commands without starting work or minting credentials. Review them and, if still
+intended, sign in and explicitly retry through fresh admission. The retry
+records the current requester ID and ancestry without rewriting the original
+attribution. Normal terminal retention still applies; this is not authorization
+to delete pending work or deploy a production migration.
+
 If an executor crashes or loses its lease while a subprocess may still be
 running, the replacement marks the outcome interrupted and blocks new claims.
 It will not replay the command automatically because external side effects may
@@ -2318,6 +2383,33 @@ administrators may call `POST /api/admin/rebuild`; it validates input and
 atomically replaces current Postgres sources and state. A failed replacement
 leaves the previous committed state intact.
 
+Hosted rebuild admission and worker start require the durable operational audit
+service. Redis or volatile-memory hosting without a separately supplied durable
+audit service returns `503` for this administrative action; automatic collection,
+startup ingestion and signed webhook reconciliation are unchanged. The loopback
+bearer profile remains compatible, identifying the actor as `local-bearer`
+(capability attribution, not a verified person).
+
+`admin.rebuild.admitted`, `admin.rebuild.started` and `admin.rebuild.completed`
+retain the authenticated actor, a fresh `rebuild_id`, prior revision, timestamps,
+fixed outcome/reason and successful revision/data revision. `rebuildId` joins
+the `202` receipt and replaceable status to independent retained audit history;
+it is not the private lease token. Status `auditState` is `pending`, `recorded`
+(durable), `local` (no durability guarantee), or `unavailable`. A successful
+publication with unavailable terminal evidence is still published and notified,
+not rolled back or automatically retried. Status persistence failures separately
+attempt `admin.rebuild.status_failed`. Store and mirror errors are logged without
+payloads or raw source errors; mirror-only failures do not invalidate confirmed
+durable evidence.
+
+Forward committed rows with the existing audit export/delivery facilities and
+verify them with independent read-only access and external anchors. Alert on
+audit `stored=false`, status-write failures and admitted/started IDs without a
+terminal event. A crash or simultaneous outage can leave an incomplete
+lifecycle: reconcile canonical revision state and independent logs manually;
+neither status reads nor a later rebuild reconstruct a missing outcome.
+See [administrative rebuild evidence](../specs/server-operational-storage.md#administrative-rebuild-evidence).
+
 `POST /api/v1/value` publishes one prepared operational-value evidence envelope
 (JSON or one JSONL record, at most 8 MiB). It requires PostgreSQL and an already
 observed repository/workflow; it neither enrolls targets nor runs uploaded code.
@@ -2421,6 +2513,7 @@ flowchart LR
   Redis["Azure Managed Redis<br/>TLS<br/>operational state"]
   Storage["Functions storage account<br/>runtime state only"]
   Insights["Application Insights<br/>non-secret operational telemetry"]
+  OTel["Operator-managed OTel collector<br/>TLS + authentication"]
   Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
 
   Browser -->|"HTTPS static assets + API + best-effort SSE"| Edge
@@ -2430,7 +2523,8 @@ flowchart LR
   Function -->|"rediss:// operational commands"| Redis
   Function -->|"entity source reads/writes"| Postgres
   Function -->|"runtime binding state"| Storage
-  Function -->|"no tokens, no Redis URL, no source records"| Insights
+  Function -->|"opt-in OTLP/HTTP, bounded metadata only"| OTel
+  OTel -->|"Azure Monitor exporter"| Insights
   Operators -->|"reviewed Bicep + secret rotation"| KeyVault
   Operators -->|"deploy package + app settings"| Function
 
@@ -2709,6 +2803,17 @@ go -C server run ./cmd/cao-dashboard doctor \
   --deep
 ```
 
+`redis.persistence` observes `INFO persistence` without requiring `CONFIG`
+permissions. Missing or malformed observations warn rather than imply healthy
+writes. An explicitly enabled AOF with a successful last write passes this
+write-health check, unless another reported persistence status is invalid or
+reports failure. With AOF disabled, even a successful last background save
+warns: a historical save status does not establish an active snapshot policy.
+These warnings do not establish backup failure, and a pass does not verify
+durability or recoverability. Independently verify snapshot policy or
+provider-managed persistence, backup retention, and restore evidence with the
+Redis operator or provider management plane.
+
 Use `--format json` for a versioned agent/automation contract. JSON and text
 contain the same observations and stable check identifiers. The command exits
 non-zero when any check fails; `--strict` also makes warnings non-zero, which
@@ -2787,6 +2892,14 @@ suspended, or repositories are removed from it, the server deletes that
 repository's shards from the lake and requests a projection, so the canonical
 database stops reporting it. Uninstalling the GitHub App is the supported way
 to withdraw consent, and it takes effect without operator action.
+
+Erasure workers persist the projection request before acknowledging the task.
+If that write fails or is cancelled, the task stays leased and reclaimable.
+Projection retains its requested generation until canonical publication succeeds,
+then records the completed generation separately. Interrupted publication or
+completion writes therefore leave recoverable work, and a newer request arriving
+during projection remains pending for the next pass. Recovery can repeat a
+projection that already committed; it does not require restoring a cleared marker.
 
 `specs/server-ingestion.md` is the normative contract, and
 `adr/server-webhook-driven-ingestion.md` records why the design is shaped this
@@ -3172,9 +3285,15 @@ is not instrumented, not that pauses are zero.
 
 There is no Azure-specific exporter linked into the binary. To ship telemetry to
 Application Insights, point `OTEL_EXPORTER_OTLP_ENDPOINT` at an OpenTelemetry
-Collector configured with the `azuremonitorexporter` and the
-`APPLICATIONINSIGHTS_CONNECTION_STRING` provisioned by `azure/main.bicep`;
-the Function App itself never imports an Azure Monitor SDK.
+Collector configured with the `azuremonitorexporter`; supply that collector's
+Application Insights connection string from its secret manager. The
+`APPLICATIONINSIGHTS_CONNECTION_STRING` on the Function App does not activate
+Go exports or configure an external collector. The Azure template supports an
+explicit `otlpEndpoint`, `otlpLogsEnabled`, and secure `otlpHeaders` overlay for
+the Function App and optional collection/backfill roles. See the
+[Azure telemetry route and deployment receipts](../docs/deployment-azure.md#explicit-go-telemetry-route).
+The Function App itself never imports an Azure Monitor SDK, and telemetry
+delivery is not a request-readiness dependency.
 
 ## Security boundaries
 
@@ -3270,7 +3389,17 @@ versionless Key Vault reference so ordinary credential rotation
 does not require rewriting application configuration. Session-key rotation uses
 the optional secure `previousSessionSecret` deployment parameter: deploy the old
 key as previous and the new key as current, wait for active sessions and queued
-revocations to drain, then remove the previous key. Encrypted records carry a
+revocations (including expired-session cleanup) to drain, then remove the
+previous key. Unknown-expiry GitHub tokens have no local time-based drain
+deadline: retain their key until successful revocation or independently
+confirmed provider expiry. New session records preserve cleanup ownership
+after session authority expires, so outstanding debt consumes protected
+capacity and can backpressure sign-in. Stop old replicas before rolling out
+the new Redis session-envelope format, preserve the stable revocation prefix,
+and reconcile pre-upgrade sessions/abandoned grants separately. Do not treat
+deployment or the local session TTL as provider revocation. See
+[OAuth cleanup and rotation](SECURITY.md#github-oauth-and-authorization) for
+outage ownership and restart limitations. Encrypted records carry a
 key identifier, and the server can read both keys during that window. The
 template outputs only non-secret host names, redirect URI, Redis database name,
 and Key Vault URI. Redis access keys

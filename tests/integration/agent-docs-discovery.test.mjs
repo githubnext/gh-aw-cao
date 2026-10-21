@@ -28,6 +28,46 @@ function fileForPublicUrl(url) {
   return path.join(dist, relative || "index.html");
 }
 
+test("documentation links expose complete static social cards for Teams", async () => {
+  function meta(html, key) {
+    const tags = (html.match(/<meta\b[^>]*>/g) ?? [])
+      .filter((tag) => tag.includes(`property="${key}"`) || tag.includes(`name="${key}"`));
+    assert.equal(tags.length, 1, `expected exactly one ${key} tag`);
+    return tags[0].match(/\bcontent="([^"]+)"/)?.[1];
+  }
+
+  for (const route of ["", "architecture/", "catalog/", "blog/"]) {
+    const html = await readFile(path.join(dist, route, "index.html"), "utf8");
+    const imageUrl = meta(html, "og:image");
+    assert.equal(imageUrl, new URL("social-card.png", publicBase).href);
+    assert.equal(meta(html, "twitter:image"), imageUrl);
+    assert.equal(meta(html, "twitter:card"), "summary_large_image");
+    assert.equal(meta(html, "og:image:type"), "image/png");
+    assert.ok(meta(html, "og:image:alt"));
+    assert.equal(meta(html, "twitter:image:alt"), meta(html, "og:image:alt"));
+    assert.ok(meta(html, "og:title"));
+    assert.ok(meta(html, "og:description"));
+    assert.equal(meta(html, "og:url"), new URL(route, publicBase).href);
+
+    const image = await readFile(fileForPublicUrl(imageUrl));
+    assert.equal(image.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.equal(image.readUInt32BE(16), Number(meta(html, "og:image:width")));
+    assert.equal(image.readUInt32BE(20), Number(meta(html, "og:image:height")));
+    assert.equal(image.readUInt32BE(16), 1200);
+    assert.equal(image.readUInt32BE(20), 630);
+  }
+
+  const landingHtml = await readFile(path.join(dist, "index.html"), "utf8");
+  assert.deepEqual(landingHtml.match(/<title>[^<]*<\/title>/g), [
+    "<title>Central Agentic Ops (CAO)</title>",
+  ]);
+  assert.equal(meta(landingHtml, "og:title"), "Central Agentic Ops (CAO)");
+  assert.equal(meta(landingHtml, "og:type"), "website");
+  const articleHtml = await readFile(path.join(dist, "architecture/index.html"), "utf8");
+  assert.equal(meta(articleHtml, "og:type"), "article");
+  assert.match(articleHtml, /<title>Architecture \| Central Agentic Ops<\/title>/);
+});
+
 test("an external agent can traverse static discovery and resource metadata", async () => {
   const landingHtml = await readFile(path.join(dist, "index.html"), "utf8");
   const scopedHref = hrefForRel(landingHtml, "describedby");

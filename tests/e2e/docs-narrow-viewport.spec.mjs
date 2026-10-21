@@ -1051,7 +1051,7 @@ for (const { name, viewport } of [
       await expect(page.locator(".terminal a")).toHaveCount(0);
       await expect(page.locator('[data-terminal-output="install"]')).toHaveText("==> CAO runtime materialized and verified.");
       await expect(page.locator('[data-terminal-output="setup"]')).toHaveText(
-        "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nMonitoring is configured; executing operations is optional.",
+        "Monitoring configured. Automation is optional; no workflows run.\nNext: gh cao doctor, then review, commit and push the installed files.\nOptional automation: https://githubnext.github.io/gh-cao/operation-patterns/",
       );
       await expect(page.locator(".terminal-label")).toHaveText("Example agent request — not a CLI command");
       await expect(page.locator('[data-terminal-request="integration"]')).toHaveText(

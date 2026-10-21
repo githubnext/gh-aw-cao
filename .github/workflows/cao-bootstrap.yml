@@ -1,0 +1,80 @@
+name: CAO bootstrap integration
+
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/cao-bootstrap.yml
+      - .github/workflows/shared/**
+      - .github/actions/setup-cao-runtime/**
+      - aw.yml
+      - activity/**
+      - dashboard/aw.yml
+      - install.sh
+      - cmd/gh-cao/**
+      - internal/cli/**
+      - internal/ghcli/**
+      - server/internal/simulator/**
+      - go.mod
+      - go.sum
+      - server/go.mod
+      - server/go.sum
+      - package.json
+      - tests/unit/cao-bootstrap-workflow.test.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cao-bootstrap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  bootstrap:
+    name: Install, configure, and publish against local GitHub
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Install manifest-pinned gh-aw prerequisite
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(awk '$1 == "min-version:" { print $2; exit }' aw.yml)"
+          test -n "$version"
+          gh extension install github/gh-aw --pin "$version"
+          gh aw version
+      - name: Exercise real bootstrap with synthetic credentials and local GitHub
+        env:
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+          GH_ENTERPRISE_TOKEN: ""
+          GITHUB_ENTERPRISE_TOKEN: ""
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/cao-bootstrap
+          npm run test:integration:bootstrap 2>&1 | tee test-results/cao-bootstrap/go-test.log
+      - name: Upload bootstrap test log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cao-bootstrap
+          path: test-results/cao-bootstrap/
+          if-no-files-found: warn
+          retention-days: 14

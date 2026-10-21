@@ -11,7 +11,21 @@ func setupCommand(execute runtimeExecutor, gh ghExecutor) *cobra.Command {
 		jsonFlag,
 		{name: "repository", description: "Public monitoring quickstart scope OWNER/REPO or OWNER/* (repeatable; accepts public Pages)", repeat: true},
 	}, execute)
-	setup.Long = `Configure the control plane's repository scope, dashboard Pages, and authentication.
+	setup.Long = `Prepare monitoring in an existing control-repository checkout.
+
+Install missing bare runtime files and initialize missing policy, then configure
+repository scope, dashboard Pages, and authentication. No prior init or installer
+is required. Existing policy and unrelated files are preserved; conflicting
+runtime files stop preparation instead of being overwritten. Missing gh-aw is
+installed at the catalog's required version; existing older versions require
+an explicit upgrade. Interactive setup then shows a file summary, policy diff,
+and full-diff path before a separate default-No commit-and-push prompt.
+Publication requires the synchronized default branch, matching origin and an
+empty Git index. It commits only reviewed CAO files, respects branch protections,
+and returns immediately with deployment-pending links, without waiting for Actions.
+Declining or unattended setup leaves files local. Setup never creates a
+repository, enrolls campaigns, or runs agentic work. Use gh repo create or
+gh repo clone explicitly before setup.
 
 Run without a subcommand for guided setup, use auth to configure credentials,
 or admission to configure the cooperative OIDC gate's non-secret variables.

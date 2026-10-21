@@ -99,7 +99,7 @@ func TestCacheAccountingLimitsAndProtectedRecords(t *testing.T) {
 	config.MaxCacheBytes, config.MaxCacheValueBytes = 512, 256
 	s, _ := fixture(t, config)
 	ctx := t.Context()
-	must(t, s.PutSession(ctx, "session", "encrypted", time.Hour))
+	must(t, s.PutSession(ctx, "session", "encrypted", time.Hour, ""))
 	must(t, s.QueueRevocation(ctx, "retry", "sealed-revocation", ""))
 	_, err := s.TryLock(ctx, "lease", "owner", time.Hour)
 	must(t, err)

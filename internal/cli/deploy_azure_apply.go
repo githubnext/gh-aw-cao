@@ -30,6 +30,9 @@ type deployAzureReceipt struct {
 	DeploymentName     string                    `json:"deploymentName"`
 	DeploymentID       string                    `json:"deploymentId"`
 	SourceRevision     string                    `json:"sourceRevision"`
+	SourceWorktree     string                    `json:"sourceWorktree"`
+	Environment        string                    `json:"environment"`
+	ImageAssurance     string                    `json:"imageAssurance"`
 	ContextSHA256      string                    `json:"contextSha256"`
 	Images             []deployAzureBuiltImage   `json:"images"`
 	JobExecution       string                    `json:"jobExecution"`
@@ -38,6 +41,18 @@ type deployAzureReceipt struct {
 }
 
 func deployAzureExecute(ctx context.Context, deps deployAzureDeps, loaded deployAzureLoadedConfig, template deployAzureTemplate, plan deployAzurePlan, planFile string, options deployAzureApplyOptions) error {
+	if loaded.config.Environment != "development" || plan.Environment != "development" {
+		return errors.New("source-build apply requires environment: development in the reviewed config and plan; production promotion is unsupported without an independent per-target scan, SBOM and provenance gate")
+	}
+	var document deployAzureTemplateDocument
+	if err := json.Unmarshal(template.Content, &document); err != nil {
+		return fmt.Errorf("parse digest-capable template: %w", err)
+	}
+	for _, name := range []string{"functionImageDigest", "ingestionImageDigest", "provisioningImageDigest"} {
+		if document.Parameters[name].Type != "string" {
+			return fmt.Errorf("source-build apply requires a digest-capable template with string parameter %s; regenerate the reviewed template and plan", name)
+		}
+	}
 	if options.SourceDir == "" {
 		return errors.New("--apply requires --source-dir (a development gh-cao checkout)")
 	}
@@ -102,6 +117,7 @@ func deployAzureExecute(ctx context.Context, deps deployAzureDeps, loaded deploy
 	receipt := deployAzureReceipt{
 		Kind: "cao.deploy.azure.receipt", SchemaVersion: 1, PlanSHA256: hex.EncodeToString(sum[:]),
 		StartedAt: deps.now().UTC().Format(time.RFC3339), SourceRevision: build.Revision, ContextSHA256: build.Digest,
+		SourceWorktree: build.Worktree, Environment: "development", ImageAssurance: "not-evaluated-development-only",
 		DeploymentName: "cao-" + hex.EncodeToString(sum[:8]),
 	}
 	scope := []string{"--subscription", config.Subscription, "--resource-group", config.ResourceGroup}
@@ -142,7 +158,11 @@ func deployAzureExecute(ctx context.Context, deps deployAzureDeps, loaded deploy
 	if err != nil {
 		return err
 	}
-	parametersPath, err := workspace.write("apply-parameters.json", deployAzureParameterFile(config.parameters(), secrets))
+	parameters, err := deployAzureImageParameters(config, receipt.Images, options.EmptyEvidence, provision)
+	if err != nil {
+		return err
+	}
+	parametersPath, err := workspace.write("apply-parameters.json", deployAzureParameterFile(parameters, secrets))
 	if err != nil {
 		return err
 	}
@@ -184,6 +204,12 @@ func deployAzureExecute(ctx context.Context, deps deployAzureDeps, loaded deploy
 		if provisionJob != config.Resources.FunctionApp+"-db-provision" {
 			return errors.New("deployment returned an unexpected database provision job; refusing to execute it")
 		}
+	}
+	if err := deployAzureReadBackImages(ctx, az, config, receipt.Images); err != nil {
+		return err
+	}
+	if provision {
+		provisionJob := deployment.Properties.Outputs.ProvisioningJobName.Value
 		receipt.ProvisionExecution, err = deployAzureRunJob(ctx, deps, az, config, provisionJob)
 		if err != nil {
 			return fmt.Errorf("database provision failed before ingestion: %w", err)

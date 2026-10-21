@@ -274,8 +274,10 @@ type RequestLimiter interface {
 // Session records are opaque encrypted values.
 type SessionStore interface {
 	SessionRecord(context.Context, string) (string, error)
-	PutSession(context.Context, string, string, time.Duration) error
-	CompareSession(context.Context, string, string, string, time.Duration) (bool, error)
+	// The final argument is the cleanup namespace. Expiry removes authority,
+	// not the encrypted record; PendingRevocation stages expired sessions.
+	PutSession(context.Context, string, string, time.Duration, string) error
+	CompareSession(context.Context, string, string, string, time.Duration, string) (bool, error)
 	DeleteSession(context.Context, string) error
 }
 

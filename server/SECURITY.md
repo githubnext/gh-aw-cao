@@ -1,5 +1,9 @@
 # Server security
 
+For the component inventory, evidence-driven readiness procedure, and operator
+decision register, see [SOC 2 readiness assessment](SOC2.md). That assessment
+does not attest compliance or authorize remediation.
+
 The Go dashboard server has three security profiles:
 
 - the default local profile used by `cao-dashboard serve`, for one trusted
@@ -57,6 +61,17 @@ Hosted mode rejects local bearer capabilities and requires GitHub OAuth,
 explicit organization or team authorization, and an exact trusted-host policy.
 Administrative rebuilds additionally require an explicit GitHub login in
 `CAO_GITHUB_ADMIN_USERS`.
+Hosted rebuilds additionally require durable audit admission/start evidence.
+Their `admin.rebuild.*` events retain the initiating actor and independent
+rebuild correlation through terminal success, failure or cancellation.
+An audit outage before reconciliation prevents the rebuild; a terminal outage
+cannot undo an already committed canonical revision and is reported separately
+through status `auditState` and audit failure telemetry. JSON mirrors alone do
+not satisfy the hosted requirement. Local loopback rebuilds retain the explicit
+capability-only, non-durable exception. Operators must independently preserve
+committed audit rows and reconcile lifecycle IDs missing terminal evidence after
+crashes/outages; see the
+[runtime contract](../specs/server-operational-storage.md#administrative-rebuild-evidence).
 Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.
@@ -66,6 +81,29 @@ remove session authority and revoke or durably queue its credentials. OAuth
 callbacks that cannot establish an authorized, stored session likewise revoke
 or durably queue issued credentials; a background worker retries pending
 revocations without delaying the login redirect.
+
+OAuth revision streams use the same authorization window: they close no later
+than five minutes after the last successful membership authorization, or earlier
+when access-token refresh is due. Streams admitted with administrator health
+metadata also close at the administrator assurance deadline. Reconnecting runs
+ordinary request authentication, including membership revalidation, token
+refresh and cookie renewal; none of those renewals occur after stream headers
+have been flushed. Expired administrator assurance permits a viewer reconnect
+without health metadata, not continued administrator entitlement.
+
+Each OAuth stream reads its encrypted session record once per 20-second
+heartbeat, with a five-second timeout bounded by its authorization deadline.
+Logout, account switching, removed session authority and session-store errors
+close the stream at that check; metadata already admitted can continue for up
+to 25 seconds after session invalidation. A membership change not yet reflected
+in session authority remains bounded by the ordinary five-minute authorization
+window. Checks do not call GitHub or refresh tokens, and revision traffic adds
+no session-store reads. The stream context and supported HTTP write deadline
+share the fixed authorization deadline, so active traffic cannot extend it.
+Cancellation and server drain still unsubscribe immediately. Local bearer
+capability streams do not acquire an OAuth lifetime or session-store dependency.
+These are application authorization bounds, not an attestation of deployed
+proxy buffering, connection lifetimes or delivery of previously written bytes.
 
 API and OAuth abuse is bounded with atomic Redis token buckets shared by all
 server replicas. Authenticated buckets use a digest of the GitHub login, while
@@ -424,12 +462,47 @@ Encrypted session and pending-revocation records carry a non-secret key
 identifier. During controlled rotation, configure the old key through
 `CAO_SESSION_SECRET_PREVIOUS` while `CAO_SESSION_SECRET` contains the new key;
 remove the previous key only after active sessions and queued revocations using
-it have drained or their credentials have expired. The revocation worker runs
-at startup and every minute, retries bounded batches, and retains encrypted
-queue records through the latest known access/refresh credential expiry.
+it have drained or every remaining credential has provider-confirmed expiry.
+The revocation worker runs at startup and every minute and retries bounded
+batches. Local one-hour access and thirty-day refresh/session deadlines bound
+CAO authority; they never prove that GitHub credentials expired. Missing,
+nonpositive, overflowing, and legacy expiry metadata is unknown for cleanup.
+An unknown-expiry credential remains encrypted cleanup debt until GitHub
+accepts revocation (including already-absent responses); elapsed local deadlines
+do not release the record or permit key retirement. Confirmed expiry releases
+a record only when every credential actually present has expired.
+
+Inactive sessions retain their final encrypted cleanup owner after their
+local authority expires. PostgreSQL and memory stage expired sessions from
+protected records; Redis retains persistent encrypted session envelopes behind
+a stable deployment-scoped due index. Reads and CAS reject expired sessions
+before the worker runs, and maintenance cannot delete their cleanup debt.
+Session admission reserves the configured cleanup destination's capacity;
+pending debt backpressures new admission rather than evicting credentials.
+No-refresh and failed-refresh paths use atomic invalidation, just like logout.
 Refresh persistence uses an atomic compare-and-swap against the encrypted
 session record, so concurrent logout cannot be overwritten by a late token
 refresh; superseded credentials are revoked or queued separately.
+
+If both revocation and protected persistence fail for newly exchanged tokens,
+the request keeps a cleanup owner and retries independently of client
+cancellation until revocation, durable queuing, or confirmed provider expiry.
+At most sixteen exchanges per process may hold such ownership; exhausted
+capacity refuses further exchanges before asking GitHub for tokens. These
+requests can remain outstanding during a sustained outage. A forced process
+kill between provider issuance and durable persistence can still lose that
+in-memory owner; graceful shutdown must allow cleanup to finish. The opted-in
+memory backend additionally loses all retained debt on restart.
+
+Roll out the new session-envelope format with old replicas stopped: older
+executables cannot read the new Redis records and can still TTL-delete older
+ones. Preserve the stable revocation prefix, storage, and current/previous keys.
+Existing queued records without provider-expiry fields are conservatively
+unknown; do not delete them on their old local deadlines. Existing pre-upgrade
+sessions need interactive reauthentication/reconciliation: already deleted
+sessions or abandoned grants cannot be reconstructed from this fix. Operators
+must reconcile outstanding GitHub grants through a separately authorized
+procedure; deployment alone does not revoke them.
 
 Access tokens and refresh tokens remain server-side. They are encrypted with an
 AES-GCM key derived from `CAO_SESSION_SECRET` before being stored in Redis under
@@ -497,7 +570,8 @@ The readable CSRF cookie expires one day before the session cookie; if it is
 missing, the dashboard first makes an authenticated read to restore both cookies
 before sending a mutation. A missing session or failed renewal cannot authorize
 a mutation. If refresh fails or the
-refresh token has expired, the session is deleted, cookies are cleared, and the
+refresh token has expired, session authority is removed, cleanup is staged,
+cookies are cleared, and the
 client must reauthenticate. Logout revokes both the current access token and
 the current refresh token when GitHub accepts revocation, deletes the Redis
 session, and clears cookies.
@@ -631,6 +705,15 @@ Keep the Azure secure-computing baseline enabled:
   never GitHub tokens, Redis URLs, session secrets, cookies, authorization
   headers, source records, or prompt contents.
 
+Application Insights app settings alone do not activate Go exporters. Use the
+[reviewed HTTPS OTLP route](../docs/deployment-azure.md#explicit-go-telemetry-route)
+for the Function App and collection/backfill roles, with secret-manager input
+for collector authentication and secret-scoped Key Vault resolution. Go log
+export requires explicit opt-in and uses bounded namespaces, not the workers'
+broad debug selection. Collector/backend delivery and alert acknowledgements
+still require deployment receipts; platform logs and independent audit delivery
+remain separate. Exporter availability must not gate request readiness.
+
 The Azure Elastic Premium baseline keeps one always-on instance for the
 process-lifetime revocation worker. Redis remains the durable queue across
 process replacement; each startup resumes bounded retry batches before the
@@ -728,16 +811,25 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   resolves the request only against a catalog-declared action, plans the
   command for exactly one target repository, and confirms the requester's own
   `admin`, `maintain`, or `push` permission with their OAuth token. The web
-  process never holds the App private key.
+  process never holds the App private key. Admission persists the authenticated
+  numeric account ID with the login used for attribution; clients cannot set it.
 - **Execution** happens in the `execute-cli` process, which holds the single
   queue lease. Other replicas stand by. Before issuing any work, it re-plans
   the command and rechecks the actor's live `admin` or `write` collaborator
   permission with a separate `metadata: read` token that is revoked at once.
+  The same permission response must identify the admitted numeric account ID.
+  A matching login with a different or absent ID cannot authorize work.
   No work-scoped token is minted, pooled, or pre-minted for a requester who
   fails that check, and cancel also requires the requester's write access to
   the command's repository. Step-up is not rechecked at run time: admission is the
   authorization point, and the recheck and command deadline (default 15
   minutes) bound execution.
+- **Legacy requester identity** is never inferred from a current login lookup.
+  Commands without an admitted account ID fail explicitly before token issuance
+  or subprocess startup and remain available for review and fresh, explicit
+  retry. All web/executor replicas must be upgraded together with admissions
+  paused and old executors stopped/reconciled; old executors ignore the new ID.
+  See the [upgrade contract](../specs/server-hosted-cli.md#42-queued-identity-continuity-and-upgrades).
 - **Durability and replica coordination** use one shared PostgreSQL operational
   namespace. The transactionally acquired, fenced queue lease elects one
   executor replica; persisted execution claims and the configured concurrency

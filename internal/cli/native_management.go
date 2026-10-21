@@ -377,9 +377,13 @@ type nativePackageRecord struct {
 }
 
 func nativeInstalledPackages() ([]nativePackageRecord, error) {
+	return nativeInstalledPackagesIn(".")
+}
+
+func nativeInstalledPackagesIn(base string) ([]nativePackageRecord, error) {
 	found := map[string]nativePackageRecord{}
 	for _, directory := range []string{"campaigns", "packages"} {
-		root, err := repositoryPath(filepath.Join(".github", "aw", directory))
+		root, err := repositoryPath(filepath.Join(base, ".github", "aw", directory))
 		if err != nil {
 			return nil, err
 		}

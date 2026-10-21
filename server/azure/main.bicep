@@ -41,6 +41,33 @@ param hostingPlanName string = '${functionAppName}-plan'
 @description('Application Insights component name.')
 param applicationInsightsName string = '${functionAppName}-ai'
 
+@description('Optional reviewed HTTPS OTLP/HTTP collector base URL, without credentials, query or fragment. Empty disables Go export; Application Insights settings alone only configure the Functions host.')
+param otlpEndpoint string = ''
+
+@description('Explicit opt-in to export bounded operational Go logs to the OTLP collector. Independent audit delivery is unchanged.')
+param otlpLogsEnabled bool = false
+
+@secure()
+@description('Optional OTLP authentication headers from a secret manager. Stored only in Key Vault; never supply literal values in command-line arguments or checked-in parameters.')
+param otlpHeaders string = ''
+
+var otlpEnvironment = [
+  {
+    name: 'OTEL_EXPORTER_OTLP_ENDPOINT'
+    value: otlpEndpoint
+  }
+  {
+    name: 'OTEL_EXPORTER_OTLP_PROTOCOL'
+    value: 'http/protobuf'
+  }
+  {
+    name: 'CAO_OTEL_LOGS_ENABLED'
+    value: string(otlpLogsEnabled)
+  }
+]
+
+var otlpHeadersEnabled = !empty(otlpEndpoint) && !empty(otlpHeaders)
+
 @description('Globally unique storage account name for Azure Functions runtime state.')
 param storageAccountName string
 
@@ -52,6 +79,9 @@ param functionImageRepository string = 'cao-functions'
 
 @description('Immutable or reviewed tag of the CAO Azure Functions runtime image.')
 param functionImageTag string
+
+@description('Exact Functions image digest, including sha256:. When supplied, takes precedence over the tag. Does not establish scan or production assurance.')
+param functionImageDigest string = ''
 
 @description('Key Vault name used for GitHub OAuth, session, PostgreSQL, and collection secrets.')
 param keyVaultName string
@@ -100,10 +130,20 @@ param provisioningImageRepository string = 'cao-db-provision'
 
 param provisioningImageTag string = functionImageTag
 
+@description('Exact database-provisioning image digest, including sha256:. When supplied, takes precedence over the tag.')
+param provisioningImageDigest string = ''
+
 @description('Repository of an explicitly built snapshot or empty ingestion image in this deployment registry.')
 param ingestionImageRepository string = 'cao-ingest'
 
 param ingestionImageTag string = functionImageTag
+
+@description('Exact ingestion image digest, including sha256:. When supplied, takes precedence over the tag.')
+param ingestionImageDigest string = ''
+
+var functionImageSelector = empty(functionImageDigest) ? ':${functionImageTag}' : '@${functionImageDigest}'
+var ingestionImageSelector = empty(ingestionImageDigest) ? ':${ingestionImageTag}' : '@${ingestionImageDigest}'
+var provisioningImageSelector = empty(provisioningImageDigest) ? ':${provisioningImageTag}' : '@${provisioningImageDigest}'
 
 @minValue(1)
 @description('Maximum bytes retained in the disposable operational cache.')
@@ -419,6 +459,15 @@ resource insights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
+resource otlpHeadersValue 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (otlpHeadersEnabled) {
+  parent: keyVault
+  name: 'cao-otel-headers'
+  properties: {
+    value: otlpHeaders
+    contentType: 'OTLP collector authentication headers'
+  }
+}
+
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
   location: location
@@ -444,7 +493,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       http20Enabled: true
-      linuxFxVersion: 'DOCKER|${registry.properties.loginServer}/${functionImageRepository}:${functionImageTag}'
+      linuxFxVersion: 'DOCKER|${registry.properties.loginServer}/${functionImageRepository}${functionImageSelector}'
       acrUseManagedIdentityCreds: true
       appSettings: concat([
         {
@@ -563,6 +612,16 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'CAO_SESSION_SECRET'
           value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-session-secret)'
         }
+      ], otlpEnvironment, !otlpLogsEnabled ? [] : [
+        {
+          name: 'DEBUG'
+          value: 'cao:server,cao:telemetry'
+        }
+      ], !otlpHeadersEnabled ? [] : [
+        {
+          name: 'OTEL_EXPORTER_OTLP_HEADERS'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/cao-otel-headers)'
+        }
       ], empty(previousSessionSecret) ? [] : [
         {
           name: 'CAO_SESSION_SECRET_PREVIOUS'
@@ -604,6 +663,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     postgresConnectionStringValue
     sessionSecretValue
     previousSessionSecretValue
+    otlpHeadersValue
   ]
 }
 
@@ -618,7 +678,7 @@ module functionRoles 'function-roles.bicep' = {
       postgresUrlSecretName
       githubClientSecretValue.name
       sessionSecretValue.name
-    ], empty(previousSessionSecret) ? [] : [previousSessionSecretValue.name], !collectionEnabled ? [] : [githubWebhookSecretValue.name])
+    ], empty(previousSessionSecret) ? [] : [previousSessionSecretValue.name], !collectionEnabled ? [] : [githubWebhookSecretValue.name], !otlpHeadersEnabled ? [] : ['cao-otel-headers'])
   }
 }
 
@@ -646,10 +706,14 @@ module collection 'collector.bicep' = if (collectionEnabled) {
     workerReplicas: collectorWorkerReplicas
     lakeStorageSku: collectorLakeStorageSku
     applicationInsightsConnectionString: insights.properties.ConnectionString
+    otlpEnvironment: otlpEnvironment
+    otlpLogsEnabled: otlpLogsEnabled
+    otlpHeadersEnabled: otlpHeadersEnabled
   }
   dependsOn: [
     collectorPrivateKeyValue
     postgresConnectionStringValue
+    otlpHeadersValue
   ]
 }
 
@@ -661,7 +725,7 @@ module ingestion 'ingestion.bicep' = {
     environmentName: containerEnvironment.name
     containerRegistryName: registry.name
     keyVaultName: keyVault.name
-    ingestionImage: '${registry.properties.loginServer}/${ingestionImageRepository}:${ingestionImageTag}'
+    ingestionImage: '${registry.properties.loginServer}/${ingestionImageRepository}${ingestionImageSelector}'
     postgresRunRetentionDays: postgresRunRetentionDays
     postgresUrlSecretName: postgresUrlSecretName
     canonicalNamespace: 'azure-dashboard'
@@ -677,7 +741,7 @@ module provisioning 'provisioning.bicep' = {
     environmentName: containerEnvironment.name
     containerRegistryName: registry.name
     keyVaultName: keyVault.name
-    provisioningImage: '${registry.properties.loginServer}/${provisioningImageRepository}:${provisioningImageTag}'
+    provisioningImage: '${registry.properties.loginServer}/${provisioningImageRepository}${provisioningImageSelector}'
     postgresUrlSecretName: postgresUrlSecretName
     postgresHostName: network.outputs.postgresHostName
     postgresDatabaseName: network.outputs.databaseName
@@ -693,7 +757,7 @@ module provisioning 'provisioning.bicep' = {
 
 output collectionEnabled bool = collectionEnabled
 output containerRegistryLoginServer string = registry.properties.loginServer
-output functionContainerImage string = '${registry.properties.loginServer}/${functionImageRepository}:${functionImageTag}'
+output functionContainerImage string = '${registry.properties.loginServer}/${functionImageRepository}${functionImageSelector}'
 output functionHostName string = functionApp.properties.defaultHostName
 output githubOAuthRedirectUri string = githubRedirectUri
 output keyVaultUri string = keyVault.properties.vaultUri

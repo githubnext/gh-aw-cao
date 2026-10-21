@@ -142,6 +142,23 @@ test("setup without a terminal applies public repository workflow-token defaults
   assert.deepEqual(f.saved()["control-plane"].activity.repositories, ["acme/control"]);
 });
 
+test("guided public setup skips authentication prompts but still requires review and Pages consent", terminal, async (t) => {
+  const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
+  const result = await walk(f, [
+    ["Repositories CAO should read", "acme/service\r"],
+    ["Apply this setup?", "\u001b[D\r"],
+    ["Is a public dashboard OK?", "\u001b[D\r"],
+  ]);
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  assert.doesNotMatch(result.stdout, /How should CAO authenticate\?|App client ID/);
+  assert.match(result.stdout, /no App\/PAT/);
+  assert.match(result.stdout, /"profile":"public-only"/);
+  assert.ok(!f.calls().some(([command]) => command === "connect" || command === "secret"));
+  assert.deepEqual(f.saved()["control-plane"].activity, {
+    repositories: ["acme/control", "acme/service"], "public-only": true,
+  });
+});
+
 test("setup in CI applies public repository workflow-token defaults without prompting", terminal, async (t) => {
   const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
   const result = await walk(f, [], "xterm-256color", { CI: "1" });

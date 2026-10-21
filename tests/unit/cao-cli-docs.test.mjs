@@ -12,7 +12,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.ok(optional > 0);
   const monitoring = gettingStarted.slice(0, optional);
   const commands = [
-    "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
+    "gh extension install githubnext/gh-cao",
     "gh cao --version",
     "gh cao setup",
     "gh cao doctor",
@@ -36,16 +36,17 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.ok(monitoring.indexOf(":::note[Video TODO]") < monitoring.indexOf("## Prerequisites"));
   const install = monitoring.slice(monitoring.indexOf("## Step 1"), monitoring.indexOf("## Step 2"));
   assert.match(install, /`gh cao` GitHub CLI extension/);
-  assert.match(install, /repository\s+runtime/);
-  assert.match(install, /required\s+`gh-aw` extension/);
-  assert.match(install, /--create-repo OWNER\/CONTROL_REPOSITORY/);
-  assert.doesNotMatch(install, /```bash\ngh extension install/);
-  assert.match(install, /supports published\s+prereleases/);
-  assert.match(install, /currently fails, even with `--pin`/);
+  assert.match(install, /Extension installation does not yet\s+change a repository/);
+  assert.match(install, /gh repo create OWNER\/CONTROL_REPOSITORY --private --clone/);
+  assert.match(install, /gh repo clone OWNER\/CONTROL_REPOSITORY/);
+  assert.match(install, /```bash\ngh extension install githubnext\/gh-cao\n```/);
+  assert.match(monitoring, /Setup verifies a release and adds\s+missing runtime\/policy without overwriting files/);
+  assert.match(monitoring, /Missing `gh-aw` is installed; upgrade old\s+versions explicitly/);
+  assert.match(monitoring, /No `init` or installer needed/);
   assert.match(install, /:::tip\[Installation and authentication\]/);
   assert.match(install, /```bash\ngh auth login\ngh auth status\n```/);
-  assert.match(install, /installer requires GitHub CLI sign-in/);
-  assert.doesNotMatch(install, /install-gh-aw\.sh|--scopes repo,workflow/);
+  assert.match(install, /extension installation requires GitHub CLI sign-in/);
+  assert.doesNotMatch(install, /install-gh-aw\.sh|--scopes repo,workflow|--create-repo|curl.*install\.sh/);
   const prerequisites = monitoring.slice(monitoring.indexOf("## Prerequisites"), monitoring.indexOf("## Step 1"));
   assert.match(prerequisites, /Logged in to GitHub CLI[\s\S]*gh auth status[\s\S]*gh auth login/);
   assert.match(monitoring, /## Prerequisites/);
@@ -60,8 +61,11 @@ test("getting started reaches monitoring before optional campaign execution", ()
   }
   assert.ok(gettingStarted.trim().split(/\s+/).length < 1000, "first-run guide should stay concise");
   assert.doesNotMatch(monitoring, /--quickstart|gh aw run|cao\.sh (?:add|enable|quickstart)|AI credits/);
-  assert.match(monitoring, /setup installs no campaign and runs no workflow/i);
-  assert.match(monitoring, /does not commit or push/);
+  assert.match(monitoring, /No campaigns or agentic work are installed/);
+  assert.match(monitoring, /Commit and push these CAO monitoring changes\? \[y\/N\]/);
+  assert.match(monitoring, /reviewed CAO files and returns \*\*deployment pending\*\* links immediately/);
+  assert.match(monitoring, /synchronized\s+default branch, matching origin, and empty index; no protection bypass/);
+  assert.match(monitoring, /Declining, blocked, or unattended setup stays local/);
   assert.match(monitoring, /Check \*\*CAO validation\*\* in Actions/);
   assert.match(monitoring, /control-plane\.campaigns` is `\{\}`/);
   assert.match(monitoring, /control-plane\.workflows` and\s+`control-plane\.operations` absent or `\{\}`/);
@@ -71,12 +75,14 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(monitoring, /including its Pages deployment/);
   assert.match(monitoring, /authentication\.md#public-only-monitoring-quickstart/);
   const nativeSetup = readFileSync("internal/cli/native_setup.go", "utf8");
-  for (const prompt of ["Repositories CAO should read", "Authentication", "Apply this setup?"]) {
+  for (const prompt of ["Repositories", "Authentication", "Apply this setup?"]) {
     assert.ok(nativeSetup.includes(prompt) && monitoring.includes(`**${prompt}`), prompt);
   }
   assert.match(monitoring, /public-only[\s\S]*GITHUB_TOKEN/);
+  assert.match(monitoring, /Choose \*\*Authentication\*\* only if prompted/);
+  assert.match(monitoring, /Confirmed all-public scope[\s\S]*automatically uses `public-only`/);
   assert.match(monitoring, /Decline for non-public evidence/);
-  assert.match(monitoring, /before retrying; do not publish an incomplete setup/);
+  assert.match(monitoring, /before retrying; do not publish incomplete setup/);
   assert.doesNotMatch(monitoring, /gh cao validate/);
   assert.match(gettingStarted.slice(optional), /setup\/quickstart\.md/);
   assert.match(gettingStarted.slice(optional), /repo-assist-quickstart\.md/);
@@ -91,19 +97,26 @@ test("getting started reaches monitoring before optional campaign execution", ()
 });
 
 test("extension installation guidance distinguishes discovery, promotion, and runtime installation", () => {
-  assert.match(docs, /latest stable release, `v0\.1\.19`/);
-  assert.match(docs, /before\*\* selecting a `--pin` tag/);
-  assert.match(docs, /Merging source changes alone does not repair the public/);
-  assert.match(docs, /After a compatible release is latest/);
+  assert.match(docs, /latest stable release includes native binaries for GitHub CLI discovery/);
+  assert.match(docs, /verified with `v0\.1\.24`/);
+  assert.match(docs, /`releases\/latest` before selecting a\s+`--pin` tag/);
+  assert.match(docs, /Merging source does not update an\s+already installed binary/);
+  assert.match(docs, /unified setup requires a newer\s+extension release/);
   assert.match(docs, /gh extension upgrade gh-cao/);
-  assert.match(docs, /do not install the control-repository runtime or `gh-aw`/);
+  assert.match(docs, /Extension installation alone does not install the control-repository runtime\s+or `gh-aw`/);
 });
 
 test("native and Node setup hand off to outcome and scope rather than pattern selection", () => {
   for (const filename of ["internal/cli/native_setup.go", "activity/cao.mjs"]) {
     const source = readFileSync(filename, "utf8");
-    assert.ok(source.includes("Monitoring is configured; executing operations is optional."));
-    assert.ok(source.includes("Describe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/"));
+    if (filename.endsWith(".go")) {
+      assert.ok(source.includes("Monitoring configured locally. No commit or push was performed."));
+      assert.ok(source.includes("Deployment pending; setup is not waiting for Actions."));
+      assert.match(source, /Optional automation: https:\/\/githubnext\.github\.io\/gh-cao\/operation-patterns\/\\n"/);
+    } else {
+      assert.ok(source.includes("Monitoring is configured; executing operations is optional."));
+      assert.ok(source.includes("Describe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/"));
+    }
     assert.doesNotMatch(source, /Add your first campaign separately|Choose an operation pattern/);
   }
   const skill = readFileSync("skills/setup-cao/SKILL.md", "utf8");
@@ -173,7 +186,7 @@ test("Node-only command documentation uses explicit runtime entry points without
   assert.match(docs, /gh cao setup --help/);
   const demo = readFileSync("docs/components/TerminalDemo.astro", "utf8");
   assert.match(demo, /gh cao<\/span> setup/);
-  assert.match(demo, /data-terminal-output="setup">Next: gh cao doctor/);
+  assert.match(demo, /data-terminal-output="setup">Monitoring configured locally\. No commit or push was performed\.[\s\S]*Next: gh cao doctor/);
   assert.doesNotMatch(demo, /cao\.sh|<\/span> validate/);
 });
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -14,7 +15,26 @@ import (
 
 var log = logger.New("cao:gh")
 
+type directoryKey struct{}
+
+// WithDirectory scopes a child command without changing the process directory.
+func WithDirectory(ctx context.Context, directory string) context.Context {
+	return context.WithValue(ctx, directoryKey{}, directory)
+}
+
 func Exec(ctx context.Context, args ...string) (string, string, error) {
+	if directory, ok := ctx.Value(directoryKey{}).(string); ok {
+		binary, err := gh.Path()
+		if err != nil {
+			return "", "", err
+		}
+		child := exec.CommandContext(ctx, binary, args...)
+		child.Dir = directory
+		var stdout, stderr bytes.Buffer
+		child.Stdout, child.Stderr = &stdout, &stderr
+		err = child.Run()
+		return stdout.String(), stderr.String(), err
+	}
 	stdout, stderr, err := gh.ExecContext(ctx, args...)
 	return stdout.String(), stderr.String(), err
 }

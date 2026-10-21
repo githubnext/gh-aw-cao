@@ -551,17 +551,14 @@ export async function setupCaoControlPlane({
         label: 'Fine-grained personal access tokens',
         hint: 'User-bound; separate credentials per owner',
       }];
+    let profile = 'public-only';
     if (uniqueInspected.every(({ visibility }) => visibility === 'public')) {
-      choices.unshift({
-        value: 'public-only',
-        label: 'Public-only monitoring (no App or PAT)',
-        hint: 'Actions token; restricted evidence stays explicitly partial; no agent execution',
-      });
-    }
-
-    const profile = await interactive.select('How should CAO authenticate?', choices);
-    if (!choices.some((choice) => choice.value === profile)) {
-      throw new UsageError(`Authentication profile is not available for this repository scope: ${profile}`);
+      interactive.note('Public-only monitoring: Actions token; no App/PAT. Restricted evidence is partial.');
+    } else {
+      profile = await interactive.select('How should CAO authenticate?', choices);
+      if (!choices.some((choice) => choice.value === profile)) {
+        throw new UsageError(`Authentication profile is not available for this repository scope: ${profile}`);
+      }
     }
     const intendedPolicy = structuredClone(policy);
     intendedPolicy['control-plane'].scope = {

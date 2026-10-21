@@ -74,7 +74,7 @@ func TestRestartAndDeploymentIsolation(t *testing.T) {
 	if err := operational.ValidateOperationalServices(s.Capabilities(), s.OperationalServices(), operational.Requirements{OAuth: true, Collection: true}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.PutSession(ctx, "session", "encrypted", time.Hour); err != nil {
+	if err := s.PutSession(ctx, "session", "encrypted", time.Hour, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.EnsureQueue(ctx, "ready", "workers"); err != nil {
@@ -187,7 +187,7 @@ func TestCrossConnectionAtomicity(t *testing.T) {
 func TestProtectedCapacityAndRollback(t *testing.T) {
 	s, _ := testStore(t, Config{MaxProtectedEntries: 4, MaxCacheEntries: 1})
 	ctx := t.Context()
-	if err := s.PutSession(ctx, "session", "encrypted", time.Hour); err != nil {
+	if err := s.PutSession(ctx, "session", "encrypted", time.Hour, strings.Repeat("n", 1024)); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.EnsureQueue(ctx, "ready", "workers"); err != nil {
@@ -248,7 +248,7 @@ func TestExpiryCacheMetadataAndDiagnostics(t *testing.T) {
 	if ok, _, err := s.CacheQueryResult(ctx, strings.Repeat("b", 64), make([]byte, 2048), 1024, 4096); err != nil || ok {
 		t.Fatalf("oversize query: %t %v", ok, err)
 	}
-	if err := s.PutSession(ctx, "expired", "old", time.Hour); err != nil {
+	if err := s.PutSession(ctx, "expired", "old", time.Hour, ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.db.ExecContext(ctx, `UPDATE cao_operational_records SET expires_at=clock_timestamp()-interval '1 second' WHERE namespace=$1 AND kind IN ('session','session-reserve')`, s.namespace); err != nil {
@@ -258,6 +258,13 @@ func TestExpiryCacheMetadataAndDiagnostics(t *testing.T) {
 		t.Fatalf("expired authority: %q %v", value, err)
 	}
 	if err := s.Maintain(ctx); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := s.PendingRevocation(ctx, "")
+	if err != nil || pending.ID != "expired" || pending.Value != "old" {
+		t.Fatalf("expired session cleanup: %+v %v", pending, err)
+	}
+	if err := s.CompleteRevocation(ctx, pending.ID, pending.Value, ""); err != nil {
 		t.Fatal(err)
 	}
 	var entries int64
@@ -334,7 +341,8 @@ func TestWaitingTransactionCancellation(t *testing.T) {
 func TestProtectedByteCapacityAndRevocation(t *testing.T) {
 	s, _ := testStore(t, Config{MaxProtectedBytes: 4096})
 	ctx := t.Context()
-	if err := s.PutSession(ctx, "session", "encrypted", time.Hour); err != nil {
+	namespace := strings.Repeat("n", 1024)
+	if err := s.PutSession(ctx, "session", "encrypted", time.Hour, namespace); err != nil {
 		t.Fatal(err)
 	}
 	var used int64
@@ -351,7 +359,6 @@ func TestProtectedByteCapacityAndRevocation(t *testing.T) {
 	if err := s.WriteAttribute(ctx, "extra", "value", "x"); !errors.Is(err, operational.ErrCapacity) {
 		t.Fatalf("capacity: %v", err)
 	}
-	namespace := strings.Repeat("n", 1024)
 	if value, err := s.InvalidateSession(ctx, "session", "encrypted", namespace); err != nil || value != "encrypted" {
 		t.Fatalf("reserved logout at byte capacity: %q %v", value, err)
 	}

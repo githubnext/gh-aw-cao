@@ -44,7 +44,7 @@ and merge its declared workers without widening existing rollout policy.
 Campaign installation runs natively in Go. Options after CAMPAIGN are passed
 unchanged to gh aw add. Remote resources use the installed package's immutable
 resolvedCommit; local sources copy only Git-tracked campaign files.
-The CAO root package must be installed with install.sh.`,
+Prepare the CAO root runtime with gh cao setup.`,
 	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		for _, arg := range args {
@@ -89,7 +89,7 @@ func installCampaign(ctx context.Context, gh ghExecutor, spec string, options []
 		return nil, err
 	}
 	if campaign == "gh-cao" {
-		return nil, fmt.Errorf("add cannot install the CAO root package; use install.sh")
+		return nil, fmt.Errorf("add cannot install the CAO root package; use gh cao setup")
 	}
 	var sourceRoot string
 	if info, err := os.Stat(spec); err == nil && info.IsDir() {

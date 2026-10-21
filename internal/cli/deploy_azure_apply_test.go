@@ -20,11 +20,11 @@ import (
 
 type testAzureBuildSource struct{}
 
-func (testAzureBuildSource) Materialize(_ context.Context, directory string) (string, error) {
+func (testAzureBuildSource) Materialize(_ context.Context, directory string) (deployAzureSourceIdentity, error) {
 	if err := os.WriteFile(filepath.Join(directory, "product.json"), []byte(`{"product":true}`), 0o600); err != nil {
-		return "", err
+		return deployAzureSourceIdentity{}, err
 	}
-	return strings.Repeat("a", 40), nil
+	return deployAzureSourceIdentity{Revision: strings.Repeat("a", 40), Worktree: "dirty"}, nil
 }
 
 type testAzureTransport func(*http.Request) (*http.Response, error)
@@ -48,6 +48,19 @@ type fakeAzureApply struct {
 	referencePolls       int
 	transientARMFailures int
 	deploymentOutputs    map[string]any
+	imageReadBack        map[string]string
+	invalidDigest        bool
+}
+
+func testAzureImageDigest(repository string) string {
+	letter := "b"
+	switch repository {
+	case "cao-ingest":
+		letter = "c"
+	case "cao-db-provision":
+		letter = "d"
+	}
+	return "sha256:" + strings.Repeat(letter, 64)
 }
 
 func (f *fakeAzureApply) Run(ctx context.Context, args ...string) (azcli.Result, error) {
@@ -89,7 +102,11 @@ func (f *fakeAzureApply) Run(ctx context.Context, args ...string) (azcli.Result,
 	case "acr task logs":
 		return azcli.Result{Stdout: "source build diagnostic: required COPY input missing " + testDeploySession}, nil
 	case "acr repository show":
-		return azcli.Result{Stdout: `{"digest":"sha256:` + strings.Repeat("b", 64) + `"}`}, nil
+		digest := testAzureImageDigest(strings.Split(flag("--image"), ":")[0])
+		if f.invalidDigest {
+			digest = "invalid"
+		}
+		return azcli.Result{Stdout: fmt.Sprintf(`{"digest":%q}`, digest)}, nil
 	case "deployment group create":
 		content, err := os.ReadFile(flag("--template-file"))
 		if err != nil {
@@ -113,6 +130,21 @@ func (f *fakeAzureApply) Run(ctx context.Context, args ...string) (azcli.Result,
 		for _, secret := range testDeploySecrets() {
 			if !strings.Contains(string(parameters), secret) {
 				f.t.Fatal("secure value not passed by file")
+			}
+		}
+		// Only decode digest values; secure/array parameter shapes are unrelated.
+		var raw struct {
+			Parameters map[string]json.RawMessage `json:"parameters"`
+		}
+		if err := json.Unmarshal(parameters, &raw); err != nil {
+			f.t.Fatal(err)
+		}
+		for parameter, repository := range map[string]string{
+			"functionImageDigest": "cao-functions", "ingestionImageDigest": "cao-ingest", "provisioningImageDigest": "cao-db-provision",
+		} {
+			var value struct{ Value string }
+			if err := json.Unmarshal(raw.Parameters[parameter], &value); err != nil || value.Value != testAzureImageDigest(repository) {
+				f.t.Fatalf("wrong exact target digest for %s: %s (%v)", parameter, raw.Parameters[parameter], err)
 			}
 		}
 		if f.transientARMFailures > 0 {
@@ -183,6 +215,23 @@ func (f *fakeAzureApply) Run(ctx context.Context, args ...string) (azcli.Result,
 			`{"name":"fa-synthetic-test/CAO_SESSION_SECRET","properties":{"reference":"@Microsoft.KeyVault(SecretUri=https://kv/secrets/session)","status":"` + status + `"}}]}`}, nil
 	case "functionapp show":
 		return azcli.Result{Stdout: `{"publicNetworkAccess":"Disabled"}`}, nil
+	case "functionapp config show", "containerapp job show":
+		name := flag("--name")
+		repository := "cao-functions"
+		switch name {
+		case "fa-synthetic-test-ingest":
+			repository = "cao-ingest"
+		case "fa-synthetic-test-db-provision":
+			repository = "cao-db-provision"
+		}
+		reference := "acrsynthetictest.azurecr.io/" + repository + "@" + testAzureImageDigest(repository)
+		if override, ok := f.imageReadBack[name]; ok {
+			return azcli.Result{Stdout: override}, nil
+		}
+		if azcli.CommandName(args) == "functionapp config show" {
+			return azcli.Result{Stdout: fmt.Sprintf("%q", "DOCKER|"+reference)}, nil
+		}
+		return azcli.Result{Stdout: fmt.Sprintf(`{"containers":[{"image":%q}]}`, reference)}, nil
 	case "webapp config access-restriction show":
 		return azcli.Result{Stdout: `{"ipSecurityRestrictionsDefaultAction":"Deny","ipSecurityRestrictions":[]}`}, nil
 	default:
@@ -255,7 +304,8 @@ func TestDeployAzureApplyHappyPathExactOrderingWithHeterogeneousOutputs(t *testi
 		"acr build", "acr repository show", "acr repository update",
 		"acr build", "acr repository show", "acr repository update",
 		"acr build", "acr repository show", "acr repository update",
-		"deployment group create", "containerapp job execution list", "containerapp job start",
+		"deployment group create", "functionapp config show", "containerapp job show", "containerapp job show",
+		"containerapp job execution list", "containerapp job start",
 		"containerapp job execution show", "containerapp job execution show",
 		"containerapp job execution list", "containerapp job start",
 		"containerapp job execution show", "containerapp job execution show",
@@ -283,9 +333,14 @@ func TestDeployAzureApplyHappyPathExactOrderingWithHeterogeneousOutputs(t *testi
 		}
 	}
 	for _, image := range receipt.Images {
-		if image.Tag == "latest" || !strings.Contains(image.Reference, "@sha256:") {
+		if image.Tag == "latest" || !strings.Contains(image.Reference, "@sha256:") || image.ConfiguredReference != image.Reference ||
+			image.Digest != testAzureImageDigest(image.Repository) || image.Scan != "not-performed" ||
+			image.SBOM != "not-generated" || image.Provenance != "local-context-not-attested" {
 			t.Fatalf("image not immutable: %+v", image)
 		}
+	}
+	if receipt.Environment != "development" || receipt.ImageAssurance != "not-evaluated-development-only" || receipt.SourceWorktree != "dirty" {
+		t.Fatalf("receipt must not imply production assurance: %+v", receipt)
 	}
 }
 
@@ -559,18 +614,18 @@ func TestDeployAzureBuildMetadataSeparatesTagsFromSemanticVersions(t *testing.T)
 
 type testRestrictiveAzureBuildSource struct{}
 
-func (testRestrictiveAzureBuildSource) Materialize(_ context.Context, directory string) (string, error) {
+func (testRestrictiveAzureBuildSource) Materialize(_ context.Context, directory string) (deployAzureSourceIdentity, error) {
 	nested := filepath.Join(directory, "server", "azure")
 	if err := os.MkdirAll(nested, 0o700); err != nil {
-		return "", err
+		return deployAzureSourceIdentity{}, err
 	}
 	if err := os.WriteFile(filepath.Join(nested, "provision.sql"), []byte("select 1;"), 0o600); err != nil {
-		return "", err
+		return deployAzureSourceIdentity{}, err
 	}
 	if err := os.WriteFile(filepath.Join(nested, "provision.sh"), []byte("#!/bin/sh\n"), 0o700); err != nil {
-		return "", err
+		return deployAzureSourceIdentity{}, err
 	}
-	return strings.Repeat("b", 40), nil
+	return deployAzureSourceIdentity{Revision: strings.Repeat("b", 40), Worktree: "clean"}, nil
 }
 
 // Remote ACR builds preserve context modes and CAO images run as a non-root

@@ -14,22 +14,42 @@ repository. Add trusted agentic operations when you are ready.
 
 ## Get started: monitor one repository
 
-From a clean control-repository checkout on its default branch:
+Install the GitHub CLI extension:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+gh extension install githubnext/gh-cao
 ```
 
-Connect one repository and configure authentication:
+Enter an existing control repository's clean default-branch checkout, then
+prepare monitoring and connect one repository:
 
 ```bash
 gh cao setup
 ```
 
-Check the installation, review, and publish your configuration:
+Setup installs missing bare runtime files and creates missing baseline policy
+before configuring scope, authentication, and Pages. No separate `init` or
+runtime installer is required. Existing policy and unrelated files are
+preserved; conflicts stop preparation rather than overwrite files.
+This unified setup requires an extension release newer than `v0.1.24`
+containing the fix; see [release compatibility](docs/cao-cli.md#github-cli-release-discovery).
+
+No checkout yet? Explicitly use `gh repo create OWNER/CONTROL --private --clone`
+or `gh repo clone OWNER/CONTROL`, then `cd CONTROL` before setup. Choose
+`--public` instead only for public evidence. A private control repository
+requires credentials even when its other targets are public.
+
+Interactive setup shows the CAO file summary, policy diff, and full-diff path,
+then asks **“Commit and push these CAO monitoring changes? [y/N]”**. Approval
+publishes only reviewed CAO files from the synchronized default branch with an
+empty Git index. No force-push or branch-protection bypass. Setup returns
+immediately with Actions and dashboard links marked **deployment pending**;
+it never waits for collection or deployment.
+
+Declining, blocked publication, and unattended setup leave files local.
+Run `gh cao doctor` afterward. If not published, review and publish manually:
 
 ```bash
-gh cao doctor
 git status --short
 git diff -- .github
 git add .github activity dashboard
@@ -40,8 +60,8 @@ git push
 On upgrades, also review and stage the retired shell launcher's deletion if Git
 reports it. Only known shipped launchers are removed; consumer-owned scripts are preserved.
 
-In Actions, check **CAO validation**, then wait for **CAO Activity** and **CAO Dashboard**,
-including its Pages deployment, then open **Settings → Pages**.
+In Actions, check **CAO validation**, **CAO Activity**, and **CAO Dashboard**,
+including its Pages deployment. The dashboard becomes ready asynchronously.
 **No campaign is installed or run.** A repository without Agentic Workflow
 history starts with an empty dashboard; you do not need to generate activity.
 
@@ -66,9 +86,10 @@ Normal installation downloads a prebuilt archive for gh-aw's exact resolved
 SHA and verifies signed build provenance before replacing runtime files; it
 does not run npm. Stable versions use release assets, while main/SHA installs
 use successful Actions artifacts retained for 90 days and wait up to five
-minutes for an already active exact-SHA runtime build. Node.js 24+ and an
-authenticated GitHub CLI with artifact and attestation access are still
-required. Dashboard builds retain their existing production npm dependencies.
+minutes for an already active exact-SHA runtime build. An authenticated GitHub
+CLI with release and attestation access is required.
+Native setup needs no local Node.js installation; Actions provide Node.js 24+.
+Dashboard builds retain their existing production npm dependencies.
 
 Central Agentic Ops governs shared **operations**, not one mandatory
 orchestration recipe. Describe the outcome, target scope, and execution
@@ -95,7 +116,7 @@ work and planned improvements.
 
 ### GitHub CLI extension
 
-The installer downloads and verifies the compiled `gh cao` Go extension for
+GitHub CLI installs the compiled `gh cao` Go extension for
 setup, authentication, campaigns, diagnostics, and read-only evidence analysis.
 No local Go build is needed:
 
@@ -104,9 +125,10 @@ gh cao --help
 gh cao --version
 ```
 
-The installer registers the binary as `gh cao`, independently of the catalog
-repository name. Rerun the installer to refresh it. For local development,
-`make build` produces `./gh-cao`.
+Use `gh extension upgrade gh-cao` to refresh the extension. Runtime updates
+remain separate (`gh cao update --campaign root`). The legacy `install.sh`
+remains available for compatible scripted installs; it is not required by
+the guided flow. For local development, `make build` produces `./gh-cao`.
 
 Use `gh cao setup` for guided configuration or
 `gh cao setup auth github-app|enterprise-app|token` for authentication only.
@@ -124,7 +146,7 @@ SQLite snapshot repair and hosted-CLI App setup remain Node-only.
 Releases include version-stamped
 binaries named `gh-cao-OS-ARCH` (`.exe` on Windows) for Linux, macOS, and Windows
 (amd64 and arm64), plus SHA-256 checksums.
-The installer selects the latest published `vX.Y.Z` release, including prereleases
+The legacy installer selects the latest published `vX.Y.Z` release, including prereleases
 but excluding drafts, and also verifies older releases' legacy `OS-ARCH` assets.
 See [the command reference](docs/cao-cli.md#github-cli-extension) for the migration
 boundary and [extension development](CONTRIBUTING.md#go-extension-development)

@@ -61,17 +61,16 @@ Prefer interactive setup for a separate control repository; see the
 [setup guide](https://github.com/githubnext/gh-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
 
 ```bash
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash -s -- --create-repo --setup
+gh extension install githubnext/gh-cao
+# Enter an existing control checkout, then:
+gh cao setup
 ```
 
-Interactive setup discovers scope and visibility, offers authentication choices
-based on that scope, then shows its plan before mutation.
-Verify profile prerequisites in the authentication reference before approving;
-the prompt does not establish whether selected organizations share an
-enterprise. Do not replace it with an independent questionnaire or ad hoc
-runtime copying.
+Create/clone explicitly with `gh repo create` or `gh repo clone`; choose visibility
+with the user. Setup prepares missing runtime/policy without `init` or local Node.js
+and offers authentication choices based on that scope.
+A separate default-No prompt can publish reviewed CAO files; declining/CI stays
+local. Push returns deployment-pending links without waiting.
 
 ## Agent procedure
 
@@ -79,8 +78,9 @@ runtime copying.
    and topology and obtain approval to create or reuse it.
 2. Obtain exact `OWNER/REPOSITORY` entries CAO may read and verify each
    canonical name, owner, and visibility.
-3. With approval, install the runtime in a separate control repository when
-   absent; do not run the installer over source-managed workflows.
+3. With approval, install the extension if absent. Setup adds missing runtime,
+   preserves policy and unrelated files, and refuses conflicts. Do not run the
+   legacy installer over source-managed workflows.
 4. Prefer `gh cao setup`. Read
    [authentication](references/authentication.md) only when selecting or
    troubleshooting an authentication profile.

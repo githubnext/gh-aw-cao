@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"reflect"
 	"regexp"
@@ -20,6 +21,7 @@ const defaultDeployAzureConfigPath = ".github/cao/deploy-azure.json"
 // `gh cao deploy azure`. Field names map to server/azure/main.bicep parameters.
 type deployAzureConfig struct {
 	SchemaVersion int                      `json:"schemaVersion"`
+	Environment   string                   `json:"environment,omitempty"`
 	Subscription  string                   `json:"subscription"`
 	ResourceGroup string                   `json:"resourceGroup"`
 	Location      string                   `json:"location"`
@@ -31,6 +33,12 @@ type deployAzureConfig struct {
 	OAuth         deployAzureOAuth         `json:"oauth"`
 	Secrets       deployAzureSecretSources `json:"secrets"`
 	KeyVault      deployAzureKeyVault      `json:"keyVault,omitempty"`
+	Telemetry     deployAzureTelemetry     `json:"telemetry,omitempty"`
+}
+
+type deployAzureTelemetry struct {
+	OTLPEndpoint string `json:"otlpEndpoint,omitempty"`
+	LogsEnabled  bool   `json:"logsEnabled,omitempty"`
 }
 
 type deployAzureKeyVault struct {
@@ -70,6 +78,7 @@ type deployAzureSecretSources struct {
 	PostgresRuntimePassword       *deployAzureSecretRef `json:"postgresRuntimePassword,omitempty"`
 	GitHubClientSecret            *deployAzureSecretRef `json:"githubClientSecret"`
 	SessionSecret                 *deployAzureSecretRef `json:"sessionSecret"`
+	OTLPHeaders                   *deployAzureSecretRef `json:"otlpHeaders,omitempty"`
 }
 
 // deployAzureSecretRef names where a secure value lives; it never holds the value.
@@ -126,6 +135,9 @@ func (c *deployAzureConfig) secureParameters() []deployAzureSecureParameter {
 	if c.Secrets.PostgresRuntimePassword != nil {
 		parameters = append(parameters, deployAzureSecureParameter{"postgresRuntimePassword", "secrets.postgresRuntimePassword", 32, c.Secrets.PostgresRuntimePassword})
 	}
+	if c.Secrets.OTLPHeaders != nil {
+		parameters = append(parameters, deployAzureSecureParameter{"otlpHeaders", "secrets.otlpHeaders", 1, c.Secrets.OTLPHeaders})
+	}
 	return parameters
 }
 
@@ -160,6 +172,10 @@ func (c *deployAzureConfig) parameters() map[string]any {
 	}
 	if c.KeyVault.PurgeProtection != nil {
 		parameters["keyVaultPurgeProtection"] = *c.KeyVault.PurgeProtection
+	}
+	if c.Telemetry.OTLPEndpoint != "" {
+		parameters["otlpEndpoint"] = c.Telemetry.OTLPEndpoint
+		parameters["otlpLogsEnabled"] = c.Telemetry.LogsEnabled
 	}
 	return parameters
 }
@@ -302,6 +318,9 @@ var (
 func (c deployAzureConfig) validate() error {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
+	if c.Environment != "" && c.Environment != "development" && c.Environment != "production" {
+		add("environment must be development or production")
+	}
 	require := func(field, value string, pattern *regexp.Regexp, rule string) {
 		switch {
 		case value == "":
@@ -362,6 +381,18 @@ func (c deployAzureConfig) validate() error {
 		add("retentionDays must be between 7 and 3650")
 	}
 	require("oauth.clientId", c.OAuth.ClientID, deployClientIDPattern, "a GitHub OAuth App client ID")
+	if c.Telemetry.OTLPEndpoint == "" {
+		if c.Telemetry.LogsEnabled || c.Secrets.OTLPHeaders != nil {
+			add("telemetry.otlpEndpoint is required when logs or OTLP authentication are configured")
+		}
+	} else {
+		endpoint, err := url.Parse(c.Telemetry.OTLPEndpoint)
+		if err != nil || endpoint.Scheme != "https" || endpoint.Hostname() == "" ||
+			endpoint.User != nil || endpoint.RawQuery != "" || endpoint.ForceQuery ||
+			endpoint.Fragment != "" || strings.Contains(c.Telemetry.OTLPEndpoint, "#") {
+			add("telemetry.otlpEndpoint must be an HTTPS collector base URL without credentials, query or fragment")
+		}
+	}
 	for _, secure := range c.secureParameters() {
 		if secure.ref == nil {
 			add("%s is required", secure.field)

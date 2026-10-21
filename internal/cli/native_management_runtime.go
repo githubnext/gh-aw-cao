@@ -109,19 +109,8 @@ func nativeMaterializeRuntime(ctx context.Context, gh ghExecutor, campaign strin
 		if err := os.Mkdir(directory, 0o755); err != nil {
 			return err
 		}
-		archive, err := nativeAcquireRuntime(ctx, gh, plan.record, directory)
+		root, err := nativeStageRuntime(ctx, gh, plan.record, directory)
 		if err != nil {
-			return err
-		}
-		extracted := filepath.Join(directory, "extracted")
-		if err := os.Mkdir(extracted, 0o755); err != nil {
-			return err
-		}
-		root, err := nativeExtractRuntime(ctx, archive, extracted)
-		if err != nil {
-			return err
-		}
-		if err := nativeVerifyRuntime(root, revision); err != nil {
 			return err
 		}
 		roots[revision] = root
@@ -174,6 +163,25 @@ func nativeMaterializeRuntime(ctx context.Context, gh ghExecutor, campaign strin
 		}
 	}
 	return nil
+}
+
+func nativeStageRuntime(ctx context.Context, gh ghExecutor, record nativePackageRecord, directory string) (string, error) {
+	archive, err := nativeAcquireRuntime(ctx, gh, record, directory)
+	if err != nil {
+		return "", err
+	}
+	extracted := filepath.Join(directory, "extracted")
+	if err := os.Mkdir(extracted, 0o755); err != nil {
+		return "", err
+	}
+	root, err := nativeExtractRuntime(ctx, archive, extracted)
+	if err != nil {
+		return "", err
+	}
+	if err := nativeVerifyRuntime(root, strings.ToLower(record.revision)); err != nil {
+		return "", err
+	}
+	return root, nil
 }
 
 func nativeAcquireRuntime(ctx context.Context, gh ghExecutor, record nativePackageRecord, directory string) (string, error) {

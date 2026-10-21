@@ -137,7 +137,7 @@ func diagnose(ctx context.Context, version func(context.Context) (string, error)
 	}
 	policy, err := readPolicy()
 	if err != nil {
-		add("policy", "fail", "Local CAO policy is missing, unreadable, or has invalid basic structure.", "Run from the control repository root. Use gh cao init if no policy exists; otherwise review .github/workflows/cao.json.")
+		add("policy", "fail", "Local CAO policy is missing, unreadable, or has invalid basic structure.", "Run gh cao setup from the control repository root if no policy exists; otherwise review .github/workflows/cao.json. Use gh cao init only for local policy preparation.")
 		add("gh-aw-version", "skip", "Requires a readable CAO policy.", "")
 		return report, nil
 	}

@@ -361,12 +361,55 @@ func TestHostedCLIEnqueueRecordsActorAndRepository(t *testing.T) {
 	if payload["actor"] != "octocat" || payload["repository"] != "octo/app" || payload["status"] != "queued" {
 		t.Fatalf("unexpected command %v", payload)
 	}
+	session := storedSession(t, fixture.app, fixture.session)
+	command, err := fixture.queue.Detail(t.Context(), 1)
+	if err != nil || command.ActorID <= 0 || command.ActorID != session.GitHubID {
+		t.Fatalf("queue lost the admitted numeric identity: %+v, %v", command, err)
+	}
 	if len(fixture.probes) != 1 || !strings.HasPrefix(fixture.probes[0], "/repos/octo/app ") ||
 		!strings.Contains(fixture.probes[0], "Bearer ") {
 		t.Fatalf("requester permission was not checked with the OAuth token: %v", fixture.probes)
 	}
 	if strings.Contains(response.Body.String(), "access-token") {
 		t.Fatal("response exposed an OAuth token")
+	}
+}
+
+func TestHostedCLIAdmissionRequiresAndRebindsAccountIdentity(t *testing.T) {
+	fixture := newHostedCLIFixture(t, []string{"octocat"})
+	session := storedSession(t, fixture.app, fixture.session)
+	var request hostedcli.Request
+	if err := json.Unmarshal([]byte(hostedUpgradeRequest), &request); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []int64{0, -1} {
+		legacy := session
+		legacy.GitHubID = id
+		_, err := fixture.app.admit(t.Context(), legacy, request)
+		var failure *hostedCLIError
+		if !errors.As(err, &failure) || failure.status != http.StatusForbidden || len(fixture.probes) != 0 {
+			t.Fatal("unverifiable session identity must fail before probing or enqueueing")
+		}
+	}
+	if response := fixture.do(t, http.MethodPost, "/__cli_commands", hostedUpgradeRequest, true); response.Code != http.StatusAccepted {
+		t.Fatalf("enqueue = %d: %s", response.Code, response.Body.String())
+	}
+	// Simulate a failed pre-upgrade command. A retry is a fresh admission,
+	// never a backfill of the original immutable identity.
+	fixture.queue.commands[1].Actor = "previous"
+	fixture.queue.commands[1].ActorID = 0
+	fixture.queue.commands[1].Status = operational.CLICommandFailed
+	response := fixture.do(t, http.MethodPost, "/__cli_commands/1/retry", `{}`, true)
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("retry = %d: %s", response.Code, response.Body.String())
+	}
+	retried, err := fixture.queue.Detail(t.Context(), 2)
+	if err != nil || retried.ActorID != session.GitHubID || retried.Actor != session.Login || retried.RetryOf != 1 {
+		t.Fatalf("retry identity = %+v, %v", retried, err)
+	}
+	original, err := fixture.queue.Detail(t.Context(), 1)
+	if err != nil || original.ActorID != 0 || original.Actor != "previous" {
+		t.Fatal("retry must not rewrite legacy attribution")
 	}
 }
 
@@ -493,9 +536,18 @@ func TestHostedCLIAdmissionFailsClosed(t *testing.T) {
 	})
 	t.Run("unknown fields", func(t *testing.T) {
 		fixture := newHostedCLIFixture(t, []string{"octocat"})
-		response := fixture.do(t, http.MethodPost, "/__cli_commands", `{"id":"upgrade-target-repository","command":"rm -rf /"}`, true)
-		if response.Code != http.StatusBadRequest {
-			t.Fatalf("unknown field = %d", response.Code)
+		for _, payload := range []string{
+			`{"id":"upgrade-target-repository","command":"rm -rf /"}`,
+			`{"id":"upgrade-target-repository","actorId":202}`,
+			`{"id":"upgrade-target-repository","actor":"different"}`,
+		} {
+			response := fixture.do(t, http.MethodPost, "/__cli_commands", payload, true)
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("unknown field = %d", response.Code)
+			}
+		}
+		if len(fixture.queue.commands) != 0 {
+			t.Fatal("client-supplied execution or requester fields must not enqueue work")
 		}
 	})
 }

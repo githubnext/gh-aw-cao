@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.9.0",
+    "version": "2.10.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -246,7 +246,7 @@
     "/api/admin/rebuild": {
       "post": {
         "operationId": "Operations_rebuild",
-        "description": "Start an asynchronous rebuild coordinated by the selected operational store; local bearer or hosted admin session and CSRF on hosted mutations. A volatile collector also reconstructs GitHub scope and reruns backfill, even with a populated lake. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained.",
+        "description": "Start an asynchronous rebuild coordinated by the selected operational store; local bearer or hosted admin session and CSRF on hosted mutations. Hosted rebuilds require durable audit admission and start evidence; an unavailable audit service fails closed before reconciliation. Lifecycle events correlate actor, rebuildId, prior revision and terminal outcome without payloads. Canonical publication, audit appends and replaceable status are separate commits: terminal audit failures report auditState=unavailable where status storage remains available, never roll back a published revision, and require operator reconciliation of incomplete histories. Local bearer mode retains capability-level attribution, not personal identity or a durability guarantee. A volatile collector also reconstructs GitHub scope and reruns backfill, even with a populated lake, when durable audit is supplied. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained.",
         "parameters": [
           {
             "name": "X-CSRF-Token",
@@ -5423,6 +5423,14 @@
           },
           "required": {
             "type": "boolean"
+          },
+          "rebuildId": {
+            "type": "string",
+            "description": "Server-generated lifecycle correlation, independent of the private lease owner token."
+          },
+          "auditState": {
+            "type": "string",
+            "description": "pending, recorded (durable), local (non-durable capability-level evidence), or unavailable. Publication success does not imply terminal evidence was persisted."
           },
           "startedAt": {
             "type": "string"

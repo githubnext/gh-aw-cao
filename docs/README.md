@@ -5,6 +5,13 @@ template: splash
 editUrl: false
 prev: false
 next: false
+head:
+  - tag: title
+    content: Central Agentic Ops (CAO)
+  - tag: meta
+    attrs:
+      property: og:type
+      content: website
 agent:
   type: overview
   prominent: true
