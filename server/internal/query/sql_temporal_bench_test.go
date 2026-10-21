@@ -37,7 +37,7 @@ func BenchmarkTemporalPostgres(b *testing.B) {
 			}
 			plan := temporalTestPlan(b, source, def)
 			relation := plan.Outputs["observations"]
-			projection := []string{}
+			projection := make([]string, 0, len(relation.Columns))
 			for _, field := range sortedSQLFields(relation.Columns) {
 				projection = append(projection, relation.Columns[field].Expression)
 			}

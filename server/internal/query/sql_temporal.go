@@ -183,8 +183,9 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	}
 	// The sentinel is checked before grouping; a single group with too many
 	// points must not bypass the tidy projection's 100k-row limit.
-	projection := []string{input.Order + ` AS "__source"`, `metrics.*`, timeText + ` AS "time"`,
-		"floor(extract(epoch FROM (" + at + `))*1000) AS "__at"`, series + ` AS "series"`, link + ` AS "__link"`}
+	projection := make([]string, 0, 6+len(carryProjection))
+	projection = append(projection, input.Order+` AS "__source"`, `metrics.*`, timeText+` AS "time"`,
+		"floor(extract(epoch FROM ("+at+`))*1000) AS "__at"`, series+` AS "series"`, link+` AS "__link"`)
 	projection = append(projection, carryProjection...)
 	// VALUES expands scalar measures together; lateral map branches share the
 	// same source scan, including its joins and observation-level fields.

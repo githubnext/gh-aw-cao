@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-cao/server/internal/audit"
 	"github.com/githubnext/gh-cao/server/internal/githubapp"
 	"github.com/githubnext/gh-cao/server/internal/ingest"
 	"github.com/githubnext/gh-cao/server/internal/operational/memory"
@@ -165,6 +166,11 @@ func TestMemoryCollectorHTTPBootstrapAndPopulatedAdminBackfill(t *testing.T) {
 		t.Fatal(err)
 	}
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
+	auditStore, err := newHostedCLISQLiteTestStore(t, filepath.Join(t.TempDir(), "audit.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = auditStore.Close() })
 	const secret = "memory-integration-webhook-secret"
 	app, err := New(t.Context(), focusedTestStore(store), Config{
 		Database: data, DatabaseQueriesPath: backfillDatabaseQueries, SiteDirectory: hostedTestSite(t),
@@ -172,6 +178,7 @@ func TestMemoryCollectorHTTPBootstrapAndPopulatedAdminBackfill(t *testing.T) {
 		SingleReplicaConfirmed: true, AllowVolatile: true,
 		Proxy:       ProxyPolicy{AllowedHosts: []string{"dashboard.example.com"}, RequireHTTPS: true},
 		GitHubOAuth: validOAuthConfig(github.URL), WebhookSecret: secret, AdminUsers: []string{"octocat"},
+		Audit: audit.New(io.Discard).WithStore(auditStore),
 		Collector: &CollectorConfig{
 			AppID: 1, PrivateKeyPEM: key, BaseURL: endpoint.URL + "/", Transport: transport,
 			LakeDirectory: lake, CatalogRoot: root, ControlRepository: "simulator/repo-00001",
@@ -249,6 +256,9 @@ func TestMemoryCollectorHTTPBootstrapAndPopulatedAdminBackfill(t *testing.T) {
 			t.Fatalf("admin backfill failed: %+v, %v", status, err)
 		}
 		if status.State == "succeeded" {
+			if status.AuditState != "recorded" {
+				t.Fatalf("admin backfill audit was not persisted: %+v", status)
+			}
 			break
 		}
 		if time.Now().After(deadline) {
