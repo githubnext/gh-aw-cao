@@ -107,6 +107,12 @@ const suites = [
       ".github/workflows/shared/",
     ],
   },
+  {
+    name: "Repo Status",
+    manifest: "repo-status/aw.yml",
+    testPattern: "focused Repo Status campaign contract",
+    prefixes: [".github/workflows/repo-status", ".github/workflows/shared/"],
+  },
 ];
 
 function sourcePath(manifest, source) {

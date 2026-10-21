@@ -216,6 +216,18 @@
           }
         }
       },
+      "repo-status": {
+        "enabled": false,
+        "icon": "graph",
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "report": {
+            "workflow": "repo-status-report",
+            "max-mode": "review"
+          }
+        }
+      },
       "self-care": {
         "mode": "review",
         "max-repositories": 1,

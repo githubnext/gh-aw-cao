@@ -49,6 +49,7 @@ const dashboardCampaignSource = focusedCampaignSource("dashboard");
 const dependabotUpdateSource = focusedCampaignSource("dependabot");
 const dependabotCampaignUpdateSource = `${campaignUpdateSource}/dependabot`;
 const optimizationCampaignSource = focusedCampaignSource("optimization");
+const repoStatusCampaignSource = focusedCampaignSource("repo-status");
 const selfCareCampaignSource = focusedCampaignSource("self-care");
 const softwareDevelopmentPracticesCampaignSource = focusedCampaignSource("software-development-practices");
 const activityExpectedFiles = [
@@ -521,6 +522,31 @@ test("gh aw add installs the focused Optimization campaign contract", { timeout:
       !existsSync(join(consumer, ".github", "workflows", "dependabot.md")),
       "focused Optimization campaign installed an unrelated orchestrator",
     );
+  } finally {
+    rmSync(consumer, { recursive: true, force: true });
+  }
+});
+
+test("gh aw add installs the focused Repo Status campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(repoStatusCampaignSource);
+  try {
+    for (const relativePath of [
+      ".github/workflows/repo-status.md",
+      ".github/workflows/repo-status-report.md",
+      ".github/workflows/shared/control.md",
+      "repo-status/README.md",
+      "repo-status/LICENSE",
+      "repo-status/cao.json",
+    ]) {
+      assert.ok(existsSync(join(consumer, relativePath)), `Repo Status omitted ${relativePath}`);
+    }
+    const declaration = JSON.parse(readFileSync(join(consumer, "repo-status/cao.json"), "utf8"));
+    assert.equal(declaration.orchestrator, "repo-status");
+    assert.deepEqual(declaration.workers, { report: "repo-status-report" });
+    assert.equal(existsSync(join(consumer, ".github/workflows/repo-assist.md")), false);
+    const worker = readFileSync(join(consumer, ".github/workflows/repo-status-report.md"), "utf8");
+    assert.match(worker, /required-labels: \[repo-status, repo-status:report\]/);
+    assert.match(worker, /safe_output_mode:\n\s+required: true\n\s+type: string/);
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }

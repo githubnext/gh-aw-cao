@@ -7,6 +7,7 @@ const paths = [
   "how-cao-works/",
   "setup-quickstarts/",
   "repo-assist-quickstart/",
+  "setup/quickstart/",
   "setup-one-organization/",
   "setup-multiple-organizations/",
   "setup-fine-grained-pat/",
@@ -19,11 +20,33 @@ const paths = [
   "dashboard/",
   "catalog/",
   "catalog/dependabot/",
+  "catalog/repo-status/",
   "blog/",
   "operational-observability-visualization-specification/",
   "operational-value-how-to/",
   "blog/measuring-agent-work-value/",
 ];
+
+for (const width of [320, 1280]) {
+  test(`Repo Status quickstart has honest video status and working links at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    expect((await page.goto("setup/quickstart/"))?.ok()).toBe(true);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Quickstart");
+    const content = page.locator(".sl-markdown-content");
+    await expect(content.getByRole("heading", { name: "Video walkthrough", exact: true })).toBeVisible();
+    await expect(content).toContainText("CAO recording not yet available");
+    await expect(content).toContainText("There is no video to play yet");
+    await expect(content.locator("video, iframe")).toHaveCount(0);
+    await expect(content).toContainText("safe_output_mode=\"review\"");
+    for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
+      const href = await link.getAttribute("href");
+      expect((await page.request.get(href)).ok(), href).toBe(true);
+    }
+    expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
+    expect((await page.goto("catalog/repo-status/"))?.ok()).toBe(true);
+    await expect(page.locator("main")).toContainText("Operational value is not measurable yet");
+  });
+}
 
 for (const colorScheme of ["light", "dark"]) {
   for (const width of [320, 1280]) {
@@ -164,7 +187,7 @@ for (const colorScheme of ["light", "dark"]) {
   }
 }
 
-test("Get started navigation follows the user journey without duplicate authentication pages", async ({ page }) => {
+test("Setup navigation follows the user journey without duplicate authentication pages", async ({ page }) => {
   expect((await page.goto("getting-started/"))?.ok()).toBe(true);
 
   const introductionGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Introduction$/ }).locator("..");
@@ -174,8 +197,9 @@ test("Get started navigation follows the user journey without duplicate authenti
     "Architecture",
   ]);
 
-  const getStartedGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Get started$/ }).locator("..");
-  await expect(getStartedGroup.getByRole("link")).toHaveText([
+  const setupGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Setup$/ }).locator("..");
+  await expect(setupGroup.getByRole("link")).toHaveText([
+    "Quickstart",
     "Set up and monitor",
     "Add a campaign (optional)",
     "CAO commands",

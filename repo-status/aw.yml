@@ -1,0 +1,10 @@
+name: Repo Status
+icon: ":graph:"
+description: Understand recent repository progress and the next useful action with bounded, review-first daily status reports across enrolled repositories.
+min-version: v0.92.6
+experimental: true
+includes:
+  - .github/workflows/repo-status.md
+  - .github/workflows/repo-status-report.md
+  - README.md
+  - LICENSE

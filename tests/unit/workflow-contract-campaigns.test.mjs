@@ -54,6 +54,7 @@ test("campaigns and repository workflows pin the supported gh-aw version", () =>
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
     "repo-assist/aw.yml",
+    "repo-status/aw.yml",
     "self-care/aw.yml",
     "software-development-practices/aw.yml",
   ];
@@ -130,6 +131,7 @@ test("catalog campaigns declare their current experimental maturity", () => {
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
     "repo-assist/aw.yml",
+    "repo-status/aw.yml",
     "self-care/aw.yml",
     "software-development-practices/aw.yml",
   ];
@@ -220,7 +222,7 @@ test("operational packages own their workflows without reinstalling the control 
 });
 
 test("campaign manifests exclude repository-only tests", () => {
-  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("bug-bash", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("dreaming", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("repo-assist", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
+  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("bug-bash", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("dreaming", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("repo-assist", "aw.yml"), join("repo-status", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
   }

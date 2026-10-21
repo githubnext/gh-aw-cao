@@ -17,7 +17,10 @@ const manifestUrl = `${repositoryBase}/blob/main/${entry.manifestPath}`;
 const editUrl = entry.readmePath
   ? `${repositoryBase}/edit/main/${entry.readmePath}`
   : `${repositoryBase}/edit/main/${entry.manifestPath}`;
-const installCommand = `gh aw add githubnext/gh-cao/${entry.slug}`;
+const installCommand = entry.builtin
+  ? "gh cao update"
+  : `gh cao campaigns add githubnext/gh-cao/${entry.slug}`;
+const workflowCount = entry.includes.filter((path) => path.startsWith(".github/workflows/")).length;
 const ReadmeContent = entry.ReadmeContent;
 ---
 
@@ -33,7 +36,7 @@ const ReadmeContent = entry.ReadmeContent;
     <p class="campaign-meta">
       {entry.experimental ? "Experimental campaign" : "Campaign"}
       <span aria-hidden="true">·</span>
-      {entry.includes.length} {entry.includes.length === 1 ? "workflow" : "workflows"}
+      {workflowCount} {workflowCount === 1 ? "workflow" : "workflows"}
       <span aria-hidden="true">·</span>
       Requires gh-aw {entry.minVersion}
     </p>
@@ -64,7 +67,9 @@ const ReadmeContent = entry.ReadmeContent;
   <section class="install-campaign" aria-labelledby="install-campaign">
     <h2 id="install-campaign">Add this campaign</h2>
     <p>
-      From your control repository, run this command to install the latest published release:
+      {entry.builtin
+        ? "CAO setup includes this component. From your configured control repository, refresh the runtime with:"
+        : "From your configured control repository, install this campaign with:"}
     </p>
     <pre><code>{installCommand}</code></pre>
     <p>
@@ -72,7 +77,8 @@ const ReadmeContent = entry.ReadmeContent;
       <a href={campaignUrl}> view the campaign source on GitHub</a>.
     </p>
     <p>
-      <code>gh aw add</code> installs the campaign without using AI or running its workflows.
+      CAO lifecycle commands preserve runtime materialization and policy registration.
+      Installation does not run the campaign.
       AI is used only when installed agentic workflows run.
     </p>
   </section>
