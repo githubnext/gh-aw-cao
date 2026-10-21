@@ -45,3 +45,89 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Limitations: preliminary cross-component observations are still being
   investigated; no consolidated finding or operator disposition is implied
   by this event. Readiness remains undetermined.
+
+## 2026-10-21 - SOC2-LOG-003 - OPS investigation consolidated
+
+- Type: component findings and operational evidence requests.
+- Source/evidence baseline: assessed
+  `e3daa5d7ad4fa537e6432359076b44f4a90be171`, runtime
+  `ef7d9fb65ea952826f9d81a94bd5890d3cfd5634`; later coordinator changes
+  are assessment documentation only.
+- Specification version: 1.
+- Received OPS report from session
+  `76a730cd-672d-4c67-9e03-cb2c3c0460fe`; consolidated material source
+  evidence, counter-evidence, verification limitations, suggested owners and
+  closure decisions into `SOC2.md`.
+- Findings: OPS-01 through OPS-04 are four medium-severity, high-confidence
+  scoped design gaps (successful rebuild attribution, Azure template-only
+  OTLP route, production use of development source-built images without an
+  equivalent assurance gate, and Redis doctor false assurance).
+- Evidence requests: OPS-05 through OPS-08 concern independent audit
+  operation, recovery commitments/exercises, effective cloud/key boundaries,
+  and release/change/scan-exception period evidence. High severity for
+  OPS-05/OPS-06 is conditional on the corresponding control commitments.
+- Authorization/decisions: all findings open; all operator decisions pending.
+  No remediation, risk acceptance, exclusion or production change approved.
+- Limitations: focused synthetic/source/contract tests support bounded
+  design observations only. Real destinations/providers, several
+  PostgreSQL paths, scanning, generated-artifact reproducibility, actual
+  deployment, restore and historical operation remain unverified.
+  IAM/DATA/EXEC reports pending; readiness undetermined.
+
+## 2026-10-21 - SOC2-LOG-004 - IAM and EXEC investigations consolidated
+
+- Type: component findings, reproducible observations and evidence requests.
+- Source/evidence baseline: both reports assessed exact
+  `e3daa5d7ad4fa537e6432359076b44f4a90be171`; runtime
+  `ef7d9fb65ea952826f9d81a94bd5890d3cfd5634` unchanged.
+- Specification version: 1.
+- Received IAM and EXEC reports from the registered sessions; consolidated
+  findings, source/counter-evidence, suggested choices/owners and closure
+  requirements into `SOC2.md`.
+- Findings: IAM-001 (medium) unknown-expiry credential cleanup abandonment;
+  IAM-002 (low) post-revocation revision-stream metadata; EXEC-01 (medium)
+  login-only queued requester identity, with conditional provider-lifecycle
+  impact. Three synthetic IAM observations reproduced adverse current
+  behavior with and without race detection; no fix was applied.
+- Evidence requests: IAM-003 through IAM-006 and EXEC-02 through EXEC-08
+  remain open. High priorities concern effective audience/platform isolation
+  and enabled production executor isolation/secret separation, not proven
+  deployed defects.
+- Deduplication: immutable delayed-job identity belongs to EXEC-01; IAM
+  callback/consent binding and active rename denial are counter-evidence,
+  not closure. Storage and cloud requests retain DATA/OPS dependencies.
+- Authorization/decisions: all new records open, all operator decisions
+  pending. No remediation, risk acceptance, exclusion or feature activation.
+- Limitations: synthetic/platform-limited tests only; real adapters,
+  intended executor kernels, provider lifecycle, deployed settings and
+  historical operation remain unverified. IAM selectors overlap; test
+  counts are not unique controls. DATA report pending; readiness undetermined.
+
+## 2026-10-21 - SOC2-LOG-005 - DATA report and initial technical pass consolidated
+
+- Type: component findings, failed validation and assessment milestone.
+- Source/evidence baseline: DATA assessed exact
+  `e3daa5d7ad4fa537e6432359076b44f4a90be171`; runtime
+  `ef7d9fb65ea952826f9d81a94bd5890d3cfd5634` unchanged.
+- Specification version: 1.
+- Received DATA report from the registered session and consolidated all
+  findings, citations, counter-evidence, closure requirements and limitations.
+- Findings: DATA-01 high-severity cross-repository shard-prefix erasure;
+  DATA-02 medium shared operational-value retention after withdrawal;
+  DATA-03 medium erasure ACK before durable projection intent. Artifact-only
+  production-helper observations reproduced all three; no production loss,
+  canonical reappearance or real crash-loss was asserted.
+- Evidence/applicability: DATA-04 through DATA-08 and DATA-10 need evidence;
+  DATA-09 proposes a profile exclusion, not approved. DATA-08 records the
+  existing failing temporal campaign SQL contract test; the main selected
+  package run exited 1 and is not a passing validation gate.
+- Milestone: all four bounded technical reports consolidated. Register has
+  10 scoped design gaps (one high, eight medium, one low), 21 evidence-needed
+  workstream records and one proposed exclusion, plus initial shared
+  requests. Linked/shared dependencies are not independent criterion counts.
+- Authorization/decisions: every finding/request remains open with operator
+  decision pending. No fixes, production access, exclusions, feature
+  activation or risk acceptance authorized.
+- Limitations: real databases/providers/executor kernels, deployed settings,
+  organizational evidence and historical operation remain unverified.
+  Initial technical assessment delivered; SOC 2 readiness undetermined.
