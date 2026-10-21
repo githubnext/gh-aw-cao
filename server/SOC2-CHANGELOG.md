@@ -384,3 +384,62 @@ Dates are UTC. Corrections are new events; original observations remain.
   deployment authority change.
 - Limitations: RFC editorial/process conformance is not certification,
   engagement approval, deployed control evidence or finding closure.
+
+## 2026-10-21 - SOC2-LOG-017 - OAuth cleanup lifecycle proposal received
+
+- Type: IAM-001 draft remediation and real-adapter verification handoff.
+- Source/evidence: commit `6926c313c9c059af4a8e4f9ebb06d26dbeac0df8`,
+  draft [#19327](https://github.com/githubnext/gh-cao/pull/19327).
+  Coordinator verified open/draft/head/base and 22-file scope.
+- Specification: RFC-035, record schema version 1.
+- Proposal: explicit provider expiry, CAS cleanup handoff, inactive-session
+  ownership retention/atomic expiry staging across adapters, protected
+  transition capacity and bounded temporary cleanup ownership.
+  Expired records still cannot authenticate or CAS back into authority.
+- Session-reported evidence: affected server/operational/Redis suites with
+  isolated real Redis/PostgreSQL and roles, serialized/race lifecycle checks,
+  focused 48 pass/zero fail/zero skip, build/lint/format/file-size/compile.
+  Earlier environment concurrency/address failures are preserved and resolved.
+- Rollout limits: stop old Redis-envelope replicas, retain prefixes/data/keys,
+  preserve unknown-expiry legacy debt. Pre-existing abandoned grants need
+  separate reconciliation. Provider issuance-to-durable-write kill window
+  and volatile-memory restart loss remain explicit, not universal cleanup.
+- Decision/lifecycle: `remediate` / `in-progress`, unmerged/undeployed.
+  No grants reconciled, live provider requests or finding closure.
+
+## 2026-10-21 - SOC2-LOG-018 - Immutable queued requester proposal received
+
+- Type: EXEC-01 draft remediation and final workstream handoff.
+- Source/evidence: commit `6ecfccfe666e607887e20c9b94333fb234997e94`,
+  draft [#19328](https://github.com/githubnext/gh-cao/pull/19328).
+  Coordinator verified open/draft/head/base and 21-file scope.
+- Specification: RFC-035, record schema version 1.
+- Proposal: numeric ActorID survives admission/queue/idempotency/claims and
+  is verified in the permission response before credential use. Legacy
+  unknown-ID work remains readable but denies execution and needs explicit
+  fresh admission; no backfill/deletion or SQL migration.
+- Session-reported validation: serial affected suites, real PostgreSQL/
+  SQLite identity/operational cases, focused race, build/vet/lint,
+  29 TypeSpec checks/no generated drift, workflow compile and three bounded
+  TLC models. Concurrent native fixture failure passed serial rerun.
+- Rollout: coordinated web/executor upgrade with old executor reconciliation;
+  runtime contract 1.1.0, mixed old replicas unsafe. No production migration,
+  provider behavior proof or deployment occurred.
+- Decision/lifecycle: `remediate` / `in-progress`; no finding closed.
+
+## 2026-10-21 - SOC2-LOG-019 - All fix proposals delivered; review states refreshed
+
+- Type: coordination milestone and observed review/integration state.
+- Specification: RFC-035, record schema version 1.
+- All eleven finding-specific fix sessions have delivered reviewable PRs.
+  Eight remain open; three corrections and the daily worker are integrated
+  into the assessment branch. This is not default-branch/deployment closure.
+- GitHub reports IAM-002
+  [#19318](https://github.com/githubnext/gh-cao/pull/19318) merged at
+  15:52:18 UTC as `24db44b03`; this remote merge was preserved by the
+  execution host during the coordinator's documentation work.
+- Current non-draft open proposals: DATA-01/02/03 and OPS-01/02.
+  IAM-001, EXEC-01 and OPS-03 remain draft. Earlier draft observations remain
+  historical; coordinator did not override changed review state.
+- Decisions/lifecycles remain as recorded; no external evidence, exclusion,
+  risk acceptance or operating-effectiveness closure inferred.

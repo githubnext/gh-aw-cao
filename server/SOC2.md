@@ -197,14 +197,14 @@ remain coordinator-owned to avoid conflicting edits.
 
 | Finding / work | Session ID | Current state |
 | --- | --- | --- |
-| DATA-01 shard identity/erasure collisions | `603b87ae-e256-4f86-b590-e9181384fda8` | Draft [#19325](https://github.com/githubnext/gh-cao/pull/19325); identity/migration proposal, not merged/closed |
-| DATA-02 shared withdrawal erasure | `270f92b9-f242-4792-aebc-5333c54a7f91` | Draft [#19326](https://github.com/githubnext/gh-cao/pull/19326); shared/derived erasure proposal, not merged/closed |
-| DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | Draft [#19322](https://github.com/githubnext/gh-cao/pull/19322); durable follow-up proposal, not merged/closed |
-| IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | Remediation launched |
-| IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | Draft [#19318](https://github.com/githubnext/gh-cao/pull/19318); bounded-stream proposal, not merged/closed |
-| EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Remediation launched |
-| OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Draft [#19323](https://github.com/githubnext/gh-cao/pull/19323); durable lifecycle proposal, not merged/closed |
-| OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Draft [#19324](https://github.com/githubnext/gh-cao/pull/19324); explicit OTLP route proposed, not merged/closed |
+| DATA-01 shard identity/erasure collisions | `603b87ae-e256-4f86-b590-e9181384fda8` | Open non-draft [#19325](https://github.com/githubnext/gh-cao/pull/19325); identity/migration proposal, not merged/closed |
+| DATA-02 shared withdrawal erasure | `270f92b9-f242-4792-aebc-5333c54a7f91` | Open non-draft [#19326](https://github.com/githubnext/gh-cao/pull/19326); shared/derived erasure proposal, not merged/closed |
+| DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | Open non-draft [#19322](https://github.com/githubnext/gh-cao/pull/19322); durable follow-up proposal, not merged/closed |
+| IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | Draft [#19327](https://github.com/githubnext/gh-cao/pull/19327); lifecycle/adapter proposal, not merged/closed |
+| IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | [#19318](https://github.com/githubnext/gh-cao/pull/19318) merged into assessment branch; default-branch/provider closure pending |
+| EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Draft [#19328](https://github.com/githubnext/gh-cao/pull/19328); immutable actor proposal, not merged/closed |
+| OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Open non-draft [#19323](https://github.com/githubnext/gh-cao/pull/19323); durable lifecycle proposal, not merged/closed |
+| OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Open non-draft [#19324](https://github.com/githubnext/gh-cao/pull/19324); explicit OTLP route proposed, not merged/closed |
 | OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Draft [#19317](https://github.com/githubnext/gh-cao/pull/19317); development-only restriction proposed, not merged/closed |
 | OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | [#19304](https://github.com/githubnext/gh-cao/pull/19304) merged into assessment branch; targeted integration passed; default-branch/deployment closure pending |
 | DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | [#19305](https://github.com/githubnext/gh-cao/pull/19305) merged into assessment branch; targeted integration passed; default-branch gate pending |
@@ -484,6 +484,73 @@ backend receipts and absent-signal/failure-alert response still require
 operator evidence. Request availability and independent audit must remain
 separate. Combining OPS-02/03 requires preserving both template changes and
 regenerating ARM with matching Bicep 0.44.1.
+
+#### IAM-001 proposal received 2026-10-21
+
+Draft [#19327](https://github.com/githubnext/gh-cao/pull/19327), commit
+`6926c313c9c059af4a8e4f9ebb06d26dbeac0df8`, proposes provider-expiry
+provenance, CAS-staged no-refresh cleanup and retention of final cleanup
+ownership past inactive session TTL across Redis/PostgreSQL/memory.
+Protected transition capacity and bounded cancellation-independent temporary
+owners cover concurrent revocation/persistence failure. Expired session
+reads/CAS still deny authority, including IAM-002 heartbeat reads.
+Coordinator verified open/draft/head/base and 22-file code/test/runtime-doc
+scope; central assessment records were not changed by that session.
+
+The session reports complete affected server/operational/Redis suites with
+isolated real Redis/PostgreSQL and role-boundary coverage passing under
+serialized packages, race lifecycle regressions, full server build,
+format/lint (zero issues), file-size/diff hygiene and workflow compile.
+Focused JSON reports 48 passes, zero failures/skips. Initial concurrent
+bootstrap deadlocks and socket-vs-loopback fixture failures were resolved
+through isolated numeric loopback/serialization, not weakened assertions.
+
+Rollout requires stopping old replicas for new Redis envelopes while
+retaining stable prefixes/protected data/current and previous keys.
+Legacy queued records remain unknown-expiry debt. Already deleted session/
+provider-grant owners require separately authorized reconciliation.
+Forced process kill between provider issuance and durable persistence remains
+an explicit issuance window; opted-in memory still loses debt on restart.
+No production/provider/deployment operation or grant reconciliation occurred.
+Decision **remediate**, lifecycle **in-progress**; neither operational
+revocation effectiveness nor original finding is closed by this draft.
+
+#### EXEC-01 proposal and current review snapshot
+
+Draft [#19328](https://github.com/githubnext/gh-cao/pull/19328), commit
+`6ecfccfe666e607887e20c9b94333fb234997e94`, persists OAuth numeric
+`ActorID` through PostgreSQL/SQLite command JSON and idempotency/claim paths.
+Prefetch/execution require the same live permission response to identify that
+account before minting/consuming work tokens. Display login remains
+attribution. Unknown/changed identity and revoked/unavailable permission
+deny; legacy records remain readable but fail before tokens/subprocess,
+settle normally and require explicit fresh admission to retry. No identity
+backfill, original-record rewrite or pending-work deletion is performed.
+
+Coordinator verified open/draft/head/base and 21-file scope. The session
+reports complete affected serial Go suites, build/vet/lint, focused race,
+real isolated PostgreSQL/SQLite operational cases, unchanged-generated
+29-test TypeSpec check and workflow compile passing. TLC enabled/disabled/
+execution models passed (651,418 / 332 / 896 states); these bounded models
+are not proof of live provider behavior. An initial concurrent native
+termination fixture failure passed in the complete serial rerun. Temporary
+database/tools were removed. Evidence resides under
+`/Users/peli/.copilot/session-state/1b133541-ad96-4c4e-9944-4497920f71e0/files/`.
+
+No SQL schema/namespace migration is needed for opaque invocation JSON;
+the hosted runtime contract becomes 1.1.0. Rollout must pause admissions,
+stop/reconcile old executors, upgrade web/executor replicas together and
+explicitly review/re-admit intended legacy work. Mixed old executors ignore
+IDs and are unsafe. Provider rename/reassignment behavior remains unobserved,
+not an exploit claim. Decision **remediate**, lifecycle **in-progress**.
+
+A subsequent GitHub snapshot confirms all eleven finding-specific sessions
+have now delivered PRs. Three corrections (OPS-04, DATA-08, IAM-002) and the
+daily worker are merged into this assessment branch; eight fix PRs remain
+open. DATA-01/02/03 and OPS-01/02 are now non-draft; IAM-001, EXEC-01 and
+OPS-03 remain draft. The coordinator preserves externally changed review
+state. IAM-002 merged at 15:52:18 UTC as `24db44b03`, not by coordinator
+action; no main/control-branch activation or deployed effectiveness is implied.
 
 #### OPS-04 remediation proposal received 2026-10-21
 
@@ -783,8 +850,9 @@ Organizational/deployment/period evidence remains pending. Scoped repository
 remediation is underway and the daily worker is proposed as listed above;
 OPS-04 and DATA-08 technical corrections are integrated and locally checked
 on this assessment branch, but default-branch/deployment closure is pending.
-IAM-002, OPS-01/02/03 and DATA-01/02/03 are separately validated draft proposals
-awaiting review, not integrated fixes. The daily worker source is integrated
+IAM-002 is also integrated. IAM-001, EXEC-01, OPS-01/02/03 and DATA-01/02/03
+remain separately validated proposals awaiting review, not integrated fixes.
+The daily worker source is integrated
 into this assessment branch but not demonstrated active on the control branch.
 The conclusion is
 **initial technical assessment delivered; SOC 2 readiness undetermined**.
