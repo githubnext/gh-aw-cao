@@ -3,7 +3,7 @@ title: Execution and Safety
 description: Follow the control envelope, execution invariants, and fail-closed behavior used by orchestrators and workers.
 ---
 
-Use this page when implementing or reviewing control-plane behavior. For the architectural summary, start with the [Control Plane Overview](architecture.md).
+Use this page when implementing or reviewing control-plane behavior. For the architectural summary, start with the [Architecture](architecture.md).
 
 ## Responsibility Model
 
