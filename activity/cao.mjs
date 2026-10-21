@@ -49,7 +49,7 @@ async function main() {
     }
     if (typeof output === 'object' && output?.command === 'setup' && !arguments_.includes('--json')) {
       if (!output.cancelled) {
-        process.stdout.write('Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nMonitoring is configured; executing operations is optional.\nChoose an operation pattern: https://githubnext.github.io/gh-cao/operation-patterns/\n');
+        process.stdout.write('Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nMonitoring is configured; executing operations is optional.\nDescribe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/\n');
       }
       return;
     }

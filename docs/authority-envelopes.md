@@ -4,7 +4,7 @@ description: Topology-independent authority contracts and the explicit-target gh
 ---
 
 For terminology, examples and topology tradeoffs, start with
-[Choose an Operation Pattern](operation-patterns.md). This page is the
+[From Outcome to Execution](operation-patterns.md). This page is the
 implementation contract for explicit-target execution.
 
 CAO separates governance from orchestration. The authority kernel resolves

@@ -252,7 +252,7 @@ export default defineConfig({
           items: [
             { label: "What is Central Agentic Ops?", link: "/architecture-at-a-glance/" },
             { label: "How does CAO work?", link: "/how-cao-works/" },
-            { label: "Choose an operation pattern", link: "/operation-patterns/" },
+            { label: "From outcome to execution", link: "/operation-patterns/" },
             { label: "Architecture", link: "/architecture/" },
           ],
         },

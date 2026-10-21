@@ -35,10 +35,10 @@ CAO helps you operate these building blocks together:
 
 You can start with workflows that already run in their own repositories.
 Monitoring them does not move them or change their permissions. When you choose
-to govern shared automation, choose direct execution for known targets,
-standalone fleet execution for one inventory mission, or campaigns for separate
-selection and target workers. Campaigns are one way to package and scale work,
-not a prerequisite. See [Choose an Operation Pattern](operation-patterns.md).
+to govern shared automation, describe the outcome, target scope, and execution
+requirements; guidance and authoring agents derive the simplest structure.
+Campaigns are one way to package and scale work, not a prerequisite. See
+[From Outcome to Execution](operation-patterns.md).
 
 ### A simple example
 

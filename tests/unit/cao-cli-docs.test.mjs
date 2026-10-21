@@ -54,16 +54,53 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(docs, /\[Repo Assist walkthrough\]\(repo-assist-quickstart\.md\)/);
 });
 
-test("native and Node setup hand off to optional pattern selection rather than campaign installation", () => {
+test("native and Node setup hand off to outcome and scope rather than pattern selection", () => {
   for (const filename of ["internal/cli/native_setup.go", "activity/cao.mjs"]) {
     const source = readFileSync(filename, "utf8");
     assert.ok(source.includes("Monitoring is configured; executing operations is optional."));
-    assert.ok(source.includes("Choose an operation pattern: https://githubnext.github.io/gh-cao/operation-patterns/"));
-    assert.doesNotMatch(source, /Add your first campaign separately/);
+    assert.ok(source.includes("Describe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/"));
+    assert.doesNotMatch(source, /Add your first campaign separately|Choose an operation pattern/);
   }
   const skill = readFileSync("skills/setup-cao/SKILL.md", "utf8");
   assert.match(skill, /control-plane\.workflows` and `control-plane\.operations` absent or empty/);
   assert.match(skill, /operation-patterns\.md/);
+});
+
+test("outcome-to-execution guidance derives structures without granting authority", () => {
+  const guidance = readFileSync("docs/operation-patterns.md", "utf8");
+  const normalized = guidance.replace(/\s+/g, " ");
+  const cases = [
+    ["shared visibility", "Observe only"],
+    ["caller already knows the target", "Direct operation"],
+    ["bounded portion of an enrolled fleet", "Standalone fleet workflow"],
+    ["independent isolation and history", "Campaign"],
+    ["deployment stages, approvals, fan-in or long waits", "Ordinary GitHub Actions"],
+  ];
+  const rows = guidance.split("\n").filter((line) => line.startsWith("|"));
+  for (const [requirement, structure] of cases) {
+    assert.ok(rows.some((row) => row.includes(requirement) && row.includes(`**${structure}**`)),
+      `${requirement} should derive ${structure}`);
+  }
+  assert.match(normalized, /campaign even when the caller knows the targets/);
+  assert.match(normalized, /Repository count or a schedule alone does not require a campaign/);
+  assert.match(normalized, /Infer execution structure, never authority/);
+  assert.match(normalized, /reviewed policy decision/);
+  assert.match(normalized, /exact workflow SHA/);
+  assert.match(normalized, /Ask only for genuinely missing requirements/);
+  for (const filename of [
+    "skills/setup-cao/SKILL.md",
+    "skills/create-cao-campaign/SKILL.md",
+    "skills/add-cao-campaign/SKILL.md",
+  ]) {
+    const skill = readFileSync(filename, "utf8").replace(/\s+/g, " ");
+    assert.match(skill, /operation-patterns\.md/, filename);
+    assert.match(skill, /do not ask users to choose a pattern/, filename);
+    assert.match(skill, /genuinely missing requirements/, filename);
+  }
+  const authoring = readFileSync(".github/cao/instructions.md", "utf8");
+  assert.match(authoring, /Infer execution structure, never authority/);
+  const installation = readFileSync("skills/add-cao-campaign/SKILL.md", "utf8");
+  assert.match(installation, /Keep exact package selection and installation approval explicit/);
 });
 
 test("CAO command guide covers the operator-facing command surface", () => {

@@ -6,8 +6,13 @@ agent:
   prominent: true
 ---
 
-Use this guide when the [catalog](catalog.md) does not already produce the
-outcome you need. Agents should follow the
+Start with the desired outcome, target scope, and execution requirements.
+[From Outcome to Execution](operation-patterns.md) lets guidance and authoring
+agents derive the simplest suitable structure and explain it; you do not need
+to choose a pattern name. Use this campaign-specific guide when independent
+per-target execution, history, retries, or specialized workers are needed and
+the [catalog](catalog.md) does not already produce the outcome, or when you
+explicitly want to author a campaign. Agents should follow the
 [`create-cao-campaign` skill](https://github.com/githubnext/gh-cao/blob/main/skills/create-cao-campaign/SKILL.md);
 to install an existing campaign instead, use the
 [`add-cao-campaign` skill](https://github.com/githubnext/gh-cao/blob/main/skills/add-cao-campaign/SKILL.md).
@@ -34,12 +39,14 @@ gh aw version
 
 ## 1. Write the Campaign Contract
 
-Answer four questions before writing a workflow:
+Describe these requirements before writing a workflow:
 
 | Question | Example |
 | --- | --- |
 | What should improve? | Repositories should stop using an unsupported Node.js version. |
+| What is the allowed scope? | Only `acme/api` and `acme/web`; eligibility may narrow this set. |
 | Which repositories qualify? | A checked-in engine range includes the unsupported version. |
+| Why independent target runs? | Each repository needs its own execution history and retries. |
 | What output is needed? | A pull request that updates the range and CI matrix. |
 | When should nothing happen? | The repository is already supported, a matching PR exists, or evidence is incomplete. |
 
@@ -55,6 +62,12 @@ Read and follow skills/create-cao-campaign/SKILL.md.
 Outcome:
 [What should measurably improve?]
 
+Target scope:
+[Which exact repositories may participate?]
+
+Execution requirements:
+[Why does each target need independent execution, history, retries, or specialized workers?]
+
 Eligibility:
 [What evidence makes a repository a candidate?]
 
@@ -64,12 +77,17 @@ Safe output:
 No-op cases:
 [When should the campaign create nothing?]
 
+Explain the simplest structure that fits these requirements before generating
+files. If a campaign is unnecessary, use the matching integration instead.
+
 Use [OWNER/REPOSITORY] for the first proof. Keep it in review mode, limit it to
 one repository, and do not change the target. Compile the workflows and report
 the changed files, validation results, and first-run command.
 ```
 
-Do not copy or edit a generated `.lock.yml` file. The skill creates editable workflow Markdown and compiles it.
+Do not copy or edit a generated `.lock.yml` file. For a campaign, the skill
+creates editable workflow Markdown and compiles it. The remaining steps apply
+to that campaign structure, not to observation or other integrations.
 
 ## 3. Review What Was Generated
 

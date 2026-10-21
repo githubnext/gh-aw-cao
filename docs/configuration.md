@@ -9,9 +9,10 @@ For explicitly requested targets without campaign or fleet topology, use
 [`control-plane.operations` and the shared operation import](authority-envelopes.md).
 Campaigns and standalone fleet workflows remain supported operating patterns
 over the same authority kernel.
-Use [Choose an Operation Pattern](operation-patterns.md) before configuring
-policy: explicit-target work, one fleet mission and orchestrator/worker
-campaigns share authority boundaries but need different orchestration.
+Use [From Outcome to Execution](operation-patterns.md) to derive the simplest
+structure from the outcome, scope, and execution requirements before configuring
+policy. This design decision grants no authority: explicit-target work, one fleet
+mission and orchestrator/worker campaigns retain the same reviewed boundaries.
 
 Keep credentials in Actions secrets. Manual inputs may select a target or narrow a checked-in limit for one run, but they never change policy or widen it.
 

@@ -6,8 +6,9 @@ description: Set up CAO, monitor one repository, and explore your dashboard befo
 Install CAO, connect one repository, and publish a dashboard of its existing
 GitHub Agentic Workflow runs, costs, and outcomes.
 
-This setup is for monitoring only. Execution is optional: choose an
-[operation pattern](operation-patterns.md) later, without repeating setup.
+This setup is for monitoring only. Execution is optional: describe the
+[outcome and scope](operation-patterns.md) later, without repeating setup
+or choosing an implementation-pattern name.
 
 ## Prerequisites
 
@@ -130,18 +131,24 @@ views, or return after your existing workflows have run and Activity has refresh
 
 ## Optional: add automation later
 
-Monitoring is enough. For execution, [choose an operation pattern](operation-patterns.md):
+Monitoring is enough. If you want execution, describe the desired outcome,
+target scope, and execution requirements. Guidance and authoring agents
+[derive the simplest suitable structure](operation-patterns.md) and explain
+it; ask only for genuinely missing requirements, not a pattern name.
 
-| Your work | Next step |
+| Your requirements | Derived structure and reference |
 | --- | --- |
-| Known targets | [Direct operation](authority-envelopes.md), without discovery. |
-| One inventory mission | [Standalone fleet workflow](configuration.md#standalone-agentic-workflows). |
-| Independent target workers | [Campaign catalog](https://githubnext.github.io/gh-cao/catalog/). |
+| Visibility without changing execution | Observe only; setup is complete. |
+| Supplied exact targets, one bounded mission | [Direct operation](authority-envelopes.md), without discovery. |
+| CAO selects inventory for one bounded run | [Standalone fleet workflow](configuration.md#standalone-agentic-workflows). |
+| Independent target execution, history, retries, or specialized workers | Campaign; inspect the [catalog](https://githubnext.github.io/gh-cao/catalog/) before authoring. |
+| Deterministic work, stages, approvals, fan-in, or long waits | Ordinary GitHub Actions; use agentic reasoning only where needed. |
 
 Try the [Repo Status quickstart](setup/quickstart.md) for one standalone report.
 Written steps are complete; video is not yet available.
 
-None is enrolled, enabled or run by setup. Install a campaign separately:
+None is enrolled, enabled or run by setup. Inferring a structure grants no
+authority. If a campaign fits and its installation is approved, install it separately:
 
 ```bash
 gh cao campaigns add githubnext/gh-cao/CAMPAIGN

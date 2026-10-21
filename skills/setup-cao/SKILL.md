@@ -11,8 +11,10 @@ Set up monitoring with `gh cao`, the runtime and scoped authentication.
 Leave `control-plane.campaigns` as an empty object. No operation enrollment,
 live rollout or dispatch.
 
-Choose [an operation pattern](https://github.com/githubnext/gh-cao/blob/main/docs/operation-patterns.md)
-separately; campaign installation uses `add-cao-campaign`.
+For later execution, follow
+[outcome-to-execution guidance](https://github.com/githubnext/gh-cao/blob/main/docs/operation-patterns.md)
+to infer structure, never authority; do not ask users to choose a pattern.
+Explain the fit; ask only for genuinely missing requirements.
 
 ## Deterministic boundary
 
@@ -55,9 +57,8 @@ control repository or selecting a non-public target.
 
 ## Preferred human flow
 
-For a separate control repository, prefer interactive setup.
-For a new repository, use the review-before-apply [setup guide](https://github.com/githubnext/gh-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
-The installer's `--setup` flag enters `gh cao setup` directly.
+Prefer interactive setup for a separate control repository; see the
+[setup guide](https://github.com/githubnext/gh-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
 
 ```bash
 curl --fail --silent --show-error --location \
@@ -65,9 +66,8 @@ curl --fail --silent --show-error --location \
   bash -s -- --create-repo --setup
 ```
 
-Interactive setup discovers the repository, exact scope, ownership, and
-visibility, offers authentication choices based on that scope, then shows its
-plan before mutation.
+Interactive setup discovers scope and visibility, offers authentication choices
+based on that scope, then shows its plan before mutation.
 Verify profile prerequisites in the authentication reference before approving;
 the prompt does not establish whether selected organizations share an
 enterprise. Do not replace it with an independent questionnaire or ad hoc

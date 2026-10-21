@@ -1,39 +1,46 @@
 ---
 name: add-cao-campaign
-description: "Discover, compare, recommend, or install an existing Central Agentic Ops (CAO) catalog campaign. Use when a user wants to browse the CAO catalog, find an operation for an outcome, compare campaigns, or add a campaign to a control repository safely."
+description: "Discover, compare, recommend, or safely install existing CAO catalog campaigns. Use for catalog browsing, outcome-based recommendations, campaign comparisons, or adding a campaign to a control repository."
 metadata:
   argument-hint: "Describe the desired operational outcome or name a CAO catalog campaign"
 ---
 
 # Add a CAO Campaign
 
+For outcome requests, first follow
+[From Outcome to Execution](https://github.com/githubnext/gh-cao/blob/main/docs/operation-patterns.md).
+Derive structure from outcome, scope, and execution requirements; do not ask
+users to choose a pattern. Explain the fit; ask only for genuinely missing
+requirements. If a campaign is unnecessary, use the matching guidance instead.
+Catalog requests may proceed. Infer structure, never authority.
+Keep exact package selection and installation approval explicit.
+
 ## Procedure
 
-1. Verify the control plane and resolve one immutable catalog commit.
-2. Discover eligible campaigns from structured manifests at that commit.
-3. Recommend at most three matches with safety tradeoffs and `None of these`.
-4. Require selection and explicit installation approval.
-5. Install through `gh cao campaigns add`, validate policy preservation, and report.
+1. Verify the control plane and immutable catalog commit.
+2. Discover eligible manifests.
+3. Recommend matches with safety tradeoffs and `None of these`.
+4. Require exact selection and installation approval.
+5. Install and validate policy preservation.
 
-Choose from the current catalog. Never use a hard-coded list or silently select
-or install a campaign.
+Never hard-code candidates or silently install.
 
 ## Deterministic boundary
 
-The agent interprets intent, compares candidates, and explains tradeoffs.
-After selection, `gh cao campaigns add` owns package resolution,
-installation, policy merging, and installed-declaration validation. Use
+`gh cao campaigns add` owns resolution, installation, policy merging, and
+installed-declaration validation. Use
 `gh cao doctor` and `gh aw doctor --dir .` for local checks; inspect CAO validation
 in Actions after approved changes are published. Do not reimplement package or
 policy mutation.
 
 ## Boundaries
 
-- Use `create-cao-campaign` to author a new campaign or when none fits.
+- Use `create-cao-campaign` to author a new campaign when the execution
+  requirements justify one and no existing package fits.
 - Require `.github/workflows/cao.json` and installed `gh cao`; hand off to
   `setup-cao` when the control repository is not initialized.
-- Keep discovery read-only until the user sees the recommendation and safety
-  summary, selects a campaign, and approves installation.
+- Discovery is read-only until recommendation, safety review, exact selection,
+  and installation approval.
 - Install through `gh cao campaigns add`, which validates the declaration and merges
   policy without enabling live mode or broadening scope.
 - Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records directly.
@@ -49,12 +56,13 @@ policy mutation.
 5. Read each remaining manifest, README, CAO declaration, orchestrator, and
    worker from the same commit. Derive outcomes from files, not names.
 
-If authentication, catalog access, parsing, or revision consistency fails, stop
-and report discovery as incomplete. Do not guess from partial catalog data.
+Failed authentication, access, parsing, or revision consistency stops discovery
+as incomplete. Never guess from partial data.
 
 ## Recommend
 
-When no campaign is named, ask for the operational outcome. Recommend no more than three installable campaigns, ordered by fit. For each, summarize:
+Use supplied requirements. Recommend no more than three installable campaigns,
+ordered by fit. For each, summarize:
 
 - the outcome it targets;
 - its orchestrator and worker responsibilities;
@@ -66,11 +74,12 @@ Include `None of these`. Require one exact selection; a vague outcome, first
 recommendation, or no response is not consent. If none fits, offer the
 `create-cao-campaign` handoff without installing.
 
-When the user names a campaign, verify it against the same catalog process and still present its safety summary before asking for installation approval.
+Verify named campaigns through the same process and safety review before
+installation approval.
 
 ## Review Before Installation
 
-Before requesting approval, inspect the selected campaign at the resolved commit and report:
+Before approval, inspect the selected campaign at the resolved commit and report:
 
 - campaign name, slug, catalog commit, and maturity;
 - installed orchestrator and workers from `cao.json`;
@@ -83,7 +92,7 @@ Treat missing declarations, invalid metadata, inaccessible sources, unresolved p
 
 ## Install
 
-After explicit approval, run the repository-local CLI from the control repository:
+After explicit approval, run from the control repository:
 
 ```bash
 gh cao campaigns add githubnext/gh-cao/<campaign-slug>@<catalog-commit>
@@ -99,4 +108,5 @@ After installation:
 4. Run `gh aw doctor --dir .` and report any incomplete prerequisites without bypassing them.
 5. Review `git diff` for campaign-owned files and policy changes. Reject any customization of installed package sources; when the user requested additional prompting, confirm the only prompt customization is `.github/cao/<campaign-slug>.md`. Do not commit, push, enable workers, dispatch workflows, or promote live mode unless the user explicitly asks.
 
-Report the selected campaign, catalog commit inspected, installed orchestrator and workers, safety-relevant capabilities, policy preservation result, validation result, and any next approval required.
+Report campaign, inspected commit, orchestrator and workers, capabilities,
+policy preservation, validation, and required approvals.

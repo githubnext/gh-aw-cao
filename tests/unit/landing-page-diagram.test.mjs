@@ -50,8 +50,8 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Roll out with confidence\./);
   assert.match(hero, /Start with monitoring\./);
-  assert.match(hero, /direct operations for known targets, standalone workflows for fleet selection/);
-  assert.match(hero, /campaigns for coordinated workers/);
+  assert.match(hero, /derive the simplest structure/);
+  assert.match(hero, /outcome, target scope, and execution requirements/);
   assert.match(hero, /Daily Repo Status from Agentics as a standalone workflow/);
   assert.match(hero, /repository scope, read\/write credentials and review\/live policy explicit/);
   assert.match(hero, /href="\/gh-cao\/operation-patterns\/"/);
@@ -117,7 +117,9 @@ test("terminal output excerpts remain grounded in the production installer and C
   assert.match(integration, /does not automatically add CAO\nadmission or redirect its writes/);
   assert.match(integration, /including closing older reports/);
   assert.match(integration, /additional explicitly enrolled targets through reviewed policy changes/);
-  assert.match(hero, /Choose an operation pattern\./);
+  assert.match(hero, /From outcome to execution\./);
+  assert.match(hero, /Describe the outcome, target scope, and execution requirements/);
+  assert.doesNotMatch(hero, /Choose direct operations|Choose an operation pattern/);
 });
 
 test("landing page shows shared and local workflows with explicit ownership", () => {

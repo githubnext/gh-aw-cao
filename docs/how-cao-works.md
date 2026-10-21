@@ -134,8 +134,9 @@ executes and which capabilities it has.
 See [standalone workflow configuration](configuration.md#standalone-agentic-workflows),
 [Orchestrators and Workers](orchestrators-and-workers.md), and
 [Rollout and Routing](rollout-and-routing.md) for the integration details.
-Use [Choose an Operation Pattern](operation-patterns.md) to decide which fits
-the work, rather than starting with campaign topology.
+Describe the outcome, target scope, and execution requirements;
+[From Outcome to Execution](operation-patterns.md) shows how guidance and
+authoring agents derive the structure rather than asking you to pick a pattern.
 
 ## Review, promote, and recover
 

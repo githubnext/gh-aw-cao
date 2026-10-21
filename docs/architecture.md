@@ -50,7 +50,8 @@ performs its mission directly against a bounded admitted set, without an
 orchestrator or downstream workers. Campaigns are a packaging and rollout
 pattern, not a requirement for monitoring or governed execution. Direct
 operations instead request explicit targets without inventory selection.
-[Choose an Operation Pattern](operation-patterns.md) explains when each fits.
+[From Outcome to Execution](operation-patterns.md) derives the structure from
+the desired outcome, target scope, and execution requirements.
 
 ### Repository roles and records
 

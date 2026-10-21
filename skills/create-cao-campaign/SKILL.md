@@ -7,6 +7,16 @@ metadata:
 
 # Create a CAO Campaign
 
+For a general automation request, first follow
+[From Outcome to Execution](https://github.com/githubnext/gh-cao/blob/main/docs/operation-patterns.md).
+Derive structure from outcome, scope, and execution requirements; do not ask
+users to choose a pattern. Explain the fit; ask only for genuinely missing
+requirements. Use this procedure for independent per-target execution, history,
+retries, specialized workers, or an explicit campaign request. Otherwise follow
+the matching CAO integration and installed `agentic-workflows` skill, not this
+campaign procedure. Infer structure, never authority: preserve policy, access,
+scope, output routing, capabilities, and explicit reviewed live authorization.
+
 ## Procedure
 
 1. Load the installed `agentic-workflows` skill and follow its new-workflow
