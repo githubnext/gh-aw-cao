@@ -1,35 +1,7 @@
 {
-  "source_sha": "04b7aa0c2c2238a6f52d94c0c19dcd4ff5c7b3e8",
-  "next_category": "Astro documentation generation",
+  "source_sha": "0be38954715cb5aa37cc2065328d3ca6df9fc7a3",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-21T02:34:08Z",
-      "worker_run_id": "39533492961",
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39533366249,
-        39533085646,
-        39530983667,
-        39530971893,
-        39530441229,
-        39528891374,
-        39527291375,
-        39526297225,
-        39524098898,
-        39523832163,
-        39519012782,
-        39517127441,
-        39516414092,
-        39516401425,
-        39515612526,
-        39514408681,
-        39514007733,
-        39512188837,
-        39510444217,
-        39508887305
-      ],
-      "outcome": "incomplete: the 2026-10-20T22:32:41Z to 2026-10-21T02:30:11Z latest-20 window contained 16 successful and four skipped completed docs.yml runs. Five successful runs appeared to execute both build and deploy (two push, two schedule, and one workflow_run, across four source SHAs), satisfying the sample-count screen. During collection of the required job and step metadata, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API and model work stopped. Complete median/p90 workflow, queue, build, deploy, dashboard-reuse, and cache-hit measurements could not be established; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the reusable dashboard generation category remains next."
-    },
     {
       "evaluated_at": "2026-10-21T02:59:36Z",
       "worker_run_id": "39535770055",
@@ -757,6 +729,34 @@
         39618614317
       ],
       "outcome": "no-op: the 2026-10-21T14:38:28Z to 2026-10-21T16:51:08Z latest-20 window contained 15 successful, four skipped, and one cancelled completed docs.yml run; the cancelled push was excluded. Eight successful builds were comparable (five push, two schedule, and one workflow_run, across five source SHAs): median/p90 end-to-end 156/502 seconds, initial queue or concurrency wait 4.5/240 seconds, queue-excluded execution 152.5/376 seconds, build job 100/130 seconds, and deploy job 29/101 seconds. docs.yml has no dashboard job because generation is reused from cao-dashboard.yml; the latest five successful dashboard producer build jobs were 291/740 seconds median/p90. Dependency installation was median/p90 21/25 seconds; Astro generation was 14/16 seconds, dashboard-cache restoration 3/4 seconds, and Pages artifact upload 12.5/14 seconds. Trusted bounded logs verified five sampled npm package-cache hits (about 300 MiB) and five reusable dashboard-cache hits (about 58 MiB); trusted step metadata showed all eight builds skipped dashboard artifact fallback. Dependency installation was 13.8% of median queue-excluded execution, and even eliminating it entirely would save only 21 seconds, below both the 60-second and 15% actionability thresholds. No correctness-preserving dependency-cache change met the threshold, so the category advanced. The cancelled push, runs 39622159763 and 39622039362 with long concurrency waits, and deployment-service variance were disclosed rather than attributed to dependency caching."
+    },
+    {
+      "evaluated_at": "2026-10-21T17:55:52Z",
+      "worker_run_id": "39647516198",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39646937406,
+        39644926973,
+        39643076135,
+        39642942306,
+        39642602431,
+        39642319954,
+        39641676902,
+        39640870026,
+        39640713615,
+        39640391293,
+        39640076889,
+        39639088817,
+        39638450187,
+        39637181141,
+        39636460970,
+        39636191724,
+        39635628706,
+        39634626872,
+        39631037256,
+        39629340314
+      ],
+      "outcome": "no-op: the 2026-10-21T15:50:39Z to 2026-10-21T17:47:54Z latest-20 window contained 16 successful and four skipped completed docs.yml runs, with no failed or cancelled runs. Seven successful builds were comparable (six push and one workflow_run, across seven source SHAs): median/p90 end-to-end 146/258 seconds, initial queue or concurrency wait 4/69 seconds, queue-excluded execution 141/189 seconds, build job 94/130 seconds, deploy job 30/102 seconds, and Astro documentation generation 14/15 seconds. docs.yml has no dashboard job because generation is reused from cao-dashboard.yml; the latest five successful dashboard producer workflows were 310/757 seconds median/p90 end-to-end and their build jobs were 291/740 seconds. Trusted bounded logs verified npm package-cache and reusable dashboard-cache hits (about 300 MiB and 58 MiB) for the two newest builds; trusted step metadata showed all seven builds restored the dashboard cache in median/p90 3/4 seconds and skipped dashboard run lookup and artifact fallback. Astro generation was 9.9% of median queue-excluded execution, and eliminating it entirely would save only 14 seconds, below both the 60-second and 15% actionability thresholds. No correctness-preserving Astro change met the threshold, so the category advanced. Run 39640870026 waited 69 seconds for concurrency and had a 102-second deploy job, while run 39635628706 had a 72-second checkout; these outliers were disclosed rather than attributed to Astro."
     }
   ]
 }
