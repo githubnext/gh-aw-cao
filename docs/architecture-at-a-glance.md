@@ -15,14 +15,18 @@ and rollout of participating shared workflows.
 
 ## What is CAO?
 
-**GitHub Agentic Workflows (AWs)** are AI-powered workflows that run in GitHub
-Actions. You describe a task in Markdown, and an agent carries it out with
-configured tools and permissions. They can respond to events, run on a schedule,
-or be requested on demand. CAO monitors these workflows, not every ordinary
+Agentic work might begin with a single task, but operating it across repositories
+means keeping track of many workflows and deciding where shared automation
+should run.
+
+GitHub Agentic Workflows (AWs) carry out those individual tasks in GitHub Actions.
+You describe a task in Markdown, and an AI agent carries it out with configured
+tools and permissions. A workflow can respond to events, run on a schedule, or
+be requested on demand. CAO monitors these workflows, not every ordinary
 Actions job. [Learn about GitHub Agentic Workflows](https://github.github.com/gh-aw/introduction/overview/).
 
-**AWs are the building blocks; CAO is the larger operational system.**
-GitHub Agentic Workflows controls how each workflow executes and which
+These AWs form the building blocks of the larger CAO system. GitHub Agentic
+Workflows controls how each workflow executes and which
 capabilities it has. CAO brings evidence from those workflows together and
 governs whether and where participating shared workflows may run. Monitoring
 an AW does not automatically bring it under CAO governance.
