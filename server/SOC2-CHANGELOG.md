@@ -315,3 +315,54 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Decision/lifecycle: `remediate` / `in-progress`; proposal unmerged,
   undeployed, no finding closed. Provider power-loss, actual recovery,
   principal/encryption and period evidence remain separately unverified.
+
+## 2026-10-21 - SOC2-LOG-014 - Daily worker integrated on assessment branch
+
+- Type: observed integration and coordinator contract verification.
+- Source/evidence: GitHub reports
+  [#19310](https://github.com/githubnext/gh-cao/pull/19310) merged at
+  15:50:10 UTC as `4b63f3dcb6478dbc42f948d262131b2b32593a6e`.
+  Coordinator preserved the remote merge and rebased unpublished docs.
+- Specification version: 1, section 8.
+- Integrated check: `node --test tests/unit/workflow-contract-selfcare-soc2.test.mjs`,
+  seven passed, zero failures/skips. Initial missing locked `yaml` dependency
+  was restored with `npm ci --ignore-scripts --no-audit --no-fund`, then rerun;
+  no manifest/lock change.
+- Activation: still pending default/active-control-branch integration and
+  actual prerequisites; no dispatch/run/deploy or effectiveness claim.
+  This supersedes only SOC2-LOG-011's unmerged-proposal state.
+
+## 2026-10-21 - SOC2-LOG-015 - Four further remediation proposals recorded
+
+- Type: DATA-01/02 and OPS-01/02 draft implementation/validation handoffs.
+- Source/evidence: DATA-01 `03c5fdb5c89a9b45752151ee4094cb878fb4520a`
+  [#19325](https://github.com/githubnext/gh-cao/pull/19325);
+  DATA-02 `ca720d64091b12efb6408489b8c3e3f4f6c3c010`
+  [#19326](https://github.com/githubnext/gh-cao/pull/19326);
+  OPS-01 `0f0a42612a1b3cf9e561d37b31be92cd324ae375`
+  [#19323](https://github.com/githubnext/gh-cao/pull/19323);
+  OPS-02 `2296bdd84ca101d2a9632819020bc502dad87826`
+  [#19324](https://github.com/githubnext/gh-cao/pull/19324).
+  Coordinator verified each open/draft/head/base and scoped files.
+- Specification version: 1.
+- DATA-01: prefix-free versioned repository encoding, identity-verified
+  legacy migration/preflight erasure and mixed-identity rejection; ambiguous
+  data left intact. Reported Activity and Redis/PostgreSQL collector/ingest/
+  simulator race suites pass without skips; rollout inventory still required.
+- DATA-02: shared/derived collector-value erasure, cross-process lake lock,
+  zero-enrollment pruning and revision-keyed caches. Reported end-to-end
+  webhook/Activity/PostgreSQL withdrawal and scoped race/cache cases pass;
+  protected independent packets/holds remain an operator scope decision.
+- OPS-01: durable rebuild lifecycle attribution and explicit storage failures;
+  hosted rebuild without durable audit now refuses, API 2.10.0. Reported
+  role/reader-chain and outage tests pass; old baseline full-suite failure
+  DATA-08 separately corrected in parent. Cross-store/crash evidence is not
+  atomic; no outbox or missing-terminal reconstruction claimed.
+- OPS-02: reviewed optional HTTPS OTLP/log route, Key Vault-only headers and
+  secret-scoped grants; synthetic TLS receipt/failure/config/template tests
+  reportedly pass. Actual deployment/collector/alert operation remains unknown.
+- Integration dependencies: combine ForgetContext preflight/filter/lock with
+  DATA-03's single erasure helper/generations; preserve OPS-03 digest and
+  development-only apply controls when regenerating OPS-02/03 ARM.
+- Decision/lifecycle: all `remediate` / `in-progress`, unmerged/undeployed;
+  validation is session-reported, not whole-system or historical assurance.
