@@ -279,6 +279,61 @@ test('fragment merging accepts a direct single-owner layout and an explicitly em
   assert.deepEqual(await readdir(shards), []);
 });
 
+for (const layout of ['direct', 'nested', 'mixed']) {
+  test(`fragment merging accepts omitted empty shard directories in ${layout} artifacts`, async (t) => {
+    const { root, shards } = await fixture(t);
+    const fragments = path.join(root, 'fragments');
+    const first = await fragment(fragments, 'octo', 'empty.jsonl', []);
+    const emptyDirectory = path.dirname(first);
+    await rm(emptyDirectory, { recursive: true });
+    if (layout === 'mixed') await fragment(fragments, 'other', 'retained.jsonl', [run(2)]);
+    await writeFile(path.join(shards, 'old.jsonl'), jsonl([run(9)]));
+
+    const result = await mergeActivityFragments(
+      layout === 'direct' ? path.dirname(emptyDirectory) : fragments, root
+    );
+
+    assert.deepEqual(result, { fragments: layout === 'mixed' ? 2 : 1, shards: layout === 'mixed' ? 1 : 0 });
+    assert.deepEqual(await readdir(shards), layout === 'mixed' ? ['retained.jsonl'] : []);
+    if (layout === 'mixed') {
+      assert.equal(await readFile(path.join(shards, 'retained.jsonl'), 'utf8'), jsonl([run(2)]));
+    }
+    const inventory = JSON.parse(await readFile(path.join(root, 'inventory-sources.json'), 'utf8'));
+    assert.deepEqual(inventory.repositories.rows.map((row) => row.organization).sort(),
+      layout === 'mixed' ? ['octo', 'other'] : ['octo']);
+  });
+}
+
+test('fragment merging still requires inventory when shard directories are absent', async (t) => {
+  const { root, shards } = await fixture(t);
+  const fragments = path.join(root, 'fragments');
+  await mkdir(path.join(fragments, 'octo'), { recursive: true });
+  const original = jsonl([run(9)]);
+  await writeFile(path.join(shards, 'old.jsonl'), original);
+  await assert.rejects(mergeActivityFragments(fragments, root), { code: 'ENOENT' });
+  assert.equal(await readFile(path.join(shards, 'old.jsonl'), 'utf8'), original);
+});
+
+for (const invalid of ['file', 'symlink', 'dangling-symlink', 'symlink-shard']) {
+  test(`fragment merging rejects ${invalid} shard paths without changing restored data`, async (t) => {
+    const { root, shards } = await fixture(t);
+    const fragments = path.join(root, 'fragments');
+    const first = await fragment(fragments, 'octo', 'one.jsonl', [run(1)]);
+    const directory = path.dirname(first);
+    if (invalid === 'symlink-shard') {
+      await symlink(path.join(root, 'missing.jsonl'), path.join(directory, 'link.jsonl'));
+    } else {
+      await rm(directory, { recursive: true });
+      if (invalid === 'file') await writeFile(directory, 'invalid');
+      else await symlink(invalid === 'symlink' ? shards : path.join(root, 'missing'), directory);
+    }
+    const original = jsonl([run(9)]);
+    await writeFile(path.join(shards, 'old.jsonl'), original);
+    await assert.rejects(mergeActivityFragments(fragments, root), /non-symlink directory|symlink shard/);
+    assert.equal(await readFile(path.join(shards, 'old.jsonl'), 'utf8'), original);
+  });
+}
+
 test('missing fragments and filename collisions fail before deleting or moving shards', async (t) => {
   const { root, shards } = await fixture(t);
   const fragments = path.join(root, 'fragments');

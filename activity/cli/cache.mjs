@@ -237,7 +237,12 @@ export async function mergeActivityFragments(fragmentDirectory, outputDirectory)
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
-    for (const file of await shardPaths(path.join(fragment, 'gh-aw-logs-shards'))) {
+    const files = await shardPaths(path.join(fragment, 'gh-aw-logs-shards')).catch((error) => {
+      // Artifact uploads omit empty directories.
+      if (error.code === 'ENOENT') return [];
+      throw error;
+    });
+    for (const file of files) {
       const name = path.basename(file);
       if (incoming.has(name)) throw new Error(`Duplicate owner-scoped shard: ${name}`);
       incoming.set(name, file);
