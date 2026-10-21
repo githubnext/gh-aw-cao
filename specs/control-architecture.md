@@ -605,7 +605,7 @@ Invalid JSON, schema violations, unknown static identities, widening requests, u
 
 ### 11.2 Informative References
 
-- **[CAO Architecture]** [How the Control Plane Works](../docs/architecture.md).
+- **[CAO Architecture]** [Architecture](../docs/architecture.md).
 - **[CAO Configuration]** [Configure the Control Plane](../docs/configuration.md).
 - **[gh-aw]** [GitHub Agentic Workflows](https://github.com/github/gh-aw).
 - **[Semantic Versioning]** [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).

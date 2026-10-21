@@ -1,13 +1,22 @@
 ---
-title: How the Control Plane Works
+title: Architecture
 description: Understand the control plane's purpose, execution boundary, and core safety properties.
+prev:
+  link: /gh-cao/how-cao-works/
+  label: How does CAO work?
 agent:
   type: architecture
   prominent: true
 ---
 
-Read this overview when evaluating the control plane or changing how campaigns
-are authorized and dispatched. For authorization changes, continue to
+CAO separates evidence collection from execution authority. You can observe
+existing repository-local workflows without changing where they run or who owns
+them. This page focuses on the control-plane architecture for workflows that
+explicitly opt into governed execution; for the broader operating flow, read
+[How does CAO work?](how-cao-works.md).
+
+Read this page when evaluating the control plane or changing how participating
+workflows are authorized and dispatched. For authorization changes, continue to
 [Control Policy](control-policy-specification.md), then the
 [control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md)
 and `.github/workflows/shared/control.md`. For installation steps, begin with
@@ -33,7 +42,7 @@ The control plane is designed to:
 </picture>
 
 :::note[Three records, three jobs]
-The catalog release proves what was installed. The control repository owns operating policy and credentials. The target authority file records consent for live mutation. None of these records replaces the others.
+The catalog release proves what was installed. The control repository owns operating policy and credentials. Target-owner enrollment records document consent for live operation; target files do not grant, narrow, or veto control-plane authority. None of these records replaces the others.
 :::
 
 The execution boundary is the key architectural fact: orchestrators and workers run from the control repository. A worker checks out and analyzes one target at a time. Remote target repositories receive only declared safe outputs; they do not receive or run the control-plane workflow definitions.
@@ -50,6 +59,11 @@ Any repository may explicitly operate as a source-managed control plane for work
 
 The orchestrator owns rollout and selection. Workers enforce the dispatched control envelope without escalating mode, discovering additional repositories, or duplicating credentials.
 
+This is the campaign execution pattern. An explicitly integrated standalone
+workflow instead runs its mission directly against a precomputed admitted set
+without an orchestrator or downstream workers. Both patterns use shared
+admission and bounded rollout; neither automatically governs observed workflows.
+
 CAO Activity separately collects bounded workflow and run evidence into one
 shared snapshot for dashboards and reports. It is supporting infrastructure,
 not an execution or authority layer. See [CAO Activity](activity.md) for the
@@ -60,7 +74,7 @@ collection flow and data-quality behavior.
 - review mode is the default;
 - target selection and dispatch are bounded;
 - owners, targets, and review destinations must pass explicit trust checks;
-- every live `(target repository, campaign)` pair has one target-approved mutation authority;
+- every live `(target repository, campaign)` pair has one mutation authority assigned in reviewed control-repository policy, with target-owner enrollment recorded separately;
 - workers accept only declared targets and eligible generated-workflow paths;
 - GitHub tools are read-only, while writes use declared safe-output primitives;
 - credentials are resolved inside each run and never carried in dispatch inputs;
@@ -87,7 +101,8 @@ AW remains responsible for execution capabilities and safe outputs.
 
 | Read | When you need to understand |
 | --- | --- |
-| [What Is Central Agentic Ops?](architecture-at-a-glance.md) | CAO's purpose, available capabilities, and workflow operating patterns |
+| [What is Central Agentic Ops (CAO)?](architecture-at-a-glance.md) | CAO's purpose and available capabilities |
+| [How does CAO work?](how-cao-works.md) | The flow from observing existing workflows to evaluating evidence and opting into controlled execution |
 | [Deployment and Governance](deployment-and-governance.md) | Organization and enterprise topologies, ownership, target enrollment, provenance, reporting identity, and the broader governance boundary |
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
 | [Orchestrators and Workers](orchestrators-and-workers.md) | Campaign-specific authority, worker enforcement, eligibility, and worker ceilings |

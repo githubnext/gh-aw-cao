@@ -1,9 +1,9 @@
 ---
-title: What Is Central Agentic Ops?
+title: What is Central Agentic Ops (CAO)?
 description: Observe, evaluate, and operate agentic work across repositories, with shared visibility and controlled rollout.
 next:
-  link: /gh-cao/setup-quickstarts/
-  label: Set up CAO and monitor your workflows
+  link: /gh-cao/how-cao-works/
+  label: How does CAO work?
 ---
 
 You have workflows triaging issues in one repository and investigating failures
@@ -89,6 +89,7 @@ flowchart TB
 The dashboard shows collected evidence, not a live feed. Collection can be
 partial or stale; an empty chart does not establish that no workflows ran.
 See [CAO Activity](activity.md) for collection and data-quality details.
+For the end-to-end operating flow, read [How does CAO work?](how-cao-works.md).
 
 ## Essential safety boundaries
 
@@ -103,6 +104,10 @@ See [CAO Activity](activity.md) for collection and data-quality details.
   [setup](setup-quickstarts.md) checks publication visibility.
 
 ## Get started
+
+Read [How does CAO work?](how-cao-works.md) to connect observation, evaluation,
+and controlled execution, or explore the [Architecture](architecture.md) for
+control-plane boundaries and safety properties.
 
 **[Set up CAO and monitor your workflows](setup-quickstarts.md)**.
 Connect a repository to see its existing evidence.
