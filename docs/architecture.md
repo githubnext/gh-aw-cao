@@ -101,7 +101,7 @@ AW remains responsible for execution capabilities and safe outputs.
 
 | Read | When you need to understand |
 | --- | --- |
-| [What is Central Agentic Ops (CAO)?](architecture-at-a-glance.md) | CAO's purpose and available capabilities |
+| [What is Central Agentic Ops?](architecture-at-a-glance.md) | CAO's purpose and available capabilities |
 | [How does CAO work?](how-cao-works.md) | The flow from observing existing workflows to evaluating evidence and opting into controlled execution |
 | [Deployment and Governance](deployment-and-governance.md) | Organization and enterprise topologies, ownership, target enrollment, provenance, reporting identity, and the broader governance boundary |
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |

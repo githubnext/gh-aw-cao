@@ -248,7 +248,7 @@ export default defineConfig({
         {
           label: "Introduction",
           items: [
-            { label: "What is Central Agentic Ops (CAO)?", link: "/architecture-at-a-glance/" },
+            { label: "What is Central Agentic Ops?", link: "/architecture-at-a-glance/" },
             { label: "How does CAO work?", link: "/how-cao-works/" },
             { label: "Architecture", link: "/architecture/" },
           ],

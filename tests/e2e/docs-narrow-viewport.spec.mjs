@@ -169,7 +169,7 @@ test("Get started navigation follows the user journey without duplicate authenti
 
   const introductionGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Introduction$/ }).locator("..");
   await expect(introductionGroup.getByRole("link")).toHaveText([
-    "What is Central Agentic Ops (CAO)?",
+    "What is Central Agentic Ops?",
     "How does CAO work?",
     "Architecture",
   ]);
@@ -213,12 +213,15 @@ test("getting started leads from monitoring to a separate optional campaign guid
 
 test("CAO introduction presents operating capabilities and leads to how CAO works", async ({ page }, testInfo) => {
   expect((await page.goto("architecture-at-a-glance/"))?.ok()).toBe(true);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("What is Central Agentic Ops?");
   const content = page.locator(".sl-markdown-content");
+  expect((await content.innerText()).match(/central agentic ops/gi)).toHaveLength(1);
+  await expect(content.locator("p").first()).toContainText("Central Agentic Ops (CAO)");
   await expect(content).toContainText("GitHub Agentic Workflows (AWs) are AI-powered workflows");
   await expect(content).toContainText("understand and operate this work across repositories");
   await expect(content).toContainText("A successful run is not automatically a successful outcome.");
   await expect(content.locator("h2")).toHaveText([
-    "What is central agentic ops?",
+    "What is CAO?",
     "Agentic workflows, operated across repositories",
     "Essential safety boundaries",
     "Get started",
@@ -787,7 +790,7 @@ test("desktop documentation navigation links to the introduction and an empty bl
   await expect(navigation.getByRole("link")).toHaveText(["Docs", "Blog"]);
   await navigation.getByRole("link", { name: "Docs", exact: true }).click();
   await expect(page).toHaveURL(/\/architecture-at-a-glance\/$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("What is Central Agentic Ops (CAO)?");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("What is Central Agentic Ops?");
 
   await navigation.getByRole("link", { name: "Blog", exact: true }).click();
   await expect(page).toHaveURL(/\/blog\/$/);

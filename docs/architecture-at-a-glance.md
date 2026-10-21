@@ -1,5 +1,5 @@
 ---
-title: What is Central Agentic Ops (CAO)?
+title: What is Central Agentic Ops?
 description: Observe, evaluate, and operate agentic work across repositories, with shared visibility and controlled rollout.
 next:
   link: /gh-cao/how-cao-works/
@@ -11,7 +11,9 @@ Agentic Workflows across repositories. It brings collected activity, cost, and
 outcome evidence into a shared dashboard and provides policy controls for the
 execution and rollout of participating shared workflows.
 
-## What is central agentic ops?
+<span id="what-is-central-agentic-ops"></span>
+
+## What is CAO?
 
 **GitHub Agentic Workflows (AWs)** are AI-powered workflows that run in GitHub
 Actions. You describe a task in Markdown, and an agent carries it out with

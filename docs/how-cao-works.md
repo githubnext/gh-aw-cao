@@ -3,7 +3,7 @@ title: How does CAO work?
 description: Follow the flow from observing existing workflows to evaluating evidence and explicitly governing shared work.
 prev:
   link: /gh-cao/architecture-at-a-glance/
-  label: What is Central Agentic Ops (CAO)?
+  label: What is Central Agentic Ops?
 next:
   link: /gh-cao/architecture/
   label: Architecture
@@ -16,7 +16,7 @@ Monitoring them does not move them into a central repository or change their
 permissions.
 
 For CAO's purpose and capabilities, start with
-[What is Central Agentic Ops (CAO)?](architecture-at-a-glance.md). For the
+[What is Central Agentic Ops?](architecture-at-a-glance.md). For the
 execution and authority boundaries behind this flow, read the
 [Architecture](architecture.md).
 
