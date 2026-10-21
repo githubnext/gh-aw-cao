@@ -224,6 +224,13 @@ func TestWebhookRegisteredRouteValidatesSimulatorPing(t *testing.T) {
 
 func TestWebhookStatusTracksConcurrentSimulatorDeliveries(t *testing.T) {
 	app, _ := newWebhookStatusApp(t)
+	// Scope webhooks may queue enrollment for a worker; this test runs admission only.
+	enrollment := collect.Enrollment{Metadata: app.services.Collection, Leases: app.services.Leases}
+	if err := enrollment.AddRepositories(t.Context(), 1, []string{
+		"simulator/repo-00001", "simulator/repo-00002", "simulator/repo-00003", "simulator/repo-00004",
+	}); err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewServer(app.Handler())
 	t.Cleanup(server.Close)
 	result, err := (simulator.Scenario{
