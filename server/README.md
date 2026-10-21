@@ -32,6 +32,62 @@ the focused contracts.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
+## Secret-free fleet stress simulation
+
+Run `npm run test:stress:cao` from the repository root. The dedicated
+`cao-fleet-stress.yml` Actions workflow runs daily and manually, without adding
+the full stress workload to pull requests. It simulates three days starting with 1,000 repositories and
+5,000 developers. Each developer produces 2, 6, 10, 14, or 18 PRs per day
+(p50 10, exactly 50,000 PRs/day); 10% of arrivals form a correlated daily burst.
+At each subsequent day boundary, 1% of active repositories are archived/deleted
+(alternating) and 2% are created, rounding down. Only drained repositories are
+retired: outstanding PRs are never exempted from the review SLA.
+
+The vulnerability-review campaign is a compiler-manifest fixture subscribed to
+`pull_request: ready_for_review`. The test exercises production manifest discovery,
+policy intersection, signature validation, admission, batching, durable SQLite
+queues, fencing, retry classification, and worker dispatch. The entire fleet uses
+one reviewed fixture policy, one inventory registry, and one durable queue.
+A single control repository declares the campaign for all enrolled source
+repositories, whose workflow inventories are empty. The enrollment and derived
+route ceilings are 2,048; the 1 MiB registry limit, operational storage budget,
+API limits, eight-repository discovery rounds and reviewed scope remain unchanged.
+SQLite batch rotation, capacity, recovery and retention use indexed plans so
+burst handling does not repeatedly parse the entire retained job payload set.
+Future fixture repository IDs
+are explicitly pre-enrolled but remain inactive until the simulator creates them.
+The inventory registry and live GitHub authority facts are in-memory fixtures,
+not a PostgreSQL durability or GitHub authentication benchmark.
+
+The simulator enforces shared per-installation REST budgets of 12,500 requests
+per hour and 900 points per minute (reads cost 1, writes cost 5), returning primary
+403/reset headers and secondary 429/Retry-After responses. Other GitHub abuse,
+GraphQL, and content-generation limits are not modeled. Discovery and review
+traffic consume these budgets. Signed repository lifecycle webhooks invalidate
+inventory through the production discovery-hints path. Deliberate shared-budget exhaustion and the burst
+exercise throttling, while identical webhook replays exercise deduplication.
+
+No agentic workflow, vulnerability analysis, inference, or real GitHub request
+runs. Synthetic review completion occurs two simulated minutes after dispatch,
+plus any API-quota delay; dispatch acceptance alone never counts as a review.
+Every ready PR must have exactly one completed synthetic review within 3,600
+simulated seconds, measured from its original ready time, including discovery
+and admission retries. Missing, duplicate, or late reviews fail the test.
+An injected manual time provider controls ingress, discovery, authorization,
+queue leases/retention/backoff, and simulated API windows without sleeping.
+HTTP cancellation and I/O deadlines remain wall-clock based.
+
+All HTTP clients are confined to the exact numeric-loopback simulator endpoint,
+with proxies disabled. The test reads no secrets or credentials; its public HMAC
+fixture and ephemeral App-constructor key have no external authority.
+Synthetic installation-token routes accept only positive int64 installation IDs
+and format the fixture token from the parsed number, never the raw request path.
+Set `CAO_FLEET_STRESS_REPORT_DIR` to retain `fleet-stress.json`. Actions uploads
+that report and the test log, including incomplete outcomes on failure.
+The smaller `TestGitHubSimulatorFleetSmoke` scenario runs in ordinary Go tests.
+
+## Hosted activation admission
+
 The optional [cooperative activation-admission service](ADMISSION.md) exposes
 the gh-aw OIDC-only `POST /api/admission` and compact-session
 `POST /api/conclusion` protocols on that same hosted origin. Completion populates

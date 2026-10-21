@@ -22,7 +22,7 @@ These are the default product destinations. They are custom pages composed from 
 | `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes campaign health, repository coverage, weekly rhythm, and campaign shortcuts. |
 | `configuration` | Settings | `configuration-policy` | Presents checked-in control policy and its editable settings surface. |
 | `governance` | Governance | `environment-defaults` | Visible only in local `--admin` mode or to authorized hosted administrators; loads, previews, and explicitly approves gh-aw compiler default variables through authorized local CLI actions. |
-| `value` | Value | Shared entity cards | Trophy-marked entry point for workflow results, with a separate Repository measurements tab for existing native observations. |
+| `value` | Value | Shared entity cards | Trophy-marked entry point for workflow results and their native evidence reports. |
 | `workflow-value` | Workflow Value tab | Shared entity cards | Shows direction-aware native repository movement and opens its evidence report. |
 | `value-report` | Workflow value report | `workflow-value-report` | Connects consolidated intent, safe outputs, distinct accepted implementations and independent repository snapshots. |
 | `value-snapshot` | Measured snapshot | `workflow-value-snapshot` | Opens the exact retained items counted at one observation. |

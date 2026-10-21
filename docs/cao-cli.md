@@ -87,6 +87,7 @@ control checkout; the executable does not grant rollout authority.
 ```bash
 gh cao init
 gh cao setup
+gh cao setup --repository 'my-monalisa-org/*'
 gh cao setup auth github-app --help
 gh cao setup auth enterprise-app --help
 gh cao setup auth token --help
@@ -111,6 +112,14 @@ control-plane setup, or configure credentials independently with
 `gh cao setup auth github-app`, `gh cao setup auth enterprise-app`, or
 `gh cao setup auth token`. Each authentication profile retains its existing
 options, dry-run behavior, credential prompts, and separate read/write scope.
+For an all-public scope, guided setup recommends monitoring with the built-in
+Actions token and no App/PAT prompts. Its unattended shortcut is to repeat
+`--repository OWNER/REPO` or pass a quoted `OWNER/*` to snapshot
+currently public repositories. This public monitoring quickstart accepts a public Pages
+dashboard; exact private/internal inputs fail. It enables no agent execution or
+campaigns. Review and publish the resulting exact policy. Public evidence is
+marked partial when logs/artifacts or authenticated enrichments cannot be
+guaranteed; it is not reported as complete zero activity.
 The dedicated hosted-executor App profile remains Node-only:
 `node activity/cao.mjs setup-auth hosted-cli`.
 The runtime JSON result for authentication retains `command: "setup-auth"`.

@@ -253,7 +253,7 @@ test("public read-only operation uses the built-in token without widening access
   assert.match(authentication, /GraphQL/);
   assert.match(controlSource, /const GITHUB_API_CACHE_DURATION = "60s";/);
   assert.match(controlSource, /const args = \["api", "--cache", GITHUB_API_CACHE_DURATION\];/);
-  assert.match(configuration, /Configure a GitHub App or fine-grained PAT profile for every cross-repository scope/);
+  assert.match(configuration, /Configure a GitHub App or fine-grained PAT profile for cross-repository access/);
   assert.match(control, /cannot read target evidence required by the importing workflow, stop that analysis and report it as incomplete/);
   assert.match(control, /persist response `ETag` values and send them as `If-None-Match`/);
   assert.match(control, /prefer one bounded GraphQL query/);
@@ -428,6 +428,36 @@ test("CAO Activity workflow token honors an explicit control-repository collecti
     authMode: "workflow-token",
     controlRepository: "acme/control",
   }), /GITHUB_TOKEN can collect CAO Activity only for the control repository/);
+});
+
+test("public-only Activity requires explicit policy and uses only the built-in token for exact scopes", () => {
+  const settings = {
+    activity_public_only: true,
+    activity_repositories: ["acme/control", "octo/public"],
+    allowed_repositories: ["acme/control", "octo/public", "acme/not-collected"],
+  };
+  const plan = activityCollectionPlan(settings, { controlRepository: "acme/control" });
+  assert.deepEqual(plan.map(({ repositories }) => repositories), [["acme/control"], ["octo/public"]]);
+  assert.ok(plan.every((entry) => entry.publicOnly === true && !entry.secret));
+  for (const authMode of ["app", "pat"]) {
+    assert.throws(() => activityCollectionPlan(settings, {
+      controlRepository: "acme/control", authMode,
+    }), /requires workflow-token/);
+  }
+  for (const activity_repositories of [undefined, []]) {
+    assert.throws(() => activityCollectionPlan({
+      ...settings, activity_repositories,
+    }, { controlRepository: "acme/control" }), /explicit activity.repositories/);
+  }
+  const steps = parse(workflow("cao-activity.yml")).jobs.collect.steps;
+  const boundary = steps.find(({ name }) => name === "Validate public-only repository boundary before discovery");
+  const discovery = steps.find(({ name }) => name === "Collect owner-scoped dashboard inventory");
+  assert.equal(boundary.if, "${{ matrix.publicOnly == true }}");
+  assert.ok(steps.indexOf(boundary) < steps.indexOf(discovery));
+  const finalBoundary = steps.find(({ name }) => name === "Recheck public-only repository boundary before publication");
+  assert.ok(steps.indexOf(finalBoundary) > steps.findIndex(({ id }) => id === "activity-logs"));
+  assert.ok(steps.indexOf(finalBoundary) < steps.findIndex(({ name }) => name === "Publish owner-scoped activity fragment"));
+  assert.equal(steps.find(({ id }) => id === "activity-logs").env.REPORT_PUBLIC_ONLY, "${{ matrix.publicOnly == true }}");
 });
 
 test("CAO Activity workflow-token API reserves fit its standard 1000-request quota", () => {

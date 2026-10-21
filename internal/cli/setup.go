@@ -7,13 +7,21 @@ import (
 )
 
 func setupCommand(execute runtimeExecutor, gh ghExecutor) *cobra.Command {
-	setup := operatorCommand("setup", "Configure repository scope and authentication", cobra.NoArgs, []operatorFlag{jsonFlag}, execute)
+	setup := operatorCommand("setup", "Configure repository scope and authentication", cobra.NoArgs, []operatorFlag{
+		jsonFlag,
+		{name: "repository", description: "Public monitoring quickstart scope OWNER/REPO or OWNER/* (repeatable; accepts public Pages)", repeat: true},
+	}, execute)
 	setup.Long = `Configure the control plane's repository scope, dashboard Pages, and authentication.
 
 Run without a subcommand for guided setup, use auth to configure credentials,
 or admission to configure the cooperative OIDC gate's non-secret variables.
 Admission does not require a workflow secret. Non-interactive setup applies only the bounded public profile.
-Setup and authentication run natively in Go; help works offline.`
+Setup and authentication run natively in Go; help works offline.
+
+Quickstart: gh cao setup --repository 'OWNER/*'
+This explicitly accepts a public dashboard, snapshots only currently public
+repositories, and uses Actions GITHUB_TOKEN. No campaign or agent execution is
+enabled. Logs/artifacts may be unavailable; evidence is marked partial.`
 	auth := &cobra.Command{
 		Use: "auth", Short: "Configure read and write authentication", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {

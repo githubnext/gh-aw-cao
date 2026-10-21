@@ -782,6 +782,12 @@ test("control policy validates and exposes an explicit Activity collection subse
     controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").activity_repositories,
     ["acme/control"],
   );
+  policy["control-plane"].activity["public-only"] = true;
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  assert.equal(controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").activity_public_only, true);
+  policy["control-plane"].activity["public-only"] = "true";
+  assert.notEqual(validate(JSON.stringify(policy)).status, 0);
+  delete policy["control-plane"].activity["public-only"];
 
   policy["control-plane"].activity.repositories = ["octo/outside-scope"];
   const outsideScope = validate(JSON.stringify(policy));

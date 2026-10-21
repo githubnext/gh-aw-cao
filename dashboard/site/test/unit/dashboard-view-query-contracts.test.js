@@ -377,73 +377,6 @@ describe('dashboard view query contracts', () => {
     ]);
   });
 
-  it('renders campaign-first operational value with separate evidence and quiet comparison distribution', () => {
-    const page = dashboard.pages.find(
-      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
-    );
-    const dataSection = dashboard.navigation.find(
-      (/** @type {Record<string, unknown>} */ section) => section.label === 'Data'
-    );
-
-    expect(/** @type {Record<string, unknown> | undefined} */ (dataSection)?.pages)
-      .toContain('value');
-    for (const pageId of ['operational-value', 'operational-value-evidence', 'operational-value-repository']) {
-      const valuePage = dashboard.pages.find(
-        (/** @type {Record<string, unknown>} */ candidate) => candidate.id === pageId
-      );
-      expect(valuePage).toBeDefined();
-      expect(valuePage?.experimental).not.toBe(true);
-    }
-    expect(page).toMatchObject({
-      kind: 'custom',
-      'view-mode-control': false,
-      route: { tab: 'measurements', 'navigation-page': 'value', tabs: [
-        { id: 'workflows', page: 'value' },
-        { id: 'measurements', page: 'operational-value' }
-      ] }
-    });
-    expect(viewsOf(page)[0]).toMatchObject({
-      id: 'operational-value-summary',
-      data: { source: 'operational-value-overview-summary' },
-      mark: 'list'
-    });
-    expect(viewsOf(page)[1]).toMatchObject({
-      id: 'operational-value-signals',
-      data: { source: 'operational-value-measured-repositories' },
-      mark: 'list',
-      list: { card: 'repository-outcome-signal' }
-    });
-    expect(viewsOf(page)[2]).toMatchObject({
-      id: 'operational-value-unmeasured',
-      disclosure: 'supplemental',
-      data: { source: 'operational-value-unmeasured-repositories' }
-    });
-    expect(viewsOf(page)).toHaveLength(3);
-    const evidence = dashboard.pages.find(
-      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value-evidence'
-    );
-    expect(evidence).toMatchObject({ route: { 'navigation-page': 'value' } });
-    expect(viewsOf(evidence)[0]).toMatchObject({
-      id: 'operational-value-coverage', disclosure: 'supplemental',
-      data: { source: 'operational-value-repository-coverage' }
-    });
-    expect(viewsOf(evidence)[1]).toMatchObject({
-      id: 'operational-value-latest',
-      mark: 'table',
-      'column-summaries': false,
-      layout: 'full',
-      controls: 'interactive',
-      'lazy-list': true
-    });
-    expect(viewsOf(evidence)[2]).toMatchObject({
-      id: 'operational-value-direction-chart',
-      disclosure: 'supplemental',
-      mark: 'chart'
-    });
-    expect(JSON.stringify(viewsOf(page))).not.toContain('"aggregate":"mean"');
-    expect(viewsOf(evidence).map(view => view.id)).not.toContain('operational-value-observations');
-  });
-
   it('renders the failed-runs ledger as a bounded lazy table', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) =>
       candidate.id === 'overview-failed-runs'
@@ -679,56 +612,6 @@ describe('dashboard view query contracts', () => {
       data: { source: 'campaign-runs', 'route-field': 'campaign' },
       mark: 'chart'
     });
-  });
-
-  it('compiles repository summaries without native history or run-context dependencies', () => {
-    const page = dashboard.pages.find(
-      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value'
-    );
-    const sourceNames = ['operational-value-measured-repositories'];
-    for (const sourceName of sourceNames) {
-      const payload = compileDashboardViewPayloadQueries(page, 'operational-value', {
-        viewId: 'operational-value-signals',
-        sourceNames: [sourceName],
-        queries
-      });
-
-      expect(payload.aliases).toHaveLength(1);
-      expect(payload.queries.map(query => query.name)).not.toContain('operational-value-plot-series');
-      expect(payload.queries.at(-1)?.name).toBe(payload.aliases[0]);
-      expect(payload.queries.some(query => query.name === 'operational-value-campaign-run-health')).toBe(false);
-    }
-  });
-
-  it('retains native-unit operational-value observations using only the selected horizon', () => {
-    const page = dashboard.pages.find(
-      (/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'operational-value-repository'
-    );
-    const payload = compileDashboardViewPayloadQueries(page, 'operational-value-repository', {
-      viewId: 'repository-outcome-history',
-      sourceNames: ['operational-value-plot-series'],
-      routeParameters: { campaign: 'sample', organization: 'octo', repository: 'api' },
-      queryContext: {
-        timeWindow: { start: '2026-01-02T00:00:00Z', end: '2026-01-05T00:00:00Z' }
-      },
-      queries
-    });
-    const result = executeDashboardQueries(payload.queries, {
-      'operational-values': {
-        source: 'operational-values',
-        metadata: { ...metadata, availability: 'available' },
-        rows: [
-          { campaign: 'sample', organization: 'octo', repository: 'api', 'operational-value-role': 'primary', 'operational-value-definition': 'm', 'operational-value': 1000, 'observed-at': '2026-01-01T00:00:00Z' },
-          { campaign: 'sample', organization: 'octo', repository: 'api', 'operational-value-role': 'primary', 'operational-value-definition': 'm', 'operational-value': 10, 'observed-at': '2026-01-02T00:00:00Z' },
-          { campaign: 'sample', organization: 'octo', repository: 'api', 'operational-value-role': 'primary', 'operational-value-definition': 'm', 'operational-value': 20, 'observed-at': '2026-01-03T00:00:00Z' },
-          { campaign: 'sample', organization: 'octo', repository: 'api', 'operational-value-role': 'primary', 'operational-value-definition': 'm', 'operational-value': 30, 'observed-at': '2026-01-04T00:00:00Z' }
-        ]
-      }
-    });
-    const series = result[payload.aliases[0]]?.rows ?? [];
-    expect(series).toHaveLength(1);
-    const points = /** @type {Array<{ points: Array<{ y: number }> }>} */ (series[0].series)[0].points;
-    expect(points.map((point) => point.y)).toEqual([10, 20, 30]);
   });
 
   it('builds a route-scoped selected-horizon campaign baseline with deterministic signals', () => {

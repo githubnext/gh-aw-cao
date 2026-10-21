@@ -16,12 +16,14 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/githubnext/gh-cao/server/internal/clock"
 	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 type Queue struct {
 	db      *sql.DB
 	options wg.QueueOptions
+	clock   clock.Provider
 }
 
 var _ wg.Queue = (*Queue)(nil)
@@ -48,6 +50,21 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 CREATE INDEX IF NOT EXISTS ready_jobs ON jobs(state,tenant,created_at,id);
 CREATE INDEX IF NOT EXISTS delivery_jobs ON jobs(delivery);
+CREATE INDEX IF NOT EXISTS tenant_capacity ON jobs(tenant,bytes);
+CREATE INDEX IF NOT EXISTS source_capacity ON jobs(source,bytes);
+CREATE INDEX IF NOT EXISTS destination_capacity ON jobs(destination,bytes);
+CREATE INDEX IF NOT EXISTS receipt_capacity ON receipt_scopes(kind,scope,bytes);
+CREATE INDEX IF NOT EXISTS delivery_capacity ON deliveries(bytes);
+CREATE INDEX IF NOT EXISTS batch_rotation ON jobs(state,
+ (tenant||'!'||json_extract(document,'$.subscription.id')),created_at,id);
+CREATE INDEX IF NOT EXISTS batch_subscription ON jobs(state,json_extract(document,'$.subscription.id'),created_at,id);
+CREATE INDEX IF NOT EXISTS batch_claim ON jobs(state,json_extract(document,'$.claimId'));
+CREATE INDEX IF NOT EXISTS job_expiry ON jobs(state,expires_at,created_at,id);
+CREATE INDEX IF NOT EXISTS job_lease ON jobs(state,lease_until,created_at,id);
+CREATE INDEX IF NOT EXISTS terminal_retention ON jobs(retain_until,state,id);
+CREATE INDEX IF NOT EXISTS delivery_retention ON deliveries(retain_until,id);
+CREATE INDEX IF NOT EXISTS exhausted_attempts ON jobs(state,
+ (json_extract(document,'$.attempt')>=json_extract(document,'$.subscription.delivery.maxAttempts')),created_at,id);
 CREATE TABLE IF NOT EXISTS rates (
  id TEXT PRIMARY KEY, tokens REAL NOT NULL, updated_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
 );`
@@ -55,6 +72,12 @@ CREATE TABLE IF NOT EXISTS rates (
 // OpenWebhookQueue requires a private, dedicated SQLite file. Concurrent handles use SQLite
 // write transactions, rather than a process mutex, to fence all queue changes.
 func OpenWebhookQueue(ctx context.Context, path, namespace string, options wg.QueueOptions) (*Queue, error) {
+	return OpenWebhookQueueWithClock(ctx, path, namespace, options, nil)
+}
+
+// OpenWebhookQueueWithClock permits deterministic local simulation. Hosted
+// PostgreSQL queues continue to use authoritative database time.
+func OpenWebhookQueueWithClock(ctx context.Context, path, namespace string, options wg.QueueOptions, provider clock.Provider) (*Queue, error) {
 	if !filepath.IsAbs(path) || namespace == "" || len(namespace) > 128 {
 		return nil, wg.ErrInvalid
 	}
@@ -80,7 +103,7 @@ func OpenWebhookQueue(ctx context.Context, path, namespace string, options wg.Qu
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	q := &Queue{db: db, options: options}
+	q := &Queue{db: db, options: options, clock: provider}
 	if _, err := db.ExecContext(ctx, webhookSchema); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -126,11 +149,15 @@ func (q *Queue) transact(ctx context.Context, apply func(*sql.Tx, time.Time) err
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	var millis int64
-	if err := tx.QueryRowContext(ctx, `SELECT CAST(unixepoch('subsec')*1000 AS INTEGER)`).Scan(&millis); err != nil {
-		return err
+	now := clock.Now(q.clock).Truncate(time.Millisecond)
+	if q.clock == nil {
+		var millis int64
+		if err := tx.QueryRowContext(ctx, `SELECT CAST(unixepoch('subsec')*1000 AS INTEGER)`).Scan(&millis); err != nil {
+			return err
+		}
+		now = time.UnixMilli(millis).UTC()
 	}
-	if err := apply(tx, time.UnixMilli(millis).UTC()); err != nil {
+	if err := apply(tx, now); err != nil {
 		return err
 	}
 	return tx.Commit()

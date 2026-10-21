@@ -260,7 +260,9 @@ func nativeValidatePolicy(document map[string]any) error {
 			"allowed-owners":       nativePolicyStrings(nativeOwner, 0, math.MaxInt),
 			"allowed-repositories": nativePolicyStrings(repositoryPattern, 0, math.MaxInt),
 		}),
-		"activity": nativePolicyObject(map[string]nativePolicyRule{"repositories": nativePolicyStrings(repositoryPattern, 1, math.MaxInt)}, "repositories"),
+		"activity": nativePolicyObject(map[string]nativePolicyRule{
+			"repositories": nativePolicyStrings(repositoryPattern, 1, math.MaxInt), "public-only": nativePolicyBool,
+		}, "repositories"),
 		"inventory": nativePolicyObject(map[string]nativePolicyRule{
 			"max-scan-repositories": nativeInteger(1, 100000), "cell-count": nativeInteger(1, 1000),
 			"cell-index": nativeInteger(0, math.MaxFloat64), "batch-size": nativeInteger(1, 100000), "batch-index": nativeInteger(0, math.MaxFloat64),

@@ -208,6 +208,11 @@
       "additionalProperties": false,
       "required": ["repositories"],
       "properties": {
+        "public-only": {
+          "type": "boolean",
+          "default": false,
+          "description": "Observation-only public repository collection with the built-in workflow token; requires exact repositories and runtime public visibility checks. Restricted evidence remains partial."
+        },
         "repositories": {
           "type": "array",
           "minItems": 1,

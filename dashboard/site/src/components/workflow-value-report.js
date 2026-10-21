@@ -3,11 +3,14 @@
  * Counts, relationships, comparison and coverage belong to Dashboard Language.
  */
 import { h, svgAnchor } from '../dom.js';
+import { createDebug } from '../debug.js';
 import { render, state } from '../reactive.js';
 import { formatNumber } from '../view-formatters.js';
 import { bindFactorySources, createFactoryScope } from './factory-elements.js';
 import { externalAnchorAttrs } from './link-content.js';
 import { isSafeHttpsUrl, renderIconSpan, renderLoadingMessage, renderVisualizationEmptyMessage } from './ui-primitives.js';
+
+const debugWorkflowValueReport = createDebug('workflow-value-report');
 
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {import('./ui-elements.js').ElementRenderContext} Context */
@@ -42,9 +45,13 @@ function boundEvidence(context, draw) {
       return renderLoadingMessage('Loading published value evidence...');
     }
     if (context.sourceNames.some(name => bindings[name].unavailable())) {
+      debugWorkflowValueReport({ event: 'evidence-unavailable', sources: context.sourceNames.length });
       return renderVisualizationEmptyMessage('Value evidence is unavailable. Check collection and ingestion; missing evidence is not zero value.');
     }
-    if (!header?.source() || header.empty()) return renderVisualizationEmptyMessage('No value evidence has been published for this selection.');
+    if (!header?.source() || header.empty()) {
+      debugWorkflowValueReport({ event: 'evidence-empty', sources: context.sourceNames.length });
+      return renderVisualizationEmptyMessage('No value evidence has been published for this selection.');
+    }
     return draw(context.sourceNames.map(name => bindings[name].rows()));
   }, { signal: scope.signal });
   scope.bind(root);
@@ -64,6 +71,7 @@ export function renderWorkflowValueReport(context) {
       h('summary', null, 'Explore evidence'));
     /** @param {string} id @param {Event} event */
     const reveal = (id, event) => {
+      debugWorkflowValueReport({ event: 'evidence-revealed', section: id });
       const owner = event.currentTarget instanceof Element ? event.currentTarget.closest('.workflow-value-report') : null;
       owner?.querySelector('.value-report-evidence')?.setAttribute('open', '');
       expanded.set(true);

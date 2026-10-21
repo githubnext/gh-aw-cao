@@ -52,6 +52,12 @@ fs.appendFileSync(process.env.CALLS, JSON.stringify(args) + "\\n");
 const calls = fs.readFileSync(process.env.CALLS, "utf8").trim().split("\\n").map(JSON.parse);
 if (args[0] === "api") {
   if (args[1] !== "rate_limit") {
+    if (/^repos\\/[^/]+\\/[^/]+$/.test(args[1])) {
+      const repository = args[1].slice(6);
+      const private = process.env.MODE === "visibility-private" && repository === "acme/two";
+      console.log(JSON.stringify({ full_name: repository, private, visibility: private ? "private" : "public" }));
+      process.exit(0);
+    }
     console.log(JSON.stringify([{ workflows: [{ path: ".github/workflows/example.lock.yml" }] }]));
     process.exit(0);
   }
@@ -192,11 +198,41 @@ test("offline workflow discovery makes no API requests and never claims live reg
 test("partial fragments skip extra API work without bypassing authentication and visibility gates", () => {
   const steps = workflow.jobs.collect.steps;
   assert.equal(steps.find(({ name }) => name === "Enrich owner-scoped issue statuses").if,
-    "steps.activity-logs.outputs.rate-limited != 'true'");
+    "steps.activity-logs.outputs.rate-limited != 'true' && matrix.publicOnly != true");
   const value = steps.find(({ name }) => name === "Compute owner-scoped operational value");
   assert.equal(value.env.REPORT_RATE_LIMITED, "${{ steps.activity-logs.outputs.rate-limited }}");
   assert.ok(value.run.indexOf('cp "$retained_values" "$value_output"') < value.run.indexOf('"$REPORT_RATE_LIMITED" == "true"'));
   assert.equal(steps.find(({ name }) => name === "Select independent activity credential")["continue-on-error"], undefined);
   assert.equal(steps.find(({ name }) => name === "Validate repository visibility boundary")["continue-on-error"], undefined);
   assert.match(workflow.jobs.index.if, /needs\.collect\.result == 'success'/);
+});
+
+for (const mode of ["permission", "transport", "success"]) {
+  test(`public-only ${mode} collection preserves evidence and explicitly reports restricted coverage`, async (t) => {
+    const item = await fixture(t, mode);
+    await execute("bash", ["-e", "-c", collectionStep.run], { env: { ...item.env, REPORT_PUBLIC_ONLY: "true" } });
+    assert.equal(await readFile(item.exitCode, "utf8"), "0\n");
+    assert.equal(await readFile(item.output, "utf8"), "evidence-partial=true\n");
+    assert.match(await readFile(item.summary, "utf8"), /Missing evidence is not zero activity/);
+    const sources = JSON.parse(await readFile(item.inventory, "utf8"));
+    assert.equal(sources.workflows.metadata.completeness, "partial");
+    assert.match(sources.workflows.metadata["collection-reason"], /artifacts.*unavailable/);
+    if (mode !== "success") {
+      const unavailable = sources.workflows.metadata["repository-failures"].find(({ repository }) => repository === "acme/two");
+      assert.equal(unavailable.state, "unavailable");
+      assert.match(unavailable.reason, /could not be collected/);
+    }
+    const calls = (await readFile(item.calls, "utf8")).trim().split("\n").map(JSON.parse);
+    assert.equal(calls.filter((args) => args[0] === "aw").length, 3);
+    const merged = mergeInventoryDashboardSources([sources]);
+    assert.equal(merged.workflows.metadata.completeness, "partial");
+  });
+}
+
+test("public-only visibility changes and malformed evidence remain publication-blocking failures", async (t) => {
+  for (const mode of ["visibility-private", "malformed"]) {
+    const item = await fixture(t, mode);
+    await assert.rejects(execute("bash", ["-e", "-c", collectionStep.run], { env: { ...item.env, REPORT_PUBLIC_ONLY: "true" } }));
+    await assert.rejects(readFile(item.output), { code: "ENOENT" });
+  }
 });

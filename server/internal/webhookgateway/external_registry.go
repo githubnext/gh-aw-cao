@@ -31,7 +31,7 @@ func appendExternalSubscriptions(base *PolicySnapshot, destination DiscoveryRepo
 		if ValidateSubscription(subscription, DefaultLimits()) != nil || !validRevision(revision) {
 			return ErrInvalid
 		}
-		if len(base.Subscriptions) >= 1024 || base.Revisions[id].Digest != "" {
+		if len(base.Subscriptions) >= MaxDiscoveredSubscriptions || base.Revisions[id].Digest != "" {
 			return ErrCapacity
 		}
 		expiry := record.CheckedAt.Add(time.Duration(2*base.Policy.Discovery.Interval()) * time.Second)

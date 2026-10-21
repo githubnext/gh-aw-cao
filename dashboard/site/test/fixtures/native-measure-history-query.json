@@ -1,0 +1,46 @@
+{
+      "name": "operational-value-plot-series",
+      "subject": "One primary outcome plot per repository, optional campaign, workflow and native measure.",
+      "objective": "Keep every finite value visible and move provenance to individual observations.",
+      "acceptance": "Separate unlike units and directions. Preserve evaluator, maturity and cadence on points. Connect only adjacent points with known matching context and declared cadence; never infer a combined trend or baseline.",
+      "from": "operational-values",
+      "filter": { "predicates": [{ "field": "operational-value-role", "equals": "primary" }] },
+      "compute": [
+        { "as": "value-workflow", "function": "coalesce", "args": [{ "field": "workflow" }, { "field": "workflow-slug" }] },
+        { "as": "workflow-missing", "function": "equals-any", "args": [{ "field": "value-workflow" }, { "value": null }] },
+        { "as": "workflow-title", "function": "concat", "args": [{ "value": " - " }, { "field": "value-workflow" }] },
+        { "as": "workflow-title-suffix", "function": "if", "args": [{ "field": "workflow-missing" }, { "value": "" }, { "field": "workflow-title" }] },
+        { "as": "plot-window-start-ms", "function": "timestamp", "args": [{ "context": "time-start" }] },
+        { "as": "plot-window-end-ms", "function": "timestamp", "args": [{ "context": "time-end" }] },
+        { "as": "plot-contract", "function": "coalesce", "args": [{ "field": "evaluator-digest" }, { "value": "unknown" }] },
+        { "as": "plot-unversioned", "function": "equals-any", "args": [{ "field": "plot-contract" }, { "value": "unknown" }] },
+        { "as": "plot-comparison-note", "function": "literal", "args": [{ "value": "Recorded measurements, not a combined trend or a verified impact assessment." }] },
+        { "as": "plot-evidence-mode", "function": "literal", "args": [{ "value": "per-observation" }] },
+        { "as": "plot-mature", "function": "equals-any", "args": [{ "field": "maturity-status" }, { "value": "matured" }] },
+        { "as": "plot-provisional", "function": "equals-any", "args": [{ "field": "plot-mature" }, { "value": false }] },
+        { "as": "plot-max-gap-days", "function": "coalesce", "args": [{ "field": "cadence-days" }, { "value": 0 }] },
+        { "as": "plot-period-start", "function": "timestamp", "args": [{ "field": "window-start" }] },
+        { "as": "plot-period-end", "function": "timestamp", "args": [{ "field": "window-end" }] },
+        { "as": "plot-period-duration", "function": "difference", "args": [{ "field": "plot-period-end" }, { "field": "plot-period-start" }] },
+        { "as": "plot-contract-context", "function": "concat", "args": [{ "field": "plot-contract" }, { "value": "|" }, { "field": "maturity-status" }, { "value": "|" }, { "field": "cadence-days" }, { "value": "|" }, { "field": "measurement-kind" }] },
+        { "as": "plot-period-context", "function": "concat", "args": [{ "field": "plot-period-duration" }, { "value": "|" }, { "field": "evaluation-mode" }, { "value": "|" }, { "field": "adoption-at" }] },
+        { "as": "plot-known-context", "function": "concat", "args": [{ "field": "plot-contract-context" }, { "value": "|" }, { "field": "plot-period-context" }] },
+        { "as": "plot-context-key", "function": "if", "args": [{ "field": "plot-unversioned" }, { "value": null }, { "field": "plot-known-context" }] },
+        { "as": "plot-provenance-description", "function": "concat", "args": [{ "value": "Evaluator: " }, { "field": "plot-contract" }, { "value": ". Maturity: " }, { "field": "maturity-status" }, { "value": ". Cadence (days): " }, { "field": "plot-max-gap-days" }, { "value": " (0 means unknown). " }] },
+        { "as": "plot-period-description", "function": "concat", "args": [{ "value": "Window: " }, { "field": "window-start" }, { "value": " to " }, { "field": "window-end" }, { "value": ". Adoption: " }, { "field": "adoption-at" }, { "value": ". Mode: " }, { "field": "evaluation-mode" }] },
+        { "as": "plot-point-description", "function": "concat", "args": [{ "field": "plot-provenance-description" }, { "field": "plot-period-description" }] },
+        { "as": "series-repository", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+        { "as": "measure-title", "function": "coalesce", "args": [{ "field": "operational-value-name" }, { "field": "operational-value-definition" }] },
+        { "as": "plot-title", "function": "concat", "args": [{ "field": "measure-title" }, { "field": "workflow-title-suffix" }] }
+      ],
+      "temporal-series": {
+        "time": "observed-at", "series": "series-repository", "shape": "panels", "link": "run-link",
+        "carry": [
+          "campaign", "value-workflow", "series-repository", "plot-title", "plot-window-start-ms", "plot-window-end-ms", "operational-value-definition", "operational-value-name",
+          "operational-value-unit", "operational-value-direction", "plot-evidence-mode", "plot-comparison-note"
+        ],
+        "point-carry": ["plot-context-key", "plot-max-gap-days", "plot-provisional", "plot-point-description", "evaluator-digest", "maturity-status", "cadence-days", "window-start", "window-end", "adoption-at", "evaluation-mode"],
+        "measures": [{ "field": "operational-value", "key": "operational-value-definition", "kind": "primary" }]
+      },
+      "order-by": [{ "field": "plot-title", "direction": "asc" }]
+    }

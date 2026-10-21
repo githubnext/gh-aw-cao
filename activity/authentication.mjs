@@ -254,6 +254,22 @@ export function activityCollectionPlan(controlSettings, {
     throw new Error("Activity repository scope must contain exact OWNER/REPOSITORY values");
   }
 
+  if (controlSettings?.activity_public_only === true) {
+    if (mode !== GITHUB_AUTH_MODES.WORKFLOW_TOKEN || !hasExplicitActivityScope || configuredRepositories.length === 0) {
+      throw new Error("Public-only Activity requires workflow-token authentication and an explicit activity.repositories scope");
+    }
+    const byOwner = new Map();
+    for (const repository of repositories) {
+      const [owner] = repository.split("/");
+      const key = owner.toLowerCase();
+      if (!byOwner.has(key)) byOwner.set(key, {
+        owner, repositories: [], credentialRepository: controlRepository, artifact: key, publicOnly: true,
+      });
+      byOwner.get(key).repositories.push(repository);
+    }
+    return [...byOwner.values()];
+  }
+
   if (mode === GITHUB_AUTH_MODES.WORKFLOW_TOKEN) {
     if (repositories.some((repository) => repository.toLowerCase() !== controlRepository.toLowerCase())
       || (configuredRepositories.length === 0 && configuredOwners.length > 0)) {

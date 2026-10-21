@@ -1371,19 +1371,17 @@ entries, percent-encoded through URL query serialization. The active entry is
 text with `aria-current="page"`. Labels remain text, not templates or markup.
 The navigation parent remains independent of this presentation hierarchy.
 
-For example, a repository drill-down can retain the title **Operational Value**
+For example, a report drill-down can retain the title **Value report**
 and declare:
 
 ```yaml
 route:
-  navigation-page: operational-value
-  hash-query-parameter: repository
+  navigation-page: value
+  hash-query-parameter: report
   breadcrumbs:
-    - page: operational-value
-    - page: operational-value-campaign
-      parameters: [campaign]
-    - page: operational-value-repository
-      parameters: [organization, repository]
+    - page: value
+    - page: value-report
+      parameters: [report]
 ```
 
 A custom page may set `retain-on-navigation: true` to keep its loaded view visible

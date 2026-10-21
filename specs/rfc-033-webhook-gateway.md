@@ -249,7 +249,8 @@ Matching uses delivered data only, without GitHub hydration or state history.
 
 Discovery MUST bound lock artifacts to 8 MiB, header JSON to the configured
 metadata ceiling (262,144 bytes by default), conditions to the configured
-filter-node ceiling (128 by default), and the combined index to 1,024 routes.
+filter-node ceiling (128 by default), and the explicit local compiled-file index
+to 1,024 routes.
 The local inventory accepts at most 1,024 explicit absolute file paths and
 reserves a 15 MiB declaration budget, leaving output framing within 16 MiB.
 Workflow order MUST NOT affect the mapping. A cancelled, unreadable, invalid,
@@ -280,7 +281,7 @@ Events API simulation into live authority.
 Reviewed `control-plane.webhook-gateway.discovery.repositories` MUST explicitly
 bind each `repository` name to its immutable `repositoryId`,
 `receivingInstallationId`, and `dispatchInstallationId`. Names and IDs MUST be
-unique; there MUST be 1–64 entries. Each entry MUST intersect both root allowlists
+unique; there MUST be 1–2,048 entries. Each entry MUST intersect both root allowlists
 when both are present. Credential reach MUST NOT enroll additional repositories.
 The required boolean `activateSecurity` delegates activation only of
 compiler-supported `dependabot_alert` and `code_scanning_alert`. Its absence,
@@ -305,6 +306,13 @@ permits at most 128 compiled locks, 8 MiB per lock, and 16 MiB total fetched loc
 bytes. Only validated compiler metadata, immutable identity, commit, digest,
 and refresh state may be retained. The combined durable registry is limited
 to 1 MiB or the operational record ceiling, whichever is smaller.
+The repository count ceiling is an enrollment guardrail, not a storage or quota
+reservation. Large fleets SHOULD use source-only inventories and centralized
+campaign declarations; rich per-repository metadata can exhaust the byte ceiling
+before the count ceiling. Derived discovery routes MUST be bounded to 2,048;
+the separate explicit local trigger-mapping ceiling remains 1,024. Raising these
+count ceilings MUST NOT expand a reviewed allowlist, API budget, byte ceiling,
+per-round scan count, or live activation.
 A missing workflow directory (HTTP 404) MAY produce an empty workflow inventory
 only after successful authenticated private repository and initial head checks,
 and MUST still pass the final head recheck. This permits source-only enrolled

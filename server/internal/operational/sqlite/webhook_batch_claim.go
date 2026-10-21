@@ -36,12 +36,20 @@ func (q *Queue) ClaimBatch(ctx context.Context, request wg.ClaimRequest) ([]wg.J
 			return nil
 		}
 		var id string
+		var cursor string
+		if err := tx.QueryRowContext(ctx, `SELECT tenant_cursor FROM gateway WHERE id=1`).Scan(&cursor); err != nil {
+			return err
+		}
 		// '!' sorts below every identifier character, preserving tuple ordering.
 		err = tx.QueryRowContext(ctx, `SELECT id FROM jobs WHERE state='ready' AND not_before<=? AND expires_at>?
-			AND created_at<=? ORDER BY
-			(tenant||'!'||json_extract(document,'$.subscription.id')>(SELECT tenant_cursor FROM gateway WHERE id=1)) DESC,
-			tenant||'!'||json_extract(document,'$.subscription.id'),created_at,id LIMIT 1`,
-			now.UnixMilli(), now.UnixMilli(), now.Add(-request.BatchWindow).UnixMilli()).Scan(&id)
+			AND created_at<=? AND tenant||'!'||json_extract(document,'$.subscription.id')>?
+			ORDER BY tenant||'!'||json_extract(document,'$.subscription.id'),created_at,id LIMIT 1`,
+			now.UnixMilli(), now.UnixMilli(), now.Add(-request.BatchWindow).UnixMilli(), cursor).Scan(&id)
+		if errors.Is(err, sql.ErrNoRows) {
+			err = tx.QueryRowContext(ctx, `SELECT id FROM jobs WHERE state='ready' AND not_before<=? AND expires_at>?
+				AND created_at<=? ORDER BY tenant||'!'||json_extract(document,'$.subscription.id'),created_at,id LIMIT 1`,
+				now.UnixMilli(), now.UnixMilli(), now.Add(-request.BatchWindow).UnixMilli()).Scan(&id)
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}

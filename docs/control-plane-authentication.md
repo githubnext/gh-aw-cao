@@ -9,6 +9,7 @@ CAO supports private GitHub Apps as its durable authentication model and a fine-
 
 | Profile | Use when | Boundary |
 | --- | --- | --- |
+| Public-only monitoring | Observe existing workflows in public repositories without App/PAT setup | Exact reviewed scope, built-in Actions token, runtime public visibility checks, explicitly partial evidence; no agent execution or target writes |
 | Organization-owned private Apps | The control repository and targets belong to one organization | Apps can be installed only on their owning organization |
 | Enterprise-owned private Apps | Targets span organizations in one GitHub Enterprise Cloud enterprise | Apps are installed separately on each enrolled organization |
 | Fine-grained PATs | The operator cannot install an App and the required repositories and APIs are PAT-compatible | One user-bound token pair per resource owner, repository-selected, and subject to organization approval |

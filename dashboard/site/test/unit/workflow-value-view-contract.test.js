@@ -83,6 +83,16 @@ describe('native workflow value production contract', () => {
     expect(value).toMatchObject({ title: 'Value', icon: 'trophy' });
     expect(value.views[0]).toMatchObject({ data: { source: contract.query }, list: { card: contract.card } });
     expect(dashboard.navigation.flatMap((/** @type {{ pages: string[] }} */ group) => group.pages)).toContain('value');
+    expect(value.route?.tabs).toBeUndefined();
+    expect(value.views[0]['empty-message']).not.toContain('Repository measurements');
+    for (const id of ['operational-value', 'operational-value-evidence', 'operational-value-repository']) {
+      expect(dashboard.pages.some((/** @type {{ id: string }} */ page) => page.id === id)).toBe(false);
+      expect(dashboard.navigation.flatMap((/** @type {{ pages: string[] }} */ group) => group.pages)).not.toContain(id);
+      expect(JSON.stringify(dashboard)).not.toContain(`#page-${id}`);
+      expect(JSON.stringify(dashboard)).not.toContain(`"page":"${id}"`);
+    }
+    expect(dashboard.queries.some((/** @type {{ name: string }} */ query) =>
+      query.name.startsWith('operational-value-'))).toBe(false);
     const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.page);
     expect(page.views[0]).toMatchObject({
       id: contract.view, data: { source: contract.query, 'route-field': 'workflow-route' },
