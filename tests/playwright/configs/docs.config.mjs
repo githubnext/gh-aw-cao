@@ -8,7 +8,7 @@ const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
 export default defineConfig({
   testDir: "../../e2e",
-  testMatch: ["**/docs-narrow-viewport.spec.mjs", "**/docs-slideshow.spec.mjs"],
+  testMatch: ["**/docs-narrow-viewport.spec.mjs", "**/docs-slideshow.spec.mjs", "**/docs-typography.spec.mjs"],
   outputDir: "../../../test-results",
   timeout: 30_000,
   workers: 1,

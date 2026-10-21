@@ -1,3 +1,20 @@
+/* Upstream Mona Sans v2.0.27 (OFL): weight/optical-size variants avoid unused width axes. */
+@font-face {
+  font-family: "Mona Sans";
+  src: url("../assets/fonts/MonaSansVF.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mona Sans";
+  src: url("../assets/fonts/MonaSansVF-Italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+}
+
 @font-face {
   font-family: "Mona Sans Mono";
   src: url("../assets/fonts/MonaSansMonoVF-wght.woff2") format("woff2");
@@ -47,7 +64,9 @@
 }
 
 :root:not([data-has-hero]) {
+  --sl-font: "Mona Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --sl-content-width: 38.75rem;
+  --cao-docs-toc-width: 15rem;
   --sl-text-body: clamp(0.9375rem, 0.9119rem + 0.1136vw, 1rem);
   --sl-text-h1: clamp(1.5017rem, 1.1173rem + 1.7086vw, 2.4414rem);
   --sl-text-h2: clamp(1.1865rem, 1.0327rem + 0.6836vw, 1.5625rem);
@@ -66,10 +85,132 @@
 :root:not([data-has-hero]) :is(h1#_top, .sl-markdown-content h1:not(:where(.not-content *))) {
   font-weight: 400;
   line-height: 1.15;
+  letter-spacing: -0.025em;
 }
 
 :root:not([data-has-hero]) .sl-markdown-content h2:not(:where(.not-content *)) {
   font-weight: 400;
+  letter-spacing: -0.015em;
+  margin-top: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+:root:not([data-has-hero]) .sl-markdown-content h3:not(:where(.not-content *)) {
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+:root:not([data-has-hero]) .sl-markdown-content li + li:not(:where(.not-content *)) {
+  margin-top: 0.375rem;
+}
+
+:root:not([data-has-hero]) .sl-markdown-content :not(pre) > code:not(:where(.not-content *)) {
+  font-size: 0.875em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+:root:not([data-has-hero]) main > .content-panel:has(h1#_top) {
+  padding-top: 2rem;
+  padding-bottom: 0;
+}
+
+:root:not([data-has-hero]) main > .content-panel:has(h1#_top) + .content-panel {
+  border-top: 0;
+  padding-top: 1.75rem;
+}
+
+.sidebar .top-level summary,
+.sidebar .top-level a {
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.sidebar .top-level summary .large {
+  font-size: inherit;
+}
+
+.sidebar .top-level summary,
+.sidebar .top-level > li > a {
+  font-weight: 600;
+}
+
+.sidebar .top-level a {
+  padding: 0.375rem 0.625rem;
+}
+
+.sidebar .top-level a[aria-current="page"],
+.sidebar .top-level a[aria-current="page"]:is(:hover, :focus) {
+  color: var(--sl-color-text-accent);
+  background: none;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.right-sidebar {
+  border-inline-start: 0;
+}
+
+.right-sidebar-panel {
+  padding-top: 1.25rem;
+}
+
+starlight-toc h2,
+:is(starlight-toc, mobile-starlight-toc) a {
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+:is(starlight-toc, mobile-starlight-toc) a {
+  padding-block: 0.375rem;
+}
+
+:is(starlight-toc, mobile-starlight-toc) a[aria-current="true"] {
+  color: var(--sl-color-text-accent);
+  background: none;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (min-width: 50rem) {
+  :root:not([data-has-hero]) main > .content-panel:has(h1#_top) {
+    padding-top: 3.5rem;
+  }
+
+  :root:not([data-has-hero])[data-has-sidebar] .content-panel {
+    padding-inline: 3.75rem;
+  }
+}
+
+@media (min-width: 72rem) {
+  :root:not([data-has-hero]) :is(.right-sidebar-container, .right-sidebar) {
+    width: var(--cao-docs-toc-width);
+  }
+
+  :root:not([data-has-hero]) .right-sidebar-panel {
+    padding-inline: 0 1.5rem;
+  }
+
+  :root:not([data-has-hero]) .right-sidebar-panel .sl-container {
+    width: auto;
+    max-width: none;
+  }
+
+  :root:not([data-has-hero])[data-has-sidebar][data-has-toc] .main-pane {
+    --sl-content-margin-inline: auto;
+    width: calc(100% - var(--cao-docs-toc-width));
+  }
+}
+
+@media (max-width: 49.999rem) {
+  .sidebar .top-level summary,
+  .sidebar .top-level a {
+    min-height: 2.5rem;
+    padding-block: 0.5rem;
+  }
 }
 
 @media (max-width: 30rem) {
@@ -122,7 +263,7 @@
   gap: 0.55rem;
   background: none !important;
   color: #1f2328 !important;
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--sl-font, ui-sans-serif), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 1rem;
   font-weight: 650;
   letter-spacing: -0.015em;
