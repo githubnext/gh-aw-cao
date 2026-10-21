@@ -9,7 +9,6 @@ const slideTitles = [
   "Roll out with confidence.",
   "Less upkeep. Current workflows.",
   "Webhook Gateway",
-  "Admission Gate",
   "Built on Agentic Workflows",
 ];
 

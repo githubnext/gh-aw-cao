@@ -47,7 +47,7 @@ for (const { name, viewport } of [
 test("landing stories remain visible with reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("./");
-  await expect(page.locator("[data-reveal]")).toHaveCount(6);
+  await expect(page.locator("[data-reveal]")).toHaveCount(5);
   await expect(page.locator(".maintenance-story")).toContainText("Dashboard maintenance");
   for (const story of await page.locator("[data-reveal]").all()) {
     await expect(story).toHaveCSS("opacity", "1");
@@ -73,7 +73,7 @@ for (const colorScheme of ["light", "dark"]) {
       await expect(example).toContainText("Campaign prepared for review");
       await expect(example).toContainText("disabled and review-only");
       const gateway = page.getByRole("region", { name: "Webhook Gateway", exact: true });
-      const admission = page.getByRole("region", { name: "Admission Gate", exact: true });
+      await expect(page.getByRole("region", { name: "Admission Gate", exact: true })).toHaveCount(0);
       await expect(gateway).toContainText("reviewed enrollment");
       await expect(gateway).toContainText("Dispatch events across repositories");
       const routing = gateway.getByRole("figure", { name: "Cross-repository webhook dispatch" });
@@ -84,18 +84,9 @@ for (const colorScheme of ["light", "dark"]) {
       await expect(gateway.locator("pre")).toHaveCount(0);
       await expect(gateway.getByRole("link", { name: "Explore the Webhook Gateway" }))
         .toHaveAttribute("href", /#webhook-gateway-operations$/);
-      await expect(admission).toContainText("OIDC");
-      await expect(admission).toContainText("not a billing cap");
-      const decision = admission.getByRole("figure", { name: "Workflow admission decision" });
-      await expect(decision).toBeVisible();
-      await expect(decision.locator(".admission-outcomes strong")).toHaveText(["Approve", "Block"]);
-      await expect(decision).toContainText("Fresh AI Credits accounting");
-      await expect(admission.locator("pre")).toHaveCount(0);
-      await expect(admission.getByRole("link", { name: "Set up the Admission Gate" }))
-        .toHaveAttribute("href", "/gh-cao/admission-gate/");
       expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
       if (width !== 320) {
-        for (const [name, story] of [["agentic-workflows", section], ["webhook-gateway", gateway], ["admission-gate", admission]]) {
+        for (const [name, story] of [["agentic-workflows", section], ["webhook-gateway", gateway]]) {
           const path = testInfo.outputPath(`${name}-${width}-${colorScheme}.png`);
           await story.screenshot({ path });
           await testInfo.attach(name, { path, contentType: "image/png" });
@@ -110,12 +101,12 @@ test("landing stories remain visible without JavaScript", async ({ browser, base
   try {
     const page = await context.newPage();
     await page.goto("./");
-    await expect(page.locator("[data-reveal]")).toHaveCount(6);
+    await expect(page.locator("[data-reveal]")).toHaveCount(5);
     await expect(page.locator(".maintenance-story")).toContainText("Dashboard maintenance");
     for (const story of await page.locator("[data-reveal]").all()) {
       await expect(story).toHaveCSS("opacity", "1");
     }
-    for (const name of ["Webhook Gateway", "Admission Gate"]) {
+    for (const name of ["Webhook Gateway"]) {
       const section = page.getByRole("region", { name, exact: true });
       await expect(section).toBeVisible();
       await expect(section.getByRole("figure")).toBeVisible();

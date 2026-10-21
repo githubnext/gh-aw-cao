@@ -1,75 +1,33 @@
 ---
-import { checkPath, repoPath } from "./workflow-illustration-icons.mjs";
-
-interface Props {
-  kind: "gateway" | "admission";
-}
-
-const { kind } = Astro.props;
-const gateway = kind === "gateway";
+import { repoPath } from "./workflow-illustration-icons.mjs";
 ---
 
-<figure class="control-diagram" aria-label={gateway ? "Cross-repository webhook dispatch" : "Workflow admission decision"}>
-  <div class="diagram-label">{gateway ? "Events cross repositories. Authority stays explicit." : "Verify first. Then start within policy."}</div>
-  {
-    gateway ? (
-      <>
-        <div class="diagram-pair source-repositories" role="group" aria-label="Enrolled source repositories">
-          {["acme/service-a", "acme/service-b"].map((repository) => (
-            <div class="diagram-node">
-              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={repoPath} /></svg>
-              <strong>{repository}</strong>
-              <span>Security alert event</span>
-            </div>
-          ))}
-        </div>
-        <div class="diagram-connector joined" aria-hidden="true"></div>
-        <div class="diagram-node gate-node">
-          <span class="node-eyebrow">CAO Webhook Gateway</span>
-          <strong>Authenticate. Match. Queue.</strong>
-          <div class="evidence-tags"><span>Enrolled routes</span><span>Bounded batches</span><span>Fresh access checks</span></div>
-        </div>
-        <div class="diagram-connector" aria-hidden="true"><span>Cross-repo dispatch</span></div>
-        <div class="diagram-node destination-repository">
-          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={repoPath} /></svg>
-          <strong>acme/control</strong>
-          <span>Approved security workflow</span>
-          <span class="node-detail">Runs in the destination repository, not the event source.</span>
-        </div>
-      </>
-    ) : (
-      <>
-        <div class="diagram-node">
-          <span class="node-eyebrow">Participating GitHub Actions workflow</span>
-          <strong>Request permission to start</strong>
-          <span>Job-issued OIDC identity</span>
-        </div>
-        <div class="diagram-connector" aria-hidden="true"><span>Signed identity</span></div>
-        <div class="diagram-node gate-node">
-          <span class="node-eyebrow">CAO Admission Gate</span>
-          <strong>Verify identity and policy</strong>
-          <div class="evidence-tags"><span>Exact enrollment</span><span>Fresh AI Credits accounting</span><span>Policy-defined allowances</span></div>
-        </div>
-        <div class="diagram-connector branched" aria-hidden="true"></div>
-        <div class="diagram-pair admission-outcomes" role="group" aria-label="Admission outcomes">
-          <div class="diagram-node approved-node">
-            <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={checkPath} /></svg>
-            <strong>Approve</strong>
-            <span>Start within allowances</span>
-          </div>
-          <div class="diagram-node blocked-node">
-            <span class="blocked-symbol" aria-hidden="true"></span>
-            <strong>Block</strong>
-            <span>Denied or missing required evidence</span>
-          </div>
-        </div>
-      </>
-    )
-  }
+<figure class="control-diagram" aria-label="Cross-repository webhook dispatch">
+  <div class="diagram-label">Events cross repositories. Authority stays explicit.</div>
+  <div class="diagram-pair source-repositories" role="group" aria-label="Enrolled source repositories">
+    {["acme/service-a", "acme/service-b"].map((repository) => (
+      <div class="diagram-node">
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={repoPath} /></svg>
+        <strong>{repository}</strong>
+        <span>Security alert event</span>
+      </div>
+    ))}
+  </div>
+  <div class="diagram-connector joined" aria-hidden="true"></div>
+  <div class="diagram-node gate-node">
+    <span class="node-eyebrow">CAO Webhook Gateway</span>
+    <strong>Authenticate. Match. Queue.</strong>
+    <div class="evidence-tags"><span>Enrolled routes</span><span>Bounded batches</span><span>Fresh access checks</span></div>
+  </div>
+  <div class="diagram-connector" aria-hidden="true"><span>Cross-repo dispatch</span></div>
+  <div class="diagram-node destination-repository">
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={repoPath} /></svg>
+    <strong>acme/control</strong>
+    <span>Approved security workflow</span>
+    <span class="node-detail">Runs in the destination repository, not the event source.</span>
+  </div>
   <figcaption>
-    {gateway
-      ? "Illustrative enrolled routes. Source and destination access and the approved workflow revision are rechecked before dispatch."
-      : "Optional start-time check, not a billing cap or budget reservation. Outage handling is configurable; CAO setup defaults to block."}
+    Illustrative enrolled routes. Source and destination access and the approved workflow revision are rechecked before dispatch.
   </figcaption>
 </figure>
 
@@ -120,8 +78,7 @@ const gateway = kind === "gateway";
       color: var(--cao-story-text);
     }
 
-    .diagram-node svg,
-    .blocked-symbol {
+    .diagram-node svg {
       width: 1.25rem;
       height: 1.25rem;
       flex: 0 0 auto;
@@ -192,8 +149,7 @@ const gateway = kind === "gateway";
       font-size: 0.6875rem;
     }
 
-    .joined::before,
-    .branched::before {
+    .joined::before {
       inset: 0 25% 50%;
       width: auto;
       border: 1px solid var(--cao-loop-border);
@@ -203,31 +159,6 @@ const gateway = kind === "gateway";
 
     .joined {
       background: linear-gradient(var(--cao-loop-border), var(--cao-loop-border)) center bottom / 1px 50% no-repeat;
-    }
-
-    .branched {
-      transform: rotate(180deg);
-      background: linear-gradient(var(--cao-loop-border), var(--cao-loop-border)) center bottom / 1px 50% no-repeat;
-    }
-
-    .branched::after {
-      display: none;
-    }
-
-    .blocked-symbol {
-      position: relative;
-      border: 1.5px solid var(--cao-story-text);
-      border-radius: 50%;
-    }
-
-    .blocked-symbol::after {
-      position: absolute;
-      top: calc(50% - 0.75px);
-      right: 0.2rem;
-      left: 0.2rem;
-      height: 1.5px;
-      background: var(--cao-story-text);
-      content: "";
     }
 
     .node-detail {

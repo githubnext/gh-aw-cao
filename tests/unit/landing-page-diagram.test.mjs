@@ -69,7 +69,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
   assert.deepEqual(
     [...hero.matchAll(/<section class="product-story ([^"]+)"/g)].map(([, classes]) => classes),
-    ["dispatch-story", "terminal-story", "maintenance-story", "snippet-story webhook-story", "snippet-story admission-story", "snippet-story agentic-workflows-story"],
+    ["dispatch-story", "terminal-story", "maintenance-story", "snippet-story webhook-story", "snippet-story agentic-workflows-story"],
   );
   assert.match(hero, /aria-labelledby="maintenance-title" data-reveal data-slideshow-slide/);
   assert.match(hero, /Less upkeep\. Current workflows\./);
@@ -105,7 +105,7 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
   assert.ok(tagline && wordCount(tagline) <= 40, "hero tagline should stay within forty words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
-  assert.equal(paragraphs.length, 7);
+  assert.equal(paragraphs.length, 6);
   const terminalParagraph = hero.match(/id="terminal-title"[\s\S]*?<p>\s*([\s\S]*?)<\/p>/)?.[1];
   for (const [, paragraph] of paragraphs) {
     const budget = paragraph === terminalParagraph ? 60 : 30;
@@ -124,22 +124,16 @@ test("landing campaign example uses the real Dependabot manifest without grantin
   assert.match(hero, /Reviewed policy controls scope, enablement, and review\/live mode/);
 });
 
-test("gateway and admission hero diagrams distinguish cross-repo dispatch from start-time decisions", () => {
+test("gateway hero diagram shows cross-repo dispatch without an admission section", () => {
   const diagrams = readFileSync("docs/components/HeroControlDiagram.astro", "utf8");
-  assert.match(hero, /<HeroControlDiagram kind="gateway" \/>/);
-  assert.match(hero, /<HeroControlDiagram kind="admission" \/>/);
+  assert.match(hero, /<HeroControlDiagram \/>/);
+  assert.doesNotMatch(hero, /Admission Gate|admission-story|admission-gate/);
+  assert.doesNotMatch(diagrams, /Admission|admission|blocked-symbol|branched/);
   assert.match(hero, /Dispatch events across repositories/);
   assert.match(diagrams, /acme\/service-a/);
   assert.match(diagrams, /acme\/service-b/);
   assert.match(diagrams, /acme\/control/);
   assert.match(diagrams, /Runs in the destination repository, not the event source/);
-  assert.match(diagrams, /Job-issued OIDC identity/);
-  assert.match(diagrams, /Exact enrollment/);
-  assert.match(diagrams, /Fresh AI Credits accounting/);
-  assert.match(diagrams, /<strong>Approve<\/strong>/);
-  assert.match(diagrams, /<strong>Block<\/strong>/);
-  assert.match(diagrams, /not a billing cap or budget reservation/);
-  assert.match(diagrams, /CAO setup defaults to block/);
   assert.doesNotMatch(diagrams, /<script|data-slideshow-snippet/);
 });
 
