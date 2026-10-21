@@ -240,6 +240,18 @@ jobs:
           writeFileSync(process.env.REPORT_CONTROL_SETTINGS, `${JSON.stringify(settings, null, 2)}\n`);
           EOF
 
+      - name: Validate public-only repository boundary before discovery
+        if: ${{ matrix.publicOnly == true }}
+        env:
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/control-settings.json
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.activity-credential.outputs.token }}
+          script: |
+            const { pathToFileURL } = require('url')
+            const visibility = await import(pathToFileURL(require('path').resolve('activity/repository-visibility.mjs')).href)
+            await visibility.main({ core, github, context, exec, io, getOctokit }, [process.env.REPORT_CONTROL_SETTINGS])
+
       - name: Resolve gh-aw compiler version
         id: gh-aw-compiler
         run: |
@@ -294,6 +306,7 @@ jobs:
       - name: Download owner-scoped agentic workflow logs
         id: activity-logs
         env:
+          REPORT_PUBLIC_ONLY: ${{ matrix.publicOnly == true }}
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/collection.sqlite
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/control-settings.json
@@ -324,7 +337,7 @@ jobs:
           fi
 
       - name: Enrich owner-scoped issue statuses
-        if: steps.activity-logs.outputs.rate-limited != 'true'
+        if: steps.activity-logs.outputs.rate-limited != 'true' && matrix.publicOnly != true
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/collection.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/gh-aw-logs-shards
@@ -337,6 +350,7 @@ jobs:
 
       - name: Compute owner-scoped operational value
         env:
+          REPORT_PUBLIC_ONLY: ${{ matrix.publicOnly == true }}
           ACTIVITY_ARTIFACT: ${{ matrix.artifact }}
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/collection.sqlite
           ACTIVITY_OWNER: ${{ matrix.owner }}
@@ -366,8 +380,8 @@ jobs:
               --retention-days 30 \
               --run-retention-days 30
           fi
-          if [[ "$REPORT_FAST_MODE" == "true" || "$REPORT_RATE_LIMITED" == "true" ]]; then
-            echo "Fast mode or limited API capacity: retained operational-value history; skipping new computation."
+          if [[ "$REPORT_FAST_MODE" == "true" || "$REPORT_RATE_LIMITED" == "true" || "$REPORT_PUBLIC_ONLY" == "true" ]]; then
+            echo "Fast, public-only, or limited API mode: retained operational-value history; skipping new computation."
             exit 0
           fi
           repository_args=()
@@ -393,6 +407,18 @@ jobs:
               --workspace "$proof_output" "${repository_args[@]}"; then
             echo "::warning::Opted-in workflow Value collection failed; retaining accepted history."
           fi
+
+      - name: Recheck public-only repository boundary before publication
+        if: ${{ matrix.publicOnly == true }}
+        env:
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity-partial/${{ matrix.artifact }}/control-settings.json
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.activity-credential.outputs.token }}
+          script: |
+            const { pathToFileURL } = require('url')
+            const visibility = await import(pathToFileURL(require('path').resolve('activity/repository-visibility.mjs')).href)
+            await visibility.main({ core, github, context, exec, io, getOctokit }, [process.env.REPORT_CONTROL_SETTINGS])
 
       - name: Upload owner-scoped activity fragment
         env:

@@ -120,7 +120,9 @@ func (l PolicyLoader) Load(ctx context.Context) (PolicySnapshot, error) {
 			} `json:"scope"`
 		} `json:"control-plane"`
 	}
-	if _, err := boundedJSON(data, maxPolicyBytes, DefaultLimits()); err != nil {
+	policyLimits := DefaultLimits()
+	policyLimits.MaxArrayItems = MaxDiscoveryRepositories
+	if _, err := boundedJSON(data, maxPolicyBytes, policyLimits); err != nil {
 		return PolicySnapshot{}, errors.New("invalid or excessively complex gateway policy")
 	}
 	if json.Unmarshal(data, &document) != nil || document.Version != 1 || len(document.ControlPlane.Gateway) == 0 {

@@ -7,8 +7,7 @@ const slideTitles = [
   "Monitor and govern GitHub Agentic Workflows at scale.",
   "Shared work. Clear ownership.",
   "Roll out with confidence.",
-  "Monitor what runs.",
-  "Roll out safely.",
+  "Less upkeep. Current workflows.",
 ];
 
 async function openSlideshow(page) {
@@ -18,7 +17,7 @@ async function openSlideshow(page) {
 
 async function expectSlide(page, index) {
   await expect(presentation(page)).toHaveAttribute("data-slide-index", String(index));
-  await expect(presentation(page).locator("[data-slideshow-status]")).toHaveText(`${index + 1} / 6 — ${slideTitles[index]}`);
+  await expect(presentation(page).locator("[data-slideshow-status]")).toHaveText(`${index + 1} / ${slideTitles.length} — ${slideTitles[index]}`);
   await expect(presentation(page).locator("[data-slideshow-slide]:visible")).toHaveCount(1);
 }
 
@@ -44,7 +43,7 @@ test("presents existing landing content with bounded keyboard and button navigat
   expect(await presentation(page).locator(".slideshow-controls button svg").evaluateAll(icons => icons.every(icon => icon.childElementCount > 0))).toBe(true);
   expect(await presentation(page).locator("[data-slideshow-slides]").evaluate((deck, original) => deck === original, originalDeck)).toBe(true);
   await expect(page.getByRole("button", { name: "Previous slide", exact: true })).toBeDisabled();
-  for (let index = 1; index < 6; index++) {
+  for (let index = 1; index < slideTitles.length; index++) {
     await page.getByRole("button", { name: "Next slide", exact: true }).click();
     await expectSlide(page, index);
     if (index === 1) {
@@ -54,8 +53,8 @@ test("presents existing landing content with bounded keyboard and button navigat
   await expect(page.getByRole("button", { name: "Next slide", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Exit slideshow", exact: true })).toBeFocused();
   await page.keyboard.press("ArrowRight");
-  await expectSlide(page, 5);
-  for (const [key, index] of [["Home", 0], ["PageDown", 1], ["ArrowDown", 2], ["PageUp", 1], ["ArrowLeft", 0], ["End", 5]]) {
+  await expectSlide(page, 4);
+  for (const [key, index] of [["Home", 0], ["PageDown", 1], ["ArrowDown", 2], ["PageUp", 1], ["ArrowLeft", 0], ["End", 4]]) {
     await page.keyboard.press(key);
     await expectSlide(page, index);
   }
@@ -64,7 +63,7 @@ test("presents existing landing content with bounded keyboard and button navigat
   await expect(page.getByRole("button", { name: "Start slideshow", exact: true })).toBeFocused();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(slideTitles[1]);
   await expect(page.locator(".hero-action:visible")).toHaveCount(3);
-  await expect(page.locator(".product-story:visible")).toHaveCount(4);
+  await expect(page.locator(".product-story:visible")).toHaveCount(3);
   await expect(page.locator("[data-snippet-trigger]")).toHaveCount(0);
   await expect(page.locator("[data-slideshow-slides]")).not.toHaveAttribute("style", /transform|slide-width|slide-height/);
 });
@@ -154,8 +153,11 @@ test("expands and edits code locally without changing the original commands or n
   await page.getByRole("button", { name: "Close expanded snippet", exact: true }).click();
   await page.keyboard.press("ArrowRight");
   await expectSlide(page, 4);
-  await page.getByRole("button", { name: "Expand Workflow run history", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Workflow run history", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Expand Dashboard maintenance", exact: true }).click();
+  const maintenance = page.getByRole("dialog", { name: "Dashboard maintenance", exact: true });
+  await expect(maintenance).toBeVisible();
+  await expect(maintenance).toContainText("Upgrade one repository or Upgrade all");
+  await expect.poll(() => maintenance.locator("img").evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
   await expect(page.locator("[data-snippet-editor]")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
@@ -212,7 +214,7 @@ for (const theme of ["light", "dark"]) {
       expect(toolbar.width).toBeLessThan(viewport.width - 32);
       expect(toolbar.y).toBeGreaterThan(0);
       expect(toolbar.y + toolbar.height).toBeLessThan(viewport.height);
-      for (let index = 0; index < 6; index++) {
+      for (let index = 0; index < slideTitles.length; index++) {
         await expectSlide(page, index);
         const slide = presentation(page).locator("[data-slideshow-slide]:visible");
         const images = slide.locator('img:not([loading="lazy"])');
@@ -242,7 +244,7 @@ for (const theme of ["light", "dark"]) {
           await page.screenshot({ path });
           await testInfo.attach(`CAO slideshow (${theme})`, { path, contentType: "image/png" });
         }
-        if (index < 5) await page.keyboard.press("ArrowRight");
+        if (index < slideTitles.length - 1) await page.keyboard.press("ArrowRight");
       }
     });
   }
@@ -287,13 +289,13 @@ test("supports animated rapid navigation, reduced motion changes, and browsers w
   await expect.poll(() => page.evaluate(() => document.getAnimations().filter(animation => animation.id === "cao-slide-entrance").length)).toBe(0);
   await expect(page.locator("html")).not.toHaveAttribute("data-slideshow-direction");
   await page.keyboard.press("End");
-  await expectSlide(page, 5);
+  await expectSlide(page, 4);
   await page.keyboard.press("Escape");
   await page.evaluate(() => { document.startViewTransition = undefined; });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await openSlideshow(page);
   await page.keyboard.press("End");
-  await expectSlide(page, 5);
+  await expectSlide(page, 4);
 });
 
 for (const viewTransitions of [true, false]) {
@@ -360,7 +362,7 @@ test("cleans up on page swaps and does not open a disposed lazy launcher", async
   await openSlideshow(page);
   await page.evaluate(() => document.dispatchEvent(new Event("astro:before-swap")));
   await expect(presentation(page)).not.toBeVisible();
-  await expect(page.locator(".product-story:visible")).toHaveCount(4);
+  await expect(page.locator(".product-story:visible")).toHaveCount(3);
   await page.evaluate(() => document.dispatchEvent(new Event("astro:page-load")));
   await openSlideshow(page);
   await expectSlide(page, 0);
@@ -389,6 +391,6 @@ test("keeps the scrolling landing page usable without JavaScript", async ({ brow
   await page.goto("./");
   await expect(page.getByRole("button", { name: "Start slideshow", exact: true })).toBeHidden();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(slideTitles[1]);
-  await expect(page.locator(".product-story:visible")).toHaveCount(4);
+  await expect(page.locator(".product-story:visible")).toHaveCount(3);
   await context.close();
 });

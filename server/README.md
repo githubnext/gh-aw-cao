@@ -32,6 +32,62 @@ the focused contracts.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
+## Secret-free fleet stress simulation
+
+Run `npm run test:stress:cao` from the repository root. The dedicated
+`cao-fleet-stress.yml` Actions workflow runs daily and manually, without adding
+the full stress workload to pull requests. It simulates three days starting with 1,000 repositories and
+5,000 developers. Each developer produces 2, 6, 10, 14, or 18 PRs per day
+(p50 10, exactly 50,000 PRs/day); 10% of arrivals form a correlated daily burst.
+At each subsequent day boundary, 1% of active repositories are archived/deleted
+(alternating) and 2% are created, rounding down. Only drained repositories are
+retired: outstanding PRs are never exempted from the review SLA.
+
+The vulnerability-review campaign is a compiler-manifest fixture subscribed to
+`pull_request: ready_for_review`. The test exercises production manifest discovery,
+policy intersection, signature validation, admission, batching, durable SQLite
+queues, fencing, retry classification, and worker dispatch. The entire fleet uses
+one reviewed fixture policy, one inventory registry, and one durable queue.
+A single control repository declares the campaign for all enrolled source
+repositories, whose workflow inventories are empty. The enrollment and derived
+route ceilings are 2,048; the 1 MiB registry limit, operational storage budget,
+API limits, eight-repository discovery rounds and reviewed scope remain unchanged.
+SQLite batch rotation, capacity, recovery and retention use indexed plans so
+burst handling does not repeatedly parse the entire retained job payload set.
+Future fixture repository IDs
+are explicitly pre-enrolled but remain inactive until the simulator creates them.
+The inventory registry and live GitHub authority facts are in-memory fixtures,
+not a PostgreSQL durability or GitHub authentication benchmark.
+
+The simulator enforces shared per-installation REST budgets of 12,500 requests
+per hour and 900 points per minute (reads cost 1, writes cost 5), returning primary
+403/reset headers and secondary 429/Retry-After responses. Other GitHub abuse,
+GraphQL, and content-generation limits are not modeled. Discovery and review
+traffic consume these budgets. Signed repository lifecycle webhooks invalidate
+inventory through the production discovery-hints path. Deliberate shared-budget exhaustion and the burst
+exercise throttling, while identical webhook replays exercise deduplication.
+
+No agentic workflow, vulnerability analysis, inference, or real GitHub request
+runs. Synthetic review completion occurs two simulated minutes after dispatch,
+plus any API-quota delay; dispatch acceptance alone never counts as a review.
+Every ready PR must have exactly one completed synthetic review within 3,600
+simulated seconds, measured from its original ready time, including discovery
+and admission retries. Missing, duplicate, or late reviews fail the test.
+An injected manual time provider controls ingress, discovery, authorization,
+queue leases/retention/backoff, and simulated API windows without sleeping.
+HTTP cancellation and I/O deadlines remain wall-clock based.
+
+All HTTP clients are confined to the exact numeric-loopback simulator endpoint,
+with proxies disabled. The test reads no secrets or credentials; its public HMAC
+fixture and ephemeral App-constructor key have no external authority.
+Synthetic installation-token routes accept only positive int64 installation IDs
+and format the fixture token from the parsed number, never the raw request path.
+Set `CAO_FLEET_STRESS_REPORT_DIR` to retain `fleet-stress.json`. Actions uploads
+that report and the test log, including incomplete outcomes on failure.
+The smaller `TestGitHubSimulatorFleetSmoke` scenario runs in ordinary Go tests.
+
+## Hosted activation admission
+
 The optional [cooperative activation-admission service](ADMISSION.md) exposes
 the gh-aw OIDC-only `POST /api/admission` and compact-session
 `POST /api/conclusion` protocols on that same hosted origin. Completion populates
@@ -1105,6 +1161,24 @@ for both stderr and OTLP; setting an endpoint alone does not enable log export.
 The exporter batches records and flushes at shutdown. `slog` error records
 retain their severity and active trace/span context. Only enable reviewed,
 non-sensitive namespaces when exporting to an external collector.
+
+For a local OTLP/HTTP collector, export only server debug logs without enabling
+trace or metric export:
+
+```bash
+export DEBUG=cao:server
+export CAO_OTEL_LOGS_ENABLED=true
+export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:4318/v1/logs
+npm run dashboard:server:serve
+```
+
+The log-specific endpoint is a complete URL, including the collector's path.
+The shared `OTEL_EXPORTER_OTLP_ENDPOINT` instead appends `/v1/logs` and also
+enables trace and metric export. If both are set, the log-specific endpoint
+wins. Configure collector authentication through secret-managed
+`OTEL_EXPORTER_OTLP_LOGS_HEADERS` (or shared `OTEL_EXPORTER_OTLP_HEADERS`);
+log-specific headers take priority. `OTEL_SDK_DISABLED=true` disables export
+without disabling stderr logs.
 
 > [!IMPORTANT]
 > The default `serve` command remains local-only: it uses a local bearer
@@ -2462,6 +2536,13 @@ Collection separates three concerns that fail differently:
    projection lease, so a delivery burst cannot block the endpoint.
    Signed `issues` lifecycle events for enrolled repositories enqueue
    repository collection rather than mutating stored issue entities directly.
+   Default-branch `push` events enqueue inventory-only refreshes when added,
+   modified, or removed paths match `.github/workflows/*.lock.yml` (top-level
+   files only). Markdown sources, ordinary workflow YAML, other branches, and
+   tags do not trigger these refreshes. Truncated push commit lists conservatively
+   request refresh rather than fetching commit details in the receiver.
+   Inventory refresh and run collection have separate debounce keys, so neither
+   can suppress the other.
 2. **Collection.** Workers lease tasks and run the same
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,
@@ -2500,7 +2581,29 @@ no GitHub access: a retained lake is replayed directly.
 
 Enrollment is derived from GitHub App installations. A delivery for a
 repository outside the enrollment set is acknowledged and dropped rather than
-collected, so credential reach never widens ingestion scope.
+collected. Signed repository creation/unarchive events for a known installation
+may instead queue discovery; they never infer enrollment from payload contents.
+Installation additions and repository discovery are grouped by installation,
+with a two-second coalescing window. Background workers enumerate all pages of
+current installation coverage, reserve shared GitHub quota for each page, and
+publish enrollment only after complete enumeration. Discovery fails, rather
+than truncates, above `CAO_COLLECT_INVENTORY_LIMIT` (100,000 repositories per
+installation when unset).
+
+Installation removals and repository access withdrawals are independently queued,
+then applied by workers with durable erasure work persisted before acknowledgment.
+Repository deletion/archive transitions retain their independent lifecycle updates
+and trigger coalesced inventory projection; deletion alone does not erase retained
+history. No webhook performs GitHub calls, enrollment mutations, or projection
+inline. Refresh workers persist projection requests before acknowledging work;
+transient inventory failures keep the previous inventory and retain a pending
+refresh for the next projection interval.
+
+Configure the collection App's webhook URL as `/api/github/webhook` and subscribe
+to `push`, `repository`, `installation`, `installation_repositories`, `workflow_run`,
+and `issues` events. Existing read-only App permissions and installation coverage
+remain the scope boundary; these notifications do not authorize workflow execution
+or change CAO rollout policy.
 
 Rate limits are governed per installation. Each collection reserves budget
 before it starts and passes the reserve to the collection subprocess, so the
@@ -2511,6 +2614,17 @@ running.
 Failed collections are retried with backoff and moved to a dead-letter stream
 after the attempt limit, where they remain visible in collection status rather
 than disappearing.
+
+OpenTelemetry exports admission and refresh spans
+(`cao_dashboard.collection.webhook.admit`, `cao_dashboard.collection.refresh`)
+and `cao_dashboard.collection.refresh.count` /
+`cao_dashboard.collection.refresh.duration` and
+`cao_dashboard.collection.refresh.queue_age` (seconds), with bounded stage, kind,
+and outcome attributes. Admission outcomes distinguish queued, coalesced,
+duplicate, ignored, and failed work. Queue tasks carry only W3C `traceparent`
+correlation, never baggage or payload contents. Quota exhaustion and secondary
+limits defer discovery until the shared bucket's retry time without consuming
+its failure-attempt budget.
 
 Collection is at-least-once. Retry, deferral, blocked-repository requeue, and
 dead-letter transitions append their replacement before acknowledging the

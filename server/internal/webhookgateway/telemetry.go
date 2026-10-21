@@ -58,8 +58,8 @@ func gatewayStage(ctx context.Context, stage, event string) (context.Context, fu
 	}
 }
 
-func observeQueueAge(ctx context.Context, created time.Time) {
-	age := time.Since(created).Seconds()
+func observeQueueAge(ctx context.Context, now, created time.Time) {
+	age := now.Sub(created).Seconds()
 	if age < 0 {
 		age = 0
 	}

@@ -142,18 +142,28 @@ func evaluateSnapshot(ctx context.Context, snapshot Snapshot, identity Identity)
 	if err != nil {
 		return Allowances{}, err
 	}
-	now := time.Now()
+	if err := checkUsage(usage, time.Now()); err != nil {
+		return Allowances{}, err
+	}
+	return allowances, nil
+}
+
+// checkUsage requires a fresh, coherent usage observation inside a window of at
+// most 24 hours (ErrUnavailable) and denies exhausted budgets (ErrDenied).
+func checkUsage(usage Usage, now time.Time) error {
 	if usage.ObservedAt.IsZero() || usage.ObservedAt.After(now.Add(30*time.Second)) ||
 		now.Sub(usage.ObservedAt) > 2*time.Minute ||
 		usage.WindowStart.After(now) || !usage.WindowEnd.After(now) ||
 		usage.WindowStart.IsZero() || usage.WindowEnd.Sub(usage.WindowStart) > 24*time.Hour ||
 		usage.ObservedAt.Before(usage.WindowStart) || !usage.ObservedAt.Before(usage.WindowEnd) {
-		return Allowances{}, ErrUnavailable
+		admissionLog.Printf("usage observation rejected: reason=stale_or_incoherent")
+		return ErrUnavailable
 	}
 	if *usage.Used >= usage.Limit {
-		return Allowances{}, ErrDenied
+		admissionLog.Printf("usage budget exhausted")
+		return ErrDenied
 	}
-	return allowances, nil
+	return nil
 }
 
 func (f FilePolicy) AuthorizeConclusion(ctx context.Context, identity Identity) error {

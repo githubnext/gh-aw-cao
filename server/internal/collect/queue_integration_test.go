@@ -605,6 +605,17 @@ func TestAdmitterRefusesRepositoriesOutsideScope(t *testing.T) {
 	if _, err := admitter.Admit(ctx, "installation", enroll); err != nil {
 		t.Fatal(err)
 	}
+	// Enrollment is never inferred by admission. A background discovery must
+	// establish coverage before workflow events can collect the repository.
+	if _, err := admitter.Admit(ctx, "workflow_run", []byte(`{"action":"completed","installation":{"id":7},"repository":{"full_name":"octo/api"}}`)); !errors.Is(err, ErrNotEnrolled) {
+		t.Fatalf("unverified enrollment accepted: %v", err)
+	}
+	if err := queue.Complete(ctx, refreshLease(t, queue)); err != nil {
+		t.Fatal(err)
+	}
+	if err := enrollment.AddRepositories(ctx, 7, []string{"octo/api"}); err != nil {
+		t.Fatal(err)
+	}
 	collect := []byte(`{"action":"completed","installation":{"id":7},
 		"repository":{"full_name":"octo/api"}}`)
 	admission, err := admitter.Admit(ctx, "workflow_run", collect)
@@ -659,15 +670,21 @@ func TestAdmitterErasesEvidenceWhenScopeIsWithdrawn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if admission.ErasureQueued != 1 {
-		t.Fatalf("queued erasure for %d repositories, want 1", admission.ErasureQueued)
+	if !admission.Enqueued {
+		t.Fatal("scope withdrawal was not durably queued")
 	}
+	worker := Worker{
+		Queue: queue, Runner: Runner{Lake: lake}, Enrollment: enrollment, Projector: projector,
+	}
+	// The earlier collection is already leased when the queued scope change
+	// is processed; it must still recheck enrollment before reading evidence.
 	leases, err := queue.Lease(ctx, "erasure-test", 1, 0)
 	if err != nil || len(leases) != 1 {
 		t.Fatalf("lease = %+v, err = %v; want queued collection task", leases, err)
 	}
-	worker := Worker{
-		Queue: queue, Runner: Runner{Lake: lake}, Enrollment: enrollment,
+	scope := refreshLease(t, queue)
+	if err := worker.processRefresh(ctx, scope); err != nil {
+		t.Fatal(err)
 	}
 	if !worker.process(ctx, leases[0]) {
 		t.Fatal("withdrawn collection task did not erase its retained evidence")
@@ -706,6 +723,10 @@ func TestAdmitterQueuesErasureWithoutALake(t *testing.T) {
 	admitter := Admitter{Enrollment: enrollment, Queue: queue}
 	payload := []byte(`{"action":"deleted","installation":{"id":12}}`)
 	if _, err := admitter.Admit(ctx, "installation", payload); err != nil {
+		t.Fatal(err)
+	}
+	worker := Worker{Queue: queue, Enrollment: enrollment, Projector: Projector{State: store}}
+	if err := worker.processRefresh(ctx, refreshLease(t, queue)); err != nil {
 		t.Fatal(err)
 	}
 	leases, err := queue.Lease(ctx, "erasure-test", 10, 0)
@@ -822,7 +843,7 @@ func TestStaleRemovalErasureDoesNotDeleteTransferredEvidence(t *testing.T) {
 		t.Fatalf("lease = %+v, err = %v; want stale erasure task", leases, err)
 	}
 	worker := Worker{
-		Queue: queue, Runner: Runner{Lake: lake}, Enrollment: enrollment,
+		Queue: queue, Runner: Runner{Lake: lake}, Enrollment: enrollment, Projector: Projector{State: store},
 	}
 	if worker.process(ctx, leases[0]) {
 		t.Fatal("stale erasure should not report evidence changed")

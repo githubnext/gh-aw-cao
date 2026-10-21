@@ -32,7 +32,7 @@ func (q *webhookQueue) registryEnvelope(t *transaction) (wg.RegistrySnapshot, er
 	}
 	var snapshot wg.RegistrySnapshot
 	if json.Unmarshal(data, &snapshot) != nil || snapshot.Version < 1 || snapshot.Control.Revision < 1 ||
-		snapshot.Revision.Revision < 1 || len(snapshot.Records) > 64 {
+		snapshot.Revision.Revision < 1 || len(snapshot.Records) > wg.MaxDiscoveryRepositories {
 		return wg.RegistrySnapshot{}, wg.ErrInvalid
 	}
 	if _, err := wg.RegistryDigest(snapshot.Control, nil); err != nil ||
@@ -108,7 +108,7 @@ func (q *webhookQueue) BindRegistry(ctx context.Context, control wg.QueueRevisio
 }
 
 func (q *webhookQueue) ReplaceRegistry(ctx context.Context, control wg.QueueRevision, expected int64, records []wg.RepositoryInventory) (wg.RegistrySnapshot, error) {
-	if expected < 1 || len(records) > 64 {
+	if expected < 1 || len(records) > wg.MaxDiscoveryRepositories {
 		return wg.RegistrySnapshot{}, wg.ErrInvalid
 	}
 	records = slices.Clone(records)

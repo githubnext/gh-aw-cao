@@ -44,7 +44,7 @@ type RegistryStore interface {
 }
 
 func RegistryDigest(control QueueRevision, records []RepositoryInventory) (string, error) {
-	if !validQueueRevision(control) || len(records) > 64 {
+	if !validQueueRevision(control) || len(records) > MaxDiscoveryRepositories {
 		return "", ErrInvalid
 	}
 	seen := make(map[int64]bool)
@@ -163,7 +163,7 @@ func RegistryPolicy(base PolicySnapshot, registry RegistrySnapshot, now time.Tim
 					if err != nil {
 						return PolicySnapshot{}, err
 					}
-					if base.Revisions[subscription.ID].Digest != "" || len(base.Subscriptions) >= 1024 {
+					if base.Revisions[subscription.ID].Digest != "" || len(base.Subscriptions) >= MaxDiscoveredSubscriptions {
 						return PolicySnapshot{}, ErrCapacity
 					}
 					base.Subscriptions = append(base.Subscriptions, subscription)

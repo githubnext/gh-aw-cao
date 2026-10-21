@@ -34,15 +34,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(landingPage, /Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories\. Set execution scope and rollout policy and refine workflows in review mode so you can roll out safely and confidently\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
   assert.match(hero, /cao-dashboard-mobile-overview-light\.png/);
-  assert.match(hero, /cao-dashboard-run-history-mobile\.png/);
-  assert.match(hero, /cao-dashboard-run-history-mobile-light\.png/);
-  assert.match(hero, /cao-dashboard-campaign-value-mobile\.png/);
-  assert.match(hero, /cao-dashboard-campaign-value-mobile-light\.png/);
-  assert.match(hero, /product-shot-mobile product-shot-runs/);
-  assert.match(hero, /product-shot-mobile product-shot-value/);
-  assert.match(hero, /\.product-shot-runs \{[\s\S]*?height: clamp\(25rem, 38vw, 29rem\)/);
-  assert.match(hero, /\.product-shot-value \{[\s\S]*?height: clamp\(28rem, 38vw, 31rem\)/);
-  assert.match(hero, /\.product-shot-value :global\(picture\[data-theme-picture\]\) \{[\s\S]*?width: min\(100%, 22rem\)/);
+  assert.doesNotMatch(hero, /cao-dashboard-(?:run-history|campaign-value)|runs-story|value-story/);
   assert.match(hero, /ThemeImage/);
   assert.match(hero, /@media \(max-width: 42rem\) \{[\s\S]*?\.hero-callout \{[\s\S]*?display: flex/);
   assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
@@ -75,10 +67,27 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
   assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
-  assert.match(hero, /Monitor what runs\./);
-  assert.match(hero, /Roll out safely\./);
-  assert.match(hero, /See workflow health, cost, and outcomes in one dashboard/);
-  assert.match(hero, /execution success is not an accepted outcome/);
+  assert.deepEqual(
+    [...hero.matchAll(/<section class="product-story ([^"]+)"/g)].map(([, classes]) => classes),
+    ["dispatch-story", "terminal-story", "maintenance-story"],
+  );
+  assert.match(hero, /aria-labelledby="maintenance-title" data-reveal data-slideshow-slide/);
+  assert.match(hero, /Less upkeep\. Current workflows\./);
+  assert.match(hero, /Offload automation upkeep/);
+  assert.match(hero, /gh-aw versions and workflows from their original sources/);
+  assert.match(hero, /href="\/gh-cao\/operations\/#update-cao"/);
+  assert.match(hero, /data-slideshow-snippet="Dashboard maintenance"/);
+  for (const label of ["gh-aw upgrades", "Workflow source updates", "Reviewed changes"]) assert.ok(hero.includes(label));
+  const maintenance = hero.match(/<section class="product-story maintenance-story"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(maintenance);
+  assert.doesNotMatch(maintenance, /campaign/i);
+  assert.match(maintenance, /gh aw upgrade/);
+  assert.match(maintenance, /gh aw update/);
+  assert.match(maintenance, /Upstream changes merge with local edits by default/);
+  assert.match(maintenance, /https:\/\/github\.com\/user-attachments\/assets\//);
+  assert.match(maintenance, /individual Upgrade buttons and Upgrade all/);
+  assert.match(maintenance, /Unknown version evidence stays explicit/);
+  assert.match(hero, /without widening rollout policy/);
   assert.doesNotMatch(hero, /https:\/\/github\.github\.com\/gh-aw\/practices\//);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
   assert.doesNotMatch(
@@ -96,7 +105,7 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
   assert.ok(tagline && wordCount(tagline) <= 40, "hero tagline should stay within forty words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
-  assert.equal(paragraphs.length, 5);
+  assert.equal(paragraphs.length, 4);
   const terminalParagraph = hero.match(/id="terminal-title"[\s\S]*?<p>\s*([\s\S]*?)<\/p>/)?.[1];
   for (const [, paragraph] of paragraphs) {
     const budget = paragraph === terminalParagraph ? 60 : 30;
@@ -130,6 +139,8 @@ test("landing page shows shared and local workflows with explicit ownership", ()
   assert.match(hero, /\.dispatch-story > \.section-eyebrow \{[\s\S]*?justify-self: center/);
   assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[^}]*max-width: 60ch/);
   assert.match(hero, /\.dispatch-illustration \{[^}]*width: min\(100%, 72rem\);[^}]*margin: 1rem auto 0/);
+  assert.match(hero, /@media \(width > 72rem\) \{[\s\S]*?\.dispatch-illustration \{[^}]*width: min\(80%, 56rem\)/);
+  assert.match(hero, /\.dispatch-illustration :global\(\.workflow-ecosystem\) \{[^}]*width: auto;[^}]*zoom: 0\.8/);
   assert.match(hero, /@media \(min-width: 64rem\) \{[\s\S]*?\.dispatch-story h2 \{[\s\S]*?white-space: nowrap/);
   assert.match(hero, /Enterprise teams, organizations, and repository maintainers own their workflows/);
   assert.match(hero, /<WorkflowEcosystem \/>/);

@@ -135,6 +135,29 @@ The implementation MUST receive events on the existing CAO webhook endpoint.
 - When the collector profile is selected, admission MUST enqueue a collection
   task and MUST NOT perform projection in the request path, and MUST NOT take a
   global projection lease.
+- A default-branch `push` MUST enqueue an inventory-only refresh when any added,
+  modified, or removed file matches the top-level
+  `.github/workflows/*.lock.yml` pattern. Other branches, tags, deleted refs,
+  Markdown sources, ordinary `.yml` workflows, `.yaml` files, and nested paths
+  MUST NOT trigger refresh. Incomplete/truncated commit lists MAY conservatively
+  request refresh; admission MUST NOT fetch commit details from GitHub.
+- Inventory-only refresh tasks MUST have independent debounce keys from run
+  collection tasks. Workers MUST recheck installation ownership and persist the
+  coalesced projection request before acknowledging the task, without acquiring
+  run logs for a push.
+- Installation scope changes MUST be queued atomically with delivery
+  deduplication, not applied by the HTTP receiver. Positive discovery hints MUST
+  coalesce by installation and enumerate current authenticated coverage rather
+  than reuse the first event's repository list. Discovery MUST reserve shared
+  installation quota for each page and publish only complete, bounded results.
+  Withdrawals MUST remain independently queued and persist their erasure work
+  before acknowledgment. Repository creation/unarchive hints from a known
+  installation MAY queue discovery of a not-yet-enrolled repository, but MUST
+  NOT directly grant enrollment.
+- Admission and background refresh MUST export OpenTelemetry spans, counts,
+  durations, and bounded outcomes, including deduplication and coalescing.
+  Persisted trace correlation MUST contain only W3C `traceparent`, not baggage,
+  raw webhook data, credentials, or per-repository metric labels.
 - Tasks MUST be keyed by repository. An implementation MUST collapse multiple
   pending events for one repository into a single collection.
 - Mutual exclusion MUST be per repository. Collection of one repository MUST NOT
@@ -215,6 +238,8 @@ dataset.
   transient policy, GitHub, or enrichment failure MAY reuse that previous
   inventory while projecting newer run evidence; an empty or malformed
   inventory seed MUST NOT qualify as a previous valid inventory.
+- Reusing previous inventory after a refresh failure MUST retain a pending
+  refresh request for the next coalesced projection interval.
 
 ## 8. Cold start
 
@@ -318,7 +343,9 @@ governed property and not an accident of disk usage.
 
 - A signed `repository` delivery with action `created`, `deleted`, `archived`,
   or `unarchived` and a valid repository ID and installation MUST be admitted
-  only for a repository already covered by that installation. Admission MUST
+  for lifecycle updates only for a repository already covered by that
+  installation. Creation/unarchive of a repository not yet enrolled MAY instead
+  queue authenticated discovery as specified in section 4. Lifecycle admission MUST
   durably queue an independent lifecycle update (without collapsing successive
   archive/unarchive transitions); the worker MUST serialize it with collection
   for that repository. The database MUST preserve the repository's immutable

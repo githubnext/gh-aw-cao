@@ -1,3 +1,4 @@
+import nativeMeasureHistoryQuery from '../fixtures/native-measure-history-query.json' with { type: 'json' };
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { processDataRequest } from '../../src/data-worker.js';
@@ -18,8 +19,8 @@ const metadata = {
 };
 
 describe('Audit dashboard view', () => {
-  it('keeps the hosted operational value query graph in sync with the dashboard', () => {
-    const names = ['operational-value-plot-series'];
+  it('keeps the hosted Value evidence query in sync with the dashboard', () => {
+    const names = ['value-evidence-facts'];
     for (const name of names) {
       expect(hostedQueries.find((query) => query.name === name))
         .toEqual(dashboard.queries.find((/** @type {{ name: string }} */ query) => query.name === name));
@@ -67,7 +68,7 @@ describe('Audit dashboard view', () => {
   it('projects native observations, including decreasing positive AIC per successful run', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
+      queries: [...dashboard.queries, nativeMeasureHistoryQuery],
       sourceNames: ['operational-value-plot-series'],
       sources: {
         'operational-values': {
@@ -94,7 +95,7 @@ describe('Audit dashboard view', () => {
     ]);
     const rendered = renderMeasureHistory({
       title: 'Repository operational value',
-      pageId: 'operational-value-campaign',
+      pageId: 'measurement-query',
       sourceNames: ['operational-value-plot-series'],
       sources: result,
       elementConfig: { 'measure-source': 'operational-value' },
@@ -128,7 +129,7 @@ describe('Audit dashboard view', () => {
     }));
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
+      queries: [...dashboard.queries, nativeMeasureHistoryQuery],
       sourceNames: ['operational-value-plot-series'],
       sources: { 'operational-values': { source: 'operational-values', rows: observations, metadata } }
     }));
@@ -143,7 +144,7 @@ describe('Audit dashboard view', () => {
   it('does not join same-named repositories from different organizations into one observation series', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
+      queries: [...dashboard.queries, nativeMeasureHistoryQuery],
       sourceNames: ['operational-value-plot-series'],
       sources: {
         'operational-values': {
@@ -171,7 +172,7 @@ describe('Audit dashboard view', () => {
   it('classifies interim observations independently of their native value', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
+      queries: [...dashboard.queries, nativeMeasureHistoryQuery],
       sourceNames: ['operational-value-plot-series'],
       sources: {
         'operational-values': {
@@ -223,7 +224,7 @@ describe('Audit dashboard view', () => {
   it('projects only issue outcomes produced by campaign workers', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
+      queries: [...dashboard.queries, nativeMeasureHistoryQuery],
       sourceNames: ['campaign-worker-issues'],
       sources: {
         outcomes: {
@@ -254,7 +255,7 @@ describe('Audit dashboard view', () => {
   it('filters info events before grouping shared summaries by workflow', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
+      queries: [...dashboard.queries, nativeMeasureHistoryQuery],
       sourceNames: ['audit-event-summary-buckets'],
       sources: {
         audits: {
@@ -321,7 +322,7 @@ describe('Audit dashboard view', () => {
   it('excludes experimental operational-value plots from Insights counts', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
-      queries: dashboard.queries,
+      queries: [...dashboard.queries, nativeMeasureHistoryQuery],
       sourceNames: ['campaign-insight-tab-counts'],
       sources: {
         audits: {

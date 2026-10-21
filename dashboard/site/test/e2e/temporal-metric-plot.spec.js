@@ -1,4 +1,5 @@
-import { authoritativeDashboard, expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
+import nativeMeasureHistoryQuery from '../fixtures/native-measure-history-query.json' with { type: 'json' };
+import { expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 import observations from '../fixtures/campaign-operational-value-observations.json' with { type: 'json' };
 
 registerSmokeRoutes();
@@ -29,7 +30,7 @@ for (const { width, history } of [1200, 390].flatMap((width) =>
         document.head.append(style);
         const sources = processDataRequest({
           operation: 'execute-dashboard-queries',
-          queries: ${JSON.stringify(authoritativeDashboard.dashboard.queries)},
+          queries: ${JSON.stringify([nativeMeasureHistoryQuery])},
           sourceNames: ['operational-value-plot-series'],
           sources: {
             'operational-values': {
@@ -45,7 +46,7 @@ for (const { width, history } of [1200, 390].flatMap((width) =>
         });
         document.querySelector('#root').append(renderMeasureHistory({
           title: 'Repository operational value',
-          pageId: 'operational-value-campaign',
+          pageId: 'measurement-query',
           sourceNames: ['operational-value-plot-series'],
           sources,
           elementConfig: { 'measure-source': 'operational-value' },

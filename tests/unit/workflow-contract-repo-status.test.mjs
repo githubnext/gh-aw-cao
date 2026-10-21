@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
 import { parse } from "yaml";
+import { effectivePolicy } from "../../.github/workflows/shared/policy.mjs";
 import { controlPolicy, root, workflow } from "./workflow-contract.helpers.mjs";
 
 const source = workflow("repo-status.md");
@@ -224,15 +225,54 @@ test("report lookups are destination-bound, include closed duplicates and fail c
 
 test("Setup quickstart is discoverable, review-first and honest about the missing recording and operational value", () => {
   const guide = readFileSync(join(root, "docs/setup/quickstart.md"), "utf8");
-  assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart", link: "\/setup\/quickstart\/"/);
+  assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart: install and monitor", link: "\/setup-quickstarts\/"[\s\S]*label: "Repo Status \(optional\)", link: "\/setup\/quickstart\/"/);
   assert.match(guide, /CAO recording not yet available/);
+  assert.match(guide, /\*\*Video TODO:\*\*/);
+  assert.match(guide, /\*\*Estimated time: 15 minutes after setup\*\*/);
+  assert.match(guide, /## Prerequisites/);
+  assert.match(guide, /Complete \[Set Up CAO\]\(\.\.\/setup-quickstarts\.md\)/);
+  assert.doesNotMatch(guide, /install\.sh|gh cao setup|gh cao validate|Review and apply/);
+  assert.match(guide, /Reuse your setup/);
+  assert.deepEqual([...guide.matchAll(/^## Step \d - (.+)$/gm)].map(match => match[1]), [
+    "Add and review the sample workflow",
+    "Request one bounded review",
+    "Wait for the run and inspect its result",
+    "Customize your report (optional)",
+  ]);
+  for (const anchor of [
+    "step-1---set-up-cao-and-monitor-one-repository",
+    "step-2---add-and-review-the-sample-workflow",
+    "step-3---request-one-bounded-review",
+    "step-4---wait-for-the-run-and-inspect-its-result",
+    "step-5---customize-your-report-optional",
+  ]) {
+    assert.ok(guide.includes(`<span id="${anchor}"></span>`), anchor);
+  }
+  assert.match(guide, /## Continue learning/);
   assert.doesNotMatch(guide, /<video|<iframe|youtube\.com|youtu\.be|\.mp4/);
   assert.match(guide, /gh aw add https:\/\/github\.com\/githubnext\/gh-cao\/blob\/main\/\.github\/workflows\/repo-status\.md/);
   assert.match(guide, /control-plane\.workflows/);
   assert.doesNotMatch(guide, /gh cao campaigns add|gh cao campaigns mode|gh workflow enable/);
   assert.match(guide, /manual-only/);
-  assert.match(guide, /"enabled": false/);
-  assert.match(guide, /"max-mode": "review"/);
+  const registration = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(guide)[1]);
+  assert.deepEqual(registration, { "repo-status": {} });
+  const resolved = effectivePolicy({
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control", "acme/target"] },
+      workflows: registration,
+    },
+  }, {
+    role: "standalone", workflowName: "repo-status",
+    controlRepository: "acme/control", targetRepository: "acme/target",
+  });
+  assert.equal(resolved.authorized, true);
+  assert.equal(resolved.enabled, true);
+  assert.equal(resolved.safe_output_mode, "review");
+  assert.equal(resolved.max_repositories, 1);
+  assert.equal(resolved.rollout_percent, 100);
+  assert.match(guide, /unchanged `control-plane\.defaults`/);
+  assert.match(guide, /Registered workflows are enabled/);
+  assert.doesNotMatch(guide, /Once reviewed, change only|policy capped at review/);
   assert.match(guide, /--raw-field safe_output_mode="review"/);
   assert.match(guide, /--raw-field max_repos="1"/);
   assert.match(guide, /gh issue list --repo CONTROL_OWNER\/CONTROL_REPOSITORY/);

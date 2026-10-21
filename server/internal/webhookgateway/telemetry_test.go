@@ -21,8 +21,37 @@ func TestGatewayTelemetryBoundedEventFamily(t *testing.T) {
 		}
 	}
 	ctx, end := gatewayStage(context.Background(), "admission", "projects_v2_item")
-	observeQueueAge(ctx, time.Now())
+	observeQueueAge(ctx, time.Now(), time.Now())
 	end("filtered")
+}
+
+func TestGatewayQueueAgeUsesServiceTime(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	old := otel.GetMeterProvider()
+	otel.SetMeterProvider(provider)
+	t.Cleanup(func() {
+		otel.SetMeterProvider(old)
+		_ = provider.Shutdown(t.Context())
+	})
+	now := time.Date(2026, 1, 1, 0, 2, 0, 0, time.UTC)
+	observeQueueAge(t.Context(), now, now.Add(-2*time.Minute))
+	var data metricdata.ResourceMetrics
+	if err := reader.Collect(t.Context(), &data); err != nil {
+		t.Fatal(err)
+	}
+	for _, scope := range data.ScopeMetrics {
+		for _, metric := range scope.Metrics {
+			if metric.Name == "cao_webhookgateway.queue.age" {
+				histogram, ok := metric.Data.(metricdata.Histogram[float64])
+				if !ok || len(histogram.DataPoints) != 1 || histogram.DataPoints[0].Sum != 120 {
+					t.Fatal("queue age did not use controlled service time")
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("queue age metric missing")
 }
 
 func TestGatewayTelemetryPrivateEventNeverMetricLabel(t *testing.T) {

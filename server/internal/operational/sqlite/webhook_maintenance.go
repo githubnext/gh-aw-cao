@@ -23,10 +23,14 @@ func (q *Queue) Maintain(ctx context.Context, limit int) (wg.MaintenanceResult, 
 
 func (q *Queue) maintain(ctx context.Context, tx *sql.Tx, now time.Time, limit int) (wg.MaintenanceResult, error) {
 	var result wg.MaintenanceResult
-	ids, err := selectIDs(ctx, tx, `SELECT id FROM jobs WHERE state IN ('ready','claimed','dispatching') AND
-	 (expires_at<=? OR (state IN ('claimed','dispatching') AND lease_until<=?) OR
-	  (state='ready' AND json_extract(document,'$.attempt')>=json_extract(document,'$.subscription.delivery.maxAttempts')))
-	 ORDER BY created_at,id LIMIT ?`, now.UnixMilli(), now.UnixMilli(), limit)
+	ids, err := selectIDs(ctx, tx, `SELECT id FROM (
+	 SELECT id,created_at FROM jobs WHERE state IN ('ready','claimed','dispatching') AND expires_at<=?
+	 UNION
+	 SELECT id,created_at FROM jobs WHERE state IN ('claimed','dispatching') AND lease_until<=?
+	 UNION
+	 SELECT id,created_at FROM jobs WHERE state='ready' AND
+	  (json_extract(document,'$.attempt')>=json_extract(document,'$.subscription.delivery.maxAttempts'))=1
+	 ) ORDER BY created_at,id LIMIT ?`, now.UnixMilli(), now.UnixMilli(), limit)
 	if err != nil {
 		return result, err
 	}

@@ -521,49 +521,54 @@ func (b Backfill) listWorkflowRuns(
 		runs, nextPage, _, err := b.workflowRuns(ctx, installationID, repository, page)
 		return runs, nextPage, err
 	}
-	if strings.TrimSpace(b.QuotaApp) == "" {
-		return nil, 0, errors.New("historical run quota requires a GitHub App identity")
+	refresher, _ := b.RunEnumerator.(WorkflowRunQuotaRefresher)
+	reservation, err := reserveCollectionQuota(ctx, b.Quota, b.QuotaApp, installationID, refresher)
+	if err != nil {
+		return nil, 0, err
+	}
+	runs, nextPage, responseQuota, listErr := b.workflowRuns(ctx, installationID, repository, page)
+	if quotaErr := reconcileCollectionQuota(ctx, b.Quota, reservation.Bucket, reservation, responseQuota); quotaErr != nil {
+		return nil, 0, fmt.Errorf("record workflow run quota response: %w", quotaErr)
+	}
+	return runs, nextPage, listErr
+}
+
+func reserveCollectionQuota(ctx context.Context, quota RunQuotaService, app string, installationID int64, refresher WorkflowRunQuotaRefresher) (githubquota.Reservation, error) {
+	if quota == nil || strings.TrimSpace(app) == "" {
+		return githubquota.Reservation{}, errors.New("collection quota requires a service and GitHub App identity")
 	}
 	bucket := githubquota.BucketID{
-		App: b.QuotaApp, Installation: installationID, Resource: githubquota.ResourceCore,
+		App: app, Installation: installationID, Resource: githubquota.ResourceCore,
 	}
-	reservation, err := b.Quota.Reserve(
+	reservation, err := quota.Reserve(
 		ctx, bucket, githubquota.ReservationRequest{EstimatedCost: 1})
 	if errors.Is(err, githubquota.ErrUnknown) {
-		refresher, ok := b.RunEnumerator.(WorkflowRunQuotaRefresher)
-		if !ok {
-			return nil, 0, err
+		if refresher == nil {
+			return githubquota.Reservation{}, err
 		}
 		response, refreshErr := refresher.QuotaRateLimit(ctx, installationID)
 		responseBucket := bucket
 		responseBucket.Resource = response.Resource
 		if response.HasObservation && responseBucket.Normalize() == bucket.Normalize() {
-			if err := b.Quota.Observe(ctx, bucket, response.Observation); err != nil {
-				return nil, 0, err
+			if err := quota.Observe(ctx, bucket, response.Observation); err != nil {
+				return githubquota.Reservation{}, err
 			}
 		}
 		if !response.ParkUntil.IsZero() {
-			if err := b.Quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason); err != nil {
-				return nil, 0, err
+			if err := quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason); err != nil {
+				return githubquota.Reservation{}, err
 			}
 		}
 		if refreshErr != nil {
-			return nil, 0, refreshErr
+			return githubquota.Reservation{}, refreshErr
 		}
 		if !response.HasObservation || responseBucket.Normalize() != bucket.Normalize() {
-			return nil, 0, errors.New("rate limit response did not report core quota")
+			return githubquota.Reservation{}, errors.New("rate limit response did not report core quota")
 		}
-		reservation, err = b.Quota.Reserve(
+		reservation, err = quota.Reserve(
 			ctx, bucket, githubquota.ReservationRequest{EstimatedCost: 1})
 	}
-	if err != nil {
-		return nil, 0, err
-	}
-	runs, nextPage, responseQuota, listErr := b.workflowRuns(ctx, installationID, repository, page)
-	if quotaErr := b.reconcileRunQuota(ctx, bucket, reservation, responseQuota); quotaErr != nil {
-		return nil, 0, fmt.Errorf("record workflow run quota response: %w", quotaErr)
-	}
-	return runs, nextPage, listErr
+	return reservation, err
 }
 
 func (b Backfill) workflowRuns(
@@ -579,12 +584,7 @@ func (b Backfill) workflowRuns(
 	return b.RunEnumerator.ListWorkflowRuns(ctx, installationID, repository, page, runBackfillPageSize)
 }
 
-func (b Backfill) reconcileRunQuota(
-	ctx context.Context,
-	bucket githubquota.BucketID,
-	reservation githubquota.Reservation,
-	response githubquota.ResponseQuota,
-) error {
+func reconcileCollectionQuota(ctx context.Context, quota RunQuotaService, bucket githubquota.BucketID, reservation githubquota.Reservation, response githubquota.ResponseQuota) error {
 	if !response.HasResponse {
 		// The request may have reached GitHub even if its response was lost.
 		// Keep the reservation until its TTL expires rather than refunding quota.
@@ -596,24 +596,24 @@ func (b Backfill) reconcileRunQuota(
 		// Missing quota headers leave the request cost unknown; retain the
 		// reservation until its TTL expires and apply any requested backoff.
 		if !response.ParkUntil.IsZero() {
-			return b.Quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason)
+			return quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason)
 		}
 		return nil
 	}
 	var err error
 	if responseBucket.Normalize() == reservation.Bucket.Normalize() {
-		err = b.Quota.Commit(ctx, reservation, response.Observation)
+		err = quota.Commit(ctx, reservation, response.Observation)
 	} else {
-		err = b.Quota.Release(ctx, reservation)
+		err = quota.Release(ctx, reservation)
 		if err == nil {
-			err = b.Quota.Observe(ctx, responseBucket, response.Observation)
+			err = quota.Observe(ctx, responseBucket, response.Observation)
 		}
 	}
 	if err != nil {
 		return err
 	}
 	if !response.ParkUntil.IsZero() {
-		return b.Quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason)
+		return quota.Park(ctx, responseBucket, response.ParkUntil, response.ParkReason)
 	}
 	return nil
 }

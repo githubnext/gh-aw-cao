@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-cao/server/internal/logger"
+	"github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
 var workerLog = logger.New("cao:collect:worker")
@@ -16,10 +17,11 @@ var workerLog = logger.New("cao:collect:worker")
 // Worker leases collection tasks, collects one repository at a time, and
 // requests a coalesced projection.
 type Worker struct {
-	Queue      Queue
-	Runner     Runner
-	Projector  Projector
-	Enrollment Enrollment
+	Queue          Queue
+	Runner         Runner
+	Projector      Projector
+	Enrollment     Enrollment
+	ScopeRefresher ScopeRefresher
 	// Consumer identifies this worker within the consumer group.
 	Consumer string
 	// BatchSize bounds how many tasks are leased at once.
@@ -170,6 +172,7 @@ func (w Worker) Run(ctx context.Context) error {
 // process handles one lease and reports whether evidence changed.
 func (w Worker) process(ctx context.Context, lease Lease) bool {
 	task := lease.Task
+	ctx = telemetry.ExtractTraceparent(ctx, task.Traceparent)
 	if !task.NotBefore.IsZero() && task.NotBefore.After(time.Now().UTC()) {
 		deferCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 		defer cancel()
@@ -182,7 +185,7 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 	if err != nil {
 		return false
 	}
-	if err := w.Queue.LockRepository(ctx, task.Repository, token, w.repositoryLockTTL()); err != nil {
+	if err := w.Queue.LockRepository(ctx, task.lockKey(), token, w.repositoryLockTTL()); err != nil {
 		if errors.Is(err, ErrRepositoryBusy) {
 			lease.Task.NotBefore = time.Now().UTC().Add(backoff(max(task.Attempt, 1)))
 			if err := w.Queue.RequeueBlocked(ctx, lease); err != nil {
@@ -196,13 +199,20 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 	defer func() {
 		release, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 		defer cancel()
-		_ = w.Queue.UnlockRepository(release, task.Repository, token)
+		_ = w.Queue.UnlockRepository(release, task.lockKey(), token)
 	}()
 	// Clearing the debounce marker before collecting means events that arrive
 	// during a collection enqueue a follow-up rather than being collapsed into
 	// a collection that already started.
 	if err := w.Queue.Admit(ctx, task); err != nil {
 		workerLog.Printf("debounce clear failed")
+		return false
+	}
+	if task.Scope != nil || task.InventoryRefresh {
+		if err := w.processRefresh(ctx, lease); err != nil {
+			workerLog.Printf("background inventory refresh failed")
+			w.retryRefresh(ctx, lease, err)
+		}
 		return false
 	}
 	if w.Enrollment.Metadata != nil {
@@ -261,25 +271,9 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 		return true
 	}
 	if task.Lifecycle != "" {
-		if w.Projector.Data == nil {
-			workerLog.Printf("repository lifecycle update requires Postgres")
-			return false
-		}
-		if err := w.Projector.Data.UpdateRepositoryLifecycle(ctx, task.RepositoryID, task.Repository, task.Lifecycle, task.EnqueuedAt); err != nil {
+		if err := w.processRepositoryLifecycle(ctx, lease); err != nil {
 			workerLog.Printf("repository lifecycle update failed")
-			if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
-				workerLog.Printf("task retry failed")
-			}
-			return false
-		}
-		if err := w.Queue.Complete(ctx, lease); err != nil {
-			workerLog.Printf("task acknowledgement failed")
-		}
-		if w.OnProjection != nil {
-			state, err := w.Projector.Data.State(ctx)
-			if err == nil {
-				w.OnProjection(state.Revision)
-			}
+			w.retryRefresh(ctx, lease, err)
 		}
 		return false
 	}

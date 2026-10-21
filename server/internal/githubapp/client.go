@@ -203,39 +203,52 @@ func (c *Client) ListInstallations(ctx context.Context) ([]Installation, error) 
 
 // ListRepositories enumerates the repositories one installation covers.
 func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]Repository, error) {
-	client, err := c.installationClient(installationID)
-	if err != nil {
-		return nil, err
-	}
-	options := &github.ListOptions{PerPage: 100}
 	var repositories []Repository
-	for {
-		page, response, err := client.Apps.ListRepos(ctx, options)
+	for page := 1; page != 0; {
+		items, next, _, err := c.ListRepositoriesPage(ctx, installationID, page)
 		if err != nil {
-			return nil, fmt.Errorf("list installation repositories: %w", err)
+			return nil, err
 		}
-		if page != nil {
-			for _, repository := range page.Repositories {
-				name := repository.GetFullName()
-				if name == "" {
-					continue
-				}
-				repositories = append(repositories, Repository{
-					FullName:   name,
-					PushedAt:   repository.GetPushedAt().Time,
-					Private:    repository.GetPrivate(),
-					Visibility: repository.GetVisibility(),
-					Archived:   repository.GetArchived(),
-				})
-			}
-		}
-		if response == nil || response.NextPage == 0 {
-			break
-		}
-		options.Page = response.NextPage
+		repositories = append(repositories, items...)
+		page = next
 	}
 	appLog.Printf("enumerated installation repositories count=%d", len(repositories))
 	return repositories, nil
+}
+
+// ListRepositoriesPage leaves pagination and quota admission to the worker.
+func (c *Client) ListRepositoriesPage(ctx context.Context, installationID int64, pageNumber int) ([]Repository, int, githubquota.ResponseQuota, error) {
+	client, err := c.installationClient(installationID)
+	if err != nil {
+		return nil, 0, githubquota.ResponseQuota{}, err
+	}
+	options := &github.ListOptions{PerPage: 100, Page: pageNumber}
+	var repositories []Repository
+	page, response, err := client.Apps.ListRepos(ctx, options)
+	quota := workflowRunResponseQuota(response)
+	if err != nil {
+		return nil, 0, quota, fmt.Errorf("list installation repositories: %w", err)
+	}
+	if page != nil {
+		for _, repository := range page.Repositories {
+			name := repository.GetFullName()
+			if name == "" {
+				continue
+			}
+			repositories = append(repositories, Repository{
+				FullName:   name,
+				PushedAt:   repository.GetPushedAt().Time,
+				Private:    repository.GetPrivate(),
+				Visibility: repository.GetVisibility(),
+				Archived:   repository.GetArchived(),
+			})
+		}
+	}
+	next := 0
+	if response != nil {
+		next = response.NextPage
+	}
+	return repositories, next, quota, nil
 }
 
 // ListWorkflowRuns returns one page of a repository's workflow runs, newest

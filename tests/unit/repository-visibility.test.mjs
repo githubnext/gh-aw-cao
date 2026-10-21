@@ -22,6 +22,32 @@ test("private control repositories may access private repositories", async () =>
   });
 });
 
+test("public-only collection verifies every exact repository and rejects unknown, renamed or non-public visibility", async () => {
+  const control = { full_name: "octo/control", private: false, visibility: "public" };
+  for (const target of [
+    { full_name: "octo/public", private: false, visibility: "public" },
+    { full_name: "octo/public", private: true, visibility: "private" },
+    { full_name: "octo/public", private: false, visibility: "internal" },
+    { full_name: "octo/public" },
+    { full_name: "other/renamed", private: false, visibility: "public" },
+  ]) {
+    const action = validateRepositoryVisibility({
+      controlRepository: "octo/control", allowedRepositories: ["octo/public"], publicOnly: true,
+      request: requestFor(new Map([["octo/control", control], ["octo/public", target]])),
+      paginate: () => assert.fail("public-only collection cannot enumerate an owner"),
+    });
+    if (target.visibility === "public" && target.full_name === "octo/public") await action;
+    else await assert.rejects(action, /verified public visibility and unchanged identity/);
+  }
+  await assert.rejects(validateRepositoryVisibility({
+    controlRepository: "octo/control", allowedRepositories: ["octo/public"], publicOnly: true,
+    request: requestFor(new Map([["octo/control", { ...control, visibility: "private", private: true }]])),
+  }), /verified public visibility/);
+  await assert.rejects(validateRepositoryVisibility({
+    controlRepository: "octo/control", allowedRepositories: [], publicOnly: true, request: requestFor(new Map([["octo/control", control]])),
+  }), /exact nonempty/);
+});
+
 test("public control repositories may access only public repositories", async () => {
   const repositories = new Map([
     ["octo/control", { full_name: "octo/control", private: false }],

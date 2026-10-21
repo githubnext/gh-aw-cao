@@ -104,14 +104,14 @@ describe('declared route breadcrumbs', () => {
   it.each([
     [],
     [{ page: 'missing-page' }],
-    [{ page: 'operational-value' }, { page: 'operational-value' }],
-    [{ page: 'operational-value', parameters: [] }],
-    [{ page: 'operational-value', parameters: ['campaign', 'campaign'] }],
-    [{ page: 'operational-value', parameters: ['invalid parameter'] }],
-    [{ page: 'operational-value', template: '<script>' }]
+    [{ page: 'value-report' }, { page: 'value-report' }],
+    [{ page: 'value-report', parameters: [] }],
+    [{ page: 'value-report', parameters: ['campaign', 'campaign'] }],
+    [{ page: 'value-report', parameters: ['invalid parameter'] }],
+    [{ page: 'value-report', template: '<script>' }]
   ].map(invalid => [invalid]))('rejects invalid breadcrumb contracts %j', (invalid) => {
     const documentModel = structuredClone(authoritativeDashboard);
-    const page = documentModel.dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === 'operational-value');
+    const page = documentModel.dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === 'value-report');
     page.route.breadcrumbs = invalid;
     const result = validateDashboardDocument(JSON.stringify(documentModel));
     expect(result.ok).toBe(false);

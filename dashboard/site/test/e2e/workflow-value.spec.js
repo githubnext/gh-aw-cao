@@ -109,6 +109,9 @@ for (const width of [1440, 390]) {
       await page.getByRole('navigation', { name: 'Primary', exact: true }).getByRole('link', { name: 'Value', exact: true }).click();
     }
     await expect(page).toHaveURL(/#page-value$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Value', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Repository measurements', exact: true })).toHaveCount(0);
+    await expect(page.locator('a[href^="#page-operational-value"]')).toHaveCount(0);
     await page.getByRole('link', { name: '↓ -1 defects', exact: true }).click();
     await expect(page.locator('.value-report-heading')).toContainText('Resolve confirmed defects.');
     await expect(page.locator('.value-report-movement')).toHaveText('↓ -1 defects · Better');

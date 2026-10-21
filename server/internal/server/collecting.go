@@ -420,13 +420,14 @@ func (c *Collector) start(startupCtx, ctx context.Context, onProjection func(rev
 	})
 	for index := 0; index < c.config.Workers; index++ {
 		worker := collect.Worker{
-			Queue:        c.queue,
-			Runner:       c.runner,
-			Projector:    c.projector,
-			Enrollment:   c.enrollment,
-			Consumer:     fmt.Sprintf("%s-%d", c.consumer(), index),
-			Project:      true,
-			OnProjection: onProjection,
+			Queue:          c.queue,
+			Runner:         c.runner,
+			Projector:      c.projector,
+			Enrollment:     c.enrollment,
+			ScopeRefresher: c.scopeRefresher(),
+			Consumer:       fmt.Sprintf("%s-%d", c.consumer(), index),
+			Project:        true,
+			OnProjection:   onProjection,
 		}
 		launch(func() {
 			if c.volatile {
@@ -511,7 +512,14 @@ func (c *Collector) Worker(consumer string) collect.Worker {
 	return collect.Worker{
 		Queue: c.queue, Runner: c.runner, Projector: c.projector,
 		Enrollment: c.enrollment, Consumer: consumer, Project: true,
+		ScopeRefresher: c.scopeRefresher(),
 	}
+}
+
+func (c *Collector) scopeRefresher() collect.ScopeRefresher {
+	return collect.ScopeRefresher{Client: c.client, Quota: c.quota,
+		QuotaApp:        "github-app-" + strconv.FormatInt(c.config.AppID, 10),
+		RepositoryLimit: c.config.InventoryLimit}
 }
 
 // Backfill exposes cold start for the backfill role.

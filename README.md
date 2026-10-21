@@ -53,7 +53,9 @@ non-public evidence; a private repository does not guarantee a private dashboard
 **Optional, later:** describe the outcome and scope using
 [From Outcome to Execution](docs/operation-patterns.md), browse the
 [campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
-or follow the manual [Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
+or try one standalone report with the [Repo Status quickstart](docs/setup/quickstart.md).
+For the campaign pattern, follow the manual
+[Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
 You can also read [real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)
 without starting a workflow or spending AI credits.
 

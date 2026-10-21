@@ -30,9 +30,8 @@ for (const width of [320, 1280]) {
   test(`Repo Status quickstart has honest video status and working links at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     expect((await page.goto("setup/quickstart/"))?.ok()).toBe(true);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Quickstart");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Repo Status quickstart");
     const content = page.locator(".sl-markdown-content");
-    await expect(content.getByRole("heading", { name: "Video walkthrough", exact: true })).toBeVisible();
     await expect(content).toContainText("CAO recording not yet available");
     await expect(content).toContainText("There is no video to play yet");
     await expect(content.locator("video, iframe")).toHaveCount(0);
@@ -41,9 +40,23 @@ for (const width of [320, 1280]) {
     await expect(content).toContainText("No campaign, orchestrator or worker dispatch is required");
     await expect(content).toContainText("manual-only");
     await expect(content).toContainText("Operational value is not measurable yet");
+    await expect(content.locator("h2")).toHaveText([
+      "Prerequisites",
+      "Step 1 - Add and review the sample workflow",
+      "Step 2 - Request one bounded review",
+      "Step 3 - Wait for the run and inspect its result",
+      "Step 4 - Customize your report (optional)",
+      "Continue learning",
+    ]);
+    await expect(content).not.toContainText("install.sh");
+    await expect(content.getByRole("link", { name: "Set Up CAO", exact: true }))
+      .toHaveAttribute("href", "/gh-cao/setup-quickstarts/");
     for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
       const href = await link.getAttribute("href");
-      expect((await page.request.get(href)).ok(), href).toBe(true);
+      const response = await page.request.get(href);
+      expect(response.ok(), href).toBe(true);
+      const hash = new URL(href, page.url()).hash;
+      if (hash) expect(await response.text(), href).toContain(`id="${hash.slice(1)}"`);
     }
     expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
   });
@@ -195,13 +208,14 @@ test("Setup navigation follows the user journey without duplicate authentication
   await expect(introductionGroup.getByRole("link")).toHaveText([
     "What is Central Agentic Ops?",
     "How does CAO work?",
+    "From outcome to execution",
     "Architecture",
   ]);
 
   const setupGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Setup$/ }).locator("..");
   await expect(setupGroup.getByRole("link")).toHaveText([
-    "Quickstart",
-    "Set up and monitor",
+    "Quickstart: install and monitor",
+    "Repo Status (optional)",
     "Add a campaign (optional)",
     "CAO commands",
     "Authentication",
@@ -212,16 +226,37 @@ test("getting started leads from monitoring to a separate optional campaign guid
   expect((await page.goto("setup-quickstarts/"))?.ok()).toBe(true);
   await expect(page.locator("main h2")).toHaveText([
     "Prerequisites",
-    "1. Install CAO",
-    "2. Connect one repository",
-    "3. Publish your configuration",
-    "4. Open your dashboard",
+    "Step 1 - Install CAO",
+    "Step 2 - Connect one repository",
+    "Step 3 - Publish and open your dashboard",
     "Optional: add automation later",
+    "Continue learning",
   ]);
   const content = page.locator(".sl-markdown-content");
-  await expect(content).toContainText("This setup is for monitoring only.");
+  await expect(content).toContainText("This guide sets up monitoring only.");
   await expect(content).toContainText("An empty dashboard is expected.");
   await expect(content).not.toContainText("gh aw run");
+  await expect(content).toContainText("gh cao GitHub CLI extension");
+  await expect(content).toContainText("repository runtime");
+  await expect(content.locator(".starlight-aside").first()).toContainText("recording not yet available");
+  expect(await content.locator(".starlight-aside").first().evaluate(element =>
+    Boolean(element.compareDocumentPosition(document.querySelector("h2#prerequisites")) & Node.DOCUMENT_POSITION_FOLLOWING),
+  )).toBe(true);
+  await expect(content.locator("video, iframe")).toHaveCount(0);
+  for (const anchor of [
+    "guided-setup-instead", "4-open-your-dashboard",
+    "step-3---review-and-publish-your-configuration",
+    "step-4---wait-for-collection-and-inspect-your-dashboard",
+  ]) {
+    await expect(content.locator(`[id="${anchor}"]`)).toHaveCount(1);
+  }
+  for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
+    const href = await link.getAttribute("href");
+    const response = await page.request.get(href);
+    expect(response.ok(), href).toBe(true);
+    const hash = new URL(href, page.url()).hash;
+    if (hash) expect(await response.text(), href).toContain(`id="${hash.slice(1)}"`);
+  }
   for (const [name, viewport] of [
     ["desktop", { width: 1280, height: 900 }],
     ["mobile", { width: 390, height: 844 }],
@@ -231,9 +266,9 @@ test("getting started leads from monitoring to a separate optional campaign guid
     await page.screenshot({ path: screenshot, fullPage: true });
     await testInfo.attach(`Getting started (${name})`, { path: screenshot, contentType: "image/png" });
   }
-  await content.getByRole("link", { name: "Repo Assist walkthrough", exact: true }).click();
-  await expect(page).toHaveURL(/\/repo-assist-quickstart\/$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Try a Repo Assist review");
+  await content.getByRole("link", { name: "Repo Status quickstart", exact: true }).click();
+  await expect(page).toHaveURL(/\/setup\/quickstart\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Repo Status quickstart");
 });
 
 test("CAO introduction presents operating capabilities and leads to how CAO works", async ({ page }, testInfo) => {
@@ -466,7 +501,9 @@ for (const colorScheme of ["light", "dark"]) {
         expect(await ecosystem.locator(".ecosystem-board").evaluate((element) => element.getBoundingClientRect().height)).toBeLessThanOrEqual(500);
       }
       await expect(ecosystem.locator(".enterprise-node header")).toHaveCSS("font-size", "16px");
-      await expect(ecosystem.locator(".enterprise-node .workflow-run")).toHaveCSS("height", "44px");
+      expect(await ecosystem.locator(".enterprise-node .workflow-run").evaluate(element => (
+        Number.parseFloat(getComputedStyle(element).height)
+      ))).toBeCloseTo(44, 1);
       for (const repository of await ecosystem.locator(".repository-node:visible").all()) {
         const order = await repository.evaluate((element) => {
           const workflow = element.querySelector(".local-workflows");
@@ -514,21 +551,26 @@ for (const colorScheme of ["light", "dark"]) {
           (icons) => icons.map((icon) => [...icon.querySelectorAll("path")].map((path) => path.getAttribute("d"))),
         )).toEqual([safeOutputPaths[outputType], issueOpenedPaths, issueOpenedPaths]);
         await expect(repository.locator(".safe-output.local")).toBeVisible();
-        expect(await repository.locator(".safe-output.local").evaluate((element) => ({
-          link: getComputedStyle(element, "::before").height,
+        const localOutputStyle = await repository.locator(".safe-output.local").evaluate((element) => ({
+          link: Number.parseFloat(getComputedStyle(element, "::before").height),
           separation: getComputedStyle(element).borderRightWidth,
-        }))).toEqual({ link: "12px", separation: "0px" });
+        }));
+        expect(localOutputStyle.link).toBeCloseTo(12, 1);
+        expect(localOutputStyle.separation).toBe("0px");
         expect(await repository.locator(".workflow-outputs").evaluate((element) => {
           const bounds = element.getBoundingClientRect();
           const outputs = [...element.querySelectorAll(".safe-output")].map((output) => output.getBoundingClientRect());
+          const zoom = element.closest(".workflow-ecosystem").currentCSSZoom;
           return outputs.every((output, index) => (
             output.left >= bounds.left && output.right <= bounds.right + 0.1
-            && (index === 0 || output.left - outputs[index - 1].right >= 2.9)
+            && (index === 0 || (output.left - outputs[index - 1].right) / zoom >= 2.9)
           ));
         })).toBe(true);
         await expect(repository.locator(".workflow-run")).toHaveCount(1);
         await expect(repository.locator(".local-workflows .workflow-run")).toHaveCount(1);
-        await expect(repository.locator(".local-workflows .workflow-run")).toHaveCSS("height", "36px");
+        expect(await repository.locator(".local-workflows .workflow-run").evaluate(element => (
+          Number.parseFloat(getComputedStyle(element).height)
+        ))).toBeCloseTo(36, 1);
         const outputRows = await repository.locator(".safe-output-icon").evaluateAll(
           (icons) => icons.map((icon) => icon.getBoundingClientRect().top),
         );
@@ -943,8 +985,8 @@ for (const { name, viewport } of [
         )).toBe(true);
         const rolloutStory = page.locator(".terminal-story");
         await rolloutStory.scrollIntoViewIfNeeded();
-        await expect(rolloutStory).toContainText("Bring an existing workflow, such as Daily Repo Status from Agentics, under central control.");
-        await expect(rolloutStory).toContainText("reuse the workflow across enrolled repositories");
+        await expect(rolloutStory).toContainText("The example adapts Daily Repo Status from Agentics as a standalone workflow.");
+        await expect(rolloutStory).toContainText("Keep repository scope, read/write credentials and review/live policy explicit.");
         await expect(rolloutStory.locator(".terminal")).not.toContainText(/campaign|dependabot/i);
         await expect(rolloutStory.locator(".terminal code").last()).toHaveText("Adapt Daily Repo Status for CAO");
         await expect(rolloutStory.locator('[data-terminal-request="integration"]')).toContainText("Keep policy disabled, review-only");
@@ -974,18 +1016,18 @@ for (const { name, viewport } of [
       await expect(tagline).toBeVisible();
       await expect(tagline).toHaveText("Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy and refine workflows in review mode so you can roll out safely and confidently.");
       await expect(page.getByRole("heading", { name: "Shared work. Clear ownership.", exact: true })).toBeAttached();
-      await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
-      await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Less upkeep. Current workflows.", exact: true })).toBeAttached();
+      await expect(page.locator(".runs-story, .value-story")).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "Roll out with confidence.", exact: true })).toBeAttached();
       await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Setup, authentication, and rollout");
-      await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
-        "Bring an existing workflow, such as Daily Repo Status from Agentics, under central control. Set repository scope and separate read/write credentials. Review proposed reports before authorizing live delivery. Keep rollout policy and steering in your control repository, and reuse the workflow across enrolled repositories. Add campaigns when you need coordinated work.",
+      await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toContainText(
+        "Start with monitoring. Describe the outcome, target scope, and execution requirements; derive the simplest structure. The example adapts Daily Repo Status from Agentics as a standalone workflow. Keep repository scope, read/write credentials and review/live policy explicit.",
       );
+      await expect(page.locator(".terminal-story").getByRole("link", { name: "From outcome to execution." }))
+        .toHaveAttribute("href", "/gh-cao/operation-patterns/");
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
-      for (const story of await page.locator(".runs-story .product-story-copy, .value-story .product-story-copy, .dispatch-story").all()) {
-        await expect(story).not.toContainText(/campaign/i);
-      }
+      await expect(page.locator(".dispatch-story")).not.toContainText(/campaign/i);
       expect(await page.locator("html").evaluate((element) => element.scrollWidth))
         .toBeLessThanOrEqual(viewport.width);
     });
@@ -1009,17 +1051,28 @@ for (const { name, viewport } of [
       await expect(page.locator(".terminal a")).toHaveCount(0);
       await expect(page.locator('[data-terminal-output="install"]')).toHaveText("==> CAO runtime materialized and verified.");
       await expect(page.locator('[data-terminal-output="setup"]')).toHaveText(
-        "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.",
+        "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nMonitoring is configured; executing operations is optional.",
       );
       await expect(page.locator(".terminal-label")).toHaveText("Example agent request — not a CLI command");
       await expect(page.locator('[data-terminal-request="integration"]')).toHaveText(
-        "Import shared/control.md as standalone.\nBind reads and review outputs to admitted targets.\nKeep policy disabled, review-only, and scoped to one repo.\nPreserve upstream ownership. Do not enable or run.",
+        "For scheduled fleet selection:\nImport shared/control.md as standalone.\nBind reads and review outputs to admitted targets.\nKeep policy disabled, review-only, and scoped to one repo.\nPreserve upstream ownership. Do not enable or run.",
       );
       await expect(page.locator('[data-terminal-output="rollout"]')).toHaveCount(0);
-      await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);
-      await expect(page.locator(".product-shot-mobile")).toHaveCount(2);
+      await expect(page.locator(".phone-image")).toHaveCount(1);
+      await expect(page.locator(".product-shot-mobile")).toHaveCount(0);
+      const maintenance = page.locator(".maintenance-story");
+      await expect(maintenance.locator(".section-eyebrow")).toHaveText("Maintenance");
+      await expect(maintenance.locator("dt")).toHaveText(["01 gh-aw upgrades", "02 Workflow source updates", "03 Reviewed changes"]);
+      await expect(maintenance).not.toContainText(/campaign/i);
+      await expect(maintenance).toContainText("Offload automation upkeep");
+      await expect(maintenance.getByRole("link", { name: "gh aw upgrade", exact: true }))
+        .toHaveAttribute("href", "https://github.github.com/gh-aw/setup/cli/#upgrade");
+      await expect(maintenance.getByRole("link", { name: "gh aw update", exact: true }))
+        .toHaveAttribute("href", "https://github.github.com/gh-aw/setup/cli/#update");
+      await expect(maintenance.getByRole("link", { name: "Maintain your control plane." }))
+        .toHaveAttribute("href", "/gh-cao/operations/#update-cao");
       await page.locator(".product-shot").last().scrollIntoViewIfNeeded();
-      await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
+      await expect.poll(() => page.locator(".product-image, .phone-image, .maintenance-image").evaluateAll(
         (images) => images.every((image) => image.complete && image.naturalWidth > 0),
       )).toBe(true);
       const productSources = await page.locator(".product-image, .phone-image").evaluateAll(
@@ -1028,14 +1081,13 @@ for (const { name, viewport } of [
       expect(productSources.every((source) => colorScheme === "light"
         ? source.includes("-light.")
         : !source.includes("-light."))).toBe(true);
-      expect(productSources.slice(1).every((source) => source.includes("-mobile"))).toBe(true);
-      expect(await page.locator(".product-shot-mobile").evaluateAll((frames) => frames.every((frame) => {
-        const image = frame.querySelector("img");
-        return image !== null
-          && image.naturalHeight > image.naturalWidth
-          && getComputedStyle(frame).overflow === "hidden"
-          && frame.clientHeight < image.getBoundingClientRect().height;
-      }))).toBe(true);
+      const maintenanceSource = await maintenance.locator(`source[data-theme-source="${colorScheme}"]`).getAttribute("srcset");
+      await expect.poll(() => maintenance.locator("img").evaluate(image => image.currentSrc)).toBe(maintenanceSource);
+      const board = await maintenance.locator(".maintenance-board").boundingBox();
+      const storyBounds = await maintenance.boundingBox();
+      expect(board.x).toBeGreaterThanOrEqual(storyBounds.x);
+      expect(board.x + board.width).toBeLessThanOrEqual(storyBounds.x + storyBounds.width);
+      expect(board.y + board.height).toBeLessThanOrEqual(storyBounds.y + storyBounds.height);
       if (colorScheme === "dark") {
         await expect(pageCanvas).toHaveCSS("background-color", "rgb(0, 0, 0)");
         await expect(pageCanvas).toHaveCSS("background-image", "none");
