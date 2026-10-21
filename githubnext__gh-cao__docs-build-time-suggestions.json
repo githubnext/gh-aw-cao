@@ -3,13 +3,6 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-20T18:57:59Z",
-      "worker_run_id": "39478935538",
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
-    },
-    {
       "evaluated_at": "2026-10-20T19:37:07Z",
       "worker_run_id": "39484526296",
       "category": "artifact transfer and Pages packaging",
@@ -778,6 +771,13 @@
         39545634138
       ],
       "outcome": "incomplete: the 2026-10-21T04:43:49Z to 2026-10-21T07:54:18Z latest-20 window contained 15 successful, three skipped, and two cancelled completed docs.yml runs; cancelled runs were excluded. At least five successful runs appeared to execute build and deploy, but collection of the required job and step metadata hit the runner OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API and model work stopped. Only run 39559317386 was fully retrieved: it completed in 124 seconds, with a 87-second build job, 18-second deploy job, 19-second dependency installation, 11-second Astro generation, 3-second dashboard-cache restoration, skipped dashboard artifact fallback, and 11-second Pages upload. Required median/p90 workflow, queue, build, deploy, dashboard, scheduling, and repeated cache-effectiveness measurements could not be completed. No recommendation was made and the scheduling, concurrency, and avoidable rebuilds category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-21T08:26:14Z",
+      "worker_run_id": "39568968938",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
     }
   ]
 }
