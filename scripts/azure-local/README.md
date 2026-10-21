@@ -52,11 +52,12 @@ Readiness polling verifies PostgreSQL readiness, an Azurite Blob endpoint respon
 the CAO `/api/readiness` endpoint through Functions Core Tools. Timeouts print
 all available service logs and fail.
 
-Build, canonical database bootstrap, and fixture ingestion failures print the
-failed stage, exit status, and captured output before teardown. Their log files
-remain available alongside the service logs. Fixture ingestion verifies the
-checked-in `server/testdata/deployed-subset/payload-hashes.json` manifest;
-a mismatch fails startup rather than skipping or weakening integrity checks.
+Build, canonical and operational database bootstrap, and fixture ingestion
+failures print the failed stage, exit status, and captured output before teardown.
+Their log files remain available alongside the service logs. Fixture ingestion
+verifies the checked-in `server/testdata/deployed-subset/payload-hashes.json`
+manifest; a mismatch fails startup rather than skipping or weakening integrity
+checks.
 
 ## Repository audit checklist
 

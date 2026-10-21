@@ -359,6 +359,9 @@ start() {
   CAO_DATABASE_ADMIN_URL="$CAO_POSTGRES_URL" run_logged "canonical database bootstrap" database-bootstrap.log \
     "$APP_DIR/cao-dashboard" database bootstrap --store canonical --namespace "$namespace"
 
+  CAO_DATABASE_ADMIN_URL="$CAO_POSTGRES_URL" run_logged "operational database bootstrap" operational-database-bootstrap.log \
+    "$APP_DIR/cao-dashboard" database bootstrap --store operational --namespace "${namespace}-operational"
+
   run_logged "fixture ingestion" ingest.log "$APP_DIR/cao-dashboard" ingest \
     --source "$ROOT/server/testdata/deployed-subset" \
     --redis-namespace "$namespace" \

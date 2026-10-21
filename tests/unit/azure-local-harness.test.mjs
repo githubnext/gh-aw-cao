@@ -10,7 +10,8 @@ const execute = promisify(execFile);
 const failures = [
   ["functions-build", "Azure Functions handler build", "functions-build.log"],
   ["server-build", "dashboard server build", "server-build.log"],
-  ["database-bootstrap", "canonical database bootstrap", "database-bootstrap.log"],
+  ["canonical-database-bootstrap", "canonical database bootstrap", "database-bootstrap.log"],
+  ["operational-database-bootstrap", "operational database bootstrap", "operational-database-bootstrap.log"],
   ["ingest", "fixture ingestion", "ingest.log"],
 ];
 
@@ -84,7 +85,16 @@ chmod +x "$output"
       await executable(binary, `
 echo "dashboard $*" >> "$HARNESS_TRACE"
 case "$1" in
-  database) stage=database-bootstrap; test -n "$CAO_DATABASE_ADMIN_URL" ;;
+  database)
+    test -n "$CAO_DATABASE_ADMIN_URL"
+    while [[ "$#" -gt 0 ]]; do
+      if [[ "$1" == "--store" ]]; then
+        stage="$2-database-bootstrap"
+        break
+      fi
+      shift
+    done
+    ;;
   ingest) stage=ingest ;;
   *) exit 99 ;;
 esac
@@ -121,6 +131,12 @@ fi
       assert.equal(await readFile(logPath, "utf8"), `captured stdout\n${message}\n`);
       const commands = await readFile(trace, "utf8");
       assert.doesNotMatch(commands, /docker .*redis/);
+      if (stage === "canonical-database-bootstrap" || stage === "operational-database-bootstrap") {
+        assert.match(commands, /dashboard database bootstrap --store canonical --namespace azure-local-[a-f0-9]{12}/);
+      }
+      if (stage === "operational-database-bootstrap") {
+        assert.match(commands, /dashboard database bootstrap --store operational --namespace azure-local-[a-f0-9]{12}-operational/);
+      }
       for (const service of ["postgres", "azurite"]) {
         assert.match(commands, new RegExp(`docker rm -f ${service}-id`));
         assert.equal(await readFile(join(state, "logs", `${service}.log`), "utf8"), `${service}-id service output\n`);
