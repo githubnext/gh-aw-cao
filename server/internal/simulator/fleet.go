@@ -120,7 +120,7 @@ func (f *FleetAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/vnd.github.raw+json")
-		_, _ = w.Write(f.Workflow)
+		_, _ = w.Write(f.Workflow) // #nosec G705 -- fixture workflow served as application/vnd.github.raw+json, not HTML; preserve exact source bytes.
 	case r.Method == http.MethodPost && endpoint == prefix+"/dispatches":
 		f.stats.Dispatches++
 		w.WriteHeader(http.StatusNoContent)

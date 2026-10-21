@@ -214,7 +214,7 @@ func (a *GatewayAPI) contents(w http.ResponseWriter, r *http.Request, name strin
 	}
 	a.stats.WorkflowReads++
 	w.Header().Set("Content-Type", "application/vnd.github.raw+json")
-	_, _ = w.Write(data)
+	_, _ = w.Write(data) // #nosec G705 -- fixture workflow served as application/vnd.github.raw+json, not HTML; preserve exact source bytes.
 }
 
 func (a *GatewayAPI) dispatch(w http.ResponseWriter, r *http.Request) {

@@ -105,7 +105,7 @@ func (a *BootstrapAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimPrefix(path, "/githubnext/gh-cao/releases/download/"+a.Release+"/")
 		if asset, ok := a.Assets[name]; ok {
 			w.Header().Set("Content-Type", "application/octet-stream")
-			_, _ = w.Write(asset)
+			_, _ = w.Write(asset) // #nosec G705 -- test-owned release bytes served as application/octet-stream, not HTML; escaping would corrupt assets.
 			return
 		}
 	}
