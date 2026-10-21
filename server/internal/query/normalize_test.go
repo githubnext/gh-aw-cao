@@ -128,6 +128,33 @@ func TestNormalizeTemporalShape(t *testing.T) {
 	}
 }
 
+func TestNormalizeTemporalDependenciesAndStageOrder(t *testing.T) {
+	definition := Definition{From: "observations", TemporalSeries: &TemporalSeries{
+		Time: "at", Series: "repo", Shape: "groups", Carry: []string{"direction"},
+		Measures: []TemporalMeasure{{Field: "value", Key: "identity", Kind: "primary"}},
+		Maps:     []TemporalMap{{Field: "metrics", Definitions: "labels", Group: "parent", Kind: "diagnostic"}},
+		Trend:    &TemporalTrend{Direction: "direction"},
+	}}
+	plan := Normalize(definition)
+	if !reflect.DeepEqual(plan.SourceFields, FieldSet{"at", "direction", "identity", "labels", "metrics", "parent", "repo", "value"}) {
+		t.Fatalf("incomplete temporal source fields: %v", plan.SourceFields)
+	}
+	if !reflect.DeepEqual(plan.ResultShape.Fields[len(plan.ResultShape.Fields)-7:], []ResultField{
+		{Field: "trend-start-value", As: "trend-start-value"}, {Field: "trend-end-value", As: "trend-end-value"},
+		{Field: "trend-delta", As: "trend-delta"}, {Field: "trend-relative-percent", As: "trend-relative-percent"},
+		{Field: "trend-observed-direction", As: "trend-observed-direction"}, {Field: "trend-assessment", As: "trend-assessment"},
+		{Field: "trend-observation-count", As: "trend-observation-count"},
+	}) {
+		t.Fatalf("trend fields missing from closed temporal shape: %+v", plan.ResultShape)
+	}
+	definition.Aggregate = &Aggregate{Values: []AggregateValue{{Field: "trend-delta", As: "delta", Reducer: "sum"}}}
+	plan = Normalize(definition)
+	if plan.Stages[1].Operator != "temporal-series" || plan.Stages[2].Operator != "aggregate" ||
+		!reflect.DeepEqual(plan.ResultShape.Fields, []ResultField{{Field: "delta", As: "delta"}}) {
+		t.Fatalf("temporal aggregation normalized in the wrong order: %+v", plan)
+	}
+}
+
 func TestNormalizeFacetRetainsNestedInputShape(t *testing.T) {
 	limit := 2
 	definition := Definition{From: "runs", Limit: &limit, Facet: &Facet{Field: "engine", As: "rows"}}

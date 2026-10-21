@@ -34,7 +34,7 @@ func temporalTestDefinition() TemporalSeries {
 		Trend:    &TemporalTrend{Direction: "direction"}}
 }
 
-func temporalTestPlan(t *testing.T, input SQLRelation, definition TemporalSeries) SQLPlan {
+func temporalTestPlan(t testing.TB, input SQLRelation, definition TemporalSeries) SQLPlan {
 	t.Helper()
 	compiler := sqlCompiler{}
 	output, err := compiler.temporal(input, definition, "observations")
@@ -50,12 +50,15 @@ func TestTemporalSQLGroupsCompilation(t *testing.T) {
 	plan := temporalTestPlan(t, input, temporalTestDefinition())
 	for _, fragment := range []string{
 		"AS NOT MATERIALIZED", "pg_input_is_valid", "isfinite(", "GROUP BY",
-		"first_value(", "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
+		"first_value(", "last_value(", "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
 		"jsonb_agg(jsonb_build_object('x'", `ORDER BY "__at","__order"`,
 		"LIMIT 100001", "__count <= 100000", "ELSE 0 END = 1", `"count" >= 2`,
 	} {
 		if !strings.Contains(plan.CTEs, fragment) {
 			t.Errorf("missing temporal SQL contract %q", fragment)
+		}
+		if strings.Contains(plan.CTEs, " DESC") {
+			t.Fatal("trend endpoints must share one ascending chronological window")
 		}
 	}
 	for _, field := range []string{"trend-start-value", "trend-end-value", "trend-delta", "trend-relative-percent", "trend-observation-count"} {
@@ -176,51 +179,53 @@ func TestTemporalTrendJSONContract(t *testing.T) {
 	}
 }
 
-func TestTemporalSQLDeployedCampaignQuery(t *testing.T) {
-	data, err := os.ReadFile("../../../dashboard/site/dashboard-fragments/campaign-insights.json")
-	if err != nil {
+func TestTemporalSQLPanelQueryContract(t *testing.T) {
+	var definition Definition
+	if err := json.Unmarshal([]byte(`{
+		"name":"measure-history","from":"observations",
+		"temporal-series":{"time":"observed-at","series":"repository","shape":"panels",
+			"link":"run-link","carry":["direction"],
+			"measures":[{"field":"value","key":"identity","kind":"primary"}]}
+	}`), &definition); err != nil {
 		t.Fatal(err)
 	}
-	var fragment struct {
-		Queries []Definition `json:"queries"`
+	series := definition.TemporalSeries
+	if series == nil || series.Shape != "panels" || series.Link != "run-link" {
+		t.Fatal("panel query must retain point-level links")
 	}
-	if err := json.Unmarshal(data, &fragment); err != nil {
-		t.Fatal(err)
+	input := SQLRelation{SQL: "observations", Order: "ordinal", Columns: map[string]SQLColumn{}}
+	for _, field := range series.Carry {
+		input.Columns[field] = SQLColumn{Expression: SQLIdentifier(field), Presence: "TRUE", Kind: SQLText}
 	}
-	for _, definition := range fragment.Queries {
-		if definition.Name != "operational-value-plot-series" {
-			continue
-		}
-		series := definition.TemporalSeries
-		if series == nil || series.Shape != "panels" || series.Link != "run-link" {
-			t.Fatal("deployed campaign query must return repository panels with point-level links")
-		}
-		input := SQLRelation{SQL: "observations", Order: "ordinal", Columns: map[string]SQLColumn{}}
-		for _, field := range series.Carry {
-			input.Columns[field] = SQLColumn{Expression: SQLIdentifier(field), Presence: "TRUE", Kind: SQLText}
-		}
-		input.Columns[series.Time] = SQLColumn{Expression: "observed_at", Presence: "observed_at_present", Kind: SQLTimestamp}
-		input.Columns[series.Series] = SQLColumn{Expression: "repository", Presence: "TRUE", Kind: SQLText}
-		input.Columns[series.Link] = SQLColumn{Expression: "run_link", Presence: "link_present", Kind: SQLText}
-		for _, measure := range series.Measures {
-			input.Columns[measure.Field] = SQLColumn{Expression: "amount", Presence: "amount_present", Kind: SQLNumber}
-			input.Columns[measure.Key] = SQLColumn{Expression: "identity", Presence: "identity_present", Kind: SQLText}
-		}
-		plan := temporalTestPlan(t, input, *series)
-		if plan.Outputs["observations"].Columns["series"].Kind != SQLStructured {
-			t.Fatal("deployed panels must retain grouped chart series")
-		}
-		for _, fragment := range []string{`jsonb_build_object('link',`, `ORDER BY "__at","__order"`, `ORDER BY "series" COLLATE "C"`} {
-			if !strings.Contains(plan.CTEs, fragment) {
-				t.Errorf("missing panel SQL contract %q", fragment)
-			}
-		}
-		return
+	input.Columns[series.Time] = SQLColumn{Expression: "observed_at", Presence: "observed_at_present", Kind: SQLTimestamp}
+	input.Columns[series.Series] = SQLColumn{Expression: "repository", Presence: "TRUE", Kind: SQLText}
+	input.Columns[series.Link] = SQLColumn{Expression: "run_link", Presence: "link_present", Kind: SQLText}
+	for _, measure := range series.Measures {
+		input.Columns[measure.Field] = SQLColumn{Expression: "amount", Presence: "amount_present", Kind: SQLNumber}
+		input.Columns[measure.Key] = SQLColumn{Expression: "identity", Presence: "identity_present", Kind: SQLText}
 	}
-	t.Fatal("deployed campaign temporal query was not found")
+	plan := temporalTestPlan(t, input, *series)
+	if plan.Outputs["observations"].Columns["series"].Kind != SQLStructured {
+		t.Fatal("panels must retain grouped chart series")
+	}
+	for _, fragment := range []string{`jsonb_build_object('link',`, `ORDER BY "__at","__order"`, `ORDER BY "series" COLLATE "C"`} {
+		if !strings.Contains(plan.CTEs, fragment) {
+			t.Errorf("missing panel SQL contract %q", fragment)
+		}
+	}
 }
 
-func temporalTestConnection(t *testing.T) *pgx.Conn {
+func TestTemporalSQLSharesScalarInputScan(t *testing.T) {
+	input := temporalTestInput(`(1,'2026-01-01'::text,'repo'::text,10::numeric,'increase'::text,true,'metric'::text,'label'::text,NULL::text,false)`)
+	definition := temporalTestDefinition()
+	definition.Measures = append(definition.Measures, TemporalMeasure{Field: "value", Kind: "diagnostic"})
+	plan := temporalTestPlan(t, input, definition)
+	if strings.Count(plan.CTEs, `FROM "q0" AS ts`) != 1 || !strings.Contains(plan.CTEs, "AS scalar_metrics(") {
+		t.Fatal("scalar measures must expand with VALUES over one source scan")
+	}
+}
+
+func temporalTestConnection(t testing.TB) *pgx.Conn {
 	t.Helper()
 	url := os.Getenv("TEMPORAL_TEST_POSTGRES_URL")
 	if url == "" {

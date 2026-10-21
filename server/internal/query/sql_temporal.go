@@ -96,21 +96,18 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 		}
 		link += " || jsonb_build_object('metadata', " + metadata + ")"
 	}
-	var branches []string
+	var scalarRows, branches []string
 	appendBranch := func(declaration int, entry, metric, key, name, kind, group, value, lateral string) {
-		projection := make([]string, 0, 12+len(carryProjection))
-		projection = append(projection,
-			input.Order+` AS "__source"`, strconv.Itoa(declaration)+` AS "__declaration"`,
-			entry+` AS "__entry"`, timeText+` AS "time"`,
-			"floor(extract(epoch FROM ("+at+`))*1000) AS "__at"`,
-			series+` AS "series"`, metric+` AS "metric"`, key+` AS "metric-key"`,
-			name+` AS "metric-name"`, kind+` AS "metric-kind"`, group+` AS "metric-group"`,
-			`tv.number AS "value"`,
-			link+` AS "__link"`,
-		)
-		projection = append(projection, carryProjection...)
-		branches = append(branches, "SELECT "+strings.Join(projection, ",")+" FROM "+input.SQL+lateral+
-			" CROSS JOIN LATERAL (SELECT "+value+" AS number) AS tv WHERE "+validTime+" AND tv.number IS NOT NULL")
+		values := []string{strconv.Itoa(declaration), entry, metric, key, name, kind, group, value}
+		if lateral == "" {
+			scalarRows = append(scalarRows, "("+strings.Join(values, ",")+")")
+			return
+		}
+		fields := []string{"__declaration", "__entry", "metric", "metric-key", "metric-name", "metric-kind", "metric-group", "value"}
+		for index := range values {
+			values[index] += " AS " + SQLIdentifier(fields[index])
+		}
+		branches = append(branches, "SELECT "+strings.Join(values, ",")+" FROM "+lateral)
 	}
 	for index, measure := range definition.Measures {
 		if measure.Field == "" || measure.Kind == "" {
@@ -145,7 +142,7 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 		keyOrder := `CASE WHEN key ~ '^(0|[1-9][0-9]{0,9})$' THEN CASE WHEN key::numeric < 4294967295 THEN key::numeric END END NULLS LAST, key COLLATE "C"`
 		values := "CASE WHEN " + column.Presence + " AND jsonb_typeof(" + column.Expression +
 			") = 'object' THEN " + column.Expression + " ELSE '{}'::jsonb END"
-		lateral := " CROSS JOIN LATERAL (SELECT key, value, row_number() OVER (ORDER BY " + keyOrder +
+		lateral := "LATERAL (SELECT key, value, row_number() OVER (ORDER BY " + keyOrder +
 			") AS ordinal FROM jsonb_each(" + values + ") ORDER BY " + keyOrder + " LIMIT 64) AS tm"
 		mapValue := SQLColumn{Expression: "(tm.value #>> '{}')", Presence: "TRUE", Kind: SQLText}
 		value := "CASE jsonb_typeof(tm.value) WHEN 'number' THEN " + temporalNumber(mapValue) +
@@ -168,6 +165,11 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 		appendBranch(len(definition.Measures)+index, "tm.ordinal", "tm.key", kind+" || ':' || "+group+" || ':' || tm.key",
 			name, kind, group, value, lateral)
 	}
+	if len(scalarRows) > 0 {
+		scalars := `SELECT * FROM (VALUES ` + strings.Join(scalarRows, ",") +
+			`) AS scalar_metrics("__declaration","__entry","metric","metric-key","metric-name","metric-kind","metric-group","value")`
+		branches = append([]string{scalars}, branches...)
+	}
 
 	fields := map[string]SQLColumn{}
 	for _, field := range []string{"time", "series", "metric", "metric-key", "metric-name", "metric-kind", "metric-group"} {
@@ -181,9 +183,17 @@ func (c *sqlCompiler) temporal(input SQLRelation, definition TemporalSeries, que
 	}
 	// The sentinel is checked before grouping; a single group with too many
 	// points must not bypass the tidy projection's 100k-row limit.
+	projection := []string{input.Order + ` AS "__source"`, `metrics.*`, timeText + ` AS "time"`,
+		"floor(extract(epoch FROM (" + at + `))*1000) AS "__at"`, series + ` AS "series"`, link + ` AS "__link"`}
+	projection = append(projection, carryProjection...)
+	// VALUES expands scalar measures together; lateral map branches share the
+	// same source scan, including its joins and observation-level fields.
+	expanded := "(SELECT " + strings.Join(projection, ",") + " FROM " + input.SQL +
+		" CROSS JOIN LATERAL (" + strings.Join(branches, " UNION ALL ") +
+		`) AS metrics WHERE ` + validTime + ` AND metrics."value" IS NOT NULL) AS expanded`
 	numbered := "(SELECT expanded.*, row_number() OVER (ORDER BY " +
-		`"__source","__declaration","__entry") AS "__order" FROM (` + strings.Join(branches, " UNION ALL ") +
-		`) AS expanded ORDER BY "__source","__declaration","__entry" LIMIT 100001) AS numbered`
+		`"__source","__declaration","__entry") AS "__order" FROM ` + expanded +
+		` ORDER BY "__source","__declaration","__entry" LIMIT 100001) AS numbered`
 	bounded := "(SELECT numbered.*, count(*) OVER () AS __count FROM " + numbered + ") AS bounded"
 	tidy := c.materialize(SQLRelation{SQL: bounded + " WHERE 1 / CASE WHEN __count <= 100000 THEN 1 ELSE 0 END = 1",
 		Columns: fields, Order: `"__order"`}, queryName, "temporal-series", 1)
@@ -224,7 +234,7 @@ func (c *sqlCompiler) temporalPanels(tidy SQLRelation, carried []SQLColumn, defi
 		partition = append(partition, tidy.Columns["carry"+strconv.Itoa(index)].Expression)
 	}
 	first := "PARTITION BY " + strings.Join(partition, ",") + " ORDER BY " + tidy.Order +
-		" ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING"
+		" ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"
 	for _, field := range metadata {
 		projection = append(projection, "first_value("+tidy.Columns[field].Expression+") OVER ("+first+") AS "+SQLIdentifier(field))
 	}
@@ -278,7 +288,7 @@ func (c *sqlCompiler) temporalGroups(tidy SQLRelation, carried []SQLColumn, defi
 		key = append(key, tidy.Columns["carry"+strconv.Itoa(index)].Expression)
 	}
 	partition := "PARTITION BY " + strings.Join(key, ",")
-	first := partition + " ORDER BY " + tidy.Order + " ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING"
+	first := partition + " ORDER BY " + tidy.Order + " ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"
 	columns := map[string]SQLColumn{}
 	windowProjection := []string{tidy.Order + ` AS "__order"`}
 	for index, column := range carried {
@@ -296,10 +306,12 @@ func (c *sqlCompiler) temporalGroups(tidy SQLRelation, carried []SQLColumn, defi
 		tidy.Columns["time"].Expression+` AS "time"`, tidy.Columns["series"].Expression+` AS "series"`,
 		tidy.Columns["value"].Expression+` AS "value"`, tidy.Columns["__at"].Expression+` AS "__at"`)
 	if definition.Trend != nil {
-		for _, order := range []struct{ alias, direction string }{{"start", "ASC"}, {"end", "DESC"}} {
-			windowProjection = append(windowProjection, "first_value("+tidy.Columns["value"].Expression+
-				") OVER ("+partition+" ORDER BY "+tidy.Columns["__at"].Expression+" "+order.direction+", "+tidy.Order+
-				" "+order.direction+" ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "+SQLIdentifier(order.alias))
+		// Both endpoints share one chronological window, including source-order
+		// tie breaks, instead of sorting the same partition in both directions.
+		for _, endpoint := range []struct{ alias, function string }{{"start", "first_value"}, {"end", "last_value"}} {
+			windowProjection = append(windowProjection, endpoint.function+"("+tidy.Columns["value"].Expression+
+				") OVER ("+partition+" ORDER BY "+tidy.Columns["__at"].Expression+", "+tidy.Order+
+				" ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "+SQLIdentifier(endpoint.alias))
 		}
 	}
 	windowed := "(SELECT " + strings.Join(windowProjection, ",") + " FROM " + tidy.SQL + ") AS temporal_window"

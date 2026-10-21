@@ -390,18 +390,71 @@ func engineFacet(rows []nativeRow, def nativeRow, budget *engineBudget) ([]nativ
 }
 
 type engineTemporalPoint struct {
-	row      nativeRow
-	metadata nativeRow
+	row  nativeRow
+	time float64
 }
 
 func engineTemporal(rows []nativeRow, def nativeRow, budget *engineBudget) ([]nativeRow, error) {
-	projected := []engineTemporalPoint{}
+	result := []nativeRow{}
+	groups := []nativeRow{}
+	index := map[string]int{}
+	groupPoints := [][]engineTemporalPoint{}
+	panelSeries := []map[string][]engineTemporalPoint{}
 	carry := engineFields(def["carry"])
-	appendPoint := func(row, metadata nativeRow) error {
-		if len(projected) == engineMaxOutputRows {
+	shape := engineString(def["shape"])
+	grouped := shape == "groups" || shape == "panels"
+	timeField, seriesField, linkField := engineString(def["time"]), engineString(def["series"]), engineString(def["link"])
+	pointCarry := engineFields(def["point-carry"])
+	measures, mappings := engineList(def["measures"]), engineList(def["maps"])
+	groupFields := append(append([]string{}, carry...), "metric", "metric-key", "metric-name", "metric-kind", "metric-group")
+	count := 0
+	appendPoint := func(row, metadata nativeRow, timestamp float64) error {
+		if count == engineMaxOutputRows {
 			return engineUnavailable("temporal series exceeds the 100000-row output limit")
 		}
-		projected = append(projected, engineTemporalPoint{row: row, metadata: metadata})
+		ordinal := count
+		count++
+		if !grouped {
+			result = append(result, row)
+			return nil
+		}
+		parts := make([]any, len(carry)+1)
+		for i, field := range carry {
+			parts[i] = row[field]
+		}
+		parts[len(carry)] = row["metric-key"]
+		key := engineKey(parts)
+		position, exists := index[key]
+		if !exists {
+			position = len(groups)
+			index[key] = position
+			group := nativeRow{}
+			for _, field := range groupFields {
+				if value, ok := row[field]; ok {
+					group[field] = value
+				}
+			}
+			groups = append(groups, group)
+			groupPoints = append(groupPoints, nil)
+			panelSeries = append(panelSeries, nil)
+			if shape == "panels" {
+				panelSeries[position] = map[string][]engineTemporalPoint{}
+			}
+		}
+		point := nativeRow{"x": row["time"], "y": row["value"], "key": engineJSString(row["metric-key"]) + ":" + strconv.Itoa(ordinal)}
+		if shape == "groups" {
+			point["color"] = row["series"]
+			groupPoints[position] = append(groupPoints[position], engineTemporalPoint{row: point, time: timestamp})
+		} else {
+			if metadata != nil {
+				point["metadata"] = metadata
+			}
+			if value, ok := row["link"]; ok {
+				point["link"] = value
+			}
+			id := engineJSString(row["series"])
+			panelSeries[position][id] = append(panelSeries[position][id], engineTemporalPoint{row: point, time: timestamp})
+		}
 		return nil
 	}
 	for i, row := range rows {
@@ -410,8 +463,9 @@ func engineTemporal(rows []nativeRow, def nativeRow, budget *engineBudget) ([]na
 				return nil, err
 			}
 		}
-		observed := engineString(row[engineString(def["time"])])
-		if _, ok := engineParseDate(observed); !ok {
+		observed := engineString(row[timeField])
+		timestamp, ok := engineParseDate(observed)
+		if !ok {
 			continue
 		}
 		base := nativeRow{}
@@ -420,16 +474,16 @@ func engineTemporal(rows []nativeRow, def nativeRow, budget *engineBudget) ([]na
 				base[field] = value
 			}
 		}
-		if field := engineString(def["link"]); field != "" {
-			if value, ok := row[field]; ok {
+		if linkField != "" {
+			if value, ok := row[linkField]; ok {
 				base["link"] = value
 			}
 		}
-		base["time"], base["series"] = observed, engineText(row[engineString(def["series"])])
+		base["time"], base["series"] = observed, engineText(row[seriesField])
 		var metadata nativeRow
 		if engineHas(def, "point-carry") {
 			metadata = nativeRow{}
-			for _, field := range engineFields(def["point-carry"]) {
+			for _, field := range pointCarry {
 				if value, ok := row[field]; ok {
 					if !engineIsScalar(value) {
 						return nil, engineUnavailable("temporal-series point-carry requires scalar fields")
@@ -438,7 +492,7 @@ func engineTemporal(rows []nativeRow, def nativeRow, budget *engineBudget) ([]na
 				}
 			}
 		}
-		for _, item := range engineList(def["measures"]) {
+		for _, item := range measures {
 			measure := engineMap(item)
 			value := row[engineString(measure["field"])]
 			numeric, valid := engineTemporalNumber(value)
@@ -456,11 +510,11 @@ func engineTemporal(rows []nativeRow, def nativeRow, budget *engineBudget) ([]na
 			out := engineClone(base)
 			kind := engineString(measure["kind"])
 			out["metric"], out["metric-key"], out["metric-name"], out["metric-kind"], out["metric-group"], out["value"] = metric, kind+":"+metric, metric, kind, metric, numeric
-			if err := appendPoint(out, metadata); err != nil {
+			if err := appendPoint(out, metadata, timestamp); err != nil {
 				return nil, err
 			}
 		}
-		for _, item := range engineList(def["maps"]) {
+		for _, item := range mappings {
 			mapping := engineMap(item)
 			values := engineMap(row[engineString(mapping["field"])])
 			names := map[string]string{}
@@ -496,71 +550,21 @@ func engineTemporal(rows []nativeRow, def nativeRow, budget *engineBudget) ([]na
 				out := engineClone(base)
 				kind := engineString(mapping["kind"])
 				out["metric"], out["metric-key"], out["metric-name"], out["metric-kind"], out["metric-group"], out["value"] = metric, kind+":"+group+":"+metric, name, kind, group, numeric
-				if err := appendPoint(out, metadata); err != nil {
+				if err := appendPoint(out, metadata, timestamp); err != nil {
 					return nil, err
 				}
 			}
 		}
 	}
-	shape := engineString(def["shape"])
-	if shape == "" || shape == "tidy" {
-		result := make([]nativeRow, len(projected))
-		for i, point := range projected {
-			result[i] = point.row
-		}
+	if !grouped {
 		return result, nil
 	}
-	groups := []nativeRow{}
-	index := map[string]int{}
-	panelSeries := []map[string][]nativeRow{}
-	for i, point := range projected {
-		row := point.row
-		parts := []any{}
-		for _, field := range carry {
-			parts = append(parts, row[field])
-		}
-		key := engineKey(append(parts, row["metric-key"]))
-		position, exists := index[key]
-		if !exists {
-			position = len(groups)
-			index[key] = position
-			group := nativeRow{}
-			for _, field := range append(append([]string{}, carry...), "metric", "metric-key", "metric-name", "metric-kind", "metric-group") {
-				if value, ok := row[field]; ok {
-					group[field] = value
-				}
-			}
-			if shape == "groups" {
-				group["points"] = []nativeRow{}
-			}
-			groups = append(groups, group)
-			panelSeries = append(panelSeries, map[string][]nativeRow{})
-		}
-		p := nativeRow{"x": row["time"], "y": row["value"], "key": engineJSString(row["metric-key"]) + ":" + strconv.Itoa(i)}
-		if shape == "groups" {
-			p["color"] = row["series"]
-			groups[position]["points"] = append(groups[position]["points"].([]nativeRow), p)
-		} else {
-			if point.metadata != nil {
-				p["metadata"] = point.metadata
-			}
-			if value, ok := row["link"]; ok {
-				p["link"] = value
-			}
-			id := engineJSString(row["series"])
-			panelSeries[position][id] = append(panelSeries[position][id], p)
-		}
-	}
-	sortPoints := func(points []nativeRow) {
-		sort.SliceStable(points, func(i, j int) bool {
-			left, _ := engineParseDate(points[i]["x"])
-			right, _ := engineParseDate(points[j]["x"])
-			return left < right
-		})
-	}
 	for i, group := range groups {
+		if err := budget.spend(0); err != nil {
+			return nil, err
+		}
 		if shape == "groups" {
-			sortPoints(group["points"].([]nativeRow))
+			group["points"] = engineOrderedTemporalPoints(groupPoints[i])
 			if field := engineString(engineMap(def["trend"])["direction"]); field != "" {
 				engineAppendTrend(group, engineText(group[field]))
 			}
@@ -572,14 +576,25 @@ func engineTemporal(rows []nativeRow, def nativeRow, budget *engineBudget) ([]na
 			sort.Strings(ids)
 			series := []nativeRow{}
 			for _, id := range ids {
-				points := panelSeries[i][id]
-				sortPoints(points)
+				points := engineOrderedTemporalPoints(panelSeries[i][id])
 				series = append(series, nativeRow{"id": id, "label": id, "points": points})
 			}
 			group["series"] = series
 		}
 	}
 	return groups, nil
+}
+
+func engineOrderedTemporalPoints(points []engineTemporalPoint) []nativeRow {
+	less := func(i, j int) bool { return points[i].time < points[j].time }
+	if !sort.SliceIsSorted(points, less) {
+		sort.SliceStable(points, less)
+	}
+	result := make([]nativeRow, len(points))
+	for i, point := range points {
+		result[i] = point.row
+	}
+	return result
 }
 
 func engineTemporalNumber(value any) (float64, bool) {
