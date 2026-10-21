@@ -138,6 +138,9 @@ Monitoring is enough. For execution, [choose an operation pattern](operation-pat
 | One inventory mission | [Standalone fleet workflow](configuration.md#standalone-agentic-workflows). |
 | Independent target workers | [Campaign catalog](https://githubnext.github.io/gh-cao/catalog/). |
 
+Try the [Repo Status quickstart](setup/quickstart.md) for one standalone report.
+Written steps are complete; video is not yet available.
+
 None is enrolled, enabled or run by setup. Install a campaign separately:
 
 ```bash

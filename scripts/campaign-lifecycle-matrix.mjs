@@ -19,6 +19,7 @@ const suites = [
       ".github/workflows/graders/cao-evolution-",
       ".github/workflows/graders/dependabot-",
       ".github/workflows/shared/",
+      ".github/workflows/repo-status.",
     ],
   },
   {

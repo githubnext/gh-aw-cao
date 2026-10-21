@@ -137,10 +137,10 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          entry.target.classList.add("is-visible");
-          entry.target.classList.remove("reveal-pending");
-          observer.unobserve(entry.target);
+          // Keep stories revealed above the viewport, but reset them below it.
+          const visible = entry.isIntersecting || entry.boundingClientRect.top < 0;
+          entry.target.classList.toggle("is-visible", visible);
+          entry.target.classList.toggle("reveal-pending", !visible);
         }
       },
       { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },

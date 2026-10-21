@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
 import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs";
-import { controlPrecompute, generatedJobs, modes, portableSkill, resolvePolicy, root, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { controlPolicy, controlPrecompute, generatedJobs, modes, portableSkill, resolvePolicy, root, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Central policy resolution, rollout limits, and activation contracts.
 
@@ -33,7 +33,7 @@ function operationCampaigns() {
 }
 
 function operationWorkflowRegistrations() {
-  return operationCampaigns().flatMap(({ campaignName, descriptor }) => [
+  const campaigns = operationCampaigns().flatMap(({ campaignName, descriptor }) => [
     {
       name: `${descriptor.orchestrator}.md`,
       campaignName,
@@ -47,6 +47,12 @@ function operationWorkflowRegistrations() {
       workerName,
     })),
   ]);
+  const standalone = Object.keys(controlPolicy["control-plane"].workflows ?? {}).map((workflowName) => ({
+    name: `${workflowName}.md`,
+    workflowName,
+    role: "standalone",
+  }));
+  return [...campaigns, ...standalone];
 }
 
 test("Pi workflows no longer pin the unavailable GPT-5.4 model", () => {
@@ -443,11 +449,12 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(stepBlock(sharedControl, "Log CAO activation handoff"), /core\.info\(`\[cao] /);
   assert.match(stepBlock(sharedControl, "Log CAO activation handoff"), /decision: "agent-handoff"/);
   assert.match(sharedControl, /const reason = 'cannot read or execute the CAO control modules at github\.workflow_sha'/);
-  for (const { name, campaignName, role, workerName } of registrations) {
+  for (const { name, campaignName, workflowName, role, workerName } of registrations) {
     const source = workflow(name);
     const controlImport = workflowConfig(name).imports.find((entry) => entry.uses === "shared/control.md");
 
     assert.equal(controlImport.with.campaign, campaignName, name);
+    assert.equal(controlImport.with.workflow, workflowName, name);
     assert.equal(controlImport.with.role, role, name);
     assert.equal(controlImport.with.worker, workerName, name);
     assert.equal(
@@ -492,7 +499,7 @@ test("live workers use central policy as the activation authority", () => {
   assert.doesNotMatch(precompute, /validateLiveAuthority|target_authority_source|target default branch/);
   assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*writeWorkerPrecompute\(context\)/);
 
-  for (const { name, campaignName } of operationWorkflowRegistrations()) {
+  for (const { name, campaignName } of operationWorkflowRegistrations().filter(({ role }) => role !== "standalone")) {
     assert.match(workflow(name), new RegExp(`campaign: ${campaignName}`));
   }
 });
@@ -517,7 +524,8 @@ test("operation workflows optionally load per-operation markdown steering", () =
   assert.match(campaignSkill, /Never place the runtime import at the top of the Markdown body/);
   assert.match(campaignSkill, /\{\{#runtime-import\? \.github\/cao\/<campaign-slug>\.md\}\}/);
 
-  for (const { name, campaignName: operation } of operationWorkflowRegistrations()) {
+  for (const { name, campaignName, workflowName } of operationWorkflowRegistrations()) {
+    const operation = workflowName ?? campaignName;
     assert.match(
       workflow(name),
       new RegExp(`\\{\\{#runtime-import\\? \\.github/cao/${operation}\\.md\\}\\}\\s*$`),

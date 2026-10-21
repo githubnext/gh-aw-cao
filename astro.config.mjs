@@ -114,6 +114,7 @@ export default defineConfig({
             "orchestrators-*",
             "rollout-*",
             "setup-fine-*",
+            "setup/quickstart",
             "setup-multiple-*",
             "setup-one-*",
           ],
@@ -256,8 +257,9 @@ export default defineConfig({
           ],
         },
         {
-          label: "Get started",
+          label: "Setup",
           items: [
+            { label: "Quickstart", link: "/setup/quickstart/" },
             { label: "Set up and monitor", link: "/setup-quickstarts/" },
             { label: "Add a campaign (optional)", link: "/catalog/" },
             { label: "CAO commands", link: "/cao-cli/" },

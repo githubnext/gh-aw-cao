@@ -206,6 +206,7 @@ test("operational packages own their workflows without reinstalling the control 
       name.endsWith(".md")
       && workflowConfig(name).imports?.some((entry) =>
         entry.uses === "shared/control.md"
+        && typeof entry.with.campaign === "string"
         && existsSync(join(root, entry.with.campaign, "cao.json"))))
     .sort();
   assert.deepEqual(operationWorkflows.map((name) => `.github/workflows/${name}`), declaredOperationWorkflows);

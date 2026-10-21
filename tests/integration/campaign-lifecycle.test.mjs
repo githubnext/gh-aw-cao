@@ -51,6 +51,7 @@ const dashboardCampaignSource = focusedCampaignSource("dashboard");
 const dependabotUpdateSource = focusedCampaignSource("dependabot");
 const dependabotCampaignUpdateSource = `${campaignUpdateSource}/dependabot`;
 const optimizationCampaignSource = focusedCampaignSource("optimization");
+const repoStatusWorkflowSource = `https://github.com/${campaignSource.slice(0, campaignSource.lastIndexOf("@"))}/blob/${campaignSource.slice(campaignSource.lastIndexOf("@") + 1)}/.github/workflows/repo-status.md`;
 const selfCareCampaignSource = focusedCampaignSource("self-care");
 const softwareDevelopmentPracticesCampaignSource = focusedCampaignSource("software-development-practices");
 const activityExpectedFiles = [
@@ -523,6 +524,49 @@ test("gh aw add installs the focused Optimization campaign contract", { timeout:
       !existsSync(join(consumer, ".github", "workflows", "dependabot.md")),
       "focused Optimization campaign installed an unrelated orchestrator",
     );
+  } finally {
+    rmSync(consumer, { recursive: true, force: true });
+  }
+});
+
+test("root campaign runtime supports standalone Repo Status installation", { timeout: 240_000 }, async () => {
+  const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-standalone-"));
+  try {
+    run("git", ["init", "--quiet"], consumer);
+    run("git", ["remote", "add", "origin", `https://github.com/${consumerRepository}.git`], consumer);
+    retryTransientCampaignInstall(() => run("gh", ["aw", "add", campaignSource, "--no-security-scanner"], consumer));
+    retryTransientCampaignInstall(() => run("gh", ["aw", "add", repoStatusWorkflowSource], consumer));
+    for (const relativePath of [
+      ".github/workflows/repo-status.md",
+      ".github/workflows/repo-status.lock.yml",
+      ".github/workflows/shared/control.md",
+      ".github/workflows/shared/control.mjs",
+    ]) {
+      assert.ok(existsSync(join(consumer, relativePath)), `Repo Status omitted ${relativePath}`);
+    }
+    const policyPath = join(consumer, ".github/workflows/cao.json");
+    assert.equal(existsSync(policyPath), false, "installation does not copy catalog rollout authority");
+    const policy = {
+      version: 1,
+      "gh-aw-version": JSON.parse(readFileSync(resolve(".github/workflows/cao.json"), "utf8"))["gh-aw-version"],
+      "control-plane": {
+        scope: { "allowed-owners": ["octocat"], "allowed-repositories": [consumerRepository] },
+      },
+    };
+    policy["control-plane"].workflows = {
+      ...policy["control-plane"].workflows,
+      "repo-status": { enabled: false, mode: "review", "max-mode": "review", "max-repositories": 1 },
+    };
+    writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`);
+    run(process.execPath, [".github/workflows/shared/control.mjs", "validate-policy", policyPath], consumer);
+    assert.equal(existsSync(join(consumer, "repo-status/cao.json")), false);
+    assert.equal(installedManifests(consumer).some(name => /repo-status/.test(name)), false);
+    assert.equal(existsSync(join(consumer, ".github/workflows/repo-status-report.md")), false);
+    assert.equal(existsSync(join(consumer, ".github/workflows/repo-assist.md")), false);
+    const source = readFileSync(join(consumer, ".github/workflows/repo-status.md"), "utf8");
+    assert.match(source, /role: standalone\n\s+workflow: repo-status/);
+    assert.match(source, /required-labels: \[repo-status\]/);
+    assert.match(source, /Copyright \(c\) 2025 GitHub/);
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
