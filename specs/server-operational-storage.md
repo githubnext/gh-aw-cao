@@ -51,7 +51,11 @@ credentials alone MUST NOT change selection.
 `postgres.url-env` MAY reference a server-side connection secret; omission uses
 `CAO_POSTGRES_URL`. Redis configuration and volatile-memory options MUST NOT
 be combined with this backend. Non-loopback PostgreSQL TCP transport and all
-fallbacks MUST use TLS. Selection MUST NOT change scope, enable collection,
+fallbacks MUST use verified TLS: certificate-chain and hostname verification
+MUST be enabled (`sslmode=verify-full`), and a configuration that skips
+verification or omits the server name MUST be rejected. Encryption alone
+(`sslmode=require` or `verify-ca`) MUST NOT satisfy this requirement. Unix
+socket, `localhost`, and loopback-address hosts are exempt. Selection MUST NOT change scope, enable collection,
 move the canonical namespace, migrate existing operational state, provide
 automatic fallback, or dual-write.
 
