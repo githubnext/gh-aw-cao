@@ -90,37 +90,57 @@ func decodeConclusion(data []byte) (ConclusionRequest, error) {
 			return ConclusionRequest{}, ErrDenied
 		}
 	}
+	if reason := conclusionBoundsViolation(result); reason != "" {
+		admissionLog.Printf("conclusion denied: reason=%s", reason)
+		return ConclusionRequest{}, ErrDenied
+	}
+	if reason := compactSessionViolation(result.Session, result.SessionCompaction.IncludedEvents); reason != "" {
+		admissionLog.Printf("conclusion denied: reason=%s", reason)
+		return ConclusionRequest{}, ErrDenied
+	}
+	return result, nil
+}
+
+// conclusionBoundsViolation returns a fixed reason code for the first numeric,
+// size, or artifact-identifier bound a conclusion exceeds, or "" when valid.
+func conclusionBoundsViolation(result ConclusionRequest) string {
 	c := result.SessionCompaction
 	if c.Version != 1 || c.IncludedEvents < 0 || c.IncludedEvents > MaxSessionEvents ||
 		c.OmittedEvents < 0 || c.OmittedEvents > maxSafeInteger ||
 		c.OversizedLines < 0 || c.OversizedLines > maxSafeInteger ||
 		len(result.UsageArtifactIDs) > 2 || len(result.Session) > MaxSessionBytes {
-		return ConclusionRequest{}, ErrDenied
+		return "compaction_bounds"
 	}
 	for n, id := range result.UsageArtifactIDs {
 		if len(id) > 20 || !decimal.MatchString(id) || n > 0 && id == result.UsageArtifactIDs[0] {
-			return ConclusionRequest{}, ErrDenied
+			return "artifact_ids"
 		}
 	}
-	if result.Session == "" {
-		if c.IncludedEvents != 0 {
-			return ConclusionRequest{}, ErrDenied
+	return ""
+}
+
+// compactSessionViolation returns a fixed reason code when the session is not
+// a newline-terminated list of exactly includedEvents valid compact events.
+func compactSessionViolation(session string, includedEvents int) string {
+	if session == "" {
+		if includedEvents != 0 {
+			return "session_count"
 		}
-		return result, nil
+		return ""
 	}
-	if !strings.HasSuffix(result.Session, "\n") {
-		return ConclusionRequest{}, ErrDenied
+	if !strings.HasSuffix(session, "\n") {
+		return "session_terminator"
 	}
-	lines := strings.Split(strings.TrimSuffix(result.Session, "\n"), "\n")
-	if len(lines) != c.IncludedEvents {
-		return ConclusionRequest{}, ErrDenied
+	lines := strings.Split(strings.TrimSuffix(session, "\n"), "\n")
+	if len(lines) != includedEvents {
+		return "session_count"
 	}
 	for _, line := range lines {
 		if !validCompactEvent([]byte(line)) {
-			return ConclusionRequest{}, ErrDenied
+			return "session_event"
 		}
 	}
-	return result, nil
+	return ""
 }
 
 func validCompactEvent(line []byte) bool {
