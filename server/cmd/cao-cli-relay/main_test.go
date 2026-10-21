@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"os/exec"
 	"slices"
 	"strings"
 	"testing"
@@ -37,5 +39,32 @@ func TestWorkloadEnvEmpty(t *testing.T) {
 	env := workloadEnv(nil)
 	if len(env) != len(proxyVariables)+2 {
 		t.Fatalf("got %d entries: %v", len(env), env)
+	}
+}
+
+func TestWorkloadExitCode(t *testing.T) {
+	if got := workloadExitCode(nil); got != 0 {
+		t.Fatalf("success exit code = %d, want 0", got)
+	}
+	shell, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh is unavailable")
+	}
+	exitErr := exec.Command(shell, "-c", "exit 7").Run()
+	if got := workloadExitCode(exitErr); got != 7 {
+		t.Fatalf("workload exit code = %d, want 7", got)
+	}
+}
+
+func TestWorkloadExitCodeStartFailure(t *testing.T) {
+	startErr := exec.Command("/nonexistent/cao-relay-workload").Run()
+	if startErr == nil {
+		t.Fatal("expected a start failure")
+	}
+	if got := workloadExitCode(startErr); got != 125 {
+		t.Fatalf("start failure exit code = %d, want 125", got)
+	}
+	if got := workloadExitCode(errors.New("other")); got != 125 {
+		t.Fatalf("generic failure exit code = %d, want 125", got)
 	}
 }
