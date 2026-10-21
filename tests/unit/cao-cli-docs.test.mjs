@@ -104,13 +104,12 @@ test("extension installation guidance distinguishes discovery, promotion, and ru
 test("native and Node setup hand off to outcome and scope rather than pattern selection", () => {
   for (const filename of ["internal/cli/native_setup.go", "activity/cao.mjs"]) {
     const source = readFileSync(filename, "utf8");
-    assert.ok(source.includes("https://githubnext.github.io/gh-cao/operation-patterns/"));
     if (filename.endsWith(".go")) {
       assert.ok(source.includes("Monitoring configured. Automation is optional; no workflows run."));
-      assert.ok(source.includes("Optional automation:"));
+      assert.match(source, /Optional automation: https:\/\/githubnext\.github\.io\/gh-cao\/operation-patterns\/\\n"/);
     } else {
       assert.ok(source.includes("Monitoring is configured; executing operations is optional."));
-      assert.ok(source.includes("Describe the outcome, target scope, and execution requirements:"));
+      assert.ok(source.includes("Describe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/"));
     }
     assert.doesNotMatch(source, /Add your first campaign separately|Choose an operation pattern/);
   }
