@@ -2709,6 +2709,17 @@ go -C server run ./cmd/cao-dashboard doctor \
   --deep
 ```
 
+`redis.persistence` observes `INFO persistence` without requiring `CONFIG`
+permissions. Missing or malformed observations warn rather than imply healthy
+writes. An explicitly enabled AOF with a successful last write passes this
+write-health check, unless another reported persistence status is invalid or
+reports failure. With AOF disabled, even a successful last background save
+warns: a historical save status does not establish an active snapshot policy.
+These warnings do not establish backup failure, and a pass does not verify
+durability or recoverability. Independently verify snapshot policy or
+provider-managed persistence, backup retention, and restore evidence with the
+Redis operator or provider management plane.
+
 Use `--format json` for a versioned agent/automation contract. JSON and text
 contain the same observations and stable check identifiers. The command exits
 non-zero when any check fails; `--strict` also makes warnings non-zero, which
