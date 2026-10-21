@@ -1,35 +1,7 @@
 {
-  "source_sha": "83a00385aac7141a99f08caa3f3134f94a500030",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "fd2cda6b9e1f5671776f9bed531cc5f80fb804cc",
+  "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-20T21:50:00Z",
-      "worker_run_id": "39503473408",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39503217685,
-        39502971923,
-        39501354413,
-        39499956441,
-        39499549966,
-        39497001456,
-        39495125880,
-        39493508349,
-        39491858643,
-        39491441523,
-        39488433149,
-        39487836723,
-        39486361919,
-        39484726164,
-        39484498653,
-        39484331843,
-        39483522398,
-        39482760104,
-        39482357411,
-        39479892762
-      ],
-      "outcome": "incomplete: the 2026-10-20T19:01:39Z to 2026-10-20T21:49:41Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Five successful runs appeared to execute both build and deploy (four push and one workflow_run, across five source SHAs), satisfying the sample-count screen. Trusted metadata for the newest two builds showed 119-148 second end-to-end workflows, 85-113 second build jobs, 19-25 second deploy jobs, 19-29 second dependency installation, 10-13 second documentation generation, 3-second dashboard-cache restoration with artifact fallback skipped, and 10-12 second Pages upload. During collection of the remaining required job, step, and cache-log evidence, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API work stopped. Complete median/p90 workflow, queue, build, deploy, and repeated cache-effectiveness measurements could not be established; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
-    },
     {
       "evaluated_at": "2026-10-20T22:22:00Z",
       "worker_run_id": "39507162359",
@@ -757,6 +729,34 @@
       "category": "scheduling, concurrency, and avoidable rebuilds",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-21T13:57:25Z",
+      "worker_run_id": "39611831005",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39611466359,
+        39610162076,
+        39608307310,
+        39608272684,
+        39608023395,
+        39607887131,
+        39607336151,
+        39606090075,
+        39605344599,
+        39604051880,
+        39603781540,
+        39600695972,
+        39600561849,
+        39598615830,
+        39596459634,
+        39596116219,
+        39594752439,
+        39593116127,
+        39591576136,
+        39591399529
+      ],
+      "outcome": "no-op: the 2026-10-21T11:21:53Z to 2026-10-21T13:50:21Z latest-20 window contained 15 successful, four skipped, and one cancelled completed docs.yml run; the cancelled workflow_run was excluded. Seven successful builds were comparable (five push and two schedule, across seven source SHAs): median/p90 end-to-end 183/213.4 seconds, initial queue or concurrency wait 4/33.6 seconds, queue-excluded execution 165/209.8 seconds, build job 88/139.4 seconds, and deploy job 46/83.4 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; dashboard-cache restoration was 3/3.4 seconds. Dependency installation was 22/26.4 seconds, Astro generation 14/15 seconds, and Pages artifact upload 13/13 seconds. Trusted bounded logs verified npm package-cache and reusable dashboard-cache hits (about 300 MiB and 58 MiB) for the two newest builds; trusted step metadata showed all seven builds restored the dashboard cache and skipped artifact fallback. Of ten schedule runs, two rebuilt and eight freshness-checked without building. One push waited 66 seconds behind an overlapping schedule, but this is not repeated evidence for a deployment-safe cancellation change. Open issues #17171 and #18158 already represent the stable freshness-history and push-deployment work. No new non-duplicate scheduling or concurrency improvement met the repeated-evidence, 60-second or 15%, and deployment-safety requirements, so the category advanced. The cancelled workflow_run, run 39600695972's 114-second checkout, and deployment-service variance were disclosed rather than attributed to avoidable scheduling work."
     }
   ]
 }
