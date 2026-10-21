@@ -140,7 +140,7 @@ test("gateway hero diagram shows cross-repo dispatch without an admission sectio
 test("terminal follows extension onboarding and matches the production CLI", () => {
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
   const installation = "gh extension install githubnext/gh-cao";
-  assert.ok(terminal.replace(/<[^>]*>/g, "").includes(installation));
+  assert.ok(terminalText.includes(installation));
   assert.ok(readFileSync("README.md", "utf8").includes(installation));
   assert.doesNotMatch(terminal, /raw\.githubusercontent\.com.*install\.sh|\bgh cao init\b/);
   assert.match(terminal, /existing control repository checkout/);
