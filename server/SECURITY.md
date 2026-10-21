@@ -635,6 +635,15 @@ Keep the Azure secure-computing baseline enabled:
   never GitHub tokens, Redis URLs, session secrets, cookies, authorization
   headers, source records, or prompt contents.
 
+Application Insights app settings alone do not activate Go exporters. Use the
+[reviewed HTTPS OTLP route](../docs/deployment-azure.md#explicit-go-telemetry-route)
+for the Function App and collection/backfill roles, with secret-manager input
+for collector authentication and secret-scoped Key Vault resolution. Go log
+export requires explicit opt-in and uses bounded namespaces, not the workers'
+broad debug selection. Collector/backend delivery and alert acknowledgements
+still require deployment receipts; platform logs and independent audit delivery
+remain separate. Exporter availability must not gate request readiness.
+
 The Azure Elastic Premium baseline keeps one always-on instance for the
 process-lifetime revocation worker. Redis remains the durable queue across
 process replacement; each startup resumes bounded retry batches before the

@@ -2421,6 +2421,7 @@ flowchart LR
   Redis["Azure Managed Redis<br/>TLS<br/>operational state"]
   Storage["Functions storage account<br/>runtime state only"]
   Insights["Application Insights<br/>non-secret operational telemetry"]
+  OTel["Operator-managed OTel collector<br/>TLS + authentication"]
   Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
 
   Browser -->|"HTTPS static assets + API + best-effort SSE"| Edge
@@ -2430,7 +2431,8 @@ flowchart LR
   Function -->|"rediss:// operational commands"| Redis
   Function -->|"entity source reads/writes"| Postgres
   Function -->|"runtime binding state"| Storage
-  Function -->|"no tokens, no Redis URL, no source records"| Insights
+  Function -->|"opt-in OTLP/HTTP, bounded metadata only"| OTel
+  OTel -->|"Azure Monitor exporter"| Insights
   Operators -->|"reviewed Bicep + secret rotation"| KeyVault
   Operators -->|"deploy package + app settings"| Function
 
@@ -3172,9 +3174,15 @@ is not instrumented, not that pauses are zero.
 
 There is no Azure-specific exporter linked into the binary. To ship telemetry to
 Application Insights, point `OTEL_EXPORTER_OTLP_ENDPOINT` at an OpenTelemetry
-Collector configured with the `azuremonitorexporter` and the
-`APPLICATIONINSIGHTS_CONNECTION_STRING` provisioned by `azure/main.bicep`;
-the Function App itself never imports an Azure Monitor SDK.
+Collector configured with the `azuremonitorexporter`; supply that collector's
+Application Insights connection string from its secret manager. The
+`APPLICATIONINSIGHTS_CONNECTION_STRING` on the Function App does not activate
+Go exports or configure an external collector. The Azure template supports an
+explicit `otlpEndpoint`, `otlpLogsEnabled`, and secure `otlpHeaders` overlay for
+the Function App and optional collection/backfill roles. See the
+[Azure telemetry route and deployment receipts](../docs/deployment-azure.md#explicit-go-telemetry-route).
+The Function App itself never imports an Azure Monitor SDK, and telemetry
+delivery is not a request-readiness dependency.
 
 ## Security boundaries
 
