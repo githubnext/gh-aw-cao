@@ -22,6 +22,7 @@ on:
       - server/go.mod
       - server/go.sum
       - package.json
+      - tests/unit/cao-bootstrap-workflow.test.mjs
 
 permissions:
   contents: read
@@ -33,6 +34,8 @@ concurrency:
 jobs:
   bootstrap:
     name: Install, configure, and publish against local GitHub
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -57,6 +60,11 @@ jobs:
           gh extension install github/gh-aw --pin "$version"
           gh aw version
       - name: Exercise real bootstrap with synthetic credentials and local GitHub
+        env:
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+          GH_ENTERPRISE_TOKEN: ""
+          GITHUB_ENTERPRISE_TOKEN: ""
         shell: bash
         run: |
           set -euo pipefail

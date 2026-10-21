@@ -58,6 +58,10 @@ The test checks that private non-interactive setup fails without changing
 policy, repeated public monitoring setup is idempotent, and no campaign or
 agent operation is enabled. Home, Git configuration, CLI extensions, and
 credentials are isolated; only a synthetic token is used in the test.
+The workflow and every job grant only `contents: read`. The integration step
+explicitly clears real GitHub token environment variables; the read-only
+workflow token is used only to download the gh-aw prerequisite, never for
+repository creation, configuration, or Git publication.
 
 This covers control-repository bootstrap and publication, not execution of
 GitHub Actions jobs, rendering of a deployed Pages site, GitHub App consent,
