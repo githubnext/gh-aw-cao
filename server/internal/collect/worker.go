@@ -287,7 +287,7 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 }
 
 func (w Worker) processErasure(ctx context.Context, lease Lease) bool {
-	if err := w.Runner.Lake.Forget(lease.Task.Repository); err != nil {
+	if err := w.Runner.Lake.ForgetContext(ctx, lease.Task.Repository); err != nil {
 		workerLog.Printf("evidence erasure failed repository=%s", lease.Task.Repository)
 		if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
 			workerLog.Printf("task retry failed repository=%s", lease.Task.Repository)

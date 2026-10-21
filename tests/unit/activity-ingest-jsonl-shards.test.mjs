@@ -11,6 +11,7 @@ import {
   relationshipSafeEvidenceBatch
 } from '../../activity/normalized-phase.mjs';
 import { NORMALIZED_COLLECTIONS } from '../../activity/cli-usage.mjs';
+import { compactJsonlShards } from '../../activity/cli/jsonl.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -269,7 +270,7 @@ test('compact-jsonl deduplicates exact run records without reordering distinct o
   const third = '{"schema_version":2,"kind":"run","run":{"run_id":3,"repository":"githubnext/gh-cao-logs-123","workflow_path":".github/workflows/third.lock.yml"}}';
   const unrelated = '{"schema_version":2,"kind":"run","run":{"run_id":4,"repository":"github/gh-aw","workflow_path":".github/workflows/fourth.lock.yml"}}';
   await writeFile(firstPath, `${first}\n${second}\n`);
-  await writeFile(secondPath, `${first}\n${firstUpdated}\n${third}\n`);
+  await writeFile(secondPath, `${first}\n${firstUpdated}\n`);
   await writeFile(unrelatedPath, `${unrelated}\n`);
   await writeFile(overlappingPrefixPath, `${third}\n`);
 
@@ -286,8 +287,8 @@ test('compact-jsonl deduplicates exact run records without reordering distinct o
   const result = JSON.parse(stdout);
   const compacted = result.groups.find((group) => group.prefix === prefix);
   assert.equal(compacted.sourceFiles, 2);
-  assert.equal(compacted.sourceRecords, 5);
-  assert.equal(compacted.retainedRecords, 4);
+  assert.equal(compacted.sourceRecords, 4);
+  assert.equal(compacted.retainedRecords, 3);
   assert.equal(compacted.deduplicatedRunRecords, 1);
   assert.equal(
     result.groups.find((group) => group.prefix === overlappingPrefix).sourceFiles,
@@ -297,10 +298,56 @@ test('compact-jsonl deduplicates exact run records without reordering distinct o
   const compactedName = path.basename(compacted.output);
   assert.deepEqual(
     (await readFile(path.join(root, compactedName), 'utf8')).trim().split('\n'),
-    [first, second, firstUpdated, third],
+    [first, second, firstUpdated],
   );
   assert.equal(await readFile(unrelatedPath, 'utf8'), `${unrelated}\n`);
   assert.equal(await readFile(overlappingPrefixPath, 'utf8'), `${third}\n`);
+});
+
+test('compact-jsonl rejects ambiguous legacy identity before mutating any group', async (t) => {
+  for (const conflicting of [
+    [{ request: { repository: 'octo-a/b' } }, { run: { repository: 'octo/a-b' } }],
+    [{ request: { repository: 'octo-a/b' }, run: { repository_full_name: 'octo/a-b' } }],
+  ]) {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'activity-compact-mixed-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const source = path.join(root, 'octo-a-b-logs-1.jsonl');
+    const content = `${conflicting.map((record) => JSON.stringify(record)).join('\n')}\n`;
+    await writeFile(source, content);
+    await assert.rejects(compactJsonlShards(root, [
+      'octo-a/b=first-logs-', 'octo/a-b=second-logs-'
+    ]), /conflicting repository identities/);
+    assert.deepEqual(await readdir(root), [path.basename(source)]);
+    assert.equal(await readFile(source, 'utf8'), content);
+  }
+});
+
+test('compact-jsonl migrates distinct legacy collisions into separate versioned groups', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'activity-compact-collision-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const repositories = ['octo-a/b', 'octo/a-b'];
+  // The exact prefix is provided by the collector; the shared CLI treats it as opaque.
+  const prefixes = ['repo-v2~octo-a~b~-logs-', 'repo-v2~octo~a-b~-logs-'];
+  const expected = [];
+  for (const [index, repository] of repositories.entries()) {
+    const lines = [1, 2].map((run) => JSON.stringify({
+      kind: 'run',
+      run: { repository, run_id: index * 10 + run, workflow_path: '.github/workflows/test.lock.yml' }
+    }));
+    expected.push(`${lines.join('\n')}\n`);
+    for (const [part, line] of lines.entries()) {
+      await writeFile(path.join(root, `octo-a-b-logs-${index}-${part}.jsonl`), `${line}\n`);
+    }
+  }
+  const result = await compactJsonlShards(root, repositories.map((repository, index) =>
+    `${repository}=${prefixes[index]}`));
+  for (const group of result.groups) {
+    const index = repositories.indexOf(group.repository);
+    assert.equal(group.sourceFiles, 2);
+    assert.ok(path.basename(group.output).startsWith(prefixes[index]));
+    assert.equal(await readFile(group.output, 'utf8'), expected[index]);
+  }
+  assert.equal((await readdir(root)).length, 2);
 });
 
 test('compact-jsonl bounds retained shards without reordering observations', async () => {

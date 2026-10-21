@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -71,9 +72,14 @@ func (l Lake) ControlSettingsPath() string {
 	return filepath.Join(l.Directory, "control-settings.json")
 }
 
-// ShardPrefix is the per-repository shard prefix. It matches the layout the
-// Actions profile produces, so shards from either profile are interchangeable.
+// ShardPrefix encodes the complete normalized coordinate without loss. "~"
+// cannot occur in repository segments or legacy names, so both separators and
+// the terminator are unambiguous without expanding long repository names.
 func (l Lake) ShardPrefix(repository string) string {
+	return "repo-v2~" + strings.ReplaceAll(strings.ToLower(repository), "/", "~") + "~-logs-"
+}
+
+func legacyShardPrefix(repository string) string {
 	return strings.ReplaceAll(repository, "/", "-") + "-logs-"
 }
 
@@ -123,6 +129,11 @@ func (l Lake) seedInventoryIfMissing() (bool, error) {
 // projection afterwards, which is what removes the repository's rows from the
 // canonical database.
 func (l Lake) Forget(repository string) error {
+	return l.ForgetContext(context.Background(), repository)
+}
+
+// ForgetContext is Forget with cancellation during ownership preflight.
+func (l Lake) ForgetContext(ctx context.Context, repository string) error {
 	normalized, err := NormalizeRepository(repository)
 	if err != nil {
 		return err
@@ -130,45 +141,97 @@ func (l Lake) Forget(repository string) error {
 	if err := l.Validate(); err != nil {
 		return err
 	}
-	prefix := l.ShardPrefix(normalized)
-	removed := 0
+	var paths []string
 	for _, directory := range []string{
 		l.ShardDirectory(), l.RunsDirectory(), l.RecordsDirectory(),
 	} {
-		count, err := removeMatchingFiles(directory, prefix)
+		matches, err := l.repositoryShards(ctx, directory, normalized)
 		if err != nil {
 			return err
 		}
-		removed += count
+		paths = append(paths, matches...)
 	}
-	lakeLog.Printf("forgot repository shards removed=%d", removed)
+	for _, path := range paths {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove retained evidence: %w", err)
+		}
+	}
+	lakeLog.Printf("forgot repository shards removed=%d", len(paths))
 	return nil
 }
 
-// removeMatchingFiles deletes every regular file in directory whose name has
-// prefix, reporting how many files it removed. A missing directory is not an
-// error: a repository that never collected into that directory has nothing to
-// forget there.
-func removeMatchingFiles(directory, prefix string) (int, error) {
+// repositoryShards preflights every candidate before any mutation. A legacy
+// prefix is only a search hint: content, not its lossy name, determines ownership.
+func (l Lake) repositoryShards(ctx context.Context, directory, repository string) ([]string, error) {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return 0, nil
+			return nil, nil
 		}
-		return 0, fmt.Errorf("read evidence lake directory: %w", err)
+		return nil, fmt.Errorf("read evidence lake directory: %w", err)
 	}
-	removed := 0
+	var paths []string
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasPrefix(entry.Name(), prefix) {
+		current := strings.HasPrefix(entry.Name(), l.ShardPrefix(repository))
+		if !current && !strings.HasPrefix(entry.Name(), legacyShardPrefix(repository)) {
 			continue
 		}
-		if err := os.Remove(filepath.Join(directory, entry.Name())); err != nil &&
-			!errors.Is(err, os.ErrNotExist) {
-			return removed, fmt.Errorf("remove retained evidence: %w", err)
+		if !entry.Type().IsRegular() || !strings.HasSuffix(entry.Name(), ".jsonl") {
+			return nil, errors.New("non-regular or unrecognized repository shard prevents safe evidence mutation")
 		}
-		removed++
+		path := filepath.Join(directory, entry.Name())
+		owner, err := retainedShardRepository(ctx, path)
+		if err != nil {
+			return nil, fmt.Errorf("verify repository shard ownership: %w", err)
+		}
+		if current && owner != repository {
+			return nil, errors.New("retained shard filename does not match its authoritative identity")
+		}
+		if owner == repository {
+			paths = append(paths, path)
+		}
 	}
-	return removed, nil
+	return paths, nil
+}
+
+// MigrateRepositoryShards makes verified legacy evidence available to the new
+// repository-scoped cache. Hard links publish without replacing existing files;
+// a crash between link and unlink is safely resumable.
+func (l Lake) MigrateRepositoryShards(ctx context.Context, repository string) error {
+	repository, err := NormalizeRepository(repository)
+	if err != nil {
+		return err
+	}
+	if err := l.Validate(); err != nil {
+		return err
+	}
+	paths, err := l.repositoryShards(ctx, l.ShardDirectory(), repository)
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		name := filepath.Base(path)
+		if strings.HasPrefix(name, l.ShardPrefix(repository)) {
+			continue
+		}
+		destination := filepath.Join(l.ShardDirectory(),
+			l.ShardPrefix(repository)+"legacy-"+strings.TrimPrefix(name, legacyShardPrefix(repository)))
+		if err := os.Link(path, destination); err != nil {
+			sourceInfo, sourceErr := os.Lstat(path)
+			destinationInfo, destinationErr := os.Lstat(destination)
+			if !errors.Is(err, os.ErrExist) || sourceErr != nil || destinationErr != nil ||
+				!os.SameFile(sourceInfo, destinationInfo) {
+				return fmt.Errorf("migrate retained shard without overwriting evidence: %w", err)
+			}
+		}
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("remove migrated legacy shard: %w", err)
+		}
+	}
+	return nil
 }
 
 // Populated reports whether the lake holds evidence that can repopulate an

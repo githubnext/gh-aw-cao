@@ -199,18 +199,28 @@ async function compactJsonlShardGroup(directory, prefix, names, maxBytes) {
 }
 
 async function shardRepository(filePath) {
+  let identity = null;
   for (const { value: record } of jsonlRecords([filePath])) {
-    const requested = record?.request?.repository;
-    if (typeof requested === 'string' && requested.includes('/')) return requested.toLowerCase();
     const run = record?.run;
-    if (!run || typeof run !== 'object' || Array.isArray(run)) continue;
-    const repository = run.repository_full_name ?? run.repository;
-    if (typeof repository === 'string' && repository.includes('/')) return repository.toLowerCase();
-    if (typeof run.organization === 'string' && typeof repository === 'string') {
-      return `${run.organization}/${repository}`.toLowerCase();
+    const candidates = [record?.request?.repository, run?.repository_full_name];
+    if (typeof run?.repository === 'string') {
+      candidates.push(run.repository.includes('/') ? run.repository
+        : typeof run.organization === 'string' ? `${run.organization}/${run.repository}` : null);
+    }
+    for (const candidate of candidates) {
+      if (candidate === undefined || candidate === null || candidate === '') continue;
+      if (typeof candidate !== 'string'
+          || !/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(candidate)) {
+        throw new UsageError('Shard contains an invalid repository identity');
+      }
+      const repository = candidate.toLowerCase();
+      if (identity !== null && identity !== repository) {
+        throw new UsageError('Shard contains conflicting repository identities; compaction requires operator repair');
+      }
+      identity = repository;
     }
   }
-  return null;
+  return identity;
 }
 
 export async function compactJsonlShards(
@@ -230,8 +240,8 @@ export async function compactJsonlShards(
     if (separator < 1 || !/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(repository)) {
       throw new UsageError('--group must start with an OWNER/REPOSITORY coordinate');
     }
-    if (!/^[A-Za-z0-9._-]+$/.test(prefix)) {
-      throw new UsageError('--group shard prefix must contain only letters, numbers, dots, underscores, and hyphens');
+    if (!/^[A-Za-z0-9._~-]+$/.test(prefix)) {
+      throw new UsageError('--group shard prefix must contain only letters, numbers, dots, underscores, tildes, and hyphens');
     }
     if (groupsByRepository.has(repository)) throw new UsageError(`Duplicate compact-jsonl repository: ${repository}`);
     groupsByRepository.set(repository, { prefix, names: [] });
