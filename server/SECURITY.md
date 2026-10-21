@@ -1,5 +1,9 @@
 # Server security
 
+For the component inventory, evidence-driven readiness procedure, and operator
+decision register, see [SOC 2 readiness assessment](SOC2.md). That assessment
+does not attest compliance or authorize remediation.
+
 The Go dashboard server has three security profiles:
 
 - the default local profile used by `cao-dashboard serve`, for one trusted
