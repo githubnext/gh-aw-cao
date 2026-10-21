@@ -239,3 +239,30 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Decision/lifecycle: `remediate` / `in-progress` pending parent/default-branch
   integration and final required gates; no production/period control closed.
   Original design/failed-gate observations and skip limitations preserved.
+
+## 2026-10-21 - SOC2-LOG-011 - Daily SelfCare worker authored and proposed
+
+- Type: recurring workflow authoring/contract-validation milestone.
+- Source/evidence: commit `c132cc6d01809d2b99fb86e36dd56430355a44ef`,
+  draft [#19310](https://github.com/githubnext/gh-cao/pull/19310).
+  Coordinator verified GitHub draft/head/base, changed-file scope and policy
+  registration diff; authoring-session validation is separately attributed.
+- Specification version: 1, section 8.
+- Proposal: `self-care-server-soc2`, rolling 24-hour orchestrator eligibility
+  and manual duplicate-day guard; exact existing target/live authority only.
+  Worker registered across inventory/manifests/policy/dispatch; ceiling
+  20 to 21 workers, no target/mode/credit-ceiling widening.
+- Behavior: daily assessment/report even with an existing fix PR; at most
+  three ranked current verified compatible code issues in one bounded draft
+  PR; open/addressed remediation exclusion, no fabricated operational evidence.
+  One-package/12-file/50-KiB/path limits protect workflow/policy/credentials.
+  Blocked durable record deltas require explicit human consolidation.
+- Reported validation: 303 workflow/policy and 258 control integration
+  tests passed without skips; lint/both type checks passed; 73 workflows
+  compiled and locks regenerated with fixed seed and inspected.
+- Activation: pending review/default-control-branch integration, prerequisites,
+  credentials and Actions configuration. No run/merge/deployment performed
+  by authoring session or coordinator. Artifact retention is not proof of
+  examination-period retention or effective controls.
+- Decisions/findings: no risk accepted, exclusion approved or prior finding
+  closed. SOC 2 readiness remains undetermined.

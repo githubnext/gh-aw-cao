@@ -205,7 +205,7 @@ remain coordinator-owned to avoid conflicting edits.
 | OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Remediation launched |
 | OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | [#19304](https://github.com/githubnext/gh-cao/pull/19304) merged into assessment branch; targeted integration passed; default-branch/deployment closure pending |
 | DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | [#19305](https://github.com/githubnext/gh-cao/pull/19305) merged into assessment branch; targeted integration passed; default-branch gate pending |
-| Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | Authoring launched; not active/deployed |
+| Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | Draft [#19310](https://github.com/githubnext/gh-cao/pull/19310); authored/validated proposal, not active/deployed |
 
 The recurring worker must follow
 [specification section 8](../specs/server-soc2-compliance.md#8-daily-selfcare-reassessment-and-bounded-remediation).
@@ -246,6 +246,52 @@ default-branch integration/relevant final checks. OPS-04's original design-gap
 and DATA-08's original failed-gate observations remain historical; the
 assessment branch now contains their technical corrections. No deployed
 provider/backup control or operating-period evidence is closed.
+
+#### Daily worker proposal received 2026-10-21
+
+Draft [#19310](https://github.com/githubnext/gh-cao/pull/19310), commit
+`c132cc6d01809d2b99fb86e36dd56430355a44ef`, proposes
+`self-care-server-soc2`. Coordinator verified open/draft/head/base identity,
+12-file scope and the policy diff's new worker registration only; no existing
+target/mode/authority change. The dispatch ceiling grows from 20 to 21 to
+include the worker, without changing orchestrator/worker credit ceilings.
+
+The proposal reuses the existing every-20-minutes orchestrator's rolling
+24-hour eligibility convention, plus a manual-dispatch duplicate-day guard.
+Queued/in-progress and recent failed/cancelled runs count; unavailable,
+ambiguous or truncated history defers dispatch. Shared admission and an
+exact-target/live activation guard remain mandatory.
+
+Daily JSON/Markdown artifacts and a run summary are produced independently of
+the remediation PR guard. Selection ranks current verified actionable code
+gaps by severity/confidence/stable ID/path, excludes addressed or open
+remediations across authors, and permits at most three compatible fixes.
+Evidence-only gaps are not forced into code changes or fabricated closure.
+An existing worker PR suppresses another PR, not assessment; material durable
+register/changelog deltas are then marked pending/incomplete for human
+consolidation.
+
+Compiled safe-output proposal: at most one draft PR, 12 files (four production
+Go files plus six tests in one package, plus two assessment records), 50 KiB
+patch bound, and only `server/internal/**/*.go`, `server/cmd/**/*.go`,
+`server/SOC2.md` and `server/SOC2-CHANGELOG.md` paths. Protected-file fallback
+to an issue is disabled. Workflow/policy/credential changes cannot be smuggled
+through that output. Unsupported wider fixes are deferred. Limits are 45
+minutes/400 AI credits with bounded read/check/report work.
+
+The authoring session reports 303 workflow/policy contract tests and 258
+admission/resolver/failure integration tests passing without skips, lint and
+both repository type checks passing, and 73 seeded workflow compile/lock
+outputs reviewed. These validate authoring contracts, not runtime production
+controls or actual daily dispatch. Validation artifacts:
+`/Users/peli/.copilot/session-state/e0f32d7e-d753-4484-8876-251fd467257d/files/daily-soc2-checks/`.
+
+Activation still requires assessment prerequisites and worker source/policy
+on the active reviewed control branch, required existing credentials and
+Actions configuration. No dispatch/deployment/merge was performed by the
+authoring session/coordinator. Fourteen-day daily artifacts are not a
+substitute for operator-approved examination-period evidence retention
+(OPS-08). No previous finding is closed by authoring this worker.
 
 #### OPS-04 remediation proposal received 2026-10-21
 
@@ -542,7 +588,7 @@ time-bounded risk. This assessment does not make those choices automatically.
 All four bounded technical reports are now consolidated, including recorded
 coverage exclusions, skipped checks and the failed DATA-08 validation.
 Organizational/deployment/period evidence remains pending. Scoped repository
-remediation and a daily worker are authorized and underway as listed above;
+remediation is underway and the daily worker is proposed as listed above;
 OPS-04 and DATA-08 technical corrections are integrated and locally checked
 on this assessment branch, but default-branch/deployment closure is pending.
 The conclusion is
