@@ -2807,6 +2807,14 @@ repository's shards from the lake and requests a projection, so the canonical
 database stops reporting it. Uninstalling the GitHub App is the supported way
 to withdraw consent, and it takes effect without operator action.
 
+Erasure workers persist the projection request before acknowledging the task.
+If that write fails or is cancelled, the task stays leased and reclaimable.
+Projection retains its requested generation until canonical publication succeeds,
+then records the completed generation separately. Interrupted publication or
+completion writes therefore leave recoverable work, and a newer request arriving
+during projection remains pending for the next pass. Recovery can repeat a
+projection that already committed; it does not require restoring a cleared marker.
+
 `specs/server-ingestion.md` is the normative contract, and
 `adr/server-webhook-driven-ingestion.md` records why the design is shaped this
 way.
