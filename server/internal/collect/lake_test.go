@@ -204,6 +204,42 @@ func TestForgetPreflightsEveryDirectoryAndRejectsSymlinks(t *testing.T) {
 	}
 }
 
+func TestForgetVerifiesNormalizedRepositoryOwnership(t *testing.T) {
+	for _, conflicting := range []bool{false, true} {
+		t.Run(map[bool]string{false: "owned", true: "conflicting"}[conflicting], func(t *testing.T) {
+			lake := Lake{Directory: t.TempDir()}
+			if err := lake.Prepare(); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(lake.RunsDirectory(), lake.ShardPrefix("octo/api")+"1.jsonl")
+			content := `{"kind":"metadata","phase":"runs"}` + "\n" +
+				`{"kind":"record","collection":"repositories","record":{"id":"repository:octo/api","owner":"octo","name":"api"}}` + "\n"
+			if conflicting {
+				content += `{"kind":"record","collection":"workflows","record":{"repositoryId":"repository:octo/other"}}` + "\n"
+			}
+			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			err := lake.ForgetContext(t.Context(), "octo/api")
+			if conflicting {
+				if err == nil {
+					t.Fatal("conflicting normalized repository identity accepted")
+				}
+				if _, err := os.Stat(path); err != nil {
+					t.Fatalf("ambiguous normalized evidence removed: %v", err)
+				}
+			} else {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("owned normalized evidence retained: %v", err)
+				}
+			}
+		})
+	}
+}
+
 func TestLakeValidateRejectsMissingOrRelativeDirectory(t *testing.T) {
 	if err := (Lake{}).Validate(); err == nil {
 		t.Fatal("expected an error for an empty directory")

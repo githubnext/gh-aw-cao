@@ -353,9 +353,11 @@ func (d Doctor) checkRedisStats(ctx context.Context) Check {
 type persistenceClassificationReason string
 
 const (
-	persistenceReasonBackgroundSaveFailed persistenceClassificationReason = "background-save-failed"
-	persistenceReasonAOFWriteFailed       persistenceClassificationReason = "aof-write-failed"
-	persistenceReasonHealthy              persistenceClassificationReason = "healthy"
+	persistenceReasonBackgroundSaveFailed  persistenceClassificationReason = "background-save-failed"
+	persistenceReasonAOFWriteFailed        persistenceClassificationReason = "aof-write-failed"
+	persistenceReasonUnknown               persistenceClassificationReason = "insufficient-evidence"
+	persistenceReasonSnapshotPolicyUnknown persistenceClassificationReason = "unknown-snapshot-policy"
+	persistenceReasonHealthy               persistenceClassificationReason = "healthy"
 )
 
 // persistenceClassification is the status, summary, and remedy
@@ -369,11 +371,10 @@ type persistenceClassification struct {
 
 // classifyRedisPersistence decides the redis.persistence check's outcome
 // from Redis's reported persistence fields alone. It is a pure function so
-// each failure path -- a failed background save and a failed append-only-file
-// write -- is testable without a fake Redis INFO reply. A background-save
-// failure is checked first, matching the prior inline behavior.
-func classifyRedisPersistence(lastSave string, aofEnabled bool, aofLastWrite string) persistenceClassification {
-	if lastSave != "" && lastSave != "ok" {
+// missing fields remain unknown rather than becoming disabled persistence.
+// INFO does not establish the RDB snapshot policy or provider durability.
+func classifyRedisPersistence(lastSave, aofEnabled, aofLastWrite string) persistenceClassification {
+	if lastSave == "err" {
 		return persistenceClassification{
 			status:  StatusWarn,
 			summary: "the last background save did not succeed",
@@ -381,7 +382,7 @@ func classifyRedisPersistence(lastSave string, aofEnabled bool, aofLastWrite str
 			reason:  persistenceReasonBackgroundSaveFailed,
 		}
 	}
-	if aofEnabled && aofLastWrite != "" && aofLastWrite != "ok" {
+	if aofEnabled == "1" && aofLastWrite == "err" {
 		return persistenceClassification{
 			status:  StatusWarn,
 			summary: "the last append-only-file write did not succeed",
@@ -389,14 +390,36 @@ func classifyRedisPersistence(lastSave string, aofEnabled bool, aofLastWrite str
 			reason:  persistenceReasonAOFWriteFailed,
 		}
 	}
+	if (lastSave != "" && lastSave != "ok") ||
+		(aofEnabled != "0" && aofEnabled != "1") ||
+		(aofEnabled == "1" && aofLastWrite != "ok") {
+		return persistenceClassification{
+			status:  StatusWarn,
+			summary: "Redis persistence write health is unknown; INFO fields are missing or invalid",
+			remedy:  "verify persistence settings and write health through the provider management plane or Redis operator; missing INFO evidence is not proof of backup failure",
+			reason:  persistenceReasonUnknown,
+		}
+	}
+	if aofEnabled == "0" {
+		summary := "AOF is disabled; background-save status and snapshot policy are unknown"
+		if lastSave == "ok" {
+			summary = "the last background save reports success, but the active snapshot policy is unknown"
+		}
+		return persistenceClassification{
+			status:  StatusWarn,
+			summary: summary,
+			remedy:  "verify the active snapshot policy or provider-managed persistence, backup retention, and restore evidence; INFO alone does not establish durability",
+			reason:  persistenceReasonSnapshotPolicyUnknown,
+		}
+	}
 	return persistenceClassification{
 		status:  StatusPass,
-		summary: "persistence is reporting healthy writes",
+		summary: "enabled AOF reports a successful last write; durability and recoverability are not verified",
 		reason:  persistenceReasonHealthy,
 	}
 }
 
-// checkRedisPersistence reports whether a restart could lose operational state.
+// checkRedisPersistence reports observed write health, not restart durability.
 func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	const id, title = "redis.persistence", "Redis persistence"
 	if skip, ok := d.redisUnavailable(id, title); ok {
@@ -406,16 +429,21 @@ func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 	if err != nil {
 		return failed(id, areaRedis, title, err)
 	}
-	aofEnabled := infoInt(fields, "aof_enabled") == 1
+	aofEnabled := strings.TrimSpace(fields["aof_enabled"])
 	lastSave := strings.TrimSpace(fields["rdb_last_bgsave_status"])
 	aofLastWrite := strings.TrimSpace(fields["aof_last_write_status"])
-	details := []Detail{
-		detail("aofEnabled", fmt.Sprint(aofEnabled)),
-		detail("lastBackgroundSave", lastSave),
-		detail("changesSinceSave", fields["rdb_changes_since_last_save"]),
+	aofLabel := persistenceObservationLabel(aofEnabled)
+	if aofEnabled == "0" || aofEnabled == "1" {
+		aofLabel = strconv.FormatBool(aofEnabled == "1")
 	}
-	if aofEnabled {
-		details = append(details, detail("aofLastWrite", aofLastWrite))
+	details := []Detail{
+		detail("aofEnabled", aofLabel),
+		detail("lastBackgroundSave", persistenceObservationLabel(lastSave)),
+		detail("changesSinceSave", fields["rdb_changes_since_last_save"]),
+		detail("durabilityEvidence", "not verified: snapshot policy, provider persistence, backup retention, and restore evidence require independent verification"),
+	}
+	if aofEnabled == "1" || aofLastWrite != "" {
+		details = append(details, detail("aofLastWrite", persistenceObservationLabel(aofLastWrite)))
 	}
 	classification := classifyRedisPersistence(lastSave, aofEnabled, aofLastWrite)
 	doctorLog.Printf("redis persistence classified status=%s reason=%s", classification.status, classification.reason)
@@ -423,6 +451,13 @@ func (d Doctor) checkRedisPersistence(ctx context.Context) Check {
 		ID: id, Area: areaRedis, Title: title, Status: classification.status,
 		Summary: classification.summary, Details: details, Remedy: classification.remedy,
 	}
+}
+
+func persistenceObservationLabel(value string) string {
+	if value == "" {
+		return "not reported"
+	}
+	return value
 }
 
 // clientsClassificationReason names why checkRedisClients reached its

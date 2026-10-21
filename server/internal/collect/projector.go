@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,8 +25,9 @@ import (
 var projectorLog = logger.New("cao:collect:projector")
 
 const (
-	projectionDirtyKey = "collect:projection-dirty"
-	projectionLockName = "projection"
+	projectionDirtyKey     = "collect:projection-dirty"
+	projectionCompletedKey = "collect:projection-completed"
+	projectionLockName     = "projection"
 )
 
 // Projector turns the evidence lake into the current canonical dashboard data.
@@ -117,18 +119,25 @@ func (p Projector) windowDays() int {
 	return p.WindowDays
 }
 
-// RequestProjection marks the lake as changed. Marking is idempotent, so a
-// burst of collections requests one projection.
+// RequestProjection records a unique generation. A burst still coalesces into
+// one projection, without confusing a concurrent request with completed work.
 func (p Projector) RequestProjection(ctx context.Context) error {
-	return p.State.SetOperationalState(ctx, projectionDirtyKey,
-		[]byte(time.Now().UTC().Format(time.RFC3339Nano)))
+	token, err := operationToken()
+	if err != nil {
+		return err
+	}
+	return p.State.SetOperationalState(ctx, projectionDirtyKey, []byte(token))
 }
 
 // PendingProjection reports whether the lake changed since the last
 // projection.
 func (p Projector) PendingProjection(ctx context.Context) (bool, error) {
 	value, err := p.State.OperationalState(ctx, projectionDirtyKey)
-	return len(value) > 0, err
+	if err != nil || len(value) == 0 {
+		return false, err
+	}
+	completed, err := p.State.OperationalState(ctx, projectionCompletedKey)
+	return !bytes.Equal(value, completed), err
 }
 
 // ErrProjectionBusy reports that another process holds the projection lease.
@@ -172,11 +181,17 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 	}()
 	ctx, cancel := context.WithTimeout(ctx, p.timeout())
 	defer cancel()
-	if err := p.State.SetOperationalState(ctx, projectionDirtyKey, nil); err != nil {
+	// Even an unconditional rebuild must survive interruption. Never consume
+	// intent before canonical commit or overwrite a concurrently requested
+	// generation when recording completion.
+	if err := p.RequestProjection(ctx); err != nil {
+		return ingest.Result{}, err
+	}
+	generation, err := p.State.OperationalState(ctx, projectionDirtyKey)
+	if err != nil {
 		return ingest.Result{}, err
 	}
 	if err := p.refreshCompaction(ctx); err != nil {
-		_ = p.RequestProjection(context.WithoutCancel(ctx))
 		return ingest.Result{}, err
 	}
 	// Force is deliberately not set. A collection re-enumerates a repository's
@@ -189,10 +204,10 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 		Force:               force,
 	})
 	if err != nil {
-		// The lake is unchanged and the previous data keeps serving, so
-		// the change marker is restored for the next attempt.
-		_ = p.RequestProjection(context.WithoutCancel(ctx))
 		return ingest.Result{}, err
+	}
+	if err := p.State.SetOperationalState(ctx, projectionCompletedKey, generation); err != nil {
+		return ingest.Result{}, fmt.Errorf("record projection completion: %w", err)
 	}
 	projectorLog.Printf("activated dashboard data revision=%d sources=%d", result.Revision, len(result.Counts))
 	revision, err := p.refreshWorkflowValues(ctx)

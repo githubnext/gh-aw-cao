@@ -211,6 +211,14 @@ func retainedShardRepository(ctx context.Context, path string) (string, error) {
 			return "", err
 		}
 		var record struct {
+			Kind       string `json:"kind"`
+			Collection string `json:"collection"`
+			Record     struct {
+				ID           string `json:"id"`
+				Owner        string `json:"owner"`
+				Name         string `json:"name"`
+				RepositoryID string `json:"repositoryId"`
+			} `json:"record"`
 			Request struct {
 				Repository string `json:"repository"`
 			} `json:"request"`
@@ -224,6 +232,17 @@ func retainedShardRepository(ctx context.Context, path string) (string, error) {
 			return "", errors.New("retained shard contains invalid JSON")
 		}
 		candidates := []string{record.Request.Repository, record.Run.FullName}
+		if record.Kind == "record" {
+			if record.Collection == "repositories" {
+				candidates = append(candidates, strings.TrimPrefix(record.Record.ID, "repository:"))
+				if record.Record.Owner != "" || record.Record.Name != "" {
+					candidates = append(candidates, record.Record.Owner+"/"+record.Record.Name)
+				}
+			}
+			if record.Record.RepositoryID != "" {
+				candidates = append(candidates, strings.TrimPrefix(record.Record.RepositoryID, "repository:"))
+			}
+		}
 		var repository string
 		if len(record.Run.Repository) != 0 && json.Unmarshal(record.Run.Repository, &repository) == nil {
 			if strings.Contains(repository, "/") {

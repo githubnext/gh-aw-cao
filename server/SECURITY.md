@@ -71,6 +71,29 @@ callbacks that cannot establish an authorized, stored session likewise revoke
 or durably queue issued credentials; a background worker retries pending
 revocations without delaying the login redirect.
 
+OAuth revision streams use the same authorization window: they close no later
+than five minutes after the last successful membership authorization, or earlier
+when access-token refresh is due. Streams admitted with administrator health
+metadata also close at the administrator assurance deadline. Reconnecting runs
+ordinary request authentication, including membership revalidation, token
+refresh and cookie renewal; none of those renewals occur after stream headers
+have been flushed. Expired administrator assurance permits a viewer reconnect
+without health metadata, not continued administrator entitlement.
+
+Each OAuth stream reads its encrypted session record once per 20-second
+heartbeat, with a five-second timeout bounded by its authorization deadline.
+Logout, account switching, removed session authority and session-store errors
+close the stream at that check; metadata already admitted can continue for up
+to 25 seconds after session invalidation. A membership change not yet reflected
+in session authority remains bounded by the ordinary five-minute authorization
+window. Checks do not call GitHub or refresh tokens, and revision traffic adds
+no session-store reads. The stream context and supported HTTP write deadline
+share the fixed authorization deadline, so active traffic cannot extend it.
+Cancellation and server drain still unsubscribe immediately. Local bearer
+capability streams do not acquire an OAuth lifetime or session-store dependency.
+These are application authorization bounds, not an attestation of deployed
+proxy buffering, connection lifetimes or delivery of previously written bytes.
+
 API and OAuth abuse is bounded with atomic Redis token buckets shared by all
 server replicas. Authenticated buckets use a digest of the GitHub login, while
 OAuth login uses a digest of the client IP and valid OAuth callbacks use a digest
@@ -634,6 +657,15 @@ Keep the Azure secure-computing baseline enabled:
 - Application Insights/telemetry with structured operational metadata only,
   never GitHub tokens, Redis URLs, session secrets, cookies, authorization
   headers, source records, or prompt contents.
+
+Application Insights app settings alone do not activate Go exporters. Use the
+[reviewed HTTPS OTLP route](../docs/deployment-azure.md#explicit-go-telemetry-route)
+for the Function App and collection/backfill roles, with secret-manager input
+for collector authentication and secret-scoped Key Vault resolution. Go log
+export requires explicit opt-in and uses bounded namespaces, not the workers'
+broad debug selection. Collector/backend delivery and alert acknowledgements
+still require deployment receipts; platform logs and independent audit delivery
+remain separate. Exporter availability must not gate request readiness.
 
 The Azure Elastic Premium baseline keeps one always-on instance for the
 process-lifetime revocation worker. Redis remains the durable queue across

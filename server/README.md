@@ -107,6 +107,14 @@ the complete application, not just `/api/`. Do not deploy the frontend separatel
 to Pages, a static website host, or an object-storage website endpoint.
 Pages is a different deployment mode whose browser owns ingestion and queries.
 
+Hosted revision streams reconnect before membership authorization, token-refresh
+eligibility or administrator health entitlement expires. A 20-second session
+check also closes revoked sessions and fails closed on session-store outages.
+Reconnection uses ordinary OAuth authentication and can renew cookies; an
+already-flushed stream cannot. See [stream authorization bounds](SECURITY.md)
+for revocation latency and proxy-delivery limitations. Local bearer streams
+remain open until cancellation or server drain.
+
 ## Local SQLite snapshot serving
 
 Build the dashboard once, then run the local server without PostgreSQL, Redis,
@@ -2421,6 +2429,7 @@ flowchart LR
   Redis["Azure Managed Redis<br/>TLS<br/>operational state"]
   Storage["Functions storage account<br/>runtime state only"]
   Insights["Application Insights<br/>non-secret operational telemetry"]
+  OTel["Operator-managed OTel collector<br/>TLS + authentication"]
   Operators["Control-plane operators<br/>deploy Bicep + rotate secrets"]
 
   Browser -->|"HTTPS static assets + API + best-effort SSE"| Edge
@@ -2430,7 +2439,8 @@ flowchart LR
   Function -->|"rediss:// operational commands"| Redis
   Function -->|"entity source reads/writes"| Postgres
   Function -->|"runtime binding state"| Storage
-  Function -->|"no tokens, no Redis URL, no source records"| Insights
+  Function -->|"opt-in OTLP/HTTP, bounded metadata only"| OTel
+  OTel -->|"Azure Monitor exporter"| Insights
   Operators -->|"reviewed Bicep + secret rotation"| KeyVault
   Operators -->|"deploy package + app settings"| Function
 
@@ -2709,6 +2719,17 @@ go -C server run ./cmd/cao-dashboard doctor \
   --deep
 ```
 
+`redis.persistence` observes `INFO persistence` without requiring `CONFIG`
+permissions. Missing or malformed observations warn rather than imply healthy
+writes. An explicitly enabled AOF with a successful last write passes this
+write-health check, unless another reported persistence status is invalid or
+reports failure. With AOF disabled, even a successful last background save
+warns: a historical save status does not establish an active snapshot policy.
+These warnings do not establish backup failure, and a pass does not verify
+durability or recoverability. Independently verify snapshot policy or
+provider-managed persistence, backup retention, and restore evidence with the
+Redis operator or provider management plane.
+
 Use `--format json` for a versioned agent/automation contract. JSON and text
 contain the same observations and stable check identifiers. The command exits
 non-zero when any check fails; `--strict` also makes warnings non-zero, which
@@ -2787,6 +2808,14 @@ suspended, or repositories are removed from it, the server deletes that
 repository's shards from the lake and requests a projection, so the canonical
 database stops reporting it. Uninstalling the GitHub App is the supported way
 to withdraw consent, and it takes effect without operator action.
+
+Erasure workers persist the projection request before acknowledging the task.
+If that write fails or is cancelled, the task stays leased and reclaimable.
+Projection retains its requested generation until canonical publication succeeds,
+then records the completed generation separately. Interrupted publication or
+completion writes therefore leave recoverable work, and a newer request arriving
+during projection remains pending for the next pass. Recovery can repeat a
+projection that already committed; it does not require restoring a cleared marker.
 
 `specs/server-ingestion.md` is the normative contract, and
 `adr/server-webhook-driven-ingestion.md` records why the design is shaped this
@@ -3172,9 +3201,15 @@ is not instrumented, not that pauses are zero.
 
 There is no Azure-specific exporter linked into the binary. To ship telemetry to
 Application Insights, point `OTEL_EXPORTER_OTLP_ENDPOINT` at an OpenTelemetry
-Collector configured with the `azuremonitorexporter` and the
-`APPLICATIONINSIGHTS_CONNECTION_STRING` provisioned by `azure/main.bicep`;
-the Function App itself never imports an Azure Monitor SDK.
+Collector configured with the `azuremonitorexporter`; supply that collector's
+Application Insights connection string from its secret manager. The
+`APPLICATIONINSIGHTS_CONNECTION_STRING` on the Function App does not activate
+Go exports or configure an external collector. The Azure template supports an
+explicit `otlpEndpoint`, `otlpLogsEnabled`, and secure `otlpHeaders` overlay for
+the Function App and optional collection/backfill roles. See the
+[Azure telemetry route and deployment receipts](../docs/deployment-azure.md#explicit-go-telemetry-route).
+The Function App itself never imports an Azure Monitor SDK, and telemetry
+delivery is not a request-readiness dependency.
 
 ## Security boundaries
 
