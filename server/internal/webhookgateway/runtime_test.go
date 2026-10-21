@@ -417,7 +417,8 @@ func TestIngressIndexedFilteredLoad(t *testing.T) {
 	if authorizer.calls != 0 || len(queue.admission.Jobs) != 0 {
 		t.Fatal("filtered load performed GitHub authorization or persisted data")
 	}
-	if got := len(handler.candidates(snapshot, Event{SourceID: "projects", Name: "projects_v2_item", Action: "edited"})); got != 1 {
+	if got := len(handler.candidates(snapshot, Event{SourceID: "projects", Name: "projects_v2_item", Action: "edited",
+		InstallationID: sub.Source.InstallationID, RepositoryID: sub.Source.RepositoryID})); got != 1 {
 		t.Fatalf("indexed candidate count %d", got)
 	}
 }

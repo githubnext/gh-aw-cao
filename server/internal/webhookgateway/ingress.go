@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/propagation"
+
+	"github.com/githubnext/gh-cao/server/internal/clock"
 )
 
 // Ingress is mounted on a route with a trusted SourceID by the server.
@@ -21,13 +23,17 @@ type Ingress struct {
 	Limits     Limits
 	Discovery  DiscoveryObserver
 	External   bool
+	Clock      clock.Provider
 
 	mu       sync.Mutex
 	revision QueueRevision
 	index    map[ingressIndexKey][]Subscription
 }
 
-type ingressIndexKey struct{ source, event, action string }
+type ingressIndexKey struct {
+	source, event, action    string
+	installation, repository int64
+}
 
 func indexedAction(filter *Filter) string {
 	if filter == nil {
@@ -55,7 +61,9 @@ func (h *Ingress) candidates(snapshot PolicySnapshot, event Event) []Subscriptio
 	if h.index == nil || h.revision != snapshot.Revision {
 		h.index = make(map[ingressIndexKey][]Subscription)
 		for _, subscription := range snapshot.Subscriptions {
-			key := ingressIndexKey{subscription.Source.ID, subscription.Source.Event, indexedAction(subscription.Filter)}
+			key := ingressIndexKey{source: subscription.Source.ID, event: subscription.Source.Event,
+				action: indexedAction(subscription.Filter), installation: subscription.Source.InstallationID,
+				repository: subscription.Source.RepositoryID}
 			if subscription.Compiler != nil && githubHTMLFamily(subscription.Source.Event) {
 				for _, native := range subscription.Compiler.NativeEvents {
 					key.event = native
@@ -67,7 +75,8 @@ func (h *Ingress) candidates(snapshot PolicySnapshot, event Event) []Subscriptio
 		}
 		h.revision = snapshot.Revision
 	}
-	key := ingressIndexKey{event.SourceID, event.Name, ""}
+	key := ingressIndexKey{source: event.SourceID, event: event.Name,
+		installation: event.InstallationID, repository: event.RepositoryID}
 	result := append([]Subscription(nil), h.index[key]...)
 	if event.Action != "" {
 		key.action = event.Action
@@ -139,7 +148,7 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, signatureEnd := gatewayStage(ctx, "signature", r.Header.Get("X-GitHub-Event"))
 	signatureOK := validSignature(body, r.Header.Get("X-Hub-Signature-256"), current, previous)
 	if h.External {
-		event, err = AuthenticateExternal(externalSource, r, body, current, previous, time.Now(), h.Limits)
+		event, err = AuthenticateExternal(externalSource, r, body, current, previous, clock.Now(h.Clock), h.Limits)
 		signatureOK = err == nil
 	}
 	if !signatureOK {
@@ -203,7 +212,7 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	matchEnd("matched")
-	now := time.Now()
+	now := clock.Now(h.Clock)
 	traceCarrier := propagation.MapCarrier{}
 	propagation.TraceContext{}.Inject(ctx, traceCarrier)
 	traceParent := traceCarrier.Get("traceparent")
@@ -242,7 +251,7 @@ func (h *Ingress) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond(http.StatusServiceUnavailable, "auth_deferred")
 			return
 		}
-		decision, err := ValidateAuthorization(time.Now(), job, authorization)
+		decision, err := ValidateAuthorization(clock.Now(h.Clock), job, authorization)
 		if err != nil || !decision.Allowed {
 			if !decision.Cancel {
 				authEnd("deferred")

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/githubnext/gh-cao/server/internal/clock"
 	"github.com/githubnext/gh-cao/server/internal/githubquota"
 	"github.com/githubnext/gh-cao/server/internal/logger"
 	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
@@ -17,6 +18,7 @@ var discoveryLog = logger.New("cao:webhook-gateway:discovery")
 type RegistryLoader struct {
 	Base  PolicyLoader
 	Store gateway.RegistryStore
+	Clock clock.Provider
 }
 
 func (l RegistryLoader) Load(ctx context.Context) (gateway.PolicySnapshot, error) {
@@ -35,7 +37,7 @@ func (l RegistryLoader) Load(ctx context.Context) (gateway.PolicySnapshot, error
 		base.Revision = registry.Revision
 		return base, nil
 	}
-	return gateway.RegistryPolicy(base, registry, time.Now().UTC())
+	return gateway.RegistryPolicy(base, registry, clock.Now(l.Clock))
 }
 
 type DiscoveryAPI interface {
@@ -47,6 +49,7 @@ type DiscoveryWorker struct {
 	Registry gateway.RegistryStore
 	GitHub   DiscoveryAPI
 	Quota    QuotaService
+	Clock    clock.Provider
 	next     int
 }
 
@@ -84,7 +87,7 @@ func (d *DiscoveryWorker) RunOnce(ctx context.Context) error {
 	for offset := range len(config.Repositories) {
 		index := (start + offset) % len(config.Repositories)
 		binding := config.Repositories[index]
-		now := time.Now().UTC()
+		now := clock.Now(d.Clock)
 		record, found := inventoryRecord(registry.Records, binding.RepositoryID)
 		if found && !record.Dirty && !record.CheckedAt.After(now) && now.Before(record.CheckedAt.Add(time.Duration(config.Interval())*time.Second)) ||
 			found && record.Dirty && !record.AttemptedAt.After(now) && now.Before(record.AttemptedAt.Add(30*time.Second)) {

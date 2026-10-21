@@ -1,0 +1,56 @@
+name: CAO simulated fleet stress
+
+on:
+  schedule:
+    - cron: "43 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cao-fleet-stress-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fleet-stress:
+    name: 1000 repositories, 5000 developers, three simulated days
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CAO_FLEET_STRESS_REPORT_DIR: ${{ github.workspace }}/test-results/cao-fleet-stress
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - name: Run secret-free, inference-free fleet simulation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$CAO_FLEET_STRESS_REPORT_DIR"
+          npm run test:stress:cao 2>&1 | tee "$CAO_FLEET_STRESS_REPORT_DIR/go-test.txt"
+      - name: Publish simulation summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$CAO_FLEET_STRESS_REPORT_DIR/fleet-stress.json" ]; then
+            {
+              echo '## CAO simulated fleet stress'
+              echo 'All review outcomes are synthetic; no agentic workflow or inference runs.'
+              echo '```json'
+              cat "$CAO_FLEET_STRESS_REPORT_DIR/fleet-stress.json"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload simulation report and test log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cao-fleet-stress
+          path: test-results/cao-fleet-stress/
+          if-no-files-found: error
+          retention-days: 14

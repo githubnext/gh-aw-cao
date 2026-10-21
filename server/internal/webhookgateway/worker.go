@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/githubnext/gh-cao/server/internal/clock"
 	servertelemetry "github.com/githubnext/gh-cao/server/internal/telemetry"
 )
 
@@ -22,6 +23,7 @@ type Worker struct {
 	FinishTimeout time.Duration
 	PollInterval  time.Duration
 	BatchWindow   time.Duration
+	Clock         clock.Provider
 	LabelConsumer interface {
 		ConsumeLabels(context.Context, []Job) error
 	}
@@ -122,7 +124,7 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	ctx, attemptEnd := gatewayStage(servertelemetry.ExtractTraceparent(ctx, job.TraceParent), "attempt", job.Event.Name)
 	defer func() { attemptEnd(outcome) }()
 	traceGatewayIdentity(ctx, job.DeliveryID, job.ID)
-	observeQueueAge(ctx, job.CreatedAt)
+	observeQueueAge(ctx, clock.Now(w.Clock), job.CreatedAt)
 	// Reload after claim: the earlier read was only permission to poll.
 	snapshot, err = w.Policies.Load(ctx)
 	if err != nil {
@@ -167,7 +169,7 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	}
 	authorizations := make([]Authorization, len(jobs))
 	for i, member := range jobs {
-		decision, err := ValidateAuthorization(time.Now(), member, evidence[i])
+		decision, err := ValidateAuthorization(clock.Now(w.Clock), member, evidence[i])
 		if err != nil {
 			authEnd("error")
 			return true, err
@@ -208,7 +210,7 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 			return true, err
 		}
 		jobs[i] = renewed
-		if time.Until(renewed.LeaseUntil) < httpTimeout+finishTimeout {
+		if renewed.LeaseUntil.Sub(clock.Now(w.Clock)) < httpTimeout+finishTimeout {
 			renewEnd("deferred")
 			outcome = "deferred"
 			return true, nil
@@ -230,7 +232,7 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	beginEnd("dispatching")
 	jobs, job = started, &started[0]
 	// A delayed BeginDispatch must not let HTTP outlive its durable dispatch lease.
-	if time.Until(job.LeaseUntil) < httpTimeout+finishTimeout {
+	if job.LeaseUntil.Sub(clock.Now(w.Clock)) < httpTimeout+finishTimeout {
 		outcome = "ambiguous"
 		return true, w.finishBatch(ctx, queue, jobs, Outcome{State: Ambiguous, Reason: "lease_insufficient"})
 	}
@@ -246,7 +248,7 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	response := dispatch(dispatchCtx, job.Subscription, payload)
 	response.Kind = job.Subscription.Destination.Kind
 	cancel()
-	result, err := ClassifyDispatchResponse(time.Now(), response)
+	result, err := ClassifyDispatchResponse(clock.Now(w.Clock), response)
 	if err != nil {
 		result = DispatchResult{Outcome: "ambiguous", Reason: "invalid-dispatch-observation"}
 	}

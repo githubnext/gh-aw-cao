@@ -8,6 +8,13 @@ import (
 
 const CompilerSourceID = "compiler"
 
+// MaxDiscoveryRepositories bounds explicit enrollment independently of the
+// registry byte budget, API quota and per-round discovery work.
+const (
+	MaxDiscoveryRepositories   = 2048
+	MaxDiscoveredSubscriptions = 2048
+)
+
 type DiscoveryRepository struct {
 	Repository              string `json:"repository"`
 	RepositoryID            int64  `json:"repositoryId"`
@@ -122,7 +129,7 @@ func ValidateDiscoveryPolicy(p GatewayPolicy) error {
 	names := make(map[string]bool)
 	if p.Discovery != nil {
 		d := p.Discovery
-		if len(d.Repositories) == 0 || len(d.Repositories) > 64 || d.Interval() < 30 || d.Interval() > 3600 {
+		if len(d.Repositories) == 0 || len(d.Repositories) > MaxDiscoveryRepositories || d.Interval() < 30 || d.Interval() > 3600 {
 			return ErrInvalid
 		}
 		if !validGitHubServerURL(d.GitHubServerURL()) {
