@@ -7,7 +7,7 @@ const slideTitles = [
   "Monitor and govern GitHub Agentic Workflows at scale.",
   "Shared work. Clear ownership.",
   "Roll out with confidence.",
-  "Keep workflows current.",
+  "Less upkeep. Current workflows.",
 ];
 
 async function openSlideshow(page) {
@@ -153,9 +153,11 @@ test("expands and edits code locally without changing the original commands or n
   await page.getByRole("button", { name: "Close expanded snippet", exact: true }).click();
   await page.keyboard.press("ArrowRight");
   await expectSlide(page, 4);
-  await page.getByRole("button", { name: "Expand Maintenance overview", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Maintenance overview", exact: true })).toBeVisible();
-  await expect(page.getByRole("dialog", { name: "Maintenance overview", exact: true })).toContainText("Reviewed updates");
+  await page.getByRole("button", { name: "Expand Dashboard maintenance", exact: true }).click();
+  const maintenance = page.getByRole("dialog", { name: "Dashboard maintenance", exact: true });
+  await expect(maintenance).toBeVisible();
+  await expect(maintenance).toContainText("Upgrade one repository or Upgrade all");
+  await expect.poll(() => maintenance.locator("img").evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
   await expect(page.locator("[data-snippet-editor]")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");

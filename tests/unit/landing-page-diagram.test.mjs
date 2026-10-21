@@ -72,11 +72,21 @@ test("landing page presents the product through real operational surfaces", () =
     ["dispatch-story", "terminal-story", "maintenance-story"],
   );
   assert.match(hero, /aria-labelledby="maintenance-title" data-reveal data-slideshow-slide/);
-  assert.match(hero, /Keep workflows current\./);
-  assert.match(hero, /Track compiler versions across repositories and updates to installed campaigns/);
+  assert.match(hero, /Less upkeep\. Current workflows\./);
+  assert.match(hero, /Offload automation upkeep/);
+  assert.match(hero, /gh-aw versions and workflows from their original sources/);
   assert.match(hero, /href="\/gh-cao\/operations\/#update-cao"/);
-  assert.match(hero, /data-slideshow-snippet="Maintenance overview"/);
-  for (const label of ["Repositories", "Campaigns", "Reviewed updates"]) assert.ok(hero.includes(label));
+  assert.match(hero, /data-slideshow-snippet="Dashboard maintenance"/);
+  for (const label of ["gh-aw upgrades", "Workflow source updates", "Reviewed changes"]) assert.ok(hero.includes(label));
+  const maintenance = hero.match(/<section class="product-story maintenance-story"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(maintenance);
+  assert.doesNotMatch(maintenance, /campaign/i);
+  assert.match(maintenance, /gh aw upgrade/);
+  assert.match(maintenance, /gh aw update/);
+  assert.match(maintenance, /Upstream changes merge with local edits by default/);
+  assert.match(maintenance, /https:\/\/github\.com\/user-attachments\/assets\//);
+  assert.match(maintenance, /individual Upgrade buttons and Upgrade all/);
+  assert.match(maintenance, /Unknown version evidence stays explicit/);
   assert.match(hero, /without widening rollout policy/);
   assert.doesNotMatch(hero, /https:\/\/github\.github\.com\/gh-aw\/practices\//);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);

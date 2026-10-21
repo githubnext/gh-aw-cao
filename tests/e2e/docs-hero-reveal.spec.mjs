@@ -6,7 +6,7 @@ for (const { name, viewport } of [
 ]) {
   for (const { selector, heading } of [
     { selector: ".dispatch-story", heading: "Shared work. Clear ownership." },
-    { selector: ".maintenance-story", heading: "Keep workflows current." },
+    { selector: ".maintenance-story", heading: "Less upkeep. Current workflows." },
   ]) {
     for (const colorScheme of ["light", "dark"]) {
       test(`${selector} resets after repeated scrolls on ${name} in ${colorScheme} mode`, async ({ page }, testInfo) => {
@@ -48,7 +48,7 @@ test("landing stories remain visible with reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("./");
   await expect(page.locator("[data-reveal]")).toHaveCount(3);
-  await expect(page.locator(".maintenance-story")).toContainText("Maintenance overview");
+  await expect(page.locator(".maintenance-story")).toContainText("Dashboard maintenance");
   for (const story of await page.locator("[data-reveal]").all()) {
     await expect(story).toHaveCSS("opacity", "1");
     await expect(story).not.toHaveClass(/reveal-pending/);
@@ -61,7 +61,7 @@ test("landing stories remain visible without JavaScript", async ({ browser, base
     const page = await context.newPage();
     await page.goto("./");
     await expect(page.locator("[data-reveal]")).toHaveCount(3);
-    await expect(page.locator(".maintenance-story")).toContainText("Maintenance overview");
+    await expect(page.locator(".maintenance-story")).toContainText("Dashboard maintenance");
     for (const story of await page.locator("[data-reveal]").all()) {
       await expect(story).toHaveCSS("opacity", "1");
     }

@@ -1009,7 +1009,7 @@ for (const { name, viewport } of [
       await expect(tagline).toBeVisible();
       await expect(tagline).toHaveText("Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy and refine workflows in review mode so you can roll out safely and confidently.");
       await expect(page.getByRole("heading", { name: "Shared work. Clear ownership.", exact: true })).toBeAttached();
-      await expect(page.getByRole("heading", { name: "Keep workflows current.", exact: true })).toBeAttached();
+      await expect(page.getByRole("heading", { name: "Less upkeep. Current workflows.", exact: true })).toBeAttached();
       await expect(page.locator(".runs-story, .value-story")).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "Roll out with confidence.", exact: true })).toBeAttached();
       await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Setup, authentication, and rollout");
@@ -1055,11 +1055,17 @@ for (const { name, viewport } of [
       await expect(page.locator(".product-shot-mobile")).toHaveCount(0);
       const maintenance = page.locator(".maintenance-story");
       await expect(maintenance.locator(".section-eyebrow")).toHaveText("Maintenance");
-      await expect(maintenance.locator("dt")).toHaveText(["01 Repositories", "02 Campaigns", "03 Reviewed updates"]);
+      await expect(maintenance.locator("dt")).toHaveText(["01 gh-aw upgrades", "02 Workflow source updates", "03 Reviewed changes"]);
+      await expect(maintenance).not.toContainText(/campaign/i);
+      await expect(maintenance).toContainText("Offload automation upkeep");
+      await expect(maintenance.getByRole("link", { name: "gh aw upgrade", exact: true }))
+        .toHaveAttribute("href", "https://github.github.com/gh-aw/setup/cli/#upgrade");
+      await expect(maintenance.getByRole("link", { name: "gh aw update", exact: true }))
+        .toHaveAttribute("href", "https://github.github.com/gh-aw/setup/cli/#update");
       await expect(maintenance.getByRole("link", { name: "Maintain your control plane." }))
         .toHaveAttribute("href", "/gh-cao/operations/#update-cao");
       await page.locator(".product-shot").last().scrollIntoViewIfNeeded();
-      await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
+      await expect.poll(() => page.locator(".product-image, .phone-image, .maintenance-image").evaluateAll(
         (images) => images.every((image) => image.complete && image.naturalWidth > 0),
       )).toBe(true);
       const productSources = await page.locator(".product-image, .phone-image").evaluateAll(
@@ -1068,6 +1074,8 @@ for (const { name, viewport } of [
       expect(productSources.every((source) => colorScheme === "light"
         ? source.includes("-light.")
         : !source.includes("-light."))).toBe(true);
+      const maintenanceSource = await maintenance.locator(`source[data-theme-source="${colorScheme}"]`).getAttribute("srcset");
+      await expect.poll(() => maintenance.locator("img").evaluate(image => image.currentSrc)).toBe(maintenanceSource);
       const board = await maintenance.locator(".maintenance-board").boundingBox();
       const storyBounds = await maintenance.boundingBox();
       expect(board.x).toBeGreaterThanOrEqual(storyBounds.x);

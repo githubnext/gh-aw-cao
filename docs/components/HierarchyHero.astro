@@ -81,29 +81,57 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
 <section class="product-story maintenance-story" aria-labelledby="maintenance-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
     <p class="section-eyebrow">Maintenance</p>
-    <h2 id="maintenance-title">Keep workflows current.</h2>
+    <h2 id="maintenance-title">Less upkeep. Current workflows.</h2>
     <p>
-      Track compiler versions across repositories and updates to installed campaigns. Review changes in your control
-      repository before rolling them out.{" "}
+      Offload automation upkeep. Keep gh-aw versions and workflows from their original sources current
+      across repositories, with reviewed updates instead of repeated manual maintenance.{" "}
       <a href="/gh-cao/operations/#update-cao">Maintain your control plane.</a>
     </p>
-  </div>
-  <figure class="product-frame product-shot maintenance-board" data-slideshow-snippet="Maintenance overview">
-    <figcaption>Maintenance overview</figcaption>
     <dl class="maintenance-steps">
       <div>
-        <dt><span aria-hidden="true">01</span> Repositories</dt>
-        <dd>Compare installed and current workflow compiler versions.</dd>
+        <dt><span aria-hidden="true">01</span> gh-aw upgrades</dt>
+        <dd>
+          Upgrade gh-aw, migrate deprecated fields, refresh action versions, and recompile workflows with{" "}
+          <a href="https://github.github.com/gh-aw/setup/cli/#upgrade"><code>gh aw upgrade</code></a>.
+        </dd>
       </div>
       <div>
-        <dt><span aria-hidden="true">02</span> Campaigns</dt>
-        <dd>Identify installed campaign revisions with updates available.</dd>
+        <dt><span aria-hidden="true">02</span> Workflow source updates</dt>
+        <dd>
+          Update one workflow or all source-tracked workflows with{" "}
+          <a href="https://github.github.com/gh-aw/setup/cli/#update"><code>gh aw update</code></a>.
+          Upstream changes merge with local edits by default.
+        </dd>
       </div>
       <div>
-        <dt><span aria-hidden="true">03</span> Reviewed updates</dt>
-        <dd>Validate changes and commit a complete runtime revision without widening rollout policy.</dd>
+        <dt><span aria-hidden="true">03</span> Reviewed changes</dt>
+        <dd>Prepare update pull requests for selected repositories. Validate before rollout, without widening rollout policy.</dd>
       </div>
     </dl>
+  </div>
+  <figure class="product-frame product-shot maintenance-board" data-slideshow-snippet="Dashboard maintenance">
+    <picture data-theme-picture>
+      <source
+        data-theme-source="light"
+        media="(prefers-color-scheme: light)"
+        srcset="https://github.com/user-attachments/assets/657ba313-28cd-46b4-9246-ae3b4826651a"
+      />
+      <source
+        data-theme-source="dark"
+        media="(prefers-color-scheme: dark)"
+        srcset="https://github.com/user-attachments/assets/5dc87083-d2dc-4036-82fc-332ddb7bf569"
+      />
+      <img
+        src="https://github.com/user-attachments/assets/5dc87083-d2dc-4036-82fc-332ddb7bf569"
+        width="1240"
+        height="911"
+        alt="CAO dashboard Maintenance Updates page showing repositories with individual Upgrade buttons and Upgrade all. Version evidence is explicitly marked unavailable."
+        class="maintenance-image"
+        loading="lazy"
+        decoding="async"
+      />
+    </picture>
+    <figcaption>Dashboard maintenance: Upgrade one repository or Upgrade all. Unknown version evidence stays explicit.</figcaption>
   </figure>
 </section>
 </div>
@@ -532,6 +560,10 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .maintenance-story {
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.2fr);
+    }
+
     .dispatch-story {
       grid-template-columns: minmax(0, 1fr);
       gap: 0.75rem;
@@ -622,16 +654,25 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
 
     .maintenance-board {
       min-width: 0;
+      width: 100%;
+      max-width: 42rem;
+      justify-self: center;
       margin: 0;
-      padding: clamp(1.25rem, 2.5vw, 2rem);
       background: var(--cao-section-bg);
       color: var(--cao-story-text);
     }
 
+    .maintenance-image {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
     .maintenance-board figcaption {
-      color: var(--cao-story-heading);
-      font-size: 1rem;
-      font-weight: 600;
+      border-top: 1px solid var(--cao-section-border);
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      line-height: 1.5;
     }
 
     .maintenance-steps {
