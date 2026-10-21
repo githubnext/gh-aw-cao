@@ -137,7 +137,7 @@ test("landing page shows shared and local workflows with explicit ownership", ()
   assert.match(hero, /\.product-story \{[^}]*width: min\(calc\(100% - 2rem\), 76rem\)/);
   assert.match(hero, /\.dispatch-story \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*gap: 0\.75rem/);
   assert.match(hero, /\.dispatch-story > \.section-eyebrow \{[\s\S]*?justify-self: center/);
-  assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[^}]*max-width: 60ch/);
+  assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[^}]*max-width: 80ch/);
   assert.match(hero, /\.dispatch-illustration \{[^}]*width: min\(100%, 72rem\);[^}]*margin: 1rem auto 0/);
   assert.match(hero, /@media \(width > 72rem\) \{[\s\S]*?\.dispatch-illustration \{[^}]*width: min\(80%, 56rem\)/);
   assert.match(hero, /\.dispatch-illustration :global\(\.workflow-ecosystem\) \{[^}]*width: auto;[^}]*zoom: 0\.8/);
