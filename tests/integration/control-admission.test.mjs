@@ -268,6 +268,29 @@ test("standalone inventory redirects cannot bypass exact repository scope", () =
   assert.match(precomputeResult.stderr, /standalone target_repo is not allowed/);
 });
 
+test("standalone resolved targets cannot bypass owner scope after a repository redirect", () => {
+  const { precomputeResult } = runAdmission({
+    policy: standalonePolicy(),
+    env: standaloneEnv,
+    repositories: standaloneRepositories.map(repository => repository.full_name === "acme/one"
+      ? { ...repository, requested_name: "acme/one", full_name: "outside/one" } : repository),
+    runPrecompute: true,
+  });
+  assert.notEqual(precomputeResult.status, 0);
+  assert.match(precomputeResult.stderr, /target_repo owner is outside control-plane.scope.allowed-owners/);
+});
+
+test("standalone requested and resolved target scope is case-insensitive", () => {
+  const { precomputeResult, precompute } = runAdmission({
+    policy: standalonePolicy(),
+    env: { ...standaloneEnv, CAO_TARGET_REPOSITORY: "acme/one" },
+    repositories: [{ ...standaloneRepositories[0], requested_name: "acme/one", full_name: "ACME/ONE" }],
+    runPrecompute: true,
+  });
+  assert.equal(precomputeResult.status, 0, precomputeResult.stderr);
+  assert.equal(precompute.candidate_repositories[0].full_name, "ACME/ONE");
+});
+
 const debugEnv = {
   CAO_ROLE: "worker",
   CAO_WORKER: "update-planner",
@@ -344,6 +367,15 @@ test("debug precompute rechecks actor permission instead of trusting a copied ad
   });
   assert.notEqual(precomputeResult.status, 0);
   assert.match(precomputeResult.stderr, /debug actor must have write access/);
+});
+
+test("debug admission and precompute share case-insensitive exact target scope", () => {
+  const { output, precomputeResult } = runAdmission({
+    env: debugEnv, runPrecompute: true,
+    policy: controlPolicy({ scope: { "allowed-owners": ["ACME"], "allowed-repositories": ["ACME/TARGET"] } }),
+  });
+  assert.equal(output.authorized, "true");
+  assert.equal(precomputeResult.status, 0, precomputeResult.stderr);
 });
 
 for (const permission of ["maintain", "admin"]) {

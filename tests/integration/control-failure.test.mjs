@@ -44,7 +44,7 @@ const invalidPolicies = [
   ["invalid batch index", controlPolicy({ inventory: { "batch-index": -1 } }), "control-plane.inventory.batch-index must be an integer in >= 0"],
 ];
 
-function runPrecompute(overrides = {}, ghScript = "printf 'true\\n'", policy = controlPolicy()) {
+function runPrecompute(overrides = {}, ghScript = "printf 'true\\n'", policy = controlPolicy(), effectiveOverrides = {}) {
   const directory = mkdtempSync(join(tmpdir(), "central-ops-precompute-"));
   const gh = join(directory, "gh");
   const githubEnvironment = join(directory, "github-env");
@@ -78,7 +78,7 @@ ${ghScript}
     if (resolve.status !== 0) {
       return resolve;
     }
-    writeFileSync(admissionEffective, resolve.stdout);
+    writeFileSync(admissionEffective, JSON.stringify({ ...JSON.parse(resolve.stdout), ...effectiveOverrides }));
 
     return spawnSync("node", [program, "precompute"], {
       cwd: directory,
@@ -107,6 +107,53 @@ for (const [name, policy, expectedError] of invalidPolicies) {
     assert.match(result.stderr, new RegExp(expectedError));
   });
 }
+
+for (const role of ["orchestrator", "standalone"]) {
+  for (const [name, effectiveOverrides, error] of [
+    ["repository cap", { max_repositories: 1001 }, "max_repos must be an integer from 1 through 1000"],
+    ["rollout", { rollout_percent: 0 }, "rollout_percent must be an integer from 1 through 100"],
+    ...[
+      ["max-scan-repositories", 100001, "max_scan_repos must be an integer from 1 through 100000"],
+      ["cell-count", 0, "cell_count must be an integer from 1 through 1000"],
+      ["cell-index", 1, "cell_index must be an integer from 0 through cell_count minus 1"],
+      ["batch-size", 100001, "batch_size must be an integer from 1 through 100000"],
+      ["batch-index", -1, "batch_index must be a non-negative integer"],
+    ].map(([key, value, reason]) => [key, {
+      inventory: {
+        "max-scan-repositories": 1000, "cell-count": 1, "cell-index": 0,
+        "batch-size": 100_000, "batch-index": 0, [key]: value,
+      },
+    }, reason]),
+  ]) {
+    test(`${role} revalidates admitted inventory ${name} before remote precompute`, () => {
+      const standalone = role === "standalone";
+      const result = runPrecompute({
+        ROLE: role, WORKER: "", TARGET_REPO: "",
+        CAO_CAMPAIGN: standalone ? "__none__" : "dependabot",
+        CAO_WORKFLOW: standalone ? "fleet-audit" : "",
+        GITHUB_WORKFLOW_REF: `acme/control/.github/workflows/${standalone ? "fleet-audit" : "dependabot"}.lock.yml@main`,
+      }, "echo 'GitHub must not be called for invalid inventory limits' >&2; exit 99",
+      standalone ? JSON.stringify({
+        version: 1, "gh-aw-version": "v0.92.6",
+        "control-plane": { workflows: { "fleet-audit": {} } },
+      }) : controlPolicy(), effectiveOverrides);
+
+      assert.notEqual(result.status, 0);
+      assert.ok(result.stderr.includes(error), result.stderr);
+      assert.doesNotMatch(result.stderr, /GitHub must not be called/);
+    });
+  }
+}
+
+test("worker target scope is case-insensitive and does not constrain central review to the target allowlist", () => {
+  const result = runPrecompute({}, "echo 'GitHub must not be called' >&2; exit 99", controlPolicy({
+    scope: { "allowed-owners": ["ACME"], "allowed-repositories": ["ACME/TARGET"] },
+  }));
+  assert.equal(result.status, 0, result.stderr);
+  const precompute = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
+  assert.equal(precompute.target_repo, "acme/target");
+  assert.equal(precompute.safe_output_repo, "acme/control");
+});
 
 for (const role of ["orchestrator", "worker"]) {
   for (const safeOutputMode of ["review", "live"]) {

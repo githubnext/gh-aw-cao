@@ -62,6 +62,90 @@ trigger -> pre-activation admission -> authorized-run precompute -> activation -
                  +----------------------+-> no agent execution
 ```
 
+## CAO versus gh-aw: differential analysis
+
+This comparison is anchored to CAO revision
+[`1d0ee7f5813c60078045506827bde4a262b3e645`](https://github.com/githubnext/gh-cao/tree/1d0ee7f5813c60078045506827bde4a262b3e645)
+and its [policy pin](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/cao.json#L1-L4):
+**gh-aw v0.92.6**, tag commit
+[`7363a87ff2483635af62f490b52c25a757a50221`](https://github.com/github/gh-aw/tree/7363a87ff2483635af62f490b52c25a757a50221).
+Upstream `main` supplies authoring guidance, not evidence that this pinned
+compiler implements newer behavior. The repository is both a catalog and a
+source-managed control plane; the comparison does not change its live policy.
+
+CAO owns whether and where installed operations run. gh-aw owns how an
+authorized execution runs. The effective authority is their **intersection**,
+not a choice between two alternative admission systems.
+
+| Gate and owner | Phase and authoritative inputs | Output and denial semantics | Duplication assessment |
+| --- | --- | --- | --- |
+| gh-aw trigger/actor eligibility | `pre_activation`; event provenance, configured roles/bots, repository permission evidence | Membership result feeds `activated`; denied or unverifiable membership cannot activate. Scheduled events have their own trusted-event path. | Not CAO campaign or target authorization. A permitted App actor still needs CAO policy. [Runtime](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/actions/setup/js/check_membership.cjs#L202-L310). |
+| gh-aw scheduling/work predicates | `pre_activation`; configured stop time, rate/cooldown history, skip queries, command position and role/bot exclusions | Independent Boolean checks are conjoined into `activated`; false suppresses activation. These checks exist only when configured. | Workflow frequency and relevance, not CAO fleet rollout percentage or inventory partitioning. [Compiler](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/pkg/workflow/compiler_pre_activation_job.go#L397-L468). |
+| CAO policy admission | Custom steps inside `pre_activation`; exact workflow-SHA control policy, imported role/identity, narrowing-only request inputs | `authorized`, reason, effective policy and admission evidence; denial yields false without running precompute. Runtime/policy absence fails closed. | Unique control-repository authority: standalone/campaign/worker enablement, review/live ceiling and fleet limits. [Resolver](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/shared/policy.mjs#L887-L1040), [admission](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/shared/control.mjs#L460-L541). |
+| CAO request-only debug exception | Admission **and** precompute; authoritative manual event, original human actor, current write/maintain/admin access, exact policy scope, no dispatcher envelope | Denies missing/mismatched evidence; permits only a single target with gh-aw staging. A permission withdrawal between phases blocks the handoff. | Intentional extra restriction: native bot/role eligibility does not prove original-human debug intent or staging. Preserve both checks. [Debug validator](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/shared/control.mjs#L371-L420), [staging](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/shared/control.md#L82-L85). |
+| CAO target/routing precompute | After admission, still before `activation`; admitted scope/ceilings plus inventory, repository access, private-review metadata, installed worker availability and dispatch envelope | Bounded `control-precompute.json`; invalid scope/routes/envelopes throw, capacity recovery emits false. Standalone required-inventory failure blocks; orchestrators can retain an explicit inventory error with no usable targets. | Scope and destination authorization are not gh-aw tool capability checks. Worker policy revalidation is independent of the orchestrator's selection; target files never authorize activation. [Precompute](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/shared/control.mjs#L695-L764), [inventory](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/shared/control.mjs#L955-L1040). |
+| CAO GitHub REST capacity | Admission samples `/rate_limit`; precompute handles subsequent rate-limit failures | Available/limited/unavailable evidence and reset guidance; insufficient or unverifiable capacity prevents activation. | Not gh-aw AI Credits, cooldown, or dispatch-count limits. It is a point-in-time readiness check, not a reservation or cross-run quota. Admission currently samples the workflow token; precompute may use a different App/PAT credential. Do not infer the latter's capacity from the former. [Credential wiring](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/shared/control.md#L213-L312). |
+| gh-aw execution readiness and policy | `activation`; compiled engine/output secret requirements, OAuth-token checks, strict-mode policy, lock/source integrity and compiler-version checks | Validation failures block downstream execution or expose failure outputs used by generated jobs; optional checks retain their documented exceptions. | CAO's exact-SHA policy read is not a replacement for compiled-source integrity, engine authentication or safe-output credential validation. [Assembly](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/pkg/workflow/compiler_activation_job.go#L36-L88), [checks](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/pkg/workflow/compiler_activation_steps.go#L36-L149), [lock/version](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/pkg/workflow/compiler_activation_steps.go#L150-L229). |
+| gh-aw AI Credit controls | Activation daily-workflow accounting when enabled; compiled per-run caps during execution | Daily status/total/exceeded outputs; accounting failures are visible and block startup, subject to configured compiler behavior. Runtime caps remain gh-aw-owned. | CAO repository counts/rollout/dispatch limits bound fleet work, not per-run spend. CAO's deprecated monthly field has no runtime gate; shared control explicitly disables its daily limit with `-1`. Do not resurrect a second credit controller in CAO policy. [Daily builder](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/pkg/workflow/compiler_activation_daily_aic.go#L114-L174), [accounting failure](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/actions/setup/js/check_daily_aic_workflow_guardrail.cjs#L855-L868), [shared settings](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/shared/control.md#L60-L85). |
+| Hosted CAO OIDC admission authority | Separate HTTPS service; signed immutable invocation identity, exact protected enrollment, fresh AI Credits accounting and durable replay decisions | Allowances on 200, denial on 403, unavailable on 503; revalidate every retry, preserve the first allowance and permanent expiry/revocation denial. | Not CAO rollout policy and **not a shipped client gate in v0.92.6**. The pinned upstream spec explicitly says proposal/no implementation. CAO's newer v1.2 service requires a compatible client and recompilation; setting variables alone cannot add it to these locks. [Pinned status](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/docs/src/content/docs/specs/admission-service-specification.md#L9-L20), [identity](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/server/internal/admission/identity.go#L63-L158), [decision](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/server/internal/admission/service.go#L41-L137), [compatible protocol](admission-gate.md#before-you-begin). |
+
+The generated activation condition demonstrates the cumulative boundary:
+`needs.pre_activation.outputs.activated == 'true'` **and**
+`needs.pre_activation.outputs.cao_authorized == 'true'`
+([compiled example](https://github.com/githubnext/gh-cao/blob/1d0ee7f5813c60078045506827bde4a262b3e645/.github/workflows/dependabot.lock.yml#L135-L138)).
+The custom CAO output also combines admission with precompute. Failed required
+steps and artifact validation/upload block job success independently of that
+output; the `!= 'false'` expression alone is not the entire fail-closed boundary.
+These are executable gates, not prompt instructions.
+
+### Duplication reduced inside CAO
+
+The [control runtime](https://github.com/githubnext/gh-cao/blob/main/.github/workflows/shared/control.mjs)
+now shares one exact-target scope validator across manual debug admission,
+worker dispatch, requested inventory selection, and resolved standalone
+candidates. It retains case-insensitive owner/repository comparisons, empty
+allowlist semantics, role-specific denial reasons, and scope rechecks at each
+existing trust boundary. Review destinations still use their separate
+owner/access/privacy rules; they are not incorrectly required to be members of
+the target allowlist.
+
+Inventory limit validation also has one implementation, called once for
+orchestrator/standalone precompute before remote inventory work. The duplicate
+orchestrator numeric checks are removed, while repository/scan/rollout bounds,
+cell/batch configuration and orchestrator dispatch bounds remain enforced.
+The batch-index check that depends on the actual selected cell remains in
+partitioning. Policy parsing still validates the original document; precompute
+still validates the admitted handoff. Consolidation removes repeated
+implementations, not those distinct phase checks.
+
+### Intentional overlap and remaining work
+
+Keep gh-aw actor/trigger checks, CAO rollout/target checks, debug permission
+revalidation, credential narrowing, safe-output staging and handoff validation.
+No successful check grants another layer's authority. The hosted service's
+enrollment protects its own accounting authority; it neither replaces
+`control-plane.workflows`/campaign enablement nor permits target writes.
+Correlation IDs and matching orchestrator URLs remain audit linkage, not
+cryptographic dispatch provenance.
+
+Repeated per-workflow `cao_authorized`/`cao_reason` output declarations are a
+candidate for **upstream** deduplication, not a reason to delete local gates.
+In the pinned compiler,
+[`mergeJobInjectedSteps`](https://github.com/github/gh-aw/blob/7363a87ff2483635af62f490b52c25a757a50221/pkg/workflow/workflow_import_merge.go#L94-L227)
+merges step-injection fields and `continue-on-error`, but not output maps when
+the main workflow also defines the job. Moving all outputs to a shared import
+would therefore lose them on workflows that augment `pre-activation`.
+Recommend upstream deterministic output-map merging with explicit local
+precedence and collision tests before centralizing those declarations. Keep
+each workflow's activation condition until the pinned compiler has a verified
+shared-condition contract as well.
+
+No compiler upgrade, live policy change, credential provisioning, hosted gate
+activation, or workflow dispatch is part of this reduction. A future hosted
+admission rollout must separately select and validate a compatible client
+revision; a future capacity change must explicitly account for the actual
+precompute credential rather than remove the API-readiness gate.
+
 Admission queries the GitHub rate-limit API and uses the returned core limit, remaining capacity, and reset time directly. It does not read or write a repository variable to coordinate capacity decisions across runs.
 
 The former `CAO_GITHUB_API_GATE` repository variable is not an authority or integrity input and is no longer used. Capacity is checked directly with the job-local credential, so there is no shared mutable gate or concurrent gate writer.
@@ -83,7 +167,7 @@ The shared control component keeps one canonical runtime under `.github/workflow
 | Target input | A supplied `target_repo` uses exact `owner/repository` form. Scope and access are checked later during precompute. |
 | Mode input | `review` or `live` does not exceed the checked-in ceiling; request-only `debug` passes the manual worker and human authorization gates below. |
 | Run limits | `max_repos` and `rollout_percent` are valid and do not exceed checked-in policy. |
-| GitHub API capacity | The credential used for precompute has enough primary REST API capacity for the run. |
+| GitHub API capacity | The admission job's workflow credential has enough primary REST API capacity for the estimated run. Precompute may use a different credential and handles subsequent rate-limit failures separately. |
 
 A manual dispatch can narrow a run, such as changing an authorized `live` run to `review` or reducing `max_repos`. It cannot promote mode, add scope, enable a standalone workflow, campaign, or worker, or increase a limit.
 

@@ -383,11 +383,7 @@ async function validateDebugLaunch(policy, options) {
   if (!destination || !repositoryEqual(destination, options.targetRepository)) {
     throw new ControlError("debug safe_output_repo must equal target_repo");
   }
-  validateRepositoryOwner("target_repo", options.targetRepository, policy.allowed_owners);
-  if (policy.allowed_repositories.length > 0
-    && !policy.allowed_repositories.some((repository) => repositoryEqual(repository, options.targetRepository))) {
-    throw new ControlError("debug target_repo is not allowed");
-  }
+  validateTargetRepository(options.targetRepository, policy, "debug target_repo is not allowed");
   const actor = environment("GITHUB_ACTOR");
   let payload;
   try {
@@ -570,6 +566,14 @@ function validateRepositoryOwner(label, repository, allowedOwners) {
   }
 }
 
+function validateTargetRepository(repository, policy, denialReason = "target_repo is not allowed") {
+  validateRepositoryOwner("target_repo", repository, policy.allowed_owners);
+  if (repository && policy.allowed_repositories.length > 0
+    && !policy.allowed_repositories.some((allowed) => repositoryEqual(allowed, repository))) {
+    throw new ControlError(denialReason);
+  }
+}
+
 function parseFrontmatterWorkers(source) {
   const lines = source.split("\n");
   let inFrontmatter = false;
@@ -735,10 +739,7 @@ async function validateOutputDestination({ mode, role, safeOutputRepository, tar
 
 function validateWorkerDispatch(context) {
   if (!context.targetRepository) throw new ControlError("worker target_repo is required");
-  if (context.policy.allowed_repositories.length > 0
-    && !context.policy.allowed_repositories.some((repository) => repositoryEqual(repository, context.targetRepository))) {
-    throw new ControlError("worker target_repo is not allowed");
-  }
+  validateTargetRepository(context.targetRepository, context.policy, "worker target_repo is not allowed");
   if (context.workerPolicy.enabled !== true) throw new ControlError("worker is disabled by its control-plane policy");
   requireMode(context.workerPolicy.maxMode, "worker_max_mode");
   if (context.mode === "live" && context.workerPolicy.maxMode !== "live") {
@@ -890,7 +891,7 @@ async function selectInventory(context, maximum) {
   return { repositories, source: "organization", error };
 }
 
-function createInventory(context, repositories) {
+function validateInventoryLimits(context) {
   const inventory = context.policy.inventory;
   const maximumRepositories = context.policy.max_repositories;
   const maximumScanRepositories = inventory["max-scan-repositories"];
@@ -911,6 +912,14 @@ function createInventory(context, repositories) {
     requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
   }
   requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
+}
+
+function createInventory(context, repositories) {
+  const inventory = context.policy.inventory;
+  const cellCount = inventory["cell-count"];
+  const cellIndex = inventory["cell-index"];
+  const batchSize = inventory["batch-size"];
+  const batchIndex = inventory["batch-index"];
   const uniqueRepositories = new Map();
   for (const repository of repositories) {
     const identity = repository.id ?? repository.full_name.toLowerCase();
@@ -958,10 +967,7 @@ async function resolveTargetInventory(context) {
   if (context.policy.allowed_repositories.length > maximumScanRepositories) {
     throw new ControlError("allowed repos exceed max_scan_repos");
   }
-  if (context.targetRepository && context.policy.allowed_repositories.length > 0
-    && !context.policy.allowed_repositories.some((repository) => repositoryEqual(repository, context.targetRepository))) {
-    throw new ControlError("target_repo is not allowed");
-  }
+  validateTargetRepository(context.targetRepository, context.policy);
 
   const selected = await selectInventory(context, maximumScanRepositories);
   const { candidates, metadata } = createInventory(context, selected.repositories);
@@ -993,11 +999,7 @@ async function writeStandalonePrecompute(context) {
     safe_output_repo: repository.safe_output_mode === "live" ? repository.full_name : context.safeOutputRepository,
   }));
   for (const repository of admitted) {
-    validateRepositoryOwner("target_repo", repository.full_name, context.policy.allowed_owners);
-    if (context.policy.allowed_repositories.length > 0
-      && !context.policy.allowed_repositories.some((allowed) => repositoryEqual(allowed, repository.full_name))) {
-      throw new ControlError("standalone target_repo is not allowed");
-    }
+    validateTargetRepository(repository.full_name, context.policy, "standalone target_repo is not allowed");
     await validateOutputDestination({
       ...context,
       mode: repository.safe_output_mode,
@@ -1031,12 +1033,6 @@ async function writeStandalonePrecompute(context) {
 }
 
 async function writeOrchestratorPrecompute(context) {
-  requirePositiveInteger(context.policy.max_repositories, 1000, "max_repos must be an integer from 1 through 1000");
-  requirePositiveInteger(context.policy.inventory["max-scan-repositories"], 100_000, "max_scan_repos must be an integer from 1 through 100000");
-  requirePositiveInteger(context.policy.inventory["cell-count"], 1000, "cell_count must be an integer from 1 through 1000");
-  requirePositiveInteger(context.policy.inventory["batch-size"], 100_000, "batch_size must be an integer from 1 through 100000");
-  requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
-  requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
   if (!SHA_PATTERN.test(context.workflowSha)) throw new ControlError("github.workflow_sha must be an exact commit SHA");
   const sourcePath = controlSourcePath();
   const source = await decodeRepositoryFile(context.controlRepository, sourcePath, context.workflowSha);
@@ -1160,6 +1156,7 @@ async function precompute() {
     }
     validateRepositoryOwner("target_repo", context.targetRepository, policy.allowed_owners);
     validateRepositoryOwner("safe_output_repo", context.safeOutputRepository, policy.allowed_owners);
+    if (context.role === "orchestrator" || context.role === "standalone") validateInventoryLimits(context);
     if (context.role === "standalone") {
       await writeStandalonePrecompute(context);
       writeActionsOutputs({ authorized: true, reason: "authorized" });
