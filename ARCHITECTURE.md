@@ -112,8 +112,9 @@ it cannot discover extra targets or dispatch more work. No orchestrator or
 downstream workflow inventory is required. Missing inventory evidence fails
 closed. Credential reach and safe-output capabilities remain declared by gh-aw;
 CAO does not expand them for fleet execution.
-Bare setup rejects policies with declared standalone workflows before changing
-scope or authentication, just as it rejects declared operational campaigns.
+Bare setup rejects policies with declared standalone workflows or direct
+operations before changing scope or authentication, just as it rejects declared
+operational campaigns.
 
 A local debugger may manually launch one worker in request-only `debug` mode.
 Admission verifies a human `workflow_dispatch` sender with current write access
