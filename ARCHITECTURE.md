@@ -282,7 +282,8 @@ mutation, dashboard-session authentication, trace-response identifier or CAO
 scope widening is permitted. Redis, memory and local modes cannot enable it.
 `server/ADMISSION.md` documents the trust profile, publisher requirements,
 capacity/retention lifecycle and cooperative fail-open limitations.
-The HTTP contract is pinned to merged gh-aw `be70cb4ec4317135a1ab21d5b830b6fae7d5be4a`.
+The HTTP contract is pinned to published gh-aw `b2707604dd52732afa66ff7ae270bda96cf6c9fd`;
+its activation wire remains unchanged from merged `be70cb4ec4317135a1ab21d5b830b6fae7d5be4a`.
 Its isolated admission job relays caller-owned tracing through activation.
 Valid incoming traceparent parents the server HTTP span and dependencies;
 HTTP instrumentation must consume the sanitized context without re-extracting
@@ -294,6 +295,34 @@ duration/status metrics with the fixed admission route even across its separate
 authentication path. Raw errors, credentials, identities, allowance values and
 denial reasons never enter those signals; exporter failures do not change
 operation results.
+The compiler's isolated `conclusion_admission` callback uses `POST /api/conclusion`
+on the same configured origin/audience and independently verified identity.
+Current exact enrollment authorizes completion independently of budget freshness,
+spend thresholds or a prior admission record. The receiver validates the strict
+64 KiB envelope, compact profile 1 (128 records/16 KiB), six coverage fields and
+up to two canonical artifact IDs before atomically recording the immutable
+invocation-bound payload and receipt. Before empty 204 it also populates existing
+canonical Run/Audit and available grader collections, then durably marks the
+receipt populated. Pending retries repair publication; canonical rows and revision
+are idempotent across the separate transactions. Conflicts never overwrite facts.
+Publication shares ingestion's namespace lock, reuses verified Run/parent identity,
+enriches API-only Runs without replacing known facts, and preserves native event
+types, observation time, missing-versus-zero measures and explicitly partial quality.
+Usage ranking matches the canonical session adapter by phase/dimension; snapshots,
+proxy copies and cumulative AIC are not double counted. Unrelated/API-only snapshot
+replacement retains compact facts; collected session evidence at the winning
+attempt supersedes them and older attempts cannot mix into newer records.
+The callback does not fabricate approval or GitHub workflow outcome/timestamps.
+Compact request payloads expire after a
+fixed 24 hours and bounded operational maintenance removes them; permanent
+digest/completion receipts consume protected capacity and prevent late recreation.
+There is no public session read, artifact fetch, hydration, billing settlement
+or inferred GitHub run-result mutation. Canonical typed facts use ordinary
+dashboard evidence retention. Full sessions remain unavailable until an
+independently authenticated, invocation-bound consumer exists; compact metadata
+and overlapping usage are untrusted evidence, not complete accounting.
+The callback shares admission's deadlines, peer limiting, sanitized tracing and
+private no-store responses, with no new rollout or credential authority.
 Verified successful admission publishes a sparse canonical Run in admitted
 state before returning approval; blocked attempts publish nothing. Publication
 uses existing canonical IDs, inserts only missing parent identity facts,

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.7.0",
+    "version": "2.8.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -576,6 +576,109 @@
         "security": [
           {
             "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/conclusion": {
+      "post": {
+        "operationId": "Admission_conclude",
+        "description": "Conclusion-admission callback from github/gh-aw",
+        "parameters": [
+          {
+            "name": "cache-control",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "no-store"
+              ]
+            }
+          },
+          {
+            "name": "traceparent",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "There is no content to send for this request, but the headers may be useful. ",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access is forbidden.",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Client error",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable.",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Activation admission"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConclusionRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
           }
         ]
       }
@@ -3805,6 +3908,126 @@
           }
         }
       },
+      "ConclusionRequest": {
+        "type": "object",
+        "required": [
+          "repo",
+          "workflow_id",
+          "workflow_hash",
+          "workflow_call_id",
+          "run_id",
+          "run_attempt",
+          "ref",
+          "event_type",
+          "actor",
+          "triggering_actor",
+          "session",
+          "session_compaction",
+          "usage_artifact_ids"
+        ],
+        "properties": {
+          "repo": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 140,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"
+          },
+          "workflow_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "workflow_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}:[0-9a-f]{64}$"
+          },
+          "workflow_call_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1400,
+            "description": "Exactly run_id + \"-\" + run_attempt + \":\" + workflow_id."
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "run_attempt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "event_type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "triggering_actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Informational only; the initial server profile never authorizes or attributes spend from this unsigned value."
+          },
+          "session": {
+            "type": "string",
+            "maxLength": 16384,
+            "description": "Compact profile 1 JSONL: at most 128 allowlisted records and 16384 UTF-8 bytes including one LF per record. Only the pinned compact metadata vocabulary and eligible finite-number/boolean/256-byte scalar strings are accepted; no prompts, messages, tool arguments/results or arbitrary nested data. Empty is valid, not proof of zero activity."
+          },
+          "session_compaction": {
+            "$ref": "#/components/schemas/SessionCompaction"
+          },
+          "usage_artifact_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageArtifactID"
+            },
+            "maxItems": 2,
+            "description": "At most two unique canonical decimal strings, retry upload first. Locators only: this service records them but performs no artifact retrieval or hydration. Missing full sessions remain unavailable."
+          }
+        },
+        "unevaluatedProperties": {
+          "not": {}
+        },
+        "description": "Exactly the ten admission identity strings plus these three fields. Maximum 65536 UTF-8 request bytes, with an independently bounded 8192-byte identity. Unknown/duplicate members, invalid Unicode, unsafe counters, malformed JSONL and out-of-profile metadata are denied. Session content and artifact IDs are untrusted evidence, never authority or complete accounting.",
+        "examples": [
+          {
+            "repo": "acme/project",
+            "workflow_id": "acme/project/.github/workflows/triage.lock.yml@refs/heads/main",
+            "workflow_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "workflow_call_id": "1234-2:acme/project/.github/workflows/triage.lock.yml@refs/heads/main",
+            "run_id": "1234",
+            "run_attempt": "2",
+            "ref": "refs/heads/main",
+            "event_type": "workflow_dispatch",
+            "actor": "octocat",
+            "triggering_actor": "hubot",
+            "session": "{\"type\":\"session.format\",\"data\":{\"version\":1}}\n",
+            "session_compaction": {
+              "version": 1,
+              "included_events": 1,
+              "omitted_events": 0,
+              "oversized_lines": 0,
+              "scan_truncated": false,
+              "truncated": false
+            },
+            "usage_artifact_ids": [
+              "8123"
+            ]
+          }
+        ]
+      },
       "DataState": {
         "type": "object",
         "required": [
@@ -5061,6 +5284,53 @@
           }
         ]
       },
+      "SessionCompaction": {
+        "type": "object",
+        "required": [
+          "version",
+          "included_events",
+          "omitted_events",
+          "oversized_lines",
+          "scan_truncated",
+          "truncated"
+        ],
+        "properties": {
+          "version": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "included_events": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 128
+          },
+          "omitted_events": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "oversized_lines": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "scan_truncated": {
+            "type": "boolean"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "unevaluatedProperties": {
+          "not": {}
+        },
+        "description": "Loss/coverage metadata for compact unified-session profile 1, not a completeness or billing assertion. Counters are nonnegative JavaScript-safe integers."
+      },
       "TemporalSeries": {
         "type": "object",
         "required": [
@@ -5143,6 +5413,12 @@
             "type": "string"
           }
         }
+      },
+      "UsageArtifactID": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20,
+        "pattern": "^[1-9][0-9]{0,19}$"
       },
       "WebhookAcknowledgement": {
         "type": "object",

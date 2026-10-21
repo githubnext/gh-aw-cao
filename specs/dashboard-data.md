@@ -641,6 +641,35 @@ these sparse rows SHALL remain partial. Admission is not proof of actual
 execution, completion, outcome or spend. Projection failure SHALL return a
 generic transient response without discarding the durable admission decision.
 
+The separately authenticated gh-aw `conclusion_admission` callback
+(`POST /api/conclusion`) SHALL populate the canonical database from its bounded
+compact-session evidence before acknowledgement, not merely retain an operational
+receipt. Verified invocation identity SHALL bind the existing Run and its parents.
+Available Run usage/engine/model facts, native Audit events and individually
+identified grader definitions/observations SHALL use the existing typed sources.
+Compaction coverage and source quality SHALL explicitly remain partial; full
+sessions, tools/messages omitted by the compact profile, unavailable metrics and
+GitHub final workflow outcomes SHALL NOT be inferred or automatically hydrated.
+Untimed evidence SHALL carry first-observation provenance, not an invented clock.
+Explicit numeric zero SHALL remain distinct from unknown. Usage SHALL follow
+the canonical session adapter's per-phase/per-dimension preference for measured
+reports over firewall copies and the latest session snapshot; cumulative and
+per-record AIC SHALL NOT be added together or treated as settled billing.
+
+Conclusion publication SHALL atomically update canonical relationships, Run-owned
+facts, partial quality and revision under the same namespace lock as replacement.
+An existing API-only Run SHALL retain known facts while gaining absent compact
+facts. Unrelated or API-only replacement SHALL preserve/enrich compact evidence;
+collected session evidence at the winning attempt SHALL supersede it. Lower
+attempts SHALL NOT replace newer evidence or mix their Run-owned records.
+The permanent operational receipt SHALL record canonical completion only after
+publication succeeds. Pending identical retries SHALL repair failed publication
+idempotently, including failure between canonical commit and completion marking;
+completed retries SHALL NOT duplicate rows/revisions or refresh observation time.
+Conflicts SHALL NOT mutate either store. Compact request retention SHALL remain
+separate from ordinary canonical evidence retention; no public raw-session
+endpoint, additional credential grant or financial mutation is implied.
+
 Hosted container, Azure Functions, and external-listener deployments SHALL
 serve the built dashboard HTML and assets through the complete Go handler on
 the same origin as OAuth, query APIs, and revision events. They SHALL NOT

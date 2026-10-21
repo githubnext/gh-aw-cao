@@ -36,6 +36,12 @@ func (l *admissionTraceLimiter) TakeRateLimitToken(ctx context.Context, key stri
 }
 
 func TestAdmissionClientTraceparentExportedThroughFullHandler(t *testing.T) {
+	for _, path := range []string{"/api/admission", "/api/conclusion"} {
+		t.Run(path, func(t *testing.T) { testAdmissionClientTraceparent(t, path) })
+	}
+}
+
+func testAdmissionClientTraceparent(t *testing.T, path string) {
 	exporter := tracetest.NewInMemoryExporter()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter),
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.AlwaysSample())))
@@ -98,7 +104,7 @@ func TestAdmissionClientTraceparentExportedThroughFullHandler(t *testing.T) {
 				t.Fatal(err)
 			}
 			ctx = baggage.ContextWithBaggage(ctx, bag)
-			request := httptest.NewRequestWithContext(ctx, "POST", "https://admission.example/api/admission", strings.NewReader("{}"))
+			request := httptest.NewRequestWithContext(ctx, "POST", "https://admission.example"+path, strings.NewReader("{}"))
 			request.Header.Set("Content-Type", "application/json")
 			request.Header.Set("Authorization", "Bearer invalid-synthetic-oidc")
 			request.Header.Set("Tracestate", "private=must-not-export")
@@ -111,7 +117,7 @@ func TestAdmissionClientTraceparentExportedThroughFullHandler(t *testing.T) {
 			if response.Code != 403 || response.Body.Len() != 0 {
 				t.Fatalf("tracing changed decision: %d %s", response.Code, response.Body)
 			}
-			serverSpan := findSpan(t, exporter.GetSpans(), "POST /api/admission")
+			serverSpan := findSpan(t, exporter.GetSpans(), "POST "+path)
 			dependency := findSpan(t, exporter.GetSpans(), "admission.test.dependency")
 			if serverSpan.SpanKind != trace.SpanKindServer || !serverSpan.SpanContext.IsValid() {
 				t.Fatal("missing valid exported server span")
@@ -146,6 +152,12 @@ func TestAdmissionClientTraceparentExportedThroughFullHandler(t *testing.T) {
 }
 
 func TestActivationAdmissionFullHandlerBoundary(t *testing.T) {
+	for _, path := range []string{"/api/admission", "/api/conclusion"} {
+		t.Run(path, func(t *testing.T) { testAdmissionFullHandlerBoundary(t, path) })
+	}
+}
+
+func testAdmissionFullHandlerBoundary(t *testing.T, path string) {
 	store, err := memory.New(memory.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -171,7 +183,7 @@ func TestActivationAdmissionFullHandlerBoundary(t *testing.T) {
 	}
 	handler := app.Handler()
 	for _, method := range []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"} {
-		r := httptest.NewRequestWithContext(t.Context(), method, "https://admission.example/api/admission", strings.NewReader(`{}`))
+		r := httptest.NewRequestWithContext(t.Context(), method, "https://admission.example"+path, strings.NewReader(`{}`))
 		r.Header.Set("Authorization", "Bearer ghs_not_oidc")
 		r.Header.Set("Content-Type", "application/json")
 		r.Header.Set("Traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
@@ -190,7 +202,7 @@ func TestActivationAdmissionFullHandlerBoundary(t *testing.T) {
 		}
 	}
 	for n := 0; n < 61; n++ {
-		r := httptest.NewRequestWithContext(t.Context(), "POST", "https://admission.example/api/admission", nil)
+		r := httptest.NewRequestWithContext(t.Context(), "POST", "https://admission.example"+path, nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 		if n == 60 && (w.Code != 429 || w.Body.Len() != 0 || w.Header().Get("Retry-After") != "") {
@@ -199,19 +211,29 @@ func TestActivationAdmissionFullHandlerBoundary(t *testing.T) {
 	}
 	app.Drain()
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), "POST", "https://admission.example/api/admission", nil))
+	handler.ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), "POST", "https://admission.example"+path, nil))
 	if w.Code != 503 || w.Body.Len() != 0 {
 		t.Fatalf("draining: %d %s", w.Code, w.Body)
 	}
 	app.admission = nil
 	w = httptest.NewRecorder()
-	handler.ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), "POST", "https://admission.example/api/admission", nil))
+	handler.ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), "POST", "https://admission.example"+path, nil))
 	if w.Code != 403 || w.Body.Len() != 0 {
 		t.Fatalf("disabled service fell through authentication: %d %s", w.Code, w.Body)
 	}
 }
 
 func TestAdmissionTimeoutResponseAndConfiguration(t *testing.T) {
+	completed := httptest.NewRecorder()
+	completion := &admissionResponse{ResponseWriter: completed, headers: make(http.Header)}
+	completion.Header().Set("X-Trace-Id", "must-not-escape")
+	completion.WriteHeader(http.StatusNoContent)
+	if _, err := completion.Write([]byte("must-not-escape")); err != nil {
+		t.Fatal(err)
+	}
+	if completed.Code != http.StatusNoContent || completed.Body.Len() != 0 || len(completed.Header()) != 0 {
+		t.Fatal("completion acknowledgement exposed headers or body")
+	}
 	success := httptest.NewRecorder()
 	approved := &admissionResponse{ResponseWriter: success, headers: make(http.Header)}
 	approved.Header().Set("X-Trace-Id", "must-not-escape")

@@ -677,6 +677,7 @@ func (a *App) Handler() http.Handler {
 	register("GET /api/v1/events", a.events)
 	register("POST /api/v1/query", a.query)
 	register("POST /api/admission", a.activationAdmission)
+	register("POST /api/conclusion", a.conclusionAdmission)
 	if a.mcp != nil {
 		register("POST /mcp", a.mcp.ServeHTTP)
 	}
@@ -711,12 +712,12 @@ func (a *App) Handler() http.Handler {
 	}
 	dashboardHandler := handler
 	handler = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == "/api/admission" {
-			route := semconv.HTTPRoute("/api/admission")
+		if admissionPath(request.URL.Path) {
+			route := semconv.HTTPRoute(request.URL.Path)
 			trace.SpanFromContext(request.Context()).SetAttributes(route)
 			labeler, _ := otelhttp.LabelerFromContext(request.Context())
 			labeler.Add(route)
-			a.activationAdmission(response, request)
+			a.serveAdmission(response, request, request.URL.Path == "/api/conclusion")
 			return
 		}
 		dashboardHandler.ServeHTTP(response, request)
@@ -751,15 +752,15 @@ func (a *App) Handler() http.Handler {
 	)
 	safeTelemetry := http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		traceparent := request.Header.Get("Traceparent")
-		if request.URL.Path == "/api/admission" && len(request.Header.Values("Traceparent")) != 1 {
+		if admissionPath(request.URL.Path) && len(request.Header.Values("Traceparent")) != 1 {
 			traceparent = ""
 		}
 		parentContext := request.Context()
-		if request.URL.Path == "/api/admission" {
+		if admissionPath(request.URL.Path) {
 			parentContext = trace.ContextWithSpanContext(parentContext, trace.SpanContext{})
 		}
 		ctx := telemetry.ExtractTraceparent(parentContext, traceparent)
-		if request.URL.Path == "/api/admission" {
+		if admissionPath(request.URL.Path) {
 			parent := trace.SpanContextFromContext(ctx)
 			// Use one local sampling choice, not the remote caller's sampled flag.
 			ctx = trace.ContextWithRemoteSpanContext(ctx, parent.WithTraceFlags(trace.FlagsSampled))
@@ -769,7 +770,7 @@ func (a *App) Handler() http.Handler {
 		safe.Host = ""
 		safe.RequestURI = ""
 		safe.Header = make(http.Header)
-		if traceparent != "" && request.URL.Path != "/api/admission" {
+		if traceparent != "" && !admissionPath(request.URL.Path) {
 			safe.Header.Set("Traceparent", traceparent)
 		}
 		path := ""
@@ -796,7 +797,7 @@ type originalHTTPRequestKey struct{}
 // the client to send its own traceparent header.
 func withResponseTraceHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/admission" {
+		if !admissionPath(request.URL.Path) {
 			telemetry.SetResponseTraceHeaders(response, trace.SpanContextFromContext(request.Context()))
 		}
 		next.ServeHTTP(response, request)

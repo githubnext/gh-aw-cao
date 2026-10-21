@@ -33,7 +33,11 @@ The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
 The optional [cooperative activation-admission service](ADMISSION.md) exposes
-the gh-aw OIDC-only `POST /api/admission` protocol on that same hosted origin.
+the gh-aw OIDC-only `POST /api/admission` and compact-session
+`POST /api/conclusion` protocols on that same hosted origin. Completion populates
+canonical Run/Audit and available grader data as partial evidence before
+acknowledgement, with durable invocation deduplication and retry repair. It neither settles billing nor
+automatically fetch full-session artifacts.
 It requires explicit enrollment, fresh protected accounting input, and durable
 PostgreSQL replay records; it is disabled by default and does not replace CAO
 control-policy authorization.

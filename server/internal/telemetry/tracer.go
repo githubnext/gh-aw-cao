@@ -32,6 +32,9 @@ const (
 	SpanAdmissionReplay   = "cao_dashboard.admission.replay.check"
 	SpanAdmissionKeys     = "cao_dashboard.admission.keys.refresh"
 	SpanAdmissionRun      = "cao_dashboard.admission.run.publish"
+	SpanConclusionPolicy  = "cao_dashboard.admission.conclusion.authorize"
+	SpanConclusionRecord  = "cao_dashboard.admission.conclusion.record"
+	SpanConclusionPublish = "cao_dashboard.admission.conclusion.publish"
 )
 
 // Tracer returns the dashboard server's instrumentation-scoped tracer. It

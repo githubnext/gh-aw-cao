@@ -138,8 +138,39 @@ func (f FilePolicy) Evaluate(ctx context.Context, identity Identity) (Allowances
 }
 
 func evaluateSnapshot(ctx context.Context, snapshot Snapshot, identity Identity) (Allowances, error) {
-	if ctx.Err() != nil {
+	usage, allowances, err := enrolledPolicy(ctx, snapshot, identity)
+	if err != nil {
+		return Allowances{}, err
+	}
+	now := time.Now()
+	if usage.ObservedAt.IsZero() || usage.ObservedAt.After(now.Add(30*time.Second)) ||
+		now.Sub(usage.ObservedAt) > 2*time.Minute ||
+		usage.WindowStart.After(now) || !usage.WindowEnd.After(now) ||
+		usage.WindowStart.IsZero() || usage.WindowEnd.Sub(usage.WindowStart) > 24*time.Hour ||
+		usage.ObservedAt.Before(usage.WindowStart) || !usage.ObservedAt.Before(usage.WindowEnd) {
 		return Allowances{}, ErrUnavailable
+	}
+	if *usage.Used >= usage.Limit {
+		return Allowances{}, ErrDenied
+	}
+	return allowances, nil
+}
+
+func (f FilePolicy) AuthorizeConclusion(ctx context.Context, identity Identity) error {
+	if ctx.Err() != nil {
+		return ErrUnavailable
+	}
+	snapshot, err := f.load()
+	if err != nil {
+		return err
+	}
+	_, _, err = enrolledPolicy(ctx, snapshot, identity)
+	return err
+}
+
+func enrolledPolicy(ctx context.Context, snapshot Snapshot, identity Identity) (Usage, Allowances, error) {
+	if ctx.Err() != nil {
+		return Usage{}, Allowances{}, ErrUnavailable
 	}
 	for _, entry := range snapshot.Repositories {
 		if entry.RepositoryID != identity.RepositoryID || entry.OwnerID != identity.OwnerID ||
@@ -147,28 +178,16 @@ func evaluateSnapshot(ctx context.Context, snapshot Snapshot, identity Identity)
 			continue
 		}
 		if !entry.Enabled || !slices.Contains(entry.Subjects, identity.Subject) {
-			return Allowances{}, ErrDenied
+			return Usage{}, Allowances{}, ErrDenied
 		}
 		for _, policy := range entry.Workflows {
 			if policy.WorkflowRef != identity.WorkflowRef || policy.WorkflowSHA != identity.WorkflowSHA ||
 				!slices.Contains(policy.Events, identity.Event) || !slices.Contains(policy.ActorIDs, identity.ActorID) {
 				continue
 			}
-			now := time.Now()
-			usage := entry.Usage
-			if usage.ObservedAt.IsZero() || usage.ObservedAt.After(now.Add(30*time.Second)) ||
-				now.Sub(usage.ObservedAt) > 2*time.Minute ||
-				usage.WindowStart.After(now) || !usage.WindowEnd.After(now) ||
-				usage.WindowStart.IsZero() || usage.WindowEnd.Sub(usage.WindowStart) > 24*time.Hour ||
-				usage.ObservedAt.Before(usage.WindowStart) || !usage.ObservedAt.Before(usage.WindowEnd) {
-				return Allowances{}, ErrUnavailable
-			}
-			if *usage.Used >= usage.Limit {
-				return Allowances{}, ErrDenied
-			}
-			return policy.Allowances, nil
+			return entry.Usage, policy.Allowances, nil
 		}
-		return Allowances{}, ErrDenied
+		return Usage{}, Allowances{}, ErrDenied
 	}
-	return Allowances{}, ErrDenied
+	return Usage{}, Allowances{}, ErrDenied
 }

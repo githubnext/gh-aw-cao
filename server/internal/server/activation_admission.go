@@ -51,10 +51,25 @@ func newActivationAdmission(store operational.Store, config Config) (*admission.
 	if !ok || runs == nil {
 		return nil, errors.New("activation admission requires the canonical PostgreSQL run store")
 	}
-	return &admission.Service{Verifier: verifier, Policies: policy, Decisions: decisions, Runs: runs}, nil
+	return &admission.Service{
+		Verifier: verifier, Policies: policy, Decisions: decisions, Runs: runs,
+		ConclusionPolicies: policy, Conclusions: decisions, ConclusionRuns: runs,
+	}, nil
 }
 
 func (a *App) activationAdmission(w http.ResponseWriter, r *http.Request) {
+	a.serveAdmission(w, r, false)
+}
+
+func (a *App) conclusionAdmission(w http.ResponseWriter, r *http.Request) {
+	a.serveAdmission(w, r, true)
+}
+
+func admissionPath(path string) bool {
+	return path == "/api/admission" || path == "/api/conclusion"
+}
+
+func (a *App) serveAdmission(w http.ResponseWriter, r *http.Request, conclusion bool) {
 	w.Header().Set("Cache-Control", "no-store")
 	if a.admission == nil || r.Method != http.MethodPost ||
 		!validProxyRequest(r, a.proxyPolicy()) {
@@ -96,7 +111,11 @@ func (a *App) activationAdmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = controller.SetReadDeadline(time.Time{}) }()
-	http.TimeoutHandler(a.admission, time.Until(deadline), "").ServeHTTP(
+	var handler http.Handler = a.admission
+	if conclusion {
+		handler = http.HandlerFunc(a.admission.Conclude)
+	}
+	http.TimeoutHandler(handler, time.Until(deadline), "").ServeHTTP(
 		&admissionResponse{ResponseWriter: w, headers: make(http.Header)}, r.WithContext(ctx))
 }
 

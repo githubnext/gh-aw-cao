@@ -25,10 +25,13 @@ type Decisions interface {
 }
 
 type Service struct {
-	Verifier  *Verifier
-	Policies  PolicySource
-	Decisions Decisions
-	Runs      AdmittedRuns
+	Verifier           *Verifier
+	Policies           PolicySource
+	Decisions          Decisions
+	Runs               AdmittedRuns
+	ConclusionPolicies ConclusionPolicySource
+	Conclusions        ConclusionSessions
+	ConclusionRuns     ConcludedRuns
 }
 
 // AdmittedRuns publishes only verified approvals, never blocked attempts.
@@ -44,52 +47,15 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(status)
 		}
 	}()
-	if r.Method != http.MethodPost || r.URL.RawQuery != "" || r.URL.ForceQuery ||
-		len(r.Header.Values("Authorization")) != 1 || len(r.Header.Values("Content-Type")) != 1 ||
-		len(r.Header.Get("Authorization")) > (16<<10)+7 || r.ContentLength > 8192 {
-		return
-	}
-	headerBytes := 0
-	for name, values := range r.Header {
-		if strings.EqualFold(name, "traceparent") || strings.EqualFold(name, "tracestate") || strings.EqualFold(name, "baggage") {
-			continue
-		}
-		for _, value := range values {
-			headerBytes += len(name) + len(value)
-		}
-	}
-	if headerBytes > 32<<10 {
-		return
-	}
-	contentType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || contentType != "application/json" || len(params) > 1 ||
-		(len(params) == 1 && !strings.EqualFold(params["charset"], "utf-8")) {
-		return
-	}
-	auth := strings.Fields(r.Header.Get("Authorization"))
-	if len(auth) != 2 || !strings.EqualFold(auth[0], "bearer") {
-		return
-	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	identity, err := observeOperation(ctx, telemetry.SpanAdmissionIdentity, func(ctx context.Context) (Identity, error) {
-		return s.Verifier.Verify(ctx, auth[1])
-	})
-	if err != nil {
-		if errors.Is(err, ErrUnavailable) {
-			status = http.StatusServiceUnavailable
-		}
-		return
-	}
-	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
-	if err != nil {
+	identity, data, failure := s.authenticatedRequest(w, r.WithContext(ctx), 8192)
+	if failure != 0 {
+		status = failure
 		return
 	}
 	input, err := decodeRequest(data)
-	if err != nil ||
-		input.Repo != identity.Repository || input.WorkflowID != identity.WorkflowRef ||
-		input.RunID != identity.RunID || input.RunAttempt != identity.RunAttempt ||
-		input.Ref != identity.Ref || input.EventType != identity.Event || input.Actor != identity.Actor {
+	if err != nil || !input.matches(identity) {
 		return
 	}
 	// triggering_actor is informational only. This profile authorizes exclusively
@@ -152,4 +118,47 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = w.Write(body)
+}
+
+func (s *Service) authenticatedRequest(w http.ResponseWriter, r *http.Request, limit int64) (Identity, []byte, int) {
+	if r.Method != http.MethodPost || r.URL.RawQuery != "" || r.URL.ForceQuery ||
+		len(r.Header.Values("Authorization")) != 1 || len(r.Header.Values("Content-Type")) != 1 ||
+		len(r.Header.Get("Authorization")) > (16<<10)+7 || r.ContentLength > limit {
+		return Identity{}, nil, http.StatusForbidden
+	}
+	headerBytes := 0
+	for name, values := range r.Header {
+		if strings.EqualFold(name, "traceparent") || strings.EqualFold(name, "tracestate") || strings.EqualFold(name, "baggage") {
+			continue
+		}
+		for _, value := range values {
+			headerBytes += len(name) + len(value)
+		}
+	}
+	if headerBytes > 32<<10 {
+		return Identity{}, nil, http.StatusForbidden
+	}
+	contentType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || contentType != "application/json" || len(params) > 1 ||
+		(len(params) == 1 && !strings.EqualFold(params["charset"], "utf-8")) {
+		return Identity{}, nil, http.StatusForbidden
+	}
+	auth := strings.Fields(r.Header.Get("Authorization"))
+	if len(auth) != 2 || !strings.EqualFold(auth[0], "bearer") {
+		return Identity{}, nil, http.StatusForbidden
+	}
+	identity, err := observeOperation(r.Context(), telemetry.SpanAdmissionIdentity, func(ctx context.Context) (Identity, error) {
+		return s.Verifier.Verify(ctx, auth[1])
+	})
+	if err != nil {
+		if errors.Is(err, ErrUnavailable) {
+			return Identity{}, nil, http.StatusServiceUnavailable
+		}
+		return Identity{}, nil, http.StatusForbidden
+	}
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
+	if err != nil {
+		return Identity{}, nil, http.StatusForbidden
+	}
+	return identity, data, 0
 }

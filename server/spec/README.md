@@ -111,10 +111,14 @@ The compiled `generated/openapi.json` is OpenAPI **3.1** and can be consumed by
 another server implementation. Its `info.version` records the HTTP contract
 version; review and update it when changing externally observable API signatures.
 `generated/schemas/` contains JSON Schema 2020-12
-documents for admission requests/allowances, query definitions, requests and results, SSE data frames, and webhook
+documents for admission requests/allowances, conclusion requests and compaction
+coverage, query definitions, requests and results, SSE data frames, and webhook
 acknowledgements. Representative safe examples are embedded in the TypeSpec
 models and emitted into OpenAPI/JSON Schema. `RevisionEvent.json` describes the
 JSON *inside* each SSE `data:` frame; the stream itself is `text/event-stream`.
+`POST /api/conclusion` acknowledges only after durable receipt and canonical
+compact-session population; this uses existing typed Run/Audit/grader columns,
+not a raw-session canonical table or complete-usage/billing assertion.
 Canonical entity rows and GitHub webhook event bodies are deliberately open
 objects because their fields are owned by the canonical data schema and GitHub
 event types, respectively; do not infer Redis storage or MCP internals from them.
