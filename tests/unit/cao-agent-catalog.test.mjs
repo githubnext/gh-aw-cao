@@ -83,23 +83,23 @@ test("cao query-info explains one query and its parameters", async () => {
 });
 
 test("cao query-info exposes authored semantic annotations", async () => {
-  const payload = JSON.parse(await runCao(["query-info", "cost-by-campaign", "--json"]));
-  assert.match(payload.query.objective, /Identify campaigns/);
-  const text = await runCao(["query-info", "cost-by-campaign"]);
-  assert.match(text, /objective: Identify campaigns/);
+  const payload = JSON.parse(await runCao(["query-info", "cost-by-repository", "--json"]));
+  assert.match(payload.query.objective, /Locate repositories/);
+  const text = await runCao(["query-info", "cost-by-repository"]);
+  assert.match(text, /objective: Locate repositories/);
 });
 
 test("Node parity prompt renders a named query using the dashboard prompt template without a snapshot", async () => {
   const cwd = await mkdtemp(path.join(tmpdir(), "cao-agent-prompt-"));
   try {
-    const { stdout } = await executeFile(process.execPath, [cao, "prompt", "cost-by-campaign"], { cwd });
+    const { stdout } = await executeFile(process.execPath, [cao, "prompt", "cost-by-repository"], { cwd });
     assert.match(stdout, /^Improve CAO by increasing ROI/);
-    assert.match(stdout, /Query: cost-by-campaign/);
+    assert.match(stdout, /Query: cost-by-repository/);
     assert.match(stdout, /Focus on this query's objective and acceptance/);
     assert.match(stdout, /report a no-op or incomplete investigation/);
-    assert.match(stdout, /Subject:\nPresent observed AI Credit cost grouped by centrally managed campaign\./);
+    assert.match(stdout, /Subject:\nPresent observed AI Credit cost grouped by repository\./);
     assert.doesNotMatch(stdout, /Subject:\nReuse shared query stages/);
-    assert.match(stdout, /Named CAO query IDs: .*cost-by-campaign/);
+    assert.match(stdout, /Named CAO query IDs: .*cost-by-repository/);
     assert.match(stdout, /\/analyze-cao/);
     assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-cao\/blob\/main\/skills\/analyze-cao\/SKILL.md/);
     assert.match(stdout, /https:\/\/github.com\/githubnext\/gh-cao\/blob\/main\/specs\/dashboard-data.md/);
@@ -118,7 +118,7 @@ test("cao prompt rejects unknown queries and undeclared parameters without a sta
   for (const args of [
     ["prompt"],
     ["prompt", "not-a-query"],
-    ["prompt", "cost-by-campaign", "--param", "unknown=value"]
+    ["prompt", "cost-by-repository", "--param", "unknown=value"]
   ]) {
     const result = await runCaoResult(args);
     assert.equal(result.code, 1);

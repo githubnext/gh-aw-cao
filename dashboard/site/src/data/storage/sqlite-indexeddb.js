@@ -618,6 +618,7 @@ class SqliteIDBTransaction {
     this.oncomplete = null;
     this.onerror = null;
     this.active = true;
+    this.aborted = false;
     if (mode === 'readwrite') database.connection.exec('BEGIN IMMEDIATE;');
     database.activeTransactions.add(this);
     setImmediate(() => this.finish());
@@ -635,7 +636,7 @@ class SqliteIDBTransaction {
   /** @param {() => any} operation */
   runRequest(operation) {
     const request = new SqliteIDBRequest();
-    if (!this.active) {
+    if (!this.active || this.aborted) {
       request.fail(new Error('IndexedDB transaction is inactive'));
       return request;
     }
@@ -648,12 +649,20 @@ class SqliteIDBTransaction {
     return request;
   }
 
+  abort() {
+    if (!this.active || this.aborted) {
+      throw new DOMException('IndexedDB transaction is inactive', 'InvalidStateError');
+    }
+    this.aborted = true;
+    queueMicrotask(() => this.finish());
+  }
+
   finish() {
     if (!this.active) return;
     this.active = false;
     try {
       if (this.mode === 'readwrite') {
-        this.database.connection.exec(this.error ? 'ROLLBACK;' : 'COMMIT;');
+        this.database.connection.exec(this.error || this.aborted ? 'ROLLBACK;' : 'COMMIT;');
       }
     } catch (error) {
       this.error = error instanceof Error ? error : new Error(String(error));
@@ -662,10 +671,10 @@ class SqliteIDBTransaction {
       event: 'transaction-finished',
       mode: this.mode,
       storeCount: this.storeNames.size,
-      outcome: this.error ? 'rolled-back' : 'committed'
+      outcome: this.error || this.aborted ? 'rolled-back' : 'committed'
     });
-    if (this.error) {
-      emit(this, 'onerror');
+    if (this.error || this.aborted) {
+      if (this.error) emit(this, 'onerror');
       emit(this, 'onabort');
     } else {
       emit(this, 'oncomplete');

@@ -17,6 +17,8 @@
     "dev": "cd .. && node local-server.mjs"
   },
   "overrides": {
+    "postcss": "8.5.30",
+    "rolldown": "1.2.13",
     "source-map-js": "$source-map-js"
   },
   "dependencies": {

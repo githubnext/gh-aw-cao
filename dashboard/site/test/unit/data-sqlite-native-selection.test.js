@@ -6,7 +6,7 @@ import { IDBFactory, IDBKeyRange as NativeKeyRange } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { normalize } from '../../src/data/normalize/index.js';
 import {
-  openCanonicalDatabase, readCollection, readIndex, upsertCanonicalBatch
+  openCanonicalDatabase, readCollection, readIndex, scanCanonicalCollection, upsertCanonicalBatch
 } from '../../src/data/storage/indexeddb.js';
 import {
   createSqliteIndexedDB, SqliteIDBKeyRange
@@ -15,7 +15,7 @@ import {
   loadDatabaseQuerySources, queryDatabaseSources, queryIndexedDatabaseSources
 } from '../../src/data/queries/database.js';
 import {
-  DASHBOARD_QUERY_LIMITS, executeDashboardQueries
+  createDashboardQueryBudget, DASHBOARD_QUERY_LIMITS, executeDashboardQueries
 } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
@@ -92,6 +92,44 @@ afterEach(() => {
 });
 
 describe('real SQLite native record selection', () => {
+  it('preserves the original scan error even when transaction cleanup fails', async () => {
+    const factory = sqliteFactory();
+    await upsertCanonicalBatch(factory, evidence());
+    const database = await openCanonicalDatabase(factory);
+    const transaction = database.transaction('audits');
+    const prototype = Object.getPrototypeOf(transaction);
+    vi.spyOn(prototype, 'abort').mockImplementationOnce(() => { throw new Error('abort failed'); });
+    database.close();
+    const error = new Error('scan failed');
+    await expect(scanCanonicalCollection(factory, 'audits', () => { throw error; }))
+      .rejects.toBe(error);
+    expect(await readCollection(factory, 'runs')).toHaveLength(2);
+  });
+
+  it('keeps Friction queries usable after a streaming aggregate exhausts its budget', async () => {
+    const factory = sqliteFactory();
+    vi.stubGlobal('IDBKeyRange', SqliteIDBKeyRange);
+    const canonical = evidence();
+    canonical.friction.push({
+      id: 'friction:1', runId: 'run:42', measurementState: 'measured', aic: 2,
+      observedAt: '2026-10-02T20:00:00Z', timestamp: '2026-10-02T20:00:00Z'
+    });
+    await upsertCanonicalBatch(factory, canonical);
+    const queries = authoritativeDashboard.dashboard.queries;
+    const sourceNames = ['friction-by-workflow', 'friction-observations'];
+    await expect(loadDatabaseQuerySources(factory, {}, {
+      queries, sourceNames: ['repository-run-statistics'], budget: createDashboardQueryBudget({ maxOperations: 1 })
+    })).rejects.toMatchObject({ name: 'DashboardQueryCancelledError', kind: 'budget' });
+    const result = await loadDatabaseQuerySources(factory, {}, { queries, sourceNames });
+    expect(result['friction-by-workflow'].metadata.availability).toBe('available');
+    expect(result['friction-by-workflow'].rows).toEqual([expect.objectContaining({
+      workflow: 'activity.md', 'friction-aic': 2, runs: 1
+    })]);
+    expect(result['friction-observations'].rows).toEqual([expect.objectContaining({
+      run: '42', aic: 2, 'measurement-state': 'measured'
+    })]);
+  });
+
   it('retains the ordinary SQLite path when tuple-key cursors are unsupported', async () => {
     const factory = sqliteFactory();
     vi.stubGlobal('IDBKeyRange', SqliteIDBKeyRange);

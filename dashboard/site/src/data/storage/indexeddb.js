@@ -1182,8 +1182,12 @@ export async function scanCanonicalCollection(indexedDB, storeName, visit, optio
               read(IDBKeyRange.lowerBound(lastKey, true));
             }
           } catch (error) {
-            transaction.abort();
             reject(error);
+            try {
+              transaction.abort();
+            } catch (abortError) {
+              debug({ event: 'scan-abort-failed', store: storeName, ...errorSummary(abortError) });
+            }
           }
         };
       };

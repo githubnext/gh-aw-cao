@@ -1163,9 +1163,9 @@
       {
         "label": "Data",
         "pages": [
-          "campaigns",
           "repositories",
           "workflows",
+          "campaigns",
           "runs",
           "issues",
           "cost",
