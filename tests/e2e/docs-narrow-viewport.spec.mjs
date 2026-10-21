@@ -224,7 +224,7 @@ test("CAO introduction presents operating capabilities and leads to how CAO work
   await expect(introduction).toHaveText(/^Agentic work might begin with a single task/);
   await expect(introduction.locator("strong")).toHaveCount(0);
   await expect(content).toContainText("GitHub Agentic Workflows (AWs) run those tasks in GitHub Actions");
-  await expect(content).toContainText("These AWs form the building blocks of the larger CAO system.");
+  await expect(content).toContainText("These AWs form the building blocks of CAO as we scale.");
   await expect(content).toContainText("Monitoring them does not move them or change their permissions.");
   await expect(content).toContainText("CAO governs explicitly integrated workflows, not every observed AW");
   await expect(content).toContainText("A successful run is not automatically a successful outcome.");

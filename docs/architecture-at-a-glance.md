@@ -18,8 +18,7 @@ and rollout of participating shared workflows.
 Agentic work might begin with a single task, then grow across repositories.
 [GitHub Agentic Workflows (AWs)](https://github.github.com/gh-aw/introduction/overview/)
 run those tasks in GitHub Actions, using Markdown instructions and configured
-tools and permissions. These AWs form the building blocks of the larger CAO
-system.
+tools and permissions. These AWs form the building blocks of CAO as we scale.
 
 CAO helps you operate these building blocks together:
 
