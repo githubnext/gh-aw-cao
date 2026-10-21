@@ -216,3 +216,31 @@ func TestValidateRetainedInventoryEvidence(t *testing.T) {
 		})
 	}
 }
+
+func TestRetainedInventoryFallbackKeepsRefreshPending(t *testing.T) {
+	w := refreshWorker(t)
+	p := w.Projector
+	p.CatalogRoot = t.TempDir()
+	p.NodeBinary = filepath.Join(t.TempDir(), "node")
+	// #nosec G306 -- this test-owned subprocess shim must be executable.
+	if err := os.WriteFile(p.NodeBinary, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for path, content := range map[string]string{
+		p.Lake.ControlSettingsPath():       `{"campaigns":{"maintenance":{}},"policy_resolution":{"status":"available"}}`,
+		p.Lake.ControlPlaneInventoryPath(): `{"campaigns":[{"id":"maintenance"}],"workflows":[{"id":"maintenance"}]}`,
+		p.Lake.InventoryPath():             `{"campaigns":{"rows":[{"campaign":"maintenance"}]},"repositories":{"rows":[]},"workflows":{"rows":[]},"configuration-policy":{"rows":[]}}`,
+	} {
+		if err := WriteFileAtomic(path, []byte(content)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Missing control-repository configuration makes live discovery fail.
+	// Retained inventory still allows compaction, but must not consume refresh.
+	if err := p.refreshCompaction(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if pending, err := p.PendingProjection(t.Context()); err != nil || !pending {
+		t.Fatalf("retained inventory fallback lost refresh work: %t, %v", pending, err)
+	}
+}

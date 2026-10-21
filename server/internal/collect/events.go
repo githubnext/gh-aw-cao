@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,8 +23,9 @@ const (
 	// IntentCollect requests collection of one repository.
 	IntentCollect IntentKind = "collect"
 	// IntentIssueStatus refreshes the enrolled repository after an issue event.
-	IntentIssueStatus IntentKind = "issue-status"
-	IntentRepository  IntentKind = "repository"
+	IntentIssueStatus     IntentKind = "issue-status"
+	IntentRepository      IntentKind = "repository"
+	IntentWorkflowRefresh IntentKind = "workflow-refresh"
 	// IntentEnroll adds repositories to the enrollment set.
 	IntentEnroll IntentKind = "enroll"
 	// IntentUnenroll removes repositories from the enrollment set.
@@ -48,13 +50,22 @@ type Intent struct {
 }
 
 type webhookEnvelope struct {
-	Action       string `json:"action"`
+	Action  string `json:"action"`
+	Ref     string `json:"ref"`
+	Deleted bool   `json:"deleted"`
+	Size    int    `json:"size"`
+	Commits []struct {
+		Added    []string `json:"added"`
+		Modified []string `json:"modified"`
+		Removed  []string `json:"removed"`
+	} `json:"commits"`
 	Installation struct {
 		ID int64 `json:"id"`
 	} `json:"installation"`
 	Repository struct {
-		ID       int64  `json:"id"`
-		FullName string `json:"full_name"`
+		ID            int64  `json:"id"`
+		FullName      string `json:"full_name"`
+		DefaultBranch string `json:"default_branch"`
 	} `json:"repository"`
 	WorkflowRun struct {
 		Status     string `json:"status"`
@@ -93,6 +104,8 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	var intent Intent
 	var err error
 	switch trimmedEvent {
+	case "push":
+		intent = parsePushEvent(envelope)
 	case "workflow_run":
 		intent, err = parseWorkflowRunEvent(envelope)
 	case "issues":
@@ -115,6 +128,35 @@ func ParseEvent(event string, payload []byte) (Intent, error) {
 	// logging every delivery cannot flood the log.
 	eventsLog.Printf("classified webhook event=%s kind=%s", trimmedEvent, intent.Kind)
 	return intent, nil
+}
+
+func parsePushEvent(envelope webhookEnvelope) Intent {
+	if envelope.Deleted || envelope.Repository.DefaultBranch == "" ||
+		envelope.Ref != "refs/heads/"+envelope.Repository.DefaultBranch ||
+		envelope.Installation.ID <= 0 {
+		return Intent{Kind: IntentIgnore}
+	}
+	repository, err := NormalizeRepository(envelope.Repository.FullName)
+	if err != nil {
+		return Intent{Kind: IntentIgnore}
+	}
+	// GitHub truncates the commits array on large pushes. Refresh conservatively
+	// when file coverage is incomplete; never fetch commits in the receiver.
+	changed := envelope.Size > len(envelope.Commits) || len(envelope.Commits) >= 2048
+	for _, commit := range envelope.Commits {
+		for _, paths := range [][]string{commit.Added, commit.Modified, commit.Removed} {
+			for _, path := range paths {
+				filename, underWorkflows := strings.CutPrefix(path, ".github/workflows/")
+				changed = changed || (underWorkflows && strings.HasSuffix(filename, ".lock.yml") &&
+					!strings.Contains(filename, "/"))
+			}
+		}
+	}
+	if !changed {
+		return Intent{Kind: IntentIgnore}
+	}
+	return Intent{Kind: IntentWorkflowRefresh, Repository: repository,
+		InstallationID: envelope.Installation.ID, Reason: "push.workflows"}
 }
 
 func parseRepositoryEvent(envelope webhookEnvelope) Intent {
@@ -277,7 +319,7 @@ var ErrNotEnrolled = errors.New("repository is not enrolled")
 
 var ErrDeliveryInProgress = errors.New("webhook delivery admission is already in progress")
 
-// Admitter applies an intent: it updates enrollment or enqueues collection.
+// Admitter durably queues work without changing enrollment or projecting.
 // It performs no projection, takes no global lease, and never blocks one
 // repository behind another.
 type Admitter struct {
@@ -310,6 +352,9 @@ func (a Admitter) Admit(ctx context.Context, event string, payload []byte) (Admi
 	if err != nil {
 		return Admission{}, err
 	}
+	if isScopeIntent(intent.Kind) {
+		return a.queueScope(ctx, intent, "", 0)
+	}
 	return a.admitIntent(ctx, intent)
 }
 
@@ -321,12 +366,17 @@ func (a Admitter) AdmitDelivery(
 	payload []byte,
 	delivery string,
 	deliveryTTL time.Duration,
-) (Admission, error) {
+) (admission Admission, err error) {
+	ctx, finish := startRefreshTelemetry(ctx, "admission", "webhook")
+	defer func() { finish(admissionOutcome(admission, err), err) }()
 	intent, err := ParseEvent(event, payload)
 	if err != nil {
 		return Admission{}, err
 	}
-	if intent.Kind == IntentIssueStatus || intent.Kind == IntentRepository {
+	if isScopeIntent(intent.Kind) {
+		return a.queueScope(ctx, intent, delivery, deliveryTTL)
+	}
+	if intent.Kind == IntentIssueStatus || intent.Kind == IntentRepository || intent.Kind == IntentWorkflowRefresh {
 		return a.admitIssue(ctx, intent, delivery, deliveryTTL)
 	}
 	if intent.Kind != IntentCollect {
@@ -383,14 +433,26 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 		return Admission{}, err
 	}
 	if !enrolled || owner != intent.InstallationID {
+		if intent.Kind == IntentRepository && !enrolled &&
+			(intent.Reason == "repository.created" || intent.Reason == "repository.unarchived") {
+			known, err := a.Enrollment.Metadata.HasMember(ctx, installationsKey, strconv.FormatInt(intent.InstallationID, 10))
+			if err != nil {
+				return Admission{}, err
+			}
+			if known {
+				return a.queueScope(ctx, Intent{Kind: IntentEnroll, InstallationID: intent.InstallationID,
+					Reason: intent.Reason}, delivery, ttl)
+			}
+		}
 		return Admission{Kind: IntentIgnore, Reason: "not-enrolled"}, nil
 	}
 	task := Task{
-		Repository:     intent.Repository,
-		InstallationID: owner,
-		Reason:         intent.Reason,
-		RepositoryID:   intent.RepositoryID,
-		Lifecycle:      intent.Lifecycle,
+		Repository:       intent.Repository,
+		InstallationID:   owner,
+		Reason:           intent.Reason,
+		RepositoryID:     intent.RepositoryID,
+		Lifecycle:        intent.Lifecycle,
+		InventoryRefresh: intent.Kind == IntentWorkflowRefresh,
 	}
 	if task.Reason == "" {
 		task.Reason = "issue-status"
@@ -407,6 +469,40 @@ func (a Admitter) admitIssue(ctx context.Context, intent Intent, delivery string
 		return Admission{}, err
 	}
 	return Admission{Kind: intent.Kind, Enqueued: enqueued, Duplicate: duplicate}, nil
+}
+
+func isScopeIntent(kind IntentKind) bool {
+	return kind == IntentEnroll || kind == IntentUnenroll || kind == IntentRemoveInstallation
+}
+
+func (a Admitter) queueScope(ctx context.Context, intent Intent, delivery string, ttl time.Duration) (Admission, error) {
+	if intent.InstallationID <= 0 {
+		return Admission{}, errors.New("scope refresh requires an installation")
+	}
+	for index, repository := range intent.Repositories {
+		name, err := NormalizeRepository(repository)
+		if err != nil {
+			return Admission{}, err
+		}
+		intent.Repositories[index] = name
+	}
+	task := Task{
+		Repository:     "installation/" + strconv.FormatInt(intent.InstallationID, 10),
+		InstallationID: intent.InstallationID, Reason: intent.Reason,
+		Scope: &ScopeChange{Kind: intent.Kind, Repositories: intent.Repositories},
+	}
+	if intent.Kind == IntentEnroll {
+		// A coalesced task enumerates current coverage, not the first payload's
+		// repository list, so later additions in the same burst cannot be lost.
+		task.Scope.Repositories = nil
+		task.NotBefore = time.Now().UTC().Add(2 * time.Second)
+	}
+	if delivery == "" {
+		enqueued, err := a.Queue.Enqueue(ctx, task)
+		return Admission{Kind: intent.Kind, Enqueued: enqueued}, err
+	}
+	enqueued, duplicate, err := a.Queue.EnqueueDelivery(ctx, task, delivery, ttl)
+	return Admission{Kind: intent.Kind, Enqueued: enqueued, Duplicate: duplicate}, err
 }
 
 // resolveCollectInstallation determines the installation that must own a
@@ -516,7 +612,7 @@ func (a Admitter) admitIntent(ctx context.Context, intent Intent) (Admission, er
 			return Admission{}, err
 		}
 		return Admission{Kind: IntentCollect, Enqueued: enqueued}, nil
-	case IntentIssueStatus, IntentRepository:
+	case IntentIssueStatus, IntentRepository, IntentWorkflowRefresh:
 		return a.admitIssue(ctx, intent, "", 0)
 	default:
 		return Admission{Kind: IntentIgnore}, nil

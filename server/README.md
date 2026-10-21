@@ -2429,6 +2429,13 @@ Collection separates three concerns that fail differently:
    projection lease, so a delivery burst cannot block the endpoint.
    Signed `issues` lifecycle events for enrolled repositories enqueue
    repository collection rather than mutating stored issue entities directly.
+   Default-branch `push` events enqueue inventory-only refreshes when added,
+   modified, or removed paths match `.github/workflows/*.lock.yml` (top-level
+   files only). Markdown sources, ordinary workflow YAML, other branches, and
+   tags do not trigger these refreshes. Truncated push commit lists conservatively
+   request refresh rather than fetching commit details in the receiver.
+   Inventory refresh and run collection have separate debounce keys, so neither
+   can suppress the other.
 2. **Collection.** Workers lease tasks and run the same
    `gh aw logs --audit` and `activity/cao.mjs` commands the Activity workflow
    runs, writing into the evidence lake. One repository is collected at a time,
@@ -2467,7 +2474,29 @@ no GitHub access: a retained lake is replayed directly.
 
 Enrollment is derived from GitHub App installations. A delivery for a
 repository outside the enrollment set is acknowledged and dropped rather than
-collected, so credential reach never widens ingestion scope.
+collected. Signed repository creation/unarchive events for a known installation
+may instead queue discovery; they never infer enrollment from payload contents.
+Installation additions and repository discovery are grouped by installation,
+with a two-second coalescing window. Background workers enumerate all pages of
+current installation coverage, reserve shared GitHub quota for each page, and
+publish enrollment only after complete enumeration. Discovery fails, rather
+than truncates, above `CAO_COLLECT_INVENTORY_LIMIT` (100,000 repositories per
+installation when unset).
+
+Installation removals and repository access withdrawals are independently queued,
+then applied by workers with durable erasure work persisted before acknowledgment.
+Repository deletion/archive transitions retain their independent lifecycle updates
+and trigger coalesced inventory projection; deletion alone does not erase retained
+history. No webhook performs GitHub calls, enrollment mutations, or projection
+inline. Refresh workers persist projection requests before acknowledging work;
+transient inventory failures keep the previous inventory and retain a pending
+refresh for the next projection interval.
+
+Configure the collection App's webhook URL as `/api/github/webhook` and subscribe
+to `push`, `repository`, `installation`, `installation_repositories`, `workflow_run`,
+and `issues` events. Existing read-only App permissions and installation coverage
+remain the scope boundary; these notifications do not authorize workflow execution
+or change CAO rollout policy.
 
 Rate limits are governed per installation. Each collection reserves budget
 before it starts and passes the reserve to the collection subprocess, so the
@@ -2478,6 +2507,17 @@ running.
 Failed collections are retried with backoff and moved to a dead-letter stream
 after the attempt limit, where they remain visible in collection status rather
 than disappearing.
+
+OpenTelemetry exports admission and refresh spans
+(`cao_dashboard.collection.webhook.admit`, `cao_dashboard.collection.refresh`)
+and `cao_dashboard.collection.refresh.count` /
+`cao_dashboard.collection.refresh.duration` and
+`cao_dashboard.collection.refresh.queue_age` (seconds), with bounded stage, kind,
+and outcome attributes. Admission outcomes distinguish queued, coalesced,
+duplicate, ignored, and failed work. Queue tasks carry only W3C `traceparent`
+correlation, never baggage or payload contents. Quota exhaustion and secondary
+limits defer discovery until the shared bucket's retry time without consuming
+its failure-attempt budget.
 
 Collection is at-least-once. Retry, deferral, blocked-repository requeue, and
 dead-letter transitions append their replacement before acknowledging the

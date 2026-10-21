@@ -226,6 +226,9 @@ func (p Projector) refreshCompaction(ctx context.Context) error {
 		return nil
 	}
 	if err := p.refreshInventory(ctx); err != nil {
+		if retryErr := p.RequestProjection(ctx); retryErr != nil {
+			return fmt.Errorf("persist inventory refresh retry: %w", errors.Join(err, retryErr))
+		}
 		if previousErr := p.validateExistingInventory(); previousErr != nil {
 			return fmt.Errorf(
 				"inventory discovery failed and no previous valid inventory is available: %w",

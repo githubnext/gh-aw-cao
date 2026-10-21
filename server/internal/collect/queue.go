@@ -35,9 +35,40 @@ type Task struct {
 	// Erase requests deletion of the repository's retained evidence instead of
 	// collection. An admission-only process has no evidence lake, so
 	// withdrawing consent is queued for a worker that does.
-	Erase        bool   `json:"erase,omitempty"`
-	RepositoryID int64  `json:"repositoryId,omitempty"`
-	Lifecycle    string `json:"lifecycle,omitempty"`
+	Erase            bool         `json:"erase,omitempty"`
+	RepositoryID     int64        `json:"repositoryId,omitempty"`
+	Lifecycle        string       `json:"lifecycle,omitempty"`
+	InventoryRefresh bool         `json:"inventoryRefresh,omitempty"`
+	Scope            *ScopeChange `json:"scope,omitempty"`
+	Traceparent      string       `json:"traceparent,omitempty"`
+}
+
+type ScopeChange struct {
+	Kind         IntentKind `json:"kind"`
+	Repositories []string   `json:"repositories,omitempty"`
+}
+
+func (task Task) debounceKey() string {
+	if task.Scope != nil {
+		if task.Scope.Kind != IntentEnroll {
+			return ""
+		}
+		return "collect:scope-debounce:" + strconv.FormatInt(task.InstallationID, 10)
+	}
+	if task.InventoryRefresh {
+		return "collect:inventory-debounce:" + task.Repository
+	}
+	if task.Lifecycle != "" || task.Erase {
+		return ""
+	}
+	return debounceKey(task.Repository)
+}
+
+func (task Task) lockKey() string {
+	if task.Scope != nil {
+		return "scope:" + strconv.FormatInt(task.InstallationID, 10)
+	}
+	return task.Repository
 }
 
 // RunTask is one durable historical workflow-run item. Key is the stable
@@ -147,14 +178,13 @@ func runTaskIdentity(repository string, runID int64, attempt int) string {
 // EnqueueDelivery atomically deduplicates a GitHub delivery and durably
 // admits its collection task.
 func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, deliveryTTL time.Duration) (bool, bool, error) {
+	task.Traceparent = refreshTraceparent(ctx)
 	repository, payload, err := q.prepareTask(task)
 	if err != nil {
 		return false, false, err
 	}
-	debounce := debounceKey(repository)
-	if task.Lifecycle != "" {
-		debounce = ""
-	}
+	task.Repository = repository
+	debounce := task.debounceKey()
 	result, err := q.Admission.AdmitDelivery(ctx, operational.DeliveryRequest{
 		Delivery: delivery, DeliveryTTL: deliveryTTL,
 		EnqueueRequest: operational.EnqueueRequest{
@@ -176,13 +206,15 @@ func (q Queue) EnqueueDelivery(ctx context.Context, task Task, delivery string, 
 }
 
 func (q Queue) enqueue(ctx context.Context, task Task) (bool, error) {
+	task.Traceparent = refreshTraceparent(ctx)
 	repository, payload, err := q.prepareTask(task)
 	if err != nil {
 		return false, err
 	}
+	task.Repository = repository
 	debounce := ""
-	if task.Attempt == 0 && !task.Erase && task.Lifecycle == "" {
-		debounce = debounceKey(repository)
+	if task.Attempt == 0 {
+		debounce = task.debounceKey()
 	}
 	enqueued, err := q.Tasks.EnqueueTask(ctx, operational.EnqueueRequest{
 		Queue: taskStream, Delayed: delayedTaskSet, Debounce: debounce,
@@ -270,7 +302,11 @@ func (q Queue) leases(ctx context.Context, messages []operational.TaskMessage) (
 // enqueue a follow-up task rather than being silently collapsed into a
 // collection that already started.
 func (q Queue) Admit(ctx context.Context, task Task) error {
-	return q.Metadata.Clear(ctx, debounceKey(task.Repository))
+	key := task.debounceKey()
+	if key == "" {
+		return nil
+	}
+	return q.Metadata.Clear(ctx, key)
 }
 
 // Defer returns a task that is not yet due, without counting an attempt.
