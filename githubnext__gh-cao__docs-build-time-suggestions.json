@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-20T16:55:00Z",
-      "worker_run_id": "39461388245",
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        39461123850,
-        39461104891,
-        39460801866,
-        39459216524,
-        39458834966,
-        39457478091,
-        39457473301,
-        39455317461,
-        39453828481,
-        39451796799,
-        39449842682,
-        39448017239,
-        39447662756,
-        39444611896,
-        39442826835,
-        39440727596,
-        39438956620,
-        39438578838,
-        39435558939,
-        39433804572
-      ],
-      "outcome": "incomplete: the 2026-10-20T13:49:53Z to 2026-10-20T16:51:49Z latest-20 window contained 16 successful, three skipped, and one cancelled completed docs.yml run. The cancelled run was excluded. Five apparently comparable successful builds were identified, but bounded trusted job/step metadata collection hit the runner OS-thread resource limit (failed to create a new OS thread) before timings and cache evidence could be retrieved. Per resource-limit policy, further API and model work stopped. Median/p90 workflow, build, deploy, dashboard, and Pages-packaging measurements could not be completed, so no actionable recommendation was made and the category remains next."
-    },
-    {
       "evaluated_at": "2026-10-20T17:23:40Z",
       "worker_run_id": "39465162756",
       "category": "artifact transfer and Pages packaging",
@@ -799,6 +771,13 @@
         39524098898
       ],
       "outcome": "incomplete: the 2026-10-21T00:54:06Z to 2026-10-21T04:28:21Z latest-20 window contained 15 successful and five skipped completed docs.yml runs, with no failed or cancelled runs. Only four successful runs executed both build and deploy (three push and one schedule, across four source SHAs), below the required minimum of five comparable successful builds. The newly observed schedule run 39544196110 completed in 12 seconds and freshness-checked without adding a build sample. Required median/p90 workflow, queue, build, deploy, dashboard, and Astro-generation measurements therefore cannot be completed; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-21T04:57:01Z",
+      "worker_run_id": "39546577397",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
     }
   ]
 }
