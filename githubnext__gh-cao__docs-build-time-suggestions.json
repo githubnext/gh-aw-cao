@@ -3,13 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-21T04:57:01Z",
-      "worker_run_id": "39546577397",
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
-    },
-    {
       "evaluated_at": "2026-10-21T05:55:12Z",
       "worker_run_id": "39552028425",
       "category": "Astro documentation generation",
@@ -715,6 +708,34 @@
       "category": "Astro documentation generation",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs from the preceding 14 days was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the Astro documentation generation category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-21T20:57:23Z",
+      "worker_run_id": "39674331122",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39673556039,
+        39672001814,
+        39671688549,
+        39669973910,
+        39666724296,
+        39664541106,
+        39662526681,
+        39662396170,
+        39662208302,
+        39660789583,
+        39657971831,
+        39655794920,
+        39655587770,
+        39655291873,
+        39653110911,
+        39650520366,
+        39649128507,
+        39646937406,
+        39644926973,
+        39643076135
+      ],
+      "outcome": "incomplete: the 2026-10-21T17:21:32Z to 2026-10-21T20:48:57Z latest-20 window contained 16 successful, three skipped, and one cancelled completed docs.yml run. The cancelled workflow_run was excluded. Trusted job metadata showed only four successful runs executed both build and deploy (two push and two schedule, across four source SHAs), below the required minimum of five comparable successful builds; the other twelve successful runs freshness-checked and skipped build and deploy. Required median/p90 workflow, queue, build, deploy, dashboard, and Astro-generation measurements and repeated cache verification therefore cannot be completed. No recommendation was made and the Astro documentation generation category remains next."
     }
   ]
 }
