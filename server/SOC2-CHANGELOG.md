@@ -266,3 +266,30 @@ Dates are UTC. Corrections are new events; original observations remain.
   examination-period retention or effective controls.
 - Decisions/findings: no risk accepted, exclusion approved or prior finding
   closed. SOC 2 readiness remains undetermined.
+
+## 2026-10-21 - SOC2-LOG-012 - Stream and development-assurance proposals received
+
+- Type: two bounded draft remediation proposals and validation handoffs.
+- Source/evidence: IAM-002 commit
+  `6839329d8c442f58f5ab552ddda792c104bc2c59`,
+  draft [#19318](https://github.com/githubnext/gh-cao/pull/19318);
+  OPS-03 commit `bb897f7e76932704aa5c22640257abfaa940237b`,
+  draft [#19317](https://github.com/githubnext/gh-cao/pull/19317).
+  Coordinator verified open/draft identities and scopes; session validation
+  remains separately attributed.
+- Specification version: 1.
+- IAM-002 proposal: fixed OAuth stream authorization deadlines and bounded
+  heartbeat session reads; existing helpers handle reconnect. Reported
+  real-boundary/failure tests and repeated race checks pass; full server
+  result retains database-dependent skips. Proxy/buffer/backend operation
+  evidence remains required.
+- OPS-03 proposal: reviewed config and plan explicitly restrict source-build
+  apply to development; separate target digests/read-back and honest
+  assurance receipts added. No production scanner/promotion pipeline
+  claimed. Reported native check/race, Bicep/assets/package contracts,
+  lint/type/compile/docs checks pass with mocked Azure calls.
+- Integration dependencies: preserve IAM-001 expired-read semantics with
+  stream checks; preserve separate image parameters when combining OPS-02
+  telemetry templates; regenerate combined ARM.
+- Decision/lifecycle: both `remediate` / `in-progress`, unmerged and
+  undeployed. No production assurance/effectiveness or prior finding closed.

@@ -198,11 +198,11 @@ remain coordinator-owned to avoid conflicting edits.
 | DATA-02 shared withdrawal erasure | `270f92b9-f242-4792-aebc-5333c54a7f91` | Remediation launched |
 | DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | Remediation launched |
 | IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | Remediation launched |
-| IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | Remediation launched |
+| IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | Draft [#19318](https://github.com/githubnext/gh-cao/pull/19318); bounded-stream proposal, not merged/closed |
 | EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Remediation launched |
 | OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Remediation launched |
 | OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Remediation launched |
-| OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Remediation launched |
+| OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Draft [#19317](https://github.com/githubnext/gh-cao/pull/19317); development-only restriction proposed, not merged/closed |
 | OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | [#19304](https://github.com/githubnext/gh-cao/pull/19304) merged into assessment branch; targeted integration passed; default-branch/deployment closure pending |
 | DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | [#19305](https://github.com/githubnext/gh-cao/pull/19305) merged into assessment branch; targeted integration passed; default-branch gate pending |
 | Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | Draft [#19310](https://github.com/githubnext/gh-cao/pull/19310); authored/validated proposal, not active/deployed |
@@ -292,6 +292,57 @@ Actions configuration. No dispatch/deployment/merge was performed by the
 authoring session/coordinator. Fourteen-day daily artifacts are not a
 substitute for operator-approved examination-period evidence retention
 (OPS-08). No previous finding is closed by authoring this worker.
+
+#### IAM-002 and OPS-03 proposals received 2026-10-21
+
+The coordinator verified both proposals' GitHub open/draft/head/base identity
+and commit scopes. Both remain decision **remediate**, lifecycle
+**in-progress**. Original assessment observations are unchanged and neither
+proposal is merged, deployed or a closed operational control.
+
+IAM-002 draft [#19318](https://github.com/githubnext/gh-cao/pull/19318),
+commit `6839329d8c442f58f5ab552ddda792c104bc2c59`, bounds OAuth revision
+streams by the earliest membership recheck deadline (AuthorizedAt plus five
+minutes), token-refresh threshold, or admitted administrator-assurance
+deadline. Fixed context/write deadlines prevent traffic from extending
+authority. A session-store read each 20-second heartbeat, with five-second
+timeout, disconnects revoked/unavailable authority. Reconnect reuses existing
+authorization/refresh/cookie helpers; expired administrator assurance does
+not regain health metadata; local capability compatibility is retained.
+
+The session reports reproducing the baseline adverse logout stream with an
+artifact overlay, then adding actual old-stream/hub cleanup, membership/admin
+expiry, refresh/reconnect, outage/timeout, blocked-check abort/drain,
+bounded-read and real loopback write-deadline coverage. Focused race checks
+passed five repetitions. Full server tests reported 370 top-level passes and
+68 top-level skips (1,179 pass/72 skip events with subtests), zero failures;
+format/lint/vet/build and 72-workflow compilation passed. Database-dependent
+tests remain skipped. Remaining evidence includes proxy buffering/lifetimes,
+already-written bytes and real backend outages: revocation observation is
+bounded by heartbeat plus read timeout, while undiscovered membership loss
+retains the ordinary five-minute window. IAM-001 storage-lifecycle integration
+must preserve expired-session read denial.
+
+OPS-03 draft [#19317](https://github.com/githubnext/gh-cao/pull/19317),
+commit `bb897f7e76932704aa5c22640257abfaa940237b`, chooses an explicit
+**development-only source-build apply restriction**, not an invented
+production scan/promotion policy. Config and reviewed plan must both declare
+development before Azure calls; legacy/missing/production declarations and
+missing per-target digest parameters fail closed. Read-only production
+planning does not authorize apply. Separate Functions, ingestion and optional
+provisioning digests bind into Bicep and are read back before jobs; receipts
+state scan/SBOM/provenance limitations and capture source/context identities.
+Generated ARM is regenerated, not hand-edited.
+
+The session reports `make check`, focused assurance race tests, 35
+Bicep/assets/package contract tests, repository lint/both type checks,
+72-workflow compile, docs build and diff checks passing. Azure calls were
+mocked. Development declaration does not verify subscription classification;
+configured-image read-back is not a running-image measurement, and local
+context/status hashes are not signed atomic provenance. Production remains
+unsupported by this apply route without a separate reviewed target-specific
+scan/disposition/SBOM/provenance/promotion gate. OPS-02 must preserve these
+image parameters when reconciling telemetry template changes.
 
 #### OPS-04 remediation proposal received 2026-10-21
 
@@ -591,5 +642,7 @@ Organizational/deployment/period evidence remains pending. Scoped repository
 remediation is underway and the daily worker is proposed as listed above;
 OPS-04 and DATA-08 technical corrections are integrated and locally checked
 on this assessment branch, but default-branch/deployment closure is pending.
+IAM-002 and OPS-03 are separately validated draft proposals awaiting review,
+not integrated fixes.
 The conclusion is
 **initial technical assessment delivered; SOC 2 readiness undetermined**.
