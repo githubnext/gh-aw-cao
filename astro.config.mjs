@@ -186,6 +186,40 @@ export default defineConfig({
       },
       head: [
         {
+          tag: "meta",
+          attrs: {
+            property: "og:image",
+            content: "https://githubnext.github.io/gh-cao/social-card.png",
+          },
+        },
+        {
+          tag: "meta",
+          attrs: { property: "og:image:type", content: "image/png" },
+        },
+        {
+          tag: "meta",
+          attrs: { property: "og:image:width", content: "1200" },
+        },
+        {
+          tag: "meta",
+          attrs: { property: "og:image:height", content: "630" },
+        },
+        {
+          tag: "meta",
+          attrs: { property: "og:image:alt", content: "Central Agentic Ops - monitor and govern GitHub Agentic Workflows." },
+        },
+        {
+          tag: "meta",
+          attrs: {
+            name: "twitter:image",
+            content: "https://githubnext.github.io/gh-cao/social-card.png",
+          },
+        },
+        {
+          tag: "meta",
+          attrs: { name: "twitter:image:alt", content: "Central Agentic Ops - monitor and govern GitHub Agentic Workflows." },
+        },
+        {
           // Starlight renders wide markdown tables and code blocks as horizontally
           // scrollable regions (`overflow: auto`), but they aren't keyboard focusable,
           // so keyboard users can't reach clipped content (axe
