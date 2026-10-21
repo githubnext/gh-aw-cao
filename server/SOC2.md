@@ -199,7 +199,7 @@ remain coordinator-owned to avoid conflicting edits.
 | --- | --- | --- |
 | DATA-01 shard identity/erasure collisions | `603b87ae-e256-4f86-b590-e9181384fda8` | Open non-draft [#19325](https://github.com/githubnext/gh-cao/pull/19325); identity/migration proposal, not merged/closed |
 | DATA-02 shared withdrawal erasure | `270f92b9-f242-4792-aebc-5333c54a7f91` | Open non-draft [#19326](https://github.com/githubnext/gh-cao/pull/19326); shared/derived erasure proposal, not merged/closed |
-| DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | Open non-draft [#19322](https://github.com/githubnext/gh-cao/pull/19322); durable follow-up proposal, not merged/closed |
+| DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | [#19322](https://github.com/githubnext/gh-cao/pull/19322) merged into assessment branch; combined/default-branch validation pending |
 | IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | Draft [#19327](https://github.com/githubnext/gh-cao/pull/19327); lifecycle/adapter proposal, not merged/closed |
 | IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | [#19318](https://github.com/githubnext/gh-cao/pull/19318) merged into assessment branch; default-branch/provider closure pending |
 | EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Draft [#19328](https://github.com/githubnext/gh-cao/pull/19328); immutable actor proposal, not merged/closed |
@@ -552,6 +552,13 @@ OPS-03 remain draft. The coordinator preserves externally changed review
 state. IAM-002 merged at 15:52:18 UTC as `24db44b03`, not by coordinator
 action; no main/control-branch activation or deployed effectiveness is implied.
 
+While the coordinator published the preceding snapshot, DATA-03 was externally
+merged as `c5625fcf5`. The coordinator fetched and preserved that remote code
+and rebased only its unpublished documentation commit. DATA-03 is therefore
+now integrated into the assessment branch, not a current open proposal;
+combined DATA-01/02 integration and required final checks remain pending.
+The earlier snapshot's counts are historical, not a claim of present PR state.
+
 #### OPS-04 remediation proposal received 2026-10-21
 
 Draft [#19304](https://github.com/githubnext/gh-cao/pull/19304), commit
@@ -850,7 +857,7 @@ Organizational/deployment/period evidence remains pending. Scoped repository
 remediation is underway and the daily worker is proposed as listed above;
 OPS-04 and DATA-08 technical corrections are integrated and locally checked
 on this assessment branch, but default-branch/deployment closure is pending.
-IAM-002 is also integrated. IAM-001, EXEC-01, OPS-01/02/03 and DATA-01/02/03
+IAM-002 and DATA-03 are also integrated. IAM-001, EXEC-01, OPS-01/02/03 and DATA-01/02
 remain separately validated proposals awaiting review, not integrated fixes.
 The daily worker source is integrated
 into this assessment branch but not demonstrated active on the control branch.

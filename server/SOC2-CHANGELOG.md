@@ -443,3 +443,17 @@ Dates are UTC. Corrections are new events; original observations remain.
   historical; coordinator did not override changed review state.
 - Decisions/lifecycles remain as recorded; no external evidence, exclusion,
   risk acceptance or operating-effectiveness closure inferred.
+
+## 2026-10-21 - SOC2-LOG-020 - Durable erasure correction integrated remotely
+
+- Type: observed assessment-branch integration.
+- Source/evidence: remote commit `c5625fcf5` integrates DATA-03
+  [#19322](https://github.com/githubnext/gh-cao/pull/19322) while the
+  coordinator was publishing documentation. Remote code was preserved and
+  only the unpublished documentation commit rebased; no force push or
+  coordinator-initiated PR merge.
+- Specification: RFC-035, record schema version 1.
+- This supersedes the immediately preceding snapshot's open DATA-03 state.
+  Source correction is integrated; combined DATA-01/02 and final required
+  validation/default-branch/deployment evidence remain pending.
+- Decision/lifecycle: `remediate` / `in-progress`; no operating control closed.
