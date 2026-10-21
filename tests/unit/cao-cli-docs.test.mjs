@@ -44,7 +44,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(install, /runtime installer verifies checksums and versions/);
   assert.match(install, /:::tip\[Installation and authentication\]/);
   assert.match(install, /```bash\ngh auth login\ngh auth status\n```/);
-  assert.match(install, /installer requires GitHub CLI sign-in/);
+  assert.match(install, /extension installation requires GitHub CLI sign-in/);
   assert.doesNotMatch(install, /install-gh-aw\.sh|--scopes repo,workflow/);
   const prerequisites = monitoring.slice(monitoring.indexOf("## Prerequisites"), monitoring.indexOf("## Step 1"));
   assert.match(prerequisites, /Logged in to GitHub CLI[\s\S]*gh auth status[\s\S]*gh auth login/);
