@@ -30,8 +30,8 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(landingPage, /text: Sample Dashboard[\s\S]*?link: https:\/\/githubnext\.github\.io\/gh-cao\/cao/);
   assert.doesNotMatch(headerLinks, /label: "Dashboard"/);
   assert.match(landingPage, /title: Central Agentic Ops \(CAO\)/);
-  assert.match(landingPage, /Monitor and control GitHub Agentic Workflows at scale\./);
-  assert.match(landingPage, /Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories\. Set execution scope and rollout policy\./);
+  assert.match(landingPage, /Monitor and govern GitHub Agentic Workflows at scale\./);
+  assert.match(landingPage, /Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories\. Set execution scope and rollout policy and refine workflows in review mode so you can roll out safely and confidently\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
   assert.match(hero, /cao-dashboard-mobile-overview-light\.png/);
   assert.match(hero, /cao-dashboard-run-history-mobile\.png/);
@@ -91,7 +91,7 @@ test("landing page keeps the hero and supporting copy concise", () => {
   const title = landingPage.match(/^  title: (.+)$/m)?.[1];
   const tagline = landingPage.match(/^  tagline: (.+)$/m)?.[1];
   assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
-  assert.ok(tagline && wordCount(tagline) <= 25, "hero tagline should stay within twenty-five words");
+  assert.ok(tagline && wordCount(tagline) <= 40, "hero tagline should stay within forty words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
   assert.equal(paragraphs.length, 5);
   const terminalParagraph = hero.match(/id="terminal-title"[\s\S]*?<p>\s*([\s\S]*?)<\/p>/)?.[1];

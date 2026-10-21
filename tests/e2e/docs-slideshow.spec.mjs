@@ -4,7 +4,7 @@ const presentation = page => page.locator('dialog#landing-slideshow[aria-label="
 const runtimeAsset = /\/slideshow\.[^/]+\.js(?:\?|$)/;
 const slideTitles = [
   "Central Agentic Ops",
-  "Monitor and control GitHub Agentic Workflows at scale.",
+  "Monitor and govern GitHub Agentic Workflows at scale.",
   "Shared work. Clear ownership.",
   "Roll out with confidence.",
   "Monitor what runs.",

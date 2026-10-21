@@ -860,11 +860,11 @@ for (const { name, viewport } of [
       expect((await page.goto("./"))?.ok()).toBe(true);
 
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        "Monitor and control GitHub Agentic Workflows at scale.",
+        "Monitor and govern GitHub Agentic Workflows at scale.",
       );
       const tagline = page.locator(".docs-hero-intro .tagline");
       await expect(tagline).toBeVisible();
-      await expect(tagline).toHaveText("Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy.");
+      await expect(tagline).toHaveText("Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy and refine workflows in review mode so you can roll out safely and confidently.");
       await expect(page.getByRole("heading", { name: "Shared work. Clear ownership.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Monitor what runs.", exact: true })).toBeAttached();
       await expect(page.getByRole("heading", { name: "Roll out safely.", exact: true })).toBeAttached();
