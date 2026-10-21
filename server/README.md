@@ -43,7 +43,9 @@ requests, and manually, retaining the test log for 14 days.
 
 The test builds the current CAO CLI as a local release fixture, then runs the
 unmodified `install.sh --create-repo` and `install.sh --setup`, real `gh`
-commands, and HTTPS Git push/clone against `simulator.BootstrapAPI`. Its
+commands, and HTTPS Git push/clone against the simulator's test-only
+`BootstrapAPI` fixture. These bootstrap endpoints and their GraphQL selection
+reader are not compiled into production binaries. The fixture's
 stateful surface implements repository creation and visibility, the GraphQL
 selections used by gh, release metadata and checksum-verified asset downloads,
 workflow-sourced Pages, and Actions variables. Unknown routes and fields fail

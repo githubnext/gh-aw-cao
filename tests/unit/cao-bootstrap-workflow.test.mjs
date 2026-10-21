@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import { parse } from "yaml";
 
 const source = readFileSync(new URL("../../.github/workflows/cao-bootstrap.yml", import.meta.url), "utf8");
 const workflow = parse(source);
+
+test("bootstrap simulator endpoints are compiled only into tests", () => {
+  const files = readdirSync(new URL("../../server/internal/simulator/", import.meta.url))
+    .filter((file) => file.startsWith("bootstrap") && file.endsWith(".go"));
+  assert.ok(files.length > 0);
+  assert.ok(files.every((file) => file.endsWith("_test.go")));
+});
 
 test("bootstrap jobs have only read permissions and never persist checkout credentials", () => {
   assert.deepEqual(workflow.permissions, { contents: "read" });

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// BootstrapAPI is a strict, stateful GitHub surface for installation tests.
+// BootstrapAPI is a strict, stateful, test-only GitHub surface for installation.
 // Unlike the traffic simulator, unknown repositories and routes return 404.
 // Assets are supplied by the caller; it never fetches releases from GitHub.
 type BootstrapAPI struct {

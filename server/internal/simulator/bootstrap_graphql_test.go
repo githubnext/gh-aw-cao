@@ -29,7 +29,7 @@ type bootstrapField struct {
 	children    []bootstrapField
 }
 
-// gh's typed GraphQL decoder rejects unrequested fields. This deliberately
+// gh's typed GraphQL decoder rejects unrequested fields. This test-only
 // limited selection reader supports gh's aliases and named fragments, not a
 // general GraphQL service. Unknown fields and syntax fail explicitly.
 func bootstrapFields(query string) ([]bootstrapField, error) {
