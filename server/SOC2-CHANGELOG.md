@@ -217,3 +217,25 @@ Dates are UTC. Corrections are new events; original observations remain.
   No cross-PR code copy, merge, CI rerun or closure authorized/performed.
   Integration must resolve the known dependency and produce clean relevant
   gate evidence before closure; provider/period limitations remain.
+
+## 2026-10-21 - SOC2-LOG-010 - Two corrections integrated on assessment branch
+
+- Type: observed remote integration and coordinator verification.
+- Source/evidence: GitHub reports OPS-04
+  [#19304](https://github.com/githubnext/gh-cao/pull/19304) merged at
+  15:40:18 UTC as `90b865397`, DATA-08
+  [#19305](https://github.com/githubnext/gh-cao/pull/19305) merged at
+  15:40:41 UTC as `c85b8dfe7`, both into the assessment branch.
+  This supersedes SOC2-LOG-009's earlier open-state observation.
+- Specification version: 1. Related findings: OPS-04 and DATA-08.
+- Coordinator's push detected remote advancement; it preserved both
+  externally merged fixes and rebased its unpublished documentation commit.
+  No remote merge, force push or PR-state change was performed by coordinator.
+- Integrated check:
+  `go -C server test ./internal/doctor ./internal/query -count=1 -json`
+  passed with 311 passing test/subtest events, 18 PostgreSQL-dependent
+  skipped cases and zero failures. Native-measure contract and doctor cases
+  passed; this is not real-provider or full-repository validation.
+- Decision/lifecycle: `remediate` / `in-progress` pending parent/default-branch
+  integration and final required gates; no production/period control closed.
+  Original design/failed-gate observations and skip limitations preserved.

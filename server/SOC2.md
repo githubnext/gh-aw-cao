@@ -203,8 +203,8 @@ remain coordinator-owned to avoid conflicting edits.
 | OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Remediation launched |
 | OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Remediation launched |
 | OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Remediation launched |
-| OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | Open non-draft [#19304](https://github.com/githubnext/gh-cao/pull/19304); CI blocked by baseline DATA-08; not merged/closed |
-| DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | Open non-draft [#19305](https://github.com/githubnext/gh-cao/pull/19305); validated test-only proposal, not merged/closed |
+| OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | [#19304](https://github.com/githubnext/gh-cao/pull/19304) merged into assessment branch; targeted integration passed; default-branch/deployment closure pending |
+| DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | [#19305](https://github.com/githubnext/gh-cao/pull/19305) merged into assessment branch; targeted integration passed; default-branch gate pending |
 | Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | Authoring launched; not active/deployed |
 
 The recurring worker must follow
@@ -225,6 +225,27 @@ temporal query assertion, according to the remediation session's log review
 and baseline-tree comparison. The coordinator verified the failing check and
 the separate DATA-08 correction PR; it has not merged/copied either fix or
 declared the affected integration gate clean.
+
+Subsequent GitHub refresh observed OPS-04 merged at 15:40:18 UTC and
+DATA-08 at 15:40:41 UTC, into this assessment branch as `90b865397` and
+`c85b8dfe7` respectively. These remote merges were not initiated by the
+coordinator. It preserved them while rebasing one unpublished documentation
+commit, without overriding remote work or changing PR review state.
+
+The coordinator then ran
+`go -C server test ./internal/doctor ./internal/query -count=1 -json` on
+the integrated source: **311 passing test/subtest events, 18 skipped,
+zero failures**. All skips are PostgreSQL-dependent query cases; the
+renamed native-measure contract and doctor cases passed. The DATA-08 session's
+isolated PostgreSQL-backed result remains additional, separately sourced
+evidence. Artifact:
+`/Users/peli/.copilot/session-state/d19b961a-c3f0-469a-847f-bcd18d3c8d23/files/soc2-integrated-doctor-query-tests.jsonl`.
+
+Both records remain decision **remediate**, lifecycle **in-progress** for
+default-branch integration/relevant final checks. OPS-04's original design-gap
+and DATA-08's original failed-gate observations remain historical; the
+assessment branch now contains their technical corrections. No deployed
+provider/backup control or operating-period evidence is closed.
 
 #### OPS-04 remediation proposal received 2026-10-21
 
@@ -522,7 +543,7 @@ All four bounded technical reports are now consolidated, including recorded
 coverage exclusions, skipped checks and the failed DATA-08 validation.
 Organizational/deployment/period evidence remains pending. Scoped repository
 remediation and a daily worker are authorized and underway as listed above;
-the OPS-04 and DATA-08 validated draft proposals are recorded, not
-merged/deployed fixes.
+OPS-04 and DATA-08 technical corrections are integrated and locally checked
+on this assessment branch, but default-branch/deployment closure is pending.
 The conclusion is
 **initial technical assessment delivered; SOC 2 readiness undetermined**.
