@@ -87,6 +87,25 @@ test("service integration harnesses provision canonical storage before starting 
   assert.doesNotMatch(azure, /export CAO_DATABASE_ADMIN_URL/);
 });
 
+test("Go dashboard integration bootstraps both stores in the runtime namespace", () => {
+  const job = parse(workflow("cgo.yml")).jobs["redis-dashboard-integration"];
+  const steps = job.steps;
+  const bootstrap = steps.find((step) => step.name === "Bootstrap dashboard integration storage");
+  const runtime = steps.find((step) => step.name === "Verify deployed shards populate dashboard views");
+  assert.ok(job.env.CAO_OPERATIONAL_NAMESPACE);
+  assert.deepEqual(bootstrap.env, { CAO_DATABASE_ADMIN_URL: "${{ env.CAO_POSTGRES_URL }}" });
+  for (const store of ["canonical", "operational"]) {
+    assert.ok(bootstrap.run.includes(
+      `.tmp/cao-dashboard database bootstrap --store ${store} --namespace "$CAO_OPERATIONAL_NAMESPACE"`,
+    ));
+  }
+  assert.ok(steps.indexOf(bootstrap) > steps.findIndex((step) => step.name === "Build dashboard and server"));
+  assert.ok(steps.indexOf(bootstrap) < steps.indexOf(runtime));
+  assert.match(runtime.env.DASHBOARD_SERVER_COMMAND, /--redis-namespace "\$CAO_OPERATIONAL_NAMESPACE"/);
+  assert.equal(job.env.CAO_DATABASE_ADMIN_URL, undefined);
+  assert.equal(runtime.env.CAO_DATABASE_ADMIN_URL, undefined);
+});
+
 test("Go extension quality checks cover root-module sources and lint configuration", () => {
   for (const event of ["pull_request", "push"]) {
     for (const file of [

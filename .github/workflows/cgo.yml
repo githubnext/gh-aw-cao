@@ -268,6 +268,7 @@ jobs:
       POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
       CAO_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
       CAO_TEST_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/cao?sslmode=disable
+      CAO_OPERATIONAL_NAMESPACE: dashboard-server-integration
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -298,6 +299,12 @@ jobs:
           npm run dashboard:server:build
           mkdir -p .tmp
           go -C server build -o ../.tmp/cao-dashboard ./cmd/cao-dashboard
+      - name: Bootstrap dashboard integration storage
+        env:
+          CAO_DATABASE_ADMIN_URL: ${{ env.CAO_POSTGRES_URL }}
+        run: |
+          .tmp/cao-dashboard database bootstrap --store canonical --namespace "$CAO_OPERATIONAL_NAMESPACE"
+          .tmp/cao-dashboard database bootstrap --store operational --namespace "$CAO_OPERATIONAL_NAMESPACE"
       - name: Install Chromium
         run: |
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
@@ -306,6 +313,7 @@ jobs:
         env:
           DASHBOARD_SERVER_COMMAND: >-
             ${{ github.workspace }}/.tmp/cao-dashboard serve
+            --redis-namespace "$CAO_OPERATIONAL_NAMESPACE"
             --source "$DASHBOARD_SERVER_SOURCE"
             --access-token ${{ env.DASHBOARD_SERVER_ACCESS_TOKEN }}
             --site ${{ github.workspace }}/dashboard/site/dist

@@ -131,6 +131,7 @@ for (const { width, categories } of [390, 1280].flatMap((width) => (
     expect(headingBounds.height).toBeGreaterThan(16);
     await expect(view.locator(':scope > .chart-prompt-heading')).toHaveCSS('min-height', '32px');
     const loadingBounds = await view.boundingBox();
+    const skeletonBounds = await view.locator('.dashboard-view-skeleton').boundingBox();
     await page.evaluate(async () => {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const shifts = /** @type {number[]} */ ([]);
@@ -171,6 +172,13 @@ for (const { width, categories } of [390, 1280].flatMap((width) => (
         return shifts.reduce((sum, value) => sum + value, 0);
       });
       expect(cls).toBeLessThanOrEqual(0.1);
+      if (categories === 18) {
+        if (!layout || !skeletonBounds) throw new Error('The chart must preserve its loading footprint.');
+        expect(Math.abs(layout.height - skeletonBounds.height)).toBeLessThanOrEqual(1);
+        const lastCategory = legend.locator('li').last();
+        await lastCategory.scrollIntoViewIfNeeded();
+        await expect(lastCategory).toBeInViewport();
+      }
     }
     if (width === 390 && categories > 0) {
       const toggle = view.locator('.pie-chart-table-toggle');

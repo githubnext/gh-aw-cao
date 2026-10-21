@@ -279,6 +279,43 @@ test('fragment merging accepts a direct single-owner layout and an explicitly em
   assert.deepEqual(await readdir(shards), []);
 });
 
+test('fragment merging accepts archived empty owners alongside populated owners', async (t) => {
+  const { root, shards } = await fixture(t);
+  const fragments = path.join(root, 'fragments');
+  const empty = await fragment(fragments, 'empty', 'empty.jsonl', []);
+  await rm(path.dirname(empty), { recursive: true });
+  await fragment(fragments, 'populated', 'runs.jsonl', [run(1)]);
+  await writeFile(path.join(shards, 'old.jsonl'), jsonl([run(9)]));
+  assert.deepEqual(await mergeActivityFragments(fragments, root), { fragments: 2, shards: 1 });
+  assert.deepEqual(await readdir(shards), ['runs.jsonl']);
+  const inventory = JSON.parse(await readFile(path.join(root, 'inventory-sources.json'), 'utf8'));
+  assert.equal(inventory.repositories.rows.length, 2);
+});
+
+test('fragment merging accepts a direct archived empty owner and removes stale seeds', async (t) => {
+  const { root, shards } = await fixture(t);
+  const empty = await fragment(root, 'direct', 'empty.jsonl', []);
+  await rm(path.dirname(empty), { recursive: true });
+  await writeFile(path.join(shards, 'old.jsonl'), jsonl([run(9)]));
+  assert.deepEqual(await mergeActivityFragments(path.dirname(path.dirname(empty)), root),
+    { fragments: 1, shards: 0 });
+  assert.deepEqual(await readdir(shards), []);
+});
+
+test('fragment merging still rejects missing inventory and symlink shard directories', async (t) => {
+  const { root, shards } = await fixture(t);
+  const fragments = path.join(root, 'fragments');
+  const empty = await fragment(fragments, 'empty', 'empty.jsonl', []);
+  await rm(path.dirname(empty), { recursive: true });
+  const inventory = path.join(fragments, 'empty', 'inventory-sources.json');
+  const content = await readFile(inventory, 'utf8');
+  await rm(inventory);
+  await assert.rejects(mergeActivityFragments(fragments, root), { code: 'ENOENT' });
+  await writeFile(inventory, content);
+  await symlink(shards, path.dirname(empty));
+  await assert.rejects(mergeActivityFragments(fragments, root), /non-symlink directory/);
+});
+
 test('missing fragments and filename collisions fail before deleting or moving shards', async (t) => {
   const { root, shards } = await fixture(t);
   const fragments = path.join(root, 'fragments');

@@ -44,8 +44,14 @@ function runTimestamp(run) {
   return latest;
 }
 
-async function shardPaths(directory) {
-  const info = await lstat(directory);
+async function shardPaths(directory, { allowMissing = false } = {}) {
+  let info;
+  try {
+    info = await lstat(directory);
+  } catch (error) {
+    if (allowMissing && error.code === 'ENOENT') return [];
+    throw error;
+  }
   if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('Shard directory must be a non-symlink directory');
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
@@ -237,7 +243,8 @@ export async function mergeActivityFragments(fragmentDirectory, outputDirectory)
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
-    for (const file of await shardPaths(path.join(fragment, 'gh-aw-logs-shards'))) {
+    // Artifact archives omit empty directories from successful collections.
+    for (const file of await shardPaths(path.join(fragment, 'gh-aw-logs-shards'), { allowMissing: true })) {
       const name = path.basename(file);
       if (incoming.has(name)) throw new Error(`Duplicate owner-scoped shard: ${name}`);
       incoming.set(name, file);
