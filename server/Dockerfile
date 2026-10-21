@@ -47,11 +47,13 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" \
     -o /out/cao-dashboard \
     ./cmd/cao-dashboard
+# hadolint ignore=DL3059
 RUN CGO_ENABLED=0 go build \
     -trimpath \
     -ldflags="-s -w -X main.version=${VERSION}" \
     -o /out/cao-webhook-gateway \
     ./cmd/cao-webhook-gateway
+# hadolint ignore=DL3059
 RUN CGO_ENABLED=0 go build \
     -trimpath \
     -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" \

@@ -146,6 +146,20 @@ test("CAO server image supports downstream Compose role selection", async () => 
   assert.match(dockerfile, /USER 65532:65532/);
 });
 
+test("separate Go binary builds suppress Hadolint's consolidation advice", async () => {
+  const lines = (await text("server/Dockerfile")).split(/\r?\n/);
+
+  for (const binary of ["cao-webhook-gateway", "cao-functions"]) {
+    const outputLine = lines.findIndex((line) => line.includes(`/out/${binary}`));
+    assert.ok(outputLine >= 0, `${binary} build must exist`);
+    const buildLine = lines.findLastIndex(
+      (line, index) => index < outputLine && line.startsWith("RUN CGO_ENABLED=0 go build"),
+    );
+    assert.ok(buildLine > 0, `${binary} build command must exist`);
+    assert.equal(lines[buildLine - 1], "# hadolint ignore=DL3059");
+  }
+});
+
 test("workflow linters allow read-only cache authority unsupported by the pinned actionlint", async () => {
   const workflows = await Promise.all([
     text(".github/workflows/action-lint.yml"),
