@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "46855819307654529"
+      "templateHash": "13196390402914439780"
     }
   },
   "parameters": {
@@ -79,6 +79,27 @@
       "defaultValue": "[format('{0}-ai', parameters('functionAppName'))]",
       "metadata": {
         "description": "Application Insights component name."
+      }
+    },
+    "otlpEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional reviewed HTTPS OTLP/HTTP collector base URL, without credentials, query or fragment. Empty disables Go export; Application Insights settings alone only configure the Functions host."
+      }
+    },
+    "otlpLogsEnabled": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Explicit opt-in to export bounded operational Go logs to the OTLP collector. Independent audit delivery is unchanged."
+      }
+    },
+    "otlpHeaders": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional OTLP authentication headers from a secret manager. Stored only in Key Vault; never supply literal values in command-line arguments or checked-in parameters."
       }
     },
     "storageAccountName": {
@@ -379,6 +400,21 @@
     }
   },
   "variables": {
+    "otlpEnvironment": [
+      {
+        "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "value": "[parameters('otlpEndpoint')]"
+      },
+      {
+        "name": "OTEL_EXPORTER_OTLP_PROTOCOL",
+        "value": "http/protobuf"
+      },
+      {
+        "name": "CAO_OTEL_LOGS_ENABLED",
+        "value": "[string(parameters('otlpLogsEnabled'))]"
+      }
+    ],
+    "otlpHeadersEnabled": "[and(not(empty(parameters('otlpEndpoint'))), not(empty(parameters('otlpHeaders'))))]",
     "collectionEnabled": "[not(empty(parameters('collectorImage')))]",
     "tags": {
       "workload": "gh-cao-dashboard",
@@ -632,6 +668,19 @@
       ]
     },
     {
+      "condition": "[variables('otlpHeadersEnabled')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cao-otel-headers')]",
+      "properties": {
+        "value": "[parameters('otlpHeaders')]",
+        "contentType": "OTLP collector authentication headers"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2023-12-01",
       "name": "[parameters('functionAppName')]",
@@ -660,7 +709,7 @@
           "http20Enabled": true,
           "linuxFxVersion": "[format('DOCKER|{0}/{1}:{2}', reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').loginServer, parameters('functionImageRepository'), parameters('functionImageTag'))]",
           "acrUseManagedIdentityCreds": true,
-          "appSettings": "[concat(createArray(createObject('name', 'FUNCTIONS_EXTENSION_VERSION', 'value', '~4'), createObject('name', 'FUNCTIONS_WORKER_RUNTIME', 'value', 'custom'), createObject('name', 'WEBSITES_PORT', 'value', '8080'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'false'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString), createObject('name', 'AzureWebJobsStorage__accountName', 'value', parameters('storageAccountName')), createObject('name', 'AzureWebJobsStorage__credential', 'value', 'managedidentity'), createObject('name', 'CAO_DASHBOARD_HOSTING', 'value', 'azure-functions'), createObject('name', 'CAO_POLICY_PATH', 'value', '.github/workflows/cao.azure.json'), createObject('name', 'CAO_DATABASE_QUERIES', 'value', '/app/queries/database.json'), createObject('name', 'CAO_AZURE_ALLOWED_HOSTS', 'value', join(parameters('allowedHosts'), ',')), createObject('name', 'CAO_AZURE_REQUIRE_HTTPS', 'value', 'true'), createObject('name', 'REDIS_NAMESPACE', 'value', 'azure-dashboard'), createObject('name', 'CAO_OPERATIONAL_NAMESPACE', 'value', 'azure-dashboard-operational'), createObject('name', 'CAO_OPERATIONAL_CACHE_MAX_BYTES', 'value', string(parameters('operationalCacheMaxBytes'))), createObject('name', 'CAO_OPERATIONAL_CACHE_MAX_VALUE_BYTES', 'value', string(parameters('operationalCacheMaxValueBytes'))), createObject('name', 'CAO_OPERATIONAL_CACHE_MAX_ENTRIES', 'value', string(parameters('operationalCacheMaxEntries'))), createObject('name', 'CAO_OPERATIONAL_PROTECTED_MAX_BYTES', 'value', string(parameters('operationalProtectedMaxBytes'))), createObject('name', 'CAO_OPERATIONAL_PROTECTED_MAX_ENTRIES', 'value', string(parameters('operationalProtectedMaxEntries'))), createObject('name', 'CAO_POSTGRES_URL', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/{1})', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri, parameters('postgresUrlSecretName'))), createObject('name', 'CAO_POSTGRES_RUN_RETENTION_DAYS', 'value', string(parameters('postgresRunRetentionDays'))), createObject('name', 'CAO_POSTGRES_LINKED_RETENTION_DAYS', 'value', string(parameters('postgresRunRetentionDays'))), createObject('name', 'CAO_GITHUB_CLIENT_ID', 'value', parameters('githubClientId')), createObject('name', 'CAO_GITHUB_CLIENT_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/github-oauth-client-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_REDIRECT_URL', 'value', variables('githubRedirectUri')), createObject('name', 'CAO_GITHUB_ALLOWED_ORGS', 'value', join(parameters('githubAllowedOrganizations'), ',')), createObject('name', 'CAO_GITHUB_ALLOWED_TEAMS', 'value', join(parameters('githubAllowedTeams'), ',')), createObject('name', 'CAO_GITHUB_ALLOWED_USERS', 'value', join(parameters('githubAllowedUsers'), ',')), createObject('name', 'CAO_SESSION_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri))), if(empty(parameters('previousSessionSecret')), createArray(), createArray(createObject('name', 'CAO_SESSION_SECRET_PREVIOUS', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret-previous)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)))), if(not(variables('collectionEnabled')), createArray(), createArray(createObject('name', 'CAO_GITHUB_WEBHOOK_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-github-webhook-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_ADMIN_USERS', 'value', join(parameters('githubAdminUsers'), ',')), createObject('name', 'CAO_COLLECT_APP_ID', 'value', parameters('collectorGithubAppId')), createObject('name', 'CAO_COLLECT_ADMIT_ONLY', 'value', 'true'), createObject('name', 'CAO_COLLECT_CONTROL_REPOSITORY', 'value', parameters('collectorControlRepository')))))]"
+          "appSettings": "[concat(createArray(createObject('name', 'FUNCTIONS_EXTENSION_VERSION', 'value', '~4'), createObject('name', 'FUNCTIONS_WORKER_RUNTIME', 'value', 'custom'), createObject('name', 'WEBSITES_PORT', 'value', '8080'), createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', 'false'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString), createObject('name', 'AzureWebJobsStorage__accountName', 'value', parameters('storageAccountName')), createObject('name', 'AzureWebJobsStorage__credential', 'value', 'managedidentity'), createObject('name', 'CAO_DASHBOARD_HOSTING', 'value', 'azure-functions'), createObject('name', 'CAO_POLICY_PATH', 'value', '.github/workflows/cao.azure.json'), createObject('name', 'CAO_DATABASE_QUERIES', 'value', '/app/queries/database.json'), createObject('name', 'CAO_AZURE_ALLOWED_HOSTS', 'value', join(parameters('allowedHosts'), ',')), createObject('name', 'CAO_AZURE_REQUIRE_HTTPS', 'value', 'true'), createObject('name', 'REDIS_NAMESPACE', 'value', 'azure-dashboard'), createObject('name', 'CAO_OPERATIONAL_NAMESPACE', 'value', 'azure-dashboard-operational'), createObject('name', 'CAO_OPERATIONAL_CACHE_MAX_BYTES', 'value', string(parameters('operationalCacheMaxBytes'))), createObject('name', 'CAO_OPERATIONAL_CACHE_MAX_VALUE_BYTES', 'value', string(parameters('operationalCacheMaxValueBytes'))), createObject('name', 'CAO_OPERATIONAL_CACHE_MAX_ENTRIES', 'value', string(parameters('operationalCacheMaxEntries'))), createObject('name', 'CAO_OPERATIONAL_PROTECTED_MAX_BYTES', 'value', string(parameters('operationalProtectedMaxBytes'))), createObject('name', 'CAO_OPERATIONAL_PROTECTED_MAX_ENTRIES', 'value', string(parameters('operationalProtectedMaxEntries'))), createObject('name', 'CAO_POSTGRES_URL', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/{1})', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri, parameters('postgresUrlSecretName'))), createObject('name', 'CAO_POSTGRES_RUN_RETENTION_DAYS', 'value', string(parameters('postgresRunRetentionDays'))), createObject('name', 'CAO_POSTGRES_LINKED_RETENTION_DAYS', 'value', string(parameters('postgresRunRetentionDays'))), createObject('name', 'CAO_GITHUB_CLIENT_ID', 'value', parameters('githubClientId')), createObject('name', 'CAO_GITHUB_CLIENT_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/github-oauth-client-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_REDIRECT_URL', 'value', variables('githubRedirectUri')), createObject('name', 'CAO_GITHUB_ALLOWED_ORGS', 'value', join(parameters('githubAllowedOrganizations'), ',')), createObject('name', 'CAO_GITHUB_ALLOWED_TEAMS', 'value', join(parameters('githubAllowedTeams'), ',')), createObject('name', 'CAO_GITHUB_ALLOWED_USERS', 'value', join(parameters('githubAllowedUsers'), ',')), createObject('name', 'CAO_SESSION_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri))), variables('otlpEnvironment'), if(not(parameters('otlpLogsEnabled')), createArray(), createArray(createObject('name', 'DEBUG', 'value', 'cao:server,cao:telemetry'))), if(not(variables('otlpHeadersEnabled')), createArray(), createArray(createObject('name', 'OTEL_EXPORTER_OTLP_HEADERS', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-otel-headers)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)))), if(empty(parameters('previousSessionSecret')), createArray(), createArray(createObject('name', 'CAO_SESSION_SECRET_PREVIOUS', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-session-secret-previous)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)))), if(not(variables('collectionEnabled')), createArray(), createArray(createObject('name', 'CAO_GITHUB_WEBHOOK_SECRET', 'value', format('@Microsoft.KeyVault(SecretUri={0}secrets/cao-github-webhook-secret)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), createObject('name', 'CAO_GITHUB_ADMIN_USERS', 'value', join(parameters('githubAdminUsers'), ',')), createObject('name', 'CAO_COLLECT_APP_ID', 'value', parameters('collectorGithubAppId')), createObject('name', 'CAO_COLLECT_ADMIT_ONLY', 'value', 'true'), createObject('name', 'CAO_COLLECT_CONTROL_REPOSITORY', 'value', parameters('collectorControlRepository')))))]"
         }
       },
       "dependsOn": [
@@ -668,6 +717,7 @@
         "[resourceId('Microsoft.Insights/components', parameters('applicationInsightsName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
         "[resourceId('Microsoft.Resources/deployments', 'private-network-postgres')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-otel-headers')]",
         "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), parameters('postgresUrlSecretName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-session-secret-previous')]",
@@ -911,7 +961,7 @@
             "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]"
           },
           "secretNames": {
-            "value": "[concat(createArray(parameters('postgresUrlSecretName'), 'github-oauth-client-secret', 'cao-session-secret'), if(empty(parameters('previousSessionSecret')), createArray(), createArray('cao-session-secret-previous')), if(not(variables('collectionEnabled')), createArray(), createArray('cao-github-webhook-secret')))]"
+            "value": "[concat(createArray(parameters('postgresUrlSecretName'), 'github-oauth-client-secret', 'cao-session-secret'), if(empty(parameters('previousSessionSecret')), createArray(), createArray('cao-session-secret-previous')), if(not(variables('collectionEnabled')), createArray(), createArray('cao-github-webhook-secret')), if(not(variables('otlpHeadersEnabled')), createArray(), createArray('cao-otel-headers')))]"
           }
         },
         "template": {
@@ -1088,6 +1138,15 @@
           },
           "applicationInsightsConnectionString": {
             "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString]"
+          },
+          "otlpEnvironment": {
+            "value": "[variables('otlpEnvironment')]"
+          },
+          "otlpLogsEnabled": {
+            "value": "[parameters('otlpLogsEnabled')]"
+          },
+          "otlpHeadersEnabled": {
+            "value": "[variables('otlpHeadersEnabled')]"
           }
         },
         "template": {
@@ -1097,7 +1156,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "12734490561269164699"
+              "templateHash": "16475622901774758531"
             }
           },
           "parameters": {
@@ -1238,7 +1297,25 @@
             "applicationInsightsConnectionString": {
               "type": "securestring",
               "metadata": {
-                "description": "Application Insights connection string. Collection is unobservable without it."
+                "description": "Platform Application Insights setting; does not activate Go OTLP exporters."
+              }
+            },
+            "otlpEnvironment": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Shared Go OTLP/HTTP endpoint, protocol and explicit log opt-in from the parent deployment."
+              }
+            },
+            "otlpLogsEnabled": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "otlpHeadersEnabled": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Whether the parent provisioned the cao-otel-headers Key Vault secret."
               }
             },
             "lakeStorageSku": {
@@ -1266,7 +1343,7 @@
           "variables": {
             "lakePremium": "[startsWith(parameters('lakeStorageSku'), 'Premium')]",
             "lakeStorageAccountName": "[format('{0}lake{1}', toLower(take(replace(parameters('namePrefix'), '-', ''), 7)), uniqueString(resourceGroup().id, parameters('namePrefix')))]",
-            "collectionEnvironment": [
+            "collectionBaseEnvironment": [
               {
                 "name": "CAO_POSTGRES_URL",
                 "secretRef": "cao-postgres-url"
@@ -1345,25 +1422,11 @@
               },
               {
                 "name": "DEBUG",
-                "value": "cao:collect:*"
+                "value": "[if(parameters('otlpLogsEnabled'), 'cao:telemetry,cao:collect:recovery', 'cao:collect:*')]"
               }
             ],
-            "collectionSecrets": [
-              {
-                "name": "cao-postgres-url",
-                "keyVaultUrl": "[format('{0}secrets/{1}', parameters('keyVaultUri'), parameters('postgresUrlSecretName'))]",
-                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]"
-              },
-              {
-                "name": "cao-collect-private-key",
-                "keyVaultUrl": "[format('{0}secrets/cao-collect-private-key', parameters('keyVaultUri'))]",
-                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))]"
-              },
-              {
-                "name": "application-insights-connection-string",
-                "value": "[parameters('applicationInsightsConnectionString')]"
-              }
-            ]
+            "collectionEnvironment": "[concat(variables('collectionBaseEnvironment'), parameters('otlpEnvironment'), if(not(parameters('otlpHeadersEnabled')), createArray(), createArray(createObject('name', 'OTEL_EXPORTER_OTLP_HEADERS', 'secretRef', 'cao-otel-headers'))))]",
+            "collectionSecrets": "[concat(createArray(createObject('name', 'cao-postgres-url', 'keyVaultUrl', format('{0}secrets/{1}', parameters('keyVaultUri'), parameters('postgresUrlSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))), createObject('name', 'cao-collect-private-key', 'keyVaultUrl', format('{0}secrets/cao-collect-private-key', parameters('keyVaultUri')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))), createObject('name', 'application-insights-connection-string', 'value', parameters('applicationInsightsConnectionString'))), if(not(parameters('otlpHeadersEnabled')), createArray(), createArray(createObject('name', 'cao-otel-headers', 'keyVaultUrl', format('{0}secrets/cao-otel-headers', parameters('keyVaultUri')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix')))))))]"
           },
           "resources": [
             {
@@ -1609,10 +1672,7 @@
                     "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-collector-identity', parameters('namePrefix'))), '2023-01-31').principalId]"
                   },
                   "secretNames": {
-                    "value": [
-                      "[parameters('postgresUrlSecretName')]",
-                      "cao-collect-private-key"
-                    ]
+                    "value": "[concat(createArray(parameters('postgresUrlSecretName'), 'cao-collect-private-key'), if(not(parameters('otlpHeadersEnabled')), createArray(), createArray('cao-otel-headers')))]"
                   }
                 },
                 "template": {
@@ -1695,6 +1755,7 @@
         "[resourceId('Microsoft.App/managedEnvironments', format('{0}-jobs', parameters('functionAppName')))]",
         "[resourceId('Microsoft.Insights/components', parameters('applicationInsightsName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'cao-otel-headers')]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), parameters('postgresUrlSecretName'))]",
         "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]"
       ]

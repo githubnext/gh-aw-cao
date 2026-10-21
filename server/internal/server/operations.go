@@ -7,11 +7,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-cao/server/internal/audit"
 	"github.com/githubnext/gh-cao/server/internal/ingest"
 	"github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/postgresx"
@@ -56,11 +59,19 @@ func (reconciler DirectoryReconciler) Reconcile(ctx context.Context, _ GitHubWeb
 type rebuildStatus struct {
 	State        string         `json:"state"`
 	Required     bool           `json:"required"`
+	RebuildID    string         `json:"rebuildId,omitempty"`
+	AuditState   string         `json:"auditState,omitempty"`
 	StartedAt    string         `json:"startedAt,omitempty"`
 	CompletedAt  string         `json:"completedAt,omitempty"`
 	Revision     int64          `json:"revision,omitempty"`
 	DataRevision string         `json:"dataRevision,omitempty"`
 	Counts       map[string]int `json:"counts,omitempty"`
+}
+
+type rebuildEvidence struct {
+	ID               string
+	Actor            string
+	PreviousRevision int64
 }
 
 func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
@@ -70,6 +81,15 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 	}
 	if a.reconciler == nil {
 		writeError(response, http.StatusServiceUnavailable, "rebuild is not configured")
+		return
+	}
+	if a.oauth != nil && !a.config.Audit.Durable() {
+		writeError(response, http.StatusServiceUnavailable, "rebuild requires durable audit storage")
+		return
+	}
+	id, err := operationToken()
+	if err != nil {
+		writeError(response, http.StatusInternalServerError, "rebuild could not start")
 		return
 	}
 	token, err := operationToken()
@@ -87,19 +107,38 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	started := time.Now().UTC()
-	active, _ := a.database.State(request.Context())
+	active, err := a.database.State(request.Context())
+	if err != nil {
+		a.releaseRebuildLock(request.Context(), token)
+		writeError(response, http.StatusServiceUnavailable, "rebuild database state is unavailable")
+		return
+	}
+	evidence := rebuildEvidence{ID: id, Actor: "local-bearer", PreviousRevision: active.Revision}
+	if a.oauth != nil {
+		session, _ := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+		evidence.Actor = session.Login
+	}
 	status := rebuildStatus{
 		State: "running", Required: !active.Ready,
-		StartedAt: started.Format(time.RFC3339Nano),
+		StartedAt: started.Format(time.RFC3339Nano), RebuildID: id, AuditState: "pending",
+	}
+	if err := a.recordRebuildEvent(request.Context(), "admin.rebuild.admitted", audit.Success, evidence, status, ""); err != nil {
+		a.releaseRebuildLock(request.Context(), token)
+		writeError(response, http.StatusServiceUnavailable, "rebuild audit is unavailable")
+		return
 	}
 	if err := a.writeRebuildStatus(request.Context(), status); err != nil {
+		status.State = "failed"
+		a.finishRebuild(request.Context(), evidence, status, "status_unavailable")
 		a.releaseRebuildLock(request.Context(), token)
 		writeError(response, http.StatusServiceUnavailable, "rebuild status is unavailable")
 		return
 	}
 	ctx, cancel := a.operationContext(request.Context())
-	if !a.launchTask(func() { a.performRebuild(ctx, cancel, token, status) }) {
+	if !a.launchTask(func() { a.performRebuild(ctx, cancel, token, evidence, status) }) {
 		cancel()
+		status.State = "failed"
+		a.finishRebuild(ctx, evidence, status, "service_stopped")
 		a.releaseRebuildLock(request.Context(), token)
 		writeError(response, http.StatusServiceUnavailable, "dashboard service is not running")
 		return
@@ -107,32 +146,80 @@ func (a *App) rebuild(response http.ResponseWriter, request *http.Request) {
 	writeJSON(response, http.StatusAccepted, status)
 }
 
-func (a *App) performRebuild(ctx context.Context, cancel context.CancelFunc, token string, status rebuildStatus) {
+func (a *App) performRebuild(ctx context.Context, cancel context.CancelFunc, token string, evidence rebuildEvidence, status rebuildStatus) {
 	defer cancel()
 	defer a.releaseRebuildLock(ctx, token)
+	if err := a.recordRebuildEvent(ctx, "admin.rebuild.started", audit.Success, evidence, status, ""); err != nil {
+		status.State = "failed"
+		a.finishRebuild(ctx, evidence, status, "audit_unavailable")
+		return
+	}
+	if ctx.Err() != nil {
+		status.State = "canceled"
+		a.finishRebuild(ctx, evidence, status, "operation_canceled")
+		return
+	}
 	result, err := a.reconciler.Rebuild(ctx)
 	if err != nil {
 		status.State = "failed"
-		status.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
-		a.persistRebuildStatus(ctx, status)
-		serverLog.Printf("rebuild failed")
+		reason := "reconciliation_failed"
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			status.State = "canceled"
+			reason = "operation_canceled"
+		}
+		a.finishRebuild(ctx, evidence, status, reason)
+		serverLog.Printf("rebuild failed rebuild_id=%s state=%s", evidence.ID, status.State)
 		return
 	}
 	status.State = "succeeded"
 	status.Required = false
-	status.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	status.Revision = result.Revision
 	status.DataRevision = result.DataRevision
 	status.Counts = result.Counts
-	a.persistRebuildStatus(ctx, status)
+	status = a.finishRebuild(ctx, evidence, status, "")
 	a.hub.Broadcast(result.Revision)
-	serverLog.Printf("rebuild completed revision=%d", result.Revision)
+	serverLog.Printf("rebuild published rebuild_id=%s revision=%d audit_state=%s", evidence.ID, result.Revision, status.AuditState)
 }
 
-func (a *App) persistRebuildStatus(parent context.Context, status rebuildStatus) {
+func (a *App) recordRebuildEvent(ctx context.Context, event, outcome string, evidence rebuildEvidence, status rebuildStatus, reason string) error {
+	err := a.config.Audit.Record(ctx, event, outcome,
+		slog.String("actor", evidence.Actor), slog.String("rebuild_id", evidence.ID),
+		slog.Int64("previous_revision", evidence.PreviousRevision),
+		slog.String("state", status.State), slog.String("started_at", status.StartedAt),
+		slog.String("completed_at", status.CompletedAt), slog.String("reason", reason),
+		slog.Int64("revision", status.Revision), slog.String("data_revision", status.DataRevision))
+	if err != nil {
+		serverLog.Printf("rebuild audit write failed rebuild_id=%s event=%s", evidence.ID, event)
+		// A mirror-only failure cannot invalidate confirmed durable evidence.
+		if a.config.Audit.Durable() && errors.Is(err, audit.ErrMirrorUnavailable) && !errors.Is(err, audit.ErrUnavailable) {
+			return nil
+		}
+	}
+	return err
+}
+
+func (a *App) finishRebuild(parent context.Context, evidence rebuildEvidence, status rebuildStatus, reason string) rebuildStatus {
+	status.CompletedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	outcome := audit.Failure
+	if status.State == "succeeded" {
+		outcome = audit.Success
+	}
+	if err := a.recordRebuildEvent(parent, "admin.rebuild.completed", outcome, evidence, status, reason); err != nil {
+		status.AuditState = "unavailable"
+	} else if a.config.Audit.Durable() {
+		status.AuditState = "recorded"
+	} else {
+		status.AuditState = "local"
+	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
 	defer cancel()
-	_ = a.writeRebuildStatus(ctx, status)
+	if err := a.writeRebuildStatus(ctx, status); err != nil {
+		serverLog.Printf("rebuild terminal status write failed rebuild_id=%s state=%s", evidence.ID, status.State)
+		if err := a.recordRebuildEvent(parent, "admin.rebuild.status_failed", audit.Failure, evidence, status, "status_unavailable"); err != nil {
+			serverLog.Printf("rebuild terminal evidence incomplete rebuild_id=%s", evidence.ID)
+		}
+	}
+	return status
 }
 
 func (a *App) releaseProjectionLock(parent context.Context, token string) {

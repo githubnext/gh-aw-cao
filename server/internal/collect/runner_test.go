@@ -3,11 +3,74 @@ package collect
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/githubnext/gh-cao/server/internal/ingest"
 )
+
+func TestRunnerCompactionAndReplayKeepCollidingRepositoriesIsolated(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is required for the production Activity compactor")
+	}
+	catalog, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lake := Lake{Directory: t.TempDir()}
+	if err := lake.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	repositories := []string{"octo-a/b", "octo/a-b"}
+	for i, repository := range repositories {
+		owner, _, _ := strings.Cut(repository, "/")
+		for part := range 2 {
+			content := fmt.Sprintf(`{"schema_version":2,"kind":"run","run":{"organization":"%s","repository":"%s","run_id":%d,"run_attempt":1,"workflow_name":"test","workflow_path":".github/workflows/test.lock.yml","created_at":"2026-10-20T00:00:00Z"}}`+"\n", owner, repository, 10*i+part+1)
+			path := filepath.Join(lake.ShardDirectory(), fmt.Sprintf("%s%d-%d.jsonl", legacyShardPrefix(repository), i, part))
+			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := lake.MigrateRepositoryShards(t.Context(), repository); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runner := Runner{Lake: lake, CatalogRoot: catalog, NodeBinary: node}
+	for _, repository := range repositories {
+		if err := runner.compact(t.Context(), repository); err != nil {
+			t.Fatal(err)
+		}
+		paths, err := lake.repositoryShards(t.Context(), lake.ShardDirectory(), repository)
+		if err != nil || len(paths) != 1 {
+			t.Fatalf("repository compaction: %v, %v", paths, err)
+		}
+	}
+	projector := Projector{Lake: lake, CatalogRoot: catalog, NodeBinary: node}
+	if err := projector.refreshManifest(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := ingest.ValidateManifest(lake.Directory); err != nil {
+		t.Fatalf("compacted lake is not replayable: %v", err)
+	}
+	if err := lake.ForgetContext(t.Context(), repositories[0]); err != nil {
+		t.Fatal(err)
+	}
+	if err := projector.refreshManifest(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	retained, err := lake.RetainedRepositories(t.Context(), 10)
+	if err != nil || len(retained) != 1 || retained[0] != repositories[1] {
+		t.Fatalf("withdrawal affected colliding repository: %v, %v", retained, err)
+	}
+	if _, _, _, err := ingest.ValidateManifest(lake.Directory); err != nil {
+		t.Fatalf("post-withdrawal lake is not replayable: %v", err)
+	}
+}
 
 func TestValidateActivityCatalogRequiresANonBlankRoot(t *testing.T) {
 	err := validateActivityCatalog("  ", os.Stat)
@@ -128,6 +191,11 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	if err := runner.Validate(); err != nil {
 		t.Fatal(err)
 	}
+	if err := lake.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	legacy := filepath.Join(lake.ShardDirectory(), legacyShardPrefix("octo/api")+"1.jsonl")
+	writeIdentityShard(t, legacy, "octo/api")
 	if err := runner.Collect(context.Background(), Task{
 		Repository: "Octo/API", InstallationID: 5,
 	}); err != nil {
@@ -150,8 +218,17 @@ func TestRunnerReproducesTheActionsCollectionCommand(t *testing.T) {
 	if !strings.Contains(arguments, "--max-github-api-rate-limit\n-2000") {
 		t.Fatalf("expected a negative reserve to be passed:\n%s", arguments)
 	}
-	if !strings.Contains(arguments, filepath.Join(lake.ShardDirectory(), "octo-api-logs-")+"*") {
+	if !strings.Contains(arguments, filepath.Join(lake.ShardDirectory(), lake.ShardPrefix("octo/api"))+"*") {
 		t.Fatalf("expected a repository-scoped shard prefix:\n%s", arguments)
+	}
+	if _, err := os.Stat(filepath.Join(lake.ShardDirectory(), lake.ShardPrefix("octo/api")+"legacy-1.jsonl")); err != nil {
+		t.Fatalf("legacy evidence was not migrated for cache reuse: %v", err)
+	}
+	if strings.Contains(arguments, legacyShardPrefix("octo/api")+"*") {
+		t.Fatal("acquisition still uses a lossy legacy cache selector")
+	}
+	if !strings.Contains(arguments, "--group\nocto/api="+lake.ShardPrefix("octo/api")) {
+		t.Fatal("compaction does not use acquisition's versioned identity")
 	}
 	collection := strings.Index(arguments, "activity/collect-workflow-logs.mjs")
 	evidence := strings.Index(arguments, "activity/session-evidence.mjs")

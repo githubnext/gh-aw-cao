@@ -1107,9 +1107,15 @@ func (a *App) writeAdminDenied(response http.ResponseWriter, request *http.Reque
 		if ok && a.adminListed(session) {
 			reason = "step_up_required"
 		}
-		_ = a.config.Audit.Record(request.Context(), "admin.denied", audit.Denied,
+		if err := a.config.Audit.Record(request.Context(), "admin.denied", audit.Denied,
 			slog.String("actor", session.Login), slog.String("reason", reason),
-			slog.String("method", request.Method), slog.String("path", request.URL.Path))
+			slog.String("method", request.Method), slog.String("path", request.URL.Path)); err != nil {
+			serverLog.Printf("administrator denial audit unavailable")
+			if errors.Is(err, audit.ErrUnavailable) || !a.config.Audit.Durable() {
+				writeError(response, http.StatusServiceUnavailable, "administrator denial audit is unavailable")
+				return
+			}
+		}
 		if reason == "step_up_required" {
 			maxAge := int(a.oauth.adminReauthenticationMaxAge() / time.Second)
 			response.Header().Set("WWW-Authenticate", fmt.Sprintf(`CAO-Step-Up realm="admin", max_age=%d`, maxAge))
@@ -1261,7 +1267,32 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 		http.Error(response, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
-	if err := http.NewResponseController(response).SetWriteDeadline(time.Time{}); err != nil &&
+	allowHealth := a.adminAuthorized(request)
+	a.startMu.Lock()
+	drain := a.drain
+	a.startMu.Unlock()
+	var expires time.Time
+	session, _ := request.Context().Value(oauthSessionContextKey{}).(oauthSession)
+	if a.oauth != nil {
+		expires = a.oauth.eventAuthorizationExpires(session, allowHealth)
+		ctx, cancel := context.WithDeadline(request.Context(), expires)
+		defer cancel()
+		request = request.WithContext(ctx)
+		go func() {
+			select {
+			case <-drain:
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+	}
+	valid := func() bool {
+		return request.Context().Err() == nil && (expires.IsZero() || time.Now().Before(expires))
+	}
+	if !valid() {
+		return
+	}
+	if err := http.NewResponseController(response).SetWriteDeadline(expires); err != nil &&
 		!errors.Is(err, http.ErrNotSupported) {
 		serverLog.Printf("event stream requires a response writer with deadline control")
 		writeError(response, http.StatusInternalServerError, "streaming unsupported")
@@ -1269,7 +1300,6 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	}
 	response.Header().Set("Content-Type", "text/event-stream")
 	response.Header().Set("Connection", "keep-alive")
-	allowHealth := a.adminAuthorized(request)
 	channel := a.hub.Subscribe(request.Context(), a, allowHealth)
 	if channel == nil {
 		return
@@ -1277,6 +1307,9 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	defer a.hub.Unsubscribe(channel)
 	active, _ := a.database.State(request.Context())
 	healthRevision, _ := a.ingestionHealthRevision(request.Context(), allowHealth)
+	if !valid() {
+		return
+	}
 	writeEvent(response, active.Revision, healthRevision)
 	flusher.Flush()
 	lastRevision := active.Revision
@@ -1284,16 +1317,13 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 	serverLog.Printf("event stream subscribed")
 	heartbeat := time.NewTicker(20 * time.Second)
 	defer heartbeat.Stop()
-	a.startMu.Lock()
-	drain := a.drain
-	a.startMu.Unlock()
 	for {
 		select {
 		case <-drain:
 			serverLog.Printf("event stream drained")
 			return
 		case observation, ok := <-channel:
-			if !ok {
+			if !ok || !valid() {
 				return
 			}
 			healthRevision := int64(0)
@@ -1307,6 +1337,19 @@ func (a *App) events(response http.ResponseWriter, request *http.Request) {
 				lastHealthRevision = healthRevision
 			}
 		case <-heartbeat.C:
+			if a.oauth != nil {
+				ctx, cancel := context.WithTimeout(request.Context(), 5*time.Second)
+				latest, err := a.oauth.loadSession(ctx, session.ID)
+				cancel()
+				if err != nil || !time.Now().Before(a.oauth.eventAuthorizationExpires(latest, allowHealth)) ||
+					(allowHealth && !a.adminAuthorizedContext(context.WithValue(request.Context(), oauthSessionContextKey{}, latest))) {
+					serverLog.Printf("event stream authorization unavailable")
+					return
+				}
+			}
+			if !valid() {
+				return
+			}
 			_, _ = io.WriteString(response, ": keepalive\n\n")
 			flusher.Flush()
 		case <-request.Context().Done():

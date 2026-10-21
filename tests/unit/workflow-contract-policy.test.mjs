@@ -273,7 +273,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-campaign-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 12, workers: 2 },
-    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 20, workers: 20 },
+    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 21, workers: 21 },
     "cao-evolution-failures-investigator.md": { credits: 500, timeout: 30 },
     "cao-evolution-compiler-security.md": { credits: 500, timeout: 45 },
     "dependabot-update-planner.md": { credits: 600, timeout: 60 },
@@ -307,6 +307,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-reactive-ui-expert.md": { credits: 500, timeout: 45 },
     "self-care-release-blogger.md": { credits: 400, timeout: 30 },
     "self-care-server-go-logging.md": { credits: 400, timeout: 40 },
+    "self-care-server-soc2.md": { credits: 400, timeout: 45 },
     "self-care-specs-maintainer.md": { credits: 500, timeout: 30 },
   };
 
@@ -468,7 +469,10 @@ test("control workflows deny before activation through one shared admission cont
       name,
     );
     assert.match(source, /jobs:\n  pre-activation:\n    outputs:\n      cao_authorized: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/, name);
-    assert.match(source, /^if: needs\.pre_activation\.outputs\.cao_authorized == 'true'$/m, name);
+    const expectedGuard = name === "self-care-server-soc2.md"
+      ? "needs.pre_activation.outputs.cao_authorized == 'true' && inputs.target_repo == 'githubnext/gh-cao' && inputs.safe_output_mode == 'live'"
+      : "needs.pre_activation.outputs.cao_authorized == 'true'";
+    assert.equal(workflowConfig(name).if, expectedGuard, name);
 
     const generatedName = name.replace(/\.md$/, ".lock.yml");
     const generated = workflow(generatedName);

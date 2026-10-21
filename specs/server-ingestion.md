@@ -194,6 +194,22 @@ Collected evidence MUST be persisted in a durable **evidence lake**.
   sources.
 - Shard writes MUST be atomic per repository: a reader MUST observe either the
   previous shard or the complete new shard.
+- Repository shard prefixes MUST preserve the complete normalized coordinate,
+  be prefix-free, and occupy a namespace distinct from legacy slash-to-hyphen
+  filenames. Acquisition, cache selection, and compaction MUST use the same
+  identity. The collector uses `repo-v2~owner~repository~-logs-` with lowercase
+  segments; `~` cannot occur in repository segments or legacy coordinates,
+  making both separators and the terminator unambiguous without expanding
+  maximum-length GitHub coordinates beyond filesystem basename limits.
+- Existing raw shards MAY migrate into that namespace only after validating
+  all declared repository identities in their content. Migration MUST preserve
+  unrelated colliding repositories, MUST NOT overwrite an existing destination,
+  and MUST support retry after interrupted publication. Legacy and versioned
+  retained evidence MUST remain replayable without GitHub requests.
+- Missing, malformed, or conflicting legacy identity MUST fail collection or
+  erasure closed, preserving the evidence for operator repair rather than
+  guessing ownership from filenames or enrollment. Compaction MUST reject
+  conflicting identities across or within records before mutating any group.
 - The manifest MUST be regenerated whenever shards change, and MUST list a
   SHA-256 hash for every shard it names.
 - The lake MUST NOT contain prompts, tokens, secrets, or credentials.
@@ -366,6 +382,35 @@ governed property and not an accident of disk usage.
   deleted or suspended, or repositories are removed from it, an implementation
   MUST delete that repository's shards from the evidence lake and MUST request a
   projection so the canonical database stops reporting it.
+- Collector-owned shared operational-value observations MUST be filtered by
+  exact, case-insensitive repository identity, not by shard filename. Withdrawal
+  MUST preserve unrelated raw observations, including their extension metadata.
+  Affected disposable normalized shards and normalization-cache files MUST be
+  invalidated; compaction regenerates their unrelated rows from retained raw
+  evidence. A snapshot whose manifested payload was invalidated MUST NOT replay
+  successfully until recompaction.
+- Shared-file erasure and collector projection MUST serialize across processes
+  sharing the evidence lake. The Go collector uses an advisory filesystem lock;
+  the configured lake filesystem MUST support that lock across its writers.
+  Before best-effort operational-value acquisition, projection MUST filter
+  collector-owned observations against current enrollment, including an empty
+  enrollment set. Credential or adapter failures MUST NOT bypass that filtering
+  or restore withdrawn observations through the retained-value merge.
+- Successful canonical replacement advances the revision. Queries depending on
+  collector operational values MUST include that revision in their result-cache
+  identity so an older cached result cannot serve after replacement. Unreachable
+  older query-result cache entries still follow the bounded cache TTL; this is
+  not a claim of immediate physical disposal of every cache or backup copy.
+- Independently published operational-value evidence packets and protected
+  publication-owned facts have a separate publication authority contract.
+  Collector enrollment withdrawal MUST NOT infer permission to delete those
+  facts. Their repository scope, disposal authority, retention and any hold
+  obligations require an explicit operator decision; this rule does not invent
+  a hold or authorize indefinite retention.
+- Repository-prefixed shard erasure MUST preflight candidate ownership across
+  raw, run, and record directories before deleting any file. A legacy filename
+  match alone MUST NOT authorize deletion: unambiguously unrelated evidence
+  MUST remain untouched, and ambiguous evidence MUST block successful erasure.
 - Erasure MUST be driven by the same webhook admission path as enrollment, so
   withdrawing consent takes effect without operator action. A process without an
   evidence lake MUST queue erasure rather than skip it.

@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Hosted CLI Actions Specification
 description: Normative requirements for executing dashboard CLI actions in the hosted CAO server with a GitHub App and single-use installation tokens.
-version: 1.0.0
+version: 1.1.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Hosted CLI Actions Specification
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Status:** Working Draft
 **Latest Version:** https://github.com/githubnext/gh-cao/blob/main/specs/server-hosted-cli.md
 **Editors:** GitHub Next
@@ -171,20 +171,24 @@ local sessions.
 `POST /__cli_commands` MUST perform these checks in order and reject the
 request on the first failure:
 
-1. Administrator step-up as defined in section 3.
+1. Administrator step-up as defined in section 3, with a positive numeric
+   GitHub account ID from the authenticated server-side OAuth session.
+   Sessions without a verified account ID MUST sign in again before admission.
 2. Resolve the request against the declared catalog action, then plan the
    command. Planning MUST bind the command to exactly one target repository
    and reject commands outside the supported command set.
 3. Use the requester's own OAuth token to confirm `admin`, `maintain`, or
    `push` permission on the target repository.
-4. Enqueue the command with its `Actor` and `Repository`, using an optional
-   idempotency key.
+4. Enqueue the command with its `Actor` attribution
+   login, immutable `ActorID`, and `Repository`, using an optional idempotency
+   key. Request data MUST NOT supply or override that identity.
 
 List, detail, output, cancel, and retry routes MUST require the same
 step-up. Retry MUST create a new admission subject to the same checks.
 It MUST record the currently authorized requester without changing the
-original command's actor. The action, arguments, input, and target MUST remain
-unchanged; idempotency keys MUST remain bound to the requesting actor.
+original command's actor login or account ID. The action, arguments, input, and
+target MUST remain unchanged; idempotency keys MUST remain bound to both the
+requesting actor login and numeric account ID.
 Cancel MUST confirm, with the requester's own OAuth token, write access to
 the command's target repository before changing the command.
 
@@ -243,6 +247,35 @@ alone MUST NOT authorize the operation. Missing access, permission fields,
 or organization approval MUST fail closed. The backend MUST NOT fall back
 to the executor's App-only credential for requester authorization.
 
+### 4.2. Queued identity continuity and upgrades
+
+The queued `ActorID` MUST survive storage, claims, prefetch, and execution
+unchanged. The admitted login remains attribution and the lookup coordinate,
+not proof of account identity. If a provider resolves that login to a renamed
+account, only a permission response identifying the original numeric ID MAY
+authorize execution. An unavailable login, missing ID, different account, or
+revoked writer permission MUST NOT authorize execution. No provider rename or
+login-reassignment behavior is assumed by this contract.
+
+Legacy queued records without a positive `ActorID` MUST remain readable and
+MUST NOT acquire work tokens or start subprocesses. The executor MUST record
+an explicit failed result with an identity/re-admission explanation and settle
+the unstarted execution claim normally. It MUST NOT delete accepted work,
+backfill an ID from the current owner of the login, or automatically retry.
+An administrator MAY explicitly retry the failed command through fresh
+admission, producing a new command with the currently verified identity and
+preserving the original record and retry ancestry. Ordinary terminal retention
+still applies.
+
+The invocation JSON adds optional `actorId` without changing SQL columns,
+namespace/schema versions, or HTTP request/response shapes. Missing IDs decode
+as unknown, never as authorization. Operators MUST pause admissions, stop and
+reconcile old executors, and upgrade every web/executor replica before resuming;
+mixed versions do not enforce this contract because old executors ignore the
+ID. Retained legacy pending commands require explicit operator review and
+re-admission, not a production data backfill. This change authorizes no
+deployment, migration, or rollout by itself.
+
 ## 5. Token broker
 
 1. The executor MUST authenticate as the hosted CLI GitHub App, configured
@@ -299,11 +332,14 @@ to the executor's App-only credential for requester authorization.
 3. The executor MUST hold the single queue lease. Additional replicas stand by.
    Lease ownership MUST be fenced so a stale executor cannot write output,
    finish, or settle work after another replica acquires a newer lease.
-4. Before running, the executor MUST re-plan the command, require a matching
-   `Actor` and `Repository`, and recheck that the actor still has `admin` or
-   `write` collaborator permission on the target repository. The recheck MUST
-   use a separate installation token scoped to the target repository with
-   only `metadata: read`, which is revoked as soon as the check returns. No
+4. Before running, the executor MUST re-plan the command, require an `Actor`,
+   a positive `ActorID`, and a matching `Repository`, and recheck that the
+   admitted account still has `admin` or `write` collaborator permission on the
+   target repository. The permission response's numeric user ID MUST equal
+   the queued `ActorID`; a login match alone MUST NOT authorize work. Missing
+   or mismatched provider identity MUST fail closed. The recheck MUST use a
+   separate installation token scoped to the target repository with only
+   `metadata: read`, which is revoked as soon as the check returns. No
    work-scoped token may be minted, taken from the pool, or pre-minted for a
    command until its requester passes this check. If the recheck fails, the
    command MUST fail without running and without a work token.
@@ -760,6 +796,9 @@ recheck, and the token broker. Its enabled and disabled configurations MUST
 pass TLC with no violation of `Safety` or `TerminalTokenInvalidated` before
 this specification or the corresponding implementation changes.
 `specs/tla/README.md` maps each property to its implementation boundary.
+Its abstract `Users` represent immutable accounts, not reusable login strings.
+Provider login resolution and missing legacy IDs are covered by the concrete
+Go conformance tests, not a modeled provider lifecycle.
 
 `specs/tla/HostedCLIExecution.tla` models durable container identity, lease
 fencing, occupied capacity, and explicit recovery separately from admission.
@@ -786,6 +825,12 @@ workload termination in this model.
 - `server/internal/hostedcli`: broker single use, revocation and retry, pool
   bounds, executor recheck, isolation, redaction, and audit events without
   secrets.
+- `server/internal/githubapp/scoped_token_test.go`,
+  `server/internal/hostedcli/requester_identity_test.go`, and
+  `server/internal/operational/cli_command_identity_test.go`: same login with
+  a different account ID, renamed-original provider responses, revoked writer,
+  unknown identity, prefetch/pooled-token handout rechecks, identity round trips
+  through both stores, and explicit legacy failure/fresh retry.
 - `server/internal/hostedcli/container_runner_test.go` and `recovery_test.go`:
   private Git-root initialization, immutable pre-create identity registration,
   Docker/workload exit distinction, failed cleanup retaining capacity across
@@ -878,6 +923,14 @@ organizational access reviews, approvals, or incident responses were performed.
 - [GitHub App improvements for least privilege and management](https://github.blog/changelog/2026-10-13-github-app-improvements-for-least-privilege-and-management/)
 
 ## 12. Change log
+
+### Version 1.1.0 (Working Draft)
+
+- Bind hosted admission, durable queue identity, retry/idempotency, and live
+  permission checks before work-token issuance to the admitted numeric account
+  ID. Preserve login attribution and fail closed for unverifiable legacy work.
+- Define coordinated upgrades and explicit legacy re-admission without an SQL
+  schema migration or login-derived identity backfill.
 
 ### Version 1.0.0 (Working Draft)
 

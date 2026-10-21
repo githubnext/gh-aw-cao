@@ -41,13 +41,18 @@ func TestValueQueryCacheTracksCommittedRevisionTransitively(t *testing.T) {
 	store := &valueRevisionCacheStore{revision: 1}
 	app := &App{database: store, databaseQueries: []query.Definition{
 		{Name: "operational-value-evidence", From: "$operationalValueEvidence"},
+		{Name: "operational-values", From: "$operationalValues"},
 	}}
 	app.config.DashboardQueries = []query.Definition{
 		{Name: "card", From: "operational-value-evidence"},
 		{Name: "joined", From: "$workflows", Joins: []query.Join{{Source: "card"}}},
 		{Name: "union", Union: []string{"card", "$workflows"}},
+		{Name: "retained-values", From: "operational-values"},
+		{Name: "retained-joined", From: "$workflows", Joins: []query.Join{{Source: "$operationalValues"}}},
+		{Name: "retained-union", Union: []string{"$operationalValues", "$workflows"}},
 	}
-	for _, name := range []string{"operational-value-evidence", "card", "joined", "union"} {
+	for _, name := range []string{"operational-value-evidence", "card", "joined", "union",
+		"$operationalValues", "operational-values", "retained-values", "retained-joined", "retained-union"} {
 		input := queryRequest{SourceNames: []string{name}}
 		before, err := app.queryResultCacheIdentity(t.Context(), input, false)
 		if err != nil {

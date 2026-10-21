@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -8,11 +9,39 @@ import (
 	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
+func TestInactiveSessionTransfersAtReservedByteAndEntryCapacity(t *testing.T) {
+	namespace := strings.Repeat("n", 64)
+	s, clock := fixture(t, Config{
+		MaxProtectedEntries: 1, MaxProtectedBytes: charge(namespace, "inactive", "sealed"),
+		MaxSessions: 1, MaxRevocations: 1,
+	})
+	must(t, s.PutSession(t.Context(), "inactive", "sealed", time.Second, namespace))
+	wantError(t, s.QueueRevocation(t.Context(), "unrelated", "sealed", namespace), operational.ErrCapacity)
+	clock.Add(time.Second)
+	must(t, s.Maintain(t.Context()))
+	if record, err := s.SessionRecord(t.Context(), "inactive"); err != nil || record != "" {
+		t.Fatal("expired session still grants authority")
+	}
+	saved, err := s.CompareSession(t.Context(), "inactive", "sealed", "late", time.Hour, namespace)
+	must(t, err)
+	if saved {
+		t.Fatal("CAS resurrected expired authority")
+	}
+	pending, err := s.PendingRevocation(t.Context(), namespace)
+	must(t, err)
+	if pending.ID != "inactive" || pending.Value != "sealed" {
+		t.Fatal("byte or entry pressure discarded inactive cleanup")
+	}
+	must(t, s.CompleteRevocation(t.Context(), pending.ID, pending.Value, namespace))
+	must(t, s.PutSession(t.Context(), "inactive", "sealed", time.Hour, namespace))
+	invariant(t, s)
+}
+
 func TestLogoutRefreshRaceAndConditionalCompletion(t *testing.T) {
 	s, _ := fixture(t, Config{})
 	ctx := t.Context()
 	for i := range 100 {
-		must(t, s.PutSession(ctx, "session", "old-encrypted", time.Hour))
+		must(t, s.PutSession(ctx, "session", "old-encrypted", time.Hour, ""))
 		start := make(chan struct{})
 		var wg sync.WaitGroup
 		var saved bool
@@ -22,7 +51,7 @@ func TestLogoutRefreshRaceAndConditionalCompletion(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			saved, refreshedErr = s.CompareSession(ctx, "session", "old-encrypted", "rotated-encrypted", time.Hour)
+			saved, refreshedErr = s.CompareSession(ctx, "session", "old-encrypted", "rotated-encrypted", time.Hour, "")
 		}()
 		go func() {
 			defer wg.Done()
@@ -43,7 +72,7 @@ func TestLogoutRefreshRaceAndConditionalCompletion(t *testing.T) {
 		if record, _ := s.SessionRecord(ctx, "session"); record != "" {
 			t.Fatal("logout retained session")
 		}
-		ok, err := s.CompareSession(ctx, "session", expected, "resurrected", time.Hour)
+		ok, err := s.CompareSession(ctx, "session", expected, "resurrected", time.Hour, "")
 		must(t, err)
 		if ok {
 			t.Fatal("refresh resurrected logged-out session")
@@ -55,7 +84,7 @@ func TestLogoutRefreshRaceAndConditionalCompletion(t *testing.T) {
 		}
 		must(t, s.CompleteRevocation(ctx, "session", expected, "revocations:opaque:"))
 	}
-	must(t, s.PutSession(ctx, "session", "new", time.Hour))
+	must(t, s.PutSession(ctx, "session", "new", time.Hour, ""))
 	_, err := s.InvalidateSession(ctx, "session", "stale", "revocations:")
 	wantError(t, err, operational.ErrConflict)
 	if record, _ := s.SessionRecord(ctx, "session"); record != "new" {
@@ -79,26 +108,24 @@ func TestOAuthCapacityNamespacesRetryAndExpiry(t *testing.T) {
 	config.MaxSessions, config.MaxRevocations = 1, 2
 	s, clock := fixture(t, config)
 	ctx := t.Context()
-	must(t, s.PutSession(ctx, "one", "sealed", time.Second))
-	wantError(t, s.PutSession(ctx, "two", "sealed", time.Hour), operational.ErrCapacity)
+	must(t, s.PutSession(ctx, "one", "sealed", time.Second, ""))
+	wantError(t, s.PutSession(ctx, "two", "sealed", time.Hour, ""), operational.ErrCapacity)
 	must(t, s.QueueRevocation(ctx, "retry", "encrypted-one", "first:"))
-	must(t, s.QueueRevocation(ctx, "retry", "encrypted-two", "second:"))
-	_, err := s.InvalidateSession(ctx, "one", "", "third:")
-	wantError(t, err, operational.ErrCapacity)
+	wantError(t, s.QueueRevocation(ctx, "retry", "encrypted-two", "second:"), operational.ErrCapacity)
 	if record, _ := s.SessionRecord(ctx, "one"); record != "sealed" {
-		t.Fatal("failed staging partially removed session")
+		t.Fatal("capacity pressure removed session")
 	}
-	first, _ := s.PendingRevocation(ctx, "first:")
-	second, _ := s.PendingRevocation(ctx, "second:")
-	if first.Value != "encrypted-one" || second.Value != "encrypted-two" {
-		t.Fatal("opaque namespaces collided")
-	}
-	must(t, s.CompleteRevocation(ctx, "retry", "encrypted-one", "first:"))
 	staged, err := s.InvalidateSession(ctx, "one", "", "third:")
 	must(t, err)
 	if staged != "sealed" {
-		t.Fatal("session not staged after capacity released")
+		t.Fatal("reserved cleanup capacity was not available")
 	}
+	first, _ := s.PendingRevocation(ctx, "first:")
+	if first.Value != "encrypted-one" {
+		t.Fatal("cleanup namespaces collided")
+	}
+	must(t, s.CompleteRevocation(ctx, "retry", "encrypted-one", "first:"))
+	must(t, s.QueueRevocation(ctx, "retry", "encrypted-two", "second:"))
 	clock.Add(25 * time.Hour)
 	must(t, s.Maintain(ctx))
 	pending, err := s.PendingRevocation(ctx, "third:")
@@ -106,10 +133,16 @@ func TestOAuthCapacityNamespacesRetryAndExpiry(t *testing.T) {
 	if pending.Value != "sealed" {
 		t.Fatal("maintenance evicted pending revocation")
 	}
-	must(t, s.PutSession(ctx, "two", "new-session", time.Second))
+	must(t, s.CompleteRevocation(ctx, "one", "sealed", "third:"))
+	must(t, s.PutSession(ctx, "two", "new-session", time.Second, ""))
 	clock.Add(time.Second)
 	if record, _ := s.SessionRecord(ctx, "two"); record != "" {
 		t.Fatal("session TTL not enforced")
+	}
+	pending, err = s.PendingRevocation(ctx, "")
+	must(t, err)
+	if pending.ID != "two" || pending.Value != "new-session" {
+		t.Fatal("inactive session lost its cleanup owner at expiry")
 	}
 	invariant(t, s)
 }

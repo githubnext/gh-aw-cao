@@ -34,7 +34,7 @@ func TestHostedCLIQueueOperationsSQLite(t *testing.T) {
 	for index := range 3 {
 		command, err = queue.Enqueue(t.Context(), operational.CLICommandInvocation{
 			ActionID: "run-workflow", Command: "gh workflow run build.yml",
-			Actor: "octocat", Repository: "acme/widgets",
+			Actor: "octocat", ActorID: 1234, Repository: "acme/widgets",
 		}, "operator-test-"+strconv.Itoa(index), 0)
 		if err != nil {
 			t.Fatal(err)

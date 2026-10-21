@@ -266,36 +266,68 @@ func (s *Store) revocationKeys(prefix, id string) (string, string) {
 	}
 	return prefix + "oauth-revocation:" + oauthID(id), prefix + "oauth-revocations"
 }
+
+// Session records have no physical TTL: expiry removes authority, while the
+// stable due index retains the final cleanup owner across process restarts.
+const readOAuthSession = `
+local raw = redis.call("GET", KEYS[1])
+if not raw then return false end
+local session = {value=raw}
+if string.sub(raw,1,1) == "{" then session = cjson.decode(raw) end
+local clock = redis.call("TIME")
+local now = tonumber(clock[1])*1000 + math.floor(tonumber(clock[2])/1000)
+`
+
 func (s *Store) SessionRecord(ctx context.Context, id string) (string, error) {
-	value, err := s.Client.Do(ctx, "GET", s.sessionRecordKey(id))
+	value, err := s.Client.Do(ctx, "EVAL", readOAuthSession+`
+if session.expires and session.expires <= now then return false end
+return session.value`, "1", s.sessionRecordKey(id))
 	if err != nil || value == nil {
 		return "", err
 	}
 	return fmt.Sprint(value), nil
 }
 func (s *Store) DeleteSession(ctx context.Context, id string) error {
-	_, err := s.Client.Do(ctx, "DEL", s.sessionRecordKey(id))
+	_, err := s.InvalidateSession(ctx, id, "", "")
 	return err
 }
-func (s *Store) PutSession(ctx context.Context, id, value string, ttl time.Duration) error {
-	_, err := s.Client.Do(ctx, "SET", s.sessionRecordKey(id), value, "EX", fmt.Sprint(int(ttl.Seconds())))
+func (s *Store) PutSession(ctx context.Context, id, value string, ttl time.Duration, prefix string) error {
+	if ttl.Milliseconds() <= 0 || value == "" {
+		return errors.New("session requires an encrypted value and a positive TTL")
+	}
+	record, index := s.revocationKeys(prefix, id)
+	_, err := s.Client.Do(ctx, "EVAL", `-- cao-session-put
+local clock = redis.call("TIME")
+local expires = tonumber(clock[1])*1000 + math.floor(tonumber(clock[2])/1000) + tonumber(ARGV[2])
+redis.call("ZADD", KEYS[2], expires, KEYS[1])
+redis.call("SET", KEYS[1], cjson.encode({value=ARGV[1],expires=expires,destination=KEYS[3],index=KEYS[2]}))
+return 1`, "3", s.sessionRecordKey(id), index+":sessions", record, value, fmt.Sprint(ttl.Milliseconds()))
 	return err
 }
-func (s *Store) CompareSession(ctx context.Context, id, expected, value string, ttl time.Duration) (bool, error) {
-	const script = `if redis.call("GET", KEYS[1]) ~= ARGV[1] then return 0 end
-redis.call("SET", KEYS[1], ARGV[2], "EX", ARGV[3])
+func (s *Store) CompareSession(ctx context.Context, id, expected, value string, ttl time.Duration, prefix string) (bool, error) {
+	if ttl.Milliseconds() <= 0 || value == "" {
+		return false, errors.New("session requires an encrypted value and a positive TTL")
+	}
+	script := readOAuthSession + `-- cao-session-compare
+if session.value ~= ARGV[1] or (session.expires and session.expires <= now) or (session.index and session.index ~= KEYS[2]) then return 0 end
+local expires = now + tonumber(ARGV[3])
+redis.call("ZADD", KEYS[2], expires, KEYS[1])
+redis.call("SET", KEYS[1], cjson.encode({value=ARGV[2],expires=expires,destination=KEYS[3],index=KEYS[2]}))
 return 1`
-	result, err := s.Client.Do(ctx, "EVAL", script, "1", s.sessionRecordKey(id), expected, value, fmt.Sprint(int(ttl.Seconds())))
+	record, index := s.revocationKeys(prefix, id)
+	result, err := s.Client.Do(ctx, "EVAL", script, "3", s.sessionRecordKey(id), index+":sessions", record, expected, value, fmt.Sprint(ttl.Milliseconds()))
 	return result == int64(1), err
 }
 func (s *Store) InvalidateSession(ctx context.Context, id, expected, prefix string) (string, error) {
-	const script = `local value = redis.call("GET", KEYS[1])
-if not value then return false end
-if ARGV[1] ~= "" and value ~= ARGV[1] then return "superseded" end
-redis.call("SET", KEYS[2], value)
-redis.call("SADD", KEYS[3], KEYS[2])
+	script := readOAuthSession + `-- cao-session-invalidate
+if ARGV[1] ~= "" and session.value ~= ARGV[1] then return "superseded" end
+local destination = session.destination or KEYS[2]
+redis.call("SET", destination, session.value)
+local index = session.index and string.sub(session.index,1,-10) or KEYS[3]
+redis.call("SADD", index, destination)
+if session.index then redis.call("ZREM", session.index, KEYS[1]) end
 redis.call("DEL", KEYS[1])
-return value`
+return session.value`
 	record, index := s.revocationKeys(prefix, id)
 	value, err := s.Client.Do(ctx, "EVAL", script, "3", s.sessionRecordKey(id), record, index, expected)
 	if err != nil || value == nil || value == int64(0) {
@@ -314,6 +346,26 @@ return redis.call("SADD", KEYS[2], KEYS[1])`, "2", record, index, value)
 }
 func (s *Store) PendingRevocation(ctx context.Context, prefix string) (operational.Revocation, error) {
 	_, index := s.revocationKeys(prefix, "")
+	_, err := s.Client.Do(ctx, "EVAL", `-- cao-session-expire
+local clock = redis.call("TIME")
+local now = tonumber(clock[1])*1000 + math.floor(tonumber(clock[2])/1000)
+local due = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", now, "LIMIT", 0, 16)
+for _, key in ipairs(due) do
+  local raw = redis.call("GET", key)
+  if raw then
+    local session = cjson.decode(raw)
+    if session.expires <= now then
+      redis.call("SET", session.destination, session.value)
+      redis.call("SADD", KEYS[2], session.destination)
+      redis.call("DEL", key)
+    end
+  end
+  redis.call("ZREM", KEYS[1], key)
+end
+return #due`, "2", index+":sessions", index)
+	if err != nil {
+		return operational.Revocation{}, err
+	}
 	for range 16 {
 		key, err := s.Client.Do(ctx, "SRANDMEMBER", index)
 		if err != nil || key == nil {
