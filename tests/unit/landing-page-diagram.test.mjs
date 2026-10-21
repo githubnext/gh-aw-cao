@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
+import { parse } from "yaml";
 import { issueOpenedPaths } from "../../docs/components/workflow-illustration-icons.mjs";
 
 const landingPage = readFileSync("docs/README.md", "utf8");
@@ -52,13 +53,13 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Start with monitoring\./);
   assert.match(hero, /derive the simplest structure/);
   assert.match(hero, /outcome, target scope, and execution requirements/);
-  assert.match(hero, /Daily Repo Status from Agentics as a standalone workflow/);
+  assert.match(hero, /Dependabot campaign, pairing a central orchestrator with one-target workers/);
   assert.match(hero, /repository scope, read\/write credentials and review\/live policy explicit/);
   assert.match(hero, /href="\/gh-cao\/operation-patterns\/"/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
-  assert.match(terminalText, /Adapt Daily Repo Status for CAO/);
+  assert.match(terminalText, /Add the Dependabot campaign to CAO/);
   assert.match(terminalText, /CAO runtime materialized and verified/);
   assert.match(terminalText, /Next: gh cao doctor/);
   assert.match(terminalText, /Then review git diff and git status, commit, and push the installed files/);
@@ -66,12 +67,11 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminalText, /Example agent request — not a CLI command/);
   assert.match(terminal, /data-terminal-request="integration"/);
   assert.match(terminalText, /Keep policy disabled, review-only, and scoped to one repo/);
-  assert.match(terminalText, /Import shared\/control\.md as standalone/);
-  assert.match(terminalText, /For scheduled fleet selection:/);
-  assert.match(terminalText, /Bind reads and review outputs to admitted targets/);
-  assert.match(terminalText, /Preserve upstream ownership\. Do not enable or run/);
+  assert.match(terminalText, /Install githubnext\/gh-cao\/dependabot/);
+  assert.match(terminalText, /Use its central orchestrator and one-target workers/);
+  assert.match(terminalText, /Review the campaign files and policy\. Do not enable or run/);
   assert.doesNotMatch(terminal, /data-terminal-output="rollout"|\bjq\b/);
-  assert.doesNotMatch(terminalText, /campaign|dependabot/i);
+  assert.doesNotMatch(terminalText, /Daily Repo Status|as standalone/);
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
   assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
@@ -96,13 +96,23 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
   assert.ok(tagline && wordCount(tagline) <= 40, "hero tagline should stay within forty words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
-  assert.equal(paragraphs.length, 5);
+  assert.equal(paragraphs.length, 8);
   const terminalParagraph = hero.match(/id="terminal-title"[\s\S]*?<p>\s*([\s\S]*?)<\/p>/)?.[1];
   for (const [, paragraph] of paragraphs) {
     const budget = paragraph === terminalParagraph ? 60 : 30;
     assert.ok(wordCount(paragraph) <= budget, `supporting paragraph should stay within ${budget} words`);
   }
   assert.doesNotMatch(hero, /<ul class="story-points">/);
+});
+
+test("landing campaign example uses the real Dependabot manifest without granting rollout authority", () => {
+  const excerpt = hero.match(/filename="dependabot\/aw\.yml"\s+code=\{`([\s\S]*?)`\}/)?.[1];
+  assert.ok(excerpt, "campaign snippet should show its manifest");
+  const manifest = parse(readFileSync("dependabot/aw.yml", "utf8"));
+  assert.deepEqual(parse(excerpt), { name: manifest.name, includes: manifest.includes });
+  assert.match(hero, /Keep it disabled and review-only/);
+  assert.match(hero, /Each worker handles one target/);
+  assert.match(hero, /Reviewed policy controls scope, enablement, and review\/live mode/);
 });
 
 test("terminal output excerpts remain grounded in the production installer and CLI", () => {

@@ -4,6 +4,7 @@ import HeroIntro from "./HeroIntro.astro";
 import LandingSlideshow from "./LandingSlideshow.astro";
 import TerminalDemo from "./TerminalDemo.astro";
 import ThemeImage from "./ThemeImage.astro";
+import HeroWorkflowSnippet from "./HeroWorkflowSnippet.astro";
 import dashboardCampaignValue from "../assets/product/cao-dashboard-campaign-value-mobile.png";
 import dashboardCampaignValueLight from "../assets/product/cao-dashboard-campaign-value-mobile-light.png";
 import dashboardMobileOverview from "../assets/product/cao-dashboard-mobile-overview.png";
@@ -74,8 +75,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     <h2 id="terminal-title">Roll out with confidence.</h2>
     <p>
       Start with monitoring. Describe the outcome, target scope, and execution requirements; derive the simplest structure.
-      The example adapts Daily Repo Status from Agentics as a standalone workflow.
-      Keep repository scope, read/write credentials and review/live policy explicit.
+      The example adds the Dependabot campaign, pairing a central orchestrator with one-target workers.
+      Keep repository scope, read/write credentials and review/live policy explicit.{" "}
       <a href="/gh-cao/operation-patterns/">From outcome to execution.</a>
     </p>
   </div>
@@ -124,6 +125,96 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       class="product-image"
     />
   </figure>
+</section>
+<section class="product-story snippet-story webhook-story" aria-labelledby="webhook-title" data-reveal data-slideshow-slide>
+  <div class="product-story-copy">
+    <p class="section-eyebrow">From events to enrolled workflows</p>
+    <h2 id="webhook-title">Webhook Gateway</h2>
+    <p>
+      Route authenticated events to enrolled workflows. Queue matching deliveries, batch compatible events,
+      and recheck source access and approved revisions before dispatch.
+      Declarations require opt-in, compatible compilation, and reviewed enrollment.
+    </p>
+    <a class="hero-story-link" href="https://github.com/githubnext/gh-cao/blob/main/server/README.md#webhook-gateway-operations">
+      Explore the Webhook Gateway <span aria-hidden="true">→</span>
+    </a>
+  </div>
+  <HeroWorkflowSnippet
+    label="Illustrative example: from an authenticated event to a gateway dispatch"
+    promptLabel="An event arrives"
+    prompt="A security alert changes in an explicitly enrolled repository."
+    filename="security-briefing.md"
+    code={`---
+on:
+  gateway-dispatch:
+    repos:
+      - acme/service
+    security-alerts: {}
+safe-outputs:
+  create-issue:
+---
+Review the alert and open a briefing.`}
+    transition="After matching and fresh authority checks"
+    resultTitle="Enrolled workflow dispatched"
+    result="A bounded batch reaches the approved workflow revision."
+    caption="Illustrative routing result; only declared safe outputs may write."
+  />
+</section>
+
+<section class="product-story snippet-story admission-story" aria-labelledby="admission-title" data-reveal data-slideshow-slide>
+  <div class="product-story-copy">
+    <p class="section-eyebrow">Check before execution starts</p>
+    <h2 id="admission-title">Admission Gate</h2>
+    <p>
+      Check participating workflows before execution using OIDC, exact enrollment, and fresh AI Credits accounting.
+      Return policy-defined allowances without reserving budget or granting scope, live mode, or writes.
+    </p>
+    <a class="hero-story-link" href="/gh-cao/admission-gate/">
+      Set up the Admission Gate <span aria-hidden="true">→</span>
+    </a>
+  </div>
+  <HeroWorkflowSnippet
+    label="Illustrative example: from admission setup to a verified start-time decision"
+    prompt="Check identity, enrollment, and available budget before this workflow starts."
+    filename="Preview admission setup"
+    code={`gh cao setup admission \\
+  --repo acme/control \\
+  --url https://cao.example.org/api/admission \\
+  --dry-run`}
+    transition="After setup is applied, on a participating run"
+    resultTitle="Verified start-time decision"
+    result="Approve within policy-defined allowances, or block when required evidence is unavailable."
+    caption="Optional start-time check, not a billing cap. Setup defaults outages to block."
+  />
+</section>
+
+<section class="product-story snippet-story agentic-workflows-story" aria-labelledby="agentic-workflows-title" data-reveal data-slideshow-slide>
+  <div class="product-story-copy">
+    <p class="section-eyebrow">The foundation underneath CAO</p>
+    <h2 id="agentic-workflows-title">Built on Agentic Workflows</h2>
+    <p>
+      Author workflows in Markdown. GitHub Agentic Workflows runs them in GitHub Actions with declared permissions and safe outputs.
+      CAO coordinates them as campaigns with central visibility and reviewed rollout policy.
+    </p>
+    <a class="hero-story-link" href="https://github.github.com/gh-aw/">
+      Explore GitHub Agentic Workflows <span aria-hidden="true">→</span>
+    </a>
+  </div>
+  <HeroWorkflowSnippet
+    label="Illustrative example: from a prompt to a campaign to bounded repository work"
+    prompt="Roll out a Dependabot campaign across enrolled repositories. Keep it disabled and review-only."
+    filename="dependabot/aw.yml"
+    code={`name: Dependabot
+includes:
+  - operational-value.mjs
+  - operational-value/dependabot-update-planner.mjs
+  - .github/workflows/dependabot.md
+  - .github/workflows/dependabot-update-planner.md`}
+    transition="After installation, before enabling execution"
+    resultTitle="Campaign prepared for review"
+    result="A central orchestrator selects admitted repositories. Each worker handles one target."
+    caption="Campaign manifest excerpt. Reviewed policy controls scope, enablement, and review/live mode."
+  />
 </section>
 </div>
 <LandingSlideshow />
@@ -545,6 +636,26 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
         var(--cao-section-bg);
       box-shadow: var(--cao-section-shadow);
       backdrop-filter: blur(12px);
+    }
+
+    .snippet-story {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .hero-story-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 2.75rem;
+      margin-top: 1rem;
+      color: var(--sl-color-text-accent);
+      font-weight: 600;
+      text-underline-offset: 0.2em;
+    }
+
+    .hero-story-link:focus-visible {
+      outline: 2px solid var(--sl-color-text-accent);
+      outline-offset: 4px;
     }
 
     .terminal-story {

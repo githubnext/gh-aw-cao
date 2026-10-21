@@ -943,10 +943,10 @@ for (const { name, viewport } of [
         )).toBe(true);
         const rolloutStory = page.locator(".terminal-story");
         await rolloutStory.scrollIntoViewIfNeeded();
-        await expect(rolloutStory).toContainText("Bring an existing workflow, such as Daily Repo Status from Agentics, under central control.");
-        await expect(rolloutStory).toContainText("reuse the workflow across enrolled repositories");
-        await expect(rolloutStory.locator(".terminal")).not.toContainText(/campaign|dependabot/i);
-        await expect(rolloutStory.locator(".terminal code").last()).toHaveText("Adapt Daily Repo Status for CAO");
+        await expect(rolloutStory).toContainText("The example adds the Dependabot campaign");
+        await expect(rolloutStory).toContainText("a central orchestrator with one-target workers");
+        await expect(rolloutStory.locator(".terminal")).toContainText("Install githubnext/gh-cao/dependabot");
+        await expect(rolloutStory.locator(".terminal code").last()).toHaveText("Add the Dependabot campaign to CAO");
         await expect(rolloutStory.locator('[data-terminal-request="integration"]')).toContainText("Keep policy disabled, review-only");
         await expect(rolloutStory).toHaveCSS("opacity", "1");
         const rolloutScreenshot = testInfo.outputPath(`rollout-story-${name}-${colorScheme}.png`);
@@ -979,7 +979,7 @@ for (const { name, viewport } of [
       await expect(page.getByRole("heading", { name: "Roll out with confidence.", exact: true })).toBeAttached();
       await expect(page.locator(".terminal-story .section-eyebrow")).toHaveText("Setup, authentication, and rollout");
       await expect(page.locator(".terminal-story .product-story-copy > p:not(.section-eyebrow)")).toHaveText(
-        "Bring an existing workflow, such as Daily Repo Status from Agentics, under central control. Set repository scope and separate read/write credentials. Review proposed reports before authorizing live delivery. Keep rollout policy and steering in your control repository, and reuse the workflow across enrolled repositories. Add campaigns when you need coordinated work.",
+        "Start with monitoring. Describe the outcome, target scope, and execution requirements; derive the simplest structure. The example adds the Dependabot campaign, pairing a central orchestrator with one-target workers. Keep repository scope, read/write credentials and review/live policy explicit. From outcome to execution.",
       );
       await expect(page.locator('.product-story a[href^="https://github.github.com/gh-aw/practices/"]'))
         .toHaveCount(0);
@@ -1004,16 +1004,16 @@ for (const { name, viewport } of [
       await expect(page.locator(".terminal code")).toHaveText([
         "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
         "gh cao setup",
-        "Adapt Daily Repo Status for CAO",
+        "Add the Dependabot campaign to CAO",
       ]);
       await expect(page.locator(".terminal a")).toHaveCount(0);
       await expect(page.locator('[data-terminal-output="install"]')).toHaveText("==> CAO runtime materialized and verified.");
       await expect(page.locator('[data-terminal-output="setup"]')).toHaveText(
-        "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.",
+        "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nMonitoring is configured; executing operations is optional.",
       );
       await expect(page.locator(".terminal-label")).toHaveText("Example agent request — not a CLI command");
       await expect(page.locator('[data-terminal-request="integration"]')).toHaveText(
-        "Import shared/control.md as standalone.\nBind reads and review outputs to admitted targets.\nKeep policy disabled, review-only, and scoped to one repo.\nPreserve upstream ownership. Do not enable or run.",
+        "Install githubnext/gh-cao/dependabot.\nUse its central orchestrator and one-target workers.\nKeep policy disabled, review-only, and scoped to one repo.\nReview the campaign files and policy. Do not enable or run.",
       );
       await expect(page.locator('[data-terminal-output="rollout"]')).toHaveCount(0);
       await expect(page.locator(".product-image, .phone-image")).toHaveCount(3);
