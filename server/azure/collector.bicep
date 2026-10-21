@@ -76,9 +76,17 @@ param githubAppId string
 @description('Fixed number of PostgreSQL-backed collection workers.')
 param workerReplicas int = 1
 
-@description('Application Insights connection string. Collection is unobservable without it.')
+@description('Platform Application Insights setting; does not activate Go OTLP exporters.')
 @secure()
 param applicationInsightsConnectionString string
+
+@description('Shared Go OTLP/HTTP endpoint, protocol and explicit log opt-in from the parent deployment.')
+param otlpEnvironment array = []
+
+param otlpLogsEnabled bool = false
+
+@description('Whether the parent provisioned the cao-otel-headers Key Vault secret.')
+param otlpHeadersEnabled bool = false
 
 @description('Evidence lake file share tier. Premium is provisioned SSD; Standard is IOPS-throttled by share size.')
 @allowed([
@@ -123,10 +131,10 @@ module roles 'worker-roles.bicep' = {
     keyVaultName: keyVault.name
     containerRegistryName: registry.name
     principalId: collectorIdentity.properties.principalId
-    secretNames: [
+    secretNames: concat([
       postgresUrlSecretName
       'cao-collect-private-key'
-    ]
+    ], !otlpHeadersEnabled ? [] : ['cao-otel-headers'])
   }
 }
 
@@ -209,7 +217,7 @@ resource lakeStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
   }
 }
 
-var collectionEnvironment = [
+var collectionBaseEnvironment = [
   {
     name: 'CAO_POSTGRES_URL'
     secretRef: 'cao-postgres-url'
@@ -279,8 +287,6 @@ var collectionEnvironment = [
     value: string(queueMaxLength)
   }
   {
-    // Collection is an unattended background system acting on customer
-    // repositories, so it must be traceable rather than silent.
     name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
     secretRef: 'application-insights-connection-string'
   }
@@ -290,11 +296,18 @@ var collectionEnvironment = [
   }
   {
     name: 'DEBUG'
-    value: 'cao:collect:*'
+    value: otlpLogsEnabled ? 'cao:telemetry,cao:collect:recovery' : 'cao:collect:*'
   }
 ]
 
-var collectionSecrets = [
+var collectionEnvironment = concat(collectionBaseEnvironment, otlpEnvironment, !otlpHeadersEnabled ? [] : [
+  {
+    name: 'OTEL_EXPORTER_OTLP_HEADERS'
+    secretRef: 'cao-otel-headers'
+  }
+])
+
+var collectionSecrets = concat([
   {
     name: 'cao-postgres-url'
     keyVaultUrl: '${keyVaultUri}secrets/${postgresUrlSecretName}'
@@ -309,7 +322,13 @@ var collectionSecrets = [
     name: 'application-insights-connection-string'
     value: applicationInsightsConnectionString
   }
-]
+], !otlpHeadersEnabled ? [] : [
+  {
+    name: 'cao-otel-headers'
+    keyVaultUrl: '${keyVaultUri}secrets/cao-otel-headers'
+    identity: collectorIdentity.id
+  }
+])
 
 resource collectors 'Microsoft.App/containerApps@2024-03-01' = {
   name: '${namePrefix}-collector'

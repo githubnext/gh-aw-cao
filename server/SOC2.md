@@ -7,16 +7,19 @@ Started 2026-10-21 against source revision
 This is an evidence-driven readiness investigation, not a SOC 2 attestation or
 a declaration of compliance. No deployed environment, examination period,
 service commitments, or organizational control evidence has been supplied.
-No runtime or deployment changes are authorized by this assessment.
+This assessment alone authorizes no runtime or deployment changes. Subsequent
+user-directed repository remediation is recorded in the authorization section
+below; production changes and merging remain unauthorized.
 
 All four bounded component investigations have reported. The initial
 technical pass found **10 scoped design gaps** (one high, eight medium,
 one low), **21 evidence-needed records**, and **one proposed profile
 exclusion**, in addition to the initial cross-cutting evidence register.
 These are workstream records, not independent criterion/control counts;
-shared operational evidence dependencies are linked below. All decisions
-remain pending and operating effectiveness is not assessed. No compliance
-conclusion or remediation authorization follows.
+shared operational evidence dependencies are linked below. The initial
+dispositions are preserved below; current remediation decisions are recorded
+separately. Operating effectiveness is not assessed and no compliance
+conclusion follows.
 
 Highest-priority demonstrated design issue: DATA-01 can delete another
 repository's evidence when distinct coordinates flatten to the same shard
@@ -30,11 +33,14 @@ assessment MUST NOT be described as having a clean overall validation gate.
 
 The reusable procedure is
 [soc2-server-assessment](../.github/skills/soc2-server-assessment/SKILL.md).
-The maintained [assessment specification](../specs/server-soc2-compliance.md)
-defines the evidence and decision contract; the append-only
+The maintained [assessment specification, RFC-035](../specs/server-soc2-compliance.md)
+defines the evidence and decision contract using BCP 14 requirement language,
+stable `S2-` requirement IDs and role-specific conformance classes; the append-only
 [assessment changelog](SOC2-CHANGELOG.md) records changes and dispositions.
 This register uses specification version 1. Component reports and later
 operator decisions MUST update this register and append a changelog event.
+RFC conversion is editorial: existing finding/status/decision history and
+the established specification path remain unchanged.
 The authoritative security intent remains [SECURITY.md](SECURITY.md) and the
 referenced specifications. This inventory does not change the architecture.
 
@@ -165,6 +171,452 @@ Existing [hosted CLI SOC 2 mapping](SECURITY.md#soc-2-evidence-boundary),
 not controls certified by this report.
 
 ## Consolidation and decision gate
+
+### Current remediation authorization and sessions
+
+On 2026-10-21 the operator directed: "start session to fix each findings",
+then "create an self care agentic workfler worker that does this check again
+and fixes the top 3 issues daily".
+
+This authorizes scoped repository implementation/tests and draft PRs for the
+10 design gaps and investigation/remediation of the failed DATA-08 gate.
+Those records now have decision **remediate**, lifecycle **in-progress**.
+The assessment observations/statuses below remain the original baseline,
+not claims that fixes are verified, merged or deployed. Suggested owners
+remain suggested organizational roles; the sessions own repository work only.
+
+Evidence-only records other than DATA-08 and the proposed exclusion retain
+decision **pending**, lifecycle **open**. The directive does not manufacture
+deployment/history evidence, accept risk, approve an exclusion, grant secret
+access, widen rollout, or authorize production execution/merge.
+
+Each remediation session starts from the consolidated assessment baseline
+`748093b701ef9cf22e0323ac84fc6b026ea526ac`, owns one focused draft PR and
+reports validation/limitations to the coordinator. Central assessment records
+remain coordinator-owned to avoid conflicting edits.
+
+| Finding / work | Session ID | Current state |
+| --- | --- | --- |
+| DATA-01 shard identity/erasure collisions | `603b87ae-e256-4f86-b590-e9181384fda8` | Open non-draft [#19325](https://github.com/githubnext/gh-cao/pull/19325); identity/migration proposal, not merged/closed |
+| DATA-02 shared withdrawal erasure | `270f92b9-f242-4792-aebc-5333c54a7f91` | Open non-draft [#19326](https://github.com/githubnext/gh-cao/pull/19326); shared/derived erasure proposal, not merged/closed |
+| DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | [#19322](https://github.com/githubnext/gh-cao/pull/19322) merged into assessment branch; combined/default-branch validation pending |
+| IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | Draft [#19327](https://github.com/githubnext/gh-cao/pull/19327); lifecycle/adapter proposal, not merged/closed |
+| IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | [#19318](https://github.com/githubnext/gh-cao/pull/19318) merged into assessment branch; default-branch/provider closure pending |
+| EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Draft [#19328](https://github.com/githubnext/gh-cao/pull/19328); immutable actor proposal, not merged/closed |
+| OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Open non-draft [#19323](https://github.com/githubnext/gh-cao/pull/19323); durable lifecycle proposal, not merged/closed |
+| OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Open non-draft [#19324](https://github.com/githubnext/gh-cao/pull/19324); explicit OTLP route proposed, not merged/closed |
+| OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Draft [#19317](https://github.com/githubnext/gh-cao/pull/19317); development-only restriction proposed, not merged/closed |
+| OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | [#19304](https://github.com/githubnext/gh-cao/pull/19304) merged into assessment branch; targeted integration passed; default-branch/deployment closure pending |
+| DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | [#19305](https://github.com/githubnext/gh-cao/pull/19305) merged into assessment branch; targeted integration passed; default-branch gate pending |
+| Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | [#19310](https://github.com/githubnext/gh-cao/pull/19310) merged into assessment branch; contract checks passed; active-control/default-branch integration pending |
+
+The recurring worker must follow
+[specification section 8](../specs/server-soc2-compliance.md#8-daily-selfcare-reassessment-and-bounded-remediation).
+It is a proposed reviewed workflow, not an app session automation. Daily
+execution is not active until the workflow/policy changes are reviewed,
+merged and installed on the applicable default branch.
+
+The following report sections preserve initial observations and initial
+pending decisions. This current authorization table supersedes only those
+decision/lifecycle fields explicitly listed above. A draft PR is not closure.
+
+On 2026-10-21 at approximately 15:39 UTC the coordinator refreshed GitHub:
+OPS-04 and DATA-08 PRs are both open and non-draft with unchanged heads.
+Their initial draft creation is preserved in history; the current review
+state was not overridden. OPS-04's Go CI fails on the existing DATA-08
+temporal query assertion, according to the remediation session's log review
+and baseline-tree comparison. The coordinator verified the failing check and
+the separate DATA-08 correction PR; it has not merged/copied either fix or
+declared the affected integration gate clean.
+
+Subsequent GitHub refresh observed OPS-04 merged at 15:40:18 UTC and
+DATA-08 at 15:40:41 UTC, into this assessment branch as `90b865397` and
+`c85b8dfe7` respectively. These remote merges were not initiated by the
+coordinator. It preserved them while rebasing one unpublished documentation
+commit, without overriding remote work or changing PR review state.
+
+The coordinator then ran
+`go -C server test ./internal/doctor ./internal/query -count=1 -json` on
+the integrated source: **311 passing test/subtest events, 18 skipped,
+zero failures**. All skips are PostgreSQL-dependent query cases; the
+renamed native-measure contract and doctor cases passed. The DATA-08 session's
+isolated PostgreSQL-backed result remains additional, separately sourced
+evidence. Artifact:
+`/Users/peli/.copilot/session-state/d19b961a-c3f0-469a-847f-bcd18d3c8d23/files/soc2-integrated-doctor-query-tests.jsonl`.
+
+Both records remain decision **remediate**, lifecycle **in-progress** for
+default-branch integration/relevant final checks. OPS-04's original design-gap
+and DATA-08's original failed-gate observations remain historical; the
+assessment branch now contains their technical corrections. No deployed
+provider/backup control or operating-period evidence is closed.
+
+#### Daily worker proposal received 2026-10-21
+
+Draft [#19310](https://github.com/githubnext/gh-cao/pull/19310), commit
+`c132cc6d01809d2b99fb86e36dd56430355a44ef`, proposes
+`self-care-server-soc2`. Coordinator verified open/draft/head/base identity,
+12-file scope and the policy diff's new worker registration only; no existing
+target/mode/authority change. The dispatch ceiling grows from 20 to 21 to
+include the worker, without changing orchestrator/worker credit ceilings.
+
+The proposal reuses the existing every-20-minutes orchestrator's rolling
+24-hour eligibility convention, plus a manual-dispatch duplicate-day guard.
+Queued/in-progress and recent failed/cancelled runs count; unavailable,
+ambiguous or truncated history defers dispatch. Shared admission and an
+exact-target/live activation guard remain mandatory.
+
+Daily JSON/Markdown artifacts and a run summary are produced independently of
+the remediation PR guard. Selection ranks current verified actionable code
+gaps by severity/confidence/stable ID/path, excludes addressed or open
+remediations across authors, and permits at most three compatible fixes.
+Evidence-only gaps are not forced into code changes or fabricated closure.
+An existing worker PR suppresses another PR, not assessment; material durable
+register/changelog deltas are then marked pending/incomplete for human
+consolidation.
+
+Compiled safe-output proposal: at most one draft PR, 12 files (four production
+Go files plus six tests in one package, plus two assessment records), 50 KiB
+patch bound, and only `server/internal/**/*.go`, `server/cmd/**/*.go`,
+`server/SOC2.md` and `server/SOC2-CHANGELOG.md` paths. Protected-file fallback
+to an issue is disabled. Workflow/policy/credential changes cannot be smuggled
+through that output. Unsupported wider fixes are deferred. Limits are 45
+minutes/400 AI credits with bounded read/check/report work.
+
+The authoring session reports 303 workflow/policy contract tests and 258
+admission/resolver/failure integration tests passing without skips, lint and
+both repository type checks passing, and 73 seeded workflow compile/lock
+outputs reviewed. These validate authoring contracts, not runtime production
+controls or actual daily dispatch. Validation artifacts:
+`/Users/peli/.copilot/session-state/e0f32d7e-d753-4484-8876-251fd467257d/files/daily-soc2-checks/`.
+
+Activation still requires assessment prerequisites and worker source/policy
+on the active reviewed control branch, required existing credentials and
+Actions configuration. No dispatch/deployment/merge was performed by the
+authoring session/coordinator. Fourteen-day daily artifacts are not a
+substitute for operator-approved examination-period evidence retention
+(OPS-08). No previous finding is closed by authoring this worker.
+
+GitHub subsequently reported this worker merged into the assessment branch
+at 15:50:10 UTC as `4b63f3dcb6478dbc42f948d262131b2b32593a6e`.
+The coordinator preserved that externally merged change while rebasing its
+unpublished DATA-03 documentation update. Integrated
+`node --test tests/unit/workflow-contract-selfcare-soc2.test.mjs` passed
+all seven tests, zero failures/skips. Initial execution lacked the locked
+`yaml` dependency; `npm ci --ignore-scripts --no-audit --no-fund` restored
+dependencies before rerun, without manifest/lock changes. Integrated contract
+log:
+`/Users/peli/.copilot/session-state/d19b961a-c3f0-469a-847f-bcd18d3c8d23/files/soc2-integrated-worker-contracts.log`.
+This is assessment-branch integration, not a daily run or activation proof;
+default/active-control-branch prerequisites and operating evidence remain.
+
+#### IAM-002 and OPS-03 proposals received 2026-10-21
+
+The coordinator verified both proposals' GitHub open/draft/head/base identity
+and commit scopes. Both remain decision **remediate**, lifecycle
+**in-progress**. Original assessment observations are unchanged and neither
+proposal is merged, deployed or a closed operational control.
+
+IAM-002 draft [#19318](https://github.com/githubnext/gh-cao/pull/19318),
+commit `6839329d8c442f58f5ab552ddda792c104bc2c59`, bounds OAuth revision
+streams by the earliest membership recheck deadline (AuthorizedAt plus five
+minutes), token-refresh threshold, or admitted administrator-assurance
+deadline. Fixed context/write deadlines prevent traffic from extending
+authority. A session-store read each 20-second heartbeat, with five-second
+timeout, disconnects revoked/unavailable authority. Reconnect reuses existing
+authorization/refresh/cookie helpers; expired administrator assurance does
+not regain health metadata; local capability compatibility is retained.
+
+The session reports reproducing the baseline adverse logout stream with an
+artifact overlay, then adding actual old-stream/hub cleanup, membership/admin
+expiry, refresh/reconnect, outage/timeout, blocked-check abort/drain,
+bounded-read and real loopback write-deadline coverage. Focused race checks
+passed five repetitions. Full server tests reported 370 top-level passes and
+68 top-level skips (1,179 pass/72 skip events with subtests), zero failures;
+format/lint/vet/build and 72-workflow compilation passed. Database-dependent
+tests remain skipped. Remaining evidence includes proxy buffering/lifetimes,
+already-written bytes and real backend outages: revocation observation is
+bounded by heartbeat plus read timeout, while undiscovered membership loss
+retains the ordinary five-minute window. IAM-001 storage-lifecycle integration
+must preserve expired-session read denial.
+
+OPS-03 draft [#19317](https://github.com/githubnext/gh-cao/pull/19317),
+commit `bb897f7e76932704aa5c22640257abfaa940237b`, chooses an explicit
+**development-only source-build apply restriction**, not an invented
+production scan/promotion policy. Config and reviewed plan must both declare
+development before Azure calls; legacy/missing/production declarations and
+missing per-target digest parameters fail closed. Read-only production
+planning does not authorize apply. Separate Functions, ingestion and optional
+provisioning digests bind into Bicep and are read back before jobs; receipts
+state scan/SBOM/provenance limitations and capture source/context identities.
+Generated ARM is regenerated, not hand-edited.
+
+The session reports `make check`, focused assurance race tests, 35
+Bicep/assets/package contract tests, repository lint/both type checks,
+72-workflow compile, docs build and diff checks passing. Azure calls were
+mocked. Development declaration does not verify subscription classification;
+configured-image read-back is not a running-image measurement, and local
+context/status hashes are not signed atomic provenance. Production remains
+unsupported by this apply route without a separate reviewed target-specific
+scan/disposition/SBOM/provenance/promotion gate. OPS-02 must preserve these
+image parameters when reconciling telemetry template changes.
+
+#### DATA-03 proposal received 2026-10-21
+
+Draft [#19322](https://github.com/githubnext/gh-cao/pull/19322), commit
+`79830714dd4b40453b0c15eefa1bf6569c475af7`, changes five files:
+collector worker/projector, two test files and README. Coordinator verified
+open/draft/head/base and scope. Decision **remediate**, lifecycle
+**in-progress**; original design-gap is not closed by the unmerged proposal.
+
+Both erasure branches use one `processErasure` helper: remove shards, persist
+projection intent, then ACK. Failed/cancelled marker writes leave the original
+lease reclaimable. Requested/completed projection generations are separate;
+completion is recorded only after canonical ingestion commits, and cannot
+consume newer intent. Existing backend StateStore/queue/lease and canonical
+transaction contracts are preserved.
+
+The session reports the full collector race suite on isolated Redis and
+PostgreSQL passing 260 test/subtest events, zero failures/skips:
+`GOMAXPROCS=2 go -C server test -p 1 -race ./internal/collect -count=1 -json`.
+Coverage includes both durable adapters, marker failure/cancel/reclaim,
+canonical removed/kept rows, rollback, pre/post-commit crash-equivalent panics,
+completion failure and newer concurrent intent. An initial loaded-host run
+hit an existing 30-second parity-test deadline; the unchanged bounded-concurrency
+rerun passed. Server lint/format/build, collector vet and workflow compile
+also reportedly passed. Final artifact:
+`/Users/peli/.copilot/session-state/fcb3024f-e955-4995-89c0-9a3234795319/files/data03-collect-race-final.jsonl`.
+
+This is controlled local backend evidence, not provider power-loss/OS-kill,
+deployed recovery-objective, principal-isolation or encryption proof. Services
+were stopped. DATA-01/02 remain separate; integration must use their
+`ForgetContext(ctx, lease.Task.Repository)` within the new single helper,
+not restore the former duplicated branches.
+
+#### DATA-01, DATA-02, OPS-01 and OPS-02 proposals received 2026-10-21
+
+Coordinator verified each open/draft/head/base and commit scope. All retain
+decision **remediate**, lifecycle **in-progress**. These proposals are
+unmerged; no deployed correction or operational closure is inferred.
+
+DATA-01 draft [#19325](https://github.com/githubnext/gh-cao/pull/19325),
+commit `03c5fdb5c89a9b45752151ee4094cb878fb4520a`, replaces flattened
+repository identity with prefix-free
+`repo-v2~owner~repository~-logs-`, fitting maximum supported coordinate
+lengths and separating legacy/new namespaces. Identity-verified, no-clobber
+legacy migration precedes cache selection; erasure preflights every candidate
+before deletion; mixed-identity compaction fails before mutating any group.
+Ambiguous legacy evidence remains untouched for explicit operator repair.
+Unsupported hard links fail safely retaining source. Both legacy/new raw
+replay remain supported; shared/derived values stay DATA-02-owned.
+
+The DATA-01 session reports 253 Activity-area tests passing without skips,
+and final serialized race tests for collector/ingest/simulator on isolated
+Redis/PostgreSQL passing 339 tests (233/11/95), zero failures/skips.
+Root lint/both type checks, collector lint/format, server build and workflow
+compile passed. An initial concurrent-load parity timeout passed on unchanged
+standalone/serialized rerun; services were removed. Deployed collision
+inventory, migration rollout and filesystem/operator repair evidence remain
+required; no production loss or collision was observed.
+
+DATA-02 draft [#19326](https://github.com/githubnext/gh-cao/pull/19326),
+commit `ca720d64091b12efb6408489b8c3e3f4f6c3c010`, filters collector
+shared values by exact case-insensitive repository identity while preserving
+unrelated raw/extensions. It invalidates affected disposable normalized/cache
+shards, serializes erasure/projection with a cross-process lake lock, prunes
+enrollment before best-effort acquisition including zero enrollment, and
+keys operational-value query caches by committed canonical revision.
+Filtering/locking is inside `ForgetContext`; no prefix migration or ACK
+protocol duplication.
+
+The DATA-02 session reports passing a real webhook-to-worker-to-Activity-
+compaction-to-isolated-PostgreSQL withdrawal regression, including unrelated
+values, zero enrollment, acquisition failure and failed-compaction retry.
+Focused race/transfer/cache checks, collector/value suites with isolated Redis,
+value race/publication-preservation cases, server build/affected vet,
+format/lint and workflow compile passed. Initial shared Redis/disk conditions
+were avoided with owned tmpfs services, later removed. Not every service-backed
+test/full root/fleet/provider-principal check ran. Independently published
+packets remain intentionally protected pending disposal-authority decisions;
+prior committed snapshots serve during failed projection until retry.
+Old cache bytes expire under bounded TTL but cannot serve after revision.
+Actual shared-filesystem advisory-lock support is an operator prerequisite,
+not a demonstrated multi-host/power-loss guarantee.
+
+OPS-01 draft [#19323](https://github.com/githubnext/gh-cao/pull/19323),
+commit `0f0a42612a1b3cf9e561d37b31be92cd324ae375`, proposes durable
+actor-attributable admission/start/outcome events with a fresh rebuild ID
+(not the lease token), trace/revision/timestamps and bounded fixed outcomes.
+Admission/start precede reconciliation. Terminal/status storage failures are
+explicit; durable evidence can survive mirror failure, but not joint storage/
+mirror outage. Authorization/lease/publication semantics remain, with
+intentional hosted rebuild refusal (503) where no separate durable audit
+service is supplied, including Redis/memory profiles. Shared denial-audit
+failure also surfaces 503 without granting access. API contract becomes 2.10.0.
+
+The OPS-01 session reports PostgreSQL runtime-role/SELECT-only independent
+reader-chain checks, SQLite retained history and focused outage/cancel/drain/
+success/failure race tests passing; server lint/format/build/vet, TypeSpec
+29 tests plus reproducibility, and workflow compile passed. Its baseline
+full unfiltered suite reproduced DATA-08 only; a filtered run skipped that
+known failure, not a clean unfiltered gate. DATA-08 is now corrected separately
+in the parent. Cross-store publication/audit/status are explicitly non-atomic;
+crashes/uncertain appends can leave unpaired IDs needing independent
+reconciliation. No outbox, complete crash reconstruction, actual rebuild,
+production retention/export/anchor/alert effectiveness or period proof claimed.
+
+OPS-02 draft [#19324](https://github.com/githubnext/gh-cao/pull/19324),
+commit `2296bdd84ca101d2a9632819020bc502dad87826`, supplies reviewed
+optional HTTPS OTLP/HTTP endpoint and explicit log opt-in for Functions/
+collector/backfill, exporter headers via Key Vault-only secret references
+and conditional secret-scoped grants. CLI validation/secure parameter/
+redaction/secret-free plan behavior is tested. Core remains vendor-neutral
+with no Azure SDK or exporter readiness dependency; selected worker debug
+namespaces are narrowed on log opt-in. External collector ownership is
+documented; Bicep/ARM generation is deterministic.
+
+The OPS-02 session reports root/server lint/format, full root CLI tests,
+telemetry/logger tests and command builds, authenticated-TLS protobuf
+trace/metric/log receipt and failure-isolation race checks, secure config/
+plan tests, Azure template/assets contracts, both type checks, workflow compile
+and docs build passing. Azure calls/credentials were synthetic.
+Actual per-role settings, approved collector TLS/auth/network/retention,
+backend receipts and absent-signal/failure-alert response still require
+operator evidence. Request availability and independent audit must remain
+separate. Combining OPS-02/03 requires preserving both template changes and
+regenerating ARM with matching Bicep 0.44.1.
+
+#### IAM-001 proposal received 2026-10-21
+
+Draft [#19327](https://github.com/githubnext/gh-cao/pull/19327), commit
+`6926c313c9c059af4a8e4f9ebb06d26dbeac0df8`, proposes provider-expiry
+provenance, CAS-staged no-refresh cleanup and retention of final cleanup
+ownership past inactive session TTL across Redis/PostgreSQL/memory.
+Protected transition capacity and bounded cancellation-independent temporary
+owners cover concurrent revocation/persistence failure. Expired session
+reads/CAS still deny authority, including IAM-002 heartbeat reads.
+Coordinator verified open/draft/head/base and 22-file code/test/runtime-doc
+scope; central assessment records were not changed by that session.
+
+The session reports complete affected server/operational/Redis suites with
+isolated real Redis/PostgreSQL and role-boundary coverage passing under
+serialized packages, race lifecycle regressions, full server build,
+format/lint (zero issues), file-size/diff hygiene and workflow compile.
+Focused JSON reports 48 passes, zero failures/skips. Initial concurrent
+bootstrap deadlocks and socket-vs-loopback fixture failures were resolved
+through isolated numeric loopback/serialization, not weakened assertions.
+
+Rollout requires stopping old replicas for new Redis envelopes while
+retaining stable prefixes/protected data/current and previous keys.
+Legacy queued records remain unknown-expiry debt. Already deleted session/
+provider-grant owners require separately authorized reconciliation.
+Forced process kill between provider issuance and durable persistence remains
+an explicit issuance window; opted-in memory still loses debt on restart.
+No production/provider/deployment operation or grant reconciliation occurred.
+Decision **remediate**, lifecycle **in-progress**; neither operational
+revocation effectiveness nor original finding is closed by this draft.
+
+#### EXEC-01 proposal and current review snapshot
+
+Draft [#19328](https://github.com/githubnext/gh-cao/pull/19328), commit
+`6ecfccfe666e607887e20c9b94333fb234997e94`, persists OAuth numeric
+`ActorID` through PostgreSQL/SQLite command JSON and idempotency/claim paths.
+Prefetch/execution require the same live permission response to identify that
+account before minting/consuming work tokens. Display login remains
+attribution. Unknown/changed identity and revoked/unavailable permission
+deny; legacy records remain readable but fail before tokens/subprocess,
+settle normally and require explicit fresh admission to retry. No identity
+backfill, original-record rewrite or pending-work deletion is performed.
+
+Coordinator verified open/draft/head/base and 21-file scope. The session
+reports complete affected serial Go suites, build/vet/lint, focused race,
+real isolated PostgreSQL/SQLite operational cases, unchanged-generated
+29-test TypeSpec check and workflow compile passing. TLC enabled/disabled/
+execution models passed (651,418 / 332 / 896 states); these bounded models
+are not proof of live provider behavior. An initial concurrent native
+termination fixture failure passed in the complete serial rerun. Temporary
+database/tools were removed. Evidence resides under
+`/Users/peli/.copilot/session-state/1b133541-ad96-4c4e-9944-4497920f71e0/files/`.
+
+No SQL schema/namespace migration is needed for opaque invocation JSON;
+the hosted runtime contract becomes 1.1.0. Rollout must pause admissions,
+stop/reconcile old executors, upgrade web/executor replicas together and
+explicitly review/re-admit intended legacy work. Mixed old executors ignore
+IDs and are unsafe. Provider rename/reassignment behavior remains unobserved,
+not an exploit claim. Decision **remediate**, lifecycle **in-progress**.
+
+A subsequent GitHub snapshot confirms all eleven finding-specific sessions
+have now delivered PRs. Three corrections (OPS-04, DATA-08, IAM-002) and the
+daily worker are merged into this assessment branch; eight fix PRs remain
+open. DATA-01/02/03 and OPS-01/02 are now non-draft; IAM-001, EXEC-01 and
+OPS-03 remain draft. The coordinator preserves externally changed review
+state. IAM-002 merged at 15:52:18 UTC as `24db44b03`, not by coordinator
+action; no main/control-branch activation or deployed effectiveness is implied.
+
+While the coordinator published the preceding snapshot, DATA-03 was externally
+merged as `c5625fcf5`. The coordinator fetched and preserved that remote code
+and rebased only its unpublished documentation commit. DATA-03 is therefore
+now integrated into the assessment branch, not a current open proposal;
+combined DATA-01/02 integration and required final checks remain pending.
+The earlier snapshot's counts are historical, not a claim of present PR state.
+
+#### OPS-04 remediation proposal received 2026-10-21
+
+Draft [#19304](https://github.com/githubnext/gh-cao/pull/19304), commit
+`c480c3027785444a53e814802bf9776bb9f02fbc`, targets this assessment branch.
+The coordinator verified its open/draft state, exact head and three-file
+scope: doctor implementation/tests and server README. The finding remains
+**design-gap**, decision **remediate**, lifecycle **in-progress** until
+review/integration and applicable closure evidence; it is not deployed.
+
+The proposal warns on missing/malformed persistence observations, preserves
+unknown AOF enablement instead of coercing it to disabled, and no longer treats
+RDB-only historical success as proof of active snapshot policy. Explicit
+enabled-AOF successful writes pass only as a limited observation, not proof
+of durability/recoverability. Known write errors still warn.
+
+The remediation session reports passing formatting, doctor normal/race
+tests, vet/build, full server golangci-lint (zero issues), workflow compilation
+and diff checks. Added tables cover missing/malformed/partial/RDB/AOF/
+combined/provider omissions. These are reported local results, not a new
+independent provider assessment or historical operating evidence.
+
+No CONFIG access, live Redis changes or merge occurred. Provider persistence
+policy, backup retention, accepted-work RPO/RTO and actual restore operation
+remain evidence requests under DATA-07/OPS-06 and are not closed by this PR.
+
+#### DATA-08 remediation proposal received 2026-10-21
+
+Draft [#19305](https://github.com/githubnext/gh-cao/pull/19305), commit
+`d2d640bd3301617d27919e6634ef63c2b50f321f`, targets this assessment branch.
+The coordinator verified open/draft/head/base identity and that the only
+changed file is `server/internal/query/sql_temporal_test.go`.
+
+The remediation session traced the failure to stale fixture wiring:
+[#19293](https://github.com/githubnext/gh-cao/pull/19293) intentionally
+retired legacy Operational Value pages and moved
+`operational-value-plot-series` to
+`dashboard/site/test/fixtures/native-measure-history-query.json`.
+The SQL test still searched `campaign-insights.json`. The proposal names
+the test `TestTemporalSQLNativeMeasureHistoryQuery`, loads the shared
+fixture, preserves panel/link/order assertions and adds canonical source/
+native metric identity, point metadata, dimension-isolation and 100,000-row
+SQL bound checks. It does not alter production queries or infer a runtime
+processing defect.
+
+The session reports reproducing the original failure, then passing the
+renamed targeted check and full query suite against isolated PostgreSQL
+18.6 with both `POSTGRES_URL` and `TEMPORAL_TEST_POSTGRES_URL`: 214 passing
+test/subtest events, zero failures/skips. Related dashboard contract
+selectors passed 74 tests; query vet/build/lint, formatting, workflow
+compilation and diff checks passed. Temporary DB resources were removed;
+no deployed service/data was examined. Evidence:
+`/Users/peli/.copilot/session-state/ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d/files/data08-query-tests.json`.
+
+Decision remains **remediate**, lifecycle **in-progress**, evidence status
+**evidence-needed** at the original baseline until reviewed integration.
+The historical failed gate is preserved, not rewritten as a pass.
+Post-integration relevant-gate evidence is still required for closure;
+other workstreams' skipped database/operating evidence remains unverified.
 
 ### DATA report received 2026-10-21
 
@@ -401,6 +853,13 @@ time-bounded risk. This assessment does not make those choices automatically.
 
 All four bounded technical reports are now consolidated, including recorded
 coverage exclusions, skipped checks and the failed DATA-08 validation.
-Organizational/deployment/period evidence and every operator disposition
-remain pending. The conclusion is **initial technical assessment delivered;
-SOC 2 readiness undetermined**. No remediation has been performed.
+Organizational/deployment/period evidence remains pending. Scoped repository
+remediation is underway and the daily worker is proposed as listed above;
+OPS-04 and DATA-08 technical corrections are integrated and locally checked
+on this assessment branch, but default-branch/deployment closure is pending.
+IAM-002 and DATA-03 are also integrated. IAM-001, EXEC-01, OPS-01/02/03 and DATA-01/02
+remain separately validated proposals awaiting review, not integrated fixes.
+The daily worker source is integrated
+into this assessment branch but not demonstrated active on the control branch.
+The conclusion is
+**initial technical assessment delivered; SOC 2 readiness undetermined**.
