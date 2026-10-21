@@ -3,17 +3,24 @@ title: Set Up CAO
 description: Set up CAO, monitor one repository, and explore your dashboard before adding automation.
 ---
 
-Install CAO, connect one repository, and publish a dashboard of its existing
-GitHub Agentic Workflow runs, costs, and outcomes.
+By the end of this guide, you will have CAO monitoring one repository and a
+dashboard of its existing GitHub Agentic Workflow runs, costs, and outcomes.
 
-This setup is for monitoring only. Execution is optional: describe the
-[outcome and scope](operation-patterns.md) later, without repeating setup
-or choosing an implementation-pattern name.
+**Estimated time: 15 minutes**, plus credential approval and Actions deployment time.
+
+This guide sets up **monitoring only**. It does not install or run a campaign
+or start new agentic work.
+
+:::note[Video TODO]
+Record a CAO setup demonstration: install, connect one repository, review the
+configuration, and open the dashboard. A recording is not yet available;
+follow the written steps below.
+:::
 
 ## Prerequisites
 
 - You need **Git**, **Bash**, **`curl`**, **Node.js 24+**, and **GitHub CLI 2.68+**.
-- Run **`gh auth login`** if needed.
+- Verify your login with **`gh auth status`**; run **`gh auth login`** if needed.
 - You need permission to configure **Actions**, **credentials**, and
   **Pages** in your control repository.
 - CAO lives in a **control repository** that stores its configuration
@@ -24,7 +31,7 @@ or choosing an implementation-pattern name.
   guarantee a private Pages site. Setup checks this and asks before allowing
   public publication.
 
-## 1. Install CAO
+## Step 1 - Install CAO
 
 From a clean checkout of your chosen control repository, on its default branch:
 
@@ -53,7 +60,7 @@ prints before continuing.
 
 <span id="guided-setup-instead"></span>
 
-## 2. Connect one repository
+## Step 2 - Connect one repository
 
 ```bash
 gh cao setup
@@ -75,7 +82,7 @@ Need help choosing credentials? See [Authentication](authentication.md).
 Run setup in an interactive terminal for this guided path; headless setup only
 supports the exact current public control repository, not an external target.
 
-## 3. Publish your configuration
+## Step 3 - Review and publish your configuration
 
 Check the installation and inspect the installed files:
 
@@ -103,7 +110,9 @@ Check **CAO validation** in Actions for full policy and workflow validation.
 The installation includes scheduled Activity collection; pushing the policy
 also triggers collection. This collects evidence, not new agentic work.
 
-## 4. Open your dashboard
+<span id="4-open-your-dashboard"></span>
+
+## Step 4 - Wait for collection and inspect your dashboard
 
 In the control repository's **Actions** tab, wait for **CAO Activity** and then
 **CAO Dashboard** to complete, including its Pages deployment.
@@ -115,9 +124,8 @@ If collection has not started, request it once from the control checkout:
 gh workflow run cao-activity.yml
 ```
 
-Activity refreshes the evidence; it does not run the workflows you monitor.
-Successful collection triggers dashboard publication automatically. Check the
-Actions runs for progress rather than repeatedly dispatching collection.
+Activity collects evidence, not new agentic work. Successful collection triggers
+dashboard publication. Check Actions for progress instead of dispatching again.
 
 **Your first look:** find the repository in **Overview**, open **Runs**, and
 follow a run back to its evidence. Costs and outcomes appear where available;
@@ -131,24 +139,23 @@ views, or return after your existing workflows have run and Activity has refresh
 
 ## Optional: add automation later
 
-Monitoring is enough. If you want execution, describe the desired outcome,
-target scope, and execution requirements. Guidance and authoring agents
-[derive the simplest suitable structure](operation-patterns.md) and explain
-it; ask only for genuinely missing requirements, not a pattern name.
+Monitoring is enough. For execution, describe your outcome and scope;
+[derive the simplest suitable structure](operation-patterns.md) rather than
+starting with a pattern name.
 
 | Your requirements | Derived structure and reference |
 | --- | --- |
 | Visibility without changing execution | Observe only; setup is complete. |
 | Supplied exact targets, one bounded mission | [Direct operation](authority-envelopes.md), without discovery. |
 | CAO selects inventory for one bounded run | [Standalone fleet workflow](configuration.md#standalone-agentic-workflows). |
-| Independent target execution, history, retries, or specialized workers | Campaign; inspect the [catalog](https://githubnext.github.io/gh-cao/catalog/) before authoring. |
-| Deterministic work, stages, approvals, fan-in, or long waits | Ordinary GitHub Actions; use agentic reasoning only where needed. |
+| Independent target execution, retries, or specialized workers | Campaign; browse the [catalog](https://githubnext.github.io/gh-cao/catalog/). |
+| Deterministic work, approvals, or long waits | Ordinary GitHub Actions. |
 
-Try the [Repo Status quickstart](setup/quickstart.md) for one standalone report.
-Written steps are complete; video is not yet available.
+Try the [Repo Status quickstart](setup/quickstart.md) for one standalone report,
+without repeating setup.
 
-None is enrolled, enabled or run by setup. Inferring a structure grants no
-authority. If a campaign fits and its installation is approved, install it separately:
+None is enrolled, enabled or run by setup. If a campaign fits and installation
+is approved, install it separately:
 
 ```bash
 gh cao campaigns add githubnext/gh-cao/CAMPAIGN
@@ -159,5 +166,10 @@ policy together before enabling or running them. Start in **review** mode with *
 repository**; model access and AI credits are separate prerequisites.
 See [Roll out a campaign](rollout-and-routing.md) for the execution steps.
 
-The optional [Repo Assist walkthrough](repo-assist-quickstart.md) shows one
-review-only campaign request after setup, not a prerequisite for monitoring.
+The [Repo Assist walkthrough](repo-assist-quickstart.md) shows an optional
+review-only campaign request after setup.
+
+## Continue learning
+
+- [Explore the dashboard](dashboard.md).
+- [Configuration](configuration.md): understand your policy.

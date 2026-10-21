@@ -25,12 +25,17 @@ test("getting started reaches monitoring before optional campaign execution", ()
     assert.ok(index > previous, `${command} should follow the preceding stage`);
     previous = index;
   }
-  assert.deepEqual([...monitoring.matchAll(/^## \d\. (.+)$/gm)].map((match) => match[1]), [
+  assert.deepEqual([...monitoring.matchAll(/^## Step \d - (.+)$/gm)].map((match) => match[1]), [
     "Install CAO",
     "Connect one repository",
-    "Publish your configuration",
-    "Open your dashboard",
+    "Review and publish your configuration",
+    "Wait for collection and inspect your dashboard",
   ]);
+  assert.match(monitoring, /\*\*Estimated time: 15 minutes\*\*/);
+  assert.match(monitoring, /:::note\[Video TODO\]/);
+  assert.match(monitoring, /## Prerequisites/);
+  assert.match(gettingStarted, /## Continue learning/);
+  assert.match(gettingStarted, /<span id="4-open-your-dashboard"><\/span>/);
   assert.ok(gettingStarted.trim().split(/\s+/).length < 1000, "first-run guide should stay concise");
   assert.doesNotMatch(monitoring, /--quickstart|gh aw run|cao\.sh (?:add|enable|quickstart)|AI credits/);
   assert.match(monitoring, /setup installs no campaign and runs no workflow/i);

@@ -226,6 +226,17 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   const guide = readFileSync(join(root, "docs/setup/quickstart.md"), "utf8");
   assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart", link: "\/setup\/quickstart\/"/);
   assert.match(guide, /CAO recording not yet available/);
+  assert.match(guide, /\*\*Video TODO:\*\*/);
+  assert.match(guide, /\*\*Estimated time: 15 minutes after setup\*\*/);
+  assert.match(guide, /## Prerequisites[\s\S]*Complete \[Set Up CAO\]\(\.\.\/setup-quickstarts\.md\)/);
+  assert.doesNotMatch(guide, /install\.sh \| bash|gh cao setup/);
+  assert.deepEqual([...guide.matchAll(/^## Step \d - (.+)$/gm)].map(match => match[1]), [
+    "Add and review the sample workflow",
+    "Request one bounded review",
+    "Wait for the run and inspect its result",
+    "Customize your report (optional)",
+  ]);
+  assert.match(guide, /## Continue learning/);
   assert.doesNotMatch(guide, /<video|<iframe|youtube\.com|youtu\.be|\.mp4/);
   assert.match(guide, /gh aw add https:\/\/github\.com\/githubnext\/gh-cao\/blob\/main\/\.github\/workflows\/repo-status\.md/);
   assert.match(guide, /control-plane\.workflows/);
