@@ -132,7 +132,7 @@ views, or return after your existing workflows have run and Activity has refresh
 
 Want a first report rather than a code change? The
 [Repo Status quickstart](setup/quickstart.md) installs a cross-repository
-campaign and walks through one bounded review run. Its CAO-specific video
+standalone workflow and walks through one bounded review run. Its CAO-specific video
 recording is not yet available; the written steps are complete.
 
 Monitoring is enough to get started. When you have a task you want CAO to perform,

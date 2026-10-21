@@ -17,21 +17,12 @@ test("campaign detail keeps the embedded README title out of the page heading ou
   assert.doesNotMatch(campaignDetail, /\.campaign-readme :global\(h1\)/);
 });
 
-test("campaign detail uses CAO lifecycle commands without a version placeholder", () => {
+test("campaign detail installs the latest release without a version placeholder", () => {
   assert.match(
     campaignDetail,
-    /const installCommand = entry\.builtin[\s\S]*?"gh cao update"[\s\S]*?`gh cao campaigns add githubnext\/gh-cao\/\$\{entry\.slug\}`;/,
+    /const installCommand = `gh aw add githubnext\/gh-cao\/\$\{entry\.slug\}`;/,
   );
   assert.doesNotMatch(campaignDetail, /catalog-release/);
-});
-
-test("catalog resolves README and manifest paths from repository-relative campaign directories", () => {
-  const source = readFileSync(new URL("../../docs/lib/catalog.ts", import.meta.url), "utf8");
-  assert.match(source, /const campaignPath = manifestPath\.replace/);
-  const expression = /const campaignPath = (.+);/.exec(source)[1];
-  const campaignPath = new Function("manifestPath", `return ${expression}`);
-  assert.equal(campaignPath("../../repo-status/aw.yml"), "repo-status");
-  assert.equal(campaignPath("../../.experimental/example/aw.yaml"), ".experimental/example");
 });
 
 test("campaign detail code examples scroll without widening the page", () => {

@@ -20,7 +20,6 @@ const paths = [
   "dashboard/",
   "catalog/",
   "catalog/dependabot/",
-  "catalog/repo-status/",
   "blog/",
   "operational-observability-visualization-specification/",
   "operational-value-how-to/",
@@ -38,13 +37,15 @@ for (const width of [320, 1280]) {
     await expect(content).toContainText("There is no video to play yet");
     await expect(content.locator("video, iframe")).toHaveCount(0);
     await expect(content).toContainText("safe_output_mode=\"review\"");
+    await expect(content).toContainText("control-plane.workflows");
+    await expect(content).toContainText("No campaign, orchestrator or worker dispatch is required");
+    await expect(content).toContainText("manual-only");
+    await expect(content).toContainText("Operational value is not measurable yet");
     for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
       const href = await link.getAttribute("href");
       expect((await page.request.get(href)).ok(), href).toBe(true);
     }
     expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
-    expect((await page.goto("catalog/repo-status/"))?.ok()).toBe(true);
-    await expect(page.locator("main")).toContainText("Operational value is not measurable yet");
   });
 }
 

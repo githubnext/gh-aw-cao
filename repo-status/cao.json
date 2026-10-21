@@ -1,7 +1,0 @@
-{
-  "campaign": "repo-status",
-  "orchestrator": "repo-status",
-  "workers": {
-    "report": "repo-status-report"
-  }
-}

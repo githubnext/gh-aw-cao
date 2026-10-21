@@ -8,9 +8,10 @@ const names = (files) => selectCampaignLifecycleSuites(files).map(({ name }) => 
 test("campaign lifecycle matrix selects only campaigns owning changed files", () => {
   assert.deepEqual(names(["uk-ai-advisory/dashboard.json"]), []);
   assert.deepEqual(names(["install.sh"]), ["root"]);
+  assert.deepEqual(names([".github/workflows/repo-status.md"]), ["root"]);
   assert.deepEqual(
     names([".github/workflows/shared/control.md"]),
-    ["root", "CAO Evolution", "Dependabot", "Optimization", "Repo Status"],
+    ["root", "CAO Evolution", "Dependabot", "Optimization"],
   );
   assert.deepEqual(
     names(["dashboard/site/index.html"]),
@@ -42,8 +43,6 @@ test("campaign lifecycle matrix selects a campaign and its dependents when its m
   assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity"]);
   assert.deepEqual(names(["software-development-practices/aw.yml"]), []);
   assert.deepEqual(names(["self-care/aw.yml"]), []);
-  assert.deepEqual(names(["repo-status/aw.yml"]), ["Repo Status"]);
-  assert.deepEqual(names([".github/workflows/repo-status-report.md"]), ["Repo Status"]);
 });
 
 test("campaign lifecycle matrix selects no campaigns for unrelated changes", () => {
@@ -52,8 +51,8 @@ test("campaign lifecycle matrix selects no campaigns for unrelated changes", () 
 
 test("campaign lifecycle matrix selects all campaigns for manual runs", () => {
   const suites = selectCampaignLifecycleSuites(null);
-  assert.equal(suites.length, 7);
-  assert.equal(names(["tests/integration/campaign-lifecycle.test.mjs"]).length, 7);
+  assert.equal(suites.length, 6);
+  assert.equal(names(["tests/integration/campaign-lifecycle.test.mjs"]).length, 6);
 
   const source = readFileSync(new URL("../integration/campaign-lifecycle.test.mjs", import.meta.url), "utf8");
   const testNames = [...source.matchAll(/^test\("([^"]+)"/gm)].map((match) => match[1]);

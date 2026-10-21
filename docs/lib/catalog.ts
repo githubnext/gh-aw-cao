@@ -88,7 +88,7 @@ const campaignEntries: CatalogEntry[] = Object.entries(manifests)
     if (!slug) throw new Error(`Could not derive a campaign slug from ${manifestPath}`);
     const manifestFile = manifestPath.split("/").at(-1);
     if (!manifestFile) throw new Error(`Could not derive a manifest filename from ${manifestPath}`);
-    const campaignPath = manifestPath.replace(/^(?:\.\.\/)+/, "").replace(/\/aw\.ya?ml$/, "");
+    const campaignPath = manifestPath.replace(/^\.\.\//, "").replace(/\/aw\.ya?ml$/, "");
 
     const manifest = parse(source) as CampaignManifest;
     const readmeSourcePath = `../../${campaignPath}/README.md`;

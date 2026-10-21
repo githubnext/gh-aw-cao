@@ -19,6 +19,7 @@ const suites = [
       ".github/workflows/graders/cao-evolution-",
       ".github/workflows/graders/dependabot-",
       ".github/workflows/shared/",
+      ".github/workflows/repo-status.",
     ],
   },
   {
@@ -106,12 +107,6 @@ const suites = [
       ".github/workflows/optimization",
       ".github/workflows/shared/",
     ],
-  },
-  {
-    name: "Repo Status",
-    manifest: "repo-status/aw.yml",
-    testPattern: "focused Repo Status campaign contract",
-    prefixes: [".github/workflows/repo-status", ".github/workflows/shared/"],
   },
 ];
 

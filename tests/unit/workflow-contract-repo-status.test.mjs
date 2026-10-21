@@ -1,19 +1,17 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
 import { parse } from "yaml";
 import { controlPolicy, root, workflow } from "./workflow-contract.helpers.mjs";
 
-const dispatcherSource = workflow("repo-status.md");
-const workerSource = workflow("repo-status-report.md");
+const source = workflow("repo-status.md");
 const config = (source) => parse(/^---\n([\s\S]*?)\n---/.exec(source)[1]);
-const dispatcher = config(dispatcherSource);
-const worker = config(workerSource);
+const report = config(source);
 
 function executeStep(name, { github, files = new Map(), environment = {} }) {
-  const step = worker.steps.find(entry => entry.name === name);
+  const step = report.steps.find(entry => entry.name === name);
   assert.ok(step, name);
   const fs = {
     mkdirSync() {},
@@ -26,74 +24,109 @@ function executeStep(name, { github, files = new Map(), environment = {} }) {
   return runInNewContext(`(async () => { ${step.with.script}\n })()`, {
     require(name) { assert.equal(name, "node:fs"); return fs; },
     github,
+    core: { setOutput() {} },
     context: { repo: { owner: "acme", repo: "control" }, runId: 123 },
     process: { env: environment },
   }).then(() => files);
 }
 
-test("Repo Status is a public optional package, registered without activation or scope expansion", () => {
-  const manifest = parse(readFileSync(join(root, "repo-status/aw.yml"), "utf8"));
-  const declaration = JSON.parse(readFileSync(join(root, "repo-status/cao.json"), "utf8"));
-  assert.equal(manifest.name, "Repo Status");
-  assert.equal(manifest["min-version"], controlPolicy["gh-aw-version"]);
-  assert.equal(manifest.private ?? false, false);
-  assert.equal(manifest.experimental, true);
-  assert.deepEqual(manifest.includes, [
-    ".github/workflows/repo-status.md", ".github/workflows/repo-status-report.md", "README.md", "LICENSE",
-  ]);
-  assert.deepEqual(declaration, {
-    campaign: "repo-status", orchestrator: "repo-status", workers: { report: "repo-status-report" },
-  });
+test("Repo Status is standalone and registered without campaign packaging or activation", () => {
+  assert.equal(existsSync(join(root, "repo-status/aw.yml")), false);
+  assert.equal(existsSync(join(root, "repo-status/cao.json")), false);
+  assert.equal(existsSync(join(root, ".github/workflows/repo-status-report.md")), false);
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
   assert.equal(rootManifest.includes.includes("repo-status/aw.yml"), false);
-  assert.deepEqual(controlPolicy["control-plane"].campaigns["repo-status"], {
-    enabled: false, icon: "graph", mode: "review", "max-repositories": 1,
-    workers: { report: { workflow: "repo-status-report", "max-mode": "review" } },
+  assert.equal(controlPolicy["control-plane"].campaigns["repo-status"], undefined);
+  assert.deepEqual(controlPolicy["control-plane"].workflows["repo-status"], {
+    enabled: false, mode: "review", "max-mode": "review", "max-repositories": 1,
   });
 });
 
-test("Repo Status preserves one-target workers, explicit modes and the shared credential/admission boundary", () => {
-  for (const [source, frontmatter] of [[dispatcherSource, dispatcher], [workerSource, worker]]) {
-    assert.match(source, /^if: needs\.pre_activation\.outputs\.cao_authorized == 'true'$/m);
-    assert.match(source, /cao_precompute\.outputs\.authorized != 'false'/);
-    assert.equal(frontmatter.strict, true);
-    assert.equal(frontmatter.engine, "copilot");
-    assert.equal(frontmatter.permissions["copilot-requests"], "write");
-    const control = frontmatter.imports.find(entry => entry.uses === "shared/control.md");
-    assert.equal(control.with.campaign, "repo-status");
-    for (const [permission, access] of Object.entries(frontmatter.permissions)) {
-      if (access !== "read") continue;
-      assert.equal(control.with[`read_${permission.replaceAll("-", "_")}`], "read", permission);
-    }
-    assert.match(source.trim(), /\{\{#runtime-import\? \.github\/cao\/repo-status\.md\}\}$/);
-    assert.equal(frontmatter["safe-outputs"].noop, undefined);
+test("Repo Status preserves single-target standalone execution and shared credential/admission boundaries", () => {
+  assert.match(source, /^if: needs\.pre_activation\.outputs\.cao_authorized == 'true'$/m);
+  assert.match(source, /cao_precompute\.outputs\.authorized != 'false'/);
+  assert.equal(report.strict, true);
+  assert.equal(report.engine, "copilot");
+  assert.equal(report.permissions["copilot-requests"], "write");
+  const control = report.imports.find(entry => entry.uses === "shared/control.md");
+  assert.equal(control.with.role, "standalone");
+  assert.equal(control.with.workflow, "repo-status");
+  assert.equal(control.with.campaign, undefined);
+  assert.equal(control.with.worker, undefined);
+  for (const [permission, access] of Object.entries(report.permissions)) {
+    if (access !== "read") continue;
+    assert.equal(control.with[`read_${permission.replaceAll("-", "_")}`], "read", permission);
   }
-  assert.equal(dispatcher.on.schedule, "hourly");
-  assert.equal(dispatcher.on.workflow_dispatch.inputs.safe_output_mode.default, "review");
-  assert.deepEqual(dispatcher.tools["repo-memory"], { "branch-name": "memory/repo-status" });
-  assert.match(dispatcherSource, /\$GH_AW_MEMORY_DIR/);
-  assert.match(dispatcherSource, /Deduplicate every[\s\S]*\(worker, target_repo, safe_output_mode\)/);
-  assert.equal(dispatcher["safe-outputs"]["threat-detection"], false);
-  assert.deepEqual(dispatcher["safe-outputs"]["dispatch-workflow"], { workflows: ["repo-status-report"], max: 10 });
-  const mode = worker.on.workflow_dispatch.inputs.safe_output_mode;
-  assert.deepEqual(mode, { required: true, type: "string" });
-  assert.equal(worker.imports[0].with.worker, "report");
-  assert.equal(worker.imports[0].with.read_repository, "${{ inputs.target_repo }}");
-  assert.equal(worker.checkout, false);
-  assert.equal(worker.tools.github["min-integrity"], "none");
-  assert.equal(worker.tools.github.lockdown, false);
-  assert.deepEqual(worker.tools.bash, ["cat"]);
-  assert.equal(worker.evals, undefined);
-  assert.equal(worker["safe-outputs"]["dispatch-workflow"], undefined);
+  assert.match(source, /\{\{#runtime-import\? \.github\/cao\/repo-status\.md\}\}/);
+  assert.equal(report.on.schedule, undefined);
+  assert.equal(report.on.workflow_dispatch.inputs.target_repo.required, true);
+  assert.deepEqual(report.on.workflow_dispatch.inputs.safe_output_mode, {
+    default: "review", type: "choice", options: ["review", "live"],
+  });
+  assert.equal(report.tools["repo-memory"], undefined);
+  assert.equal(control.with.read_repository, "${{ inputs.target_repo }}");
+  assert.equal(report.checkout, false);
+  assert.equal(report.tools.github["min-integrity"], "none");
+  assert.equal(report.tools.github.lockdown, false);
+  assert.deepEqual(report.tools.bash, ["cat"]);
+  assert.equal(report.evals, undefined);
+  assert.equal(report["safe-outputs"]["dispatch-workflow"], undefined);
+  for (const input of ["correlation_id", "central_repo", "control_plane_run_url", "batch_label"]) {
+    assert.equal(report.on.workflow_dispatch.inputs[input], undefined);
+  }
+});
+
+test("standalone target guard accepts only the admitted target, mode and output route", async () => {
+  const path = "/tmp/gh-aw/agent/control-precompute.json";
+  const targetPath = "/tmp/gh-aw/agent/repo-status/target.json";
+  const environment = {
+    TARGET_REPO: "acme/target", REQUESTED_MODE: "review",
+    REVIEW_OUTPUT_REPO: "acme/control", OUTPUT_REPOSITORY: "acme/control",
+  };
+  const target = { full_name: "acme/target", safe_output_mode: "review", safe_output_repo: "acme/control" };
+  const admitted = {
+    authorized: true, control_role: "standalone", workflow: "repo-status",
+    effective_max_repos: 1, candidate_repositories: [target],
+  };
+  const execute = (precompute, env = environment) => executeStep("Validate the standalone report target", {
+    github: {}, files: new Map([[path, JSON.stringify(precompute)]]), environment: env,
+  });
+  const accepted = await execute(admitted);
+  assert.deepEqual(JSON.parse(accepted.get(targetPath)), { target });
+  await execute(admitted, { ...environment, TARGET_REPO: "ACME/Target", OUTPUT_REPOSITORY: "ACME/Control" });
+  const live = { ...target, safe_output_mode: "live", safe_output_repo: target.full_name };
+  await execute({ ...admitted, candidate_repositories: [live] }, {
+    ...environment, REQUESTED_MODE: "live",
+    REVIEW_OUTPUT_REPO: target.full_name, OUTPUT_REPOSITORY: target.full_name,
+  });
+  await assert.rejects(execute({ ...admitted, candidate_repositories: [live] }, {
+    ...environment, REQUESTED_MODE: "live", OUTPUT_REPOSITORY: target.full_name,
+  }), /admitted routing/, "the write credential must be configured for the actual live destination");
+  const empty = await execute({ ...admitted, effective_max_repos: 0, candidate_repositories: [] });
+  assert.deepEqual(JSON.parse(empty.get(targetPath)), { target: null });
+  for (const invalid of [
+    { ...admitted, authorized: false },
+    { ...admitted, control_role: "worker" },
+    { ...admitted, workflow: "another-workflow" },
+    { ...admitted, candidate_repositories: null },
+    { ...admitted, candidate_repositories: [target, target] },
+    { ...admitted, effective_max_repos: 0 },
+    { ...admitted, effective_max_repos: null },
+    { ...admitted, candidate_repositories: [{ ...target, full_name: "acme/other" }] },
+    { ...admitted, candidate_repositories: [{ ...target, safe_output_mode: "live" }] },
+    { ...admitted, candidate_repositories: [{ ...target, safe_output_repo: "acme/other" }] },
+  ]) {
+    await assert.rejects(execute(invalid), /admission|admitted target|admitted routing/);
+  }
 });
 
 test("compiled status outputs enforce destination routing, deduplication and guarded body-only refresh", () => {
-  const compiled = parse(workflow("repo-status-report.lock.yml"));
+  const compiled = parse(workflow("repo-status.lock.yml"));
   const handler = compiled.jobs.safe_outputs.steps.find(step => step.env?.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG);
   assert.ok(handler);
   const outputs = JSON.parse(handler.env.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG);
-  const create = worker["safe-outputs"]["create-issue"];
-  const update = worker["safe-outputs"]["update-issue"];
+  const create = report["safe-outputs"]["create-issue"];
+  const update = report["safe-outputs"]["update-issue"];
   assert.equal(create["deduplicate-by-title"], true);
   assert.equal(create.expires, "3d");
   assert.equal(create.max, 1);
@@ -102,7 +135,7 @@ test("compiled status outputs enforce destination routing, deduplication and gua
   assert.equal(update.body, true);
   assert.equal(update.title, undefined);
   assert.equal(update.status, undefined);
-  assert.deepEqual(update["required-labels"], ["repo-status", "repo-status:report"]);
+  assert.deepEqual(update["required-labels"], ["repo-status"]);
   assert.equal(create["target-repo"], update["target-repo"]);
   assert.match(create["target-repo"], /== 'review' && \(inputs\.safe_output_repo \|\| github\.repository\) \|\| inputs\.target_repo/);
   assert.equal(outputs.create_issue.deduplicate_by_title, true);
@@ -111,11 +144,15 @@ test("compiled status outputs enforce destination routing, deduplication and gua
   assert.equal(outputs.update_issue.allow_title, undefined);
   assert.equal(outputs.update_issue.allow_status, undefined);
   assert.equal(outputs.noop["report-as-issue"], "false");
-  assert.equal(worker["safe-outputs"]["close-issue"], undefined);
-  assert.match(workerSource, /Emit exactly one of those operations, never both/);
-  assert.match(workerSource, /render target item references as inline code, not links/);
-  assert.match(workerSource, /fully read quiet day|every category was completely read/);
-  assert.match(workerSource, /Missing required API access or failed[\s\S]*`report_incomplete`/);
+  assert.equal(report["safe-outputs"]["close-issue"], undefined);
+  assert.equal(create["target-repo"], report.steps[0].env.OUTPUT_REPOSITORY);
+  const guard = compiled.jobs.agent.steps.findIndex(step => step.id === "repo_status_target");
+  const window = compiled.jobs.agent.steps.findIndex(step => step.name === "Fix the daily reporting window");
+  assert.ok(guard >= 0 && window > guard, "routing guard runs before report evidence collection");
+  assert.match(source, /Emit exactly one of those operations, never both/);
+  assert.match(source, /render target item references as inline code, not links/);
+  assert.match(source, /fully read quiet day|every category was completely read/);
+  assert.match(source, /Missing required API access or failed[\s\S]*`report_incomplete`/);
 });
 
 test("report windows use the original run time across midnight, leap days and year boundaries", async () => {
@@ -156,7 +193,7 @@ test("report lookups are destination-bound, include closed duplicates and fail c
   assert.equal(calls.length, 2);
   assert.equal(calls[0].owner, "acme");
   assert.equal(calls[0].repo, "control");
-  assert.equal(calls[0].labels, "repo-status,repo-status:report");
+  assert.equal(calls[0].labels, "repo-status");
   assert.equal(calls[0].state, "open");
   assert.equal(calls[1].state, "closed");
   assert.equal(calls[1].since, "2026-10-20T00:00:00.000Z");
@@ -180,25 +217,27 @@ test("report lookups are destination-bound, include closed duplicates and fail c
     assert.equal(requests, failure === "access" ? 1 : 2);
     assert.equal(output.has(reportPath), false, "failure must not publish success-shaped evidence");
   }
-  const lookup = worker.steps.find(step => step.name === "Read existing owned reports");
+  const lookup = report.steps.find(step => step.name === "Read existing owned reports");
+  assert.equal(lookup.if, "${{ steps.repo_status_target.outputs.eligible == 'true' }}");
   assert.match(lookup.with["github-token"], /== github\.repository && github\.token \|\| steps\.cao_target_read_credential\.outputs\.token/);
 });
 
 test("Setup quickstart is discoverable, review-first and honest about the missing recording and operational value", () => {
   const guide = readFileSync(join(root, "docs/setup/quickstart.md"), "utf8");
-  const readme = readFileSync(join(root, "repo-status/README.md"), "utf8");
   assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart", link: "\/setup\/quickstart\/"/);
   assert.match(guide, /CAO recording not yet available/);
   assert.doesNotMatch(guide, /<video|<iframe|youtube\.com|youtu\.be|\.mp4/);
-  assert.match(guide, /gh cao campaigns add githubnext\/gh-cao\/repo-status/);
-  assert.match(guide, /gh cao campaigns mode preview repo-status/);
+  assert.match(guide, /gh aw add https:\/\/github\.com\/githubnext\/gh-cao\/blob\/main\/\.github\/workflows\/repo-status\.md/);
+  assert.match(guide, /control-plane\.workflows/);
+  assert.doesNotMatch(guide, /gh cao campaigns add|gh cao campaigns mode|gh workflow enable/);
+  assert.match(guide, /manual-only/);
   assert.match(guide, /"enabled": false/);
   assert.match(guide, /"max-mode": "review"/);
-  assert.match(guide, /trap 'gh workflow disable repo-status\.lock\.yml' EXIT/);
   assert.match(guide, /--raw-field safe_output_mode="review"/);
   assert.match(guide, /--raw-field max_repos="1"/);
   assert.match(guide, /gh issue list --repo CONTROL_OWNER\/CONTROL_REPOSITORY/);
-  assert.match(readme, /Operational value is not measurable yet/);
-  assert.match(readme, /ae8d551f07c7ed7619f8c58c7bb4c3ac89395d38\/workflows\/repo-status\.md/);
-  assert.match(readFileSync(join(root, "repo-status/LICENSE"), "utf8"), /Copyright \(c\) 2025 GitHub/);
+  assert.match(guide, /Operational value is not measurable yet/);
+  assert.match(source, /ae8d551f07c7ed7619f8c58c7bb4c3ac89395d38\/workflows\/repo-status\.md/);
+  assert.match(source, /Copyright \(c\) 2025 GitHub/);
+  assert.match(source, /The above copyright notice and this permission notice shall be included in all/);
 });
