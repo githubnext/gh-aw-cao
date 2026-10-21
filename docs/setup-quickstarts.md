@@ -39,19 +39,20 @@ root directory before installing CAO. Enable Actions. For targets in one
 organization, prefer owning the control repository there; see
 [other topologies](deployment-and-governance.md).
 
-From a clean default-branch checkout, install the
-**`gh cao` GitHub CLI extension**, **repository runtime**, and required
-`gh-aw` extension:
+Install the **`gh cao` GitHub CLI extension**:
+
+```bash
+gh extension install githubnext/gh-cao
+```
+
+Then, from a clean default-branch checkout, install the **repository runtime**
+and required `gh-aw` extension:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
 ```
 
-The installer verifies checksums and version and supports published
-prereleases.
-
-Direct `gh extension install` currently fails, even with `--pin`: latest
-stable lacks binaries. Use the installer; see [why](cao-cli.md#github-cli-extension).
+The runtime installer verifies checksums and versions.
 
 :::tip[Installation and authentication]
 If authentication fails, sign in and retry:
@@ -61,7 +62,7 @@ gh auth login
 gh auth status
 ```
 
-The installer requires GitHub CLI sign-in.
+GitHub CLI extension installation requires GitHub CLI sign-in.
 :::
 
 ```bash

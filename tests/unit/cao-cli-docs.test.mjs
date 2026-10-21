@@ -12,6 +12,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.ok(optional > 0);
   const monitoring = gettingStarted.slice(0, optional);
   const commands = [
+    "gh extension install githubnext/gh-cao",
     "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
     "gh cao --version",
     "gh cao setup",
@@ -36,12 +37,11 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.ok(monitoring.indexOf(":::note[Video TODO]") < monitoring.indexOf("## Prerequisites"));
   const install = monitoring.slice(monitoring.indexOf("## Step 1"), monitoring.indexOf("## Step 2"));
   assert.match(install, /`gh cao` GitHub CLI extension/);
-  assert.match(install, /repository\s+runtime/);
-  assert.match(install, /required\s+`gh-aw` extension/);
+  assert.match(install, /repository runtime/);
+  assert.match(install, /required `gh-aw` extension/);
   assert.match(install, /--create-repo OWNER\/CONTROL_REPOSITORY/);
-  assert.doesNotMatch(install, /```bash\ngh extension install/);
-  assert.match(install, /supports published\s+prereleases/);
-  assert.match(install, /currently fails, even with `--pin`/);
+  assert.match(install, /```bash\ngh extension install githubnext\/gh-cao\n```/);
+  assert.match(install, /runtime installer verifies checksums and versions/);
   assert.match(install, /:::tip\[Installation and authentication\]/);
   assert.match(install, /```bash\ngh auth login\ngh auth status\n```/);
   assert.match(install, /installer requires GitHub CLI sign-in/);
