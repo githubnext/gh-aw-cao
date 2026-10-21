@@ -127,6 +127,7 @@ test("landing page shows shared and local workflows with explicit ownership", ()
   assert.match(hero, /\.dispatch-story \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*gap: 0\.75rem/);
   assert.match(hero, /\.dispatch-story > \.section-eyebrow \{[\s\S]*?justify-self: center/);
   assert.match(hero, /\.dispatch-story > p:not\(\.section-eyebrow\) \{[^}]*max-width: 60ch/);
+  assert.match(hero, /\.dispatch-illustration \{[^}]*width: min\(100%, 72rem\);[^}]*margin: 1rem auto 0/);
   assert.match(hero, /@media \(min-width: 64rem\) \{[\s\S]*?\.dispatch-story h2 \{[\s\S]*?white-space: nowrap/);
   assert.match(hero, /Enterprise teams, organizations, and repository maintainers own their workflows/);
   assert.match(hero, /<WorkflowEcosystem \/>/);
@@ -301,7 +302,6 @@ test("campaign documentation preserves the animated bounded dispatch illustratio
     illustration,
     /@container \(max-width: 1180px\) \{[\s\S]*?\.flow-layout \{[\s\S]*?display: none[\s\S]*?\.mobile-flow \{[\s\S]*?display: block/,
   );
-  assert.match(hero, /width: min\(100%, 80rem\)/);
   assert.match(illustration, /operation: "Dependabot update planner"/);
   assert.match(illustration, /workflow: "Dependabot \/ Update Planner"/);
   assert.match(illustration, /repository: "github\/gh-aw"/);
