@@ -217,7 +217,11 @@ test("CAO introduction presents operating capabilities and leads to how CAO work
   const content = page.locator(".sl-markdown-content");
   expect((await content.innerText()).match(/central agentic ops/gi)).toHaveLength(1);
   await expect(content.locator("p").first()).toContainText("Central Agentic Ops (CAO)");
+  await expect(content.locator("p").first()).toContainText("a system for monitoring and governing GitHub Agentic Workflows across repositories");
   await expect(content).toContainText("GitHub Agentic Workflows (AWs) are AI-powered workflows");
+  await expect(content).toContainText("AWs are the building blocks; CAO is the larger operational system.");
+  await expect(content).toContainText("governs whether and where participating shared workflows may run");
+  await expect(content).toContainText("Monitoring an AW does not automatically bring it under CAO governance.");
   await expect(content).toContainText("understand and operate this work across repositories");
   await expect(content).toContainText("A successful run is not automatically a successful outcome.");
   await expect(content.locator("h2")).toHaveText([

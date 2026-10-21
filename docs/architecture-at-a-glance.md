@@ -1,15 +1,15 @@
 ---
 title: What is Central Agentic Ops?
-description: Observe, evaluate, and operate agentic work across repositories, with shared visibility and controlled rollout.
+description: Monitor and govern GitHub Agentic Workflows across repositories, with shared evidence and policy-controlled execution.
 next:
   link: /gh-cao/how-cao-works/
   label: How does CAO work?
 ---
 
-**Central Agentic Ops (CAO)** helps you observe, evaluate, and operate GitHub
+**Central Agentic Ops (CAO)** is a system for monitoring and governing GitHub
 Agentic Workflows across repositories. It brings collected activity, cost, and
-outcome evidence into a shared dashboard and provides policy controls for the
-execution and rollout of participating shared workflows.
+outcome evidence into a shared dashboard and supports policy-governed execution
+and rollout of participating shared workflows.
 
 <span id="what-is-central-agentic-ops"></span>
 
@@ -20,6 +20,12 @@ Actions. You describe a task in Markdown, and an agent carries it out with
 configured tools and permissions. They can respond to events, run on a schedule,
 or be requested on demand. CAO monitors these workflows, not every ordinary
 Actions job. [Learn about GitHub Agentic Workflows](https://github.github.com/gh-aw/introduction/overview/).
+
+**AWs are the building blocks; CAO is the larger operational system.**
+GitHub Agentic Workflows controls how each workflow executes and which
+capabilities it has. CAO brings evidence from those workflows together and
+governs whether and where participating shared workflows may run. Monitoring
+an AW does not automatically bring it under CAO governance.
 
 You might have workflows triaging issues in one repository and investigating
 failures in another. Rather than checking each repository separately, CAO helps
