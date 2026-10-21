@@ -78,3 +78,44 @@ func TestGatewayDiscoveryRejectsMixedRoles(t *testing.T) {
 		t.Fatal("discovery accepted production credentials")
 	}
 }
+
+func TestReadWorkflowArtifactBounds(t *testing.T) {
+	dir := t.TempDir()
+	atLimit := filepath.Join(dir, "limit.lock.yml")
+	if err := os.WriteFile(atLimit, bytes.Repeat([]byte("a"), gateway.MaxWorkflowArtifactBytes), 0600); err != nil {
+		t.Fatal(err)
+	}
+	data, err := readWorkflowArtifact(atLimit)
+	if err != nil || len(data) != gateway.MaxWorkflowArtifactBytes {
+		t.Fatal("artifact at the limit was rejected", len(data), err)
+	}
+	oversized := filepath.Join(dir, "over.lock.yml")
+	if err := os.WriteFile(oversized, bytes.Repeat([]byte("a"), gateway.MaxWorkflowArtifactBytes+1), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readWorkflowArtifact(oversized); err == nil {
+		t.Fatal("oversized artifact was accepted")
+	}
+	if _, err := readWorkflowArtifact(filepath.Join(dir, "missing.lock.yml")); err == nil {
+		t.Fatal("missing artifact was accepted")
+	}
+}
+
+func TestGatewayDiscoveryRejectsInvalidInputs(t *testing.T) {
+	path := discoveryFixture(t)
+	var output bytes.Buffer
+	if err := discoverWorkflows(t.Context(), []string{filepath.Join(t.TempDir(), "workflow.yml")}, &output); err == nil {
+		t.Fatal("non-lock-file path was accepted")
+	}
+	bad := filepath.Join(t.TempDir(), "bad.lock.yml")
+	if err := os.WriteFile(bad, []byte("name: no manifest\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := discoverWorkflows(t.Context(), []string{path, bad}, &output); err == nil || output.Len() != 0 {
+		t.Fatal("invalid manifest produced a partial mapping", err)
+	}
+	tooMany := make([]string, 1025)
+	if err := discoverWorkflows(t.Context(), tooMany, &output); err == nil {
+		t.Fatal("oversized inventory was accepted")
+	}
+}
