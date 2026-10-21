@@ -8,8 +8,9 @@ your control repository, select one target, and review yesterday's activity
 without writing to the target. By the end of this guide, you will have requested
 one bounded review and know where to find its report or no-op explanation.
 
-**Estimated time: 15 minutes after setup**, plus review and workflow execution
-time. No campaign, orchestrator or worker dispatch is required.
+**Estimated time: 30 minutes including setup**, plus credential approval,
+review, and workflow execution time. No campaign, orchestrator or worker
+dispatch is required.
 
 :::note[CAO recording not yet available]
 **Video TODO:** record adding Repo Status, requesting one review-mode run, and
@@ -19,11 +20,11 @@ follow the written steps below.
 
 ## Prerequisites
 
-- **A configured control repository.** Complete [Set Up CAO](../setup-quickstarts.md)
-  first, including installation, credentials, and publishing the configuration.
-  Reuse that setup; do not reinstall. Start from a clean checkout of its default
-  branch with an authenticated GitHub CLI and permission to configure Actions.
-- **One explicitly enrolled target.** Keep exact scope for
+- **Local tools and repository access.** You need Git, Bash, `curl`, Node.js 24+,
+  GitHub CLI 2.68+, an authenticated `gh`, and permission to configure Actions,
+  credentials, and Pages in your control repository. Start from a clean checkout
+  of its default branch.
+- **One target repository.** Keep exact scope for
   `TARGET_OWNER/TARGET_REPOSITORY` and the control repository, not organization
   wildcards. Use a private control repository for private or internal evidence:
   reports inherit its visibility, and private Pages access is a separate setting.
@@ -35,9 +36,32 @@ follow the written steps below.
 - **Model access.** This workflow uses Copilot and needs its model authentication
   and AI credits, separately from repository credentials. Review the workflow's
   data handling, permitted integrations, and access to logs and artifacts before
-  enabling it.
+  its first run.
 
-## Step 1 - Add and review the sample workflow
+## Step 1 - Set up CAO and monitor one repository
+
+If you have already completed [Set Up CAO](../setup-quickstarts.md), reuse that
+configuration and dashboard; continue to Step 2.
+
+Otherwise, install CAO and start guided setup from your control repository:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+gh cao setup
+```
+
+In **Repositories**, enter one exact `TARGET_OWNER/TARGET_REPOSITORY` to monitor;
+keep the control repository included. In **Connections**, configure credentials
+for that scope, then **Review and apply**. Setup configures monitoring, not
+execution: it does not commit, push, or run the sample workflow.
+
+Follow [Set Up CAO](../setup-quickstarts.md#step-3---review-and-publish-your-configuration)
+to review and publish the configuration, wait for **CAO Activity** and **CAO
+Dashboard**, and open your dashboard. Inspect existing runs if available.
+An empty dashboard is expected if the monitored repository has no Agentic
+Workflow history; generating activity is not required before continuing.
+
+## Step 2 - Add and review the sample workflow
 
 From your control repository's checkout, install the CAO Repo Status workflow:
 
@@ -50,27 +74,28 @@ It reuses the shared runtime installed by CAO setup. To pin a reviewed revision,
 replace `main` in the URL with its full commit SHA. Installation does not
 execute the workflow or authorize it in CAO.
 
-### Declare its review-only policy
+### Register the workflow
 
 In `.github/workflows/cao.json`, preserve your existing policy and add this
 entry under **`control-plane.workflows`**, not `control-plane.campaigns`:
 
 ```json
 {
-  "repo-status": {
-    "enabled": false,
-    "mode": "review",
-    "max-mode": "review",
-    "max-repositories": 1,
-    "rollout-percent": 100
-  }
+  "repo-status": {}
 }
 ```
 
 Keep `control-plane.scope.allowed-owners` and `allowed-repositories` restricted
 to the exact control repository and target. Keep unrelated workflow and campaign
-settings unchanged. The initial **`enabled: false`** blocks agent execution
-until the installation and policy have been reviewed.
+settings unchanged.
+
+The empty entry registers the workflow with no extra policy settings. With
+unchanged `control-plane.defaults`, it inherits **review** mode, a
+**one-repository** limit, and **100%** rollout. Registered workflows are enabled
+unless explicitly disabled. If your global defaults differ, explicitly set this
+entry's `mode` to `review`, `max-repositories` to `1`, and `rollout-percent` to
+`100` for this walkthrough. See [configuration](../configuration.md#standalone-agentic-workflows)
+for optional overrides and mode ceilings.
 
 The workflow is deliberately **manual-only**. Each invocation must name one
 target; its read credential is scoped to that repository. CAO verifies that
@@ -78,7 +103,7 @@ the target, mode and output destination match the admitted candidate before
 the model runs. More enrolled repositories do not widen that credential or
 cause an invocation to discover or dispatch additional work.
 
-### Review and publish before enabling
+### Review and publish
 
 ```bash
 gh aw compile .github/workflows/repo-status.md --schedule-seed githubnext/gh-cao
@@ -93,11 +118,9 @@ together. Confirm there are no secrets, placeholders or extra targets in
 policy. Commit using your normal review process and publish to the control
 repository's default branch. Check **CAO validation** in Actions.
 
-Once reviewed, change only `control-plane.workflows.repo-status.enabled` to
-**`true`**, keeping both review settings and the one-target limit. Validate,
-review and publish that policy change too. No schedule starts automatically.
+Publishing this manual-only workflow does not start a run or a schedule.
 
-## Step 2 - Request one bounded review
+## Step 3 - Request one bounded review
 
 Replace all coordinates and `main` with your control repository's actual
 default branch. Run this from its checkout:
@@ -117,7 +140,7 @@ create a report in the control repository: it is not a no-write simulation.
 The per-run ceiling is 300 AI credits, plus any gh-aw output check. A ceiling
 is not expected consumption.
 
-## Step 3 - Wait for the run and inspect its result
+## Step 4 - Wait for the run and inspect its result
 
 Open the control repository's **Actions** tab and follow **Repo Status**.
 Allow time for model execution and output checks; the workflow has a
@@ -144,16 +167,16 @@ Reports expire three days after creation; later daily reports refresh an owned
 report's body without closing another target's issue. Review mode creates no
 target issue, PR, comment, branch or code change.
 
-## Step 4 - Customize your report (optional)
+## Step 5 - Customize your report (optional)
 
 Add optional report priorities in `.github/cao/repo-status.md`; steering cannot
 expand authority. Review, commit, and publish your steering change, then repeat
-Step 2 with the same target and review-mode inputs to try it. Edit the Markdown
+Step 3 with the same target and review-mode inputs to try it. Edit the Markdown
 workflow source, not its generated `.lock.yml`; if you change the workflow,
-repeat Step 1's compile, validation, and review before running again.
+repeat Step 2's compile, validation, and review before running again.
 
 To stop future execution, set the standalone workflow's
-`enabled` back to `false`, commit and publish, and cancel any active runs.
+`enabled` to `false`, commit and publish, and cancel any active runs.
 
 ### Expand only after a separate review
 
@@ -163,7 +186,7 @@ scheduler can request daily runs with explicit target and routing inputs;
 adding a bare schedule does not supply the required target. Recurring runs,
 more targets and live target reports each need a separate reviewed decision.
 Live delivery also requires the target as `safe_output_repo` and a matching
-write credential; this quickstart leaves the policy capped at review.
+write credential; this quickstart requests review mode only.
 See [standalone workflow configuration](../configuration.md#standalone-agentic-workflows)
 and the [rollout guide](../rollout-and-routing.md). Campaigns are optional when
 coordinated work or independent worker scheduling is useful, not a prerequisite
