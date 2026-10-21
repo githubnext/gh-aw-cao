@@ -50,7 +50,7 @@ test("landing stories remain visible with reduced motion", async ({ page }) => {
 
 for (const colorScheme of ["light", "dark"]) {
   for (const width of [320, 390, 1440]) {
-    test(`hero snippet stories render at ${width}px in ${colorScheme}`, async ({ page }, testInfo) => {
+    test(`hero diagrams and campaign render at ${width}px in ${colorScheme}`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
       await page.goto("./");
@@ -68,14 +68,22 @@ for (const colorScheme of ["light", "dark"]) {
       const gateway = page.getByRole("region", { name: "Webhook Gateway", exact: true });
       const admission = page.getByRole("region", { name: "Admission Gate", exact: true });
       await expect(gateway).toContainText("reviewed enrollment");
-      await expect(gateway.locator("code")).toContainText("gateway-dispatch:");
-      await expect(gateway.locator("code")).toContainText("security-alerts: {}");
+      await expect(gateway).toContainText("Dispatch events across repositories");
+      const routing = gateway.getByRole("figure", { name: "Cross-repository webhook dispatch" });
+      await expect(routing).toBeVisible();
+      await expect(routing.locator(".source-repositories strong")).toHaveText(["acme/service-a", "acme/service-b"]);
+      await expect(routing.locator(".destination-repository strong")).toHaveText("acme/control");
+      await expect(routing).toContainText("Cross-repo dispatch");
+      await expect(gateway.locator("pre")).toHaveCount(0);
       await expect(gateway.getByRole("link", { name: "Explore the Webhook Gateway" }))
         .toHaveAttribute("href", /#webhook-gateway-operations$/);
       await expect(admission).toContainText("OIDC");
       await expect(admission).toContainText("not a billing cap");
-      await expect(admission.locator("code")).toContainText("gh cao setup admission");
-      await expect(admission.locator("code")).toContainText("--dry-run");
+      const decision = admission.getByRole("figure", { name: "Workflow admission decision" });
+      await expect(decision).toBeVisible();
+      await expect(decision.locator(".admission-outcomes strong")).toHaveText(["Approve", "Block"]);
+      await expect(decision).toContainText("Fresh AI Credits accounting");
+      await expect(admission.locator("pre")).toHaveCount(0);
       await expect(admission.getByRole("link", { name: "Set up the Admission Gate" }))
         .toHaveAttribute("href", "/gh-cao/admission-gate/");
       expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
@@ -98,12 +106,14 @@ test("landing stories remain visible without JavaScript", async ({ browser, base
     for (const story of await page.locator("[data-reveal]").all()) {
       await expect(story).toHaveCSS("opacity", "1");
     }
-    for (const name of ["Webhook Gateway", "Admission Gate", "Built on Agentic Workflows"]) {
+    for (const name of ["Webhook Gateway", "Admission Gate"]) {
       const section = page.getByRole("region", { name, exact: true });
       await expect(section).toBeVisible();
-      await expect(section.locator(".workflow-example-card")).toHaveCount(3);
-      await expect(section.locator("pre code")).not.toBeEmpty();
+      await expect(section.getByRole("figure")).toBeVisible();
+      await expect(section.locator(".diagram-node")).toHaveCount(4);
     }
+    await expect(page.locator(".agentic-workflows-story .workflow-example-card")).toHaveCount(3);
+    await expect(page.locator(".agentic-workflows-story pre code")).not.toBeEmpty();
   } finally {
     await context.close();
   }

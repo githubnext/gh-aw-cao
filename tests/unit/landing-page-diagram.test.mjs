@@ -115,6 +115,25 @@ test("landing campaign example uses the real Dependabot manifest without grantin
   assert.match(hero, /Reviewed policy controls scope, enablement, and review\/live mode/);
 });
 
+test("gateway and admission hero diagrams distinguish cross-repo dispatch from start-time decisions", () => {
+  const diagrams = readFileSync("docs/components/HeroControlDiagram.astro", "utf8");
+  assert.match(hero, /<HeroControlDiagram kind="gateway" \/>/);
+  assert.match(hero, /<HeroControlDiagram kind="admission" \/>/);
+  assert.match(hero, /Dispatch events across repositories/);
+  assert.match(diagrams, /acme\/service-a/);
+  assert.match(diagrams, /acme\/service-b/);
+  assert.match(diagrams, /acme\/control/);
+  assert.match(diagrams, /Runs in the destination repository, not the event source/);
+  assert.match(diagrams, /Job-issued OIDC identity/);
+  assert.match(diagrams, /Exact enrollment/);
+  assert.match(diagrams, /Fresh AI Credits accounting/);
+  assert.match(diagrams, /<strong>Approve<\/strong>/);
+  assert.match(diagrams, /<strong>Block<\/strong>/);
+  assert.match(diagrams, /not a billing cap or budget reservation/);
+  assert.match(diagrams, /CAO setup defaults to block/);
+  assert.doesNotMatch(diagrams, /<script|data-slideshow-snippet/);
+});
+
 test("terminal output excerpts remain grounded in the production installer and CLI", () => {
   const installer = readFileSync("install.sh", "utf8");
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");

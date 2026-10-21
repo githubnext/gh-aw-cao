@@ -1,0 +1,246 @@
+---
+import { checkPath, repoPath } from "./workflow-illustration-icons.mjs";
+
+interface Props {
+  kind: "gateway" | "admission";
+}
+
+const { kind } = Astro.props;
+const gateway = kind === "gateway";
+---
+
+<figure class="control-diagram" aria-label={gateway ? "Cross-repository webhook dispatch" : "Workflow admission decision"}>
+  <div class="diagram-label">{gateway ? "Events cross repositories. Authority stays explicit." : "Verify first. Then start within policy."}</div>
+  {
+    gateway ? (
+      <>
+        <div class="diagram-pair source-repositories" role="group" aria-label="Enrolled source repositories">
+          {["acme/service-a", "acme/service-b"].map((repository) => (
+            <div class="diagram-node">
+              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={repoPath} /></svg>
+              <strong>{repository}</strong>
+              <span>Security alert event</span>
+            </div>
+          ))}
+        </div>
+        <div class="diagram-connector joined" aria-hidden="true"></div>
+        <div class="diagram-node gate-node">
+          <span class="node-eyebrow">CAO Webhook Gateway</span>
+          <strong>Authenticate. Match. Queue.</strong>
+          <div class="evidence-tags"><span>Enrolled routes</span><span>Bounded batches</span><span>Fresh access checks</span></div>
+        </div>
+        <div class="diagram-connector" aria-hidden="true"><span>Cross-repo dispatch</span></div>
+        <div class="diagram-node destination-repository">
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={repoPath} /></svg>
+          <strong>acme/control</strong>
+          <span>Approved security workflow</span>
+          <span class="node-detail">Runs in the destination repository, not the event source.</span>
+        </div>
+      </>
+    ) : (
+      <>
+        <div class="diagram-node">
+          <span class="node-eyebrow">Participating GitHub Actions workflow</span>
+          <strong>Request permission to start</strong>
+          <span>Job-issued OIDC identity</span>
+        </div>
+        <div class="diagram-connector" aria-hidden="true"><span>Signed identity</span></div>
+        <div class="diagram-node gate-node">
+          <span class="node-eyebrow">CAO Admission Gate</span>
+          <strong>Verify identity and policy</strong>
+          <div class="evidence-tags"><span>Exact enrollment</span><span>Fresh AI Credits accounting</span><span>Policy-defined allowances</span></div>
+        </div>
+        <div class="diagram-connector branched" aria-hidden="true"></div>
+        <div class="diagram-pair admission-outcomes" role="group" aria-label="Admission outcomes">
+          <div class="diagram-node approved-node">
+            <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={checkPath} /></svg>
+            <strong>Approve</strong>
+            <span>Start within allowances</span>
+          </div>
+          <div class="diagram-node blocked-node">
+            <span class="blocked-symbol" aria-hidden="true"></span>
+            <strong>Block</strong>
+            <span>Denied or missing required evidence</span>
+          </div>
+        </div>
+      </>
+    )
+  }
+  <figcaption>
+    {gateway
+      ? "Illustrative enrolled routes. Source and destination access and the approved workflow revision are rechecked before dispatch."
+      : "Optional start-time check, not a billing cap or budget reservation. Outage handling is configurable; CAO setup defaults to block."}
+  </figcaption>
+</figure>
+
+<style>
+  @layer starlight.core {
+    .control-diagram {
+      min-width: 0;
+      margin: 0;
+      color: var(--cao-story-heading);
+    }
+
+    .diagram-label {
+      margin-bottom: 1.25rem;
+      color: var(--cao-story-text);
+      font-size: 0.8125rem;
+      text-align: center;
+      text-wrap: balance;
+    }
+
+    .diagram-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .diagram-node {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.375rem;
+      border: 1px solid var(--cao-loop-border);
+      border-radius: 0.5rem;
+      padding: 1rem 0.75rem;
+      background: var(--cao-section-bg);
+      font-size: 0.8125rem;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .diagram-node strong {
+      font-size: 0.9375rem;
+      font-weight: 600;
+    }
+
+    .diagram-node > span,
+    figcaption {
+      color: var(--cao-story-text);
+    }
+
+    .diagram-node svg,
+    .blocked-symbol {
+      width: 1.25rem;
+      height: 1.25rem;
+      flex: 0 0 auto;
+      color: var(--sl-color-text-accent);
+      fill: currentColor;
+    }
+
+    .node-eyebrow {
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .gate-node {
+      border-color: var(--sl-color-text-accent);
+      background: color-mix(in srgb, var(--sl-color-text-accent) 8%, var(--cao-section-bg));
+    }
+
+    .evidence-tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.375rem;
+      margin-top: 0.375rem;
+    }
+
+    .evidence-tags span {
+      border: 1px solid var(--cao-section-border);
+      border-radius: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      color: var(--cao-story-text);
+      font-size: 0.6875rem;
+    }
+
+    .diagram-connector {
+      position: relative;
+      display: grid;
+      height: 3rem;
+      place-items: center;
+    }
+
+    .diagram-connector::before {
+      position: absolute;
+      inset: 0 auto 0 50%;
+      width: 1px;
+      background: var(--cao-loop-border);
+      content: "";
+    }
+
+    .diagram-connector::after {
+      position: absolute;
+      bottom: 0.125rem;
+      left: calc(50% - 0.2rem);
+      width: 0.4rem;
+      height: 0.4rem;
+      border-right: 1px solid var(--cao-loop-border);
+      border-bottom: 1px solid var(--cao-loop-border);
+      content: "";
+      transform: rotate(45deg);
+    }
+
+    .diagram-connector > span {
+      z-index: 1;
+      border: 1px solid var(--cao-section-border);
+      border-radius: 0.25rem;
+      padding: 0.15rem 0.5rem;
+      background: var(--cao-page-bg);
+      color: var(--cao-story-text);
+      font-size: 0.6875rem;
+    }
+
+    .joined::before,
+    .branched::before {
+      inset: 0 25% 50%;
+      width: auto;
+      border: 1px solid var(--cao-loop-border);
+      border-top: 0;
+      background: none;
+    }
+
+    .joined {
+      background: linear-gradient(var(--cao-loop-border), var(--cao-loop-border)) center bottom / 1px 50% no-repeat;
+    }
+
+    .branched {
+      transform: rotate(180deg);
+      background: linear-gradient(var(--cao-loop-border), var(--cao-loop-border)) center bottom / 1px 50% no-repeat;
+    }
+
+    .branched::after {
+      display: none;
+    }
+
+    .blocked-symbol {
+      position: relative;
+      border: 1.5px solid var(--cao-story-text);
+      border-radius: 50%;
+    }
+
+    .blocked-symbol::after {
+      position: absolute;
+      top: calc(50% - 0.75px);
+      right: 0.2rem;
+      left: 0.2rem;
+      height: 1.5px;
+      background: var(--cao-story-text);
+      content: "";
+    }
+
+    .node-detail {
+      max-width: 30ch;
+      font-size: 0.75rem;
+    }
+
+    figcaption {
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      line-height: 1.5;
+      text-align: center;
+      text-wrap: balance;
+    }
+  }
+</style>

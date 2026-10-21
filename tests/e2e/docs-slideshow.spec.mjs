@@ -166,29 +166,20 @@ test("expands and edits code locally without changing the original commands or n
   expect(await page.locator(".terminal code").allTextContents()).toEqual(original);
 });
 
-test("expands the gateway, admission, and Agentic Workflows snippets without changing their examples", async ({ page }) => {
+test("expands the campaign snippet without changing its manifest", async ({ page }) => {
   await page.goto("./");
   await openSlideshow(page);
   await page.keyboard.press("End");
-  await page.keyboard.press("ArrowLeft");
-  await page.keyboard.press("ArrowLeft");
-  for (const [title, filename, text] of [
-    ["Webhook Gateway", "security-briefing.md", "gateway-dispatch:"],
-    ["Admission Gate", "Preview admission setup", "gh cao setup admission"],
-    ["Built on Agentic Workflows", "dependabot/aw.yml", "name: Dependabot"],
-  ]) {
-    await expectSlide(page, slideTitles.indexOf(title));
-    const code = presentation(page).locator("[data-slideshow-slide]:visible pre code");
-    const original = await code.textContent();
-    const trigger = presentation(page).getByRole("button", { name: `Expand ${filename}`, exact: true });
-    await trigger.click();
-    const expanded = page.getByRole("dialog", { name: filename, exact: true });
-    await expect(expanded.getByRole("textbox")).toContainText(text);
-    await page.keyboard.press("Escape");
-    await expect(trigger).toBeFocused();
-    await expect(code).toHaveText(original);
-    if (title !== "Built on Agentic Workflows") await page.keyboard.press("ArrowRight");
-  }
+  await expectSlide(page, slideTitles.indexOf("Built on Agentic Workflows"));
+  const code = presentation(page).locator("[data-slideshow-slide]:visible pre code");
+  const original = await code.textContent();
+  const trigger = presentation(page).getByRole("button", { name: "Expand dependabot/aw.yml", exact: true });
+  await trigger.click();
+  const expanded = page.getByRole("dialog", { name: "dependabot/aw.yml", exact: true });
+  await expect(expanded.getByRole("textbox")).toContainText("name: Dependabot");
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+  await expect(code).toHaveText(original);
 });
 
 for (const theme of ["light", "dark"]) {
@@ -256,7 +247,7 @@ for (const theme of ["light", "dark"]) {
         }).toBe(true);
         expect(await slide.evaluate(element => {
           const bounds = element.getBoundingClientRect();
-          return [...element.querySelectorAll("h1, h2, .docs-hero-intro, .hero-visual, .phone-preview, .product-story-copy, .terminal, .dispatch-illustration, .product-shot, .workflow-example")]
+          return [...element.querySelectorAll("h1, h2, .docs-hero-intro, .hero-visual, .phone-preview, .product-story-copy, .terminal, .dispatch-illustration, .product-shot, .workflow-example, .control-diagram")]
             .filter(child => child.checkVisibility())
             .every(child => {
               const content = child.getBoundingClientRect();
