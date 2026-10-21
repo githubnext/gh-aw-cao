@@ -334,6 +334,7 @@ func NewAzureFunctionsHandlerFromEnv(ctx context.Context, siteDirectory, dashboa
 			RedirectURL:                 redirectURL,
 			SessionSecret:               os.Getenv("CAO_SESSION_SECRET"),
 			PreviousSessionSecret:       os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
+			AllowedUsers:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_USERS")),
 			AllowedOrganizations:        splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
 			AllowedTeams:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
 			AdminReauthenticationMaxAge: envStrictDuration("CAO_ADMIN_REAUTH_MAX_AGE"),

@@ -60,6 +60,23 @@ func TestAzureModeRequiresCompleteGitHubOAuthPolicy(t *testing.T) {
 	}
 }
 
+func TestGitHubOAuthAllowsExplicitUserWithoutMembershipLookup(t *testing.T) {
+	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "inactive"})
+	config := validOAuthConfig(github.URL)
+	config.AllowedOrganizations = nil
+	config.AllowedUsers = []string{"OCTOCAT"}
+	if err := config.validate(); err != nil {
+		t.Fatal(err)
+	}
+	account, err := newGitHubOAuth(*config, nil, nil, nil).authorizedAccount(t.Context(), "access")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if account.Login != "octocat" {
+		t.Fatalf("authorized account = %q, want octocat", account.Login)
+	}
+}
+
 func TestAzureOAuthLoginCallbackAndAuthorizedAPI(t *testing.T) {
 	github := fakeGitHub(t, fakeGitHubOptions{membershipState: "active", accessExpiresIn: 3600})
 	app := newAzureTestApp(t, github.URL)

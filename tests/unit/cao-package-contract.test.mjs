@@ -179,3 +179,24 @@ test("CAO server package installs build dependencies before verifying API artifa
     assert.ok(index >= 0 && index < buildIndex, `${install} must precede the dashboard build`);
   }
 });
+
+test("Docker dashboard builder installs production tooling without shipping build dependencies", async () => {
+  const dockerfile = await text("server/Dockerfile");
+  const stages = dockerfile.split(/(?=^FROM )/m);
+  const builder = stages.find((stage) => stage.includes(" AS dashboard-build"));
+  assert.ok(builder);
+  const install = builder.indexOf("npm --prefix dashboard/site ci --omit=dev --ignore-scripts");
+  assert.ok(install >= 0, "the builder must install esbuild even with NODE_ENV=production");
+  const manifest = JSON.parse(await text("dashboard/site/package.json"));
+  assert.ok(manifest.dependencies.esbuild, "esbuild is required by the production build");
+  assert.doesNotMatch(builder, /--include=dev/);
+  for (const name of ["dashboard-runtime", "azure-functions-runtime"]) {
+    const runtime = stages.find((stage) => stage.includes(` AS ${name}`));
+    assert.ok(runtime);
+    assert.doesNotMatch(runtime, /node_modules|control-plane-inventory\.json/);
+    assert.match(runtime, /\/workspace\/dashboard\/site\/dist\/ \/app\/site\//);
+  }
+  const collector = stages.find((stage) => stage.includes(" AS collector-runtime"));
+  assert.match(collector, /control-plane-inventory\.json \/app\/catalog\/control-plane-inventory\.json/);
+  assert.doesNotMatch(collector, /COPY .*\/workspace\/dashboard\/site\/node_modules\/ \/app\//);
+});

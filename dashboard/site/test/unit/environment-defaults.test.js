@@ -97,6 +97,51 @@ describe('Governance contract', () => {
     }
   });
 
+  it('parses comments, CRLF, nulls and quoted string contents without general YAML', () => {
+    expect(parseEnvironmentDefaults([
+      '# Compiler defaults',
+      '',
+      'default_max_turns: "20" # keep as a string',
+      "default_model: 'it''s a model: #1'  ",
+      'default_empty: ""',
+      "default_single_empty: ''",
+      'default_unset: null\t# reset',
+      'default_literal_null: "null"',
+      `default_escapes: ${JSON.stringify('line\n"quoted"\\path\t☺')}`,
+      '  # trailing comment',
+      ''
+    ].join('\r\n'))).toEqual({
+      default_max_turns: '20', default_model: "it's a model: #1", default_empty: '',
+      default_single_empty: '', default_unset: null, default_literal_null: 'null',
+      default_escapes: 'line\n"quoted"\\path\t☺'
+    });
+  });
+
+  it.each([
+    '# comments only', 'default_model: plain', 'default_model: true',
+    'default_model:', 'default_model: ~', 'default_model: NULL',
+    'default_model: {nested: "value"}', 'default_model:\n  nested: "value"',
+    ' default_model: "indented"', '- default_model: "sequence"',
+    'default_model: |\n  multiline', 'default_model: >\n  multiline',
+    'default_model: "unterminated', "default_model: 'unterminated",
+    'default_model: "bad\\q"', 'default_model: "trailing" garbage',
+    'default_model:"value"', 'default_model:null',
+    'default_model: "value"#missing-separator',
+    "default_model: 'literal\tcontrol'",
+    'default_model: !!str "tagged"', 'default_model: *alias',
+    'default_model: "first"\ndefault_model: null',
+    'default_model: "value"\n---\ndefault_other: "document"',
+    '__proto__: "value"', 'default_Model: "value"'
+  ])('rejects unsupported or malformed defaults: %s', (text) => {
+    expect(() => parseEnvironmentDefaults(text)).toThrow();
+  });
+
+  it('enforces the document size limit', () => {
+    const text = `default_model: "${'x'.repeat(100_000 - 'default_model: ""'.length)}"`;
+    expect(parseEnvironmentDefaults(text).default_model).toHaveLength(99_983);
+    expect(() => parseEnvironmentDefaults(`${text}\n`)).toThrow('100,000 characters');
+  });
+
   it('recognizes only scoped managed-file transport', () => {
     expect(environmentDefaultsCommand('gh aw env get cao-governance.yml --scope org --org acme'))
       .toEqual({ operation: 'get', scope: 'org' });

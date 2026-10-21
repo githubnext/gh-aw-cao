@@ -77,7 +77,8 @@ func (r *readTransaction) operationalValueEvidenceSQLSource() query.SQLRelation 
 	})
 	delete(columns, "id")
 	delete(columns, "packetId")
-	projections := []string{"f.*"}
+	projections := make([]string, 1, 10)
+	projections[0] = "f.*"
 	for logical, physical := range map[string]string{
 		"report-id": "id", "workflow": "workflow", "workflow-path": "source_path", "observed-at": "observed_at",
 		"window-start": "window_start", "window-end": "window_end", "contract-digest": "contract_digest",

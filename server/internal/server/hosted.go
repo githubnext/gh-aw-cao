@@ -176,6 +176,7 @@ func newHostedAppWithPolicy(
 			RedirectURL:                 os.Getenv("CAO_GITHUB_REDIRECT_URL"),
 			SessionSecret:               os.Getenv("CAO_SESSION_SECRET"),
 			PreviousSessionSecret:       os.Getenv("CAO_SESSION_SECRET_PREVIOUS"),
+			AllowedUsers:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_USERS")),
 			AllowedOrganizations:        splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_ORGS")),
 			AllowedTeams:                splitCSV(os.Getenv("CAO_GITHUB_ALLOWED_TEAMS")),
 			LocalDevelopmentUser:        os.Getenv("CAO_GITHUB_LOCAL_USER"),

@@ -1,4 +1,3 @@
-import { parseDocument } from 'yaml';
 import { createDebug } from './debug.js';
 
 const debugDefaults = createDebug('src:environment-defaults');
@@ -52,18 +51,33 @@ function rejectDefaults(reason, message) {
   return new Error(message);
 }
 
-/** Validate the flat, non-secret gh-aw defaults document without duplicating its evolving key registry.
+/** Parse only flat default_ keys with quoted strings or null, not general YAML.
  * @param {string} text
  * @returns {Record<string, string | null>}
  */
 export function parseEnvironmentDefaults(text) {
   if (!text.trim() || text.length > 100_000) throw rejectDefaults('size', 'Defaults YAML must contain 1 to 100,000 characters.');
-  const document = parseDocument(text);
-  if (document.errors.length) throw rejectDefaults('yaml', 'Defaults must be valid YAML with unique keys.');
-  const values = document.toJS({ maxAliasCount: 0 });
-  if (!values || typeof values !== 'object' || Array.isArray(values) || !Object.keys(values).length
-    || Object.entries(values).some(([key, value]) =>
-      !/^default_[a-z][a-z0-9_]*$/.test(key) || value !== null && typeof value !== 'string')) {
+  /** @type {Record<string, string | null>} */
+  const values = {};
+  for (const line of text.split(/\r?\n/)) {
+    if (/^[ \t]*(?:#.*)?$/.test(line)) continue;
+    const entry = /^(default_[a-z][a-z0-9_]*):[ \t]+(null|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')(?:[ \t]+#.*)?[ \t]*$/.exec(line);
+    if (!entry || [...entry[2]].some((character) => character.charCodeAt(0) < 32)) {
+      throw rejectDefaults('shape', 'Use a flat mapping of default_ keys to quoted strings or null. Do not include secrets.');
+    }
+    const [, key, scalar] = entry;
+    if (Object.hasOwn(values, key)) throw rejectDefaults('yaml', 'Defaults must be valid YAML with unique keys.');
+    if (scalar === 'null') values[key] = null;
+    else if (scalar.startsWith("'")) values[key] = scalar.slice(1, -1).replace(/''/g, "'");
+    else {
+      try {
+        values[key] = JSON.parse(scalar);
+      } catch {
+        throw rejectDefaults('shape', 'Defaults strings must use valid double-quoted escapes or single quotes.');
+      }
+    }
+  }
+  if (!Object.keys(values).length) {
     throw rejectDefaults('shape', 'Use a flat mapping of default_ keys to quoted strings or null. Do not include secrets.');
   }
   debugDefaults({ event: 'parsed', keys: Object.keys(values).length });

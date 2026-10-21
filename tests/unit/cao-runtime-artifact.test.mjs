@@ -129,12 +129,12 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.doesNotMatch(prompt, /Bundled dependency:|@clack\/|fast-string-width|fast-wrap-ansi|sisteransi/);
   assert.equal(existsSync(path.join(root, "node_modules")), false);
   assert.match(readFileSync(path.join(root, "dashboard/site/src/validator-dashboard.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
-  assert.match(readFileSync(path.join(root, "dashboard/site/src/environment-defaults.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
+  assert.doesNotMatch(readFileSync(path.join(root, "dashboard/site/src/environment-defaults.js"), "utf8"), /from ['"].*yaml/);
   assert.equal(existsSync(path.join(root, "dashboard/site/node_modules")), false);
   assert.throws(() => validateCaoRuntimeArtifact(root, "2".repeat(40)), /provenance does not match/);
 });
 
-test("the prebuilt archive loads the Governance CLI transport and its bundled YAML parser", async (t) => {
+test("the prebuilt archive loads the Governance CLI transport with dependency-free defaults parsing", async (t) => {
   const root = unpack(t);
   const { executeDashboardCommand } = await import(pathToFileURL(path.join(root, "dashboard/cli-actions.mjs")));
   const yaml = 'default_max_turns: "20"\n';
@@ -328,4 +328,20 @@ test("the trusted runtime pipeline separates building and attestation from draft
   assert.ok(!attest.steps.some((step) => step.uses?.startsWith("actions/checkout")));
   assert.doesNotMatch(attest.steps.map((step) => step.run ?? "").join("\n"), /npm|node |tar |bash .*\.sh/);
   for (const match of source.matchAll(/uses:\s+[^@\s]+@([^\s#]+)/g)) assert.match(match[1], /^[0-9a-f]{40}$/);
+});
+
+test("the trusted runtime pipeline seals and attests the Azure deployment assets at the exact SHA", () => {
+  const workflow = parse(readFileSync(path.join(catalog, ".github/workflows/cao-runtime.yml"), "utf8"));
+  const build = workflow.jobs.build.steps;
+  const azureBuild = build.findIndex((step) => step.run === 'npm run build:azure-assets -- "${RUNNER_TEMP}/azure" "${REVISION}"');
+  assert.ok(azureBuild > 0);
+  assert.equal(build[azureBuild].env.REVISION, "${{ github.sha }}");
+  assert.equal(build[azureBuild + 1].with.name, "cao-azure-${{ github.sha }}");
+  assert.equal(build[azureBuild + 1].with["if-no-files-found"], "error");
+  const attest = workflow.jobs.attest.steps;
+  const download = attest.findIndex((step) => step.with?.name === "cao-azure-${{ github.sha }}");
+  assert.ok(download > 0);
+  assert.equal(attest[download + 1].run, 'sha256sum --check "cao-azure-${REVISION}.tgz.sha256"');
+  assert.match(attest[download + 2].uses, /^actions\/attest@[0-9a-f]{40}$/);
+  assert.equal(attest[download + 2].with["subject-path"], "${{ runner.temp }}/azure/cao-azure-${{ github.sha }}.tgz");
 });

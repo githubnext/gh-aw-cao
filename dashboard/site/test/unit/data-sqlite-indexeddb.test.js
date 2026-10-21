@@ -15,6 +15,7 @@ import {
   readTransactions,
   recordTransaction,
   replaceCanonicalBatch,
+  scanCanonicalCollection,
   upsertCanonicalBatch
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
@@ -95,6 +96,39 @@ afterEach(() => {
 });
 
 describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
+  it('aborts writes asynchronously, rolls back, and leaves the database usable', async () => {
+    const indexedDB = installSqliteIndexedDB(temporaryDatabase());
+    await upsertCanonicalBatch(indexedDB, batch());
+    const database = await openCanonicalDatabase(indexedDB);
+    const transaction = database.transaction('runs', 'readwrite');
+    transaction.objectStore('runs').put({ id: 'run:aborted' });
+    transaction.abort();
+    const events = /** @type {string[]} */ ([]);
+    transaction.onabort = () => events.push('abort');
+    transaction.oncomplete = () => events.push('complete');
+    transaction.onerror = () => events.push('error');
+    expect(events).toEqual([]);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(events).toEqual(['abort']);
+    expect(transaction.error).toBeNull();
+    expect(() => transaction.abort()).toThrow('inactive');
+    database.close();
+    expect((await readCollection(indexedDB, 'runs')).map((row) => row.id)).toEqual(['run:1']);
+    await upsertCanonicalBatch(indexedDB, batch());
+  });
+
+  it('preserves scan failures and permits subsequent reads after aborting', async () => {
+    const indexedDB = installSqliteIndexedDB(temporaryDatabase());
+    await upsertCanonicalBatch(indexedDB, batch());
+    const error = new Error('scan visitor failed');
+    await expect(scanCanonicalCollection(indexedDB, 'audits', () => { throw error; }))
+      .rejects.toBe(error);
+    expect(await countCollections(indexedDB, ['audits'])).toEqual({ audits: 2 });
+    const sizes = /** @type {number[]} */ ([]);
+    await scanCanonicalCollection(indexedDB, 'audits', (rows) => { sizes.push(rows.length); }, { batchSize: 1 });
+    expect(sizes).toEqual([1, 1, 0]);
+  });
+
   it('persists canonical records and supports compound index queries', async () => {
     const filename = temporaryDatabase();
     const indexedDB = installSqliteIndexedDB(filename);

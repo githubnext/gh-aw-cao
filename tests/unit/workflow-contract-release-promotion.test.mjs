@@ -21,6 +21,7 @@ function fixture() {
     published_at: "2026-10-17T00:00:00Z", target_commitish: revision, body: "Reviewed highlights",
   };
   const assets = [`cao-runtime-${revision}.tgz`, `cao-runtime-${revision}.tgz.sha256`,
+    `cao-azure-${revision}.tgz`, `cao-azure-${revision}.tgz.sha256`,
     "gh-cao-darwin-amd64", "gh-cao-darwin-arm64", "gh-cao-linux-amd64", "gh-cao-linux-arm64",
     "gh-cao-windows-amd64.exe", "gh-cao-windows-arm64.exe", "checksums.txt"].map((name, id) =>
     ({ id: id + 1, name, state: "uploaded", size: 100, digest: `sha256:${"c".repeat(64)}` }));
@@ -76,7 +77,9 @@ test("only an approved immutable prerelease transitions to latest without replac
   const source = readFileSync(new URL("../../.github/workflows/release.md", import.meta.url), "utf8");
   const publisher = parse(/^---\n([\s\S]*?)\n---/.exec(source)[1]).jobs["publish-release"]
     .steps.find(({ name }) => name === "Publish verified draft as prerelease").with.script;
-  for (const { name } of f.assets.slice(2)) {
+  assert.match(publisher, /expectedAzureArchive = `cao-azure-\$\{revision\}\.tgz`/);
+  assert.match(publisher, /expectedAzureArchive, `\$\{expectedAzureArchive\}\.sha256`/);
+  for (const { name } of f.assets.slice(4)) {
     assert.ok(publisher.includes(`'${name}'`), `promotion fixture must match the published asset ${name}`);
   }
   const approved = await collectPromotionEvidence(f.request, f.context, "v0.2.0");

@@ -84,7 +84,7 @@ func nativeValueEndpoint(raw string) (*url.URL, bool, error) {
 	if address, err := netip.ParseAddr(host); err == nil && address.Zone() == "" {
 		local = address.Unmap().IsLoopback()
 	}
-	if target.Scheme != "https" && !(target.Scheme == "http" && local) {
+	if target.Scheme != "https" && (target.Scheme != "http" || !local) {
 		return nil, false, invalid
 	}
 	if target.Port() != "" {
@@ -144,7 +144,7 @@ func nativeValueReadInput(filename string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("unable to open --input evidence file")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	info, err = file.Stat()
 	if err != nil || !info.Mode().IsRegular() {
 		return nil, errors.New("--input must be a regular evidence file")
@@ -243,7 +243,7 @@ func nativeValuePost(ctx context.Context, endpoint *url.URL, content []byte, ide
 		}
 		return nil, errors.New("value publication failed: transport or timeout error")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		switch response.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden:

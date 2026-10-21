@@ -816,12 +816,17 @@ The conventional `cao-runtime.yml` pipeline builds on main pushes. Read-only
 build/test and source-free attestation use separate jobs, producing exact-SHA
 Actions artifacts retained for 90 days. The Release workflow creates a draft
 stable tag at an exact main SHA, waits for that SHA's successful runtime push
-run, verifies its checksum and signed provenance, and attaches the archive and
-checksum together with the six extension binaries and their checksum manifest.
+run, verifies the checksum and signed provenance of both the runtime archive
+and the Azure deployment-asset bundle (`cao-azure-<sha>.tgz`: an allowlisted
+Docker build context for the Azure image targets, the compiled ARM template,
+and a per-file SHA-256 manifest, with no adopter policy, which builds supply
+through the `cao-policy` and `cao-ingest-source` named contexts), and attaches
+both archives and checksums together with the six extension binaries and their
+checksum manifest.
 The extension build runs in a separate read-only job at the exact release SHA
 with Go caching disabled, runs extension checks, and verifies the embedded tag.
 The source-free attachment job checks the complete binary checksum manifest;
-publication requires the exact nine-asset set before publishing the completed
+publication requires the exact eleven-asset set before publishing the completed
 draft as an immutable prerelease. A maintainer reviews the completed notes and
 promotes the prerelease to stable. Publication locks
 the tag and assets through immutable releases; no workflow mutates release
@@ -990,14 +995,14 @@ not authorize cross-repository evidence access.
 - The local Redis profile binds to loopback and serves HTTP for local debugging
   or HTTPS only with operator-supplied certificate files.
 - The hosted Redis profile runs behind an explicitly trusted HTTPS proxy,
-  authenticates users through GitHub OAuth plus explicit organization or team
+  authenticates users through GitHub OAuth plus explicit user, organization, or team
   authorization, limits rebuild control to explicit administrators, verifies
   webhook signatures, deduplicates deliveries, and coordinates bounded
   request-independent rebuilds through Redis so multiple stateless replicas
   cannot replace the projection concurrently. Its client exposes the active
   GitHub login and supports explicit account switching through a fresh OAuth
   account-selection flow without combining account authority. Hosted transport
-  is fail-closed: Redis uses TLS by default and always in Azure; a deployment-managed
+  is fail-closed: Redis uses TLS by default when selected and always in Azure; a deployment-managed
   Redis service may use private plaintext only through an explicit opt-in and a
   private address. A public listener terminates TLS directly, while a private
   container listener may rely on proxy TLS only when the direct proxy peer belongs
@@ -1010,13 +1015,20 @@ not authorize cross-repository evidence access.
   rotation can retain the previous key until sessions and revocations drain.
   Refreshed sessions use an atomic compare-and-swap so logout cannot be undone
   by a concurrent OAuth refresh.
+- The Azure deployment baseline provisions private PostgreSQL for both canonical
+  and operational storage, without Redis. One Log Analytics workspace and one
+  workspace-backed Application Insights component are shared by the deployment.
+  A private manual ingestion job publishes explicitly selected adopter snapshots
+  or an explicit empty dataset; builds never download a catalog-owned dataset
+  implicitly. Instance policy, credentials, and target enrollment remain
+  adopter-owned inputs, not public deployment defaults.
 - Explicit `CAO_GITHUB_LOCAL_USER` development OAuth replaces membership
   authorization with one configured GitHub login and a valid numeric account
   ID. Classic login requests `read:user` without `read:org`; GitHub App clients
   retain `offline_access`. It requires a process-owned loopback TLS listener,
   one matching allowed host and exact callback authority/path, and loopback
   request peers. Proxy trust, external/platform hosting, CORS, and simultaneous
-  organization/team/SSO policy are rejected. Sessions are bound to the mode and
+  user/organization/team/SSO policy are rejected. Sessions are bound to the mode and
   developer and cannot cross into ordinary hosted authorization. Administrator
   allowlisting, recent OAuth assurance, CSRF, explicit classic `repo` consent,
   and live target writer checks are unchanged. Operators must not expose this

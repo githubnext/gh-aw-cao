@@ -18,19 +18,17 @@ export function buildCaoRuntime(sourceRoot, destination, revision) {
         mkdirSync(vendor, { recursive: true });
         buildSync({
           absWorkingDir: sourceRoot,
-          stdin: { contents: 'export { parseAllDocuments, parseDocument } from "yaml";', resolveDir: sourceRoot },
+          stdin: { contents: 'export { parseAllDocuments } from "yaml";', resolveDir: sourceRoot },
           outfile: path.join(vendor, "yaml.js"),
           bundle: true, format: "esm", platform: "neutral", target: "es2022", legalComments: "eof",
         });
         const require = createRequire(path.join(sourceRoot, "package.json"));
         cpSync(path.join(path.dirname(require.resolve("yaml/package.json")), "LICENSE"), path.join(vendor, "yaml.LICENSE"));
-        for (const module of ["validator-dashboard.js", "environment-defaults.js"]) {
-          const consumer = path.join(root, "dashboard/site/src", module);
-          const source = readFileSync(consumer, "utf8");
-          const compiled = source.replace("from 'yaml';", "from './vendor/yaml.js';");
-          if (compiled === source) throw new Error("Dashboard YAML dependency changed; runtime bundling must be updated");
-          writeFileSync(consumer, compiled);
-        }
+        const consumer = path.join(root, "dashboard/site/src/validator-dashboard.js");
+        const source = readFileSync(consumer, "utf8");
+        const compiled = source.replace("from 'yaml';", "from './vendor/yaml.js';");
+        if (compiled === source) throw new Error("Dashboard YAML dependency changed; runtime bundling must be updated");
+        writeFileSync(consumer, compiled);
         sealCaoRuntime(root, revision);
       },
     });

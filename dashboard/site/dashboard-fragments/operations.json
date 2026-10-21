@@ -2269,6 +2269,10 @@
           "description": "The share of measured avoidable AI Credit cost attributed to each workflow.",
           "data": {
             "source": "friction-by-workflow",
+            "order-by": [
+              { "field": "friction-aic", "direction": "desc" },
+              { "field": "workflow-coordinate", "direction": "asc" }
+            ],
             "limit": 10
           },
           "mark": "chart",

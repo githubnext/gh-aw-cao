@@ -44,7 +44,8 @@ export async function collectPromotionEvidence(request, context, tag) {
     "Promotion must advance latest, not republish or downgrade it");
   const assets = await get(`releases/${release.id}/assets`, { per_page: 100 });
   const archive = `cao-runtime-${revision}.tgz`;
-  const expected = [archive, `${archive}.sha256`, "gh-cao-darwin-amd64", "gh-cao-darwin-arm64",
+  const azureArchive = `cao-azure-${revision}.tgz`;
+  const expected = [archive, `${archive}.sha256`, azureArchive, `${azureArchive}.sha256`, "gh-cao-darwin-amd64", "gh-cao-darwin-arm64",
     "gh-cao-linux-amd64", "gh-cao-linux-arm64", "gh-cao-windows-amd64.exe", "gh-cao-windows-arm64.exe",
     "checksums.txt"].sort();
   requireCondition(Array.isArray(assets) && assets.length === expected.length

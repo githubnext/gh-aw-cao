@@ -31,6 +31,7 @@ for (const [stage, label, logName] of failures) {
       await mkdir(tools);
       await mkdir(join(directory, ".github/workflows"), { recursive: true });
       await writeFile(join(directory, ".github/workflows/cao.json"), '{"control-plane":{"web":{}}}\n');
+      await copyFile(resolve(".github/workflows/cao.azure.json"), join(directory, ".github/workflows/cao.azure.json"));
       const func = join(directory, ".tmp/azure-local/tools/core-tools-4.15.1/func");
       await mkdir(dirname(func), { recursive: true });
       await executable(func, "exit 99\n");
@@ -46,7 +47,6 @@ case "$1" in
   run)
     for argument in "$@"; do
       case "$argument" in
-        *-redis) echo redis-id; exit 0 ;;
         *-postgres) echo postgres-id; exit 0 ;;
         *-azurite) echo azurite-id; exit 0 ;;
       esac
@@ -55,7 +55,6 @@ case "$1" in
   port) echo 127.0.0.1:12345 ;;
   exec)
     case "$3" in
-      redis-cli) echo PONG ;;
       pg_isready) echo accepting ;;
     esac ;;
   logs) echo "$2 service output" ;;
@@ -121,7 +120,8 @@ fi
       assert.ok(result.stderr.includes(logPath), result.stderr);
       assert.equal(await readFile(logPath, "utf8"), `captured stdout\n${message}\n`);
       const commands = await readFile(trace, "utf8");
-      for (const service of ["redis", "postgres", "azurite"]) {
+      assert.doesNotMatch(commands, /docker .*redis/);
+      for (const service of ["postgres", "azurite"]) {
         assert.match(commands, new RegExp(`docker rm -f ${service}-id`));
         assert.equal(await readFile(join(state, "logs", `${service}.log`), "utf8"), `${service}-id service output\n`);
       }

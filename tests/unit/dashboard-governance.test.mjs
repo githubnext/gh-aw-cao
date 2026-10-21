@@ -26,7 +26,11 @@ test("Governance queue admission requires validated YAML only for declared scope
     assert.doesNotMatch(resolveQueuedCliAction(dashboard, {
       ...update, input: yaml, arguments: { "dry-run": false },
     }).command, /--dry-run/);
-    for (const input of ['default_max_turns: 10', 'secret: "no"', 'default_model: [a]', '{}']) {
+    for (const input of [
+      'default_max_turns: 10', 'secret: "no"', 'default_model: [a]', '{}',
+      'default_model: "first"\ndefault_model: "second"', 'default_model: &value "x"',
+      'default_model: "x"\n---\ndefault_other: "y"',
+    ]) {
       assert.throws(() => resolveQueuedCliAction(dashboard, { ...update, input }), { status: 400 });
     }
     assert.throws(() => resolveQueuedCliAction(dashboard, {

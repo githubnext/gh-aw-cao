@@ -56,7 +56,7 @@ it('excludes zero and missing AIC from per-run averages without changing run cou
     'workflow-aic-run-totals', 'cost-per-workflow-run', 'workflow-aic-per-run',
     'workflow-aic-totals', 'workflow-inventory', 'entity-workflow-run-totals',
     'entity-workflows', 'engines-models-usage', 'campaign-performance-baseline-totals',
-    'repository-run-statistics', 'repository-aic-totals', 'campaign-cost-totals', 'cost-by-campaign', 'cost-by-repository', 'cost-by-workflow'
+    'repository-run-statistics', 'repository-aic-totals', 'cost-by-repository', 'cost-by-workflow'
   ];
   const definitions = authoritativeDashboard.dashboard.queries.filter(
     (/** @type {{ name?: string }} */ query) => names.includes(query.name ?? '')
@@ -99,7 +99,7 @@ it('excludes zero and missing AIC from per-run averages without changing run cou
   }, [
     'cost-per-workflow-run', 'workflow-aic-per-run', 'workflow-inventory',
     'entity-workflows', 'engines-models-usage', 'campaign-performance-baseline-totals',
-    'cost-by-campaign', 'cost-by-repository', 'cost-by-workflow'
+    'cost-by-repository', 'cost-by-workflow'
   ]);
 
   /** @param {string} name @param {string} field @param {string} value */
@@ -110,9 +110,6 @@ it('excludes zero and missing AIC from per-run averages without changing run cou
   expect(rowFor('cost-per-workflow-run', 'repository-coordinate', 'example/two')).toBeUndefined();
   expect(rowFor('workflow-aic-per-run', 'workflow-label', 'example/one:worker')).toMatchObject({ 'aic-per-run': 12 });
   expect(result['workflow-aic-per-run'].rows).toHaveLength(1);
-  expect(result['cost-by-campaign'].rows).toEqual([
-    expect.objectContaining({ 'campaign-name': 'One', aic: 12 })
-  ]);
   expect(result['cost-by-repository'].rows).toEqual([
     expect.objectContaining({ 'repository-coordinate': 'example/one', aic: 12 })
   ]);

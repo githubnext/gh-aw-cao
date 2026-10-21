@@ -41,6 +41,9 @@ func TestResolveFunctionsConfig_Defaults(t *testing.T) {
 	if config.port != "8080" {
 		t.Errorf("port = %q, want %q", config.port, "8080")
 	}
+	if config.host != "127.0.0.1" {
+		t.Errorf("host = %q, want %q", config.host, "127.0.0.1")
+	}
 	if config.siteDirectory != "site" {
 		t.Errorf("siteDirectory = %q, want %q", config.siteDirectory, "site")
 	}
@@ -53,6 +56,7 @@ func TestResolveFunctionsConfig_Defaults(t *testing.T) {
 func TestResolveFunctionsConfig_OverridesAndDerivedQueriesPath(t *testing.T) {
 	env := map[string]string{
 		"FUNCTIONS_CUSTOMHANDLER_PORT": " 9090 ",
+		"FUNCTIONS_CUSTOMHANDLER_HOST": " 0.0.0.0 ",
 		"CAO_AZURE_SITE_DIRECTORY":     "/srv/dashboard",
 	}
 	getenv := func(name string) string { return env[name] }
@@ -63,6 +67,9 @@ func TestResolveFunctionsConfig_OverridesAndDerivedQueriesPath(t *testing.T) {
 	}
 	if config.port != "9090" {
 		t.Errorf("port = %q, want %q", config.port, "9090")
+	}
+	if config.host != "0.0.0.0" {
+		t.Errorf("host = %q, want %q", config.host, "0.0.0.0")
 	}
 	if config.siteDirectory != "/srv/dashboard" {
 		t.Errorf("siteDirectory = %q, want %q", config.siteDirectory, "/srv/dashboard")

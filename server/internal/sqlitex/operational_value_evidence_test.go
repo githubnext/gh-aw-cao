@@ -28,7 +28,11 @@ func TestSnapshotOperationalValueEvidenceFromExportedLedger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	content, err = os.ReadFile("../../../dashboard/site/src/data/queries/database.json")
 	if err != nil {
 		t.Fatal(err)

@@ -173,8 +173,9 @@ func validateOperationalValueEvidence(row model.Row) error {
 		case "coverage":
 			left, le := evidenceTime(fact["at"])
 			right, re := evidenceTime(fact["end-at"])
+			status := evidenceText(fact["coverage-status"])
 			if le != nil || re != nil || !left.Before(right) || left.Before(start) || right.After(end) ||
-				!strings.Contains("|complete|partial|missing|unknown|", "|"+evidenceText(fact["coverage-status"])+"|") {
+				(status != "complete" && status != "partial" && status != "missing" && status != "unknown") {
 				return fail()
 			}
 			coverage = append(coverage, [2]time.Time{left, right})

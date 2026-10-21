@@ -240,17 +240,22 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const metadata = {
-        'source-id': 'cost-by-campaign', 'source-kind': 'fixture',
+        'source-id': 'cost-by-repository', 'source-kind': 'fixture',
         'as-of': '2026-09-01T00:00:00Z', 'retrieved-at': '2026-09-01T00:00:00Z',
         availability: 'available', completeness: 'complete', freshness: 'fresh'
       };
       document.querySelector('#root').append(renderDashboard({
         document: ${JSON.stringify(authoritativeDashboard)},
         sources: {
-          'cost-by-campaign': {
-            source: 'cost-by-campaign',
-            rows: [{ 'campaign-name': 'Campaign A', aic: 12 }],
+          'cost-by-repository': {
+            source: 'cost-by-repository',
+            rows: [{ 'repository-coordinate': 'example/repo', aic: 12 }],
             metadata
+          },
+          'cost-per-workflow-run': {
+            source: 'cost-per-workflow-run',
+            rows: [{ 'repository-coordinate': 'example/repo', workflow: 'daily', 'aic-per-run': 6 }],
+            metadata: { ...metadata, 'source-id': 'cost-per-workflow-run' }
           }
         }
       }));
@@ -258,9 +263,14 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   `);
   await page.addStyleTag({ content: getPrimerStyles() });
   await page.evaluate(() => { window.location.hash = '#page-cost'; });
-  const action = page.locator('[data-view-id="cost-by-campaign"] .table-intent-button');
+  await expect(page.locator('[data-view-id="cost-by-campaign"]')).toHaveCount(0);
+  const perRun = page.locator('[data-view-id="cost-per-workflow-run"]');
+  await expect(perRun).toHaveAttribute('data-disclosure', 'essential');
+  await expect(perRun.getByRole('heading', { name: 'Cost per workflow run', exact: true })).toBeVisible();
+  await expect(perRun.locator('summary')).toHaveCount(0);
+  const action = page.locator('[data-view-id="cost-by-repository"] .table-intent-button');
   await expect(action).toBeVisible();
-  const titleRow = page.locator('[data-view-id="cost-by-campaign"] .chart-prompt-heading');
+  const titleRow = page.locator('[data-view-id="cost-by-repository"] .chart-prompt-heading');
   await expect(titleRow.getByRole('heading', { level: 2 })).toBeVisible();
   await expect(action.locator('.octicon')).toBeVisible();
   await expect(action).toHaveAttribute('aria-label', /Propose fix: /);
@@ -271,7 +281,7 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   expect(buttonBox.x).toBeGreaterThan(titleBox.x + titleBox.width);
   expect(buttonBox.y).toBeLessThan(titleBox.y + titleBox.height);
   await action.click();
-  const dialog = page.locator('[data-view-id="cost-by-campaign"] .table-intent-dialog');
+  const dialog = page.locator('[data-view-id="cost-by-repository"] .table-intent-dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.table-intent-preview')).toContainText('Subject:');
   await expect(dialog.locator('.table-intent-preview')).toContainText('Page intent:');
@@ -279,7 +289,7 @@ test('a chart with composed semantics offers a prompt preview and returns focus'
   await expect(dialog.locator('.table-intent-preview')).toContainText('https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md');
   await expect(dialog.locator('.table-intent-preview')).toContainText('https://github.com/githubnext/gh-cao/blob/HEAD/.github/workflows/cao.json');
   await expect(dialog.locator('.table-intent-preview')).toContainText('Named CAO query IDs:');
-  await expect(dialog.locator('.table-intent-preview')).toContainText('Any unusual campaign cost is explained');
+  await expect(dialog.locator('.table-intent-preview')).toContainText('Any unusual repository cost is checked');
   await expect(dialog.locator('.table-intent-preview')).toContainText('/analyze-cao');
   await expect(dialog.locator('.table-intent-preview')).toContainText('This is a preview of the data. Requery for full data.');
   await expect(dialog.locator('.table-intent-preview')).toContainText('Create a PR with the changes.');

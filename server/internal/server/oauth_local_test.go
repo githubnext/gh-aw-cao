@@ -283,6 +283,7 @@ func TestLocalOAuthConfigurationFailsClosed(t *testing.T) {
 	for name, mutate := range map[string]func(*GitHubOAuthConfig){
 		"multiple users":  func(c *GitHubOAuthConfig) { c.LocalDevelopmentUser = "octocat,another-user" },
 		"wildcard":        func(c *GitHubOAuthConfig) { c.LocalDevelopmentUser = "*" },
+		"user policy":     func(c *GitHubOAuthConfig) { c.AllowedUsers = []string{"another-user"} },
 		"org policy":      func(c *GitHubOAuthConfig) { c.AllowedOrganizations = []string{"example"} },
 		"team policy":     func(c *GitHubOAuthConfig) { c.AllowedTeams = []string{"example/team"} },
 		"SSO attestation": func(c *GitHubOAuthConfig) { c.SSOOrganizations = []string{"example"} },

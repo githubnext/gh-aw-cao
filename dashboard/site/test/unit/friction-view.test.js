@@ -70,7 +70,14 @@ describe('Friction dashboard view', () => {
     expect(page.views).toMatchObject([
       {
         id: 'friction-by-workflow',
-        data: { source: 'friction-by-workflow' },
+        data: {
+          source: 'friction-by-workflow',
+          'order-by': [
+            { field: 'friction-aic', direction: 'desc' },
+            { field: 'workflow-coordinate', direction: 'asc' }
+          ],
+          limit: 10
+        },
         mark: 'chart',
         chart: 'pie'
       },

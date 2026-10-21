@@ -1,0 +1,15 @@
+{
+  "extends": "cao.json",
+  "control-plane": {
+    "web": {
+      "host": {
+        "target": {
+          "module": "azure-functions"
+        },
+        "operational-store": {
+          "backend": "postgres"
+        }
+      }
+    }
+  }
+}

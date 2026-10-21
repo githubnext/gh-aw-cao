@@ -305,87 +305,22 @@ describe('dashboard view query contracts', () => {
     });
   });
 
-  it('computes campaign cost without inventory, dispatch, or coverage dependencies', () => {
-      const cost = queriesByName.get('cost-by-campaign');
-      const totals = queriesByName.get('campaign-cost-totals');
-      expect(cost?.from).toBe('campaigns');
-      expect(cost?.joins?.map((/** @type {{ source: string }} */ join) => join.source)).toEqual(['campaign-cost-totals']);
-      expect(totals?.from).toBe('workflows');
-      expect(totals?.joins?.map((/** @type {{ source: string }} */ join) => join.source)).toEqual(['workflow-aic-totals']);
-
-      const sources = {
-        ...databaseTables,
-        campaigns: {
-          source: 'campaigns', metadata,
-          rows: [
-            { campaign: 'beta', 'campaign-name': 'Beta' },
-            { campaign: 'alpha & one', 'campaign-name': 'Alpha & One' },
-            { campaign: 'empty', 'campaign-name': 'Empty' }
-          ]
-        },
-        workflows: {
-          source: 'workflows', metadata,
-          rows: [
-            { organization: 'org', repository: 'repo', workflow: 'one.md', campaign: 'alpha & one', 'workflow-role': 'orchestrator' },
-            { organization: 'org', repository: 'repo', workflow: 'two.md', campaign: 'alpha & one', 'workflow-role': 'worker' },
-            { organization: 'org', repository: 'repo', workflow: 'three.md', campaign: 'beta', 'workflow-role': 'worker' },
-            { organization: 'org', repository: 'repo', workflow: 'four.md', campaign: 'beta', 'workflow-role': 'standalone' }
-          ]
-        },
-        runs: {
-          source: 'runs', metadata,
-          rows: [
-            { organization: 'org', repository: 'repo', workflow: 'one.md', run: '1', 'run-attempt': 1, 'aic-total': 3 },
-            { organization: 'org', repository: 'repo', workflow: 'one.md', run: '1', 'run-attempt': 2, 'aic-total': 5 },
-            { organization: 'org', repository: 'repo', workflow: 'three.md', run: '2', 'run-attempt': 1, 'aic-total': 2 },
-            { organization: 'org', repository: 'repo', workflow: 'four.md', run: '3', 'run-attempt': 1, 'aic-total': 100 }
-          ]
-        }
-      };
-      const results = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
-        operation: 'execute-dashboard-queries', queries,
-        sourceNames: ['cost-by-campaign', 'campaign-inventory'],
-        sources
-      }));
-      expect(results['cost-by-campaign'].rows).toEqual([
-        {
-          'campaign-name': 'Alpha & One',
-          'campaign-dashboard-link': {
-            'dashboard-href': '#page-campaign-insights?campaign=alpha%20%26%20one',
-            'dashboard-label': 'View Alpha & One campaign dashboard'
-          },
-          aic: 8
-        },
-        {
-          'campaign-name': 'Beta',
-          'campaign-dashboard-link': {
-            'dashboard-href': '#page-campaign-insights?campaign=beta',
-            'dashboard-label': 'View Beta campaign dashboard'
-          },
-          aic: 2
-        }
-      ]);
-      expect(results['cost-by-campaign'].rows.map((row) => row.aic))
-        .toEqual(results['campaign-inventory'].rows
-          .filter((row) => Number(row.aic) > 0)
-          .sort((a, b) => Number(b.aic) - Number(a.aic))
-          .map((row) => row.aic));
+  it('does not retain the removed campaign cost queries', () => {
+    expect(queriesByName.has('cost-by-campaign')).toBe(false);
+    expect(queriesByName.has('campaign-cost-totals')).toBe(false);
   });
 
-  it('renders the Cost page with concise titles and a workflow bar chart', () => {
+  it('places Campaigns immediately after Workflows in the Data navigation', () => {
+    const dataSection = dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ section) => section.label === 'Data'
+    );
+    expect(dataSection.pages.slice(0, 3)).toEqual(['repositories', 'workflows', 'campaigns']);
+  });
+
+  it('renders the Cost page without a campaign chart and with a workflow bar chart', () => {
     const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'cost');
+    expect(viewsOf(page).map((view) => view.id)).not.toContain('cost-by-campaign');
     expect(viewsOf(page)).toMatchObject([
-      {
-        id: 'cost-by-campaign',
-        title: 'Cost per campaign',
-        data: { source: 'cost-by-campaign' },
-        mark: 'chart',
-        chart: 'pie',
-        encoding: {
-          x: { field: 'campaign-name' },
-          y: { field: 'aic', unit: 'aic' }
-        }
-      },
       {
         id: 'cost-by-repository',
         title: 'Cost per repository',
@@ -412,7 +347,7 @@ describe('dashboard view query contracts', () => {
       {
         id: 'cost-per-workflow-run',
         title: 'Cost per workflow run',
-        disclosure: 'supplemental',
+        disclosure: 'essential',
         data: { source: 'cost-per-workflow-run' },
         mark: 'chart',
         chart: 'horizontal-bar',

@@ -19,7 +19,13 @@ test("Docker installs dashboard build dependencies without test tooling or insta
     assert.notEqual(lock.packages[`node_modules/${name}`].dev, true);
   }
   for (const name of ["vitest", "vite", "postcss", "@jridgewell/gen-mapping"]) {
-    assert.equal(lock.packages[`node_modules/${name}`].dev, true);
+    // Overrides can nest transitive tooling instead of hoisting it to the root.
+    const packages = Object.entries(lock.packages).filter(([path]) =>
+      path === `node_modules/${name}` || path.endsWith(`/node_modules/${name}`));
+    assert.ok(packages.length > 0, `${name} must be present in the lockfile`);
+    for (const [path, entry] of packages) {
+      assert.equal(entry.dev, true, `${path} must remain a development-only dependency`);
+    }
   }
   assert.equal(lock.packages["packages/source-map-compat"].dev, true);
   assert.match(dockerfile, /npm --prefix dashboard\/site ci --omit=dev --ignore-scripts/);
