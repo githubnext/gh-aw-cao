@@ -56,6 +56,11 @@ jobs:
         run: golangci-lint run ./...
       - name: Unit tests
         run: go -C server test ./...
+      - name: Local Actions, OIDC, admission, and webhook gateway integration
+        run: >-
+          go -C server test -race ./internal/simulator ./internal/admission
+          ./cmd/cao-webhook-gateway
+          -run '^(TestLocalActions|TestSpecLocalHost)' -count=1 -timeout=2m -v
       - name: Check shared local query engine
         working-directory: internal/dashboardquery
         run: |

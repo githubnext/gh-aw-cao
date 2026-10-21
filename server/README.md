@@ -1116,6 +1116,69 @@ non-sensitive namespaces when exporting to an external collector.
 > profile is experimental: deploy it only after security review, staging
 > validation, and rollback planning for your Azure tenant.
 
+## Local Actions and OIDC simulator
+
+Run the credential-free, localhost-only Actions/admission/webhook integration:
+
+```bash
+npm run test:integration:actions-simulator
+# Equivalent without Node/npm (also suitable for a GitHub Actions run step):
+go -C server test -race ./internal/simulator ./internal/admission \
+  ./cmd/cao-webhook-gateway -run '^(TestLocalActions|TestSpecLocalHost)' -count=1 -timeout=2m -v
+```
+
+The tests start real HTTP listeners on ephemeral numeric-loopback ports, use a
+private temporary SQLite gateway queue, and close every listener and database
+on completion. No GitHub credentials, `id-token: write`, Docker, PostgreSQL,
+Redis, public callback URL, or live GitHub API is required. Go dependencies
+must already be available or downloadable, as for the ordinary Go test suite.
+The Go CI `server-quality` job runs the same command in the explicitly named
+Local Actions, OIDC, admission, and webhook gateway integration step on pull
+requests and pushes. Its permissions remain `contents: read`, with no service
+containers or credentials required by this integration.
+
+The reusable implementation is in `internal/simulator/`:
+
+- `NewActionsAPI` composes the existing scenario-backed mini GitHub REST API
+  and an `OIDCBroker` on one listener without changing REST-only callers.
+- The broker binds an opaque per-run bootstrap credential to immutable claims,
+  exposes the Actions-style `/token?audience=...` response and public
+  `/.well-known/jwks`, and issues five-minute RS256 tokens from an ephemeral key.
+  Only numeric-loopback callers are accepted. HTTP callers cannot choose
+  repository, workflow, actor, or run claims. `Actions.Environment()` supplies
+  the two `ACTIONS_ID_TOKEN_REQUEST_*` variables for local OIDC clients; the map
+  contains a credential and must never be printed.
+- `Actions.Run` requests admission, validates the primary credit allowance,
+  runs a supplied local job callback, then posts `conclusion_admission` using a
+  fresh token and the **same admission audience**. Rejected admission never
+  executes the callback. Failed admitted work still attempts conclusion.
+  `Actions.Post` and `DeliverWebhook` support explicit retries and signed
+  webhook replays. Clients reject non-loopback destinations, disable proxies,
+  and do not follow redirects or silently retry requests.
+- `Trace.Events()` returns ordered stage/status events without tokens, claims,
+  bodies, secrets, or URLs. Traces cap at 10,000 events with an explicit
+  `trace.truncated` marker. Inject a fixed broker clock and use fixed run and
+  delivery identities for repeatable scenarios. Fresh cryptographic keys and
+  bootstrap credentials are intentionally random; they are not trace output.
+
+The integration runs the **production admission and conclusion HTTP handlers**
+and verifier, including real HTTP JWKS retrieval. Only a test-owned transport
+maps the verifier's fixed GitHub issuer JWKS URL to the local broker. Production
+issuer trust and constructors are unchanged; simulator keys never become
+production authority. Policy, admission-decision, and conclusion-receipt stores
+are isolated in-memory fixtures, not a substitute for PostgreSQL durability tests.
+
+An admitted job posts signed events to a real local webhook gateway ingress;
+the real SQLite queue and worker reject a bad signature, deduplicate replay,
+and finish exactly one simulated dispatch. The lifecycle trace is printed by
+the verbose test runner. Failure coverage includes expired/future tokens,
+incorrect audience/signature, malformed tokens, JWKS outage, failed bootstrap
+exchange, request/claim mismatch, current-policy denial, invalid budgets,
+redirects, and failing job callbacks. This is a protocol/job simulator, not a
+general workflow-YAML executor or a claim that upstream gh-aw JavaScript ran.
+The separately pinned upstream client conformance tests remain available via
+`GH_AW_ADMISSION_PROTOCOL_PATH` and `GH_AW_CONCLUSION_RUNTIME_DIR`.
+
 ## Ingestion reliability simulator
 
 The `simulate-api` and `simulate-webhooks` commands exercise the actual
