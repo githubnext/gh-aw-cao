@@ -90,10 +90,10 @@ func conformance(t *testing.T, store operational.Store) {
 	}
 	t.Run("session-cas-and-logout", func(t *testing.T) {
 		sessions := services.Sessions
-		if err := sessions.PutSession(ctx, "session", "encrypted-original", time.Hour); err != nil {
+		if err := sessions.PutSession(ctx, "session", "encrypted-original", time.Hour, ""); err != nil {
 			t.Fatal(err)
 		}
-		saved, err := sessions.CompareSession(ctx, "session", "encrypted-original", "encrypted-refresh", time.Hour)
+		saved, err := sessions.CompareSession(ctx, "session", "encrypted-original", "encrypted-refresh", time.Hour, "")
 		if err != nil || !saved {
 			t.Fatalf("refresh: %t, %v", saved, err)
 		}
@@ -104,7 +104,7 @@ func conformance(t *testing.T, store operational.Store) {
 		if err != nil || value != "encrypted-refresh" {
 			t.Fatalf("stage: %q, %v", value, err)
 		}
-		saved, err = sessions.CompareSession(ctx, "session", "encrypted-refresh", "resurrected", time.Hour)
+		saved, err = sessions.CompareSession(ctx, "session", "encrypted-refresh", "resurrected", time.Hour, "")
 		if err != nil || saved {
 			t.Fatalf("resurrected: %t, %v", saved, err)
 		}

@@ -96,6 +96,41 @@ func TestEvidenceLockSerializesSharedWritersAndCancelsWait(t *testing.T) {
 	release()
 }
 
+func TestForgetOwnershipPreflightPrecedesSharedValueMutation(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	if err := lake.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	target := retainedRepository(t, lake, "octo/api")
+	ambiguous := filepath.Join(lake.RunsDirectory(), lake.ShardPrefix("octo/api")+"unknown.jsonl")
+	if err := os.WriteFile(ambiguous, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	other := retainedValueLine("octo/other", "worker.preserved")
+	values := retainedValueLine("octo/api", "worker.withdrawn") + other
+	if err := WriteFileAtomic(lake.operationalValuesPath(), []byte(values)); err != nil {
+		t.Fatal(err)
+	}
+	if err := lake.ForgetContext(t.Context(), "octo/api"); err == nil {
+		t.Fatal("ambiguous shard ownership allowed shared-value mutation")
+	}
+	if content, err := os.ReadFile(lake.operationalValuesPath()); err != nil || string(content) != values {
+		t.Fatalf("failed ownership preflight changed shared values: %q, %v", content, err)
+	}
+	if _, err := os.Stat(target); err != nil {
+		t.Fatalf("failed ownership preflight deleted a repository shard: %v", err)
+	}
+	if err := os.Remove(ambiguous); err != nil {
+		t.Fatal(err)
+	}
+	if err := lake.ForgetContext(t.Context(), "octo/api"); err != nil {
+		t.Fatal(err)
+	}
+	if content, err := os.ReadFile(lake.operationalValuesPath()); err != nil || string(content) != other {
+		t.Fatalf("retry did not preserve unrelated values: %q, %v", content, err)
+	}
+}
+
 func TestForgetWaitsForSharedWriterThenErasesItsStaleCopy(t *testing.T) {
 	lake := Lake{Directory: t.TempDir()}
 	if err := lake.Prepare(); err != nil {

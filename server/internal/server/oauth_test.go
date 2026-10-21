@@ -885,6 +885,8 @@ type fakeGitHubOptions struct {
 	accessExpiresIn          int64
 	refreshSucceeds          bool
 	rejectRevocation         bool
+	omitExpiryMetadata       bool
+	omitRefreshToken         bool
 	// nil grants the requested scopes; a non-nil slice models reduced consent.
 	grantedScopes         []string
 	appDisclosesTwoFactor bool
@@ -970,8 +972,15 @@ func fakeGitHub(t *testing.T, options fakeGitHubOptions) *fakeGitHubServer {
 		accessToken, refreshToken := server.accessToken, server.refreshToken
 		server.tokens[accessToken] = server.grant
 		server.grantMu.Unlock()
+		tokens := tokenResponse{AccessToken: accessToken, RefreshToken: refreshToken, ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200}
+		if options.omitExpiryMetadata {
+			tokens.ExpiresIn, tokens.RefreshTokenExpiresIn = 0, 0
+		}
+		if options.omitRefreshToken {
+			tokens.RefreshToken = ""
+		}
 		// #nosec G117 -- test fixture intentionally models GitHub's token endpoint JSON.
-		_ = json.NewEncoder(response).Encode(tokenResponse{AccessToken: accessToken, RefreshToken: refreshToken, ExpiresIn: options.accessExpiresIn, RefreshTokenExpiresIn: 7200})
+		_ = json.NewEncoder(response).Encode(tokens)
 	})
 	mux.HandleFunc("/user", func(response http.ResponseWriter, request *http.Request) {
 		if server.onUserRequest != nil {
