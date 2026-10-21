@@ -177,6 +177,7 @@ func TestTemporalTrendJSONContract(t *testing.T) {
 }
 
 func TestTemporalSQLNativeMeasureHistoryQuery(t *testing.T) {
+	// The legacy page was retired; the worker and chart tests now share this declaration.
 	data, err := os.ReadFile("../../../dashboard/site/test/fixtures/native-measure-history-query.json")
 	if err != nil {
 		t.Fatal(err)
@@ -185,13 +186,24 @@ func TestTemporalSQLNativeMeasureHistoryQuery(t *testing.T) {
 	if err := json.Unmarshal(data, &definition); err != nil {
 		t.Fatal(err)
 	}
+	if definition.Name != "operational-value-plot-series" || definition.From != "operational-values" {
+		t.Fatal("native measure history fixture must query canonical operational values")
+	}
 	series := definition.TemporalSeries
-	if definition.Name != "operational-value-plot-series" || series == nil || series.Shape != "panels" || series.Link != "run-link" {
-		t.Fatal("native measure history fixture must return repository panels with point-level links")
+	if series == nil || series.Shape != "panels" || series.Link != "run-link" || series.Series != "series-repository" {
+		t.Fatal("native measure history must return repository panels with point-level links")
+	}
+	if len(series.PointCarry) == 0 {
+		t.Fatal("native measure history must retain per-observation provenance")
+	}
+	if !reflect.DeepEqual(series.Measures, []TemporalMeasure{{
+		Field: "operational-value", Key: "operational-value-definition", Kind: "primary",
+	}}) {
+		t.Fatal("native measure history must retain primary native measure identity")
 	}
 	input := SQLRelation{SQL: "observations", Order: "ordinal", Columns: map[string]SQLColumn{}}
-	for _, field := range append(series.Carry, series.PointCarry...) {
-		input.Columns[field] = SQLColumn{Expression: SQLIdentifier(field), Presence: "TRUE", Kind: SQLText}
+	for _, field := range append(append([]string{}, series.Carry...), series.PointCarry...) {
+		input.Columns[field] = SQLColumn{Expression: SQLIdentifier(field), Presence: SQLIdentifier(field + "-present"), Kind: SQLText}
 	}
 	input.Columns[series.Time] = SQLColumn{Expression: "observed_at", Presence: "observed_at_present", Kind: SQLTimestamp}
 	input.Columns[series.Series] = SQLColumn{Expression: "repository", Presence: "TRUE", Kind: SQLText}
@@ -202,11 +214,23 @@ func TestTemporalSQLNativeMeasureHistoryQuery(t *testing.T) {
 	}
 	plan := temporalTestPlan(t, input, *series)
 	if plan.Outputs["observations"].Columns["series"].Kind != SQLStructured {
-		t.Fatal("native measure history panels must retain grouped chart series")
+		t.Fatal("native measure panels must retain grouped chart series")
 	}
-	for _, fragment := range []string{`jsonb_build_object('link',`, `ORDER BY "__at","__order"`, `ORDER BY "series" COLLATE "C"`} {
+	for _, fragment := range []string{
+		`jsonb_build_object('link',`, `jsonb_build_object('metadata',`,
+		`ORDER BY "__at","__order"`, `ORDER BY "series" COLLATE "C"`,
+		"LIMIT 100001", "__count <= 100000",
+	} {
 		if !strings.Contains(plan.CTEs, fragment) {
 			t.Errorf("missing panel SQL contract %q", fragment)
+		}
+	}
+	for _, field := range series.PointCarry {
+		if !strings.Contains(plan.CTEs, SQLIdentifier(field+"-present")) {
+			t.Errorf("point metadata %q must preserve field presence", field)
+		}
+		if _, exists := plan.Outputs["observations"].Columns[field]; exists {
+			t.Errorf("point metadata %q must not become a panel dimension", field)
 		}
 	}
 }

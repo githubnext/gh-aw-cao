@@ -69,6 +69,25 @@ together. Expired sessions and leases MUST never grant authority. Accepted work,
 enrollment, checkpoints, and pending revocations MUST NOT be evicted by cache
 pressure or maintenance.
 
+Session writes and CAS MUST include the deployment's opaque cleanup namespace.
+Session TTL MUST expire authority without deleting the final encrypted
+credential owner. Expired reads and CAS MUST fail closed even before cleanup
+runs. `PendingRevocation` MUST atomically transfer a bounded batch of expired
+sessions into that namespace's protected revocation queue. Invalidation and
+direct deletion MUST also transfer ownership rather than erase credentials;
+failed transitions MUST retain the previous owner. Maintenance MUST NOT delete
+expired session credentials or their reserved cleanup destination. Capacity for
+the configured destination MUST be reserved at admission, including bytes and
+entries; pending debt MUST backpressure admission instead of being evicted.
+
+Provider expiry MUST be recorded separately from local access, refresh, cookie,
+and session deadlines. Unknown/nonexpiring credentials and legacy records
+without provider evidence MUST remain cleanup debt until revocation succeeds.
+Expiry alone MAY release a record only when every present credential has a
+provider-confirmed elapsed expiry. Rotation MUST NOT copy a predecessor's
+provider expiry to a different credential. Missing decryption keys and provider
+or persistence outages MUST NOT complete or evict pending cleanup.
+
 Blocking queue reads MUST release their transaction between bounded polling
 attempts and honor cancellation. Maintenance MUST be application-owned and
 bounded to at most 512 expired protected records and 512 expired cache records
@@ -130,6 +149,57 @@ write the file; the hash chain still detects edits that do not rewrite every
 later hash. `specs/server-hosted-cli.md` §2 restricts it to loopback
 listeners.
 
+## Administrative rebuild evidence
+
+Hosted administrative rebuilds MUST require a durable `AuditLog`, in addition
+to existing access, administrator step-up and CSRF checks. Redis and memory
+alone do not supply this service: their hosted rebuild endpoint MUST return
+unavailable, not substitute a JSON log for durable admission. This restriction
+does not change automatic collection, webhook reconciliation, startup ingestion,
+or their existing coordination/publication rules. Loopback bearer rebuilds MAY
+retain the local non-durable exception; `local-bearer` identifies a capability,
+not a verified person, and status MUST NOT claim durable evidence.
+
+After acquiring the existing owner-checked rebuild lease and reading canonical
+revision state, the handler MUST record `admin.rebuild.admitted` before
+persisting running status or admitting background work. The worker MUST record
+`admin.rebuild.started` before calling its reconciler. Either audit failure MUST
+prevent reconciliation. Every admitted lifecycle MUST attempt a bounded,
+cancellation-independent `admin.rebuild.completed` append, including status
+admission failure, service drain, start-audit failure, reconciliation failure,
+timeout, cancellation, and success. Events MUST retain the initiating
+authenticated login, a fresh server-generated `rebuild_id` independent of the
+private lease token, prior revision, timestamps, state, fixed reason code and
+returned revision/data revision on success. Active trace correlation MUST
+survive asynchronous execution. Events MUST NOT include credentials, request
+payloads, source rows, collection counts, or raw errors.
+
+Denied hosted administrator decisions MUST continue to record `admin.denied`
+with actor, reason and available trace correlation. Audit failure MUST leave
+access denied and return unavailable; a confirmed durable append with a
+mirror-only failure MAY retain the normal denied response.
+
+Canonical publication, operational status and audit history are separate
+commits, not one cross-store transaction. A terminal audit failure after
+publication MUST NOT roll back canonical data, suppress revision notification,
+or retry ingestion. Status MUST distinguish the operation's outcome from its
+`auditState`: `pending`, `recorded` (durable), `local` (no durable guarantee),
+or `unavailable`. Status write failures MUST be logged and independently
+attempt `admin.rebuild.status_failed`; audit failures MUST be logged and flow
+through existing audit failure telemetry. Confirmed durable appends MUST NOT
+be invalidated by mirror-only failures; joined storage/mirror failures MUST NOT
+be treated as mirror-only success.
+
+Replaceable status is not the historical trail. Operators MUST forward and
+verify committed audit rows through the existing independent evidence reader,
+export/delivery and external-anchor facilities. Process death, uncertain audit
+commit errors, and simultaneous store outages can leave an admitted/started ID
+without terminal evidence. No automatic replay or read-time status repair may
+invent its outcome. Operators MUST reconcile these IDs against canonical
+revision state and independent telemetry, preserve the resulting incident
+evidence, and monitor `stored=false` audit events and missing terminal events.
+A subsequent rebuild MUST use a new ID and MUST NOT erase retained history.
+
 ## Durable CLI command queue service
 
 `OperationalServices.CLICommands` exposes `CLICommandQueues`, whose
@@ -161,6 +231,19 @@ invocations, output, or diagnostics. Reusing an idempotency key MUST return the
 same command only for the same invocation and retry ancestry. Retry creates a
 new command only from failed or timed-out work; the caller MUST revalidate its
 current declaration and obtain fresh approval before enqueueing it.
+
+Attributed invocations MUST encode a positive numeric GitHub `ActorID`
+(`actorId` in invocation JSON) alongside their `Actor` login. Unattributed
+local invocations MAY omit both. PostgreSQL and SQLite MUST preserve the ID
+through detail, list/history, and claim reads. Idempotency fingerprints MUST
+include it; the same login with a different ID is a different requester.
+A fresh retry MAY replace both attribution fields in the new command, but
+MUST NOT mutate the original identity or any action/input/target fields.
+Invocation JSON is stored opaquely, so this addition requires no SQL schema
+or namespace-version change. Old records without the field MUST remain
+readable as unknown identity; storage MUST NOT infer or backfill an account ID
+from a login. The hosted executor's explicit failure and re-admission policy
+is defined in `server-hosted-cli.md` section 4.2.
 
 Only a live database-time owner lease and its monotonic fence MAY claim FIFO
 work, append output, finish, or settle execution. Owners MUST renew their lease

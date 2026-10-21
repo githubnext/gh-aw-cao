@@ -292,6 +292,9 @@
           "server-go-logging": {
             "workflow": "self-care-server-go-logging"
           },
+          "server-soc2": {
+            "workflow": "self-care-server-soc2"
+          },
           "specs-maintainer": {
             "workflow": "self-care-specs-maintainer"
           }

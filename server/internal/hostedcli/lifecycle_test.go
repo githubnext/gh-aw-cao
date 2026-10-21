@@ -78,7 +78,7 @@ func (f lifecycleExecutor) execute(t *testing.T) operational.CLICommand {
 	}
 	_, err = f.queue.Enqueue(t.Context(), operational.CLICommandInvocation{
 		ActionID: "upgrade", Command: "gh aw upgrade --repo octo/app --create-pull-request",
-		Repository: "octo/app", Actor: "mona",
+		Repository: "octo/app", Actor: "mona", ActorID: 101,
 	}, "", 0)
 	if err != nil {
 		t.Fatal(err)

@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.9.0')
+  assert.equal(openapi.info.version, '2.10.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -97,6 +97,11 @@ test('the generated contract describes the implemented security and wire formats
   assert.deepEqual(openapi.components.schemas.OperationalCapability.properties.scope.enum, ['unsupported', 'process', 'deployment'])
   assert.deepEqual(openapi.components.schemas.OperationalCapability.properties.persistence.enum, ['volatile', 'restart'])
   assert.equal(openapi.components.schemas.RebuildStatus.properties.generation, undefined)
+  for (const field of ['rebuildId', 'auditState']) {
+    assert.equal(openapi.components.schemas.RebuildStatus.properties[field].type, 'string')
+    assert.ok(!openapi.components.schemas.RebuildStatus.required.includes(field))
+  }
+  assert.match(openapi.paths['/api/admin/rebuild'].post.description, /require durable audit admission/)
   assert.deepEqual(
     {
       type: openapi.components.schemas.DataState.properties.evaluatedAt.type,

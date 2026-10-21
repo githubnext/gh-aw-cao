@@ -13,7 +13,7 @@ import (
 )
 
 var auditInvocation = operational.CLICommandInvocation{
-	ActionID: "compile", Command: "gh aw compile --strict", Actor: "octocat", Repository: "octo/repo",
+	ActionID: "compile", Command: "gh aw compile --strict", Actor: "octocat", ActorID: 101, Repository: "octo/repo",
 }
 
 func admissionEvent(retryOf int64) operational.AuditEvent {
@@ -66,14 +66,15 @@ func TestAuditedRetryRecordsNewRequesterWithoutChangingAction(t *testing.T) {
 			original := failedAuditCommand(t, f, acquireAuditLease(t, f))
 			invocation := original.CLICommandInvocation
 			invocation.Actor = "mona"
+			invocation.ActorID = 202
 			event := admissionEvent(original.ID)
 			event.Actor = invocation.Actor
 			retried, recorded, err := f.queue.EnqueueAudited(t.Context(), invocation, "new-requester", original.ID, event)
-			if err != nil || retried.Actor != invocation.Actor || recorded.Actor != invocation.Actor || retried.RetryOf != original.ID {
+			if err != nil || retried.Actor != invocation.Actor || retried.ActorID != invocation.ActorID || recorded.Actor != invocation.Actor || retried.RetryOf != original.ID {
 				t.Fatalf("new requester retry = %+v, %+v, %v", retried, recorded, err)
 			}
 			retained, err := f.queue.Detail(t.Context(), original.ID)
-			if err != nil || retained.Actor != original.Actor {
+			if err != nil || retained.Actor != original.Actor || retained.ActorID != original.ActorID {
 				t.Fatal("retry changed the original requester")
 			}
 			replayed, _, err := f.queue.EnqueueAudited(t.Context(), invocation, "new-requester", original.ID, event)
@@ -81,6 +82,10 @@ func TestAuditedRetryRecordsNewRequesterWithoutChangingAction(t *testing.T) {
 				t.Fatalf("retry replay = %+v, %v", replayed, err)
 			}
 			otherActor := invocation
+			otherActor.ActorID++
+			if _, _, err := f.queue.EnqueueAudited(t.Context(), otherActor, "new-requester", original.ID, event); !errors.Is(err, operational.ErrConflict) {
+				t.Fatalf("same login with different account ID reused an idempotency key: %v", err)
+			}
 			otherActor.Actor = "hubot"
 			otherEvent := event
 			otherEvent.Actor = otherActor.Actor

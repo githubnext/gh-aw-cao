@@ -191,6 +191,9 @@ func (r Runner) Collect(ctx context.Context, task Task) error {
 	if err := r.Lake.Prepare(); err != nil {
 		return err
 	}
+	if err := r.Lake.MigrateRepositoryShards(ctx, repository); err != nil {
+		return err
+	}
 	reserve := 2000
 	if r.Budget != nil {
 		reserved, err := r.Budget.Reserve(ctx, task.InstallationID)
