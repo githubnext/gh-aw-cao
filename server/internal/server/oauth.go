@@ -650,6 +650,21 @@ func (oauth *githubOAuth) adminAssured(session oauthSession, now time.Time) bool
 	return ok && !now.Before(session.AuthenticatedAt) && now.Before(until)
 }
 
+// Streams cannot refresh tokens or replace cookies after flushing headers.
+// Reconnect through ordinary authentication before any authority needs renewal.
+func (oauth *githubOAuth) eventAuthorizationExpires(session oauthSession, allowHealth bool) time.Time {
+	until := session.AuthorizedAt.Add(authorizationRecheckInterval)
+	if refreshAt := session.AccessExpires.Add(-tokenRefreshSkew); refreshAt.Before(until) {
+		until = refreshAt
+	}
+	if allowHealth {
+		if assuranceUntil, ok := oauth.adminAssuranceExpires(session); ok && assuranceUntil.Before(until) {
+			until = assuranceUntil
+		}
+	}
+	return until
+}
+
 func (oauth *githubOAuth) clearRequestSession(response http.ResponseWriter, request *http.Request) error {
 	session, ok := oauth.loadRequestSession(request)
 	sealed := ""
