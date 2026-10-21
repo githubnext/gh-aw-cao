@@ -12,7 +12,7 @@ import (
 	"github.com/githubnext/gh-cao/server/internal/operational"
 )
 
-var compileInvocation = operational.CLICommandInvocation{ActionID: "compile", Command: "gh aw compile --strict", Actor: "octocat", Repository: "octo/repo"}
+var compileInvocation = operational.CLICommandInvocation{ActionID: "compile", Command: "gh aw compile --strict", Actor: "octocat", ActorID: 101, Repository: "octo/repo"}
 
 func openTest(t *testing.T, path string) *Store {
 	t.Helper()
@@ -97,7 +97,7 @@ func TestCLICommandLifecycleAcrossHandles(t *testing.T) {
 	}
 	claimed, err := run.Claim(ctx, lease)
 	if err != nil || claimed == nil || claimed.ID != first || claimed.Status != operational.CLICommandRunning ||
-		claimed.Actor != "octocat" || claimed.Repository != "octo/repo" || claimed.Deadline == nil {
+		claimed.Actor != "octocat" || claimed.ActorID != 101 || claimed.Repository != "octo/repo" || claimed.Deadline == nil {
 		t.Fatalf("claim = %+v, %v", claimed, err)
 	}
 	if next, err := run.Claim(ctx, lease); err != nil || next != nil {

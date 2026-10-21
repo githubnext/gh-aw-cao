@@ -33,7 +33,7 @@ const QueueName = "hosted-cli"
 // identity. *githubapp.Client implements it.
 type GitHub interface {
 	FindRepositoryInstallation(context.Context, string) (int64, error)
-	CollaboratorPermission(context.Context, githubapp.ScopedToken, string, string) (string, error)
+	CollaboratorPermission(context.Context, githubapp.ScopedToken, string, string, int64) (string, error)
 	BotIdentity(context.Context) (githubapp.BotIdentity, error)
 }
 
@@ -275,7 +275,7 @@ func (e *Executor) prefetch(ctx context.Context) {
 	needUntil := e.now().Add(e.options.CommandTimeout + time.Minute)
 	for _, command := range page.Commands {
 		plan, err := PlanCommand(command.Command, e.options.ControlRepository)
-		if err != nil {
+		if err != nil || command.Actor == "" || command.ActorID <= 0 || !strings.EqualFold(command.Repository, plan.Repository) {
 			continue
 		}
 		installationID, err := e.installation(ctx, plan.Repository)
@@ -288,7 +288,7 @@ func (e *Executor) prefetch(ctx context.Context) {
 		}
 		// Never pre-mint a work token for a requester who cannot write.
 		commandCtx := withTokenActor(ctx, command)
-		if permission, err := e.verifyRequester(commandCtx, installationID, plan, command.Actor); err != nil || !canWrite(permission) {
+		if permission, err := e.verifyRequester(commandCtx, installationID, plan, command.Actor, command.ActorID); err != nil || !canWrite(permission) {
 			continue
 		}
 		if err := e.broker.Prefetch(commandCtx, installationID, scope, needUntil); err != nil {
@@ -300,9 +300,9 @@ func (e *Executor) prefetch(ctx context.Context) {
 // verifyRequester reads the requester's live collaborator permission with a
 // separate metadata:read token that is revoked before it returns, so no
 // work-scoped token exists until the requester is authorized.
-func (e *Executor) verifyRequester(ctx context.Context, installationID int64, plan Plan, actor string) (string, error) {
-	if actor == "" {
-		return "", errors.New("hosted CLI command has no requester")
+func (e *Executor) verifyRequester(ctx context.Context, installationID int64, plan Plan, actor string, actorID int64) (string, error) {
+	if actor == "" || actorID <= 0 {
+		return "", errors.New("hosted CLI command has no verified requester account identity")
 	}
 	scope := githubapp.TokenScope{Repositories: []string{plan.Name()}, Permissions: map[string]string{"metadata": "read"}}
 	token, err := e.broker.Acquire(ctx, installationID, scope, e.now().Add(time.Minute))
@@ -310,7 +310,7 @@ func (e *Executor) verifyRequester(ctx context.Context, installationID int64, pl
 		return "", err
 	}
 	defer e.broker.Release(context.WithoutCancel(ctx), token)
-	return e.github.CollaboratorPermission(ctx, token, plan.Repository, actor)
+	return e.github.CollaboratorPermission(ctx, token, plan.Repository, actor, actorID)
 }
 
 func canWrite(permission string) bool {
@@ -390,6 +390,9 @@ func (e *Executor) run(ctx context.Context, lease operational.CLICommandLease, c
 	if command.Actor == "" || !strings.EqualFold(command.Repository, plan.Repository) {
 		return nil, operational.CLICommandFailed, "Hosted execution requires an authenticated requester and a matching target repository.", true
 	}
+	if command.ActorID <= 0 {
+		return nil, operational.CLICommandFailed, "The queued command has no verified requester account ID. Sign in and retry as a new admission; the original command is retained.", true
+	}
 	deadline := e.now().Add(e.options.CommandTimeout)
 	if command.Deadline != nil {
 		deadline = *command.Deadline
@@ -404,7 +407,7 @@ func (e *Executor) run(ctx context.Context, lease operational.CLICommandLease, c
 	}
 	// Authorize before issuing any work: the requester's live permission is
 	// checked before a work-scoped token is minted or taken from the pool.
-	permission, err := e.verifyRequester(runCtx, installationID, plan, command.Actor)
+	permission, err := e.verifyRequester(runCtx, installationID, plan, command.Actor, command.ActorID)
 	if err != nil {
 		return nil, operational.CLICommandFailed, "The requester's repository permission could not be verified.", true
 	}

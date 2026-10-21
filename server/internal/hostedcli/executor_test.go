@@ -333,7 +333,9 @@ func (q *fakeQueue) text(id int64) string {
 }
 
 type fakeGitHub struct {
-	permission string
+	permission      string
+	accountID       int64
+	permissionError error
 }
 
 func (g fakeGitHub) FindRepositoryInstallation(_ context.Context, repository string) (int64, error) {
@@ -342,9 +344,19 @@ func (g fakeGitHub) FindRepositoryInstallation(_ context.Context, repository str
 	}
 	return 42, nil
 }
-func (g fakeGitHub) CollaboratorPermission(_ context.Context, token githubapp.ScopedToken, _, _ string) (string, error) {
+func (g fakeGitHub) CollaboratorPermission(_ context.Context, token githubapp.ScopedToken, _, _ string, accountID int64) (string, error) {
 	if token.Secret() == "" {
 		return "", errors.New("missing token")
+	}
+	expected := g.accountID
+	if expected == 0 {
+		expected = 101
+	}
+	if accountID != expected {
+		return "", errors.New("account identity mismatch")
+	}
+	if g.permissionError != nil {
+		return "", g.permissionError
 	}
 	return g.permission, nil
 }
@@ -414,7 +426,7 @@ func startExecutorWith(t *testing.T, queue *fakeQueue, minter *fakeMinter, githu
 func enqueue(t *testing.T, queue *fakeQueue, command, repository, actor string) int64 {
 	t.Helper()
 	queued, err := queue.Enqueue(context.Background(), operational.CLICommandInvocation{
-		ActionID: "test-action", Command: command, Repository: repository, Actor: actor,
+		ActionID: "test-action", Command: command, Repository: repository, Actor: actor, ActorID: 101,
 	}, "", 0)
 	if err != nil {
 		t.Fatal(err)
@@ -654,9 +666,9 @@ func (g *prefetchGitHub) FindRepositoryInstallation(ctx context.Context, reposit
 	return g.fakeGitHub.FindRepositoryInstallation(ctx, repository)
 }
 
-func (g *prefetchGitHub) CollaboratorPermission(ctx context.Context, token githubapp.ScopedToken, repository, actor string) (string, error) {
+func (g *prefetchGitHub) CollaboratorPermission(ctx context.Context, token githubapp.ScopedToken, repository, actor string, actorID int64) (string, error) {
 	g.verifications++
-	return g.fakeGitHub.CollaboratorPermission(ctx, token, repository, actor)
+	return g.fakeGitHub.CollaboratorPermission(ctx, token, repository, actor, actorID)
 }
 
 func TestExecutorPrefetchSkipsVerificationWithoutPoolCapacity(t *testing.T) {

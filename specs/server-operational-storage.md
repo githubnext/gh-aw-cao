@@ -162,6 +162,19 @@ same command only for the same invocation and retry ancestry. Retry creates a
 new command only from failed or timed-out work; the caller MUST revalidate its
 current declaration and obtain fresh approval before enqueueing it.
 
+Attributed invocations MUST encode a positive numeric GitHub `ActorID`
+(`actorId` in invocation JSON) alongside their `Actor` login. Unattributed
+local invocations MAY omit both. PostgreSQL and SQLite MUST preserve the ID
+through detail, list/history, and claim reads. Idempotency fingerprints MUST
+include it; the same login with a different ID is a different requester.
+A fresh retry MAY replace both attribution fields in the new command, but
+MUST NOT mutate the original identity or any action/input/target fields.
+Invocation JSON is stored opaquely, so this addition requires no SQL schema
+or namespace-version change. Old records without the field MUST remain
+readable as unknown identity; storage MUST NOT infer or backfill an account ID
+from a login. The hosted executor's explicit failure and re-admission policy
+is defined in `server-hosted-cli.md` section 4.2.
+
 Only a live database-time owner lease and its monotonic fence MAY claim FIFO
 work, append output, finish, or settle execution. Owners MUST renew their lease
 and abort executors if renewal fails. Expiry MUST NOT be interpreted as proof
